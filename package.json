@@ -1,16 +1,16 @@
 {
   "name": "vscode-containerlab",
-  "displayName": "Containerlab Extension Example",
-  "description": "A VS Code extension to manage containerlab topologies",
+  "publisher": "myPublisherName",       
+  "displayName": "Containerlab Extension",
+  "description": "Manages containerlab topologies in VS Code",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.70.0"
   },
+  "main": "./out/extension.js",
   "categories": [
     "Other"
   ],
-  "main": "./out/extension.js",
-
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -33,15 +33,16 @@
       {
         "command": "containerlab.refresh",
         "title": "Refresh Containerlab Explorer"
+      },
+      {
+        "command": "containerlab.openLabFile",
+        "title": "Open Lab File"
       }
     ]
   },
-
   "scripts": {
     "compile": "tsc -p .",
-    "watch": "tsc -watch -p .",
-    "pretest": "npm run compile",
-    "test": "echo 'No tests yet'"
+    "watch": "tsc -w -p ."
   },
   "devDependencies": {
     "typescript": "^5.0.0",
