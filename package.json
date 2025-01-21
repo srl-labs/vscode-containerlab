@@ -1,6 +1,6 @@
 {
   "name": "vscode-containerlab",
-  "publisher": "myPublisherName",       
+  "publisher": "myPublisherName",
   "displayName": "Containerlab Extension",
   "description": "Manages containerlab topologies in VS Code",
   "version": "0.0.1",
@@ -37,8 +37,85 @@
       {
         "command": "containerlab.openLabFile",
         "title": "Open Lab File"
+      },
+      {
+        "command": "containerlab.startNode",
+        "title": "Start Node"
+      },
+      {
+        "command": "containerlab.stopNode",
+        "title": "Stop Node"
+      },
+      {
+        "command": "containerlab.attachShell",
+        "title": "Attach Shell"
+      },
+      {
+        "command": "containerlab.sshNode",
+        "title": "SSH Node"
+      },
+      {
+        "command": "containerlab.showLogs",
+        "title": "Container Logs"
+      },
+      {
+        "command": "containerlab.destroyLab",
+        "title": "Destroy Lab"
+      },
+      {
+        "command": "containerlab.deployLab",
+        "title": "Reconfigure Lab"
       }
-    ]
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "containerlab.refresh",
+          "when": "view == containerlabExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.openLabFile",
+          "when": "viewItem == containerlabLab",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.destroyLab",
+          "when": "viewItem == containerlabLab",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.deployLab",
+          "when": "viewItem == containerlabLab",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.startNode",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.stopNode",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.attachShell",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.sshNode",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.showLogs",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p .",
