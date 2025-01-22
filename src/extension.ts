@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Start Node' });
-    terminal.sendText(`docker start ${containerId}`);
+    terminal.sendText(`sudo docker start ${containerId}`);
     terminal.show();
   });
   context.subscriptions.push(startNodeCmd);
@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Stop Node' });
-    terminal.sendText(`docker stop ${containerId}`);
+    terminal.sendText(`sudo docker stop ${containerId}`);
     terminal.show();
   });
   context.subscriptions.push(stopNodeCmd);
@@ -116,7 +116,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Shell' });
-    terminal.sendText(`docker exec -it ${containerId} sh`);
+    terminal.sendText(`sudo docker exec -it ${containerId} sh`);
     terminal.show();
   });
   context.subscriptions.push(attachShellCmd);
@@ -148,7 +148,7 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Logs' });
-    terminal.sendText(`docker logs -f ${containerId}`);
+    terminal.sendText(`sudo docker logs -f ${containerId}`);
     terminal.show();
   });
   context.subscriptions.push(showLogsCmd);

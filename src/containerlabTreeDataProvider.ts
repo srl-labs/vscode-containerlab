@@ -21,7 +21,8 @@ interface LabInfo {
   labPath: string;
   localExists: boolean;
   containers: any[];
-  labName?: string;      // from containerlab if found
+  labName?: string;
+  owner?: string; // new field to store container's owner if available
 }
 
 export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<ContainerlabNode> {
@@ -34,12 +35,15 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
+      // top-level labs
       return this.getAllLabs();
     } else {
       const info = element.details as LabInfo;
       if (info && info.containers.length > 0) {
+        // show containers
         return this.getContainerNodes(info.containers);
       }
+      // no containers => no child nodes
       return [];
     }
   }
@@ -52,6 +56,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     const localFiles = await this.findLocalClabFiles();
     const labData = await this.inspectContainerlab();
 
+    // union of all paths
     const allPaths = new Set<string>([...Object.keys(labData), ...localFiles]);
     if (allPaths.size === 0) {
       return [ new ContainerlabNode('No local .clab files or labs found', vscode.TreeItemCollapsibleState.None) ];
@@ -59,30 +64,36 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
     const nodes: ContainerlabNode[] = [];
     for (const labPath of allPaths) {
-      const info = labData[labPath] || { labPath, containers: [], labName: undefined };
+      const info = labData[labPath] || { labPath, containers: [], labName: undefined, owner: undefined };
       const localExists = localFiles.includes(labPath);
       info.localExists = localExists;
 
-      // 1) Build label
-      let labLabel: string | undefined = info.labName;
-      if (!labLabel) {
+      // Build label
+      // prefer container's labName, else file name, else path
+      let finalLabel = info.labName;
+      if (!finalLabel) {
         if (localExists) {
-          labLabel = path.basename(labPath);
+          finalLabel = path.basename(labPath);
         } else {
-          labLabel = labPath;
+          finalLabel = labPath;
         }
       }
 
-      // 2) Icon logic: 
-      // - no containers => grey
-      // - all running => green
-      // - none running => red
-      // - else => partial => yellow
+      // If there's an owner from the container, show it as well => e.g. "vlan (clab)"
+      if (info.owner) {
+        finalLabel += ` (${info.owner})`;
+      }
+
+      // Color logic:
+      // no containers => grey
+      // all running => green
+      // none running => red
+      // partial => yellow
       let contextVal: string;
       let color: vscode.ThemeColor;
       if (info.containers.length === 0) {
         contextVal = "containerlabLabUndeployed";
-        color = new vscode.ThemeColor('disabledForeground'); // grey 
+        color = new vscode.ThemeColor('disabledForeground'); // grey
       } else {
         // deployed
         contextVal = "containerlabLabDeployed";
@@ -94,7 +105,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         } else if (noneRunning) {
           color = new vscode.ThemeColor('testing.iconFailed'); // red
         } else {
-          // partial
           color = new vscode.ThemeColor('problemsWarningIcon.foreground'); // yellow
         }
       }
@@ -105,17 +115,17 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         : vscode.TreeItemCollapsibleState.None;
 
       const node = new ContainerlabNode(
-        labLabel,
+        finalLabel,
         collapsible,
         {
           labPath,
           localExists,
           containers: info.containers,
-          labName: info.labName
+          labName: info.labName,
+          owner: info.owner
         },
         contextVal
       );
-
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
       nodes.push(node);
     }
@@ -140,12 +150,18 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         },
         "containerlabContainer"
       );
-
       node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
+
       if (ctr.state === 'running') {
-        node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
+        node.iconPath = new vscode.ThemeIcon(
+          'circle-filled',
+          new vscode.ThemeColor('testing.iconPassed')
+        );
       } else {
-        node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+        node.iconPath = new vscode.ThemeIcon(
+          'circle-filled',
+          new vscode.ThemeColor('testing.iconFailed')
+        );
       }
       return node;
     });
@@ -194,10 +210,19 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     for (const c of arr) {
       const p = c.labPath || '';
       if (!map[p]) {
-        map[p] = { labPath: p, localExists: false, containers: [], labName: c.lab_name };
+        map[p] = {
+          labPath: p,
+          localExists: false,
+          containers: [],
+          labName: c.lab_name,
+          owner: c.owner
+        };
       }
+      // if additional containers belong to same path, we may see a different "owner".
+      // We'll just keep the first found. Or you can unify them, your choice.
       map[p].containers.push(c);
     }
+
     return map;
   }
 }
