@@ -1,13 +1,17 @@
 {
   "name": "vscode-containerlab",
-  "publisher": "myPublisherName",
-  "displayName": "Containerlab Extension",
+  "publisher": "Nokia",
+  "displayName": "Containerlab",
   "description": "Manages containerlab topologies in VS Code",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.70.0"
   },
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:your.extension.command", 
+    "onStartupFinished" 
+  ],
   "categories": [
     "Other"
   ],
