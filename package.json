@@ -39,6 +39,18 @@
         "title": "Open Lab File"
       },
       {
+        "command": "containerlab.deployLab",
+        "title": "Deploy Lab"
+      },
+      {
+        "command": "containerlab.redeployLab",
+        "title": "Redeploy Lab"
+      },
+      {
+        "command": "containerlab.destroyLab",
+        "title": "Destroy Lab"
+      },
+      {
         "command": "containerlab.startNode",
         "title": "Start Node"
       },
@@ -56,19 +68,7 @@
       },
       {
         "command": "containerlab.showLogs",
-        "title": "Container Logs"
-      },
-      {
-        "command": "containerlab.destroyLab",
-        "title": "Destroy Lab"
-      },
-      {
-        "command": "containerlab.deployLab",
-        "title": "Reconfigure Lab"
-      },
-      {
-        "command": "containerlab.redeployLab",
-        "title": "Redeploy Lab"
+        "title": "Show Logs"
       }
     ],
     "menus": {
@@ -80,22 +80,22 @@
         },
         {
           "command": "containerlab.openLabFile",
-          "when": "viewItem == containerlabLab",
-          "group": "navigation"
-        },
-        {
-          "command": "containerlab.destroyLab",
-          "when": "viewItem == containerlabLab",
+          "when": "viewItem =~ /containerlabLab/",
           "group": "navigation"
         },
         {
           "command": "containerlab.deployLab",
-          "when": "viewItem == containerlabLab",
+          "when": "viewItem == containerlabLabUndeployed",
           "group": "navigation"
         },
         {
           "command": "containerlab.redeployLab",
-          "when": "viewItem == containerlabLab",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.destroyLab",
+          "when": "viewItem == containerlabLabDeployed",
           "group": "navigation"
         },
         {

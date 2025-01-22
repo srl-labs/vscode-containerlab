@@ -17,13 +17,61 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const labPath = node.details?.labPath;
     if (!labPath) {
-      vscode.window.showErrorMessage('No labPath found for this lab.');
+      vscode.window.showErrorMessage('No labPath found.');
       return;
     }
-    const fileUri = vscode.Uri.file(labPath);
-    vscode.commands.executeCommand('vscode.open', fileUri);
+    const uri = vscode.Uri.file(labPath);
+    vscode.commands.executeCommand('vscode.open', uri);
   });
   context.subscriptions.push(openLabFileCmd);
+
+  const deployLabCmd = vscode.commands.registerCommand('containerlab.deployLab', (node: ContainerlabNode) => {
+    if (!node) {
+      vscode.window.showErrorMessage('No lab node selected.');
+      return;
+    }
+    const labPath = node.details?.labPath;
+    if (!labPath) {
+      vscode.window.showErrorMessage('No labPath to deploy.');
+      return;
+    }
+    const terminal = vscode.window.createTerminal({ name: 'Containerlab Deploy' });
+    terminal.sendText(`sudo containerlab deploy -c -t ${labPath}`);
+    terminal.show();
+  });
+  context.subscriptions.push(deployLabCmd);
+
+  const redeployLabCmd = vscode.commands.registerCommand('containerlab.redeployLab', (node: ContainerlabNode) => {
+    if (!node) {
+      vscode.window.showErrorMessage('No lab node selected.');
+      return;
+    }
+    const labPath = node.details?.labPath;
+    if (!labPath) {
+      vscode.window.showErrorMessage('No labPath to redeploy.');
+      return;
+    }
+    const terminal = vscode.window.createTerminal({ name: 'Containerlab Redeploy' });
+    terminal.sendText(`sudo containerlab redeploy -c -t ${labPath}`);
+    terminal.show();
+  });
+  context.subscriptions.push(redeployLabCmd);
+
+  const destroyLabCmd = vscode.commands.registerCommand('containerlab.destroyLab', (node: ContainerlabNode) => {
+    if (!node) {
+      vscode.window.showErrorMessage('No lab node selected.');
+      return;
+    }
+    const labPath = node.details?.labPath;
+    if (!labPath) {
+      vscode.window.showErrorMessage('No labPath to destroy.');
+      return;
+    }
+    const terminal = vscode.window.createTerminal({ name: 'Containerlab Destroy' });
+    terminal.sendText(`sudo containerlab destroy -c -t ${labPath}`);
+    terminal.show();
+  });
+  context.subscriptions.push(destroyLabCmd);
 
   const startNodeCmd = vscode.commands.registerCommand('containerlab.startNode', (node: ContainerlabNode) => {
     if (!node) {
@@ -32,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const containerId = node.details?.containerId;
     if (!containerId) {
-      vscode.window.showErrorMessage('No containerId found to start.');
+      vscode.window.showErrorMessage('No containerId found.');
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Start Node' });
@@ -48,7 +96,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const containerId = node.details?.containerId;
     if (!containerId) {
-      vscode.window.showErrorMessage('No containerId found to stop.');
+      vscode.window.showErrorMessage('No containerId found.');
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Stop Node' });
@@ -80,7 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const sshIp = node.details?.sshIp;
     if (!sshIp) {
-      vscode.window.showErrorMessage('No IPv4 address found for SSH.');
+      vscode.window.showErrorMessage('No IP found for SSH.');
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab SSH' });
@@ -96,7 +144,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const containerId = node.details?.containerId;
     if (!containerId) {
-      vscode.window.showErrorMessage('No containerId to show logs.');
+      vscode.window.showErrorMessage('No containerId for logs.');
       return;
     }
     const terminal = vscode.window.createTerminal({ name: 'Containerlab Logs' });
@@ -105,54 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(showLogsCmd);
 
-  const destroyLabCmd = vscode.commands.registerCommand('containerlab.destroyLab', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath found to destroy.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Destroy Lab' });
-    terminal.sendText(`sudo containerlab destroy -c -t ${labPath}`);
-    terminal.show();
-  });
-  context.subscriptions.push(destroyLabCmd);
-
-  const deployLabCmd = vscode.commands.registerCommand('containerlab.deployLab', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath found to reconfigure.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Deploy Lab' });
-    terminal.sendText(`sudo containerlab deploy -c -t ${labPath}`);
-    terminal.show();
-  });
-  context.subscriptions.push(deployLabCmd);
-
-  const redeployLabCmd = vscode.commands.registerCommand('containerlab.redeployLab', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath found to redeploy.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Redeploy Lab' });
-    terminal.sendText(`sudo containerlab redeploy -c -t ${labPath}`);
-    terminal.show();
-  });
-  context.subscriptions.push(redeployLabCmd);
-
+  // periodic refresh
   const intervalId = setInterval(() => {
     provider.refresh();
   }, 10000);
@@ -161,5 +162,4 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.showInformationMessage('Containerlab Extension is now active!');
 }
 
-export function deactivate() {
-}
+export function deactivate() {}
