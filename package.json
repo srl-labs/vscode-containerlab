@@ -65,6 +65,10 @@
       {
         "command": "containerlab.deployLab",
         "title": "Reconfigure Lab"
+      },
+      {
+        "command": "containerlab.redeployLab",
+        "title": "Redeploy Lab"
       }
     ],
     "menus": {
@@ -86,6 +90,11 @@
         },
         {
           "command": "containerlab.deployLab",
+          "when": "viewItem == containerlabLab",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.redeployLab",
           "when": "viewItem == containerlabLab",
           "group": "navigation"
         },

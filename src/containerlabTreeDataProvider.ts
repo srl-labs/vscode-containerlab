@@ -26,8 +26,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
+      // Top-level: labs
       return this.getLabs();
     } else {
+      // Child-level: containers
       const labName = element.details?.labName;
       return this.getContainersForLab(labName);
     }
@@ -43,7 +45,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const result = await execAsync('sudo containerlab inspect --all --format json');
       stdout = result.stdout;
     } catch (error: any) {
-      if (error.stdout?.includes('no containers found') || error.message.includes('no containers found')) {
+      if (
+        error.stdout?.includes('no containers found') ||
+        error.message.includes('no containers found')
+      ) {
         return [
           new ContainerlabNode('No labs found', vscode.TreeItemCollapsibleState.None)
         ];
@@ -72,6 +77,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       ];
     }
 
+    // Group by lab_name
     const labsMap: Record<string, any[]> = {};
     for (const c of containersArray) {
       const labName = c.lab_name || 'UnknownLab';
@@ -81,9 +87,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       labsMap[labName].push(c);
     }
 
+    // One node per lab
     return Object.keys(labsMap).map(labName => {
-      const first = labsMap[labName][0];
-      const labPath = first.labPath || '';
+      const firstCtr = labsMap[labName][0];
+      const labPath = firstCtr.labPath || '';
 
       return new ContainerlabNode(
         labName,
@@ -100,7 +107,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const parsed = JSON.parse(stdout);
       const containersArray = parsed.containers || [];
 
+      // Filter matching lab
       const matching = containersArray.filter((c: any) => c.lab_name === labName);
+
+      // Convert each container to a leaf node
       return matching.map((ctr: any) => {
         let ipWithoutSlash: string | undefined;
         if (ctr.ipv4_address) {
@@ -120,6 +130,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         );
 
         node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
+
+        // Green icon if running, red if not
         if (ctr.state === 'running') {
           node.iconPath = new vscode.ThemeIcon(
             'circle-filled',

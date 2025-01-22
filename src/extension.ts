@@ -137,6 +137,22 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(deployLabCmd);
 
+  const redeployLabCmd = vscode.commands.registerCommand('containerlab.redeployLab', (node: ContainerlabNode) => {
+    if (!node) {
+      vscode.window.showErrorMessage('No lab node selected.');
+      return;
+    }
+    const labPath = node.details?.labPath;
+    if (!labPath) {
+      vscode.window.showErrorMessage('No labPath found to redeploy.');
+      return;
+    }
+    const terminal = vscode.window.createTerminal({ name: 'Containerlab Redeploy Lab' });
+    terminal.sendText(`sudo containerlab redeploy -c -t ${labPath}`);
+    terminal.show();
+  });
+  context.subscriptions.push(redeployLabCmd);
+
   const intervalId = setInterval(() => {
     provider.refresh();
   }, 10000);
