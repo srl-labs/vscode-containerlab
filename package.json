@@ -7,14 +7,28 @@
   "engines": {
     "vscode": "^1.70.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srl-labs/vscode-containerlab"
+  },
   "main": "./out/extension.js",
   "activationEvents": [
     "onCommand:your.extension.command", 
     "onStartupFinished" 
   ],
   "categories": [
+    "Programming Languages",
+    "Linters",
     "Other"
   ],
+  "keywords": [
+    "containerlab",
+    "clab",
+    "docker",
+    "container",
+    "containers"
+  ],
+  "license": "Apache-2.0",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
