@@ -2,7 +2,13 @@ import * as vscode from 'vscode';
 import { ContainerlabTreeDataProvider, ContainerlabNode } from './containerlabTreeDataProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-  const provider = new ContainerlabTreeDataProvider();
+
+  // Create an output channel for Containerlab debug logs
+  const containerlabOutput = vscode.window.createOutputChannel("Containerlab");
+
+  // Pass this output channel to our tree data provider
+  const provider = new ContainerlabTreeDataProvider(containerlabOutput);
+
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
   const refreshCmd = vscode.commands.registerCommand('containerlab.refresh', () => {
@@ -161,7 +167,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(showLogsCmd);
 
-  // periodic refresh
+  // Periodic refresh
   const intervalId = setInterval(() => {
     provider.refresh();
   }, 10000);

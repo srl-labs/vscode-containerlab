@@ -30,13 +30,15 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   private _onDidChangeTreeData = new vscode.EventEmitter<ContainerlabNode | undefined | void>();
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+  // We store a reference to the output channel for logging
+  constructor(private outputChannel: vscode.OutputChannel) {}
+
   getTreeItem(element: ContainerlabNode): vscode.TreeItem {
     return element;
   }
 
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
-      // top-level labs
       return this.getAllLabs();
     } else {
       const info = element.details as LabInfo;
@@ -51,9 +53,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     this._onDidChangeTreeData.fire();
   }
 
-  /**
-   * Merge containerlab-inspect data with local .clab files, then sort.
-   */
   private async getAllLabs(): Promise<ContainerlabNode[]> {
     const localFiles = await this.findLocalClabFiles();
     const labData = await this.inspectContainerlab();
@@ -69,7 +68,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const localExists = localFiles.includes(labPath);
       info.localExists = localExists;
 
-      // Build label
       let finalLabel = info.labName;
       if (!finalLabel) {
         if (localExists) {
@@ -79,12 +77,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         }
       }
 
-      // If there's an owner => "vlan (clab)"
       if (info.owner) {
         finalLabel += ` (${info.owner})`;
       }
 
-      // Decide color & context based on container states
       let contextVal: string;
       let color: vscode.ThemeColor;
       if (info.containers.length === 0) {
@@ -120,7 +116,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         },
         contextVal
       );
-
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
       nodes.push(node);
     }
@@ -130,9 +125,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     return nodes;
   }
 
-  /**
-   * Create ContainerlabNode items for each container, then sort
-   */
   private getContainerNodes(containers: any[]): ContainerlabNode[] {
     const containerNodes = containers.map((ctr: any) => {
       let ipWithoutSlash: string | undefined;
@@ -161,14 +153,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       return node;
     });
 
-    // Sort containers by label
     containerNodes.sort((a, b) => a.label.localeCompare(b.label));
     return containerNodes;
   }
 
-  /**
-   * Find local *.clab.(yml|yaml) files. Returns absolute paths
-   */
   private async findLocalClabFiles(): Promise<string[]> {
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
       return [];
@@ -190,22 +178,21 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     return [...set];
   }
 
-  /**
-   * Inspect containerlab, expand tilde or relative paths => absolute
-   */
   private async inspectContainerlab(): Promise<Record<string, LabInfo>> {
     let stdout: string;
     try {
       const { stdout: out } = await execAsync('sudo containerlab inspect --all --format json');
       stdout = out;
-    } catch {
+    } catch (err) {
+      this.outputChannel.appendLine(`Error running containerlab inspect: ${err}`);
       return {};
     }
 
     let parsed: any;
     try {
       parsed = JSON.parse(stdout);
-    } catch {
+    } catch (err) {
+      this.outputChannel.appendLine(`Error parsing JSON from containerlab inspect: ${err}`);
       parsed = { containers: [] };
     }
 
@@ -221,6 +208,9 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     for (const c of arr) {
       let p = c.labPath || '';
       p = this.normalizeLabPath(p, singleFolderBase);
+
+      // Debug: log final and original
+      this.outputChannel.appendLine(`Container: ${c.name}, original path: ${c.labPath}, normalized: ${p}`);
 
       if (!map[p]) {
         map[p] = {
@@ -238,37 +228,48 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   }
 
   /**
-   * Expand tilde (~) or handle relative paths to unify them as absolute
+   * Expand tilde (~) or relative paths => absolute
+   * Log debug info to the output channel
    */
   private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
     if (!labPath) {
+      this.outputChannel.appendLine("normalizeLabPath: received empty labPath");
       return labPath;
     }
-  
-    // Normalize path separators for current OS
+
+    // Let's store the input for debugging
+    const originalInput = labPath;
+
+    // Normalize path separators
     labPath = path.normalize(labPath);
-  
-    // If already absolute, just return it
+
+    // If absolute
     if (path.isAbsolute(labPath)) {
-      return path.normalize(labPath);
+      this.outputChannel.appendLine(`normalizeLabPath => absolute path: ${originalInput} => ${labPath}`);
+      return labPath;
     }
-  
-    // Handle tilde expansion, e.g. "~/..."
+
+    // If it starts with ~
     if (labPath.startsWith('~')) {
       const homedir = os.homedir();
       const sub = labPath.replace(/^~\/?/, '');
-      return path.normalize(path.join(homedir, sub));
+      const expanded = path.normalize(path.join(homedir, sub));
+      this.outputChannel.appendLine(`normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`);
+      return expanded;
     }
-  
-    // If it's relative, we need a base. If none, throw an error
-    if (!singleFolderBase && !vscode.workspace.workspaceFolders?.length) {
-      throw new Error('No workspace folder available for relative path resolution');
-    }
-  
-    const baseFolder = singleFolderBase 
-      || vscode.workspace.workspaceFolders![0].uri.fsPath;
-  
-    return path.normalize(path.resolve(baseFolder, labPath));
-  }
 
+    // Otherwise it's relative
+    if (!singleFolderBase && !vscode.workspace.workspaceFolders?.length) {
+      this.outputChannel.appendLine(`normalizeLabPath => no workspace to resolve relative path: ${labPath}`);
+      // fallback to process.cwd() or throw an error, your choice:
+      const fallback = path.resolve(process.cwd(), labPath);
+      this.outputChannel.appendLine(`Using fallback = ${fallback}`);
+      return fallback;
+    }
+
+    const base = singleFolderBase || vscode.workspace.workspaceFolders![0].uri.fsPath;
+    const resolved = path.normalize(path.resolve(base, labPath));
+    this.outputChannel.appendLine(`normalizeLabPath => relative: base=${base}, input=${originalInput}, resolved=${resolved}`);
+    return resolved;
+  }
 }
