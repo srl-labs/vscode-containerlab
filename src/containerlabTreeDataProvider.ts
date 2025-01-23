@@ -242,26 +242,33 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
    */
   private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
     if (!labPath) {
-      return labPath; // empty
-    }
-
-    // If path starts with '/', already absolute
-    if (labPath.startsWith('/')) {
       return labPath;
     }
-
-    // If path starts with '~', expand to user HOME
+  
+    // Normalize path separators for current OS
+    labPath = path.normalize(labPath);
+  
+    // If already absolute, just return it
+    if (path.isAbsolute(labPath)) {
+      return path.normalize(labPath);
+    }
+  
+    // Handle tilde expansion, e.g. "~/..."
     if (labPath.startsWith('~')) {
       const homedir = os.homedir();
-      const sub = labPath.replace(/^~\/?/, ''); // remove "~/" or "~"
-      return path.join(homedir, sub);
+      const sub = labPath.replace(/^~\/?/, '');
+      return path.normalize(path.join(homedir, sub));
     }
-
-    // Otherwise, treat as relative
-    let base = process.cwd();
-    if (singleFolderBase) {
-      base = singleFolderBase;
+  
+    // If it's relative, we need a base. If none, throw an error
+    if (!singleFolderBase && !vscode.workspace.workspaceFolders?.length) {
+      throw new Error('No workspace folder available for relative path resolution');
     }
-    return path.resolve(base, labPath);
+  
+    const baseFolder = singleFolderBase 
+      || vscode.workspace.workspaceFolders![0].uri.fsPath;
+  
+    return path.normalize(path.resolve(baseFolder, labPath));
   }
+
 }
