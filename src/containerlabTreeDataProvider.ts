@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
-import * as os from 'os';  // For homedir expansions
+import * as os from 'os';
 
 const execAsync = promisify(exec);
 
@@ -36,15 +36,12 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
-      // top-level labs
       return this.getAllLabs();
     } else {
       const info = element.details as LabInfo;
       if (info && info.containers.length > 0) {
-        // show containers
         return this.getContainerNodes(info.containers);
       }
-      // no containers => no child nodes
       return [];
     }
   }
@@ -53,15 +50,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     this._onDidChangeTreeData.fire();
   }
 
-  /**
-   * Merge containerlab-inspect data with local .clab files. 
-   * Also handle absolute/relative/tilde expansions.
-   */
   private async getAllLabs(): Promise<ContainerlabNode[]> {
     const localFiles = await this.findLocalClabFiles();
-    const labData = await this.inspectContainerlab();  // returns absolute paths
+    const labData = await this.inspectContainerlab();
 
-    // unify set of paths
     const allPaths = new Set<string>([...Object.keys(labData), ...localFiles]);
     if (allPaths.size === 0) {
       return [ new ContainerlabNode('No local .clab files or labs found', vscode.TreeItemCollapsibleState.None) ];
@@ -73,7 +65,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const localExists = localFiles.includes(labPath);
       info.localExists = localExists;
 
-      // prefer container's labName, else local filename, else path
       let finalLabel = info.labName;
       if (!finalLabel) {
         if (localExists) {
@@ -83,20 +74,13 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         }
       }
 
-      // If there's an owner => "vlan (clab)"
       if (info.owner) {
         finalLabel += ` (${info.owner})`;
       }
 
-      // color logic
-      // no containers => grey
-      // all => green
-      // none => red
-      // else => partial => yellow
       let contextVal: string;
       let color: vscode.ThemeColor;
-      const count = info.containers.length;
-      if (count === 0) {
+      if (info.containers.length === 0) {
         contextVal = "containerlabLabUndeployed";
         color = new vscode.ThemeColor('disabledForeground'); // grey
       } else {
@@ -113,7 +97,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         }
       }
 
-      const collapsible = (count > 0) 
+      const collapsible = (info.containers.length > 0)
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None;
 
@@ -132,11 +116,15 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
       nodes.push(node);
     }
+
+    // *** SORT labs by label to keep them stable ***
+    nodes.sort((a, b) => a.label.localeCompare(b.label));
     return nodes;
   }
 
   private getContainerNodes(containers: any[]): ContainerlabNode[] {
-    return containers.map((ctr: any) => {
+    // Create container nodes
+    const containerNodes = containers.map((ctr: any) => {
       let ipWithoutSlash: string | undefined;
       if (ctr.ipv4_address) {
         const [ip] = ctr.ipv4_address.split('/');
@@ -162,6 +150,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       }
       return node;
     });
+
+    // *** SORT containers by label as well ***
+    containerNodes.sort((a, b) => a.label.localeCompare(b.label));
+    return containerNodes;
   }
 
   private async findLocalClabFiles(): Promise<string[]> {
@@ -185,9 +177,6 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     return [...set];
   }
 
-  /**
-   * Run containerlab inspect, converting relative/tilde paths to absolute
-   */
   private async inspectContainerlab(): Promise<Record<string, LabInfo>> {
     let stdout: string;
     try {
@@ -207,16 +196,11 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     const arr = parsed.containers || [];
     const map: Record<string, LabInfo> = {};
 
-    // For single folder logic
-    let baseDir: string | undefined = undefined;
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length === 1) {
-      baseDir = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    }
+    // optionally handle tilde or relative expansions if containerlab returns them
+    // If you need the tilde fix, see the earlier snippet that does path expansions.
 
     for (const c of arr) {
-      let p = c.labPath || '';
-      p = this.normalizeLabPath(p, baseDir);
-
+      const p = c.labPath || '';
       if (!map[p]) {
         map[p] = {
           labPath: p,
@@ -230,34 +214,5 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     }
 
     return map;
-  }
-
-  /**
-   * Expand tilde (~), skip absolute, else resolve relative
-   */
-  private normalizeLabPath(labPath: string, singleFolderBase: string | undefined): string {
-    // If empty string, nothing to do
-    if (!labPath) {
-      return labPath;
-    }
-
-    // If path starts with '/', it's absolute
-    if (labPath.startsWith('/')) {
-      return labPath;
-    }
-
-    // If path starts with '~', expand to user HOME
-    if (labPath.startsWith('~')) {
-      const homedir = os.homedir();
-      const sub = labPath.replace(/^~\/?/, ''); // remove '~' or '~/'
-      return path.join(homedir, sub);
-    }
-
-    // Otherwise, treat as relative
-    let base = process.cwd();
-    if (singleFolderBase) {
-      base = singleFolderBase;
-    }
-    return path.resolve(base, labPath);
   }
 }

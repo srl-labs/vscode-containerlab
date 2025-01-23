@@ -31,11 +31,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const labPath = node.details?.labPath;
+    const labLabel = node.label || "Lab";
     if (!labPath) {
       vscode.window.showErrorMessage('No labPath to deploy.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Deploy' });
+    const terminal = vscode.window.createTerminal({ name: `Deploy - ${labLabel}` });
     terminal.sendText(`sudo containerlab deploy -c -t ${labPath}`);
     terminal.show();
   });
@@ -47,11 +48,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const labPath = node.details?.labPath;
+    const labLabel = node.label || "Lab";
     if (!labPath) {
       vscode.window.showErrorMessage('No labPath to redeploy.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Redeploy' });
+    const terminal = vscode.window.createTerminal({ name: `Redeploy - ${labLabel}` });
     terminal.sendText(`sudo containerlab redeploy -c -t ${labPath}`);
     terminal.show();
   });
@@ -63,11 +65,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const labPath = node.details?.labPath;
+    const labLabel = node.label || "Lab";
     if (!labPath) {
       vscode.window.showErrorMessage('No labPath to destroy.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Destroy' });
+    const terminal = vscode.window.createTerminal({ name: `Destroy - ${labLabel}` });
     terminal.sendText(`sudo containerlab destroy -c -t ${labPath}`);
     terminal.show();
   });
@@ -79,11 +82,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const containerId = node.details?.containerId;
+    const containerLabel = node.label || "Container";
     if (!containerId) {
       vscode.window.showErrorMessage('No containerId found.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Start Node' });
+    const terminal = vscode.window.createTerminal({ name: `Start - ${containerLabel}` });
     terminal.sendText(`sudo docker start ${containerId}`);
     terminal.show();
   });
@@ -95,11 +99,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const containerId = node.details?.containerId;
+    const containerLabel = node.label || "Container";
     if (!containerId) {
       vscode.window.showErrorMessage('No containerId found.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Stop Node' });
+    const terminal = vscode.window.createTerminal({ name: `Stop - ${containerLabel}` });
     terminal.sendText(`sudo docker stop ${containerId}`);
     terminal.show();
   });
@@ -111,11 +116,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const containerId = node.details?.containerId;
+    const containerLabel = node.label || "Container";
     if (!containerId) {
       vscode.window.showErrorMessage('No containerId for shell attach.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Shell' });
+    const terminal = vscode.window.createTerminal({ name: `Shell - ${containerLabel}` });
     terminal.sendText(`sudo docker exec -it ${containerId} sh`);
     terminal.show();
   });
@@ -127,11 +133,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const sshIp = node.details?.sshIp;
+    const containerLabel = node.label || "Container";
     if (!sshIp) {
       vscode.window.showErrorMessage('No IP found for SSH.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab SSH' });
+    const terminal = vscode.window.createTerminal({ name: `SSH - ${containerLabel}` });
     terminal.sendText(`ssh admin@${sshIp}`);
     terminal.show();
   });
@@ -143,11 +150,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     const containerId = node.details?.containerId;
+    const containerLabel = node.label || "Container";
     if (!containerId) {
       vscode.window.showErrorMessage('No containerId for logs.');
       return;
     }
-    const terminal = vscode.window.createTerminal({ name: 'Containerlab Logs' });
+    const terminal = vscode.window.createTerminal({ name: `Logs - ${containerLabel}` });
     terminal.sendText(`sudo docker logs -f ${containerId}`);
     terminal.show();
   });
