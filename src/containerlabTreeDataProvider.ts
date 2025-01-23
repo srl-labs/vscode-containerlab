@@ -36,6 +36,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
+      // top-level labs
       return this.getAllLabs();
     } else {
       const info = element.details as LabInfo;
@@ -50,6 +51,9 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     this._onDidChangeTreeData.fire();
   }
 
+  /**
+   * Merge containerlab-inspect data with local .clab files, then sort.
+   */
   private async getAllLabs(): Promise<ContainerlabNode[]> {
     const localFiles = await this.findLocalClabFiles();
     const labData = await this.inspectContainerlab();
@@ -65,6 +69,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const localExists = localFiles.includes(labPath);
       info.localExists = localExists;
 
+      // Build label
       let finalLabel = info.labName;
       if (!finalLabel) {
         if (localExists) {
@@ -74,10 +79,12 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         }
       }
 
+      // If there's an owner => "vlan (clab)"
       if (info.owner) {
         finalLabel += ` (${info.owner})`;
       }
 
+      // Decide color & context based on container states
       let contextVal: string;
       let color: vscode.ThemeColor;
       if (info.containers.length === 0) {
@@ -113,17 +120,20 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         },
         contextVal
       );
+
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
       nodes.push(node);
     }
 
-    // *** SORT labs by label to keep them stable ***
+    // Sort labs by label
     nodes.sort((a, b) => a.label.localeCompare(b.label));
     return nodes;
   }
 
+  /**
+   * Create ContainerlabNode items for each container, then sort
+   */
   private getContainerNodes(containers: any[]): ContainerlabNode[] {
-    // Create container nodes
     const containerNodes = containers.map((ctr: any) => {
       let ipWithoutSlash: string | undefined;
       if (ctr.ipv4_address) {
@@ -151,11 +161,14 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       return node;
     });
 
-    // *** SORT containers by label as well ***
+    // Sort containers by label
     containerNodes.sort((a, b) => a.label.localeCompare(b.label));
     return containerNodes;
   }
 
+  /**
+   * Find local *.clab.(yml|yaml) files. Returns absolute paths
+   */
   private async findLocalClabFiles(): Promise<string[]> {
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
       return [];
@@ -177,6 +190,9 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     return [...set];
   }
 
+  /**
+   * Inspect containerlab, expand tilde or relative paths => absolute
+   */
   private async inspectContainerlab(): Promise<Record<string, LabInfo>> {
     let stdout: string;
     try {
@@ -196,11 +212,16 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     const arr = parsed.containers || [];
     const map: Record<string, LabInfo> = {};
 
-    // optionally handle tilde or relative expansions if containerlab returns them
-    // If you need the tilde fix, see the earlier snippet that does path expansions.
+    // Single workspace folder base
+    let singleFolderBase: string | undefined;
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length === 1) {
+      singleFolderBase = vscode.workspace.workspaceFolders[0].uri.fsPath;
+    }
 
     for (const c of arr) {
-      const p = c.labPath || '';
+      let p = c.labPath || '';
+      p = this.normalizeLabPath(p, singleFolderBase);
+
       if (!map[p]) {
         map[p] = {
           labPath: p,
@@ -214,5 +235,33 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     }
 
     return map;
+  }
+
+  /**
+   * Expand tilde (~) or handle relative paths to unify them as absolute
+   */
+  private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
+    if (!labPath) {
+      return labPath; // empty
+    }
+
+    // If path starts with '/', already absolute
+    if (labPath.startsWith('/')) {
+      return labPath;
+    }
+
+    // If path starts with '~', expand to user HOME
+    if (labPath.startsWith('~')) {
+      const homedir = os.homedir();
+      const sub = labPath.replace(/^~\/?/, ''); // remove "~/" or "~"
+      return path.join(homedir, sub);
+    }
+
+    // Otherwise, treat as relative
+    let base = process.cwd();
+    if (singleFolderBase) {
+      base = singleFolderBase;
+    }
+    return path.resolve(base, labPath);
   }
 }
