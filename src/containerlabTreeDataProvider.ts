@@ -3,6 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import * as os from 'os';
+import * as fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -30,7 +31,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   private _onDidChangeTreeData = new vscode.EventEmitter<ContainerlabNode | undefined | void>();
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  // We store a reference to the output channel for logging
+  // We'll store the output channel for debug logs
   constructor(private outputChannel: vscode.OutputChannel) {}
 
   getTreeItem(element: ContainerlabNode): vscode.TreeItem {
@@ -53,13 +54,18 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     this._onDidChangeTreeData.fire();
   }
 
+  /**
+   * Merge containerlab-inspect data with local .clab files, then show them as lab nodes.
+   */
   private async getAllLabs(): Promise<ContainerlabNode[]> {
     const localFiles = await this.findLocalClabFiles();
     const labData = await this.inspectContainerlab();
 
     const allPaths = new Set<string>([...Object.keys(labData), ...localFiles]);
     if (allPaths.size === 0) {
-      return [ new ContainerlabNode('No local .clab files or labs found', vscode.TreeItemCollapsibleState.None) ];
+      return [
+        new ContainerlabNode('No local .clab files or labs found', vscode.TreeItemCollapsibleState.None)
+      ];
     }
 
     const nodes: ContainerlabNode[] = [];
@@ -120,7 +126,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       nodes.push(node);
     }
 
-    // Sort labs by label
+    // Sort labs by label for stable ordering
     nodes.sort((a, b) => a.label.localeCompare(b.label));
     return nodes;
   }
@@ -146,13 +152,20 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
 
       if (ctr.state === 'running') {
-        node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
+        node.iconPath = new vscode.ThemeIcon(
+          'circle-filled',
+          new vscode.ThemeColor('testing.iconPassed')
+        );
       } else {
-        node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+        node.iconPath = new vscode.ThemeIcon(
+          'circle-filled',
+          new vscode.ThemeColor('testing.iconFailed')
+        );
       }
       return node;
     });
 
+    // Sort containers by label
     containerNodes.sort((a, b) => a.label.localeCompare(b.label));
     return containerNodes;
   }
@@ -192,25 +205,28 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     try {
       parsed = JSON.parse(stdout);
     } catch (err) {
-      this.outputChannel.appendLine(`Error parsing JSON from containerlab inspect: ${err}`);
+      this.outputChannel.appendLine(`Error parsing containerlab JSON: ${err}`);
       parsed = { containers: [] };
     }
 
     const arr = parsed.containers || [];
     const map: Record<string, LabInfo> = {};
 
-    // Single workspace folder base
+    // Single folder base
     let singleFolderBase: string | undefined;
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length === 1) {
-      singleFolderBase = vscode.workspace.workspaceFolders[0].uri.fsPath;
+    const wsf = vscode.workspace.workspaceFolders;
+    if (wsf && wsf.length === 1) {
+      singleFolderBase = wsf[0].uri.fsPath;
     }
 
+    // For each container => fix the path
     for (const c of arr) {
       let p = c.labPath || '';
+      const original = p;
       p = this.normalizeLabPath(p, singleFolderBase);
-
-      // Debug: log final and original
-      this.outputChannel.appendLine(`Container: ${c.name}, original path: ${c.labPath}, normalized: ${p}`);
+      this.outputChannel.appendLine(
+        `Container: ${c.name}, original path: ${original}, normalized: ${p}`
+      );
 
       if (!map[p]) {
         map[p] = {
@@ -228,48 +244,58 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   }
 
   /**
-   * Expand tilde (~) or relative paths => absolute
-   * Log debug info to the output channel
+   * If path is absolute, return it.
+   * If starts with '~', expand it.
+   * If relative, try singleFolderBase + path, then process.cwd() + path,
+   * pick the first that actually exists on disk, or fallback if none.
    */
   private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
     if (!labPath) {
-      this.outputChannel.appendLine("normalizeLabPath: received empty labPath");
+      this.outputChannel.appendLine(`normalizeLabPath: received empty labPath`);
       return labPath;
     }
 
-    // Let's store the input for debugging
+    // 1) Normalize slashes
     const originalInput = labPath;
-
-    // Normalize path separators
     labPath = path.normalize(labPath);
 
-    // If absolute
+    // 2) Check if absolute
     if (path.isAbsolute(labPath)) {
-      this.outputChannel.appendLine(`normalizeLabPath => absolute path: ${originalInput} => ${labPath}`);
+      this.outputChannel.appendLine(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
       return labPath;
     }
 
-    // If it starts with ~
+    // 3) Check if tilde
     if (labPath.startsWith('~')) {
       const homedir = os.homedir();
-      const sub = labPath.replace(/^~\/?/, '');
+      const sub = labPath.replace(/^~[\/\\]?/, '');
       const expanded = path.normalize(path.join(homedir, sub));
       this.outputChannel.appendLine(`normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`);
       return expanded;
     }
 
-    // Otherwise it's relative
-    if (!singleFolderBase && !vscode.workspace.workspaceFolders?.length) {
-      this.outputChannel.appendLine(`normalizeLabPath => no workspace to resolve relative path: ${labPath}`);
-      // fallback to process.cwd() or throw an error, your choice:
-      const fallback = path.resolve(process.cwd(), labPath);
-      this.outputChannel.appendLine(`Using fallback = ${fallback}`);
-      return fallback;
+    // 4) It's truly relative. We'll test singleFolderBase vs. process.cwd()
+    // We do a mini "best guess" approach: whichever path exists first, we pick.
+    let candidatePaths: string[] = [];
+    if (singleFolderBase) {
+      candidatePaths.push(path.normalize(path.resolve(singleFolderBase, labPath)));
+    }
+    // Add the shell's current working directory fallback
+    candidatePaths.push(path.normalize(path.resolve(process.cwd(), labPath)));
+
+    for (const candidate of candidatePaths) {
+      this.outputChannel.appendLine(`normalizeLabPath => checking if path exists: ${candidate}`);
+      if (fs.existsSync(candidate)) {
+        this.outputChannel.appendLine(`normalizeLabPath => found existing path: ${candidate}`);
+        return candidate;
+      }
     }
 
-    const base = singleFolderBase || vscode.workspace.workspaceFolders![0].uri.fsPath;
-    const resolved = path.normalize(path.resolve(base, labPath));
-    this.outputChannel.appendLine(`normalizeLabPath => relative: base=${base}, input=${originalInput}, resolved=${resolved}`);
-    return resolved;
+    // If neither path exists, fallback to the first candidate
+    const chosen = candidatePaths[0];
+    this.outputChannel.appendLine(
+      `normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`
+    );
+    return chosen;
   }
 }
