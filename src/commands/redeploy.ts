@@ -5,5 +5,5 @@ export function redeploy(node: ContainerlabNode) {
 
     const cmd = new ClabCommand("redeploy", true, node);
 
-    cmd.run(["-c"]);
+    cmd.run();
 }

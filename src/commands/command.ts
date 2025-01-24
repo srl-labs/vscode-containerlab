@@ -61,7 +61,7 @@ export class ClabCommand {
     }
 
     // run command
-    run(flags: string[] | undefined) {
+    run(flags?: string[]) {
         let labPath;
 
         if(!(this.node instanceof ContainerlabNode)) {
