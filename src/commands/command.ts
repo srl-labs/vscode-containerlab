@@ -1,15 +1,19 @@
 import * as vscode from 'vscode';
 import * as utils from '../utils';
-import { spawn } from 'child_process';
+import { exec } from 'child_process';
 import { outputChannel } from '../extension';
 import { ContainerlabNode } from '../containerlabTreeDataProvider';
 
+/**
+ * Run a shell command in a named VS Code terminal.
+ * If that terminal already exists, we send a Ctrl+C first.
+ */
 export function execCommandInTerminal(command: string, terminalName: string) {
-    let terminal;
-    for (let term of vscode.window.terminals) {
+    let terminal: vscode.Terminal | undefined;
+    for (const term of vscode.window.terminals) {
         if (term.name.match(terminalName)) {
             terminal = term;
-            // Ctrl+C in that terminal
+            // Send Ctrl+C to stop any previous command
             term.sendText("\x03");
             break;
         }
@@ -22,32 +26,36 @@ export function execCommandInTerminal(command: string, terminalName: string) {
 }
 
 /**
- * Spawns a child process for the command and pipes its stdout/stderr
- * into the extension's Output channel. This won't be interactive,
- * but you see all the logs in real-time.
+ * Execute a shell command in the extension's Output channel.
+ * - We *strip ANSI codes* from both stdout and stderr
+ * - We trigger a refresh after it finishes.
  */
 export function execCommandInOutput(command: string) {
-    const child = spawn(command, {
-        shell: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let proc = exec(command);
 
     outputChannel.show(true);
 
-    child.stdout.on('data', (data) => {
-        outputChannel.append(data.toString());
+    proc.stdout?.on('data', (data) => {
+        const cleaned = utils.stripAnsi(data.toString());
+        outputChannel.append(cleaned);
     });
 
-    child.stderr.on('data', (data) => {
-        outputChannel.append(data.toString());
+    proc.stderr?.on('data', (data) => {
+        const cleaned = utils.stripAnsi(data.toString());
+        outputChannel.append(cleaned);
     });
 
-    child.on('close', (code) => {
+    proc.on('close', (code) => {
         outputChannel.appendLine(`Exited with code ${code}`);
+        // trigger a refresh after execution
         vscode.commands.executeCommand('containerlab.refresh');
     });
 }
 
+/**
+ * A helper class to build a 'containerlab' command (with optional sudo, etc.)
+ * and run it either in the Output channel or in a Terminal.
+ */
 export class ClabCommand {
     private command: string;
     private node: ContainerlabNode;
@@ -80,10 +88,10 @@ export class ClabCommand {
             return;
         }
 
-        // Build the command properly
+        // Build the command array
         const cmdParts: string[] = [];
 
-        // sudo?
+        // Sudo if configured
         if (this.useSudo) {
             cmdParts.push("sudo");
         }
@@ -91,8 +99,7 @@ export class ClabCommand {
         // containerlab
         cmdParts.push("containerlab");
 
-
-        // The subcommand (deploy, destroy, etc.)
+        // Subcommand (deploy, destroy, etc.)
         cmdParts.push(this.command);
 
         // Additional flags
@@ -100,13 +107,13 @@ export class ClabCommand {
             cmdParts.push(...flags);
         }
 
-        // Finally, specify the topology file
+        // Finally the topology file
         cmdParts.push("-t", `"${labPath}"`);
 
         // Combine into a single string
         const cmd = cmdParts.join(" ");
 
-        // Run in Output or Terminal
+        // Decide: Output channel or Terminal?
         if (this.runInOutput) {
             execCommandInOutput(cmd);
         } else {

@@ -1,12 +1,10 @@
 import * as vscode from "vscode";
 import { spawn } from "child_process";
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { outputChannel } from "../extension";
+import { stripAnsi } from "../utils";
 
-/**
- * Deploy Lab using a progress spinner and partial log updates.
- */
 export async function deploy(node: ContainerlabNode) {
-  // 1) Find the lab path from the node details or active editor
   let labPath = node?.details?.labPath;
   if (!labPath) {
     const editor = vscode.window.activeTextEditor;
@@ -19,48 +17,64 @@ export async function deploy(node: ContainerlabNode) {
     return;
   }
 
-  // 2) Check if user wants 'sudo'
   const config = vscode.workspace.getConfiguration("containerlab");
   const useSudo = config.get<boolean>("sudoEnabledByDefault", true);
 
-  // 3) Build the spawn arguments
-  // e.g. "sudo containerlab deploy -c -t <labPath>"
+  // e.g.: ["sudo", "containerlab", "deploy", "-c", "-t", "<labPath>"]
   const cmdArgs = useSudo
     ? ["sudo", "containerlab", "deploy", "-c", "-t", labPath]
     : ["containerlab", "deploy", "-c", "-t", labPath];
 
-  // 4) Show a spinner with partial updates
+  // Print the exact command in the output
+  outputChannel.appendLine(`[deploy] Running: ${cmdArgs.join(" ")}`);
+
   try {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
         title: "Deploying Lab...",
-        cancellable: false,
+        cancellable: true
       },
-      async (progress) => {
+      async (progress, token) => {
         return new Promise<void>((resolve, reject) => {
           const child = spawn(cmdArgs[0], cmdArgs.slice(1));
 
-          // On stdout, parse lines and update the spinner text
+          // If user clicks Cancel, kill the child process
+          token.onCancellationRequested(() => {
+            child.kill();
+            reject(new Error("User canceled the deploy command."));
+          });
+
+          // On stdout, parse lines and update spinner + output channel
           child.stdout.on("data", (data: Buffer) => {
             const lines = data.toString().split("\n");
-            lines.forEach((line: string) => {
-              if (line.trim().length > 0) {
-                progress.report({ message: line.trim() });
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed) {
+                const cleanLine = stripAnsi(trimmed);
+                progress.report({ message: cleanLine });
+                outputChannel.appendLine(cleanLine);
               }
-            });
+            }
           });
 
-          // Optionally read stderr
+          // stderr lines → output channel only
           child.stderr.on("data", (data: Buffer) => {
-            // If you wish, parse or log error lines
+            const lines = data.toString().split("\n");
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed) {
+                outputChannel.appendLine(`[stderr] ${stripAnsi(trimmed)}`);
+              }
+            }
           });
 
+          // When the process completes
           child.on("close", (code) => {
             if (code === 0) {
               resolve();
             } else {
-              reject(new Error(`Exited with code ${code}`));
+              reject(new Error(`Process exited with code ${code}`));
             }
           });
         });
@@ -68,11 +82,16 @@ export async function deploy(node: ContainerlabNode) {
     );
 
     // If we get here, the command succeeded
-    vscode.window.showInformationMessage("Lab Deployed Successfully!");
-    vscode.commands.executeCommand("containerlab.refresh");
+    vscode.window
+      .showInformationMessage("Lab Deployed Successfully!", "Show Logs")
+      .then((choice) => {
+        if (choice === "Show Logs") {
+          outputChannel.show(true);
+        }
+      });
 
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    vscode.window.showErrorMessage(`Deployment Failed: ${msg}`);
+    vscode.commands.executeCommand("containerlab.refresh");
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Deploy Failed: ${err.message}`);
   }
 }
