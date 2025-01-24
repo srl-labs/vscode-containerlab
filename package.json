@@ -50,7 +50,8 @@
     "commands": [
       {
         "command": "containerlab.refresh",
-        "title": "Refresh Containerlab Explorer"
+        "title": "Refresh Containerlab Explorer",
+        "icon": "$(refresh)"
       },
       {
         "command": "containerlab.openLabFile",
@@ -58,15 +59,18 @@
       },
       {
         "command": "containerlab.deployLab",
-        "title": "Deploy Lab"
+        "title": "Deploy Lab",
+        "icon": "$(play)"
       },
       {
         "command": "containerlab.redeployLab",
-        "title": "Redeploy Lab"
+        "title": "Redeploy Lab",
+        "icon": "$(refresh)"
       },
       {
         "command": "containerlab.destroyLab",
-        "title": "Destroy Lab"
+        "title": "Destroy Lab",
+        "icon": "$(trash)"
       },
       {
         "command": "containerlab.startNode",
@@ -90,6 +94,29 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "containerlab.refresh",
+          "when": "view == containerlabExplorer",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "command": "containerlab.deployLab",
+          "group": "navigation@1"
+        },
+        {
+          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "command": "containerlab.destroyLab",
+          "group": "navigation@1"        },
+        {
+          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "command": "containerlab.redeployLab",
+          "group": "navigation@1"
+        }
+      ],
       "view/item/context": [
         {
           "command": "containerlab.refresh",
@@ -141,6 +168,12 @@
           "when": "viewItem == containerlabContainer",
           "group": "navigation"
         }
+      ],
+    "commandPalette": [
+        {
+          "when": "true",
+          "command": "containerlab.deployLab"
+        }
       ]
     }
   },
@@ -149,8 +182,8 @@
     "watch": "tsc -w -p ."
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
     "@types/node": "^18.0.0",
-    "@types/vscode": "^1.70.0"
+    "@types/vscode": "^1.70.0",
+    "typescript": "^5.7.3"
   }
 }

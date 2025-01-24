@@ -1,13 +1,25 @@
 import * as vscode from 'vscode';
-import { ContainerlabTreeDataProvider, ContainerlabNode } from './containerlabTreeDataProvider';
+import { ContainerlabTreeDataProvider } from './containerlabTreeDataProvider';
+import {
+  deploy,
+  destroy,
+  openLabFile,
+  redeploy,
+  startNode,
+  stopNode,
+  attachShell,
+  sshToNode,
+  showLogs,
+} from './commands/index';
+
+export let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
 
-  // Create an output channel for Containerlab debug logs
-  const containerlabOutput = vscode.window.createOutputChannel("Containerlab");
+  outputChannel = vscode.window.createOutputChannel("Containerlab")
 
   // Pass this output channel to our tree data provider
-  const provider = new ContainerlabTreeDataProvider(containerlabOutput);
+  const provider = new ContainerlabTreeDataProvider(outputChannel);
 
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
@@ -16,155 +28,35 @@ export function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(refreshCmd);
 
-  const openLabFileCmd = vscode.commands.registerCommand('containerlab.openLabFile', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath found.');
-      return;
-    }
-    const uri = vscode.Uri.file(labPath);
-    vscode.commands.executeCommand('vscode.open', uri);
-  });
+  /*
+  Register commands
+  */
+
+  const openLabFileCmd = vscode.commands.registerCommand('containerlab.openLabFile', openLabFile);
   context.subscriptions.push(openLabFileCmd);
 
-  const deployLabCmd = vscode.commands.registerCommand('containerlab.deployLab', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    const labLabel = node.label || "Lab";
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath to deploy.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Deploy - ${labLabel}` });
-    terminal.sendText(`sudo containerlab deploy -c -t ${labPath}`);
-    terminal.show();
-  });
+  const deployLabCmd = vscode.commands.registerCommand('containerlab.deployLab', deploy);
   context.subscriptions.push(deployLabCmd);
 
-  const redeployLabCmd = vscode.commands.registerCommand('containerlab.redeployLab', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    const labLabel = node.label || "Lab";
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath to redeploy.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Redeploy - ${labLabel}` });
-    terminal.sendText(`sudo containerlab redeploy -c -t ${labPath}`);
-    terminal.show();
-  });
+  const redeployLabCmd = vscode.commands.registerCommand('containerlab.redeployLab', redeploy);
   context.subscriptions.push(redeployLabCmd);
 
-  const destroyLabCmd = vscode.commands.registerCommand('containerlab.destroyLab', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No lab node selected.');
-      return;
-    }
-    const labPath = node.details?.labPath;
-    const labLabel = node.label || "Lab";
-    if (!labPath) {
-      vscode.window.showErrorMessage('No labPath to destroy.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Destroy - ${labLabel}` });
-    terminal.sendText(`sudo containerlab destroy -c -t ${labPath}`);
-    terminal.show();
-  });
+  const destroyLabCmd = vscode.commands.registerCommand('containerlab.destroyLab', destroy);
   context.subscriptions.push(destroyLabCmd);
 
-  const startNodeCmd = vscode.commands.registerCommand('containerlab.startNode', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No container node selected.');
-      return;
-    }
-    const containerId = node.details?.containerId;
-    const containerLabel = node.label || "Container";
-    if (!containerId) {
-      vscode.window.showErrorMessage('No containerId found.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Start - ${containerLabel}` });
-    terminal.sendText(`sudo docker start ${containerId}`);
-    terminal.show();
-  });
+  const startNodeCmd = vscode.commands.registerCommand('containerlab.startNode', startNode);
   context.subscriptions.push(startNodeCmd);
 
-  const stopNodeCmd = vscode.commands.registerCommand('containerlab.stopNode', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No container node selected.');
-      return;
-    }
-    const containerId = node.details?.containerId;
-    const containerLabel = node.label || "Container";
-    if (!containerId) {
-      vscode.window.showErrorMessage('No containerId found.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Stop - ${containerLabel}` });
-    terminal.sendText(`sudo docker stop ${containerId}`);
-    terminal.show();
-  });
+  const stopNodeCmd = vscode.commands.registerCommand('containerlab.stopNode', stopNode);
   context.subscriptions.push(stopNodeCmd);
 
-  const attachShellCmd = vscode.commands.registerCommand('containerlab.attachShell', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No container node selected.');
-      return;
-    }
-    const containerId = node.details?.containerId;
-    const containerLabel = node.label || "Container";
-    if (!containerId) {
-      vscode.window.showErrorMessage('No containerId for shell attach.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Shell - ${containerLabel}` });
-    terminal.sendText(`sudo docker exec -it ${containerId} sh`);
-    terminal.show();
-  });
+  const attachShellCmd = vscode.commands.registerCommand('containerlab.attachShell', attachShell);
   context.subscriptions.push(attachShellCmd);
 
-  const sshNodeCmd = vscode.commands.registerCommand('containerlab.sshNode', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No container node selected.');
-      return;
-    }
-    const sshIp = node.details?.sshIp;
-    const containerLabel = node.label || "Container";
-    if (!sshIp) {
-      vscode.window.showErrorMessage('No IP found for SSH.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `SSH - ${containerLabel}` });
-    terminal.sendText(`ssh admin@${sshIp}`);
-    terminal.show();
-  });
+  const sshNodeCmd = vscode.commands.registerCommand('containerlab.sshNode', sshToNode);
   context.subscriptions.push(sshNodeCmd);
 
-  const showLogsCmd = vscode.commands.registerCommand('containerlab.showLogs', (node: ContainerlabNode) => {
-    if (!node) {
-      vscode.window.showErrorMessage('No container node selected.');
-      return;
-    }
-    const containerId = node.details?.containerId;
-    const containerLabel = node.label || "Container";
-    if (!containerId) {
-      vscode.window.showErrorMessage('No containerId for logs.');
-      return;
-    }
-    const terminal = vscode.window.createTerminal({ name: `Logs - ${containerLabel}` });
-    terminal.sendText(`sudo docker logs -f ${containerId}`);
-    terminal.show();
-  });
+  const showLogsCmd = vscode.commands.registerCommand('containerlab.showLogs', showLogs);
   context.subscriptions.push(showLogsCmd);
 
   // Periodic refresh
@@ -176,4 +68,4 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.showInformationMessage('Containerlab Extension is now active!');
 }
 
-export function deactivate() {}
+export function deactivate() { }

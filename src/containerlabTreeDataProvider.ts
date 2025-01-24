@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import * as utils from './utils'
 
 const execAsync = promisify(exec);
 
@@ -121,12 +122,14 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         contextVal
       );
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
+      let workspacePath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.path : ""
+      node.description = utils.stripFileName(path.relative(workspacePath, labPath));
       nodes.push(node);
     }
 
     // 1) Labs with contextValue === "containerlabLabDeployed" come first
     // 2) Then labs with contextValue === "containerlabLabUndeployed"
-    // 3) Within each group, sort by .label
+    // 3) Within each group, sort by labPath
     nodes.sort((a, b) => {
       // First compare contextValue
       if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
@@ -135,8 +138,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
         return 1; // b goes first
       }
-      // If both have the same contextValue, compare labels
-      return a.label.localeCompare(b.label);
+      // If both have the same contextValue, labPath
+      return a.details.labPath.localeCompare(b.details.labPath);
     });
 
     return nodes;
