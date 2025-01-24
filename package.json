@@ -186,7 +186,24 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d",
+        "command": "containerlab.deployLab"
+      },
+      {
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "command": "containerlab.redeployLab"
+      },
+      {
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+d",
+        "command": "containerlab.destroyLab"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p .",
