@@ -54,41 +54,53 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "containerlab.openLabFile",
+        "command": "containerlab.lab.openFile",
         "title": "Open Lab File"
       },
       {
-        "command": "containerlab.deployLab",
+        "command": "containerlab.lab.deploy",
         "title": "Deploy Lab",
         "icon": "$(play)",
         "category": "Containerlab"
       },
       {
-        "command": "containerlab.redeployLab",
+        "command": "containerlab.lab.redeploy",
         "title": "Redeploy Lab",
         "icon": "$(refresh)",
         "category": "Containerlab"
       },
       {
-        "command": "containerlab.destroyLab",
+        "command": "containerlab.lab.destroy",
         "title": "Destroy Lab",
         "icon": "$(trash)",
         "category": "Containerlab"
       },
       {
-        "command": "containerlab.startNode",
+        "command": "containerlab.lab.graph",
+        "title": "Graph Lab (Web)",
+        "icon": "$(graph)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio",
+        "title": "Graph Lab (draw.io)",
+        "icon": "$(graph-line)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.node.start",
         "title": "Start Node"
       },
       {
-        "command": "containerlab.stopNode",
+        "command": "containerlab.node.stop",
         "title": "Stop Node"
       },
       {
-        "command": "containerlab.attachShell",
+        "command": "containerlab.node.attachShell",
         "title": "Attach Shell"
       },
       {
-        "command": "containerlab.sshNode",
+        "command": "containerlab.node.ssh",
         "title": "SSH Node"
       },
       {
@@ -107,17 +119,23 @@
       "editor/title": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.deployLab",
+          "command": "containerlab.lab.deploy",
           "group": "navigation@1"
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.destroyLab",
-          "group": "navigation@1"        },
+          "command": "containerlab.lab.destroy",
+          "group": "navigation@2"
+        },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.redeployLab",
-          "group": "navigation@1"
+          "command": "containerlab.lab.redeploy",
+          "group": "navigation@3"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.graph",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -127,42 +145,52 @@
           "group": "navigation"
         },
         {
-          "command": "containerlab.openLabFile",
+          "command": "containerlab.lab.openFile",
           "when": "viewItem =~ /containerlabLab/",
           "group": "navigation"
         },
         {
-          "command": "containerlab.deployLab",
+          "command": "containerlab.lab.deploy",
           "when": "viewItem == containerlabLabUndeployed",
           "group": "navigation"
         },
         {
-          "command": "containerlab.redeployLab",
+          "command": "containerlab.lab.redeploy",
           "when": "viewItem == containerlabLabDeployed",
           "group": "navigation"
         },
         {
-          "command": "containerlab.destroyLab",
+          "command": "containerlab.lab.destroy",
           "when": "viewItem == containerlabLabDeployed",
           "group": "navigation"
         },
         {
-          "command": "containerlab.startNode",
+          "command": "containerlab.lab.graph",
           "when": "viewItem == containerlabContainer",
           "group": "navigation"
         },
         {
-          "command": "containerlab.stopNode",
+          "command": "containerlab.lab.graph.drawio",
           "when": "viewItem == containerlabContainer",
           "group": "navigation"
         },
         {
-          "command": "containerlab.attachShell",
+          "command": "containerlab.node.start",
           "when": "viewItem == containerlabContainer",
           "group": "navigation"
         },
         {
-          "command": "containerlab.sshNode",
+          "command": "containerlab.node.stop",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.node.attachShell",
+          "when": "viewItem == containerlabContainer",
+          "group": "navigation"
+        },
+        {
+          "command": "containerlab.node.ssh",
           "when": "viewItem == containerlabContainer",
           "group": "navigation"
         },
@@ -174,15 +202,23 @@
       ],
       "commandPalette": [
         {
-          "command": "containerlab.deployLab",
+          "command": "containerlab.lab.deploy",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
-          "command": "containerlab.redeployLab",
+          "command": "containerlab.lab.redeploy",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
-          "command": "containerlab.destroyLab",
+          "command": "containerlab.lab.destroy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         }
       ]
@@ -191,17 +227,22 @@
       {
         "key": "ctrl+alt+d",
         "mac": "cmd+alt+d",
-        "command": "containerlab.deployLab"
+        "command": "containerlab.lab.deploy"
       },
       {
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
-        "command": "containerlab.redeployLab"
+        "command": "containerlab.lab.redeploy"
       },
       {
         "key": "ctrl+alt+k",
-        "mac": "cmd+alt+d",
-        "command": "containerlab.destroyLab"
+        "mac": "cmd+alt+k",
+        "command": "containerlab.lab.destroy"
+      },
+      {
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g",
+        "command": "containerlab.lab.graph"
       }
     ]
   },

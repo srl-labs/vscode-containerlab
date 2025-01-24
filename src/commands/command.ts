@@ -83,7 +83,7 @@ export class ClabCommand {
             return;
         }
 
-        const cmd = `${this.sudo} containerlab ${this.command} ${flags ? flags?.toString() : ""} -t ${labPath}`;
+        const cmd = `${this.sudo} containerlab ${this.command} ${flags ? flags?.toString().replace(",", " ") : ""} -t ${labPath}`;
 
         // const terminalName = `${this.command[0].toUpperCase() + this.command.slice(1)} - ${labPath}`
         const terminalName =  utils.getRelLabFolderPath(labPath);

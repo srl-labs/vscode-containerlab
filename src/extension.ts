@@ -10,6 +10,8 @@ import {
   attachShell,
   sshToNode,
   showLogs,
+  graphNextUI,
+  graphDrawIO,
 } from './commands/index';
 
 export let outputChannel: vscode.OutputChannel;
@@ -32,32 +34,18 @@ export function activate(context: vscode.ExtensionContext) {
   Register commands
   */
 
-  const openLabFileCmd = vscode.commands.registerCommand('containerlab.openLabFile', openLabFile);
-  context.subscriptions.push(openLabFileCmd);
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.redeploy', redeploy));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.destroy', destroy));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.start', startNode));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.stop', stopNode));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.attachShell', attachShell));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.ssh', sshToNode));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.showLogs', showLogs));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph', graphNextUI));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO));
 
-  const deployLabCmd = vscode.commands.registerCommand('containerlab.deployLab', deploy);
-  context.subscriptions.push(deployLabCmd);
-
-  const redeployLabCmd = vscode.commands.registerCommand('containerlab.redeployLab', redeploy);
-  context.subscriptions.push(redeployLabCmd);
-
-  const destroyLabCmd = vscode.commands.registerCommand('containerlab.destroyLab', destroy);
-  context.subscriptions.push(destroyLabCmd);
-
-  const startNodeCmd = vscode.commands.registerCommand('containerlab.startNode', startNode);
-  context.subscriptions.push(startNodeCmd);
-
-  const stopNodeCmd = vscode.commands.registerCommand('containerlab.stopNode', stopNode);
-  context.subscriptions.push(stopNodeCmd);
-
-  const attachShellCmd = vscode.commands.registerCommand('containerlab.attachShell', attachShell);
-  context.subscriptions.push(attachShellCmd);
-
-  const sshNodeCmd = vscode.commands.registerCommand('containerlab.sshNode', sshToNode);
-  context.subscriptions.push(sshNodeCmd);
-
-  const showLogsCmd = vscode.commands.registerCommand('containerlab.showLogs', showLogs);
-  context.subscriptions.push(showLogsCmd);
 
   // Periodic refresh
   const intervalId = setInterval(() => {
