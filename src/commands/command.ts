@@ -1,10 +1,24 @@
 import * as vscode from 'vscode';
+import * as utils from '../utils'
 import { spawn, exec } from 'child_process';
 import { outputChannel } from '../extension';
 import { ContainerlabNode } from '../containerlabTreeDataProvider';
 
 export function execCommandInTerminal(command: string, terminalName: string) {
-    const terminal = vscode.window.createTerminal({ name: terminalName })
+
+    let terminal;
+
+    for(let term of vscode.window.terminals) {
+        if (term.name.match(terminalName)) {
+            terminal = term;
+            break;
+        }
+    }
+
+    if(!terminal) {
+        terminal = vscode.window.createTerminal({name: terminalName});
+    }
+
     terminal.sendText(command);
     terminal.show();
     return;
@@ -13,11 +27,12 @@ export function execCommandInTerminal(command: string, terminalName: string) {
 // Run the command in a child process and write the output (stdio + stderr) to the 'Output' tab.
 function execCommandInOutput(command: string) {
     // let clabProc = spawn(`${args.sudo ? "sudo" : ""} containerlab`, flags);
-    let proc = exec(command)
+    let proc = exec(command);
 
     outputChannel.show(true);
     proc.stdout?.on('data', (data) => {
-        outputChannel.append(data);
+        // strip ANSI escape codes
+        outputChannel.append(data.toString().replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, ""));
     });
 
     proc.stderr?.on('data', (data) => {
@@ -26,6 +41,9 @@ function execCommandInOutput(command: string) {
 
     proc.on('close', (code) => {
         outputChannel.appendLine(`Exited with code ${code}`);
+        // trigger a refresh after execution.
+        console.debug("Refreshing");
+        vscode.commands.executeCommand('containerlab.refresh');
     });
     
     return;
@@ -67,9 +85,11 @@ export class ClabCommand {
 
         const cmd = `${this.sudo} containerlab ${this.command} ${flags ? flags?.toString() : ""} -t ${labPath}`;
 
-        const terminalName = `${this.command[0].toUpperCase() + this.command.slice(1)} - ${labPath}`
+        // const terminalName = `${this.command[0].toUpperCase() + this.command.slice(1)} - ${labPath}`
+        const terminalName =  utils.getRelLabFolderPath(labPath);
 
         execCommandInTerminal(cmd, terminalName);
+        // execCommandInOutput(cmd);
     }
 
     // whether to append sudo to the cmd

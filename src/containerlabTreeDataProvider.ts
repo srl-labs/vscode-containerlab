@@ -4,7 +4,7 @@ import { promisify } from 'util';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import * as utils from './utils'
+import * as utils from './utils';
 
 const execAsync = promisify(exec);
 
@@ -122,8 +122,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         contextVal
       );
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
-      let workspacePath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.path : ""
-      node.description = utils.stripFileName(path.relative(workspacePath, labPath));
+      node.description = utils.getRelLabFolderPath(labPath);
       nodes.push(node);
     }
 
@@ -211,7 +210,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const { stdout: out } = await execAsync('sudo containerlab inspect --all --format json');
       stdout = out;
     } catch (err) {
-      this.outputChannel.appendLine(`Error running containerlab inspect: ${err}`);
+      console.debug(`Error running containerlab inspect: ${err}`);
       return {};
     }
 
@@ -219,7 +218,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     try {
       parsed = JSON.parse(stdout);
     } catch (err) {
-      this.outputChannel.appendLine(`Error parsing containerlab JSON: ${err}`);
+      console.debug(`Error parsing containerlab JSON: ${err}`);
       parsed = { containers: [] };
     }
 
@@ -237,7 +236,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       let p = c.labPath || '';
       const original = p;
       p = this.normalizeLabPath(p, singleFolderBase);
-      this.outputChannel.appendLine(
+      console.debug(
         `Container: ${c.name}, original path: ${original}, normalized: ${p}`
       );
 
@@ -263,7 +262,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
    */
   private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
     if (!labPath) {
-      this.outputChannel.appendLine(`normalizeLabPath: received empty labPath`);
+      console.debug(`normalizeLabPath: received empty labPath`);
       return labPath;
     }
 
@@ -271,7 +270,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     labPath = path.normalize(labPath);
 
     if (path.isAbsolute(labPath)) {
-      this.outputChannel.appendLine(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
+      console.debug(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
       return labPath;
     }
 
@@ -279,7 +278,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const homedir = os.homedir();
       const sub = labPath.replace(/^~[\/\\]?/, '');
       const expanded = path.normalize(path.join(homedir, sub));
-      this.outputChannel.appendLine(
+      console.debug(
         `normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`
       );
       return expanded;
@@ -293,15 +292,15 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     candidatePaths.push(path.normalize(path.resolve(process.cwd(), labPath)));
 
     for (const candidate of candidatePaths) {
-      this.outputChannel.appendLine(`normalizeLabPath => checking if path exists: ${candidate}`);
+      console.debug(`normalizeLabPath => checking if path exists: ${candidate}`);
       if (fs.existsSync(candidate)) {
-        this.outputChannel.appendLine(`normalizeLabPath => found existing path: ${candidate}`);
+        console.debug(`normalizeLabPath => found existing path: ${candidate}`);
         return candidate;
       }
     }
 
     const chosen = candidatePaths[0];
-    this.outputChannel.appendLine(
+    console.debug(
       `normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`
     );
     return chosen;
