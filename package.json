@@ -78,13 +78,17 @@
       {
         "command": "containerlab.lab.graph",
         "title": "Graph Lab (Web)",
-        "icon": "$(graph)",
+        "icon": "$(graph-line)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.drawio",
         "title": "Graph Lab (draw.io)",
-        "icon": "$(graph-line)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.interactive",
+        "title": "Graph Lab (draw.io, Interactive)",
         "category": "Containerlab"
       },
       {
@@ -175,6 +179,11 @@
           "group": "navigation"
         },
         {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "when": "view == containerlabExplorer",
+          "group": "navigation"
+        },
+        {
           "command": "containerlab.node.start",
           "when": "viewItem == containerlabContainer",
           "group": "navigation"
@@ -219,6 +228,10 @@
         },
         {
           "command": "containerlab.lab.graph.drawio",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         }
       ]

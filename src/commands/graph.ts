@@ -9,8 +9,14 @@ export function graphNextUI(node: ContainerlabNode) {
     cmd.run();
 }
 
-export function graphDrawIO(node: ContainerlabNode) {
+export function graphDrawIOInteractive(node: ContainerlabNode) {
     const cmd = new ClabCommand("graph", true, node);
 
     cmd.run(["--drawio", `--drawio-args "-I"`]);
+}
+
+export function graphDrawIO(node: ContainerlabNode) {
+    const cmd = new ClabCommand("graph", true, node);
+
+    cmd.run(["--drawio"]);
 }

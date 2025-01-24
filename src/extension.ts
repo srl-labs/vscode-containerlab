@@ -12,6 +12,7 @@ import {
   showLogs,
   graphNextUI,
   graphDrawIO,
+  graphDrawIOInteractive,
 } from './commands/index';
 
 export let outputChannel: vscode.OutputChannel;
@@ -45,6 +46,8 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.showLogs', showLogs));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph', graphNextUI));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', graphDrawIOInteractive));
+
 
 
   // Periodic refresh
