@@ -3,7 +3,7 @@
   "publisher": "Nokia",
   "displayName": "Containerlab",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -170,17 +170,17 @@
         },
         {
           "command": "containerlab.lab.graph",
-          "when": "view == containerlabExplorer",
+          "when": "viewItem =~ /containerlabLab/",
           "group": "navigation"
         },
         {
           "command": "containerlab.lab.graph.drawio",
-          "when": "view == containerlabExplorer",
+          "when": "viewItem =~ /containerlabLab/",
           "group": "navigation"
         },
         {
           "command": "containerlab.lab.graph.drawio.interactive",
-          "when": "view == containerlabExplorer",
+          "when": "viewItem =~ /containerlabLab/",
           "group": "navigation"
         },
         {
