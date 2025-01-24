@@ -1,87 +1,78 @@
 import * as vscode from 'vscode';
 import * as utils from '../utils';
-import { spawn, exec } from 'child_process';
+import { spawn } from 'child_process';
 import { outputChannel } from '../extension';
 import { ContainerlabNode } from '../containerlabTreeDataProvider';
 
 export function execCommandInTerminal(command: string, terminalName: string) {
     let terminal;
-
-    // Try to reuse an existing terminal with the same name
     for (let term of vscode.window.terminals) {
         if (term.name.match(terminalName)) {
             terminal = term;
-            // Send Ctrl+C to kill any running process in that terminal
+            // Ctrl+C in that terminal
             term.sendText("\x03");
             break;
         }
     }
-
-    if(!terminal) {
-        terminal = vscode.window.createTerminal({name: terminalName});
+    if (!terminal) {
+        terminal = vscode.window.createTerminal({ name: terminalName });
     }
-
     terminal.sendText(command);
     terminal.show();
-    return;
 }
 
-// (Optional) If you want to run commands in the Output channel instead of Terminal:
-function execCommandInOutput(command: string) {
-    let proc = exec(command);
+/**
+ * Spawns a child process for the command and pipes its stdout/stderr
+ * into the extension's Output channel. This won't be interactive,
+ * but you see all the logs in real-time.
+ */
+export function execCommandInOutput(command: string) {
+    const child = spawn(command, {
+        shell: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
     outputChannel.show(true);
-    proc.stdout?.on('data', (data) => {
-        // strip ANSI escape codes
-        outputChannel.append(
-            data.toString().replace(
-                /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, 
-                ""
-            )
-        );
+
+    child.stdout.on('data', (data) => {
+        outputChannel.append(data.toString());
     });
 
-    proc.stderr?.on('data', (data) => {
-        outputChannel.append(data);
+    child.stderr.on('data', (data) => {
+        outputChannel.append(data.toString());
     });
 
-    proc.on('close', (code) => {
+    child.on('close', (code) => {
         outputChannel.appendLine(`Exited with code ${code}`);
-        // trigger a refresh after execution.
-        console.debug("Refreshing");
         vscode.commands.executeCommand('containerlab.refresh');
     });
-    return;
 }
 
 export class ClabCommand {
-    command: string;
-    node: ContainerlabNode;
+    private command: string;
+    private node: ContainerlabNode;
     private useSudo: boolean;
+    private runInOutput: boolean;
 
-    constructor(command: string, node: ContainerlabNode) {
+    constructor(command: string, node: ContainerlabNode, runInOutput?: boolean) {
         this.command = command;
         this.node = node;
-        // Read from user settings whether we prepend 'sudo'
+
         const config = vscode.workspace.getConfiguration("containerlab");
         this.useSudo = config.get<boolean>("sudoEnabledByDefault", true);
+        this.runInOutput = runInOutput || false;
     }
 
-    // run command
-    run(flags?: string[]) {
-        let labPath;
-
-        if(!(this.node instanceof ContainerlabNode)) {
-            // Fallback to active editor if no node is passed
+    public run(flags?: string[]) {
+        // Try node.details -> fallback to active editor
+        let labPath = this.node?.details?.labPath;
+        if (!labPath) {
             const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                labPath = editor.document.uri.fsPath;
-            } else {
+            if (!editor) {
                 vscode.window.showErrorMessage('No lab node or topology file selected');
                 return;
             }
-        } else {
-            labPath = this.node.details?.labPath;
+            labPath = editor.document.uri.fsPath;
         }
 
         if (!labPath) {
@@ -89,19 +80,38 @@ export class ClabCommand {
             return;
         }
 
-        // Build the final command
-        const flagsString = flags && flags.length > 0 
-            ? flags.join(" ") 
-            : "";
+        // Build the command properly
+        const cmdParts: string[] = [];
 
-        // Prepend 'sudo' if user setting is true
-        const cmd = `${this.useSudo ? "sudo " : ""}containerlab ${this.command} ${flagsString} -t "${labPath}"`;
+        // sudo?
+        if (this.useSudo) {
+            cmdParts.push("sudo");
+        }
 
-        // We'll send it to the integrated Terminal
-        const terminalName = utils.getRelLabFolderPath(labPath);
-        execCommandInTerminal(cmd, terminalName);
+        // containerlab
+        cmdParts.push("containerlab");
 
-        // Or if you prefer output channel:
-        // execCommandInOutput(cmd);
+
+        // The subcommand (deploy, destroy, etc.)
+        cmdParts.push(this.command);
+
+        // Additional flags
+        if (flags && flags.length > 0) {
+            cmdParts.push(...flags);
+        }
+
+        // Finally, specify the topology file
+        cmdParts.push("-t", `"${labPath}"`);
+
+        // Combine into a single string
+        const cmd = cmdParts.join(" ");
+
+        // Run in Output or Terminal
+        if (this.runInOutput) {
+            execCommandInOutput(cmd);
+        } else {
+            const terminalName = utils.getRelLabFolderPath(labPath);
+            execCommandInTerminal(cmd, terminalName);
+        }
     }
 }
