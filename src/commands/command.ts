@@ -11,6 +11,7 @@ export function execCommandInTerminal(command: string, terminalName: string) {
     for(let term of vscode.window.terminals) {
         if (term.name.match(terminalName)) {
             terminal = term;
+            term.sendText("\x03")
             break;
         }
     }
@@ -83,7 +84,7 @@ export class ClabCommand {
             return;
         }
 
-        const cmd = `${this.sudo} containerlab ${this.command} ${flags ? flags?.toString() : ""} -t ${labPath}`;
+        const cmd = `${this.sudo} containerlab ${this.command} ${flags ? flags?.toString().replace(",", " ") : ""} -t ${labPath}`;
 
         // const terminalName = `${this.command[0].toUpperCase() + this.command.slice(1)} - ${labPath}`
         const terminalName =  utils.getRelLabFolderPath(labPath);
