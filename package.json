@@ -60,17 +60,20 @@
       {
         "command": "containerlab.deployLab",
         "title": "Deploy Lab",
-        "icon": "$(play)"
+        "icon": "$(play)",
+        "category": "Containerlab"
       },
       {
         "command": "containerlab.redeployLab",
         "title": "Redeploy Lab",
-        "icon": "$(refresh)"
+        "icon": "$(refresh)",
+        "category": "Containerlab"
       },
       {
         "command": "containerlab.destroyLab",
         "title": "Destroy Lab",
-        "icon": "$(trash)"
+        "icon": "$(trash)",
+        "category": "Containerlab"
       },
       {
         "command": "containerlab.startNode",
@@ -103,16 +106,16 @@
       ],
       "editor/title": [
         {
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.deployLab",
           "group": "navigation@1"
         },
         {
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.destroyLab",
           "group": "navigation@1"        },
         {
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.redeployLab",
           "group": "navigation@1"
         }
@@ -169,13 +172,38 @@
           "group": "navigation"
         }
       ],
-    "commandPalette": [
+      "commandPalette": [
         {
-          "when": "true",
-          "command": "containerlab.deployLab"
+          "command": "containerlab.deployLab",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.redeployLab",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.destroyLab",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d",
+        "command": "containerlab.deployLab"
+      },
+      {
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "command": "containerlab.redeployLab"
+      },
+      {
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+d",
+        "command": "containerlab.destroyLab"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p .",
