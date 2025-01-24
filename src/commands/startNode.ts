@@ -1,28 +1,69 @@
 import * as vscode from "vscode";
-import { execCommandInOutput } from './command';  // we use the Output version now
+import { spawn } from "child_process";
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 
-export function startNode(node: ContainerlabNode) {
-    if (!node) {
-        vscode.window.showErrorMessage('No container node selected.');
-        return;
-    }
+/**
+ * Start Node with partial updates in a spinner.
+ */
+export async function startNode(node: ContainerlabNode) {
+  if (!node) {
+    vscode.window.showErrorMessage("No container node selected.");
+    return;
+  }
 
-    const containerId = node.details?.containerId;
-    const containerLabel = node.label || "Container";
-    if (!containerId) {
-        vscode.window.showErrorMessage('No containerId found.');
-        return;
-    }
+  const containerId = node.details?.containerId;
+  if (!containerId) {
+    vscode.window.showErrorMessage("No containerId found.");
+    return;
+  }
 
-    // Check whether we use 'sudo'
-    const config = vscode.workspace.getConfiguration("containerlab");
-    const useSudo = config.get<boolean>("sudoEnabledByDefault", true);
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const useSudo = config.get<boolean>("sudoEnabledByDefault", true);
 
-    // Use execCommandInOutput so it prints to the Output panel
-    const cmd = `${useSudo ? "sudo " : ""}docker start ${containerId}`;
-    execCommandInOutput(cmd);
+  // e.g. sudo docker start <id>
+  const cmdArgs = useSudo
+    ? ["sudo", "docker", "start", containerId]
+    : ["docker", "start", containerId];
 
-    // Optionally, you could append a label in your output if you want
-    // outputChannel.appendLine(`Starting node: ${containerLabel}`);
+  try {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Starting Node: ${containerId}`,
+        cancellable: false,
+      },
+      async (progress) => {
+        return new Promise<void>((resolve, reject) => {
+          const child = spawn(cmdArgs[0], cmdArgs.slice(1));
+
+          child.stdout.on("data", (data: Buffer) => {
+            const lines = data.toString().split("\n");
+            lines.forEach((line: string) => {
+              if (line.trim().length > 0) {
+                progress.report({ message: line.trim() });
+              }
+            });
+          });
+
+          child.stderr.on("data", (data: Buffer) => {
+            // Optionally parse or display
+          });
+
+          child.on("close", (code) => {
+            if (code === 0) {
+              resolve();
+            } else {
+              reject(new Error(`Exited with code ${code}`));
+            }
+          });
+        });
+      }
+    );
+
+    vscode.window.showInformationMessage(`Node started: ${containerId}`);
+    vscode.commands.executeCommand("containerlab.refresh");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to start node (${containerId}): ${msg}`);
+  }
 }
