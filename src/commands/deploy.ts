@@ -1,9 +1,8 @@
-import { ClabCommand } from './command'
+import { ClabCommand } from './command';
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 
 export function deploy(node: ContainerlabNode) {
-
-    const cmd = new ClabCommand("deploy", true, node);
-
+    // Removed the second "true" param (sudo) because we now read from settings
+    const cmd = new ClabCommand("deploy", node);
     cmd.run(["-c"]);
 }

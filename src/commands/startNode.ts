@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import  { execCommandInTerminal } from './command'
+import { execCommandInTerminal } from './command';
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 
 export function startNode(node: ContainerlabNode) {
@@ -16,5 +16,12 @@ export function startNode(node: ContainerlabNode) {
         return;
     }
 
-    execCommandInTerminal(`sudo docker start ${containerId}`, `Start - ${containerLabel}`)
+    // Use the sudoEnabledByDefault setting
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const useSudo = config.get<boolean>("sudoEnabledByDefault", true);
+
+    execCommandInTerminal(
+      `${useSudo ? "sudo " : ""}docker start ${containerId}`,
+      `Start - ${containerLabel}`
+    );
 }

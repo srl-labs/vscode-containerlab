@@ -19,7 +19,7 @@ export let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
 
-  outputChannel = vscode.window.createOutputChannel("Containerlab")
+  outputChannel = vscode.window.createOutputChannel("Containerlab");
 
   // Pass this output channel to our tree data provider
   const provider = new ContainerlabTreeDataProvider(outputChannel);
@@ -34,7 +34,6 @@ export function activate(context: vscode.ExtensionContext) {
   /*
   Register commands
   */
-
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.redeploy', redeploy));
@@ -48,15 +47,19 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', graphDrawIOInteractive));
 
-
+  // Read the refresh interval setting
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const refreshInterval = config.get<number>("refreshInterval", 10000);
 
   // Periodic refresh
   const intervalId = setInterval(() => {
     provider.refresh();
-  }, 10000);
+  }, refreshInterval);
   context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
 
   vscode.window.showInformationMessage('Containerlab Extension is now active!');
 }
 
-export function deactivate() { }
+export function deactivate() {
+  // Clean up if needed
+}

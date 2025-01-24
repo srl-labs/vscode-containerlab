@@ -1,9 +1,7 @@
-import { ClabCommand } from './command'
+import { ClabCommand } from './command';
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 
 export function redeploy(node: ContainerlabNode) {
-
-    const cmd = new ClabCommand("redeploy", true, node);
-
+    const cmd = new ClabCommand("redeploy", node);
     cmd.run();
 }

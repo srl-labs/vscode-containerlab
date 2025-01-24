@@ -1,4 +1,4 @@
-import * as vscode from "vscode"
+import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 
@@ -10,11 +10,15 @@ export function sshToNode(node: ContainerlabNode) {
 
     const sshIp = node.details?.sshIp;
     const containerLabel = node.label || "Container";
-    
+
     if (!sshIp) {
         vscode.window.showErrorMessage('No IP found for SSH.');
         return;
     }
 
-    execCommandInTerminal(`ssh admin@${sshIp}`, `SSH - ${containerLabel}`)
+    // Pull the default SSH user from settings
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const sshUser = config.get<string>("defaultSshUser", "admin");
+
+    execCommandInTerminal(`ssh ${sshUser}@${sshIp}`, `SSH - ${containerLabel}`);
 }

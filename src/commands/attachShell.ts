@@ -1,4 +1,4 @@
-import * as vscode from "vscode"
+import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 
@@ -16,5 +16,12 @@ export function attachShell(node: ContainerlabNode) {
         return;
     }
 
-    execCommandInTerminal(`sudo docker exec -it ${containerId} sh`, `Shell - ${containerLabel}`)
+    // Use the sudoEnabledByDefault setting
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const useSudo = config.get<boolean>("sudoEnabledByDefault", true);
+
+    execCommandInTerminal(
+      `${useSudo ? "sudo " : ""}docker exec -it ${containerId} sh`,
+      `Shell - ${containerLabel}`
+    );
 }

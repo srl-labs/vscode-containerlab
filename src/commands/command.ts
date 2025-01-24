@@ -1,17 +1,18 @@
 import * as vscode from 'vscode';
-import * as utils from '../utils'
+import * as utils from '../utils';
 import { spawn, exec } from 'child_process';
 import { outputChannel } from '../extension';
 import { ContainerlabNode } from '../containerlabTreeDataProvider';
 
 export function execCommandInTerminal(command: string, terminalName: string) {
-
     let terminal;
 
-    for(let term of vscode.window.terminals) {
+    // Try to reuse an existing terminal with the same name
+    for (let term of vscode.window.terminals) {
         if (term.name.match(terminalName)) {
             terminal = term;
-            term.sendText("\x03")
+            // Send Ctrl+C to kill any running process in that terminal
+            term.sendText("\x03");
             break;
         }
     }
@@ -25,15 +26,19 @@ export function execCommandInTerminal(command: string, terminalName: string) {
     return;
 }
 
-// Run the command in a child process and write the output (stdio + stderr) to the 'Output' tab.
+// (Optional) If you want to run commands in the Output channel instead of Terminal:
 function execCommandInOutput(command: string) {
-    // let clabProc = spawn(`${args.sudo ? "sudo" : ""} containerlab`, flags);
     let proc = exec(command);
 
     outputChannel.show(true);
     proc.stdout?.on('data', (data) => {
         // strip ANSI escape codes
-        outputChannel.append(data.toString().replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, ""));
+        outputChannel.append(
+            data.toString().replace(
+                /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, 
+                ""
+            )
+        );
     });
 
     proc.stderr?.on('data', (data) => {
@@ -46,19 +51,20 @@ function execCommandInOutput(command: string) {
         console.debug("Refreshing");
         vscode.commands.executeCommand('containerlab.refresh');
     });
-    
     return;
 }
 
 export class ClabCommand {
     command: string;
-    sudoless: boolean;
     node: ContainerlabNode;
+    private useSudo: boolean;
 
-    constructor(command: string, sudo: boolean | undefined, node: ContainerlabNode) {
+    constructor(command: string, node: ContainerlabNode) {
         this.command = command;
-        this.sudoless = sudo ? sudo : true; // if sudo is not provided, it's enabled by default
         this.node = node;
+        // Read from user settings whether we prepend 'sudo'
+        const config = vscode.workspace.getConfiguration("containerlab");
+        this.useSudo = config.get<boolean>("sudoEnabledByDefault", true);
     }
 
     // run command
@@ -66,35 +72,36 @@ export class ClabCommand {
         let labPath;
 
         if(!(this.node instanceof ContainerlabNode)) {
+            // Fallback to active editor if no node is passed
             const editor = vscode.window.activeTextEditor;
             if (editor) {
                 labPath = editor.document.uri.fsPath;
-            }
-            else {
+            } else {
                 vscode.window.showErrorMessage('No lab node or topology file selected');
                 return;
             }
-        } 
-        else {
+        } else {
             labPath = this.node.details?.labPath;
         }
-    
+
         if (!labPath) {
-            vscode.window.showErrorMessage('No labPath to deploy.');
+            vscode.window.showErrorMessage(`No labPath found for command "${this.command}".`);
             return;
         }
 
-        const cmd = `${this.sudo} containerlab ${this.command} ${flags ? flags?.toString().replace(",", " ") : ""} -t ${labPath}`;
+        // Build the final command
+        const flagsString = flags && flags.length > 0 
+            ? flags.join(" ") 
+            : "";
 
-        // const terminalName = `${this.command[0].toUpperCase() + this.command.slice(1)} - ${labPath}`
-        const terminalName =  utils.getRelLabFolderPath(labPath);
+        // Prepend 'sudo' if user setting is true
+        const cmd = `${this.useSudo ? "sudo " : ""}containerlab ${this.command} ${flagsString} -t "${labPath}"`;
 
+        // We'll send it to the integrated Terminal
+        const terminalName = utils.getRelLabFolderPath(labPath);
         execCommandInTerminal(cmd, terminalName);
-        // execCommandInOutput(cmd);
-    }
 
-    // whether to append sudo to the cmd
-    get sudo(): string {
-        return this.sudoless ? "sudo" : "";
+        // Or if you prefer output channel:
+        // execCommandInOutput(cmd);
     }
 }
