@@ -166,12 +166,12 @@
         },
         {
           "command": "containerlab.lab.graph",
-          "when": "viewItem == containerlabContainer",
+          "when": "view == containerlabExplorer",
           "group": "navigation"
         },
         {
           "command": "containerlab.lab.graph.drawio",
-          "when": "viewItem == containerlabContainer",
+          "when": "view == containerlabExplorer",
           "group": "navigation"
         },
         {
