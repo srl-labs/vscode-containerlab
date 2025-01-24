@@ -60,17 +60,20 @@
       {
         "command": "containerlab.deployLab",
         "title": "Deploy Lab",
-        "icon": "$(play)"
+        "icon": "$(play)",
+        "category": "Containerlab"
       },
       {
         "command": "containerlab.redeployLab",
         "title": "Redeploy Lab",
-        "icon": "$(refresh)"
+        "icon": "$(refresh)",
+        "category": "Containerlab"
       },
       {
         "command": "containerlab.destroyLab",
         "title": "Destroy Lab",
-        "icon": "$(trash)"
+        "icon": "$(trash)",
+        "category": "Containerlab"
       },
       {
         "command": "containerlab.startNode",
