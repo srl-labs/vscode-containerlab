@@ -106,16 +106,16 @@
       ],
       "editor/title": [
         {
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.deployLab",
           "group": "navigation@1"
         },
         {
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.destroyLab",
           "group": "navigation@1"        },
         {
-          "when": "resourceExtname == .yaml || resourceExtname == .yml",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.redeployLab",
           "group": "navigation@1"
         }
@@ -172,10 +172,18 @@
           "group": "navigation"
         }
       ],
-    "commandPalette": [
+      "commandPalette": [
         {
-          "when": "true",
-          "command": "containerlab.deployLab"
+          "command": "containerlab.deployLab",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.redeployLab",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.destroyLab",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         }
       ]
     }
