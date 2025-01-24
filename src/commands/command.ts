@@ -11,6 +11,7 @@ export function execCommandInTerminal(command: string, terminalName: string) {
     for(let term of vscode.window.terminals) {
         if (term.name.match(terminalName)) {
             terminal = term;
+            term.sendText("\x03")
             break;
         }
     }
