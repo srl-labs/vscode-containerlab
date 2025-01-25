@@ -163,7 +163,7 @@
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.graph",
-          "group": "navigation@1"
+          "group": "navigation@0"
         }
       ],
       "editor/title/run": [
