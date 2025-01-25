@@ -62,7 +62,6 @@ export function activate(context: vscode.ExtensionContext) {
   }, refreshInterval);
   context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
 
-  vscode.window.showInformationMessage('Containerlab Extension is now active!');
 }
 
 export function deactivate() {}
