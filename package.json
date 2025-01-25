@@ -55,11 +55,13 @@
       },
       {
         "command": "containerlab.lab.openFile",
-        "title": "Edit topology"
+        "title": "Edit topology",
+        "icon": "$(pencil)"
       },
       {
         "command": "containerlab.lab.copyPath",
-        "title": "Copy file path"
+        "title": "Copy file path",
+        "icon": "$(copy)"
       },
       {
         "command": "containerlab.lab.deploy",
@@ -164,6 +166,16 @@
           "command": "containerlab.refresh",
           "when": "view == containerlabExplorer",
           "group": "refresh@99"
+        },
+        {
+          "command": "containerlab.lab.openFile",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "inline@0"
+        },
+        {
+          "command": "containerlab.lab.copyPath",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "inline@1"
         },
         {
           "command": "containerlab.lab.openFile",
