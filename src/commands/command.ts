@@ -80,12 +80,12 @@ export class Command {
         this.useSpinner = options.useSpinner;
 
         if(this.useSpinner) {
-            if(options.terminalName) throw new Error("useSpinner is true. terminalName should NOT be defined.");
-            if(!options.spinnerMsg) throw new Error("useSpinner is true, but spinnerMsg is undefined.");
+            if(options.terminalName) {throw new Error("useSpinner is true. terminalName should NOT be defined.");}
+            if(!options.spinnerMsg) {throw new Error("useSpinner is true, but spinnerMsg is undefined.");}
             this.spinnerMsg = options.spinnerMsg;
         }
         else {
-            if(!options.terminalName) throw new Error("UseSpinner is false. terminalName must be defined.")
+            if(!options.terminalName) {throw new Error("UseSpinner is false. terminalName must be defined.");}
                 this.terminalName = options.terminalName;
         }
 
@@ -96,9 +96,9 @@ export class Command {
     protected execute(args?: string[]) {
         let cmd: string[] = [];
 
-        if(this.useSudo) cmd.push("sudo");
+        if(this.useSudo) {cmd.push("sudo");}
         cmd.push(this.command);
-        if(args) cmd.push(...args);
+        if(args) {cmd.push(...args);}
 
         outputChannel.appendLine(`[${this.command}] Running: ${cmd.join(" ")}`);
 
@@ -121,7 +121,7 @@ export class Command {
                 },
                 async (progress, token) => {
                     return new Promise<void>((resolve, reject) => {
-                        console.log(`xxx:  ${cmd[1]}`)
+                        console.log(`xxx:  ${cmd[1]}`);
                         const child = spawn(cmd[0], cmd.slice(1));
 
                         // If user clicks Cancel, kill the child process

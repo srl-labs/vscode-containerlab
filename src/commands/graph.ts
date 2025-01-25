@@ -19,7 +19,7 @@ export function graphDrawIO(node: ContainerlabNode) {
     progressMsg: "Generating DrawIO graph...",
     successMsg: "DrawIO Graph Completed!",
     failMsg: "Graph (draw.io) Failed",
-  }
+  };
 
   const graphCmd = new ClabCommand("graph", node, spinnerMessages);
 

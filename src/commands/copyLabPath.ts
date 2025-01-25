@@ -17,6 +17,6 @@ export function copyLabPath(node: ContainerlabNode) {
     const labName = node.details?.labName ? node.details?.labName : utils.getRelativeFolderPath(labPath);
     
     vscode.env.clipboard.writeText(labPath).then(() => {
-        vscode.window.showInformationMessage(`Copied file path of ${labName} to clipboard.`)
+        vscode.window.showInformationMessage(`Copied file path of ${labName} to clipboard.`);
     });
 }
