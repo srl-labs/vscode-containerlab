@@ -76,6 +76,12 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.deploy.specificFile",
+        "title": "Deploy lab file",
+        "icon": "$(plus)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.redeploy",
         "title": "Redeploy Lab",
         "icon": "$(refresh)",
@@ -129,7 +135,12 @@
         {
           "command": "containerlab.refresh",
           "when": "view == containerlabExplorer",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.lab.deploy.specificFile",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@0"
         }
       ],
       "editor/title": [
