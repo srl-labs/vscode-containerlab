@@ -20,7 +20,7 @@ export async function stopNode(node: ContainerlabNode) {
     progressMsg: `Stopping node ${containerId}...`,
     successMsg: `Node '${containerId}' stopped successfully`,
     failMsg: `Could not stop node '${containerId}'`
-  }
+  };
 
   const startCmd = new DockerCommand("stop", spinnerMessages);
   startCmd.run(containerId);

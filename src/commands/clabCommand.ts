@@ -10,13 +10,13 @@ export class ClabCommand extends cmd.Command  {
     private node: ContainerlabNode;
     private action: string;
 
-    constructor(action: string, node: ContainerlabNode, spinnerMsg?: cmd.SpinnerMsg, useTerminal?: boolean, terminalName?: string) {4
+    constructor(action: string, node: ContainerlabNode, spinnerMsg?: cmd.SpinnerMsg, useTerminal?: boolean, terminalName?: string) {4;
         const options: cmd.CmdOptions = {
             command: "containerlab",
             useSpinner: useTerminal ? false : true,
             spinnerMsg: spinnerMsg,
             terminalName: terminalName,
-        }
+        };
         super(options);
 
         this.action = action;

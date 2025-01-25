@@ -132,15 +132,18 @@
       },
       {
         "command": "containerlab.node.attachShell",
-        "title": "Attach shell"
+        "title": "Attach shell",
+        "icon": "$(terminal)"
       },
       {
         "command": "containerlab.node.ssh",
-        "title": "Connect to SSH"
+        "title": "Connect to SSH",
+        "icon": "$(remote)"
       },
       {
         "command": "containerlab.showLogs",
-        "title": "View logs"
+        "title": "View logs",
+        "icon": "$(list-unordered)"
       }
     ],
     "menus": {
@@ -160,7 +163,7 @@
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.graph",
-          "group": "navigation@1"
+          "group": "navigation@0"
         }
       ],
       "editor/title/run": [
@@ -275,6 +278,21 @@
           "command": "containerlab.node.stop",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@3"
+        },
+        {
+          "command": "containerlab.node.attachShell",
+          "when": "viewItem == containerlabContainer",
+          "group": "inline@1"
+        },
+        {
+          "command": "containerlab.node.ssh",
+          "when": "viewItem == containerlabContainer",
+          "group": "inline@2"
+        },
+        {
+          "command": "containerlab.showLogs",
+          "when": "viewItem == containerlabContainer",
+          "group": "inline@0"
         },
         {
           "command": "containerlab.node.attachShell",

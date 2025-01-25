@@ -7,12 +7,12 @@ import * as cmd from './command';
 export class DockerCommand extends cmd.Command  {
     private action: string;
 
-    constructor(action: string, spinnerMsg?: cmd.SpinnerMsg) {4
+    constructor(action: string, spinnerMsg?: cmd.SpinnerMsg) {4;
         const options: cmd.CmdOptions = {
             command: "docker",
             useSpinner: true,
             spinnerMsg: spinnerMsg,       
-        }
+        };
         super(options);
 
         this.action = action;
@@ -21,7 +21,7 @@ export class DockerCommand extends cmd.Command  {
     public run(containerID: string) {
 
         // Build the command
-        const cmd = [this.action, containerID]
+        const cmd = [this.action, containerID];
 
         this.execute(cmd);
     }

@@ -20,7 +20,7 @@ export async function startNode(node: ContainerlabNode) {
     progressMsg: `Starting node ${containerId}...`,
     successMsg: `Node '${containerId}' started successfully`,
     failMsg: `Could not start node '${containerId}'`
-  }
+  };
 
   const startCmd = new DockerCommand("start", spinnerMessages);
   startCmd.run(containerId);

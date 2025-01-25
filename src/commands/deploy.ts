@@ -28,7 +28,7 @@ export function deploySpecificFile() {
     filters: {
       yaml: ["yaml", "yml"]
     },
-  }
+  };
 
   vscode.window.showOpenDialog(opts).then(uri => {
     if (!uri || !uri.length) {

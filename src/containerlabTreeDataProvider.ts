@@ -160,8 +160,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     const containerNodes = containers.map((ctr: any) => {
       let v4Addr, v6Addr: string | undefined;
 
-      if (ctr.ipv4_address) v4Addr = ctr.ipv4_address.split('/')[0];
-      if (ctr.ipv6_address) v6Addr = ctr.ipv6_address.split('/')[0];
+      if (ctr.ipv4_address) {v4Addr = ctr.ipv4_address.split('/')[0];}
+      if (ctr.ipv6_address) {v6Addr = ctr.ipv6_address.split('/')[0];}
 
       const label = `${ctr.name} (${ctr.state})`;
 
@@ -177,10 +177,10 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         },
         "containerlabContainer",
       );
-      node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
+      node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}\nIPv4: ${v4Addr}\nIPv6: ${v6Addr}`;
 
-      if (ctr.state === 'running') node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
-      else node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+      if (ctr.state === 'running') {node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));}
+      else {node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));}
 
       return node;
     });
@@ -191,7 +191,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   }
 
   private async findLocalClabFiles(): Promise<string[]> {
-    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) return [];
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {return [];}
 
     const patterns = ['**/*.clab.yml', '**/*.clab.yaml'];
     const exclude = '**/node_modules/**';

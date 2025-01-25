@@ -17,7 +17,7 @@ export function stripFileName(path: string): string {
 }
 
 export function getRelativeFolderPath(targetPath: string): string {
-    const workspacePath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.path : ""
+    const workspacePath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.path : "";
     return path.relative(workspacePath, targetPath);
 }
 
