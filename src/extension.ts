@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { ContainerlabTreeDataProvider } from './containerlabTreeDataProvider';
+import { promisify } from 'util';
+import { exec } from 'child_process';
 import {
   deploy,
   deployCleanup,
@@ -21,9 +23,32 @@ import {
 } from './commands/index';
 
 export let outputChannel: vscode.OutputChannel;
+const execAsync = promisify(exec);
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("Containerlab");
+  context.subscriptions.push(outputChannel);
+
+  // Check if containerlab is installed
+  let versionOutput: string;
+  try {
+    const { stdout } = await execAsync('sudo containerlab version');
+    versionOutput = stdout;
+  } catch (err) {
+    // Show error message with button to open installation guide
+    const installAction = 'Open Installation Guide';
+    const selection = await vscode.window.showErrorMessage(
+      'containerlab not detected. Please install it first.',
+      installAction
+    );
+    
+    if (selection === installAction) {
+      vscode.env.openExternal(vscode.Uri.parse('https://containerlab.dev/install/'));
+    }
+    versionOutput = '';
+  }
+
+  
   const provider = new ContainerlabTreeDataProvider();
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
