@@ -64,15 +64,6 @@ These commands are available via:
 
 ---
 
-## Release Notes
-
-### 0.1.0
-
-- Initial release of **vscode-containerlab**.  
-
-
----
-
 ## Feedback and Contributions
 
 If you’d like to request features or report issues:
