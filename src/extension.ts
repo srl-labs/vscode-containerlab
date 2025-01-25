@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ContainerlabTreeDataProvider } from './containerlabTreeDataProvider';
 import {
   deploy,
+  deployForce,
   destroy,
   openLabFile,
   redeploy,
@@ -36,6 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
   */
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy.force', deployForce));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.redeploy', redeploy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.destroy', destroy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.start', startNode));

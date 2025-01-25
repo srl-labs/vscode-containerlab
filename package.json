@@ -64,6 +64,12 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.deploy.force",
+        "title": "Deploy Lab (force)",
+        "icon": "$(play)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.redeploy",
         "title": "Redeploy Lab",
         "icon": "$(refresh)",
@@ -123,23 +129,28 @@
       "editor/title": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.deploy",
+          "command": "containerlab.lab.destroy",
           "group": "navigation@1"
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.destroy",
+          "command": "containerlab.lab.redeploy",
           "group": "navigation@2"
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.redeploy",
+          "command": "containerlab.lab.graph",
           "group": "navigation@3"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy"
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.graph",
-          "group": "navigation@4"
+          "command": "containerlab.lab.deploy.force"
         }
       ],
       "view/item/context": [
