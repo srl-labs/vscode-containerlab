@@ -10,16 +10,17 @@ import { outputChannel } from '../extension';
 export function execCommandInTerminal(command: string, terminalName: string) {
     let terminal: vscode.Terminal | undefined;
     for (const term of vscode.window.terminals) {
-        if (term.name.match(terminalName)) {
+        if (term.name === terminalName) {
             terminal = term;
-            // Send Ctrl+C to stop any previous command
-            term.sendText("\x03");
+            // Send Ctrl+C & enter to stop any previous command
+            term.sendText("\x03\r");
             break;
         }
     }
     if (!terminal) {
         terminal = vscode.window.createTerminal({ name: terminalName });
     }
+
     terminal.sendText(command);
     terminal.show();
 }
