@@ -14,6 +14,7 @@ import {
   graphNextUI,
   graphDrawIO,
   graphDrawIOInteractive,
+  copyLabPath,
 } from './commands/index';
 
 export let outputChannel: vscode.OutputChannel;
@@ -36,6 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
   Register commands
   */
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.copyPath', copyLabPath));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy.force', deployForce));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.redeploy', redeploy));

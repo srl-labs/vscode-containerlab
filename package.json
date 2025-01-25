@@ -55,7 +55,11 @@
       },
       {
         "command": "containerlab.lab.openFile",
-        "title": "Open Lab File"
+        "title": "Edit topology"
+      },
+      {
+        "command": "containerlab.lab.copyPath",
+        "title": "Copy file path"
       },
       {
         "command": "containerlab.lab.deploy",
@@ -164,7 +168,12 @@
         {
           "command": "containerlab.lab.openFile",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@1"
+          "group": "labFile@0"
+        },
+        {
+          "command": "containerlab.lab.copyPath",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@1"
         },
         {
           "command": "containerlab.lab.deploy",
