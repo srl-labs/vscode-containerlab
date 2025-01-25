@@ -1,9 +1,9 @@
 {
   "name": "vscode-containerlab",
-  "publisher": "Nokia",
+  "publisher": "srl-labs",
   "displayName": "Containerlab",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -65,13 +65,13 @@
       },
       {
         "command": "containerlab.lab.deploy",
-        "title": "Deploy Lab",
+        "title": "Deploy",
         "icon": "$(play)",
         "category": "Containerlab"
       },
       {
-        "command": "containerlab.lab.deploy.force",
-        "title": "Deploy Lab (force)",
+        "command": "containerlab.lab.deploy.cleanup",
+        "title": "Deploy (cleanup)",
         "icon": "$(play)",
         "category": "Containerlab"
       },
@@ -83,13 +83,25 @@
       },
       {
         "command": "containerlab.lab.redeploy",
-        "title": "Redeploy Lab",
+        "title": "Redeploy",
+        "icon": "$(refresh)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.redeploy.cleanup",
+        "title": "Redeploy (cleanup)",
         "icon": "$(refresh)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.destroy",
-        "title": "Destroy Lab",
+        "title": "Destroy",
+        "icon": "$(trash)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.destroy.cleanup",
+        "title": "Destroy (cleanup)",
         "icon": "$(trash)",
         "category": "Containerlab"
       },
@@ -135,43 +147,54 @@
         {
           "command": "containerlab.refresh",
           "when": "view == containerlabExplorer",
-          "group": "navigation@1"
+          "group": "navigation@2"
         },
         {
           "command": "containerlab.lab.deploy.specificFile",
           "when": "view == containerlabExplorer",
-          "group": "navigation@0"
+          "group": "navigation@1"
         }
       ],
       "editor/title": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.destroy",
-          "group": "navigation@1"
-        },
-        {
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.redeploy",
-          "group": "navigation@2"
-        },
-        {
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.graph",
-          "group": "navigation@3"
+          "group": "navigation@1"
         }
       ],
       "editor/title/run": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.deploy",
-          "group": "navigation@0"
+          "group": "navigation@1"
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.deploy.force",
-          "group": "navigation@1"
+          "command": "containerlab.lab.deploy.cleanup", 
+          "group": "navigation@2"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy",
+          "group": "navigation@3"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy.cleanup",
+          "group": "navigation@4"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy",
+          "group": "navigation@5"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy.cleanup",
+          "group": "navigation@6"
         }
       ],
+
       "view/item/context": [
         {
           "command": "containerlab.refresh",
@@ -204,29 +227,44 @@
           "group": "navigation@2"
         },
         {
+          "command": "containerlab.lab.deploy.cleanup",
+          "when": "viewItem == containerlabLabUndeployed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "containerlab.lab.destroy",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@2"
+        },
+        {
+          "command": "containerlab.lab.destroy.cleanup",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@3"
+        },
+        {
           "command": "containerlab.lab.redeploy",
           "when": "viewItem == containerlabLabDeployed",
           "group": "navigation@4"
         },
         {
-          "command": "containerlab.lab.destroy",
+          "command": "containerlab.lab.redeploy.cleanup",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@3"
+          "group": "navigation@5"
         },
         {
           "command": "containerlab.lab.graph",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "containerlab.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@7"
+          "group": "navigation@8"
         },
         {
           "command": "containerlab.node.start",
@@ -260,11 +298,23 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
+          "command": "containerlab.lab.deploy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
           "command": "containerlab.lab.redeploy",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
+          "command": "containerlab.lab.redeploy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
           "command": "containerlab.lab.destroy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.destroy.cleanup",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
