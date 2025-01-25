@@ -8,17 +8,19 @@ export function sshToNode(node: ContainerlabNode) {
         return;
     }
 
-    const sshIp = node.details?.sshIp;
-    const containerLabel = node.label || "Container";
+    let sshTarget: string | undefined;
 
-    if (!sshIp) {
-        vscode.window.showErrorMessage('No IP found for SSH.');
-        return;
-    }
+    if(node.details?.hostname) sshTarget = node.details?.hostname;
+    else if(node.details?.v6Addr) sshTarget = node.details?.hostname;
+    else if(node.details?.v4Addr) sshTarget = node.details?.v4Addr;
+    else if(node.details?.containerId) sshTarget = node.details?.containerId;
+    else return vscode.window.showErrorMessage("No target to connect to container");
 
     // Pull the default SSH user from settings
     const config = vscode.workspace.getConfiguration("containerlab");
     const sshUser = config.get<string>("defaultSshUser", "admin");
 
-    execCommandInTerminal(`ssh ${sshUser}@${sshIp}`, `SSH - ${containerLabel}`);
+    const containerLabel = node.label || "Container";
+
+    execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${containerLabel}`);
 }

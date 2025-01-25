@@ -12,7 +12,7 @@ export class ContainerlabNode extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly details?: any,
+    public readonly details?: ClabNodeDetails,
     contextValue?: string
   ) {
     super(label, collapsibleState);
@@ -25,6 +25,19 @@ interface LabInfo {
   localExists: boolean;
   containers: any[];
   labName?: string;
+  owner?: string;
+}
+
+export interface ClabNodeDetails {
+  state?: any;
+  hostname?: string;
+  containerId?: string;
+  v4Addr?: string;
+  v6Addr?: string;
+  labName?: string;
+  labPath?: string;
+  localExists?: boolean;
+  containers?: any[];
   owner?: string;
 }
 
@@ -113,8 +126,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         finalLabel,
         collapsible,
         {
-          labPath,
-          localExists,
+          labPath: labPath,
+          localExists: localExists,
           containers: info.containers,
           labName: info.labName,
           owner: info.owner
@@ -138,7 +151,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         return 1; // b goes first
       }
       // If both have the same contextValue, labPath
-      return a.details.labPath.localeCompare(b.details.labPath);
+      return a.details!.labPath!.localeCompare(b.details!.labPath!);
     });
 
     return nodes;
@@ -146,21 +159,24 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   private getContainerNodes(containers: any[]): ContainerlabNode[] {
     const containerNodes = containers.map((ctr: any) => {
-      let ipWithoutSlash: string | undefined;
-      if (ctr.ipv4_address) {
-        const [ip] = ctr.ipv4_address.split('/');
-        ipWithoutSlash = ip;
-      }
+      let v4Addr, v6Addr: string | undefined;
+
+      if (ctr.ipv4_address) v4Addr = ctr.ipv4_address.split('/')[0];
+      if (ctr.ipv6_address) v6Addr = ctr.ipv6_address.split('/')[0];
+
       const label = `${ctr.name} (${ctr.state})`;
+
       const node = new ContainerlabNode(
         label,
         vscode.TreeItemCollapsibleState.None,
         {
+          hostname: ctr.name,
           containerId: ctr.container_id,
           state: ctr.state,
-          sshIp: ipWithoutSlash
+          v4Addr: v4Addr,
+          v6Addr: v6Addr,
         },
-        "containerlabContainer"
+        "containerlabContainer",
       );
       node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
 
