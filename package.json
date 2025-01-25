@@ -99,23 +99,23 @@
       },
       {
         "command": "containerlab.node.start",
-        "title": "Start Node"
+        "title": "Start node"
       },
       {
         "command": "containerlab.node.stop",
-        "title": "Stop Node"
+        "title": "Stop node"
       },
       {
         "command": "containerlab.node.attachShell",
-        "title": "Attach Shell"
+        "title": "Attach shell"
       },
       {
         "command": "containerlab.node.ssh",
-        "title": "SSH Node"
+        "title": "Connect to SSH"
       },
       {
         "command": "containerlab.showLogs",
-        "title": "Show Logs"
+        "title": "View logs"
       }
     ],
     "menus": {
@@ -146,78 +146,80 @@
       "editor/title/run": [
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.deploy"
+          "command": "containerlab.lab.deploy",
+          "group": "navigation@0"
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.deploy.force"
+          "command": "containerlab.lab.deploy.force",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
         {
           "command": "containerlab.refresh",
           "when": "view == containerlabExplorer",
-          "group": "navigation"
+          "group": "refresh@99"
         },
         {
           "command": "containerlab.lab.openFile",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation"
+          "group": "navigation@1"
         },
         {
           "command": "containerlab.lab.deploy",
           "when": "viewItem == containerlabLabUndeployed",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "containerlab.lab.redeploy",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation"
+          "group": "navigation@4"
         },
         {
           "command": "containerlab.lab.destroy",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
           "command": "containerlab.lab.graph",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation"
+          "group": "navigation@5"
         },
         {
           "command": "containerlab.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation"
+          "group": "navigation@6"
         },
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation"
+          "group": "navigation@7"
         },
         {
           "command": "containerlab.node.start",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@2"
         },
         {
           "command": "containerlab.node.stop",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@3"
         },
         {
           "command": "containerlab.node.attachShell",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@1"
         },
         {
           "command": "containerlab.node.ssh",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@0"
         },
         {
           "command": "containerlab.showLogs",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@4"
         }
       ],
       "commandPalette": [
