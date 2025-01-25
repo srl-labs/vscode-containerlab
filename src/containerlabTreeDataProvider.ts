@@ -2,8 +2,7 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import * as utils from './utils';
 
 const execAsync = promisify(exec);
 
@@ -11,7 +10,7 @@ export class ContainerlabNode extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly details?: any,
+    public readonly details?: ClabNodeDetails,
     contextValue?: string
   ) {
     super(label, collapsibleState);
@@ -27,11 +26,24 @@ interface LabInfo {
   owner?: string;
 }
 
+export interface ClabNodeDetails {
+  state?: any;
+  hostname?: string;
+  containerId?: string;
+  v4Addr?: string;
+  v6Addr?: string;
+  labName?: string;
+  labPath?: string;
+  localExists?: boolean;
+  containers?: any[];
+  owner?: string;
+}
+
 export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<ContainerlabNode> {
   private _onDidChangeTreeData = new vscode.EventEmitter<ContainerlabNode | undefined | void>();
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor(private outputChannel: vscode.OutputChannel) {}
+  constructor() { }
 
   getTreeItem(element: ContainerlabNode): vscode.TreeItem {
     return element;
@@ -40,7 +52,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
       return this.getAllLabs();
-    } else {
+    }
+    else {
       const info = element.details as LabInfo;
       if (info && info.containers.length > 0) {
         return this.getContainerNodes(info.containers);
@@ -112,8 +125,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         finalLabel,
         collapsible,
         {
-          labPath,
-          localExists,
+          labPath: labPath,
+          localExists: localExists,
           containers: info.containers,
           labName: info.labName,
           owner: info.owner
@@ -121,22 +134,23 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         contextVal
       );
       node.iconPath = new vscode.ThemeIcon('circle-filled', color);
+      node.description = utils.getRelLabFolderPath(labPath);
       nodes.push(node);
     }
 
     // 1) Labs with contextValue === "containerlabLabDeployed" come first
     // 2) Then labs with contextValue === "containerlabLabUndeployed"
-    // 3) Within each group, sort by .label
+    // 3) Within each group, sort by labPath
     nodes.sort((a, b) => {
       // First compare contextValue
       if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
         return -1; // a goes first
-      } 
+      }
       if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
         return 1; // b goes first
       }
-      // If both have the same contextValue, compare labels
-      return a.label.localeCompare(b.label);
+      // If both have the same contextValue, labPath
+      return a.details!.labPath!.localeCompare(b.details!.labPath!);
     });
 
     return nodes;
@@ -144,35 +158,30 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   private getContainerNodes(containers: any[]): ContainerlabNode[] {
     const containerNodes = containers.map((ctr: any) => {
-      let ipWithoutSlash: string | undefined;
-      if (ctr.ipv4_address) {
-        const [ip] = ctr.ipv4_address.split('/');
-        ipWithoutSlash = ip;
-      }
+      let v4Addr, v6Addr: string | undefined;
+
+      if (ctr.ipv4_address) v4Addr = ctr.ipv4_address.split('/')[0];
+      if (ctr.ipv6_address) v6Addr = ctr.ipv6_address.split('/')[0];
+
       const label = `${ctr.name} (${ctr.state})`;
+
       const node = new ContainerlabNode(
         label,
         vscode.TreeItemCollapsibleState.None,
         {
+          hostname: ctr.name,
           containerId: ctr.container_id,
           state: ctr.state,
-          sshIp: ipWithoutSlash
+          v4Addr: v4Addr,
+          v6Addr: v6Addr,
         },
-        "containerlabContainer"
+        "containerlabContainer",
       );
       node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
 
-      if (ctr.state === 'running') {
-        node.iconPath = new vscode.ThemeIcon(
-          'circle-filled',
-          new vscode.ThemeColor('testing.iconPassed')
-        );
-      } else {
-        node.iconPath = new vscode.ThemeIcon(
-          'circle-filled',
-          new vscode.ThemeColor('testing.iconFailed')
-        );
-      }
+      if (ctr.state === 'running') node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
+      else node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+
       return node;
     });
 
@@ -182,9 +191,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   }
 
   private async findLocalClabFiles(): Promise<string[]> {
-    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-      return [];
-    }
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) return [];
 
     const patterns = ['**/*.clab.yml', '**/*.clab.yaml'];
     const exclude = '**/node_modules/**';
@@ -208,7 +215,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       const { stdout: out } = await execAsync('sudo containerlab inspect --all --format json');
       stdout = out;
     } catch (err) {
-      this.outputChannel.appendLine(`Error running containerlab inspect: ${err}`);
+      console.debug(`Error running containerlab inspect: ${err}`);
       return {};
     }
 
@@ -216,7 +223,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     try {
       parsed = JSON.parse(stdout);
     } catch (err) {
-      this.outputChannel.appendLine(`Error parsing containerlab JSON: ${err}`);
+      console.debug(`Error parsing containerlab JSON: ${err}`);
       parsed = { containers: [] };
     }
 
@@ -233,8 +240,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     for (const c of arr) {
       let p = c.labPath || '';
       const original = p;
-      p = this.normalizeLabPath(p, singleFolderBase);
-      this.outputChannel.appendLine(
+      p = utils.normalizeLabPath(p, singleFolderBase);
+      console.debug(
         `Container: ${c.name}, original path: ${original}, normalized: ${p}`
       );
 
@@ -251,56 +258,5 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     }
 
     return map;
-  }
-
-  /**
-   * If path is absolute, return it.
-   * If starts with '~', expand it.
-   * If relative, do a best guess approach.
-   */
-  private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
-    if (!labPath) {
-      this.outputChannel.appendLine(`normalizeLabPath: received empty labPath`);
-      return labPath;
-    }
-
-    const originalInput = labPath;
-    labPath = path.normalize(labPath);
-
-    if (path.isAbsolute(labPath)) {
-      this.outputChannel.appendLine(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
-      return labPath;
-    }
-
-    if (labPath.startsWith('~')) {
-      const homedir = os.homedir();
-      const sub = labPath.replace(/^~[\/\\]?/, '');
-      const expanded = path.normalize(path.join(homedir, sub));
-      this.outputChannel.appendLine(
-        `normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`
-      );
-      return expanded;
-    }
-
-    // If truly relative, we do our best guess approach
-    let candidatePaths: string[] = [];
-    if (singleFolderBase) {
-      candidatePaths.push(path.normalize(path.resolve(singleFolderBase, labPath)));
-    }
-    candidatePaths.push(path.normalize(path.resolve(process.cwd(), labPath)));
-
-    for (const candidate of candidatePaths) {
-      this.outputChannel.appendLine(`normalizeLabPath => checking if path exists: ${candidate}`);
-      if (fs.existsSync(candidate)) {
-        this.outputChannel.appendLine(`normalizeLabPath => found existing path: ${candidate}`);
-        return candidate;
-      }
-    }
-
-    const chosen = candidatePaths[0];
-    this.outputChannel.appendLine(
-      `normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`
-    );
-    return chosen;
   }
 }

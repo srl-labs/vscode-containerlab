@@ -1,9 +1,9 @@
 {
   "name": "vscode-containerlab",
-  "publisher": "Nokia",
+  "publisher": "srl-labs",
   "displayName": "Containerlab",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -50,98 +50,327 @@
     "commands": [
       {
         "command": "containerlab.refresh",
-        "title": "Refresh Containerlab Explorer"
+        "title": "Refresh Containerlab Explorer",
+        "icon": "$(refresh)"
       },
       {
-        "command": "containerlab.openLabFile",
-        "title": "Open Lab File"
+        "command": "containerlab.lab.openFile",
+        "title": "Edit topology",
+        "icon": "$(pencil)"
       },
       {
-        "command": "containerlab.deployLab",
-        "title": "Deploy Lab"
+        "command": "containerlab.lab.copyPath",
+        "title": "Copy file path",
+        "icon": "$(copy)"
       },
       {
-        "command": "containerlab.redeployLab",
-        "title": "Redeploy Lab"
+        "command": "containerlab.lab.deploy",
+        "title": "Deploy",
+        "icon": "$(play)",
+        "category": "Containerlab"
       },
       {
-        "command": "containerlab.destroyLab",
-        "title": "Destroy Lab"
+        "command": "containerlab.lab.deploy.cleanup",
+        "title": "Deploy (cleanup)",
+        "icon": "$(play)",
+        "category": "Containerlab"
       },
       {
-        "command": "containerlab.startNode",
-        "title": "Start Node"
+        "command": "containerlab.lab.deploy.specificFile",
+        "title": "Deploy lab file",
+        "icon": "$(plus)",
+        "category": "Containerlab"
       },
       {
-        "command": "containerlab.stopNode",
-        "title": "Stop Node"
+        "command": "containerlab.lab.redeploy",
+        "title": "Redeploy",
+        "icon": "$(refresh)",
+        "category": "Containerlab"
       },
       {
-        "command": "containerlab.attachShell",
-        "title": "Attach Shell"
+        "command": "containerlab.lab.redeploy.cleanup",
+        "title": "Redeploy (cleanup)",
+        "icon": "$(refresh)",
+        "category": "Containerlab"
       },
       {
-        "command": "containerlab.sshNode",
-        "title": "SSH Node"
+        "command": "containerlab.lab.destroy",
+        "title": "Destroy",
+        "icon": "$(trash)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.destroy.cleanup",
+        "title": "Destroy (cleanup)",
+        "icon": "$(trash)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph",
+        "title": "Graph Lab (Web)",
+        "icon": "$(graph-line)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio",
+        "title": "Graph Lab (draw.io)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.interactive",
+        "title": "Graph Lab (draw.io, Interactive)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.node.start",
+        "title": "Start node"
+      },
+      {
+        "command": "containerlab.node.stop",
+        "title": "Stop node"
+      },
+      {
+        "command": "containerlab.node.attachShell",
+        "title": "Attach shell"
+      },
+      {
+        "command": "containerlab.node.ssh",
+        "title": "Connect to SSH"
       },
       {
         "command": "containerlab.showLogs",
-        "title": "Show Logs"
+        "title": "View logs"
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "containerlab.refresh",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "containerlab.lab.deploy.specificFile",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.graph",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy",
+          "group": "navigation@1"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy.cleanup",
+          "group": "navigation@2"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy",
+          "group": "navigation@3"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy.cleanup",
+          "group": "navigation@4"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy",
+          "group": "navigation@5"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy.cleanup",
+          "group": "navigation@6"
+        }
+      ],
       "view/item/context": [
         {
           "command": "containerlab.refresh",
           "when": "view == containerlabExplorer",
-          "group": "navigation"
+          "group": "refresh@99"
         },
         {
-          "command": "containerlab.openLabFile",
+          "command": "containerlab.lab.openFile",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation"
+          "group": "inline@0"
         },
         {
-          "command": "containerlab.deployLab",
+          "command": "containerlab.lab.copyPath",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "inline@1"
+        },
+        {
+          "command": "containerlab.lab.openFile",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@0"
+        },
+        {
+          "command": "containerlab.lab.copyPath",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@1"
+        },
+        {
+          "command": "containerlab.lab.deploy",
           "when": "viewItem == containerlabLabUndeployed",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
-          "command": "containerlab.redeployLab",
+          "command": "containerlab.lab.deploy.cleanup",
+          "when": "viewItem == containerlabLabUndeployed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "containerlab.lab.destroy",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
-          "command": "containerlab.destroyLab",
+          "command": "containerlab.lab.destroy.cleanup",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
-          "command": "containerlab.startNode",
-          "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "command": "containerlab.lab.redeploy",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@4"
         },
         {
-          "command": "containerlab.stopNode",
-          "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "command": "containerlab.lab.redeploy.cleanup",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@5"
         },
         {
-          "command": "containerlab.attachShell",
-          "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "command": "containerlab.lab.graph",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "navigation@6"
         },
         {
-          "command": "containerlab.sshNode",
+          "command": "containerlab.lab.graph.drawio",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "navigation@7"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "navigation@8"
+        },
+        {
+          "command": "containerlab.node.start",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@2"
+        },
+        {
+          "command": "containerlab.node.stop",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@3"
+        },
+        {
+          "command": "containerlab.node.attachShell",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@1"
+        },
+        {
+          "command": "containerlab.node.ssh",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@0"
         },
         {
           "command": "containerlab.showLogs",
           "when": "viewItem == containerlabContainer",
-          "group": "navigation"
+          "group": "nodeNavigation@4"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "containerlab.lab.deploy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.deploy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.redeploy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.redeploy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.destroy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.destroy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         }
       ]
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d",
+        "command": "containerlab.lab.deploy"
+      },
+      {
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "command": "containerlab.lab.redeploy"
+      },
+      {
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "command": "containerlab.lab.destroy"
+      },
+      {
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g",
+        "command": "containerlab.lab.graph"
+      }
+    ],
+    "configuration": {
+      "title": "Containerlab",
+      "properties": {
+        "containerlab.defaultSshUser": {
+          "type": "string",
+          "default": "admin",
+          "description": "Default SSH user to use when connecting to containerlab nodes."
+        },
+        "containerlab.sudoEnabledByDefault": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to prepend 'sudo' to all containerlab commands by default."
+        },
+        "containerlab.refreshInterval": {
+          "type": "number",
+          "default": 10000,
+          "description": "Refresh interval (in milliseconds) for the Containerlab Explorer."
+        }
+      }
     }
   },
   "scripts": {
@@ -149,8 +378,11 @@
     "watch": "tsc -w -p ."
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
     "@types/node": "^18.0.0",
-    "@types/vscode": "^1.70.0"
+    "@types/vscode": "^1.70.0",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@vscode/test-cli": "^0.0.10"
   }
 }
