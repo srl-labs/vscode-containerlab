@@ -1,11 +1,12 @@
 # Change Log
 
-All notable changes to the "vscode-containerlab" extension will be documented in this file.
+## [0.2.0] - 2025-25-01
+### Added
+- Check if containerlab is installed
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## [0.1.0] - 2025-25-01
+- Initial public release
 
 ## [0.0.1] - 2025-22-01
-
-## [Unreleased]
 
 - Initial release
