@@ -2,6 +2,7 @@
   "name": "vscode-containerlab",
   "publisher": "srl-labs",
   "displayName": "Containerlab",
+  "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "version": "0.1.0",
   "engines": {
