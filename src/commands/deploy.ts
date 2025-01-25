@@ -22,7 +22,15 @@ export function deployCleanup(node: ContainerlabNode) {
 }
 
 export function deploySpecificFile() {
-  vscode.window.showOpenDialog().then(uri => {
+
+  const opts: vscode.OpenDialogOptions = {
+    title: "Select containerlab topology file",
+    filters: {
+      yaml: ["yaml", "yml"]
+    },
+  }
+
+  vscode.window.showOpenDialog(opts).then(uri => {
     if (!uri || !uri.length) {
       return;
     }
