@@ -4,7 +4,7 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -12,6 +12,10 @@
     "type": "git",
     "url": "https://github.com/srl-labs/vscode-containerlab"
   },
+  "extensionPack": [
+    "hediet.vscode-drawio",
+    "redhat.vscode-yaml"
+  ],
   "main": "./out/extension.js",
   "activationEvents": [
     "onCommand:your.extension.command",
