@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as utils from '../utils';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { outputChannel } from '../extension';
 import { ContainerlabNode } from '../containerlabTreeDataProvider';
 
@@ -52,6 +52,18 @@ export function execCommandInOutput(command: string) {
     });
 }
 
+export type ClabCmdOpts = {
+    command: string;
+    node: ContainerlabNode;
+    runInTerminal: boolean;
+    spinnerMsg?: SpinnerMsg;
+}
+
+export type SpinnerMsg = {
+    progressMsg: string;
+    successMsg: string;
+}
+
 /**
  * A helper class to build a 'containerlab' command (with optional sudo, etc.)
  * and run it either in the Output channel or in a Terminal.
@@ -60,18 +72,28 @@ export class ClabCommand {
     private command: string;
     private node: ContainerlabNode;
     private useSudo: boolean;
-    private runInOutput: boolean;
+    private runInSpinner: boolean;
+    private spinnerMsg?: SpinnerMsg;
 
-    constructor(command: string, node: ContainerlabNode, runInOutput?: boolean) {
-        this.command = command;
-        this.node = node;
+    constructor(options: ClabCmdOpts) {
+        this.command = options.command;
+        this.node = options.node;
+
+        this.runInSpinner = options.runInTerminal ? false : true;
+        if (this.runInSpinner) {
+            if (!options.spinnerMsg) {
+                throw new Error(`${options.command} ClabCommand is using spinner, but spinnerMsg is not defined`);
+            }
+            else {
+                this.spinnerMsg = options.spinnerMsg;
+            }
+        }
 
         const config = vscode.workspace.getConfiguration("containerlab");
         this.useSudo = config.get<boolean>("sudoEnabledByDefault", true);
-        this.runInOutput = runInOutput || false;
     }
 
-    public run(flags?: string[]) {
+    public async run(flags?: string[]) {
         // Try node.details -> fallback to active editor
         let labPath = this.node?.details?.labPath;
         if (!labPath) {
@@ -89,7 +111,7 @@ export class ClabCommand {
         }
 
         // Build the command array
-        const cmdParts: string[] = [];
+        let cmdParts: string[] = [];
 
         // Sudo if configured
         if (this.useSudo) {
@@ -108,17 +130,89 @@ export class ClabCommand {
         }
 
         // Finally the topology file
-        cmdParts.push("-t", `"${labPath}"`);
+        cmdParts.push("-t", labPath);
 
         // Combine into a single string
         const cmd = cmdParts.join(" ");
 
+        outputChannel.appendLine(`[${this.command}] Running: ${cmd}`);
+
         // Decide: Output channel or Terminal?
-        if (this.runInOutput) {
-            execCommandInOutput(cmd);
+        if (this.runInSpinner) {
+            // pass cmdParts as it's an array.
+            this.execSpinner(cmdParts);
         } else {
             const terminalName = utils.getRelLabFolderPath(labPath);
             execCommandInTerminal(cmd, terminalName);
+        }
+    }
+
+    private async execSpinner(cmd: string[]) {
+        try {
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: this.spinnerMsg?.progressMsg,
+                    cancellable: true
+                },
+                async (progress, token) => {
+                    return new Promise<void>((resolve, reject) => {
+                        const child = spawn(cmd[0], cmd.slice(1));
+
+                        // If user clicks Cancel, kill the child process
+                        token.onCancellationRequested(() => {
+                            child.kill();
+                            reject(new Error(`User cancelled the ${this.command.toLowerCase()} command.`));
+                        });
+
+                        // On stdout, parse lines and update spinner + output channel
+                        child.stdout.on("data", (data: Buffer) => {
+                            const lines = data.toString().split("\n");
+                            for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (trimmed) {
+                                    const cleanLine = utils.stripAnsi(trimmed);
+                                    progress.report({ message: cleanLine });
+                                    outputChannel.appendLine(cleanLine);
+                                }
+                            }
+                        });
+
+                        // stderr lines → output channel only
+                        child.stderr.on("data", (data: Buffer) => {
+                            const lines = data.toString().split("\n");
+                            for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (trimmed) {
+                                    outputChannel.appendLine(`[stderr] ${utils.stripAnsi(trimmed)}`);
+                                }
+                            }
+                        });
+
+                        // When the process completes
+                        child.on("close", (code) => {
+                            if (code === 0) {
+                                resolve();
+                            } else {
+                                reject(new Error(`Process exited with code ${code}`));
+                            }
+                        });
+                    });
+                }
+            );
+
+            // If we get here, the command succeeded
+            vscode.window
+                .showInformationMessage(this.spinnerMsg?.successMsg!, "Show Logs")
+                .then((choice) => {
+                    if (choice === "Show Logs") {
+                        outputChannel.show(true);
+                    }
+                });
+
+            vscode.commands.executeCommand("containerlab.refresh");
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`${this.command} failed: ${err.message}`);
         }
     }
 }
