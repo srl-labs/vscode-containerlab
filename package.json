@@ -170,7 +170,7 @@
         },
         {
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "command": "containerlab.lab.deploy.cleanup", 
+          "command": "containerlab.lab.deploy.cleanup",
           "group": "navigation@2"
         },
         {
@@ -194,7 +194,6 @@
           "group": "navigation@6"
         }
       ],
-
       "view/item/context": [
         {
           "command": "containerlab.refresh",
