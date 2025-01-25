@@ -176,7 +176,7 @@ export class Command {
 
             vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
-            const failMsg = this.spinnerMsg?.failMsg ? this.spinnerMsg.failMsg : `${this.command} failed: ${err.message}`;
+            const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${this.command} failed: ${err.message}`;
             vscode.window.showErrorMessage(failMsg);
         }
     }
