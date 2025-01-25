@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
 import * as utils from './utils';
 
 const execAsync = promisify(exec);
@@ -45,7 +43,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   private _onDidChangeTreeData = new vscode.EventEmitter<ContainerlabNode | undefined | void>();
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor(private outputChannel: vscode.OutputChannel) {}
+  constructor() { }
 
   getTreeItem(element: ContainerlabNode): vscode.TreeItem {
     return element;
@@ -54,7 +52,8 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   async getChildren(element?: ContainerlabNode): Promise<ContainerlabNode[]> {
     if (!element) {
       return this.getAllLabs();
-    } else {
+    }
+    else {
       const info = element.details as LabInfo;
       if (info && info.containers.length > 0) {
         return this.getContainerNodes(info.containers);
@@ -146,7 +145,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       // First compare contextValue
       if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
         return -1; // a goes first
-      } 
+      }
       if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
         return 1; // b goes first
       }
@@ -180,17 +179,9 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       );
       node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}`;
 
-      if (ctr.state === 'running') {
-        node.iconPath = new vscode.ThemeIcon(
-          'circle-filled',
-          new vscode.ThemeColor('testing.iconPassed')
-        );
-      } else {
-        node.iconPath = new vscode.ThemeIcon(
-          'circle-filled',
-          new vscode.ThemeColor('testing.iconFailed')
-        );
-      }
+      if (ctr.state === 'running') node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));
+      else node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));
+
       return node;
     });
 
@@ -200,9 +191,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   }
 
   private async findLocalClabFiles(): Promise<string[]> {
-    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-      return [];
-    }
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) return [];
 
     const patterns = ['**/*.clab.yml', '**/*.clab.yaml'];
     const exclude = '**/node_modules/**';
@@ -251,7 +240,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     for (const c of arr) {
       let p = c.labPath || '';
       const original = p;
-      p = this.normalizeLabPath(p, singleFolderBase);
+      p = utils.normalizeLabPath(p, singleFolderBase);
       console.debug(
         `Container: ${c.name}, original path: ${original}, normalized: ${p}`
       );
@@ -269,56 +258,5 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
     }
 
     return map;
-  }
-
-  /**
-   * If path is absolute, return it.
-   * If starts with '~', expand it.
-   * If relative, do a best guess approach.
-   */
-  private normalizeLabPath(labPath: string, singleFolderBase?: string): string {
-    if (!labPath) {
-      console.debug(`normalizeLabPath: received empty labPath`);
-      return labPath;
-    }
-
-    const originalInput = labPath;
-    labPath = path.normalize(labPath);
-
-    if (path.isAbsolute(labPath)) {
-      console.debug(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
-      return labPath;
-    }
-
-    if (labPath.startsWith('~')) {
-      const homedir = os.homedir();
-      const sub = labPath.replace(/^~[\/\\]?/, '');
-      const expanded = path.normalize(path.join(homedir, sub));
-      console.debug(
-        `normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`
-      );
-      return expanded;
-    }
-
-    // If truly relative, we do our best guess approach
-    let candidatePaths: string[] = [];
-    if (singleFolderBase) {
-      candidatePaths.push(path.normalize(path.resolve(singleFolderBase, labPath)));
-    }
-    candidatePaths.push(path.normalize(path.resolve(process.cwd(), labPath)));
-
-    for (const candidate of candidatePaths) {
-      console.debug(`normalizeLabPath => checking if path exists: ${candidate}`);
-      if (fs.existsSync(candidate)) {
-        console.debug(`normalizeLabPath => found existing path: ${candidate}`);
-        return candidate;
-      }
-    }
-
-    const chosen = candidatePaths[0];
-    console.debug(
-      `normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`
-    );
-    return chosen;
   }
 }

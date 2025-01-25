@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("Containerlab");
 
   // Pass this output channel to our tree data provider
-  const provider = new ContainerlabTreeDataProvider(outputChannel);
+  const provider = new ContainerlabTreeDataProvider();
 
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
