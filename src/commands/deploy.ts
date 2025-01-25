@@ -29,7 +29,14 @@ export function deployForce(node: ContainerlabNode) {
 }
 
 export function deploySpecificFile() {
-  vscode.window.showOpenDialog().then(
+  const opts: vscode.OpenDialogOptions = {
+    title: "Select containerlab topology file",
+    filters: {
+      yaml: ["yaml", "yml"]
+    },
+  }
+
+  vscode.window.showOpenDialog(opts).then(
     (uri) => {
       const newUriObj = vscode.Uri.parse(uri!.toString());
 
