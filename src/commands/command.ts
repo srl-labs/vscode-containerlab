@@ -61,6 +61,7 @@ export type CmdOptions = {
 export type SpinnerMsg = {
     progressMsg: string;
     successMsg: string;
+    failMsg?: string;
 }
 
 /**
@@ -175,7 +176,8 @@ export class Command {
 
             vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
-            vscode.window.showErrorMessage(`${this.command} failed: ${err.message}`);
+            const failMsg = this.spinnerMsg?.failMsg ? this.spinnerMsg.failMsg : `${this.command} failed: ${err.message}`;
+            vscode.window.showErrorMessage(failMsg);
         }
     }
 }
