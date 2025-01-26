@@ -93,7 +93,7 @@ export class Command {
         this.useSudo = config.get<boolean>("sudoEnabledByDefault", true);
     }
 
-    protected execute(args?: string[]) {
+    protected execute(args?: string[]): Promise<void> {
         let cmd: string[] = [];
 
         if(this.useSudo) {cmd.push("sudo");}
@@ -103,10 +103,11 @@ export class Command {
         outputChannel.appendLine(`[${this.command}] Running: ${cmd.join(" ")}`);
 
         if(this.useSpinner) {
-            this.execSpinner(cmd);
+            return this.execSpinner(cmd);
         }
         else {
             execCommandInTerminal(cmd.join(" "), this.terminalName!);
+            return Promise.resolve();
         }
     }
 
