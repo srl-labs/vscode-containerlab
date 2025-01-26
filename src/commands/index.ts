@@ -12,3 +12,4 @@ export * from "./graph";
 export * from "./copy";
 export * from "./addToWorkspace";
 export * from "./openFolderInNewWindow";
+export * from "./inspect";

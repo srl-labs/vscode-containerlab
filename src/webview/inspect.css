@@ -1,0 +1,37 @@
+body {
+  font-family: var(--vscode-editor-font-family, sans-serif);
+  color: var(--vscode-editor-foreground);
+  background-color: var(--vscode-editor-background);
+  margin: 1em;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 2em;
+}
+
+th, td {
+  border: 1px solid var(--vscode-editor-foreground);
+  padding: 6px 8px;
+}
+
+tr:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Example state classes */
+.state-running {
+  color: limegreen;
+  font-weight: bold;
+}
+
+.state-exited {
+  color: red;
+  font-weight: bold;
+}
+
+.state-other {
+  color: gold;
+  font-weight: bold;
+}

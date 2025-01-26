@@ -10,6 +10,8 @@ import {
   destroyCleanup,
   redeploy,
   redeployCleanup,
+  inspectAllLabs,
+  inspectOneLab,
   openLabFile,
   openFolderInNewWindow,
   startNode,
@@ -80,6 +82,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.destroy', destroy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', destroyCleanup));
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.inspectAll", () => inspectAllLabs(context))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.inspectOneLab", (node) => inspectOneLab(node, context))
+  );
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph', graphNextUI));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO));
