@@ -19,7 +19,8 @@ import {
   graphNextUI,
   graphDrawIO,
   graphDrawIOInteractive,
-  copyLabPath
+  copyLabPath,
+  addLabFolderToWorkspace
 } from './commands/index';
 
 export let outputChannel: vscode.OutputChannel;
@@ -57,6 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.addToWorkspace',addLabFolderToWorkspace));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.copyPath', copyLabPath));
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
