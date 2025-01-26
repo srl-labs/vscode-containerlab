@@ -1,3 +1,6 @@
+import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
 import { ContainerlabNode } from "../containerlabTreeDataProvider";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
@@ -12,9 +15,9 @@ export function graphNextUI(node: ContainerlabNode) {
 }
 
 /**
- * Graph Lab (draw.io) => Use spinner
+ * Graph Lab (draw.io) => use spinner, then open .drawio file in hediet.vscode-drawio
  */
-export function graphDrawIO(node: ContainerlabNode) {
+export async function graphDrawIO(node: ContainerlabNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Generating DrawIO graph...",
     successMsg: "DrawIO Graph Completed!",
@@ -23,7 +26,28 @@ export function graphDrawIO(node: ContainerlabNode) {
 
   const graphCmd = new ClabCommand("graph", node, spinnerMessages);
 
-  graphCmd.run(["--drawio"]);
+  // Figure out the .drawio filename
+  if (!node.details?.labPath) {
+    vscode.window.showErrorMessage("No lab path found. Cannot open .drawio file.");
+    return;
+  }
+  const labPath = node.details.labPath;
+  const drawioPath = labPath.replace(/\.(ya?ml)$/i, ".drawio");
+  const drawioUri = vscode.Uri.file(drawioPath);
+
+  // Wait for containerlab to finish generating <labFileName>.drawio
+  await graphCmd.run(["--drawio"]).then(
+    () => {
+      // Verify the file exists
+      if (!fs.existsSync(drawioPath)) {
+        vscode.window.showErrorMessage(
+          `Containerlab generated no .drawio file: ${drawioPath}`
+        );
+      }
+
+      vscode.commands.executeCommand("vscode.open", drawioUri);
+    }
+  )
 }
 
 /**
