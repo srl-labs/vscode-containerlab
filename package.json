@@ -159,6 +159,36 @@
         "command": "containerlab.node.showLogs",
         "title": "View logs",
         "icon": "$(list-unordered)"
+      },
+      {
+        "command": "containerlab.node.copyIPv4Address",
+        "title": "IPv4 Address"
+      },
+      {
+        "command": "containerlab.node.copyIPv6Address",
+        "title": "IPv6 Address"
+      },
+      {
+        "command": "containerlab.node.copyName",
+        "title": "Name"
+      },
+      {
+        "command": "containerlab.node.copyID",
+        "title": "Container ID"
+      },
+      {
+        "command": "containerlab.node.copyKind",
+        "title": "Kind"
+      },
+      {
+        "command": "containerlab.node.copyImage",
+        "title": "Image"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "containerlab.submenu.node.copy",
+        "label": "Copy"
       }
     ],
     "menus": {
@@ -333,6 +363,11 @@
           "command": "containerlab.node.showLogs",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@4"
+        },
+        {
+          "submenu": "containerlab.submenu.node.copy",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeCopySubmenu"
         }
       ],
       "commandPalette": [
@@ -371,6 +406,32 @@
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        }
+      ],
+      "containerlab.submenu.node.copy": [
+        {
+          "command": "containerlab.node.copyName",
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.node.copyID",
+          "group": "navigation@2"
+        },
+        {
+          "command": "containerlab.node.copyIPv4Address",
+          "group": "navigation@3"
+        },
+        {
+          "command": "containerlab.node.copyIPv6Address",
+          "group": "navigation@4"
+        },
+        {
+          "command": "containerlab.node.copyKind",
+          "group": "navigation@5"
+        },
+        {
+          "command": "containerlab.node.copyImage",
+          "group": "navigation@6"
         }
       ]
     },
