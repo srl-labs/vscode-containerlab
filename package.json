@@ -156,7 +156,7 @@
         "icon": "$(remote)"
       },
       {
-        "command": "containerlab.showLogs",
+        "command": "containerlab.node.showLogs",
         "title": "View logs",
         "icon": "$(list-unordered)"
       }
@@ -315,7 +315,7 @@
           "group": "inline@2"
         },
         {
-          "command": "containerlab.showLogs",
+          "command": "containerlab.node.showLogs",
           "when": "viewItem == containerlabContainer",
           "group": "inline@0"
         },
@@ -330,7 +330,7 @@
           "group": "nodeNavigation@0"
         },
         {
-          "command": "containerlab.showLogs",
+          "command": "containerlab.node.showLogs",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@4"
         }

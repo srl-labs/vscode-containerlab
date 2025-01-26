@@ -81,7 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.stop', stopNode));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.attachShell', attachShell));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.ssh', sshToNode));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.showLogs', showLogs));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.showLogs', showLogs));
 
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
