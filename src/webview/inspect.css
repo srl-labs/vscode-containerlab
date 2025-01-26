@@ -1,49 +1,37 @@
 body {
-    font-family: var(--vscode-editor-font-family, sans-serif);
-    color: var(--vscode-editor-foreground);
-    background-color: var(--vscode-editor-background);
-    margin: 1em;
-  }
-  
-  h2 {
-    margin-top: 2em;
-    color: var(--vscode-sideBarTitle-foreground);
-    font-weight: bold;
-    border-bottom: 1px solid var(--vscode-panel-border);
-    padding-bottom: 0.3em;
-  }
-  
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 2em;
-  }
-  
-  thead {
-    background-color: var(--vscode-panel-border);
-  }
-  
-  th, td {
-    border: 1px solid var(--vscode-editor-foreground);
-    padding: 8px 10px;
-  }
-  
-  tr:hover {
-    background-color: var(--vscode-list-hoverBackground);
-  }
-  
-  .state-running {
-    color: limegreen;
-    font-weight: bold;
-  }
-  
-  .state-exited {
-    color: red;
-    font-weight: bold;
-  }
-  
-  .state-other {
-    color: gold;
-    font-weight: bold;
-  }
-  
+  font-family: var(--vscode-editor-font-family, sans-serif);
+  color: var(--vscode-editor-foreground);
+  background-color: var(--vscode-editor-background);
+  margin: 1em;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 2em;
+}
+
+th, td {
+  border: 1px solid var(--vscode-editor-foreground);
+  padding: 6px 8px;
+}
+
+tr:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Example state classes */
+.state-running {
+  color: limegreen;
+  font-weight: bold;
+}
+
+.state-exited {
+  color: red;
+  font-weight: bold;
+}
+
+.state-other {
+  color: gold;
+  font-weight: bold;
+}
