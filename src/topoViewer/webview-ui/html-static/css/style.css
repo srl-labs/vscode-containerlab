@@ -1,0 +1,552 @@
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-y: hidden;
+  /*overflow-y: hidden; /* Prevents vertical scrollbar DISABLE THIS FOR DEBUG */
+}
+
+body {
+  font: 14px helvetica neue, helvetica, arial, sans-serif;
+}
+
+#settings {
+ /*top: 70px;
+ */
+  bottom: 0px;
+  right: 25px;
+  width: 300px;
+  position: absolute;
+}
+
+.popper-div {
+  background:rgba(202, 203, 204, 0.7);
+  border: 1px solid #aaa; /* Optional: A border to enhance visibility */
+  border-radius: 10px; /* Adjust for more or less curve */
+  padding: 0.2em; /* Adds space inside the element */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Optional: Subtle shadow for a modern look */
+  z-index: 99999;
+  width: max-content;
+  position: absolute;
+}
+
+.popper-div a {
+  text-decoration: none;
+  color: black;
+  font-weight: bold; 
+  outline-color: #FFFFFF;
+  z-index: 99999;
+
+}
+
+.popper-div a:hover {
+  text-decoration: underline;
+}
+
+#edgeLength, #nodeSpacing #nodeGap {
+  width: 100%;
+}
+
+#cy { 
+  width: 100%;
+  height: 100%;
+  padding-bottom: 50px;
+  position: absolute;
+  z-index: 1; /* Background */
+}
+
+#cy-leaflet {
+  width: 100%;
+  height: 100%;
+  padding-bottom: 50px;
+  position: absolute;
+  z-index: 0; /* Background */
+  display: none; /* Initially hide the Leaflet map */
+}
+
+    /* horizontal split layout */
+    /* horizontal split layout */
+    /* Root div for Cytoscape container */
+    /* #root-div {
+      width: 100%; 
+      height: 70%;
+      position: relative;
+      z-index: 1; 
+    } */
+
+    /* Data display panel */
+    /* #data-display {
+      width: 100%;
+      height: 30%;
+      position: relative;
+      background: rgba(24,24, 24,  0.95);
+      border-top: 1px solid #ccc;
+      overflow-y: auto;
+      position: relative;
+      z-index: 11;
+      transition: 0.3s ease;
+    } */
+
+    /* Semi-transparency styling */
+    /* #data-display.transparent {
+      background:rgba(24,24, 24, 0.90 );
+      z-index: 11;
+    } */
+
+    /* Divider styling */
+    /* #divider {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      cursor: ns-resize;
+      background: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 12;
+    } */
+
+    /* Divider button styling */
+    /* #divider button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 14px;
+    } */
+
+/* vertical split layout */
+/* vertical split layout */
+
+
+/* Root div for Cytoscape container */
+
+#root-div {
+  height: 100%; 
+  width: 100%;
+  position: absolute;
+  z-index: 1; 
+}
+
+/* Data display panel */
+#data-display {
+  position: absolute;
+  top: 55px;
+  /* right: 0; */
+  left: 70%;
+  width: 30%;
+  height: 100%;
+  z-index: 11;
+  background-color: rgba(40, 40, 40, 1);
+  border: none;
+  display: flex;
+  justify-content: flex-start; /* Aligns content at the top */
+
+
+  /* overflow-y: auto; */
+  /* transition: 0.3s ease; */
+}
+
+/* Semi-transparency styling */
+#data-display.transparent {
+  background-color: rgba(40, 40, 40, 0.9);
+  z-index: 11;
+}
+
+/* Divider styling */
+#divider {
+  position: absolute;
+  top: 55px;
+  left: 70%;
+  width: 0px;
+  height: 100%;
+  z-index: 12;
+  cursor: ew-resize;
+  background: #ccc;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start; /* Aligns content at the top */
+}
+
+/* Divider button styling */
+#divider button {
+  /* transform: rotate(90deg); */
+  /* background: #007bff; */
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+
+
+#logo {
+  top: 20px;
+  left: 30px;
+  z-index: 9999;
+  position: absolute;
+}
+
+#viewport-buttons {
+  top: 75px;
+  left: 40px;
+  position: fixed;
+  z-index: 9;
+}
+
+.viewport-drawer {
+  top: 75px;
+  left: 90px;
+  height: 288px;
+  width: 300px;
+  position: fixed;
+  z-index: 8;
+}
+
+.panel-tabContainer {
+  padding: 0px 0px 0px 0px;
+}
+.is-smallest {
+  font-size: 10px;
+}
+.is-smaller {
+  font-size: 12.5px;
+}
+.is-smallish {
+  font-size: 13px;
+}
+.is-smallest-element {
+  font-size: 11px;
+  padding: 0px 8px;
+  height: 24px;
+}
+.vertical-align-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 0 
+}
+.button {
+  height: 24px;
+
+}
+.button-data-display {
+  height: 20px; 
+
+}
+.button-modal {
+  height: 30px;
+}
+.input {
+  height: 24px;
+}
+.link-impairment-widht {
+  width: 190px;
+  white-space: normal;
+}
+.drawer-box-input-widht {
+  width: 100px;
+  white-space: nowrap;
+}
+.with-outline {
+  position: relative;
+}
+.with-outline::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  border-bottom: 2px solid #3498db;
+  pointer-events: none;
+}
+.hover-text.is-hidden {
+  display: none;
+}
+.hover-text {
+  position: absolute;
+  border: 1px solid #e8a010;
+  padding: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
+  box-shadow: 2px 3px 4px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+}
+@media (prefers-reduced-motion: reduce) {
+}
+.notification {
+  transform: translateY(60px);
+}
+
+.text-right {
+  text-align: right;
+  display: block;
+}
+
+.data-display-sharp {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#panel-data-display-sharp  {
+  top: 85px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-node {
+  top: 85px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 991;
+}
+
+#panel-node-editor {
+  bottom: 10px;
+  left: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-node-kind-dropdown-content {
+  max-height: 120px; /* Adjust height to show about 5 items */
+  overflow-y: auto; /* Enables vertical scrolling */
+}
+
+#panel-node-topoviewerrole-dropdown-content {
+  max-height: 120px; /* Adjust height to show about 5 items */
+  overflow-y: auto; /* Enables vertical scrolling */
+}
+
+#panel-link {
+  top: 85px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-clab-editor {
+  top: 85px;
+  right: 40px;
+  width: 600px;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-introduction {
+  bottom: 10px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-log-messages {
+  bottom: 10px;
+  left: 40px;
+  width: 640px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-topoviewer-helper {
+  bottom: 10px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-topoviewer-about {
+  bottom: 10px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-backup-restore {
+  top: 85px;
+  right: 40px;
+  max-height: 700px;
+  position: fixed;
+  display: block;
+  z-index: 21;
+}
+
+#sidebar {
+  height: 100vh;
+  width: 60px;
+  position: fixed;
+  left: 5em;
+}
+
+#sidebar-control {
+  height: 30px;
+}
+
+#drawer {
+  height: 100vh;
+  width: 300px;
+  position: fixed;
+  left: calc(5em + 60px);
+  display: none; /* Initially hidden */
+  
+}
+
+#editor-container {
+  height: calc(80vh - 80px);
+  /* height: auto; */
+  width: 100%;
+  overflow: hidden;
+}
+
+#original-title, #modified-title {
+  width: 50%;
+  text-align: center;
+}
+
+#loading-spinner-global-button {
+  width: 50px;
+  height: 50px;
+}
+
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px ;
+  height: 100px ;
+  transform: translate(-50%, -50%);
+}
+.monaco-editor .inputarea {
+  position: fixed ;
+  top: 0 ;
+  left: 0 ;
+  width: 100px ;
+  height: 100px ;
+}
+
+[data-theme=dark], 
+.theme-dark {
+  .has-background-4a {
+    z-index: 0;
+    background-color:rgba(24,24, 24, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+  .panel-block {
+    background-color: rgba(40, 40, 40, 1);
+  }
+  .panel {
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+    background-color: rgba(40, 40, 40, 1);
+  }
+  .column {
+    background-color: rgba(40, 40, 40, 1);
+  }
+  .box {
+    background-color: rgba(40, 40, 40, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+  .panel-tabs {
+    background-color: rgba(40, 40, 40, 1);
+  }
+  .panel-tabContainer {
+    background-color: rgba(40, 40, 40, 1);
+    padding: 0px 0px 0px 0px;
+  }
+  #sidebar {
+    background-color: rgba(40, 40, 40, 1);
+  }
+  #drawer {
+  background-color: rgba(76,82, 97, 1);
+  }
+ .ViewPortDrawer {
+    background-color: rgba(40, 40, 40, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  #viewport-buttons {
+    background-color: rgba(40, 40, 40, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  /* sidebar to be removed */
+
+  .button.is-sidebar { 
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
+    outline: none;
+    background-color: rgba(54,58, 69, 1);
+    height: 50px;
+    --sidebar-button-background-color-default:rgba(40, 40, 40, 1);
+    --sidebar-button-background-color-active: rgba(76, 82, 97, 1);
+  }
+  .button.is-sidebar:hover {
+    background-color: rgba(40, 40, 40, 1);
+    border: rgba(54,58, 69, 1);
+  }
+}
+
+[data-theme=light], 
+.theme-light {
+  .has-background-4a {
+    z-index: 1;
+    background-color:rgba(70,86, 246, 1);
+    box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.4);
+ }
+  .panel-block {
+    background-color: white;
+  }
+  .panel {
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+    background-color: white;
+  }
+  .column {
+    background-color: white;
+  }
+  .box {
+    background-color: white;
+  }
+  .panel-tabs {
+    background-color: white;
+  }
+  .panel-tabContainer {
+    background-color: white;
+    padding: 0px 0px 0px 0px;
+  }
+  #sidebar {
+    background-color: white;
+  }
+}

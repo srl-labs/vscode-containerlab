@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ContainerlabTreeDataProvider } from './containerlabTreeDataProvider';
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import { TopoViewer } from './topoViewer/backend/topoViewerWebUiFacade';
 import {
   deploy,
   deployCleanup,
@@ -54,13 +55,13 @@ export async function activate(context: vscode.ExtensionContext) {
       'containerlab not detected. Please install it first.',
       installAction
     );
-    
+
     if (selection === installAction) {
       vscode.env.openExternal(vscode.Uri.parse('https://containerlab.dev/install/'));
     }
     versionOutput = '';
   }
-  
+
   const provider = new ContainerlabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
@@ -107,9 +108,6 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
 
 
-
-
-
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
 
@@ -118,6 +116,35 @@ export async function activate(context: vscode.ExtensionContext) {
   }, refreshInterval);
   context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
 
+  // Create an instance of TopoViewer
+  const viewer = new TopoViewer(context);
+  const cmd = vscode.commands.registerCommand('containerlab.topoViewer', async (node) => {
+    if (!node) {
+      vscode.window.showErrorMessage('No lab node selected.');
+      return;
+    }
+    const labPath = node.details?.labPath;
+    const labLabel = node.label || "Lab";
+    if (!labPath) {
+      vscode.window.showErrorMessage('No labPath to redeploy.');
+      return;
+    }
+    
+    // const yamlFilePath = path.join(__dirname, '..', 'clab-demo.yaml');
+    try {
+      // await viewer.openViewer(yamlFilePath);
+      
+      await viewer.openViewer(labPath);
+      
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to open Topology Viewer: ${err}`);
+      console.error(`[ERROR] Failed to open topology viewer`, err);
+    }
+  });
+  context.subscriptions.push(cmd);
+
+  // End of Create an instance of TopoViewer
+
 }
 
-export function deactivate() {}
+export function deactivate() { }

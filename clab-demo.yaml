@@ -1,0 +1,110 @@
+name: demo
+
+topology:
+  nodes:
+    Spine-01:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Spine"
+      labels:
+        topoViewer-role: spine
+        topoViewer-group: "Data Center Spine"
+        topoViewer-groupLevel: 1
+        topoViewer-geoCoordinateLat: -7.670799192884443
+        topoViewer-geoCoordinateLng: 109.66040155645494
+
+    Spine-02:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Spine"
+      labels:
+        topoViewer-role: spine
+        topoViewer-group: "Data Center Spine"
+        topoViewer-groupLevel: 1
+        topoViewer-geoCoordinateLat: 52.532161628640615
+        topoViewer-geoCoordinateLng: 13.420430194846846
+
+    Leaf-01:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Leaf"
+      labels:
+        topoViewer-role: leaf
+        topoViewer-group: "Data Center Leaf"
+        topoViewer-groupLevel: 2
+        topoViewer-geoCoordinateLat: 51.45664108633426
+        topoViewer-geoCoordinateLng: 7.00441511803141
+
+    Leaf-02:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Leaf"
+      labels:
+        topoViewer-role: leaf
+        topoViewer-group: "Data Center Leaf"
+        topoViewer-groupLevel: 2
+        topoViewer-geoCoordinateLat: 51.53871503745607
+        topoViewer-geoCoordinateLng: 7.564717804534128
+
+    Leaf-03:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Leaf"
+      labels:
+        topoViewer-role: leaf
+        topoViewer-group: "Data Center Leaf"
+        topoViewer-groupLevel: 2
+        topoViewer-geoCoordinateLat: 51.326388273344435
+        topoViewer-geoCoordinateLng: 9.49831138932782
+
+    Leaf-04:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Leaf"
+      labels:
+        topoViewer-role: leaf
+        topoViewer-group: "Data Center Leaf"
+        topoViewer-groupLevel: 2
+        topoViewer-geoCoordinateLat: 51.09927769956055
+        topoViewer-geoCoordinateLng: 13.980732881349564
+
+    BorderLeaf-01:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Leaf"
+      labels:
+        topoViewer-role: leaf
+        topoViewer-group: "Data Center Leaf"
+        topoViewer-groupLevel: 2
+        topoViewer-geoCoordinateLat: 54.318988964885484
+        topoViewer-geoCoordinateLng: 10.190450002066472
+
+    BorderLeaf-02:
+      kind: srl
+      image: ghcr.io/nokia/srlinux:24.10.1
+      group: "Data Center Leaf"
+      labels:
+        topoViewer-role: leaf
+        topoViewer-group: "Data Center Leaf"
+        topoViewer-groupLevel: 2
+        topoViewer-geoCoordinateLat: 54.168316500414994
+        topoViewer-geoCoordinateLng: 12.311934204350786
+
+  links:
+
+    - endpoints: ["Spine-01:e1-1", "Leaf-01:e1-1"]
+    - endpoints: ["Spine-01:e1-2", "Leaf-02:e1-1"]
+    - endpoints: ["Spine-01:e1-3", "Leaf-03:e1-3"]
+    - endpoints: ["Spine-01:e1-4", "Leaf-04:e1-3"]
+    - endpoints: ["Spine-01:e1-5", "BorderLeaf-01:e1-1"]
+
+    - endpoints: ["Spine-02:e1-1", "Leaf-01:e1-2"]
+    - endpoints: ["Spine-02:e1-2", "Leaf-02:e1-2"]
+    - endpoints: ["Spine-02:e1-3", "Leaf-03:e1-4"]
+    - endpoints: ["Spine-02:e1-4", "Leaf-04:e1-4"]
+    - endpoints: ["Spine-02:e1-5", "BorderLeaf-02:e1-1"]
+
+
+
+
+
