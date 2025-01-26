@@ -20,8 +20,14 @@ import {
   graphNextUI,
   graphDrawIO,
   graphDrawIOInteractive,
+  addLabFolderToWorkspace,
   copyLabPath,
-  addLabFolderToWorkspace
+  copyContainerIPv4Address,
+  copyContainerIPv6Address,
+  copyContainerName,
+  copyContainerID,
+  copyContainerImage,
+  copyContainerKind
 } from './commands/index';
 
 export let outputChannel: vscode.OutputChannel;
@@ -81,7 +87,17 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.stop', stopNode));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.attachShell', attachShell));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.ssh', sshToNode));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.showLogs', showLogs));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.showLogs', showLogs));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyIPv4Address', copyContainerIPv4Address));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyIPv6Address', copyContainerIPv6Address));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyName', copyContainerName));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyID', copyContainerID));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyKind', copyContainerKind));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
+
+
+
+
 
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);

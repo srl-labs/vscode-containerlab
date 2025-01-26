@@ -37,6 +37,8 @@ export interface ClabNodeDetails {
   localExists?: boolean;
   containers?: any[];
   owner?: string;
+  image?: string;
+  kind?: string;
 }
 
 export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<ContainerlabNode> {
@@ -162,10 +164,24 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
 
   private getContainerNodes(containers: any[]): ContainerlabNode[] {
     const containerNodes = containers.map((ctr: any) => {
-      let v4Addr, v6Addr: string | undefined;
+      let v4Addr, v6Addr;
 
-      if (ctr.ipv4_address) {v4Addr = ctr.ipv4_address.split('/')[0];}
-      if (ctr.ipv6_address) {v6Addr = ctr.ipv6_address.split('/')[0];}
+      let tooltip = [
+        `Container: ${ctr.name}`,
+        `ID: ${ctr.container_id}`,
+        `State: ${ctr.state}`,
+        `Kind: ${ctr.kind}`,
+        `Image: ${ctr.image}`
+      ]
+
+      if (ctr.ipv4_address) {
+        v4Addr = ctr.ipv4_address.split('/')[0];
+        tooltip.push(`IPv4: ${v4Addr}`);
+      }
+      if (ctr.ipv6_address) {
+        v6Addr = ctr.ipv6_address.split('/')[0];
+        tooltip.push(`IPv6: ${v6Addr}`);
+      }
 
       const label = `${ctr.name} (${ctr.state})`;
 
@@ -178,10 +194,12 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
           state: ctr.state,
           v4Addr: v4Addr,
           v6Addr: v6Addr,
+          kind: ctr.kind,
+          image: ctr.image
         },
         "containerlabContainer",
       );
-      node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}\nIPv4: ${v4Addr}\nIPv6: ${v6Addr}`;
+      node.tooltip = tooltip.join("\n");
 
       let iconFilename: string;
       if (ctr.state === 'running') {
