@@ -49,7 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   
-  const provider = new ContainerlabTreeDataProvider();
+  const provider = new ContainerlabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.refresh', () => {

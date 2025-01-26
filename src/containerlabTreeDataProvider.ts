@@ -43,7 +43,7 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
   private _onDidChangeTreeData = new vscode.EventEmitter<ContainerlabNode | undefined | void>();
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor() { }
+  constructor(private context: vscode.ExtensionContext) { }
 
   getTreeItem(element: ContainerlabNode): vscode.TreeItem {
     return element;
@@ -97,11 +97,11 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       }
 
       let contextVal: string;
-      let color: vscode.ThemeColor;
+      let iconFilename: string;
       if (info.containers.length === 0) {
         // Undeployed
         contextVal = "containerlabLabUndeployed";
-        color = new vscode.ThemeColor('disabledForeground'); // grey
+        iconFilename = "undeployed.svg"; // pick your grey or other color
       } else {
         // Deployed
         contextVal = "containerlabLabDeployed";
@@ -109,11 +109,11 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         const allRunning = states.every(s => s === 'running');
         const noneRunning = states.every(s => s !== 'running');
         if (allRunning) {
-          color = new vscode.ThemeColor('testing.iconPassed'); // green
+          iconFilename = "running.svg";    // green circle
         } else if (noneRunning) {
-          color = new vscode.ThemeColor('testing.iconFailed'); // red
+          iconFilename = "stopped.svg";    // red circle
         } else {
-          color = new vscode.ThemeColor('problemsWarningIcon.foreground'); // partial => yellow
+          iconFilename = "partial.svg";    // yellow circle
         }
       }
 
@@ -133,7 +133,11 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
         },
         contextVal
       );
-      node.iconPath = new vscode.ThemeIcon('circle-filled', color);
+      const iconFile = this.context.asAbsolutePath(
+        path.join('resources', 'icons', iconFilename)
+      );
+      const iconUri = vscode.Uri.file(iconFile);
+      node.iconPath = { light: iconUri, dark: iconUri };
       node.description = utils.getRelLabFolderPath(labPath);
       nodes.push(node);
     }
@@ -179,8 +183,17 @@ export class ContainerlabTreeDataProvider implements vscode.TreeDataProvider<Con
       );
       node.tooltip = `Container: ${ctr.name}\nID: ${ctr.container_id}\nState: ${ctr.state}\nIPv4: ${v4Addr}\nIPv6: ${v6Addr}`;
 
-      if (ctr.state === 'running') {node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconPassed'));}
-      else {node.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('testing.iconFailed'));}
+      let iconFilename: string;
+      if (ctr.state === 'running') {
+        iconFilename = 'running.svg';
+      } else {
+        iconFilename = 'stopped.svg';
+      }
+      const iconFile = this.context.asAbsolutePath(
+        path.join('resources', 'icons', iconFilename)
+      );
+      const iconUri = vscode.Uri.file(iconFile);
+      node.iconPath = { light: iconUri, dark: iconUri };
 
       return node;
     });
