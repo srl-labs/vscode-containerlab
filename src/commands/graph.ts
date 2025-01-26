@@ -26,10 +26,7 @@ export async function graphDrawIO(node: ContainerlabNode) {
 
   const graphCmd = new ClabCommand("graph", node, spinnerMessages);
 
-  // 1) Wait for containerlab to finish generating <labFileName>.drawio
-  await graphCmd.run(["--drawio"]);
-
-  // 2) Figure out the .drawio filename
+  // Figure out the .drawio filename
   if (!node.details?.labPath) {
     vscode.window.showErrorMessage("No lab path found. Cannot open .drawio file.");
     return;
@@ -38,37 +35,19 @@ export async function graphDrawIO(node: ContainerlabNode) {
   const drawioPath = labPath.replace(/\.(ya?ml)$/i, ".drawio");
   const drawioUri = vscode.Uri.file(drawioPath);
 
-  // 3) Verify the file exists and wait a bit for the file to be fully written
-  if (!fs.existsSync(drawioPath)) {
-    vscode.window.showErrorMessage(
-      `Containerlab generated no .drawio file: ${drawioPath}`
-    );
-    return;
-  }
+  // Wait for containerlab to finish generating <labFileName>.drawio
+  await graphCmd.run(["--drawio"]).then(
+    () => {
+      // Verify the file exists
+      if (!fs.existsSync(drawioPath)) {
+        vscode.window.showErrorMessage(
+          `Containerlab generated no .drawio file: ${drawioPath}`
+        );
+      }
 
-  // Add a small delay to ensure file is ready
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  await vscode.commands.executeCommand("vscode.open", drawioUri);
-
-  // 4) Try to open with drawio extension
-  // try {
-  //   await vscode.commands.executeCommand("vscode.open", drawioUri);
-    
-  // } catch (err) {
-  //   // If the specified viewType fails, try alternative approaches
-  //   try {
-  //     await vscode.commands.executeCommand(
-  //       "vscode.openWith",
-  //       drawioUri,
-  //       "hediet.vscode-drawio.drawio"
-  //     );
-  //   } catch {
-  //     // Final fallback to normal open
-  //     await vscode.commands.executeCommand("vscode.open", drawioUri);
-  //     console.error('Failed to open with Draw.io extension:', err);
-  //   }
-  // }
+      vscode.commands.executeCommand("vscode.open", drawioUri);
+    }
+  )
 }
 
 /**
