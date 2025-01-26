@@ -11,3 +11,4 @@ export * from "./showLogs";
 export * from "./graph";
 export * from "./copyLabPath";
 export * from "./addToWorkspace";
+export * from "./openFolderInNewWindow";

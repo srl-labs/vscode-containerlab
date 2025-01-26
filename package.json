@@ -133,6 +133,11 @@
         "icon": "$(folder-opened)"
       },
       {
+        "command": "containerlab.lab.openFolderInNewWindow",
+        "title": "Open Folder in New Window",
+        "icon": "$(folder-opened)"
+      },
+      {
         "command": "containerlab.node.start",
         "title": "Start node"
       },
@@ -238,6 +243,11 @@
           "command": "containerlab.lab.addToWorkspace",
           "when": "viewItem == containerlabLabDeployed",
           "group": "labFile@2"
+        },
+        {
+          "command": "containerlab.lab.openFolderInNewWindow",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@3"
         },
         {
           "command": "containerlab.lab.deploy",

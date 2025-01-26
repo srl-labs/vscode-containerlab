@@ -11,6 +11,7 @@ import {
   redeploy,
   redeployCleanup,
   openLabFile,
+  openFolderInNewWindow,
   startNode,
   stopNode,
   attachShell,
@@ -58,7 +59,8 @@ export async function activate(context: vscode.ExtensionContext) {
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.addToWorkspace',addLabFolderToWorkspace));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.addToWorkspace', addLabFolderToWorkspace));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFolderInNewWindow', openFolderInNewWindow));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.copyPath', copyLabPath));
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
