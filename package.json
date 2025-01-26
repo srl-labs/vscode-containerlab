@@ -4,7 +4,7 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "engines": {
     "vscode": "^1.70.0"
   },
