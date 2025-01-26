@@ -49,24 +49,26 @@ export async function graphDrawIO(node: ContainerlabNode) {
   // Add a small delay to ensure file is ready
   await new Promise(resolve => setTimeout(resolve, 500));
 
+  await vscode.commands.executeCommand("vscode.open", drawioUri);
+
   // 4) Try to open with drawio extension
-  try {
-    await vscode.commands.executeCommand("vscode.open", drawioUri);
+  // try {
+  //   await vscode.commands.executeCommand("vscode.open", drawioUri);
     
-  } catch (err) {
-    // If the specified viewType fails, try alternative approaches
-    try {
-      await vscode.commands.executeCommand(
-        "vscode.openWith",
-        drawioUri,
-        "hediet.vscode-drawio.drawio"
-      );
-    } catch {
-      // Final fallback to normal open
-      await vscode.commands.executeCommand("vscode.open", drawioUri);
-      console.error('Failed to open with Draw.io extension:', err);
-    }
-  }
+  // } catch (err) {
+  //   // If the specified viewType fails, try alternative approaches
+  //   try {
+  //     await vscode.commands.executeCommand(
+  //       "vscode.openWith",
+  //       drawioUri,
+  //       "hediet.vscode-drawio.drawio"
+  //     );
+  //   } catch {
+  //     // Final fallback to normal open
+  //     await vscode.commands.executeCommand("vscode.open", drawioUri);
+  //     console.error('Failed to open with Draw.io extension:', err);
+  //   }
+  // }
 }
 
 /**
