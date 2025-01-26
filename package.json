@@ -481,7 +481,7 @@
             "type": "string"
           },
           "default": {},
-          "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"cisco_xrd\": \"/pkg/bin/xr_cli.sh\"}`"
+          "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
         }
       }
     }
