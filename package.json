@@ -60,12 +60,12 @@
       },
       {
         "command": "containerlab.lab.openFile",
-        "title": "Edit topology",
+        "title": "Edit Lab topology",
         "icon": "$(pencil)"
       },
       {
         "command": "containerlab.lab.copyPath",
-        "title": "Copy file path",
+        "title": "Copy Lab file path",
         "icon": "$(copy)"
       },
       {
@@ -125,6 +125,12 @@
         "command": "containerlab.lab.graph.drawio.interactive",
         "title": "Graph Lab (draw.io, Interactive)",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.addToWorkspace",
+        "title": "Add Lab to Workspace",
+        "category": "Containerlab",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "containerlab.node.start",
@@ -227,6 +233,11 @@
           "command": "containerlab.lab.copyPath",
           "when": "viewItem =~ /containerlabLab/",
           "group": "labFile@1"
+        },
+        {
+          "command": "containerlab.lab.addToWorkspace",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "labFile@2"
         },
         {
           "command": "containerlab.lab.deploy",

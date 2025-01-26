@@ -10,3 +10,4 @@ export * from "./ssh";
 export * from "./showLogs";
 export * from "./graph";
 export * from "./copyLabPath";
+export * from "./addToWorkspace";
