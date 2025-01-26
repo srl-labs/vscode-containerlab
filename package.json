@@ -474,6 +474,14 @@
           "type": "number",
           "default": 10000,
           "description": "Refresh interval (in milliseconds) for the Containerlab Explorer."
+        },
+        "containerlab.node.execCommandMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"cisco_xrd\": \"/pkg/bin/xr_cli.sh\"}`"
         }
       }
     }

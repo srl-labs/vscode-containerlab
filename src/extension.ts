@@ -32,6 +32,9 @@ import {
 
 export let outputChannel: vscode.OutputChannel;
 const execAsync = promisify(exec);
+export const execCmdMapping = require('../resources/exec_cmd.json');
+
+console.log(execCmdMapping);
 
 export async function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("Containerlab");
@@ -55,7 +58,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     versionOutput = '';
   }
-
   
   const provider = new ContainerlabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);

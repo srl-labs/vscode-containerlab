@@ -1,0 +1,4 @@
+{
+    "nokia_srlinux": "sr_cli",
+    "cisco_xrd": "/pkg/bin/xr_cli.sh"
+}
