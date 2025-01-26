@@ -111,6 +111,18 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.inspectAll",
+        "title": "Inspect (All Labs)",
+        "category": "Containerlab",
+        "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.inspectOneLab",
+        "title": "Inspect Lab",
+        "category": "Containerlab",
+        "icon": "$(search)"
+      },
+      {
         "command": "containerlab.lab.graph",
         "title": "Graph Lab (Web)",
         "icon": "$(graph-line)",
@@ -202,6 +214,11 @@
           "command": "containerlab.lab.deploy.specificFile",
           "when": "view == containerlabExplorer",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.inspectAll",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@9"
         }
       ],
       "editor/title": [
@@ -282,47 +299,52 @@
         {
           "command": "containerlab.lab.deploy",
           "when": "viewItem == containerlabLabUndeployed",
-          "group": "navigation@2"
+          "group": "navigation@1"
         },
         {
           "command": "containerlab.lab.deploy.cleanup",
           "when": "viewItem == containerlabLabUndeployed",
-          "group": "navigation@3"
+          "group": "navigation@2"
         },
         {
           "command": "containerlab.lab.destroy",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@2"
+          "group": "navigation@3"
         },
         {
           "command": "containerlab.lab.destroy.cleanup",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "containerlab.lab.redeploy",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@4"
+          "group": "navigation@5"
         },
         {
           "command": "containerlab.lab.redeploy.cleanup",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@5"
+          "group": "navigation@6"
+        },
+        {
+          "command": "containerlab.inspectOneLab",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "navigation@9"
         },
         {
           "command": "containerlab.lab.graph",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@6"
+          "group": "navigation@8"
         },
         {
           "command": "containerlab.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@7"
+          "group": "navigation@9"
         },
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@8"
+          "group": "navigation@10"
         },
         {
           "command": "containerlab.node.start",
