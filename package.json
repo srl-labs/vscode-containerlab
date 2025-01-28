@@ -329,22 +329,22 @@
         {
           "command": "containerlab.inspectOneLab",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@9"
+          "group": "navigation@7"
         },
         {
           "command": "containerlab.lab.graph",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@8"
+          "group": "graph@0"
         },
         {
           "command": "containerlab.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@9"
+          "group": "graph@1"
         },
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "navigation@10"
+          "group": "graph@2"
         },
         {
           "command": "containerlab.node.start",
