@@ -114,10 +114,10 @@ export async function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
 
-  // const intervalId = setInterval(() => {
-  //   provider.refresh();
-  // }, refreshInterval);
-  // context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
+  const intervalId = setInterval(() => {
+    provider.refresh();
+  }, refreshInterval);
+  context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
 
 }
 
