@@ -87,6 +87,7 @@ export function titleCase(str: string) {
  */
 export function getSudo() {
     const sudo = vscode.workspace.getConfiguration("containerlab").get<boolean>("sudoEnabledByDefault", true) ? "sudo " : "";
-    console.log(`SUDO: "${sudo}"`);
+    // console.trace();
+    console.log(`[getSudo]: Returning: "${sudo}"`);
     return sudo;
 }
