@@ -1,15 +1,14 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 
-export async function addLabFolderToWorkspace(node: ContainerlabNode) {
-  if (!node?.details?.labPath) {
-    vscode.window.showErrorMessage("No lab path found for this lab.");
-    return;
+export async function addLabFolderToWorkspace(node: ClabLabTreeNode) {
+  if (!node.labPath.absolute) {
+    return new Error("No lab path found for this lab")
   }
 
   // Get the folder that contains the .clab.yaml
-  const folderPath = path.dirname(node.details.labPath);
+  const folderPath = path.dirname(node.labPath.absolute);
 
   // Add it to the current workspace
   const existingCount = vscode.workspace.workspaceFolders
@@ -26,6 +25,6 @@ export async function addLabFolderToWorkspace(node: ContainerlabNode) {
   );
 
   vscode.window.showInformationMessage(
-    `Added "${node.label}" to your workspace.`
+    `Added "${node.name}" to your workspace.`
   );
 }
