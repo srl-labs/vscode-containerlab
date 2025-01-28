@@ -1,16 +1,16 @@
 import * as vscode from "vscode";
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
 import { SpinnerMsg } from "./command";
 import { DockerCommand } from "./dockerCommand";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
 
 
-export async function startNode(node: ContainerlabNode) {
+export async function startNode(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage("No container node selected.");
     return;
   }
 
-  const containerId = node.details?.containerId;
+  const containerId = node.cID;
   if (!containerId) {
     vscode.window.showErrorMessage("No containerId found.");
     return;

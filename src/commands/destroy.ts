@@ -1,8 +1,8 @@
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
 
-export function destroy(node: ContainerlabNode) {
+export function destroy(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Destroying Lab...",
     successMsg: "Lab destroyed successfully!"
@@ -11,7 +11,7 @@ export function destroy(node: ContainerlabNode) {
   destroyCmd.run();
 }
 
-export function destroyCleanup(node: ContainerlabNode) {
+export function destroyCleanup(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Destroying Lab (cleanup)...",
     successMsg: "Lab destroyed (cleanup) successfully!"

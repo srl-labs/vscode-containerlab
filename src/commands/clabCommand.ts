@@ -1,18 +1,18 @@
 import * as vscode from "vscode";
 import * as cmd from './command';
-import { ContainerlabNode } from '../containerlabTreeDataProvider';
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 
 /**
  * A helper class to build a 'containerlab' command (with optional sudo, etc.)
  * and run it either in the Output channel or in a Terminal.
  */
 export class ClabCommand extends cmd.Command  {
-    private node: ContainerlabNode;
+    private node: ClabLabTreeNode;
     private action: string;
 
     constructor(
         action: string,
-        node: ContainerlabNode,
+        node: ClabLabTreeNode,
         spinnerMsg?: cmd.SpinnerMsg,
         useTerminal?: boolean,
         terminalName?: string
@@ -31,7 +31,7 @@ export class ClabCommand extends cmd.Command  {
 
     public async run(flags?: string[]): Promise<void> {
         // Try node.details -> fallback to active editor
-        let labPath = this.node?.details?.labPath;
+        let labPath = this.node.labPath.absolute;
         if (!labPath) {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {

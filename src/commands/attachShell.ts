@@ -16,11 +16,10 @@ export function attachShell(node: ClabContainerTreeNode) {
     if (!containerId) { return vscode.window.showErrorMessage('No containerId for shell attach.');}
     if (!containerKind) { return vscode.window.showErrorMessage('No container kind for shell attach.');}
 
-    // get any default shell action from the exec_cmd.json file. Default action is 'sh'.
     let execCmd = execCmdMapping[containerKind] || "sh";
 
-    // get any user custom shell action mappings from settings.
-    const userExecMapping = vscode.workspace.getConfiguration("containerlab").config.get("node.execCommandMapping") as { [key: string]: string };
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const userExecMapping = config.get("node.execCommandMapping") as { [key: string]: string };
 
     execCmd = userExecMapping[containerKind] || execCmd;
 

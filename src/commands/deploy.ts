@@ -1,9 +1,9 @@
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
 import * as vscode from "vscode";
 
-export function deploy(node: ContainerlabNode) {
+export function deploy(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Deploying Lab...",
     successMsg: "Lab deployed successfully!"
@@ -12,7 +12,7 @@ export function deploy(node: ContainerlabNode) {
   deployCmd.run();
 }
 
-export function deployCleanup(node: ContainerlabNode) {
+export function deployCleanup(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Deploying Lab (cleanup)...",
     successMsg: "Lab deployed (cleanup) successfully!"
@@ -35,7 +35,7 @@ export function deploySpecificFile() {
       return;
     }
     const picked = uri[0].fsPath;
-    const tempNode = new ContainerlabNode("", vscode.TreeItemCollapsibleState.None, { labPath: picked }, "");
+    const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {absolute: picked, relative: ""});
     deploy(tempNode);
   });
 }

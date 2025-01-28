@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { ContainerlabTreeDataProvider } from './containerlabTreeDataProvider';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import {

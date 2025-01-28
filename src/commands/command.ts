@@ -122,7 +122,6 @@ export class Command {
                 },
                 async (progress, token) => {
                     return new Promise<void>((resolve, reject) => {
-                        console.log(`xxx:  ${cmd[1]}`);
                         const child = spawn(cmd[0], cmd.slice(1));
 
                         // If user clicks Cancel, kill the child process

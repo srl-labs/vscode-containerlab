@@ -58,6 +58,16 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
         super(label, collapsibleState);
         this.contextValue = contextValue;
     }
+
+    // Get the IPv4 address without CIDR mask
+    public get IPv4Address() {
+        return this.v4Address?.split('/')[0];
+    }
+
+    // Get the IPv6 address without CIDR mask
+    public get IPv6Address() {
+        return this.v6Address?.split('/')[0];
+    }
 }
 
 /**

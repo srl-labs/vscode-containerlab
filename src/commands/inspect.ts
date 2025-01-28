@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import { promisify } from "util";
 import { exec } from "child_process";
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
 import { getInspectHtml } from "../webview/inspectHtml";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 
 const execAsync = promisify(exec);
 
@@ -17,14 +17,14 @@ export async function inspectAllLabs(context: vscode.ExtensionContext) {
   }
 }
 
-export async function inspectOneLab(node: ContainerlabNode, context: vscode.ExtensionContext) {
-  if (!node?.details?.labPath) {
+export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+  if (!node.labPath.absolute) {
     vscode.window.showErrorMessage("No lab path found for this lab.");
     return;
   }
 
   try {
-    const { stdout } = await execAsync(`sudo containerlab inspect -t "${node.details.labPath}" --format json`);
+    const { stdout } = await execAsync(`sudo containerlab inspect -t "${node.labPath.absolute}" --format json`);
     const parsed = JSON.parse(stdout);
 
     showInspectWebview(parsed.containers || [], `Inspect - ${node.label}`, context.extensionUri);
