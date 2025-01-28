@@ -1,37 +1,31 @@
 import * as vscode from "vscode";
+import * as utils from "../utils"
 import { execCommandInTerminal } from "./command";
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
 import { execCmdMapping } from "../extension";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
 
-export function attachShell(node: ContainerlabNode) {
+export function attachShell(node: ClabContainerTreeNode) {
     if (!node) {
-        vscode.window.showErrorMessage('No container node selected.');
-        return;
+        return new Error("No container node selected.")
     }
 
-    const nodeDetails = node.details;
-
-    if(!nodeDetails) { return vscode.window.showErrorMessage("Couldn't fetch node details");}
-
-    const containerId = nodeDetails.containerId;
-    const containerKind = nodeDetails.kind;
+    const containerId = node.cID;
+    const containerKind = node.kind;
     const containerLabel = node.label || "Container";
 
     if (!containerId) { return vscode.window.showErrorMessage('No containerId for shell attach.');}
     if (!containerKind) { return vscode.window.showErrorMessage('No container kind for shell attach.');}
 
+    // get any default shell action from the exec_cmd.json file. Default action is 'sh'.
     let execCmd = execCmdMapping[containerKind] || "sh";
 
-    // Use the sudoEnabledByDefault setting
-    const config = vscode.workspace.getConfiguration("containerlab");
-    const useSudo = config.get<boolean>("sudoEnabledByDefault", true);
-
-    const userExecMapping = config.get("node.execCommandMapping") as { [key: string]: string };
+    // get any user custom shell action mappings from settings.
+    const userExecMapping = vscode.workspace.getConfiguration("containerlab").config.get("node.execCommandMapping") as { [key: string]: string };
 
     execCmd = userExecMapping[containerKind] || execCmd;
 
     execCommandInTerminal(
-      `${useSudo ? "sudo " : ""}docker exec -it ${containerId} ${execCmd}`,
+      `${utils.getSudo()}docker exec -it ${containerId} ${execCmd}`,
       `Shell - ${containerLabel}`
     );
 }
