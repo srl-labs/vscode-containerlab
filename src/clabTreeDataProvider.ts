@@ -61,12 +61,20 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
 
     // Get the IPv4 address without CIDR mask
     public get IPv4Address() {
-        return this.v4Address?.split('/')[0];
+        if (!(this.v4Address === "N/A")) {
+            return this.v4Address?.split('/')[0];
+        } else {
+            return "";
+        }
     }
 
     // Get the IPv6 address without CIDR mask
     public get IPv6Address() {
-        return this.v6Address?.split('/')[0];
+        if (!(this.v6Address === "N/A")) {
+            return this.v6Address?.split('/')[0];
+        } else {
+            return "";
+        }
     }
 }
 
@@ -364,11 +372,12 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     `Image: ${container.image}`
                 ]
 
-                if (container.ipv4_address) {
+                if (!(container.ipv4_address === "N/A")) {
                     const v4Addr = container.ipv4_address.split('/')[0];
                     tooltip.push(`IPv4: ${v4Addr}`);
                 }
-                if (container.ipv6_address) {
+
+                if (!(container.ipv6_address === "N/A")) {
                     const v6Addr = container.ipv6_address.split('/')[0];
                     tooltip.push(`IPv6: ${v6Addr}`);
                 }
