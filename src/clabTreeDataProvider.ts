@@ -6,12 +6,12 @@ import path = require("path");
 const execAsync = promisify(require('child_process').exec);
 
 // Enum to store types of icons.
-const StateIcons = Object.freeze({
-    RUNNING: String("icons/running.svg"),
-    STOPPED: String("icons/stopped.svg"),
-    PARTIAL: String("icons/partial.svg"),
-    UNDEPLOYED: String("icons/undeployed.svg")
-});
+enum StateIcons {
+    RUNNING = "icons/running.svg",
+    STOPPED = "icons/stopped.svg",
+    PARTIAL = "icons/partial.svg",
+    UNDEPLOYED = "icons/undeployed.svg"
+}
 
 /**
  * A tree node for labs
