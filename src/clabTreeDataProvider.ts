@@ -1,9 +1,10 @@
 import * as vscode from "vscode"
 import * as utils from "./utils"
 import { promisify } from "util";
+import { exec, execSync } from "child_process";
 import path = require("path");
 
-const execAsync = promisify(require('child_process').exec);
+const execAsync = promisify(exec);
 
 // Enum to store types of icons.
 enum StateIcons {
@@ -51,6 +52,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
         public readonly state: string,
         public readonly kind: string,
         public readonly image: string,
+        public readonly interfaces: ClabInterfaceTreeNode[],
         public readonly v4Address?: string,
         public readonly v6Address?: string,
         contextValue?: string,
@@ -95,6 +97,39 @@ interface ClabJSON {
     state: string,
 }
 
+/**
+ * Interface stores the fields we can expect from
+ * parsed JSON output of 'ip --json link' cmd.
+ */
+interface IPLinkJSON {
+    flags: string[],
+    group: string,
+    ifindex: string,
+    ifname: string,
+    link_type: string,
+    linkmode: string,
+    mtu: number,
+    operstate: string,
+    qdisc: string,
+    txqlen: number
+}
+
+/**
+ * Tree node lass to store information about a container interface.
+ */
+export class ClabInterfaceTreeNode extends vscode.TreeItem {
+    constructor(
+        label: string,
+        collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly name: string,
+        public readonly index: number,
+        public readonly mtu: number,
+        contextValue?: string,
+    ) {
+        super(label, collapsibleState)
+    }
+}
+
 export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTreeNode | ClabContainerTreeNode> {
     private _onDidChangeTreeData = new vscode.EventEmitter<ClabLabTreeNode | ClabContainerTreeNode | undefined | void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -116,11 +151,12 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * @param element A ClabLabTreeNode or ClabContainerTreeNode of which you want the children for
      * @returns An array of ClabLabTreeNodes or ClabContainerTreeNodes
      */
-    async getChildren(element?: ClabLabTreeNode): Promise<ClabLabTreeNode[] | ClabContainerTreeNode[] | undefined> {
+    async getChildren(element?: ClabLabTreeNode | ClabContainerTreeNode | ClabInterfaceTreeNode): Promise<any> {
         // Discover labs to populate tree
         if (!element) { return this.discoverLabs(); }
         // Find containers belonging to a lab
         if (element instanceof ClabLabTreeNode) { return element.containers; }
+        if(element instanceof ClabContainerTreeNode) { return element.interfaces; }
 
         // Container tree nodes have no children (yet).
         return [];
@@ -253,7 +289,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
             throw new Error(`Could not run ${cmd}.\n${err}`);
         }
 
-        if (clabStderr) { console.error(`[stderr]: ${clabStderr}`.replace("\n", "")); }
+        if (clabStderr) { console.error(`[stderr]:\t${clabStderr}`.replace("\n", "")); }
 
         // if no containers, then there should be no stdout
         if (!clabStdout) { return undefined; }
@@ -387,15 +423,23 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                 if (container.state === "running") { icon = StateIcons.RUNNING; }
                 else { icon = StateIcons.STOPPED; }
 
+                // Get and sort the container interfaces.
+                const interfaces: ClabInterfaceTreeNode[] = this.discoverContainerInterfaces(container.name).sort(
+                    (a, b) => {
+                        return a.name.localeCompare(b.name);
+                    }
+                );
+
                 // create the node
                 const node = new ClabContainerTreeNode(
                     container.name,
-                    vscode.TreeItemCollapsibleState.None,
+                    vscode.TreeItemCollapsibleState.Collapsed,
                     container.name,
                     container.container_id,
                     container.state,
                     container.kind,
                     container.image,
+                    interfaces,
                     container.ipv4_address,
                     container.ipv6_address,
                     "containerlabContainer"
@@ -411,6 +455,63 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         )
 
         return containers;
+    }
+
+    /**
+     * Gets all interfaces belonging to a container by pulling JSON formatted 'ip link' data
+     * in the netns of the container.
+     * 
+     * @param name The name/hostname of the container, which happens to be the nentns identifier.
+     * @returns An array of ClabInterfaceTreeNodes.
+     */
+    private discoverContainerInterfaces(name: string): ClabInterfaceTreeNode[] {
+        console.log(`[discovery]:\tDiscovering interfaces for ${name}`);
+
+        const cmd = `${utils.getSudo()} ip netns exec ${name} ip --json link show`;
+
+        let netnsStdout;
+        try {
+            const stdout = execSync(cmd);
+            if (!stdout) { return []; }
+
+            netnsStdout = stdout.toString();
+
+        } catch (err) {
+            throw new Error(`Could not run ${cmd}.\n${err}`);
+        }
+
+        // parsed JSON obj
+        const netnsObj = JSON.parse(netnsStdout);
+        // console.log(netnsObj);
+
+        let interfaces: ClabInterfaceTreeNode[] = [];
+
+        netnsObj.map(
+            (intf: IPLinkJSON) => {
+                if(intf.operstate === "UNKNOWN") { return; }
+                let color: vscode.ThemeColor = new vscode.ThemeColor("icon.foreground");
+                if(intf.operstate === "UP") { color = new vscode.ThemeColor("charts.green") }
+                else { color = new vscode.ThemeColor("charts.red"); }
+
+                const node = new ClabInterfaceTreeNode(
+                    intf.ifname,
+                    vscode.TreeItemCollapsibleState.None,
+                    intf.ifname,
+                    parseInt(intf.ifindex),
+                    intf.mtu,
+                    "containerlabInterface"
+                )
+                node.tooltip = `Name: ${intf.ifname}\nIndex: ${intf.ifindex}\nMTU: ${intf.mtu}`;
+                node.description = intf.operstate;
+                node.iconPath = new vscode.ThemeIcon('plug', color);
+
+                interfaces.push(node);
+            }
+        )
+
+        console.log(`[discovery]:\tDiscovered ${interfaces.length} interfaces for ${name}`);
+
+        return interfaces;
     }
 
     /**
