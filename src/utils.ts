@@ -78,3 +78,15 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
 export function titleCase(str: string) {
     return str[0].toLocaleUpperCase() + str.slice(1);
 }
+
+/**
+ * Getter which checks the extension config on whether to use sudo or not.
+ * If sudo is enabled, the sudo string will have a space at the end.
+ * 
+ * @returns A string which is either "sudo " or blank ("")
+ */
+export function getSudo() {
+    const sudo = vscode.workspace.getConfiguration("containerlab").get<boolean>("sudoEnabledByDefault", true) ? "sudo " : "";
+    console.log(`SUDO: "${sudo}"`);
+    return sudo;
+}

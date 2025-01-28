@@ -47,7 +47,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly name: string,
-        public readonly id: string,
+        public readonly cID: string,
         public readonly state: string,
         public readonly kind: string,
         public readonly image: string,
@@ -202,7 +202,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * @returns An object comprised of the parsed JSON from clab inspect
      */
     private async getInspectData(): Promise<any> {
-        const cmd = `${this.sudo}containerlab inspect --all --format json`;
+        const cmd = `${utils.getSudo()}containerlab inspect --all --format json`;
 
         let clabStdout;
         let clabStderr;
@@ -364,18 +364,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         )
 
         return containers;
-    }
-
-    /**
-     * Getter which checks the extension config on whether to use sudo or not.
-     * If sudo is enabled, the sudo string will have a space at the end.
-     * 
-     * @returns A string which is either "sudo " or blank ("")
-     */
-    private get sudo(): string {
-        const sudo = vscode.workspace.getConfiguration("containerlab").get<boolean>("sudoEnabledByDefault", true) ? "sudo " : "";
-        console.log(`SUDO: ${sudo}`);
-        return sudo;
     }
 
     /**
