@@ -132,7 +132,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
         if(!localLabs && !globalLabs) { 
             console.error("[discoverLabs]: No labs found");
-            return [new ClabLabTreeNode("No labs found.\nAdd a lab with the '+' icon.", vscode.TreeItemCollapsibleState.None, {absolute: "", relative: ""})];
+            return [new ClabLabTreeNode("No labs found. Add a lab with the '+' icon.", vscode.TreeItemCollapsibleState.None, {absolute: "", relative: ""})];
         }
         else if(!globalLabs) { 
             console.error("[discoverLabs]: No inspected labs found");
