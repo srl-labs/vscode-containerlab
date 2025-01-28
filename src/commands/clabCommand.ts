@@ -7,7 +7,7 @@ import { ClabLabTreeNode } from "../clabTreeDataProvider";
  * and run it either in the Output channel or in a Terminal.
  */
 export class ClabCommand extends cmd.Command  {
-    private node: ClabLabTreeNode;
+    private node?: ClabLabTreeNode;
     private action: string;
 
     constructor(
@@ -26,13 +26,14 @@ export class ClabCommand extends cmd.Command  {
         super(options);
 
         this.action = action;
-        this.node = node;
+        this.node = node instanceof ClabLabTreeNode ? node : undefined;
     }
 
     public async run(flags?: string[]): Promise<void> {
         // Try node.details -> fallback to active editor
-        let labPath = this.node.labPath.absolute;
-        if (!labPath) {
+        let labPath: string;
+        console.log(this.node);
+        if (!this.node) {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 vscode.window.showErrorMessage(
@@ -41,6 +42,9 @@ export class ClabCommand extends cmd.Command  {
                 return;
             }
             labPath = editor.document.uri.fsPath;
+        }
+        else {
+            labPath = this.node.labPath.absolute 
         }
 
         if (!labPath) {
