@@ -101,13 +101,13 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         return element;
     }
 
-   /**
-    * Return tree children. If called with ClabLabTreeNode as args it will return the ClabLabTreeNode's
-    * array of containers.
-    * 
-    * @param element A ClabLabTreeNode or ClabContainerTreeNode of which you want the children for
-    * @returns An array of ClabLabTreeNodes or ClabContainerTreeNodes
-    */
+    /**
+     * Return tree children. If called with ClabLabTreeNode as args it will return the ClabLabTreeNode's
+     * array of containers.
+     * 
+     * @param element A ClabLabTreeNode or ClabContainerTreeNode of which you want the children for
+     * @returns An array of ClabLabTreeNodes or ClabContainerTreeNodes
+     */
     async getChildren(element?: ClabLabTreeNode): Promise<ClabLabTreeNode[] | ClabContainerTreeNode[] | undefined> {
         // Discover labs to populate tree
         if (!element) { return this.discoverLabs(); }
@@ -125,25 +125,27 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      */
     private async discoverLabs(): Promise<ClabLabTreeNode[]> {
 
+        console.log("[discovery]:\tDiscovering labs");
+
         // discover labs
         const localLabs = await this.discoverLocalLabs();
         const globalLabs = await this.discoverInspectLabs();
 
 
-        if(!localLabs && !globalLabs) { 
-            console.error("[discoverLabs]: No labs found");
-            return [new ClabLabTreeNode("No labs found. Add a lab with the '+' icon.", vscode.TreeItemCollapsibleState.None, {absolute: "", relative: ""})];
+        if (!localLabs && !globalLabs) {
+            console.error("[discovery]:\tNo labs found");
+            return [new ClabLabTreeNode("No labs found. Add a lab with the '+' icon.", vscode.TreeItemCollapsibleState.None, { absolute: "", relative: "" })];
         }
-        else if(!globalLabs) { 
-            console.error("[discoverLabs]: No inspected labs found");
+        else if (!globalLabs) {
+            console.error("[discovery]:\tNo inspected labs found");
             return Object.values(localLabs!);
         }
-        else if(!localLabs) {
-            console.error("[discoverLabs]: No local labs found");
-            return Object.values(globalLabs); 
+        else if (!localLabs) {
+            console.error("[discovery]:\tNo local labs found");
+            return Object.values(globalLabs);
         }
 
-        const labs: Record<string, ClabLabTreeNode> = { ...globalLabs};
+        const labs: Record<string, ClabLabTreeNode> = { ...globalLabs };
 
         // add the local labs, if they aren't already discovered.
         for (const labPath in localLabs) {
@@ -166,7 +168,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
             }
         );
 
-        console.log(`[discoverLabs]: Discovered ${sortedLabs.length} labs.`)
+        console.log(`[discovery]:\tDiscovered ${sortedLabs.length} labs.`)
 
         return sortedLabs;
     }
@@ -179,6 +181,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * @returns A record. Aboslute labPath is the key, and value is a ClabLabTreeNode object.
      */
     private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+        console.log("[discovery]:\tDiscovering local labs...");
+
         const clabGlobPatterns = ['**/*.clab.yml', '**/*.clab.yaml'];
         const ignorePattern = '**/node_modules/**';
 
@@ -190,7 +194,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
             uris.push(...found);
         }
 
-        if(!uris.length) { return undefined; }
+        if (!uris.length) { return undefined; }
 
         let labs: Record<string, ClabLabTreeNode> = {};
 
@@ -241,7 +245,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
             throw new Error(`Could not run ${cmd}.\n${err}`);
         }
 
-        if(clabStderr) { console.error(`[stderr]: ${clabStderr}`.replace("\n", "")); }
+        if (clabStderr) { console.error(`[stderr]: ${clabStderr}`.replace("\n", "")); }
 
         // if no containers, then there should be no stdout
         if (!clabStdout) { return undefined; }
@@ -260,17 +264,19 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * @returns Record comprised of labPath as the key and ClabLabTreeNode as value.
      */
     private async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+        console.log("[discovery]:\tDiscovering labs via inspect...");
+
         const inspectData = await this.getInspectData();
 
-        if(!inspectData) { return undefined; }
+        if (!inspectData) { return undefined; }
 
         let labs: Record<string, ClabLabTreeNode> = {};
 
         // 'containers' is the name of the array in the clab inspect JSON
         // which holds all the running container data/
         inspectData.containers.map(
-            async (container: ClabJSON) => {
-                if (!labs[container.labPath]) {
+            (container: ClabJSON) => {
+                if (!labs.hasOwnProperty(container.labPath)) {
                     const label = `${container.lab_name} (${container.owner})`;
 
                     const labPathObj: LabPath = {
@@ -279,7 +285,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     }
 
                     // get all containers that belong to this lab.
-                    const discoveredContainers: ClabContainerTreeNode[] = await this.discoverContainers(inspectData, container.labPath);
+                    const discoveredContainers: ClabContainerTreeNode[] = this.discoverContainers(inspectData, container.labPath);
 
 
                     /**
@@ -297,15 +303,15 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     let counter = 0;
 
                     // increment counter if container is running
-                    for(const c of discoveredContainers) {
-                        if(c.state === "running") { counter++; }
+                    for (const c of discoveredContainers) {
+                        if (c.state === "running") { counter++; }
                     }
 
                     let icon: string;
 
                     // determine what icon to use
-                    if(!counter) { icon = StateIcons.STOPPED; }
-                    else if(counter == discoveredContainers.length) { icon = StateIcons.RUNNING; }
+                    if (!counter) { icon = StateIcons.STOPPED; }
+                    else if (counter == discoveredContainers.length) { icon = StateIcons.RUNNING; }
                     else { icon = StateIcons.PARTIAL; }
 
                     // create the node
@@ -322,7 +328,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     lab.description = labPathObj.relative;
 
                     const iconUri = this.getResourceUri(icon);
-                    lab.iconPath = {light: iconUri, dark: iconUri };
+                    lab.iconPath = { light: iconUri, dark: iconUri };
 
                     labs[container.labPath] = lab;
                 }
@@ -339,7 +345,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * @param labPath The absolute path to the lab topology file. Used to identify what lab a container belongs to.
      * @returns An array of ClabContainerTreeNodes.
      */
-    private async discoverContainers(inspectData: any, labPath: string): Promise<ClabContainerTreeNode[]> {
+    private discoverContainers(inspectData: any, labPath: string): ClabContainerTreeNode[] {
+        console.log(`[discovery]:\tDiscovering containers for ${labPath}...`);
 
         // filter the data to only relevant containers
         const filtered = inspectData.containers.filter((container: ClabJSON) => container.labPath === labPath);
