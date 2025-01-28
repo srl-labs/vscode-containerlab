@@ -1,35 +1,35 @@
 import * as vscode from "vscode";
 import * as utils from "../utils";
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { ClabContainerTreeNode, ClabLabTreeNode } from "../clabTreeDataProvider";
 
-export function copyLabPath(node: ContainerlabNode) {
+export function copyLabPath(node: ClabLabTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const labPath = node.details?.labPath;
+  const labPath = node.labPath.absolute;
   if (!labPath) {
     vscode.window.showErrorMessage('No labPath found.');
     return;
   }
 
-  const labName = node.details?.labName || utils.getRelativeFolderPath(labPath);
+  const labName = node.labPath.absolute || utils.getRelativeFolderPath(labPath);
 
   vscode.env.clipboard.writeText(labPath).then(() => {
     vscode.window.showInformationMessage(`Copied file path of ${labName} to clipboard.`);
   });
 }
 
-export function copyContainerIPv4Address(node: ContainerlabNode) {
+export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const containerName = node.details?.hostname || "";
+  const containerName = node.name || "";
 
-  const data = node.details?.v4Addr;
+  const data = node.IPv4Address;
   if (!data) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch IPv4 address.`);
     return;
@@ -41,15 +41,15 @@ export function copyContainerIPv4Address(node: ContainerlabNode) {
   });
 }
 
-export function copyContainerIPv6Address(node: ContainerlabNode) {
+export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const containerName = node.details?.hostname || "";
+  const containerName = node.name || "";
 
-  const data = node.details?.v6Addr;
+  const data = node.IPv6Address;
   if (!data) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch IPv6 address.`);
     return;
@@ -61,13 +61,13 @@ export function copyContainerIPv6Address(node: ContainerlabNode) {
   });
 }
 
-export function copyContainerName(node: ContainerlabNode) {
+export function copyContainerName(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const containerName = node.details?.hostname;
+  const containerName = node.name || "";
 
   if (!containerName) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch container hostname.`);
@@ -80,15 +80,15 @@ export function copyContainerName(node: ContainerlabNode) {
   });
 }
 
-export function copyContainerID(node: ContainerlabNode) {
+export function copyContainerID(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const containerName = node.details?.hostname || "";
+  const containerName = node.name || "";
 
-  const data = node.details?.containerId;
+  const data = node.cID;
   if (!data) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch container ID.`);
     return;
@@ -100,15 +100,15 @@ export function copyContainerID(node: ContainerlabNode) {
   });
 }
 
-export function copyContainerKind(node: ContainerlabNode) {
+export function copyContainerKind(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const containerName = node.details?.hostname || "";
+  const containerName = node.name || "";
 
-  const data = node.details?.kind;
+  const data = node.kind;
   if (!data) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch kind.`);
     return;
@@ -120,15 +120,15 @@ export function copyContainerKind(node: ContainerlabNode) {
   });
 }
 
-export function copyContainerImage(node: ContainerlabNode) {
+export function copyContainerImage(node: ClabContainerTreeNode) {
   if (!node) {
     vscode.window.showErrorMessage('No lab node selected.');
     return;
   }
 
-  const containerName = node.details?.hostname || "";
+  const containerName = node.name || "";
 
-  const data = node.details?.image;
+  const data = node.image;
   if (!data) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch image.`);
     return;

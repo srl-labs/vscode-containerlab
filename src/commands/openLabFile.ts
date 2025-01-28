@@ -1,13 +1,13 @@
 import * as vscode from "vscode";
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 
-export function openLabFile(node: ContainerlabNode) {
+export function openLabFile(node: ClabLabTreeNode) {
     if (!node) {
       vscode.window.showErrorMessage('No lab node selected.');
       return;
     }
 
-    const labPath = node.details?.labPath;
+    const labPath = node.labPath.absolute;
     if (!labPath) {
       vscode.window.showErrorMessage('No labPath found.');
       return;

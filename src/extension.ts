@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { ContainerlabTreeDataProvider } from './containerlabTreeDataProvider';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import {
@@ -31,6 +30,7 @@ import {
   copyContainerImage,
   copyContainerKind
 } from './commands/index';
+import { ClabTreeDataProvider } from './clabTreeDataProvider';
 
 export let outputChannel: vscode.OutputChannel;
 const execAsync = promisify(exec);
@@ -61,7 +61,8 @@ export async function activate(context: vscode.ExtensionContext) {
     versionOutput = '';
   }
   
-  const provider = new ContainerlabTreeDataProvider(context);
+  // const provider = new ContainerlabTreeDataProvider(context);
+  const provider = new ClabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.refresh', () => {

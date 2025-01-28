@@ -1,8 +1,8 @@
-import { ContainerlabNode } from "../containerlabTreeDataProvider";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
 
-export function redeploy(node: ContainerlabNode) {
+export function redeploy(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Redeploying Lab...",
     successMsg: "Lab redeployed successfully!"
@@ -11,7 +11,7 @@ export function redeploy(node: ContainerlabNode) {
   redeployCmd.run();
 }
 
-export function redeployCleanup(node: ContainerlabNode) {
+export function redeployCleanup(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Redeploying Lab (cleanup)...",
     successMsg: "Lab redeployed (cleanup) successfully!"

@@ -32,7 +32,7 @@ export function getRelLabFolderPath(labPath: string): string {
  */
 export function normalizeLabPath(labPath: string, singleFolderBase?: string): string {
     if (!labPath) {
-        console.debug(`normalizeLabPath: received empty labPath`);
+        // console.debug(`normalizeLabPath: received empty labPath`);
         return labPath;
     }
 
@@ -40,7 +40,7 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
     labPath = path.normalize(labPath);
 
     if (path.isAbsolute(labPath)) {
-        console.debug(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
+        // console.debug(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
         return labPath;
     }
 
@@ -48,9 +48,7 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
         const homedir = os.homedir();
         const sub = labPath.replace(/^~[\/\\]?/, '');
         const expanded = path.normalize(path.join(homedir, sub));
-        console.debug(
-            `normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`
-        );
+        // console.debug(`normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`);
         return expanded;
     }
 
@@ -62,16 +60,34 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
     candidatePaths.push(path.normalize(path.resolve(process.cwd(), labPath)));
 
     for (const candidate of candidatePaths) {
-        console.debug(`normalizeLabPath => checking if path exists: ${candidate}`);
+        // console.debug(`normalizeLabPath => checking if path exists: ${candidate}`);
         if (fs.existsSync(candidate)) {
-            console.debug(`normalizeLabPath => found existing path: ${candidate}`);
+            // console.debug(`normalizeLabPath => found existing path: ${candidate}`);
             return candidate;
         }
     }
 
     const chosen = candidatePaths[0];
-    console.debug(
-        `normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`
-    );
+    // console.debug(`normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`);
     return chosen;
+}
+
+/*
+    Capitalise the first letter of a string
+*/
+export function titleCase(str: string) {
+    return str[0].toLocaleUpperCase() + str.slice(1);
+}
+
+/**
+ * Getter which checks the extension config on whether to use sudo or not.
+ * If sudo is enabled, the sudo string will have a space at the end.
+ * 
+ * @returns A string which is either "sudo " or blank ("")
+ */
+export function getSudo() {
+    const sudo = vscode.workspace.getConfiguration("containerlab").get<boolean>("sudoEnabledByDefault", true) ? "sudo " : "";
+    // console.trace();
+    console.log(`[getSudo]:\tReturning: "${sudo}"`);
+    return sudo;
 }
