@@ -92,6 +92,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.install.edgeshark', cmd.installEdgeshark));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark));
 
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.set.sessionHostname', cmd.setSessionHostname));
+
+
 
 
 
