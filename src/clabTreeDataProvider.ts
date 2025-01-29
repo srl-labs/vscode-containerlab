@@ -121,12 +121,14 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     constructor(
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly nsName: string,
         public readonly name: string,
         public readonly index: number,
         public readonly mtu: number,
         contextValue?: string,
     ) {
         super(label, collapsibleState)
+        this.contextValue = contextValue;
     }
 }
 
@@ -430,10 +432,13 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     }
                 );
 
+                // if no interfaces, the node doesn't need to be expandable.
+                const collapsible = interfaces.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+
                 // create the node
                 const node = new ClabContainerTreeNode(
                     container.name,
-                    vscode.TreeItemCollapsibleState.Collapsed,
+                    collapsible,
                     container.name,
                     container.container_id,
                     container.state,
@@ -477,7 +482,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
             netnsStdout = stdout.toString();
 
         } catch (err) {
-            throw new Error(`Could not run ${cmd}.\n${err}`);
+            return [];
         }
 
         // parsed JSON obj
@@ -489,21 +494,30 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         netnsObj.map(
             (intf: IPLinkJSON) => {
                 if(intf.operstate === "UNKNOWN") { return; }
+
                 let color: vscode.ThemeColor = new vscode.ThemeColor("icon.foreground");
-                if(intf.operstate === "UP") { color = new vscode.ThemeColor("charts.green") }
+
+                let context = "containerlabInterface";
+
+                if(intf.operstate === "UP") { 
+                    color = new vscode.ThemeColor("charts.green"); 
+                    context = "containerlabInterfaceUp"; 
+                }
                 else { color = new vscode.ThemeColor("charts.red"); }
 
                 const node = new ClabInterfaceTreeNode(
                     intf.ifname,
                     vscode.TreeItemCollapsibleState.None,
+                    name,
                     intf.ifname,
                     parseInt(intf.ifindex),
                     intf.mtu,
-                    "containerlabInterface"
+                    context
                 )
                 node.tooltip = `Name: ${intf.ifname}\nIndex: ${intf.ifindex}\nMTU: ${intf.mtu}`;
                 node.description = intf.operstate;
-                node.iconPath = new vscode.ThemeIcon('plug', color);
+
+                node.iconPath = new vscode.ThemeIcon("plug", color);
 
                 interfaces.push(node);
             }

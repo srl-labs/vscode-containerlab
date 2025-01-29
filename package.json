@@ -200,6 +200,11 @@
       {
         "command": "containerlab.node.copyImage",
         "title": "Image"
+      },
+      {
+        "command": "containerlab.interface.capture",
+        "title": "Capture interface",
+        "icon": "$(search)"
       }
     ],
     "submenus": [
@@ -400,6 +405,11 @@
           "submenu": "containerlab.submenu.node.copy",
           "when": "viewItem == containerlabContainer",
           "group": "nodeCopySubmenu"
+        },
+        {
+          "command": "containerlab.interface.capture",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "inline@1"
         }
       ],
       "commandPalette": [

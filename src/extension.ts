@@ -30,7 +30,8 @@ import {
   copyContainerID,
   copyContainerImage,
   copyContainerKind,
-  grapTopoviewer
+  grapTopoviewer,
+  captureInterface
 } from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
 
@@ -109,6 +110,12 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyID', copyContainerID));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyKind', copyContainerKind));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
+
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.capture', captureInterface));
+
+
+
+
 
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
