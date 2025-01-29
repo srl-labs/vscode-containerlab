@@ -38,6 +38,13 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 ## Requirements
 
 - **containerlab** must be installed and accessible via `sudo containerlab` in your system `PATH`.
+- **Passwordless sudo access** for containerlab commands must be configured:
+  1. Edit sudoers file with `sudo visudo`
+  2. Add the following line:
+     ```
+     username ALL=(ALL) NOPASSWD: /usr/bin/containerlab
+     ```
+     (Replace `username` with your actual username)
 - **Docker** (or another container runtime) must be set up and running if your labs rely on container-based nodes.
 - (Optional) A local folder with `*.clab.yml` or `*.clab.yaml` topologies, opened in VS Code.
 
