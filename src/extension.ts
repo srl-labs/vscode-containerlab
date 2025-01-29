@@ -31,7 +31,13 @@ import {
   copyContainerImage,
   copyContainerKind,
   grapTopoviewer,
-  captureInterface
+  captureInterface,
+  captureInterfaceWithPacketflix,
+  setLinkDelay,
+  setLinkJitter,
+  setLinkLoss,
+  setLinkRate,
+  setLinkCorruption
 } from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
 
@@ -112,7 +118,13 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.capture', captureInterface));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.captureWithEdgeshark', captureInterfaceWithPacketflix));
 
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.setDelay', setLinkDelay));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.setJitter', setLinkJitter));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.setLoss', setLinkLoss));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.setRate', setLinkRate));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.interface.setCorruption', setLinkCorruption));
 
 
 
