@@ -14,28 +14,20 @@
         "id": "Spine-01",
         "weight": "30",
         "name": "Spine-01",
-        "parent": "Data Center Spine:1",
-        "topoViewerRole": "spine",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": -7.670799192884443,
-        "lng": 109.66040155645494,
+        "parent": "",
+        "topoViewerRole": "pe",
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Spine-01.demo.io",
-          "group": "Data Center Spine",
+          "group": "",
           "id": "Spine-01",
           "image": "ghcr.io/nokia/srlinux:24.10.1",
           "index": "0",
           "kind": "srl",
           "labdir": "/var/asad/topoViewer/clab-demo/Spine-01",
-          "labels": {
-            "topoViewer-role": "spine",
-            "topoViewer-group": "Data Center Spine",
-            "topoViewer-groupLevel": 1,
-            "topoViewer-geoCoordinateLat": -7.670799192884443,
-            "topoViewer-geoCoordinateLng": 109.66040155645494
-          },
+          "labels": {},
           "longname": "clab-demo-Spine-01",
           "macAddress": "",
           "mgmtIntf": "",
@@ -69,10 +61,8 @@
         "name": "Spine-02",
         "parent": "Data Center Spine:1",
         "topoViewerRole": "spine",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 52.532161628640615,
-        "lng": 13.420430194846846,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Spine-02.demo.io",
@@ -85,9 +75,7 @@
           "labels": {
             "topoViewer-role": "spine",
             "topoViewer-group": "Data Center Spine",
-            "topoViewer-groupLevel": 1,
-            "topoViewer-geoCoordinateLat": 52.532161628640615,
-            "topoViewer-geoCoordinateLng": 13.420430194846846
+            "topoViewer-groupLevel": 1
           },
           "longname": "clab-demo-Spine-02",
           "macAddress": "",
@@ -122,10 +110,8 @@
         "name": "Leaf-01",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.45664108633426,
-        "lng": 7.00441511803141,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-01.demo.io",
@@ -138,9 +124,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.45664108633426,
-            "topoViewer-geoCoordinateLng": 7.00441511803141
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-01",
           "macAddress": "",
@@ -175,10 +159,8 @@
         "name": "Leaf-02",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.53871503745607,
-        "lng": 7.564717804534128,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-02.demo.io",
@@ -191,9 +173,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.53871503745607,
-            "topoViewer-geoCoordinateLng": 7.564717804534128
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-02",
           "macAddress": "",
@@ -228,10 +208,8 @@
         "name": "Leaf-03",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.326388273344435,
-        "lng": 9.49831138932782,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-03.demo.io",
@@ -244,9 +222,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.326388273344435,
-            "topoViewer-geoCoordinateLng": 9.49831138932782
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-03",
           "macAddress": "",
@@ -281,10 +257,8 @@
         "name": "Leaf-04",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.09927769956055,
-        "lng": 13.980732881349564,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-04.demo.io",
@@ -297,9 +271,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.09927769956055,
-            "topoViewer-geoCoordinateLng": 13.980732881349564
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-04",
           "macAddress": "",
@@ -334,10 +306,8 @@
         "name": "BorderLeaf-01",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 54.318988964885484,
-        "lng": 10.190450002066472,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "BorderLeaf-01.demo.io",
@@ -350,9 +320,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 54.318988964885484,
-            "topoViewer-geoCoordinateLng": 10.190450002066472
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-BorderLeaf-01",
           "macAddress": "",
@@ -387,10 +355,8 @@
         "name": "BorderLeaf-02",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 54.168316500414996,
-        "lng": 12.311934204350786,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "BorderLeaf-02.demo.io",
@@ -403,9 +369,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 54.168316500414996,
-            "topoViewer-geoCoordinateLng": 12.311934204350786
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-BorderLeaf-02",
           "macAddress": "",
@@ -740,28 +704,20 @@
         "id": "Spine-01",
         "weight": "30",
         "name": "Spine-01",
-        "parent": "Data Center Spine:1",
-        "topoViewerRole": "spine",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": -7.670799192884443,
-        "lng": 109.66040155645494,
+        "parent": "",
+        "topoViewerRole": "pe",
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Spine-01.demo.io",
-          "group": "Data Center Spine",
+          "group": "",
           "id": "Spine-01",
           "image": "ghcr.io/nokia/srlinux:24.10.1",
           "index": "0",
           "kind": "srl",
           "labdir": "/var/asad/topoViewer/clab-demo/Spine-01",
-          "labels": {
-            "topoViewer-role": "spine",
-            "topoViewer-group": "Data Center Spine",
-            "topoViewer-groupLevel": 1,
-            "topoViewer-geoCoordinateLat": -7.670799192884443,
-            "topoViewer-geoCoordinateLng": 109.66040155645494
-          },
+          "labels": {},
           "longname": "clab-demo-Spine-01",
           "macAddress": "",
           "mgmtIntf": "",
@@ -795,10 +751,8 @@
         "name": "Spine-02",
         "parent": "Data Center Spine:1",
         "topoViewerRole": "spine",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 52.532161628640615,
-        "lng": 13.420430194846846,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Spine-02.demo.io",
@@ -811,9 +765,7 @@
           "labels": {
             "topoViewer-role": "spine",
             "topoViewer-group": "Data Center Spine",
-            "topoViewer-groupLevel": 1,
-            "topoViewer-geoCoordinateLat": 52.532161628640615,
-            "topoViewer-geoCoordinateLng": 13.420430194846846
+            "topoViewer-groupLevel": 1
           },
           "longname": "clab-demo-Spine-02",
           "macAddress": "",
@@ -848,10 +800,8 @@
         "name": "Leaf-01",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.45664108633426,
-        "lng": 7.00441511803141,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-01.demo.io",
@@ -864,9 +814,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.45664108633426,
-            "topoViewer-geoCoordinateLng": 7.00441511803141
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-01",
           "macAddress": "",
@@ -901,10 +849,8 @@
         "name": "Leaf-02",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.53871503745607,
-        "lng": 7.564717804534128,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-02.demo.io",
@@ -917,9 +863,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.53871503745607,
-            "topoViewer-geoCoordinateLng": 7.564717804534128
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-02",
           "macAddress": "",
@@ -954,10 +898,8 @@
         "name": "Leaf-03",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.326388273344435,
-        "lng": 9.49831138932782,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-03.demo.io",
@@ -970,9 +912,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.326388273344435,
-            "topoViewer-geoCoordinateLng": 9.49831138932782
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-03",
           "macAddress": "",
@@ -1007,10 +947,8 @@
         "name": "Leaf-04",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 51.09927769956055,
-        "lng": 13.980732881349564,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "Leaf-04.demo.io",
@@ -1023,9 +961,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 51.09927769956055,
-            "topoViewer-geoCoordinateLng": 13.980732881349564
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-Leaf-04",
           "macAddress": "",
@@ -1060,10 +996,8 @@
         "name": "BorderLeaf-01",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 54.318988964885484,
-        "lng": 10.190450002066472,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "BorderLeaf-01.demo.io",
@@ -1076,9 +1010,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 54.318988964885484,
-            "topoViewer-geoCoordinateLng": 10.190450002066472
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-BorderLeaf-01",
           "macAddress": "",
@@ -1113,10 +1045,8 @@
         "name": "BorderLeaf-02",
         "parent": "Data Center Leaf:2",
         "topoViewerRole": "leaf",
-        "sourceEndpoint": "",
-        "targetEndpoint": "",
-        "lat": 54.168316500414996,
-        "lng": 12.311934204350786,
+        "lat": "",
+        "lng": "",
         "extraData": {
           "clabServerUsername": "asad",
           "fqdn": "BorderLeaf-02.demo.io",
@@ -1129,9 +1059,7 @@
           "labels": {
             "topoViewer-role": "leaf",
             "topoViewer-group": "Data Center Leaf",
-            "topoViewer-groupLevel": 2,
-            "topoViewer-geoCoordinateLat": 54.168316500414996,
-            "topoViewer-geoCoordinateLng": 12.311934204350786
+            "topoViewer-groupLevel": 2
           },
           "longname": "clab-demo-BorderLeaf-02",
           "macAddress": "",

@@ -1283,8 +1283,6 @@ export class TopoViewer {
                         <ul>
                           <li>Visualize your network topology with ease.</li>
                           <li>View detailed attributes of nodes and links by clicking on them.</li>
-                          <li>Analyze network traffic using Wireshark integration.</li>
-                          <li>Apply network impairments to simulate real-world conditions.</li>
                         </ul>
                         <p>
                           Getting Started: 
@@ -1292,12 +1290,10 @@ export class TopoViewer {
                         <ul>
                           <li>Click on nodes and links to explore your network.</li>
                           <li>Use the settings menu to show/hide link endpoint labels.</li>
-                          <li>Analyze network traffic using Wireshark integration.</li>
-                          <li>For advanced Wireshark integration, download EdgeShark client package.</li>
                           <li>Visit GitHub repository for more details <a href="https/github.com/asadarafat/topoViewer">https/github.com/asadarafat/topoViewer</a>.</li>
                         </ul>
                         <p>
-                          I hope you find TopoViewer a valuable tool for your network management needs. If you have any questions or feedback, please don't hesitate to reach out to me.
+                          I hope you find TopoViewer a valuable tool for your network needs. If you have any questions or feedback, please don't hesitate to reach out to me.
                         </p>
                       </div>
                     </div>
@@ -1423,6 +1419,7 @@ export class TopoViewer {
             
             <script src="${jsUri}/dev.js?ver=1"></script>
             <script src="${jsUri}/common.js?ver=1"></script>
+            <script src="${jsUri}/managerSvg.js?ver=1"></script>
             <script src="${jsUri}/managerLayoutAlgo.js?ver=1"></script>
             
          

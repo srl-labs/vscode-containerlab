@@ -21,6 +21,7 @@ export interface ClabLink {
  * Represents the main Containerlab topology structure as defined in the YAML configuration.
  */
 export interface ClabTopology {
+    name?: string
     topology?: {
         nodes?: Record<string, ClabNode>;
         links?: ClabLink[];

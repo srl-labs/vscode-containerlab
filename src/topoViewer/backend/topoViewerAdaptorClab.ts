@@ -152,6 +152,8 @@ export class TopoViewerAdaptorClab {
             log.warn("Parsed YAML does not contain 'topology' object.");
             return elements;
         }
+
+        var clabName = parsed.name
     
         // Convert each Containerlab node into a Cytoscape node element
         let nodeIndex = 0;
@@ -164,22 +166,22 @@ export class TopoViewerAdaptorClab {
                         weight: '30',   // Placeholder
                         name: nodeName,
                         parent: this.buildParent(nodeObj),  // e.g., "Data Center Leaf:2"
-                        topoViewerRole: nodeObj.labels?.['topoViewer-role'] ?? '',
-                        sourceEndpoint: '',
-                        targetEndpoint: '',
+                        topoViewerRole: nodeObj.labels?.['topoViewer-role'] || 'router', // 'pe' is default role
+                        // sourceEndpoint: '',
+                        // targetEndpoint: '',
                         lat: nodeObj.labels?.['topoViewer-geoCoordinateLat'] ?? '',
                         lng: nodeObj.labels?.['topoViewer-geoCoordinateLng'] ?? '',
                         extraData: {
                             clabServerUsername: 'asad', // Placeholder
-                            fqdn: `${nodeName}.demo.io`,
+                            fqdn: `${nodeName}.${clabName}.io`,
                             group: nodeObj.group ?? '',
                             id: nodeName,
                             image: nodeObj.image ?? '',
                             index: nodeIndex.toString(),
                             kind: nodeObj.kind ?? '',
-                            labdir: `/var/asad/topoViewer/clab-demo/${nodeName}`,
+                            labdir: `/var/asad/topoViewer/clab-${clabName}/${nodeName}`,
                             labels: nodeObj.labels ?? {},
-                            longname: `clab-demo-${nodeName}`,
+                            longname: `clab-${clabName}-${nodeName}`,
                             macAddress: '',
                             mgmtIntf: '',
                             mgmtIpv4AddressLength: 0,
