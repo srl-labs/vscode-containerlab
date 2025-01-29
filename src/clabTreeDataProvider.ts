@@ -122,6 +122,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly nsName: string,
+        public readonly cID: string,  // parent container ID
         public readonly name: string,
         public readonly index: number,
         public readonly mtu: number,
@@ -426,7 +427,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                 else { icon = StateIcons.STOPPED; }
 
                 // Get and sort the container interfaces.
-                const interfaces: ClabInterfaceTreeNode[] = this.discoverContainerInterfaces(container.name).sort(
+                const interfaces: ClabInterfaceTreeNode[] = this.discoverContainerInterfaces(container.name, container.container_id).sort(
                     (a, b) => {
                         return a.name.localeCompare(b.name);
                     }
@@ -469,7 +470,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * @param name The name/hostname of the container, which happens to be the nentns identifier.
      * @returns An array of ClabInterfaceTreeNodes.
      */
-    private discoverContainerInterfaces(name: string): ClabInterfaceTreeNode[] {
+    private discoverContainerInterfaces(name: string, cID: string): ClabInterfaceTreeNode[] {
         console.log(`[discovery]:\tDiscovering interfaces for ${name}`);
 
         const cmd = `${utils.getSudo()} ip netns exec ${name} ip --json link show`;
@@ -509,6 +510,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     intf.ifname,
                     vscode.TreeItemCollapsibleState.None,
                     name,
+                    cID,
                     intf.ifname,
                     parseInt(intf.ifindex),
                     intf.mtu,
