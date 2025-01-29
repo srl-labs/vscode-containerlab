@@ -229,6 +229,16 @@
       {
         "command": "containerlab.interface.setCorruption",
         "title": "Set corruption"
+      },
+      {
+        "command": "containerlab.install.edgeshark",
+        "title": "Install Edgeshark",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.uninstall.edgeshark",
+        "title": "Uninstall Edgeshark",
+        "category": "Containerlab"
       }
     ],
     "submenus": [
@@ -507,6 +517,14 @@
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.install.edgeshark",
+          "when": "true"
+        },
+        {
+          "command": "containerlab.uninstall.edgeshark",
+          "when": "true"
         }
       ],
       "containerlab.submenu.node.copy": [
