@@ -119,7 +119,7 @@ export class Command {
     }
 
     private async execSpinner(cmd: string[]) {
-        console.log(cmd);
+        console.log(cmd.join(" "));
         try {
             await vscode.window.withProgress(
                 {
@@ -185,7 +185,9 @@ export class Command {
             vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
             const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${this.command} failed: ${err.message}`;
-            vscode.window.showErrorMessage(failMsg);
+            const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
+            // If view logs button was clicked.
+            if(viewOutputBtn === "View logs") { outputChannel.show(); }
         }
     }
 }
