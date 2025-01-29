@@ -1,3 +1,0 @@
-[submodule "src/topoViewer/webview-ui"]
-	path = src/topoViewer/webview-ui
-	url = https://github.com/asadarafat/topoViewer-frontend.git 
