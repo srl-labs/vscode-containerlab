@@ -288,7 +288,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
                     const label = `${container.lab_name} (${container.owner})`;
 
                     const labPathObj: LabPath = {
-                        absolute: container.labPath,
+                        absolute: utils.normalizeLabPath(container.labPath),
                         relative: utils.getRelLabFolderPath(container.labPath)
                     }
 
