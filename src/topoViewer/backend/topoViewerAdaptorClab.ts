@@ -9,6 +9,10 @@ import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopol
 
 import { topoViewer } from '../../../package.json';
 
+import { ClabLabTreeNode, ClabContainerTreeNode } from '../../clabTreeDataProvider';
+// log.info(ClabTreeDataProvider.)
+
+
 log.info(`TopoViewer Version: ${topoViewer.version}`);
 
 
@@ -149,7 +153,8 @@ export class TopoViewerAdaptorClab {
      * @param yamlContent - The Containerlab YAML content as a string.
      * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
      */
-    public clabYamlToCytoscapeElements(yamlContent: string): CyElement[] {
+    public clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): CyElement[] {
+
         const parsed = yaml.load(yamlContent) as ClabTopology;
         const elements: CyElement[] = [];
 
@@ -161,6 +166,23 @@ export class TopoViewerAdaptorClab {
         // get lab name
         let clabName = parsed.name
 
+        // get clabName elements of clabTreeDataToTopoviewer
+        //
+        // Step 1: Provide a fallback (empty object) if `data` is null or undefined
+        // Step 2: Convert the object's values into an array
+        // Step 3: Filter the items where `name` equals "demo-asad"
+
+        let filteredLabData: ClabLabTreeNode[]
+
+        filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
+            (item) => item?.name === clabName
+        );
+
+        log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
+
+
+        // Prepare parent nods
+        //
         // Use a Set to collect unique parents
         // Uniqueness of Elements
         // Array: Allows duplicate values. You can have multiple identical elements in an array.
@@ -171,7 +193,6 @@ export class TopoViewerAdaptorClab {
         // Set: Automatically enforces uniqueness. Adding a duplicate value has no effect.
         // const numberSet: Set<number> = new Set([1, 2, 2, 3]);
         // console.log(numberSet); // Output: Set { 1, 2, 3 }
-        
         const parentSet = new Set<string>();
 
         // Convert each Containerlab node into a Cytoscape node element
@@ -187,6 +208,10 @@ export class TopoViewerAdaptorClab {
                 if (parentId) {
                     parentSet.add(parentId);
                 }
+
+                //get node ManagementIP address
+                log.info(`nodeName: ${nodeName}`)
+                let containerData = this.getClabNodeManagementIpv4Ipv6(`clab-${clabName}-${nodeName}`, filteredLabData);
 
                 const nodeEl: CyElement = {
                     group: 'nodes',
@@ -214,12 +239,13 @@ export class TopoViewerAdaptorClab {
                             macAddress: '',
                             mgmtIntf: '',
                             mgmtIpv4AddressLength: 0,
-                            mgmtIpv4Addresss: '',
-                            mgmtIpv6Address: '',
+                            mgmtIpv4Addresss: `${containerData?.IPv4Address}`,
+                            mgmtIpv6Address: `${containerData?.IPv6Address}`,
                             mgmtIpv6AddressLength: 0,
                             mgmtNet: '',
                             name: nodeName,
                             shortname: nodeName,
+                            state:`${containerData?.state}`,
                             weight: '3', // Placeholder
                         },
                     },
@@ -394,4 +420,51 @@ export class TopoViewerAdaptorClab {
 
         return JSON.stringify(hyphenatedJson, null, 2);
     }
+
+    // Define the method within your class
+    private getClabNodeManagementIpv4Ipv6(nodeName: string, filteredLabData: ClabLabTreeNode[]): ClabContainerTreeNode | null {
+
+        // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
+
+        // Check if filteredLabData is not empty
+        if (filteredLabData.length === 0) {
+            log.warn('No lab data available.');
+            return null;
+        }
+
+        const firstLabNode = filteredLabData[0];
+
+        // Ensure that 'containers' is defined
+        if (!firstLabNode.containers || !Array.isArray(firstLabNode.containers)) {
+            log.warn('No containers found in the first lab node.');
+            return null;
+        }
+
+        // Find the specific container by name
+        const nodeContainer = firstLabNode.containers.find((container: ClabContainerTreeNode) => container.name === nodeName);
+
+        if (!nodeContainer) {
+            log.warn(`Container with name ${nodeName} not found.`);
+            return null;
+        }
+
+        // Assign the found container to containerData
+        const containerData: ClabContainerTreeNode = nodeContainer;
+
+        // Now start work with containerData as needed
+        // For example, accessing IPv4 and IPv6 addresses:
+        const ipv4 = containerData.IPv4Address;
+        const ipv6 = containerData.IPv6Address;
+
+        // Perform any additional logic as required
+        // ...
+
+
+        log.info(`output of containerData ${JSON.stringify(containerData, null, "\t")}`);
+
+
+        return containerData;
+
+    }
+
 }

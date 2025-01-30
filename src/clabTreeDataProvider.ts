@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import * as utils from "./utils"
 import { promisify } from "util";
 import path = require("path");
+import { log } from "console";
 
 const execAsync = promisify(require('child_process').exec);
 
@@ -139,6 +140,9 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         const localLabs = await this.discoverLocalLabs();
         const globalLabs = await this.discoverInspectLabs();
 
+        // logTv.info(" ######################## globalLabs")
+        // logTv.info(JSON.stringify(globalLabs, null, "\t"))
+
 
         if (!localLabs && !globalLabs) {
             console.error("[discovery]:\tNo labs found");
@@ -260,7 +264,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
         const inspectObject = JSON.parse(clabStdout);
 
-        // console.log(inspectObject);
 
         return inspectObject;
     }
@@ -271,10 +274,11 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * 
      * @returns Record comprised of labPath as the key and ClabLabTreeNode as value.
      */
-    private async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
         console.log("[discovery]:\tDiscovering labs via inspect...");
 
         const inspectData = await this.getInspectData();
+
 
         if (!inspectData) { return undefined; }
 

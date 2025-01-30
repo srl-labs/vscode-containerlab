@@ -5,6 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
+import { ClabLabTreeNode } from '../../clabTreeDataProvider';
+
 
 /**
  * TopoViewer serves as the primary entry point for the TopoViewer extension.
@@ -48,7 +50,10 @@ export class TopoViewer {
    * await topoViewer.openViewer('/path/to/containerlab.yaml');
    * ```
    */
-  public async openViewer(yamlFilePath: string): Promise<void> {
+  public async openViewer(yamlFilePath: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): Promise<void> {
+
+    // log.info(`output of clabJsonData ${clabTreeDataToTopoviewer}`)
+
     try {
       vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
       log.info(`Generating Cytoscape elements from YAML: ${yamlFilePath}`);
@@ -57,8 +62,7 @@ export class TopoViewer {
       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
 
       // Convert YAML to Cytoscape elements using the adaptor
-      const cytoElements = this.adaptor.clabYamlToCytoscapeElements(yamlContent);
-      const cytoTopology = cytoElements;
+      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
 
       // Determine folder name based on YAML file name
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
@@ -69,6 +73,7 @@ export class TopoViewer {
       // Initialize and display the webview panel for visualization
       log.info(`Creating webview panel for visualization`);
       await this.createWebviewPanel(folderName);
+
     } catch (err) {
       vscode.window.showErrorMessage(`Error in openViewer: ${err}`);
       log.error(`openViewer: ${err}`);
@@ -188,7 +193,7 @@ export class TopoViewer {
         message: `Received: ${JSON.stringify(payload)} and NOW I RETURN THE RESULT: ASAD HANDSOM`
       };
     }
-    
+
     async function backendFuncAA(payload: any): Promise<any> {
       // do something, fetch from disk, etc.
       // then return a result object
@@ -197,7 +202,7 @@ export class TopoViewer {
         message: `Received: ${JSON.stringify(payload)}`
       };
     }
-    
+
 
   }
 
@@ -229,7 +234,7 @@ export class TopoViewer {
     isVscodeDeployment: boolean,
     jsOutDir: string
   ): string {
-        
+
     return `
       <!DOCTYPE html>
       <html lang="en" id="root">
@@ -618,7 +623,7 @@ export class TopoViewer {
                             To switch to a different layout, first turn off the Geo Positioning layout by uncheck the enable checkbox.  
                           </p>	
                           -->
-                          
+
                         </div>
                       </div>
                     </div>
@@ -848,14 +853,18 @@ export class TopoViewer {
                 </div>
                 <div  class="panel-block p-0">
                   <div  class="column px-0">
+
+                    <!--   aarafat-tag: vs-code
                     <div  class="column my-auto is-11">
                       <div  class="panel-content">
                         <div class="columns py-auto" >
-                          <div  class="column is-4 p-1"><label class="label is-size-7 has-text-right has-text-weight-medium px-auto" >Status</label></div>
-                          <div class="column is-8 p-1 pl-3" ><label class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content" id="panel-node-status">node-status-placeholder</label></div>
+                          <div  class="column is-4 p-1"><label class="label is-size-7 has-text-right has-text-weight-medium px-auto" >State</label></div>
+                          <div class="column is-8 p-1 pl-3" ><label class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content" id="panel-node-state">node-state-placeholder</label></div>
                         </div>
                       </div>
                     </div>
+                    -->
+
                     <div  class="column my-auto is-11">
                       <div  class="panel-content">
                         <div class="columns py-auto" >

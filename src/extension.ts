@@ -32,6 +32,10 @@ import {
   copyContainerKind
 } from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
+import { log } from 'console';
+
+
+
 
 export let outputChannel: vscode.OutputChannel;
 const execAsync = promisify(exec);
@@ -55,13 +59,13 @@ export async function activate(context: vscode.ExtensionContext) {
       'containerlab not detected. Please install it first.',
       installAction
     );
-    
+
     if (selection === installAction) {
       vscode.env.openExternal(vscode.Uri.parse('https://containerlab.dev/install/'));
     }
     versionOutput = '';
   }
-  
+
   // const provider = new ContainerlabTreeDataProvider(context);
   const provider = new ClabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
@@ -108,10 +112,6 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyKind', copyContainerKind));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
 
-
-
-
-
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
 
@@ -122,6 +122,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   // Create an instance of TopoViewer
+
+  // prepare providerData
+  // const clabTreeDataToTopoviewer = (JSON.
+  //   stringify(await provider.
+  //     discoverInspectLabs(), null, "\t"))
+
+  // aarafat-tag:
+  // parse the JSON data of provider.discoverInspectLabs() to clabTreeDataToTopoviewer safely
+  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
+
   const viewer = new TopoViewer(context);
   const cmd = vscode.commands.registerCommand('containerlab.topoViewer', async (node) => {
     if (!node) {
@@ -137,13 +147,13 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('No labPath to redeploy.');
       return;
     }
-    
+
     // const yamlFilePath = path.join(__dirname, '..', 'clab-demo.yaml');
     try {
       // await viewer.openViewer(yamlFilePath);
-      
-      await viewer.openViewer(labPath);
-      
+
+      await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
+
     } catch (err) {
       vscode.window.showErrorMessage(`Failed to open Topology Viewer: ${err}`);
       console.error(`[ERROR] Failed to open topology viewer`, err);
@@ -156,4 +166,4 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 
-export function deactivate() {}
+export function deactivate() { }
