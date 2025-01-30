@@ -2,7 +2,6 @@ import * as vscode from "vscode"
 import * as utils from "./utils"
 import { promisify } from "util";
 import path = require("path");
-import { log } from "console";
 
 const execAsync = promisify(require('child_process').exec);
 
@@ -139,9 +138,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         // discover labs
         const localLabs = await this.discoverLocalLabs();
         const globalLabs = await this.discoverInspectLabs();
-
-        // logTv.info(" ######################## globalLabs")
-        // logTv.info(JSON.stringify(globalLabs, null, "\t"))
 
 
         if (!localLabs && !globalLabs) {

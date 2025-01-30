@@ -32,10 +32,6 @@ import {
   copyContainerKind
 } from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
-import { log } from 'console';
-
-
-
 
 export let outputChannel: vscode.OutputChannel;
 const execAsync = promisify(exec);
@@ -122,12 +118,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   // Create an instance of TopoViewer
-
-  // prepare providerData
-  // const clabTreeDataToTopoviewer = (JSON.
-  //   stringify(await provider.
-  //     discoverInspectLabs(), null, "\t"))
-
   // aarafat-tag:
   // parse the JSON data of provider.discoverInspectLabs() to clabTreeDataToTopoviewer safely
   const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
@@ -164,6 +154,5 @@ export async function activate(context: vscode.ExtensionContext) {
   // End of Create an instance of TopoViewer
 
 }
-
 
 export function deactivate() { }
