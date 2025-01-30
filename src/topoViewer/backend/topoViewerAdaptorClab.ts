@@ -36,7 +36,7 @@ log.info(`TopoViewer Version: ${topoViewer.version}`);
  * the Containerlab schema: https://github.com/srl-labs/containerlab/blob/e3a324a45032792258d92b8d3625fd108bdaeb9c/schemas/clab.schema.json
  */
 export class TopoViewerAdaptorClab {
-    
+
     /**
      * Creates the target directory and writes the JSON data files required by TopoViewer.
      * 
@@ -48,10 +48,11 @@ export class TopoViewerAdaptorClab {
     public async createFolderAndWriteJson(
         context: vscode.ExtensionContext,
         folderName: string,
-        cytoTopology: CytoTopology
+        cytoTopology: CytoTopology,
+        yamlContent: string
     ): Promise<vscode.Uri[]> {
         log.info(`createFolderAndWriteJson called with folderName: ${folderName}`);
-    
+
         try {
             // Define the target directory URI and path
             const targetDirUri = vscode.Uri.joinPath(
@@ -60,22 +61,26 @@ export class TopoViewerAdaptorClab {
                 folderName
             );
             const targetDirPath = targetDirUri.fsPath;
-    
+
             log.debug(`Ensuring directory: ${targetDirPath}`);
             await fs.mkdir(targetDirPath, { recursive: true });
-    
+
             // Path for dataCytoMarshall.json
             const dataCytoMarshallPath = path.join(targetDirPath, 'dataCytoMarshall.json');
             log.debug(`Writing file: ${dataCytoMarshallPath}`);
-    
+
             // Serialize and write dataCytoMarshall.json
             const dataCytoMarshallContent = JSON.stringify(cytoTopology, null, 2);
             await fs.writeFile(dataCytoMarshallPath, dataCytoMarshallContent, 'utf8');
-    
+
+            const parsed = yaml.load(yamlContent) as ClabTopology;
+
+            var clabName = parsed.name
+
             // Define the EnvironmentJson object
             const environmentJson: EnvironmentJson = {
                 workingDirectory: ".",
-                clabName: "demo",
+                clabName: `${clabName}`,
                 clabServerAddress: "",
                 clabAllowedHostname: "nsp-clab1.nice.nokia.net",
                 clabAllowedHostname01: "127.0.0.1",
@@ -85,19 +90,19 @@ export class TopoViewerAdaptorClab {
                 envCyTopoJsonBytes: cytoTopology,
                 envCyTopoJsonBytesAddon: cytoTopology
             };
-    
+
             // Serialize EnvironmentJson with hyphenated keys
             const serializedEnvironmentJson = this.mapEnvironmentJsonToHyphenated(environmentJson);
-    
+
             // Path for environment.json
             const environmentJsonPath = path.join(targetDirPath, 'environment.json');
             log.debug(`Writing file: ${environmentJsonPath}`);
-    
+
             // Write environment.json
             await fs.writeFile(environmentJsonPath, serializedEnvironmentJson, 'utf8');
-    
+
             log.info(`Successfully wrote dataCytoMarshall.json and environment.json to ${targetDirPath}`);
-    
+
             return [
                 vscode.Uri.file(dataCytoMarshallPath),
                 vscode.Uri.file(environmentJsonPath)
@@ -107,7 +112,7 @@ export class TopoViewerAdaptorClab {
             throw err;
         }
     }
-    
+
     /**
      * Generates Webview URIs for CSS, JS, and Images directories required by TopoViewer.
      * 
@@ -122,16 +127,16 @@ export class TopoViewerAdaptorClab {
         const cssPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'css');
         const jsPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'js');
         const imagesPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'images');
-    
+
         const cssUri = webview.asWebviewUri(cssPath).toString();
         const jsUri = webview.asWebviewUri(jsPath).toString();
         const imagesUri = webview.asWebviewUri(imagesPath).toString();
-    
+
         log.debug(`Generated static asset URIs: CSS=${cssUri}, JS=${jsUri}, Images=${imagesUri}`);
-    
+
         return { css: cssUri, js: jsUri, images: imagesUri };
     }
-    
+
     /**
      * Transforms a Containerlab YAML string into Cytoscape elements compatible with TopoViewer.
      * 
@@ -147,25 +152,49 @@ export class TopoViewerAdaptorClab {
     public clabYamlToCytoscapeElements(yamlContent: string): CyElement[] {
         const parsed = yaml.load(yamlContent) as ClabTopology;
         const elements: CyElement[] = [];
-    
+
         if (!parsed.topology) {
             log.warn("Parsed YAML does not contain 'topology' object.");
             return elements;
         }
 
-        var clabName = parsed.name
-    
+        // get lab name
+        let clabName = parsed.name
+
+        // Use a Set to collect unique parents
+        // Uniqueness of Elements
+        // Array: Allows duplicate values. You can have multiple identical elements in an array.
+
+        // const numbers: number[] = [1, 2, 2, 3];
+        // console.log(numbers); // Output: [1, 2, 2, 3]
+
+        // Set: Automatically enforces uniqueness. Adding a duplicate value has no effect.
+        // const numberSet: Set<number> = new Set([1, 2, 2, 3]);
+        // console.log(numberSet); // Output: Set { 1, 2, 3 }
+        
+        const parentSet = new Set<string>();
+
         // Convert each Containerlab node into a Cytoscape node element
         let nodeIndex = 0;
+
         if (parsed.topology.nodes) {
             for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+
+                // Attempt to build parent ID
+                const parentId = this.buildParent(nodeObj);
+
+                // If parentId is non-empty, collect it in our set
+                if (parentId) {
+                    parentSet.add(parentId);
+                }
+
                 const nodeEl: CyElement = {
                     group: 'nodes',
                     data: {
                         id: nodeName,
                         weight: '30',   // Placeholder
                         name: nodeName,
-                        parent: this.buildParent(nodeObj),  // e.g., "Data Center Leaf:2"
+                        parent: parentId || undefined, // Only set parent if non-empty
                         topoViewerRole: nodeObj.labels?.['topoViewer-role'] || 'router', // 'pe' is default role
                         // sourceEndpoint: '',
                         // targetEndpoint: '',
@@ -179,7 +208,7 @@ export class TopoViewerAdaptorClab {
                             image: nodeObj.image ?? '',
                             index: nodeIndex.toString(),
                             kind: nodeObj.kind ?? '',
-                            labdir: `/var/asad/topoViewer/clab-${clabName}/${nodeName}`,
+                            labdir: `clab-${clabName}/`, // Placeholder
                             labels: nodeObj.labels ?? {},
                             longname: `clab-${clabName}-${nodeName}`,
                             macAddress: '',
@@ -194,7 +223,7 @@ export class TopoViewerAdaptorClab {
                             weight: '3', // Placeholder
                         },
                     },
-                    position: { x: 0, y: 0 }, // Placeholder, can be updated with real coordinates
+                    position: { x: 0, y: 0 }, // Placeholder, can be updated with real coordinates of cytoscape
                     removed: false,
                     selected: false,
                     selectable: true,
@@ -205,27 +234,65 @@ export class TopoViewerAdaptorClab {
                 };
                 elements.push(nodeEl);
                 nodeIndex++;
+
+                // Create a "group node" for each unique, non-empty parent
+                for (const parentId of parentSet) {
+                    // Typically parentId is "GroupName:Level"
+                    const [groupName, groupLevel] = parentId.split(':');
+
+                    // Build the group-node element
+                    const groupNodeEl: CyElement = {
+                        group: 'nodes',
+                        data: {
+                            id: parentId,
+                            name: groupName || 'UnnamedGroup',
+                            topoViewerRole: 'group',  // Indicate it's a group
+                            weight: '1000',
+                            parent: '', // This group does not have a parent
+                            lat: '',    // Not used here, but could be extended
+                            lng: '',
+                            extraData: { // Usually not needed for a group
+                                clabServerUsername: 'asad', // Placeholder
+                                weight: '2',  // Placeholder
+                                name: '',   // Placeholder
+                                topoViewerGroup: groupName ?? '',  // Placeholder
+                                topoViewerGroupLevel: groupLevel ?? '',  // Placeholder
+                            },
+                        },
+                        position: { x: 0, y: 0 }, // Typically group nodes don't have a position
+                        removed: false,
+                        selected: false,
+                        selectable: true,
+                        locked: false,
+                        grabbed: false,
+                        grabbable: true,
+                        classes: '',
+                    };
+
+                    elements.push(groupNodeEl);
+                }
+
             }
         }
-    
+
         // Convert each Containerlab link into a Cytoscape edge element
         let linkIndex = 0;
         if (parsed.topology.links) {
             for (const linkObj of parsed.topology.links) {
-    
+
                 // Defaulting to an empty string ('') when endpoints are absent
                 const endA = linkObj.endpoints?.[0] ?? '';
                 const endB = linkObj.endpoints?.[1] ?? '';
-    
+
                 if (!endA || !endB) {
                     log.warn("Link does not have both endpoints. Skipping.");
                     continue;
                 }
-    
+
                 // Split endpoints to extract node and interface information
                 const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
                 const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
-    
+
                 const edgeId = `Clab-Link${linkIndex}`;
                 const edgeEl: CyElement = {
                     group: 'edges',
@@ -255,16 +322,16 @@ export class TopoViewerAdaptorClab {
                     grabbable: true,
                     classes: '',
                 };
-    
+
                 elements.push(edgeEl);
                 linkIndex++;
             }
         }
-    
+
         log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
         return elements;
     }
-    
+
     /**
      * Splits an endpoint string into node and interface components.
      * 
@@ -283,7 +350,7 @@ export class TopoViewerAdaptorClab {
             return { node: endpoint, iface: '' };
         }
     }
-    
+
     /**
      * Constructs a parent identifier for a node based on its group and label information.
      * 
@@ -295,14 +362,16 @@ export class TopoViewerAdaptorClab {
      * @returns A string representing the parent identifier.
      */
     private buildParent(nodeObj: ClabNode): string {
-        const grp = nodeObj.group ?? '';
+        // const grp = nodeObj.group ?? '';
+
+        const grp = nodeObj.labels?.['topoViewer-group'] ?? '';
         const lvl = nodeObj.labels?.['topoViewer-groupLevel'] ?? '';
         if (grp && lvl) {
             return `${grp}:${lvl}`;
         }
         return '';
     }
-    
+
     /**
      * Maps the EnvironmentJson object from camelCase to hyphenated keys for JSON serialization.
      * 
@@ -322,7 +391,7 @@ export class TopoViewerAdaptorClab {
             "EnvCyTopoJsonBytes": envJson.envCyTopoJsonBytes,
             "EnvCyTopoJsonBytesAddon": envJson.envCyTopoJsonBytesAddon
         };
-    
+
         return JSON.stringify(hyphenatedJson, null, 2);
     }
 }

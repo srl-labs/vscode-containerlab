@@ -64,7 +64,7 @@ export class TopoViewer {
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
 
       // Write JSON files (dataCytoMarshall.json and environment.json)
-      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology);
+      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
       // Initialize and display the webview panel for visualization
       log.info(`Creating webview panel for visualization`);
@@ -265,31 +265,41 @@ export class TopoViewer {
               <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white" id="ClabSubtitle">Topology name: nokia-MAGc-lab ::: Uptime: 10m10s</p>
             </div>
             <div class="level-right">
-              <div id="nokia-logo">
-              <img id="nokia-logo-img" src="images/nokia-logo.svg" width="100" hspace="10" vspace="5">
-              </div>
-            <div class="level-item">
-              <div class="dropdown is-hoverable is-right">
-              <div class="dropdown-trigger">
-                <button class="button is-small">
-                <i class="icon fas fa-bars" aria-hidden="true"></i>
-                </button>
-              </div>
-              <div class="dropdown-menu" id="dropdown-menu" role="menu">
-                <div class="dropdown-content">
-                  <a id="about" href="#" onclick="showPanelAbout(event);" class="dropdown-item label has-text-weight-normal is-small py-0">About TopoViewer</a>                      
+            
+              <!--   aarafat-tag: vs-code
 
-                  <!--   aarafat-tag: vs-code
-                  <hr class="dropdown-divider py-0">
-                  <a id="getAllEndpointDetail" href="#" onclick="getActualNodesEndpoints(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Retrieve Actual Endpoint Label</a>     
-                  <a id="logMessagesDropdownItem" href="#" onclick="showPanelLogMessages(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Log Messages</a>       
-                  <hr class="dropdown-divider py-0">
-                  <a id="clabClientDropdownItem" href="#" onclick="showPanelTopoViewerClient();"        class="dropdown-item label has-text-weight-normal is-small py-0">TopoViewer Helper App</a>                  
-                  -->
+              <div class="level-item">
+                <div class="dropdown is-hoverable is-right">
+                <div class="dropdown-trigger">
+                  <button class="button is-small">
+                  <i class="icon fas fa-bars" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                  <div class="dropdown-content">
+                    <a id="about" href="#" onclick="showPanelAbout(event);" class="dropdown-item label has-text-weight-normal is-small py-0">About TopoViewer</a>                      
 
+                    <hr class="dropdown-divider py-0">
+                    <a id="getAllEndpointDetail" href="#" onclick="getActualNodesEndpoints(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Retrieve Actual Endpoint Label</a>     
+                    <a id="logMessagesDropdownItem" href="#" onclick="showPanelLogMessages(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Log Messages</a>       
+                    <hr class="dropdown-divider py-0">
+                    <a id="clabClientDropdownItem" href="#" onclick="showPanelTopoViewerClient();"        class="dropdown-item label has-text-weight-normal is-small py-0">TopoViewer Helper App</a>                  
+                    
+
+                  </div>
                 </div>
               </div>
+              -->
+
+              <div id="nokia-logo">
+                <img
+                  id="nokia-logo-img"
+                  src="${imagesUri}/containerlab.svg"
+                  alt="Containerlab Logo"
+                  class="logo-image"
+                >
               </div>
+
             </div>
           </nav>
 
@@ -557,6 +567,9 @@ export class TopoViewer {
               </div>
               <div class="panel-block layout-algo p-0" id="viewport-drawer-geo-map-content-01"  style="display: none;">
                 <div  class="column my-auto is-11">
+
+                  <!-- aarafat-gat: vs-code
+
                   <div  class="panel-content">
                     <div class="columns py-auto" >
                       <div  class="column is-5">
@@ -568,7 +581,10 @@ export class TopoViewer {
                         </label>
                       </div>
                     </div>
-                  </div>
+                  </div> 
+                  
+                  -->
+
                 </div>
               </div>
               <div class="panel-block layout-algo p-0" id="viewport-drawer-geo-map" style="display: none;">
@@ -579,19 +595,30 @@ export class TopoViewer {
                         <div class="content is-small pb-2">
                           <p>
                           <strong>Hint:</strong><br>
+
+                            <!-- aarafat-gat: vs-code
+
                             Check the enable checkbox to activate Geo Positioning layout algorithm.
+
+                            -->
+
                           </p>
                           <p>
                             Click the <i class="fa-solid fa-hand"></i> <strong>Pan</strong> icon to navigate the map, 
                             or the <i class="fa-solid fa-arrow-pointer"></i> <strong>Edit</strong> icon to interact 
                             with nodes and edges. Both icons are located in the viewport buttons. 
                           </p>
+
+                          <!-- aarafat-gat: vs-code
+
                           <p>
                             Note that Pan and Edit modes are mutually exclusive, and Edit mode is active by default. 
                           </p>	
                           <p>
                             To switch to a different layout, first turn off the Geo Positioning layout by uncheck the enable checkbox.  
                           </p>	
+                          -->
+                          
                         </div>
                       </div>
                     </div>
@@ -1067,6 +1094,9 @@ export class TopoViewer {
                         </div>
                       </div>
                     </div>
+
+                    <!--   aarafat-tag: vs-code
+
                     <div  class="column my-auto is-11">
                       <div  class="panel-content">
                         <div class="columns py-auto" >
@@ -1075,18 +1105,26 @@ export class TopoViewer {
                         </div>
                       </div>
                     </div>
+
+                    -->
+
                   </div>
                 </div>
                 <div  class="panel-block p-0" id="panel-link-endpoint-b">
                   <div  class="column px-0">
+
+                  
                     <div  class="column my-auto is-11">
                       <div  class="panel-content">
                         <div class="columns py-auto" >
                           <div  class="column is-4 p-1"><label class="label is-size-7 has-text-right has-text-weight-medium px-auto" >Endpoint-B</label></div>
-                          <div class="column is-8 p-1 pl-3" ><label class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content" id="panel-link-endpoint-b-name">link-endpoint-a-name-placeholder</label></div>
+                          <div class="column is-8 p-1 pl-3" ><label class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content" id="panel-link-endpoint-b-name">link-endpoint-b-name-placeholder</label></div>
                         </div>
                       </div>
                     </div>
+
+                    <!--   aarafat-tag: vs-code
+
                     <div  class="column my-auto is-11">
                       <div  class="panel-content">
                         <div class="columns py-auto" >
@@ -1095,8 +1133,14 @@ export class TopoViewer {
                         </div>
                       </div>
                     </div>
+
+                    -->
+
                   </div>
                 </div>
+
+                <!--   aarafat-tag: vs-code
+
                 <panel-block-impairment-a-b  class="panel-block p-0" id="panel-block-impairment-a-b">
                   <div  class="column px-0">
                     <div  class="column my-auto is-11">
@@ -1149,6 +1193,12 @@ export class TopoViewer {
                     </div>
                   </div>
                 </panel-block-impairment-a-b>
+
+                -->
+
+
+                <!--   aarafat-tag: vs-code
+
                 <panel-block-impairment-b-a  class="panel-block p-0" id="panel-block-impairment-b-a">
                   <div  class="column px-0">
                     <div  class="column my-auto is-11">
@@ -1201,6 +1251,10 @@ export class TopoViewer {
                     </div>
                   </div>
                 </panel-block-impairment-b-a>
+
+                -->
+
+
               </div>
             </div>
             <div class="panel panel-overlay is-link" id="panel-backup-restore" style="display: none;">
@@ -1293,7 +1347,18 @@ export class TopoViewer {
                           <li>Visit GitHub repository for more details <a href="https/github.com/asadarafat/topoViewer">https/github.com/asadarafat/topoViewer</a>.</li>
                         </ul>
                         <p>
-                          I hope you find TopoViewer a valuable tool for your network needs. If you have any questions or feedback, please don't hesitate to reach out to me.
+                          We hope you find TopoViewer a valuable tool for your network needs. If you have any questions or feedback, please don't hesitate to reach out to me.
+                        </p>
+                        <p>
+                        Special Thanks:
+                            <ul>
+                                <li><strong><a href="https://www.linkedin.com/in/siva19susi/">Siva Sivakumar</a></strong> - For pioneering the integration of Bulma CSS, significantly enhancing TopoViewer design and usability.</li>
+                                <li><strong><a href="https://www.linkedin.com/in/gatot-susilo-b073166//">Gatot Susilo</a></strong> - For seamlessly incorporating TopoViewer into the Komodo2 tool, bridging functionality with innovation.</li>
+                                <li><strong><a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/">Gusman Dharma Putra</a></strong> - For his invaluable contribution in integrating TopoViewer into Komodo2, enriching its capabilities.</li>
+                                <li><strong><a href="https://www.linkedin.com/in/sven-wisotzky-44788333/">Sven Wisotzky</a></strong> - For offering insightful feedback that led to significant full stack optimizations.</li>
+                                <li><strong><a href="https://linkedin.com/in/florian-schwarz-812a34145">Florian Schwarz</a></strong> - Spearheaded the integration of TopoViewer into the vscode-containerlab plugin and offered valuable feedback to enhance TopoViewer's functionality.</li>
+                                <li><strong><a href="https://linkedin.com/in/kaelem-chandra">Kaelem Chandra</a></strong>- Leads the maintenance of the vscode-containerlab plugin, ensuring seamless TopoViewer integration while providing expert insights and continuous support.</li>
+                            </ul>
                         </p>
                       </div>
                     </div>
