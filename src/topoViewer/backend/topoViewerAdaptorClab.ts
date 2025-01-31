@@ -7,13 +7,13 @@ import * as yaml from 'js-yaml';
 import { log } from './logger';
 import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
 
-import { topoViewer } from '../../../package.json';
+import { version as topoViewerVersion } from '../../../package.json';
 
 import { ClabLabTreeNode, ClabContainerTreeNode } from '../../clabTreeDataProvider';
 // log.info(ClabTreeDataProvider.)
 
 
-log.info(`TopoViewer Version: ${topoViewer.version}`);
+log.info(`TopoViewer Version: ${topoViewerVersion}`);
 
 
 /**
@@ -90,7 +90,7 @@ export class TopoViewerAdaptorClab {
                 clabAllowedHostname01: "127.0.0.1",
                 clabServerPort: "8082",
                 deploymentType: "vs-code",
-                topoviewerVersion: `${topoViewer.version}`,
+                topoviewerVersion: `${topoViewerVersion}`,
                 envCyTopoJsonBytes: cytoTopology,
                 envCyTopoJsonBytesAddon: cytoTopology
             };

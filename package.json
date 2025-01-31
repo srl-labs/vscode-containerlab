@@ -5,9 +5,6 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "version": "0.3.2",
-  "topoViewer": {
-    "version": "nightly-26.01.25"
-  },
   "engines": {
     "vscode": "^1.70.0"
   },
