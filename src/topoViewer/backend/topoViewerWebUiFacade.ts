@@ -265,10 +265,22 @@ export class TopoViewer {
         <body>
 
           <nav class="level m-0 px-3 py-1 has-background-4a">
-            <div>
-              <p class="title    m-0 px-1 py-0   is-4 is-unselectable has-text-weight-normal has-text-white"> TopoViewer</p>
-              <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white" id="ClabSubtitle">Topology name: nokia-MAGc-lab ::: Uptime: 10m10s</p>
+
+            <div class="is-flex is-justify-content-flex-start">
+              <div class="pt-2 pr-2">
+                <img
+                  id="nokia-logo-img"
+                  src="${imagesUri}/containerlab.svg"
+                  alt="Containerlab Logo"
+                  class="logo-image"
+                >
+              </div>
+              <div class="p-0 is-flex is-justify-content-space-evenly is-flex-direction-column">
+                <p class="title    m-0 px-1 py-0   is-4 is-unselectable has-text-weight-normal has-text-white"> containerlab</p>
+                <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white" id="ClabSubtitle">Topology name: nokia-MAGc-lab ::: Uptime: 10m10s</p>
+              </div>
             </div>
+
             <div class="level-right">
             
               <!--   aarafat-tag: vs-code
@@ -296,6 +308,7 @@ export class TopoViewer {
               </div>
               -->
 
+              <!--   aarafat-tag: vs-code
               <div id="nokia-logo">
                 <img
                   id="nokia-logo-img"
@@ -304,6 +317,7 @@ export class TopoViewer {
                   class="logo-image"
                 >
               </div>
+              -->
 
             </div>
           </nav>
