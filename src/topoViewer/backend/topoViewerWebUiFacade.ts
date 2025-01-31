@@ -267,7 +267,7 @@ export class TopoViewer {
           <nav class="level m-0 px-3 py-1 has-background-4a">
 
             <div class="is-flex is-justify-content-flex-start">
-              <div class="pt-2 pr-2">
+              <div class="pt-1 pr-2">
                 <img
                   id="nokia-logo-img"
                   src="${imagesUri}/containerlab.svg"
