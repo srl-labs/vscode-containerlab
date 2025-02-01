@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.4.0] - 2025-02-01
+
+* Refactor the tree provider by @kaelemc in https://github.com/srl-labs/vscode-containerlab/pull/35
+* intial integration of TopoViewer via git-submodule topoViewer-frontend by @asadarafat in https://github.com/srl-labs/vscode-containerlab/pull/38
+
+## New Contributors
+* @asadarafat made their first contribution in https://github.com/srl-labs/vscode-containerlab/pull/38
+
 ## [0.3.0] - 2025-26-01
 * Fix Selected lab status turn grey on selection by @FloSch62 in https://github.com/srl-labs/vscode-containerlab/pull/24
 * Add lab folder to workspace by @FloSch62 in https://github.com/srl-labs/vscode-containerlab/pull/25
