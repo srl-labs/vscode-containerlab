@@ -332,7 +332,7 @@
         },
         {
           "command": "containerlab.inspectOneLab",
-          "when": "viewItem =~ /containerlabLab/",
+          "when": "viewItem == containerlabLabDeployed",
           "group": "navigation@7"
         },
         {
