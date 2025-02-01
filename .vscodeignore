@@ -1,12 +1,22 @@
+# Development folders
 .vscode/**
 .vscode-test/**
-src/**
+
+# Config files
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/eslint.config.mjs
+
+# Source maps and TypeScript files
 **/*.map
 **/*.ts
-**/.vscode-test.*
+
+# Built packages
+*.vsix
+
+# Exclude all src except what we need
+src/*
+!src/topoViewer
 !src/webview/inspect.css

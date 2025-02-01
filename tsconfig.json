@@ -2,11 +2,13 @@
 	"compilerOptions": {
 	  "module": "commonjs",
 	  "target": "ES2020",
-	  "lib": ["ES2020"],
+	  "lib": ["ES2020", "dom"], // Includes 'dom' for browser globals
 	  "outDir": "out",
 	  "rootDir": "src",
 	  "strict": true,
-	  "sourceMap": true
+	  "sourceMap": true,
+	  "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"], // Include custom types
+	  "resolveJsonModule": true,                // Allows importing JSON modules
 	},
 	"exclude": [
 	  "node_modules",

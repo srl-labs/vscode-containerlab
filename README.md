@@ -32,6 +32,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Graph Lab (Web)**: runs `containerlab graph` in a Terminal
   - **Graph Lab (draw.io)**: runs `containerlab graph --drawio` , then opens the `.drawio` file
   - **Graph Lab (draw.io, Interactive)**: runs in Terminal with in interactive mode
+  - **Graph Lab (Topoviewer)**: interactive, web-based interface for visualizing Containerlab topologies
 
 ---
 

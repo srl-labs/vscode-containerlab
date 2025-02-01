@@ -2,14 +2,17 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
-import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode, ClabTreeDataProvider } from "../clabTreeDataProvider";
+
+import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
+
 
 /**
  * Graph Lab (Web) => run in Terminal (no spinner).
  */
 export function graphNextUI(node: ClabLabTreeNode) {
   const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - Web");
-  
+
   graphCmd.run();
 }
 
@@ -54,6 +57,40 @@ export async function graphDrawIO(node: ClabLabTreeNode) {
  */
 export function graphDrawIOInteractive(node: ClabLabTreeNode) {
   const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - drawio Interactive");
-  
+
   graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
+}
+
+
+/**
+ * Graph Lab (TopoViewer) 
+ */
+export async function grapTopoviewer(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+
+  const provider = new ClabTreeDataProvider(context);
+  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
+  const viewer = new TopoViewer(context);
+
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const labPath = node.labPath.absolute;
+
+  // const labPath = node.details?.labPath;
+  const labLabel = node.label || "Lab";
+  if (!labPath) {
+    vscode.window.showErrorMessage('No labPath to redeploy.');
+    return;
+  }
+
+  // const yamlFilePath = path.join(__dirname, '..', 'clab-demo.yaml');
+  try {
+    await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
+  } catch (err) {
+    vscode.window.showErrorMessage(`Failed to open Topology Viewer: ${err}`);
+    console.error(`[ERROR] Failed to open topology viewer`, err);
+  }
+
 }

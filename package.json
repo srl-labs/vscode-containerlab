@@ -4,7 +4,7 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -136,6 +136,11 @@
       {
         "command": "containerlab.lab.graph.drawio.interactive",
         "title": "Graph Lab (draw.io, Interactive)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.topoViewer",
+        "title": "Graph Lab (TopoViewer)",
         "category": "Containerlab"
       },
       {
@@ -347,6 +352,11 @@
           "group": "graph@2"
         },
         {
+          "command": "containerlab.lab.graph.topoViewer",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "graph@3"
+        },
+        {
           "command": "containerlab.node.start",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@2"
@@ -513,6 +523,7 @@
     "watch": "tsc -w -p ."
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.70.0",
     "typescript": "^5.7.3"
