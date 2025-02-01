@@ -56,7 +56,7 @@ export class ClabCommand extends cmd.Command  {
 
         // Build the command
         const cmdArgs = flags
-            ? [this.action, flags.join(" "), "-t", labPath]
+            ? [this.action, ...flags, "-t", labPath]
             : [this.action, "-t", labPath];
 
         // Return the promise from .execute() so we can await
