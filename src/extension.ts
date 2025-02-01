@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { promisify } from 'util';
 import { exec } from 'child_process';
-import { TopoViewer } from './topoViewer/backend/topoViewerWebUiFacade';
 import {
   deploy,
   deployCleanup,
@@ -34,125 +33,142 @@ import {
 } from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
 
-/** Output channel for logs */
+/** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
 
 /** Promisified child_process.exec */
 const execAsync = promisify(exec);
 
-/** 
- * If you rely on this file, keep it; otherwise remove.
- */
+/** If you rely on this, keep it; otherwise remove. */
 export const execCmdMapping = require('../resources/exec_cmd.json');
-console.log(execCmdMapping);
+// (We’re not logging execCmdMapping here because outputChannel isn’t created yet.)
+
+/**
+ * Helper: Log a debug message to the output channel.
+ * Only logs if the outputChannel is available.
+ */
+function log(message: string) {
+  if (outputChannel) {
+    outputChannel.appendLine(`[INFO] ${message}`);
+  }
+}
 
 /* ------------------------------------------------------------------
-   A helper to detect & prompt for passwordless/sudo. 
-   We'll use this logic for both installing Containerlab and 
-   adding the user to the 'clab_admins' group.
+   HELPER: run a command with sudo.
+   1) Check for passwordless sudo.
+   2) If not available, prompt the user for their sudo password.
+   3) Execute the command, and log the output to the output channel.
 ------------------------------------------------------------------ */
-async function runWithSudo(command: string, actionDescription: string): Promise<void> {
+async function runWithSudo(command: string, description: string) {
   try {
-    // Check if passwordless sudo is available
+    log(`Checking for passwordless sudo for command: ${command}`);
+    // Step 1: Check if passwordless sudo is available
     await execAsync('sudo -n true');
+    log(`Passwordless sudo available. Executing command: ${command}`);
+    // Run the command with sudo
     const { stdout, stderr } = await execAsync(`sudo ${command}`);
-    outputChannel.appendLine(stdout);
+    if (stdout) {
+      outputChannel.appendLine(stdout);
+    }
     if (stderr) {
-      outputChannel.appendLine(`[${actionDescription} stderr]: ${stderr}`);
+      outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
     }
   } catch (noPwlessErr) {
-    // We must prompt the user for their sudo password
+    log(`Passwordless sudo not available. Prompting user for sudo password for: ${description}`);
+    // Step 2: Prompt for sudo password
     const password = await vscode.window.showInputBox({
-      prompt: `Enter your sudo password for: ${actionDescription}`,
+      prompt: `Enter your sudo password for: ${description}`,
       password: true,
-      ignoreFocusOut: true,
-      placeHolder: 'sudo password'
+      ignoreFocusOut: true
     });
     if (!password) {
-      throw new Error('User cancelled sudo password prompt.');
+      throw new Error(`User cancelled sudo password prompt for: ${description}`);
     }
 
-    // We'll feed that password into "sudo -S"
-    // echo 'mypassword' | sudo -S sh -c 'the command...'
-    const fullCmd = `echo '${password}' | sudo -S sh -c '${command}'`;
-    const { stdout, stderr } = await execAsync(fullCmd);
-    outputChannel.appendLine(stdout);
+    // Step 3: Execute the command using the provided password
+    const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
+    log(`Executing command with sudo and provided password: ${command}`);
+    const { stdout, stderr } = await execAsync(cmd);
+    if (stdout) {
+      outputChannel.appendLine(stdout);
+    }
     if (stderr) {
-      outputChannel.appendLine(`[${actionDescription} stderr]: ${stderr}`);
+      outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
     }
   }
 }
 
 /* ------------------------------------------------------------------
-   INSTALLATION
-   Always do: "curl -sL https://containerlab.dev/setup | sudo -E bash -s all"
-   (with passwordless check first).
+   INSTALL CONTAINERLAB
+   Always "curl -sL https://containerlab.dev/setup | bash -s 'all'"
+   using runWithSudo (passwordless check → prompt if needed).
 ------------------------------------------------------------------ */
-async function installContainerlabWithSudo(): Promise<void> {
-  // The entire install script that we pass to runWithSudo():
-  const installerCmd = `curl -sL https://containerlab.dev/setup | sudo -E bash -s "all"`;
-  // We nest 'sudo' calls inside runWithSudo, so let's remove the leading "sudo" from the command.
-  // Actually we DO have "sudo" inside the pipe; let's just do a simpler approach:
-  const command = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
-  await runWithSudo(command, 'Installing containerlab');
+async function installContainerlab(): Promise<void> {
+  log(`Installing containerlab...`);
+  // The command passed here is without sudo because runWithSudo adds it.
+  const installerCmd = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
+  await runWithSudo(installerCmd, 'Installing containerlab');
 }
 
 /* ------------------------------------------------------------------
-   ADD USER TO 'clab_admins' GROUP IF NEEDED
-   Because containerlab 0.63.3+ will require the user to be in 
-   'clab_admins' group to run "containerlab version upgrade" 
-   (and possibly other commands) without error.
+   ADD USER TO "clab_admins" GROUP (after install, optional)
+   If the user isn’t in that group, prompt them to add themselves.
 ------------------------------------------------------------------ */
 async function addUserToClabAdminsIfNeeded(): Promise<void> {
   const currentUser = process.env.USER || '';
   if (!currentUser) {
-    console.warn('Could not detect the current user from environment. Skipping clab_admins group check.');
+    log('Cannot detect current user from environment; skipping clab_admins check.');
     return;
   }
 
   try {
-    // check if user is already in clab_admins
+    log(`Checking if user "${currentUser}" is in group clab_admins.`);
+    // Get the current groups for the user
     const { stdout } = await execAsync('id -nG');
     if (stdout.includes('clab_admins')) {
-      // user is already in group
+      log(`User "${currentUser}" is already in clab_admins.`);
       return;
     }
 
-    // user not in group => ask if they'd like to join
-    const addAction = 'Add me to clab_admins';
+    // Not in group → prompt the user
+    const joinAction = 'Add me to clab_admins';
     const skipAction = 'No';
     const choice = await vscode.window.showWarningMessage(
-      `To run future containerlab commands without sudo, you can join the "clab_admins" group.\nAdd "${currentUser}" to that group now?`,
-      addAction,
+      `Your user "${currentUser}" is not in the "clab_admins" group.\n` +
+      'Joining this group helps run containerlab commands without sudo.\n\n' +
+      'Add yourself to that group now?',
+      joinAction,
       skipAction
     );
-    if (choice !== addAction) {
+    if (choice !== joinAction) {
+      log(`User declined to join clab_admins.`);
       return;
     }
 
-    // user wants to join the group => run usermod
+    log(`Adding user "${currentUser}" to clab_admins.`);
     await runWithSudo(`usermod -aG clab_admins ${currentUser}`, `Add ${currentUser} to clab_admins`);
     vscode.window.showInformationMessage(
-      `You have been added to the "clab_admins" group. Please log out and log in again for this to take effect.`
+      `Added "${currentUser}" to clab_admins. You must log out and back in for this to take effect.`
     );
   } catch (err) {
-    console.warn('Error checking or adding user to clab_admins group:', err);
+    log(`Error checking or adding user to clab_admins group: ${err}`);
   }
 }
 
 /* ------------------------------------------------------------------
-   ensureClabInstalled
-   If containerlab version fails => prompt user to install
-   If user says yes => attempt passwordless sudo first, then prompt
-   On success => show success message, then optionally add user to clab_admins
+   ENSURE CONTAINERLAB INSTALLED
+   If "containerlab version" fails, prompt to install.
+   If the user accepts, install containerlab and then
+   optionally add them to the clab_admins group.
 ------------------------------------------------------------------ */
 async function ensureClabInstalled(): Promise<boolean> {
   try {
-    // If this succeeds, containerlab is installed
+    log(`Verifying containerlab installation by running "containerlab version".`);
     await execAsync('containerlab version');
+    log(`containerlab is already installed.`);
     return true;
-  } catch (err) {
-    // Not installed
+  } catch (notInstalled) {
+    log(`containerlab is not installed. Prompting user for installation.`);
     const installAction = 'Install containerlab';
     const cancelAction = 'No';
     const chosen = await vscode.window.showWarningMessage(
@@ -160,67 +176,71 @@ async function ensureClabInstalled(): Promise<boolean> {
       installAction,
       cancelAction
     );
-
-    if (chosen === installAction) {
-      try {
-        await installContainerlabWithSudo();
-
-        // After installation, verify
-        await execAsync('containerlab version');
-        vscode.window.showInformationMessage('Containerlab installed successfully!');
-
-        // Optionally see if user wants to join clab_admins
-        await addUserToClabAdminsIfNeeded();
-
-        return true;
-      } catch (installErr: any) {
-        vscode.window.showErrorMessage(
-          `Failed to install containerlab:\n${installErr.message}\n` +
-          `Extension will be disabled.`
-        );
-        return false;
-      }
-    } else {
-      // user doesn't want to install → return false
+    if (chosen !== installAction) {
+      log(`User declined containerlab installation.`);
+      return false;
+    }
+    // User chose to install containerlab
+    try {
+      await installContainerlab();
+      // Verify installation succeeded
+      await execAsync('containerlab version');
+      vscode.window.showInformationMessage('Containerlab installed successfully!');
+      log(`containerlab installed successfully.`);
+      await addUserToClabAdminsIfNeeded();
+      return true;
+    } catch (installErr: any) {
+      vscode.window.showErrorMessage(
+        `Failed to install containerlab:\n${installErr.message}\nExtension will be disabled.`
+      );
+      log(`Failed to install containerlab: ${installErr}`);
       return false;
     }
   }
 }
 
 /* ------------------------------------------------------------------
-   checkAndUpdateClabIfNeeded
-   - Always do "sudo containerlab version check"
-   - If out-of-date, prompt user
-   - If yes => do "sudo containerlab version upgrade"
+   CHECK & UPDATE CONTAINERLAB IF NEEDED
+   1) Run "sudo containerlab version check" and log the output.
+   2) If not on the latest version, prompt the user to update.
+   3) If the user agrees, run "sudo containerlab version upgrade".
 ------------------------------------------------------------------ */
 async function checkAndUpdateClabIfNeeded(): Promise<void> {
   try {
-    const { stdout } = await execAsync('sudo containerlab version check');
+    log(`Running "sudo containerlab version check".`);
+    const { stdout, stderr } = await execAsync('sudo containerlab version check');
+    if (stdout) {
+      outputChannel.appendLine(stdout);
+    }
+    if (stderr) {
+      outputChannel.appendLine(`[version check stderr]: ${stderr}`);
+    }
+
     if (!stdout.includes('You are on the latest version')) {
-      // containerlab indicates we are not on the latest version
+      log(`Containerlab may be out of date. Prompting user for update.`);
       const updateAction = 'Update containerlab';
       const skipAction = 'Skip';
       const userChoice = await vscode.window.showWarningMessage(
-        `It looks like your containerlab might be out of date.`,
+        `Containerlab might be out of date. See the Output panel for details.`,
         updateAction,
         skipAction
       );
-
       if (userChoice === updateAction) {
-        // If your environment differs, adjust accordingly.
         try {
+          log(`User chose to update containerlab. Executing upgrade.`);
           await runWithSudo('containerlab version upgrade', 'Upgrading containerlab');
           vscode.window.showInformationMessage('Containerlab updated successfully!');
+          log(`containerlab updated successfully.`);
         } catch (upgradeErr: any) {
           vscode.window.showErrorMessage(`Failed to update containerlab:\n${upgradeErr.message}`);
+          log(`Failed to update containerlab: ${upgradeErr}`);
         }
       }
+    } else {
+      log(`Containerlab is on the latest version.`);
     }
-  } catch (err) {
-    // The 'containerlab version check' command might fail 
-    // if the user has a much older version or there's a network error.
-    // We'll just log a warning and proceed with normal activation.
-    console.warn('[WARN] containerlab version check failed:', err);
+  } catch (err: any) {
+    log(`containerlab version check failed: ${err.message}`);
   }
 }
 
@@ -228,23 +248,24 @@ async function checkAndUpdateClabIfNeeded(): Promise<void> {
    ACTIVATE EXTENSION
 ------------------------------------------------------------------ */
 export async function activate(context: vscode.ExtensionContext) {
-  // Create the output channel up front
+  // Create and register the output channel
   outputChannel = vscode.window.createOutputChannel("Containerlab");
   context.subscriptions.push(outputChannel);
 
-  // 1) Ensure containerlab is installed (or prompt installation).
+  // Now that outputChannel is defined, we can log our initial messages.
+  outputChannel.appendLine(`[DEBUG] Containerlab extension activated.`);
+
+  // 1) Ensure containerlab is installed
   const clabInstalled = await ensureClabInstalled();
   if (!clabInstalled) {
-    // If user declined or install failed, stop here.
     return;
   }
 
-  // 2) If installed, check if containerlab is outdated; if so, prompt to update.
+  // 2) If installed, check for updates
   await checkAndUpdateClabIfNeeded();
 
-  // *** Normal extension initialization code below ***
+  // *** Proceed with normal extension logic ***
 
-  // Initialize our TreeDataProvider
   const provider = new ClabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
@@ -252,33 +273,24 @@ export async function activate(context: vscode.ExtensionContext) {
     provider.refresh();
   }));
 
+  // Register the remaining commands
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.addToWorkspace', addLabFolderToWorkspace));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.openFolderInNewWindow', openFolderInNewWindow));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.copyPath', copyLabPath));
-
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy', deploy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy.cleanup', deployCleanup));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.deploy.specificFile', deploySpecificFile));
-
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.redeploy', redeploy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.redeploy.cleanup', redeployCleanup));
-
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.destroy', destroy));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', destroyCleanup));
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.inspectAll", () => inspectAllLabs(context))
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.inspectOneLab", (node) => inspectOneLab(node, context))
-  );
-
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectAll', () => inspectAllLabs(context)));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectOneLab', (node) => inspectOneLab(node, context)));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph', graphNextUI));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', graphDrawIOInteractive));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => grapTopoviewer(node, context)));
-
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.start', startNode));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.stop', stopNode));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.attachShell', attachShell));
@@ -291,7 +303,6 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyKind', copyContainerKind));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
 
-  // Auto-refresh the Containerlab Explorer using the configured interval
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
 
@@ -302,5 +313,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  // If you need to clean up anything, do it here
+  if (outputChannel) {
+    outputChannel.appendLine(`[DEBUG] Deactivating Containerlab extension.`);
+  }
 }
