@@ -498,7 +498,7 @@
         },
         "containerlab.sudoEnabledByDefault": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Whether to prepend 'sudo' to all containerlab commands by default."
         },
         "containerlab.refreshInterval": {
