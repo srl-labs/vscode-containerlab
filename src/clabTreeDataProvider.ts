@@ -260,7 +260,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
         const inspectObject = JSON.parse(clabStdout);
 
-        // console.log(inspectObject);
 
         return inspectObject;
     }
@@ -271,10 +270,11 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * 
      * @returns Record comprised of labPath as the key and ClabLabTreeNode as value.
      */
-    private async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
         console.log("[discovery]:\tDiscovering labs via inspect...");
 
         const inspectData = await this.getInspectData();
+
 
         if (!inspectData) { return undefined; }
 

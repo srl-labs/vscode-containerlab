@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import { TopoViewer } from './topoViewer/backend/topoViewerWebUiFacade';
 import {
   deploy,
   deployCleanup,
@@ -28,7 +29,8 @@ import {
   copyContainerName,
   copyContainerID,
   copyContainerImage,
-  copyContainerKind
+  copyContainerKind,
+  grapTopoviewer
 } from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
 
@@ -54,13 +56,13 @@ export async function activate(context: vscode.ExtensionContext) {
       'containerlab not detected. Please install it first.',
       installAction
     );
-    
+
     if (selection === installAction) {
       vscode.env.openExternal(vscode.Uri.parse('https://containerlab.dev/install/'));
     }
     versionOutput = '';
   }
-  
+
   // const provider = new ContainerlabTreeDataProvider(context);
   const provider = new ClabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
@@ -94,6 +96,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph', graphNextUI));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', graphDrawIOInteractive));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => grapTopoviewer(node, context)));
 
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.start', startNode));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.stop', stopNode));
@@ -107,10 +110,6 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyKind', copyContainerKind));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage));
 
-
-
-
-
   const config = vscode.workspace.getConfiguration("containerlab");
   const refreshInterval = config.get<number>("refreshInterval", 10000);
 
@@ -118,7 +117,6 @@ export async function activate(context: vscode.ExtensionContext) {
     provider.refresh();
   }, refreshInterval);
   context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
-
 }
 
-export function deactivate() {}
+export function deactivate() { }
