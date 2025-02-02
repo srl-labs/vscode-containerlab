@@ -480,7 +480,9 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
             );
             node.tooltip = `Name: ${intf.ifname}\nIndex: ${intf.ifindex}\nMTU: ${intf.mtu}`;
             node.description = intf.operstate;
-            node.iconPath = new vscode.ThemeIcon("plug", color);
+            const iconUri_light = this.getResourceUri("icons/ethernet-port-light.svg");
+            const iconUri_dark = this.getResourceUri("icons/ethernet-port-dark.svg");
+            node.iconPath = { light: iconUri_light, dark: iconUri_dark };
 
             interfaces.push(node);
         });
