@@ -4,7 +4,7 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.4.3",
+  "version": "4.0.2",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -18,6 +18,7 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
+    "onCommand:your.extension.command",
     "onStartupFinished"
   ],
   "categories": [
@@ -143,6 +144,11 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.graph.topoViewerReload",
+        "title": "Graph Lab (TopoViewer) Reload",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.addToWorkspace",
         "title": "Add Lab to Workspace",
         "category": "Containerlab",
@@ -230,6 +236,11 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "command": "containerlab.lab.graph",
           "group": "navigation@0"
+        },
+        {
+          "when": "isTopoviewerActive",
+          "command": "containerlab.lab.graph.topoViewerReload",
+          "group": "navigation@1"
         }
       ],
       "editor/title/run": [
@@ -332,7 +343,7 @@
         },
         {
           "command": "containerlab.inspectOneLab",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLab/",
           "group": "navigation@7"
         },
         {
@@ -437,6 +448,10 @@
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.topoViewerReload",
+          "when": "isTopoviewerActive"
         }
       ],
       "containerlab.submenu.node.copy": [
@@ -498,7 +513,7 @@
         },
         "containerlab.sudoEnabledByDefault": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Whether to prepend 'sudo' to all containerlab commands by default."
         },
         "containerlab.refreshInterval": {
@@ -513,17 +528,7 @@
           },
           "default": {},
           "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
-        },
-        "containerlab.drawioDefaultTheme": {
-          "type": "string",
-          "enum": [
-            "nokia_modern",
-            "nokia",
-            "grafana"
-          ],
-          "default": "nokia_modern",
-          "description": "Default theme to use when generating DrawIO graphs."
-        }      
+        }
       }
     }
   },

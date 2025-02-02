@@ -37,21 +37,19 @@ export async function graphDrawIO(node: ClabLabTreeNode) {
   const drawioPath = labPath.replace(/\.(ya?ml)$/i, ".drawio");
   const drawioUri = vscode.Uri.file(drawioPath);
 
-  // Read the default theme from configuration.
-  const config = vscode.workspace.getConfiguration("containerlab");
-  const drawioTheme = config.get<string>("drawioDefaultTheme", "nokia_modern");
+  // Wait for containerlab to finish generating <labFileName>.drawio
+  await graphCmd.run(["--drawio"]).then(
+    () => {
+      // Verify the file exists
+      if (!fs.existsSync(drawioPath)) {
+        return vscode.window.showErrorMessage(
+          `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+        );
+      }
 
-  // Wait for containerlab to finish generating the .drawio file,
-  // passing the theme argument.
-  await graphCmd.run(["--drawio", "--drawio-args", `--theme ${drawioTheme}`]).then(() => {
-    // Verify the file exists.
-    if (!fs.existsSync(drawioPath)) {
-      return vscode.window.showErrorMessage(
-        `Containerlab failed to generate .drawio file for lab: ${node.name}.`
-      );
+      vscode.commands.executeCommand("vscode.open", drawioUri);
     }
-    vscode.commands.executeCommand("vscode.open", drawioUri);
-});
+  )
 }
 
 /**
@@ -67,32 +65,72 @@ export function graphDrawIOInteractive(node: ClabLabTreeNode) {
 /**
  * Graph Lab (TopoViewer) 
  */
-export async function grapTopoviewer(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
 
-  const provider = new ClabTreeDataProvider(context);
-  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
+let currentTopoViewer: TopoViewer | undefined;
+let currentTopoViewerPanel: vscode.WebviewPanel | undefined;
+
+
+export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+  // 1) create a new TopoViewer
   const viewer = new TopoViewer(context);
 
-  if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
-    return;
-  }
+  // 2) store the viewer in the global variable
+  currentTopoViewer = viewer;
 
-  const labPath = node.labPath.absolute;
+  // do the same logic as before...
+  const provider = new ClabTreeDataProvider(context);5
+  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
 
-  // const labPath = node.details?.labPath;
-  const labLabel = node.label || "Lab";
-  if (!labPath) {
+  // if node, if labPath, etc...
+  const yamlFilePath = node.labPath.absolute;
+  if (!yamlFilePath) {
     vscode.window.showErrorMessage('No labPath to redeploy.');
     return;
   }
 
-  // const yamlFilePath = path.join(__dirname, '..', 'clab-demo.yaml');
   try {
-    await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
+    // 3) call openViewer, which returns (panel | undefined).
+    currentTopoViewerPanel = await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
+
+    // await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
+    // currentTopoViewerPanel = viewer.currentTopoViewerPanel
+
+    // 4) If the panel is undefined, do nothing or return
+    if (!currentTopoViewerPanel) {
+      return;
+    }
+
+    // 5) Set context so reload button can appear
+    vscode.commands.executeCommand("setContext", "isTopoviewerActive", true);
+
+    // 6) Track disposal
+    currentTopoViewerPanel.onDidDispose(() => {
+      currentTopoViewerPanel = undefined;
+      currentTopoViewer = undefined; // also nullify the viewer reference
+      vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
+    });
+
   } catch (err) {
-    vscode.window.showErrorMessage(`Failed to open Topology Viewer: ${err}`);
-    console.error(`[ERROR] Failed to open topology viewer`, err);
+    // ...
   }
+}
+
+
+
+export async function graphTopoviewerReload(context: vscode.ExtensionContext) {
+  // 1) If there's no panel, show an error
+  if (!currentTopoViewerPanel) {
+    vscode.window.showErrorMessage("No active TopoViewer panel to reload.");
+    return;
+  }
+
+  // 2) If there's no viewer, also show an error
+  if (!currentTopoViewer) {
+    vscode.window.showErrorMessage("No active TopoViewer instance.");
+    return;
+  }
+
+  // 3) Now call updatePanelHtml on the existing panel
+  currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
 
 }

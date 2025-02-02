@@ -172,13 +172,13 @@ export class TopoViewerAdaptorClab {
         // Step 2: Convert the object's values into an array
         // Step 3: Filter the items where `name` equals "demo-asad"
 
-        let filteredLabData: ClabLabTreeNode[]
+        // let filteredLabData: ClabLabTreeNode[]
 
-        filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
-            (item) => item?.name === clabName
-        );
+        // filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
+        //     (item) => item?.name === clabName
+        // );
 
-        log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
+        // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
 
 
         // Prepare parent nods
@@ -211,7 +211,7 @@ export class TopoViewerAdaptorClab {
 
                 //get node ManagementIP address
                 log.info(`nodeName: ${nodeName}`)
-                let containerData = this.getClabNodeManagementIpv4Ipv6(`clab-${clabName}-${nodeName}`, filteredLabData);
+                let containerData = this.getClabContainerTreeNode(`clab-${clabName}-${nodeName}`, clabTreeDataToTopoviewer ?? {}, clabName ?? '');
 
                 const nodeEl: CyElement = {
                     group: 'nodes',
@@ -421,8 +421,16 @@ export class TopoViewerAdaptorClab {
         return JSON.stringify(hyphenatedJson, null, 2);
     }
 
+
+
     // Define the method within your class
-    private getClabNodeManagementIpv4Ipv6(nodeName: string, filteredLabData: ClabLabTreeNode[]): ClabContainerTreeNode | null {
+    public getClabContainerTreeNode(nodeName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string): ClabContainerTreeNode | null {
+
+    let filteredLabData: ClabLabTreeNode[]
+
+    filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
+        (item) => item?.name === clabName
+    );
 
         // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
 

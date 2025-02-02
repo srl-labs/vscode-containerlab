@@ -1,11 +1,41 @@
-// file: src/topoViewer.ts
-
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode } from '../../clabTreeDataProvider';
+import { ClabLabTreeNode, ClabTreeDataProvider } from '../../clabTreeDataProvider';
+
+import {
+  deploy,
+  deployCleanup,
+  deploySpecificFile,
+  destroy,
+  destroyCleanup,
+  redeploy,
+  redeployCleanup,
+  inspectAllLabs,
+  inspectOneLab,
+  openLabFile,
+  openFolderInNewWindow,
+  startNode,
+  stopNode,
+  attachShell,
+  sshToNode,
+  showLogs,
+  graphNextUI,
+  graphDrawIO,
+  graphDrawIOInteractive,
+  addLabFolderToWorkspace,
+  copyLabPath,
+  copyContainerIPv4Address,
+  copyContainerIPv6Address,
+  copyContainerName,
+  copyContainerID,
+  copyContainerImage,
+  copyContainerKind,
+  graphTopoviewer,
+  graphTopoviewerReload
+} from '../../commands/index';
 
 
 /**
@@ -23,15 +53,35 @@ import { ClabLabTreeNode } from '../../clabTreeDataProvider';
  * and JSON file operations, promoting separation of concerns and modularity.
  */
 export class TopoViewer {
+  /**
+   * Adaptor instance responsible for converting Containerlab YAML to Cytoscape elements
+   * and for creating necessary JSON files.
+   */
   private adaptor: TopoViewerAdaptorClab;
+  private clabTreeProviderImported: ClabTreeDataProvider;
+
+  /**
+   * Tracks the YAML file path used in the last openViewer call.
+   * Defaults to an empty string to satisfy TypeScript strict initialization rules.
+   */
+  private lastYamlFilePath: string = '';
+
+  /**
+   * Tracks the folder name (derived from the YAML file name) used to store JSON data files.
+   */
+  private lastFolderName: string | undefined;
+
+
+  public currentTopoViewerPanel: vscode.WebviewPanel | undefined;
 
   /**
    * Initializes a new instance of the TopoViewer class.
-   * 
+   *
    * @param context - The VS Code extension context.
    */
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
+    this.clabTreeProviderImported = new ClabTreeDataProvider(context);
   }
 
   /**
@@ -50,9 +100,11 @@ export class TopoViewer {
    * await topoViewer.openViewer('/path/to/containerlab.yaml');
    * ```
    */
-  public async openViewer(yamlFilePath: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): Promise<void> {
+  public async openViewer(yamlFilePath: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): Promise<vscode.WebviewPanel | undefined> {
 
     // log.info(`output of clabJsonData ${clabTreeDataToTopoviewer}`)
+
+    this.lastYamlFilePath = yamlFilePath;
 
     try {
       vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
@@ -67,16 +119,24 @@ export class TopoViewer {
       // Determine folder name based on YAML file name
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
 
+      this.lastFolderName = folderName;
+
       // Write JSON files (dataCytoMarshall.json and environment.json)
       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
       // Initialize and display the webview panel for visualization
       log.info(`Creating webview panel for visualization`);
-      await this.createWebviewPanel(folderName);
+      const panel = await this.createWebviewPanel(folderName);
+      this.currentTopoViewerPanel = panel
+
+      return panel
 
     } catch (err) {
       vscode.window.showErrorMessage(`Error in openViewer: ${err}`);
       log.error(`openViewer: ${err}`);
+
+      return undefined;
+
     }
   }
 
@@ -92,7 +152,7 @@ export class TopoViewer {
    * await this.createWebviewPanel('exampleFolder');
    * ```
    */
-  private async createWebviewPanel(folderName: string): Promise<void> {
+  private async createWebviewPanel(folderName: string): Promise<vscode.WebviewPanel> {
     const panel = vscode.window.createWebviewPanel(
       'topoViewer',
       `Containerlab Topology: ${folderName}`,
@@ -110,6 +170,20 @@ export class TopoViewer {
           vscode.Uri.joinPath(this.context.extensionUri, 'out')
         ],
       }
+    );
+
+    // 1. Set the Context Key to True
+    await vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
+    log.info(`Context key 'isTopoviewerActive' set to true`);
+
+    // 2. Handle Webview Disposal to Unset the Context Key
+    panel.onDidDispose(
+      () => {
+        vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
+        log.info(`Context key 'isTopoviewerActive' set to false`);
+      },
+      null,
+      this.context.subscriptions
     );
 
     // Generate static asset URIs (CSS, JS, Images)
@@ -146,63 +220,221 @@ export class TopoViewer {
 
     log.info(`Webview panel created successfully`);
 
+    // // aarafat-tag:
+    // // This handler listens for messages coming from the webview (from dev.js).
+    // // We use a REST-like 'POST' message type to simulate API requests.
+    // // The handler dispatches the call to the appropriate backend function based on the functionName in the message.
+    // panel.webview.onDidReceiveMessage(async (msg) => {
 
-    panel.webview.onDidReceiveMessage(async (msg) => {
-      switch (msg.type) {
-        case 'backendGet':
-          // We see an incoming request from dev.js
-          {
-            const { requestId, functionName, payload } = msg;
-            let result: any = null;
-            let error: string | null = null;
-            try {
-              // Dispatch by functionName
-              if (functionName === 'backendFuncBB') {
-                // e.g. call an internal function or service
-                result = await backendFuncBB(payload);
-              } else if (functionName === 'backendFuncAA') {
-                result = await backendFuncAA(payload);
-              }
-              // ... add more if you want
-            } catch (err) {
-              error = String(err);
-            }
+    //   log.info (`received POST Message from frontEnd message is ${JSON.stringify(msg)}`)
 
-            // Then respond
-            panel.webview.postMessage({
-              type: 'backendGetResponse',
-              requestId,
-              result,
-              error
-            });
-          }
-          break;
+    //   switch (msg.type) {
+    //     case 'POST': {
 
-        default:
-          console.log("Unrecognized message type:", msg.type);
-          break;
+    //       // Incoming request from the webview script.
+    //       const { requestId, endpointName, payload } = msg;
+
+    //       let result: any = null;
+    //       let error: string | null = null;
+
+    //       log.info (`endpointName: ${endpointName}`)
+
+    //       try {
+    //         // Dispatch the function call based on the provided functionName.
+    //         if (endpointName === 'backendFuncBB') {
+    //           // Example: call an internal function or service.
+    //           result = await backendFuncBB(payload);
+
+    //         } else if (endpointName === 'backendFuncAA') {
+    //           // Example: call a different internal function or service.
+    //           result = await backendFuncAA(payload);
+
+    //         } else if (endpointName === 'reload-viewport') {
+
+    //           try {
+    //             await this.updatePanelHtml(this.currentTopoViewerPanel);
+    //             result = `Endpoint "${endpointName}" executed successfully.`;
+    //             log.info(`Endpoint "${endpointName}" executed successfully.`);
+    //           } catch (error) {
+    //             result = `Error executing endpoint "${endpointName}".`;
+    //             log.error(`Error executing endpoint "${endpointName}": ${error}`);
+    //           }
+    //         }
+
+
+    //         // You can add more function dispatches here as needed.
+    //       } catch (err) {
+    //         error = String(err);
+    //       }
+
+    //       // Send a response back to the webview with the result or error.
+    //       panel.webview.postMessage({
+    //         type: 'POST_RESPONSE',
+    //         requestId,
+    //         result,
+    //         error
+    //       });
+    //       break;
+    //     }
+    //     default:
+    //       console.log("Unrecognized message type:", msg.type);
+    //       break;
+    //   }
+    // });
+
+    // Define an interface for the incoming message
+    interface WebviewMessage {
+      type: string;
+      requestId?: string;
+      endpointName?: string;
+      payload?: unknown;
+    }
+
+    // Improved handler for messages coming from the webview (from dev.js)
+    panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
+      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg)}`);
+
+      // Basic validation for the message object
+      if (!msg || typeof msg !== 'object') {
+        log.error('Invalid message received.');
+        return;
       }
+
+      // Process only messages of type 'POST'
+      if (msg.type !== 'POST') {
+        log.warn(`Unrecognized message type: ${msg.type}`);
+        return;
+      }
+
+      // Destructure and validate required properties
+      const { requestId, endpointName, payload } = msg;
+      if (!requestId || !endpointName) {
+        const missingFields = [];
+        if (!requestId) missingFields.push('requestId');
+        if (!endpointName) missingFields.push('endpointName');
+        const errorMessage = `Missing required field(s): ${missingFields.join(', ')}`;
+        log.error(errorMessage);
+        panel.webview.postMessage({
+          type: 'POST_RESPONSE',
+          requestId: requestId ?? null,
+          result: null,
+          error: errorMessage,
+        });
+        return;
+      }
+
+      let result: unknown = null;
+      let error: string | null = null;
+
+      try {
+        switch (endpointName) {
+          case 'backendFuncBB': {
+            // Validate payload if needed for backendFuncBB.
+            result = await backendFuncBB(payload);
+            break;
+          }
+          case 'backendFuncAA': {
+            // Validate payload if needed for backendFuncAA.
+            result = await backendFuncAA(payload);
+            break;
+          }
+          case 'reload-viewport': {
+            try {
+              await this.updatePanelHtml(this.currentTopoViewerPanel);
+              result = `Endpoint "${endpointName}" executed successfully.`;
+
+              log.info(result);
+
+            } catch (innerError) {
+              // Capture and log detailed error information
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
+            }
+            break;
+          }
+          case 'ssh-to-node': {
+            try {
+
+              log.info(`ssh-to-node called with payload: ${payload}`);
+
+              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+
+              if (updatedClabTreeDataToTopoviewer) {
+
+                const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
+                  ? (payload as string).slice(1, -1)
+                  : (payload as string);
+
+                let containerData = this.adaptor.getClabContainerTreeNode(nodeName as string, updatedClabTreeDataToTopoviewer, 'vscode');
+
+                if (containerData) {
+                  sshToNode(containerData)
+                }
+
+
+
+              } else {
+                console.error('Updated Clab tree data is undefined.');
+                // Handle the undefined case, e.g., by returning early or throwing an error.
+              }
+
+            } catch (innerError) {
+              // Capture and log detailed error information
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
+            }
+            break;
+          }
+          default: {
+            error = `Unknown endpoint "${endpointName}".`;
+            log.error(error);
+          }
+        }
+      } catch (err) {
+        error = err instanceof Error ? err.message : String(err);
+        log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err)}`);
+      }
+
+      // Send a response back to the webview with the result or error.
+      panel.webview.postMessage({
+        type: 'POST_RESPONSE',
+        requestId,
+        result,
+        error,
+      });
     });
 
 
+
+
+    /**
+     * Example backend function for demonstration.
+     * @param payload - Arbitrary payload from the webview.
+     */
     async function backendFuncBB(payload: any): Promise<any> {
-      // do something, fetch from disk, etc.
-      // then return a result object
+      // Perform some backend logic or disk operations here
+
+      log.info(`backend func called, with this payload: ${payload}`)
+
       return {
         success: true,
-        message: `Received: ${JSON.stringify(payload)} and NOW I RETURN THE RESULT: ASAD HANDSOM`
+        message: `Received: ${JSON.stringify(payload)} and returning a demonstration result.`,
       };
     }
 
+    /**
+     * Example backend function for demonstration.
+     * @param payload - Arbitrary payload from the webview.
+     */
     async function backendFuncAA(payload: any): Promise<any> {
-      // do something, fetch from disk, etc.
-      // then return a result object
+      // Perform some backend logic or disk operations here
       return {
         success: true,
-        message: `Received: ${JSON.stringify(payload)}`
+        message: `Received: ${JSON.stringify(payload)}`,
       };
     }
 
+    return panel
 
   }
 
@@ -210,18 +442,19 @@ export class TopoViewer {
    * Generates the HTML content for the Webview, injecting the appropriate asset URIs.
    * This method constructs the complete HTML structure, integrating CSS, JS, and JSON data
    * necessary for rendering the network topology visualization.
-   * 
+   *
    * @param cssUri - URI to the CSS assets directory.
    * @param jsUri - URI to the JS assets directory.
    * @param imagesUri - URI to the Images assets directory.
    * @param jsonFileUrlDataCytoMarshall - URI to 'dataCytoMarshall.json'.
    * @param jsonFileUrlDataEnvironment - URI to 'environment.json'.
+   * @param isVscodeDeployment - Whether this is deployed inside VSCode (boolean).
    * @param jsOutDir - URI to the compiled JS files directory (e.g., '/out').
    * @returns A string containing the complete HTML content for the Webview.
-   * 
+   *
    * @example
    * ```typescript
-   * const htmlContent = this.getWebviewContent(css, js, images, jsonCyto, jsonEnv, jsOut);
+   * const htmlContent = this.getWebviewContent(css, js, images, jsonCyto, jsonEnv, true, outDir);
    * panel.webview.html = htmlContent;
    * ```
    */
@@ -339,9 +572,9 @@ export class TopoViewer {
             <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
               <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
                 <p class="control p-0">
-                  <a  id="viewport-zoom-to-fit" href="#" onclick="viewportButtonsZoomToFit(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
+                  <a  id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fas fa-expand"></i> 
+                    <i class="fas fa-expand"></i> 
                   </span>
                   </a>
                 </p>
@@ -349,9 +582,9 @@ export class TopoViewer {
                
 
                 <p class="control p-0">
-                  <a  id="viewport-layout" href="#" onclick="viewportButtonsLayoutAlgo(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
+                  <a  id="viewport-layout" href="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fas fa-circle-nodes"></i> 
+                    <i class="fas fa-circle-nodes"></i> 
                   </span>
                   </a>
                 </p>
@@ -359,16 +592,16 @@ export class TopoViewer {
 
 
                 <p class="control p-0">
-                  <a  id="viewport-topology-overview" href="#" onclick="viewportButtonsTopologyOverview(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
+                  <a  id="viewport-topology-overview" href="Find Node" onclick="viewportButtonsTopologyOverview(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fa-solid fa-binoculars"></i>
+                    <i class="fa-solid fa-binoculars"></i>
                   </span>
                   </a>
                 </p>
                 <p class="control p-0">
-                  <a  id="viewport-label-endpoint" href="#" onclick="viewportButtonsLabelEndpoint()" class="button px-4 py-4 is-smallest-element" style="outline: none;">
+                  <a  id="viewport-label-endpoint" href="Toggle Endpoint Label" onclick="viewportButtonsLabelEndpoint()" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fas fa-tag"></i> 
+                    <i class="fas fa-tag"></i> 
                   </span>
                   </a>
                 </p>
@@ -378,7 +611,7 @@ export class TopoViewer {
                 <p class="control p-0">
                   <a  id="viewport-container-status-visibility" href="#" onclick="viewportButtonContainerStatusVisibility()"class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fab fa-docker"></i> 
+                    <i class="fab fa-docker"></i> 
                   </span>
                   </a>
                 </p>
@@ -386,7 +619,7 @@ export class TopoViewer {
                 <p class="control p-0">
                   <a  id="viewport-topology-capture" href="#" onclick="viewportButtonsTopologyCapture(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fas fa-camera"></i> 
+                    <i class="fas fa-camera"></i> 
                   </span>
                   </a>
                 </p>
@@ -394,19 +627,35 @@ export class TopoViewer {
                 <p class="control p-0">
                   <a  id="viewport-clab-editor" href="#" onclick="viewportButtonsClabEditor(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                   <span class="icon is-small">
-                  <i class="fa-solid fa-pen-to-square"></i>
+                    <i class="fa-solid fa-pen-to-square"></i>
                   </span>
                   </a>
                 </p>
 
                 <p class="control p-0">
                   <a  id="viewport-multi-layer" href="#" onclick="viewportButtonsMultiLayerViewPortToggle(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
-                  <span class="icon is-small">
-                  <i class="fa-solid fa-layer-group"></i>
-                  </span>
+                    <span class="icon is-small">
+                      <i class="fa-solid fa-layer-group"></i>
+                    </span>
                   </a>
                 </p>
                 -->
+
+                <p class="control p-0">
+                  <a  id="viewport-reload-topo" href="Reload TopoViewer" onclick="reloadViewport()" class="button px-4 py-4 is-smallest-element" style="outline: none;">
+                    <span class="icon is-small">
+                      <i class="fa-solid fa-arrow-rotate-right"></i>
+                    </span>
+                  </a>
+                </p>
+
+                <p class="control p-0">
+                  <a  id="viewport-test-call-backend" href="Test Call to Backend" onclick="reloadViewport()" class="button px-4 py-4 is-smallest-element" style="outline: none;">
+                    <span class="icon is-small">
+                      <i class="fa-solid fa-phone"></i>
+                    </span>
+                  </a>
+                </p>              
 
                 
                 <hr id="viewport-geo-map-divider" class="my-1 viewport-geo-map is-hidden" style="border-top: 1px solid #dbdbdb;">
@@ -833,7 +1082,8 @@ export class TopoViewer {
                         </div>
                       </div>
                     </div>
-                    <!--   aarafat-tag: vs-code
+
+
                     <div  class="column my-auto is-11">
                       <div class="panel-content">
                         <div class="columns py-auto" >
@@ -850,11 +1100,17 @@ export class TopoViewer {
                               </div>
                               <div class="dropdown-menu" id="panel-node-action-dropdown-menu" role="menu">
                                 <div class="dropdown-content">
-                                  <a onclick="sshWebBased(event);"       class="dropdown-item label has-text-weight-normal is-small py-0" id="panel-node-action-ssh-web-based">SSH - Launch Web-Based</a>
+                                  <a onclick="sshWebBased(event);"       class="dropdown-item label has-text-weight-normal is-small py-0" id="panel-node-action-ssh-web-based">Connect to SSH</a>
+
+                                  <!--   aarafat-tag: vs-code
+
                                   <a onclick="sshCliCommandCopy(event);" class="dropdown-item label has-text-weight-normal is-small py-0" id="panel-node-action-ssh-copy-cli-command">SSH - Copy to Clipboard</a>
                                   <hr class="dropdown-divider" />
                                   <a onclick="backupRestoreNodeConfig(event);" class="dropdown-item label has-text-weight-normal is-small py-0"> Backup-Restore Config </a>
                                   <a href="#" class="dropdown-item label has-text-weight-normal is-small py-0"> Reboot </a>
+
+                                    -->
+
                                 </div>
                               </div>
                             </div>
@@ -862,7 +1118,9 @@ export class TopoViewer {
                         </div>
                       </div>
                     </div>
-                    -->
+                  
+                  
+
                   </div>
                 </div>
                 <div  class="panel-block p-0">
@@ -1483,7 +1741,6 @@ export class TopoViewer {
             <script src="${jsUri}/library/cytoscape-popper.min.js?ver=1"></script>
             <script src="${jsUri}/library/cytoscape-grid-guide.min.js?ver=1"></script>
             <script src="${jsUri}/library/cytoscape-edgehandles.min.js?ver=1"></script>
-            
             <script src="${jsUri}/library/cytoscape-expand-collapse.min.js"></script>
 
             
@@ -1504,9 +1761,14 @@ export class TopoViewer {
 
             <!-- Inject isVscodeDeployment boolean as a global variable -->
             <script> window.isVscodeDeployment = "${isVscodeDeployment}"; </script>
-            
+
+            <script src="${jsUri}/globalVariables.js?ver=1"></script>
+
             <script src="${jsUri}/dev.js?ver=1"></script>
             <script src="${jsUri}/common.js?ver=1"></script>
+
+                        <script src="${jsUri}/managerVscodeWebview.js?ver=1"></script>
+
             <script src="${jsUri}/managerSvg.js?ver=1"></script>
             <script src="${jsUri}/managerLayoutAlgo.js?ver=1"></script>
             
@@ -1521,4 +1783,91 @@ export class TopoViewer {
       </html>
     `;
   }
+
+
+
+
+  //   /**
+  //    * Updates the panel HTML with freshly computed Cytoscape elements and data files.
+  //    * Primarily intended for refreshing or reloading the topology view
+  //    * if the underlying YAML or environment data has changed.
+  //    *
+  //    * @param panel - The active WebviewPanel to update.
+  //    */
+  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<void> {
+    // If we haven't opened a viewer yet or folderName is missing, do nothing
+    if (!this.lastFolderName) {
+      return;
+    }
+
+    const yamlFilePath = this.lastYamlFilePath;
+    const folderName = this.lastFolderName;
+
+    // aarafat-tag:
+    // get the latest clabTreeDataToTopoviewer
+    const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+
+    log.debug(`Updating panel HTML for folderName: ${folderName}`);
+
+    // Read YAML content
+    const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+
+    // Convert YAML to Cytoscape elements using the adaptor
+    const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+      yamlContent,
+      updatedClabTreeDataToTopoviewer
+    );
+
+    // Write updated JSON files
+    this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+
+    // panel possibly undefined
+    if (panel) {
+      // Recompute URIs
+      const { css, js, images } = this.adaptor.generateStaticAssetUris(
+        this.context,
+        panel.webview
+      );
+      const jsOutDir = panel.webview
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'out'))
+        .toString();
+
+      // Get new JSON file URIs
+      const mediaPath = vscode.Uri.joinPath(
+        this.context.extensionUri,
+        'topoViewerData',
+        folderName
+      );
+      const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
+      const jsonFileUrlDataCytoMarshall = panel.webview
+        .asWebviewUri(jsonFileUriDataCytoMarshall)
+        .toString();
+
+      const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
+      const jsonFileUrlDataEnvironment = panel.webview
+        .asWebviewUri(jsonFileUriDataEnvironment)
+        .toString();
+
+      const isVscodeDeployment = true;
+
+      // Update the panel's HTML
+      panel.webview.html = this.getWebviewContent(
+        css,
+        js,
+        images,
+        jsonFileUrlDataCytoMarshall,
+        jsonFileUrlDataEnvironment,
+        isVscodeDeployment,
+        jsOutDir
+      );
+
+      vscode.window.showInformationMessage("TopoViewer Webview reloaded!");
+
+    } else {
+      log.error(`panel is undefined`)
+    }
+  }
+
+
+
 }
