@@ -156,13 +156,21 @@ export async function setSessionHostname() {
 }
 
 /**
- * Figure out the best hostname to use for edgeshark/packetflix:
- *   1. If sessionHostname is set in-memory, use that.
- *   2. If SSH-Remote, parse SSH_CONNECTION env var → server_ip
- *   3. If OrbStack, try <hostname>.orb.local or 'host.orbstack.internal'
- *   4. If WSL or local, default to "localhost".
- *   5. If `containerlab.remote.hostname` is set, use that.
- *   6. Otherwise prompt the user to set it (global or session).
+ * Determine the hostname (or IP) to use for packet capture based on environment:
+ *
+ * - If a global setting "containerlab.remote.hostname" is set, that value is used.
+ * - If in a WSL environment (or SSH in WSL), always return "localhost".
+ * - If in an SSH remote session:
+ *     - If also in an Orbstack environment:
+ *         * Run the "hostname" command.
+ *         * If the returned hostname is not fully qualified (doesn't contain a dot),
+ *           append ".orb.local" and use that.
+ *         * If the hostname is empty or "localhost", fall back to obtaining the IPv4 address.
+ *     - Otherwise (SSH but not Orbstack): use the remote IP from SSH_CONNECTION.
+ * - If in an Orbstack environment (and not SSH), use the hostname from the "hostname" command.
+ *     * If that hostname does not appear fully qualified, append ".orb.local".
+ * - Otherwise, if a session hostname is set, use it.
+ * - Finally, default to "localhost".
  */
 export async function getHostname(): Promise<string> {
   // 1. Global configuration: highest priority.
@@ -195,29 +203,39 @@ export async function getHostname(): Promise<string> {
         outputChannel.appendLine(
           `[DEBUG] (SSH+Orb) 'hostname' command returned: ${host}`
         );
-        // Heuristic: if the hostname contains a period, assume it’s a FQDN.
-        if (host && host !== "localhost" && host.includes(".")) {
+        if (host && host !== "localhost") {
+          // If the hostname is not fully qualified, append ".orb.local"
+          if (!host.includes(".")) {
+            host = host + ".orb.local";
+          }
           outputChannel.appendLine(`[DEBUG] (SSH+Orb) Using hostname: ${host}`);
           return host;
         } else {
           outputChannel.appendLine(
-            `[DEBUG] (SSH+Orb) Hostname does not appear fully qualified; falling back to IPv4`
+            `[DEBUG] (SSH+Orb) Hostname is empty or "localhost"; falling back to IPv4`
           );
-          const ipOutput = execSync("ip -4 add show eth0", {
-            stdio: ["pipe", "pipe", "ignore"],
-          }).toString();
-          const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
-          if (ipMatch && ipMatch[1]) {
-            const ip = ipMatch[1];
-            outputChannel.appendLine(
-              `[DEBUG] (SSH+Orb) Using IP from 'ip -4 add show eth0': ${ip}`
-            );
-            return ip;
-          }
         }
       } catch (e: any) {
         outputChannel.appendLine(
-          `[DEBUG] (SSH+Orb) Error: ${e.message || e.toString()}`
+          `[DEBUG] (SSH+Orb) Error retrieving hostname: ${e.message || e.toString()}`
+        );
+      }
+      // Fallback: try to get an IPv4 address from "ip -4 add show eth0".
+      try {
+        const ipOutput = execSync("ip -4 add show eth0", {
+          stdio: ["pipe", "pipe", "ignore"],
+        }).toString();
+        const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
+        if (ipMatch && ipMatch[1]) {
+          const ip = ipMatch[1];
+          outputChannel.appendLine(
+            `[DEBUG] (SSH+Orb) Using IP from 'ip -4 add show eth0': ${ip}`
+          );
+          return ip;
+        }
+      } catch (e: any) {
+        outputChannel.appendLine(
+          `[DEBUG] (SSH+Orb) Error retrieving IPv4: ${e.message || e.toString()}`
         );
       }
     } else {
@@ -246,15 +264,16 @@ export async function getHostname(): Promise<string> {
           .toString()
           .trim();
         outputChannel.appendLine(`[DEBUG] (Orb non-SSH) 'hostname' command returned: ${host}`);
-        // If the hostname does not appear fully qualified, append ".orb.local".
-        if (host && host !== "localhost" && !host.includes(".")) {
-          host = host + ".orb.local";
+        if (host && host !== "localhost") {
+          if (!host.includes(".")) {
+            host = host + ".orb.local";
+          }
+          outputChannel.appendLine(`[DEBUG] (Orb non-SSH) Using hostname: ${host}`);
+          return host;
         }
-        outputChannel.appendLine(`[DEBUG] (Orb non-SSH) Using hostname: ${host}`);
-        return host;
       } catch (e: any) {
         outputChannel.appendLine(
-          `[DEBUG] (Orb non-SSH) Error: ${e.message || e.toString()}`
+          `[DEBUG] (Orb non-SSH) Error retrieving hostname: ${e.message || e.toString()}`
         );
       }
     }
