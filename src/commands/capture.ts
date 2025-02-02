@@ -18,12 +18,12 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
     // figure out how to capture
     if (vscode.env.remoteName === "ssh-remote") {
         // For an SSH-Remote session, prefer edgeshark/packetflix approach
-        vscode.window.showInformationMessage("Attemping to capture with edgeshark...");
+        vscode.window.showInformationMessage("Attempting to capture with edgeshark...");
         return captureInterfaceWithPacketflix(node);
     }
 
     // Otherwise, try to spawn Wireshark locally or in WSL
-    const captureCmd = `${utils.getSudo()}ip netns exec ${node.nsName} tcpdump -U -nni ${node.name} -w -`
+    const captureCmd = `${utils.getSudo()}ip netns exec ${node.nsName} tcpdump -U -nni ${node.name} -w -`;
     let wiresharkCmd = 'wireshark';
 
     if (vscode.env.remoteName === "wsl") {
@@ -99,10 +99,11 @@ export async function setSessionHostname() {
 /**
  * Determine the best hostname to use for packet capture:
  *   1. If the user has set a "session" hostname, use it.
- *   2. If we're in SSH-Remote, try to parse SSH_CONNECTION env variable.
- *   3. If we're in WSL or local, default to "localhost".
- *   4. If none of the above, check global config (`containerlab.remote.hostname`).
- *   5. Prompt user if no solution found, or fallback to empty string.
+ *   2. If we're in SSH-Remote, parse SSH_CONNECTION env variable.
+ *   3. If we detect OrbStack, return "host.orbstack.internal".
+ *   4. If we're in WSL or local, default to "localhost".
+ *   5. If still none, check global setting `containerlab.remote.hostname`.
+ *   6. Prompt user if no solution found, or fallback to "".
  */
 async function getHostname(): Promise<string> {
     // 1) If sessionHostname is set in-memory, use that
@@ -128,18 +129,23 @@ async function getHostname(): Promise<string> {
         }
     }
 
-    // 3) If in WSL or local, just use localhost
+    // [ORBSTACK] 3) If on OrbStack, default to "host.orbstack.internal"
+    if (utils.isOrbstack()) {
+        return "host.orbstack.internal";
+    }
+
+    // 4) If in WSL or local, just use localhost
     if (vscode.env.remoteName === "wsl" || !vscode.env.remoteName) {
         return "localhost";
     }
 
-    // 4) If we still have no hostname, read from user settings
+    // 5) If we still have no hostname, read from user settings
     const configHostname = vscode.workspace.getConfiguration("containerlab").get<string>("remote.hostname", "");
     if (configHostname) {
         return configHostname;
     }
 
-    // 5) Otherwise, prompt the user
+    // 6) Otherwise, prompt the user
     const yesBtn = "Set Hostname";
     const noBtn = "Cancel";
     const choice = await vscode.window.showWarningMessage(
@@ -157,7 +163,7 @@ async function getHostname(): Promise<string> {
 
 /**
  * Interactively configure a hostname **persisted** in the global containerlab.remote.hostname setting,
- * or fallback to sessionHostname if we can’t persist it for some reason.
+ * or fallback to sessionHostname if we can’t persist it.
  */
 async function configureHostname(): Promise<boolean> {
     const opts: vscode.InputBoxOptions = {
