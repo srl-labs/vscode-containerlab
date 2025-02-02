@@ -203,7 +203,10 @@
       {
         "command": "containerlab.interface.capture",
         "title": "Capture interface",
-        "icon": "resources/icons/wireshark.svg"
+        "icon": {
+          "light": "resources/icons/wireshark_light.svg",
+          "dark": "resources/icons/wireshark_dark.svg"
+        }
       },
       {
         "command": "containerlab.interface.captureWithEdgeshark",
