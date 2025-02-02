@@ -417,79 +417,87 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
      * Handle OrbStack (fallback to `docker exec`).
      */
     private discoverContainerInterfaces(name: string, cID: string): ClabInterfaceTreeNode[] {
-        console.log(`[discovery]:\tDiscovering interfaces for container: ${name}`);
+      console.log(`[discovery]:\tDiscovering interfaces for container: ${name}`);
 
-        // If we are on OrbStack, the netns approach may fail; fallback to docker exec
-        // [ORBSTACK: minimal changes here]
-        let cmd: string;
-        if (utils.isOrbstack()) {
-            // On OrbStack, fallback to docker exec <container> ip link show --json
-            cmd = `${utils.getSudo()}docker exec ${cID} ip --json link show`;
-        } else {
-            // Normal Linux approach
-            cmd = `${utils.getSudo()}ip netns exec ${name} ip --json link show`;
-        }
+      // If we are on OrbStack, the netns approach may fail; fallback to docker exec
+      let cmd: string;
+      if (utils.isOrbstack()) {
+          // On OrbStack, fallback to docker exec <container> ip link show --json
+          cmd = `${utils.getSudo()}docker exec ${cID} ip --json link show`;
+      } else {
+          // Normal Linux approach
+          cmd = `${utils.getSudo()}ip netns exec ${name} ip --json link show`;
+      }
 
-        let netnsStdout;
-        try {
-            const stdout = execSync(cmd);
-            if (!stdout) { return []; }
-            netnsStdout = stdout.toString();
-        } catch (err) {
-            // If it fails, we return an empty interface array
-            console.error(`[discovery]:\tInterface detection failed for ${name} - possibly no netns or container is not running?`, err);
-            return [];
-        }
+      let netnsStdout;
+      try {
+          const stdout = execSync(cmd);
+          if (!stdout) {
+              return [];
+          }
+          netnsStdout = stdout.toString();
+      } catch (err) {
+          console.error(
+              `[discovery]:\tInterface detection failed for ${name} - possibly no netns or container is not running?`,
+              err
+          );
+          return [];
+      }
 
-        let netnsObj: IPLinkJSON[];
-        try {
-            netnsObj = JSON.parse(netnsStdout);
-        } catch (parseErr) {
-            // If we cannot parse, return empty
-            return [];
-        }
+      let netnsObj: IPLinkJSON[];
+      try {
+          netnsObj = JSON.parse(netnsStdout);
+      } catch (parseErr) {
+          return [];
+      }
 
-        let interfaces: ClabInterfaceTreeNode[] = [];
+      let interfaces: ClabInterfaceTreeNode[] = [];
 
-        netnsObj.forEach((intf: IPLinkJSON) => {
-            if(intf.operstate === "UNKNOWN") {
-                // Often the 'lo' or transitional links can be UNKNOWN
-                // You could skip them or keep them
-                return;
-            }
+      netnsObj.forEach((intf: IPLinkJSON) => {
+          if (intf.operstate === "UNKNOWN") {
+              // Skip 'lo' or transitional interfaces that report UNKNOWN
+              return;
+          }
 
-            let color: vscode.ThemeColor = new vscode.ThemeColor("icon.foreground");
-            let context = "containerlabInterface";
+          // Determine the proper icons based on the interface state.
+          let context = "containerlabInterface";
+          let iconLight: vscode.Uri;
+          let iconDark: vscode.Uri;
 
-            if (intf.operstate === "UP") {
-                color = new vscode.ThemeColor("charts.green");
-                context = "containerlabInterfaceUp";
-            } else {
-                color = new vscode.ThemeColor("charts.red");
-            }
+          if (intf.operstate === "UP") {
+              context = "containerlabInterfaceUp";
+              iconLight = this.getResourceUri("icons/ethernet-port-green.svg");
+              iconDark = this.getResourceUri("icons/ethernet-port-green.svg");
+          } else if (intf.operstate === "DOWN") {
+              context = "containerlabInterfaceDown";
+              iconLight = this.getResourceUri("icons/ethernet-port-red.svg");
+              iconDark = this.getResourceUri("icons/ethernet-port-red.svg");
+          } else {
+              iconLight = this.getResourceUri("icons/ethernet-port-light.svg");
+              iconDark = this.getResourceUri("icons/ethernet-port-dark.svg");
+          }
 
-            const node = new ClabInterfaceTreeNode(
-                intf.ifname,
-                vscode.TreeItemCollapsibleState.None,
-                name,
-                cID,
-                intf.ifname,
-                parseInt(intf.ifindex),
-                intf.mtu,
-                context
-            );
-            node.tooltip = `Name: ${intf.ifname}\nIndex: ${intf.ifindex}\nMTU: ${intf.mtu}`;
-            node.description = intf.operstate;
-            const iconUri_light = this.getResourceUri("icons/ethernet-port-light.svg");
-            const iconUri_dark = this.getResourceUri("icons/ethernet-port-dark.svg");
-            node.iconPath = { light: iconUri_light, dark: iconUri_dark };
+          const node = new ClabInterfaceTreeNode(
+              intf.ifname,
+              vscode.TreeItemCollapsibleState.None,
+              name,
+              cID,
+              intf.ifname,
+              parseInt(intf.ifindex),
+              intf.mtu,
+              context
+          );
+          node.tooltip = `Name: ${intf.ifname}\nIndex: ${intf.ifindex}\nMTU: ${intf.mtu}`;
+          node.description = intf.operstate;
+          node.iconPath = { light: iconLight, dark: iconDark };
 
-            interfaces.push(node);
-        });
+          interfaces.push(node);
+      });
 
-        console.log(`[discovery]:\tDiscovered ${interfaces.length} interfaces for ${name}`);
-        return interfaces;
+      console.log(`[discovery]:\tDiscovered ${interfaces.length} interfaces for ${name}`);
+      return interfaces;
     }
+
 
     /**
     * Convert the filepath of something in the ./resources dir
