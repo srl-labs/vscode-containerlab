@@ -5,46 +5,46 @@ import { ChildProcess } from "child_process";
 import { execCommandInOutput } from "./command";
 import { outputChannel } from "../extension";
 
-// hostname to use only for this session.
 let sessionHostname: string = "";
 
 /**
  * Begin packet capture on an interface.
- * 
- * @param node ClabInterfaceTreeNode which the capture was started on.
  */
 export async function captureInterface(node: ClabInterfaceTreeNode) {
-
-    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+    if (!node) {
         return vscode.window.showErrorMessage("No interface to capture found.");
     }
 
-    const captureCmd = `${utils.getSudo()}ip netns exec ${node.nsName} tcpdump -U -nni ${node.name} -w -`
-
+    // figure out how to capture
     if (vscode.env.remoteName === "ssh-remote") {
+        // For an SSH-Remote session, prefer edgeshark/packetflix approach
         vscode.window.showInformationMessage("Attemping to capture with edgeshark...");
         return captureInterfaceWithPacketflix(node);
     }
 
-    let wiresharkCmd: string = 'wireshark';
+    // Otherwise, try to spawn Wireshark locally or in WSL
+    const captureCmd = `${utils.getSudo()}ip netns exec ${node.nsName} tcpdump -U -nni ${node.name} -w -`
+    let wiresharkCmd = 'wireshark';
 
-    // Check what context the extension is running in:
     if (vscode.env.remoteName === "wsl") {
-        const cfgWiresharkPath = vscode.workspace.getConfiguration("containerlab").get<string | undefined>("wsl.wiresharkPath");
-        wiresharkCmd = cfgWiresharkPath ? `"${cfgWiresharkPath}"` : '"/mnt/c/Program Files/Wireshark/wireshark.exe"';
+        const cfgWiresharkPath = vscode.workspace
+          .getConfiguration("containerlab")
+          .get<string>("wsl.wiresharkPath");
+        // default path if user didn’t override
+        wiresharkCmd = cfgWiresharkPath
+            ? `"${cfgWiresharkPath}"`
+            : '"/mnt/c/Program Files/Wireshark/wireshark.exe"';
     }
-    // build the command
+
     const cmd = `${captureCmd} | ${wiresharkCmd} -k -i -`;
 
     vscode.window.showInformationMessage(`Starting capture on ${node.name} for ${node.nsName}.`);
-
-    // Begin the capture.
     execCommandInOutput(cmd, false,
         undefined,
         (proc: ChildProcess, data: string) => {
             if (data.includes("Capture stopped.")) {
                 proc.kill();
-                vscode.window.showInformationMessage(`Ended capture on ${node.name} for ${node.nsName}.`)
+                vscode.window.showInformationMessage(`Ended capture on ${node.name} for ${node.nsName}.`);
                 outputChannel.appendLine("\tCapture done.");
             }
         }
@@ -53,89 +53,141 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
 
 /**
  * Start capture on an interface, but use edgeshark to pcap
- * by capturing with the packetflix:ws:// URI.
- * 
- * @param node ClabInterfaceTreeNode which the capture was started on.
+ * by capturing with the `packetflix` URI scheme.
  */
 export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode) {
-    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+    if (!node) {
         return vscode.window.showErrorMessage("No interface to capture found.");
     }
 
     const hostname = await getHostname();
-    if (!hostname) { return vscode.window.showErrorMessage("No known hostname/IP address to connect to."); }
+    if (!hostname) {
+        return vscode.window.showErrorMessage("No known hostname/IP address to connect to for packet capture.");
+    }
 
-    const packetflixUri: string = `packetflix:ws://${hostname}:5001/capture?container={"network-interfaces":["${node.name}"],"name":"${node.nsName}","type":"docker","prefix":""}&nif=${node.name}`
+    const packetflixUri = `packetflix:ws://${hostname}:5001/capture?container={"network-interfaces":["${node.name}"],"name":"${node.nsName}","type":"docker"}&nif=${node.name}`;
 
-    console.log(`[capture]:\t ${vscode.Uri.parse(packetflixUri)}`);
-
+    console.log(`[capture] Launching edgeshark with: ${packetflixUri}`);
     vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
 }
 
 /**
- * Get the configured hostname for this system. Either for this session or from global settings.
- * Hostnames configured for this session only take precedence.
- * 
- * @returns A string of the hostname if a hostname was found, else undefined.
+ * If a user calls the "Set session hostname" command, we store it in-memory here,
+ * overriding the auto-detected or config-based hostname until the user closes VS Code.
  */
-async function getHostname(): Promise<string | undefined> {
-    if (sessionHostname) { return sessionHostname; }
-
-    if (!(vscode.workspace.getConfiguration("containerlab").get("remote.hostname"))) {
-        const result = await configureHostname();
-        if (!result) { return sessionHostname; };
-    }
-
-    return vscode.workspace.getConfiguration("containerlab").get("remote.hostname");
-}
-
-/**
- * Get user input to set the hostname for this machine to use in packet capture.
- * Attempt to save the configured value into the VSCode configuration.
- * If this can't be saved, the entered hostname will persist only for the session of VS Code.
- * 
- * @returns Boolean. True if the hostname was saved to the config, false if not.
- */
-export async function configureHostname(): Promise<boolean> {
+export async function setSessionHostname() {
     const opts: vscode.InputBoxOptions = {
-        title: `Configure hostname for Containerlab remote.`,
-        placeHolder: `IPv4, IPv6 or DNS resolvable hostname of the system that containerlab is running on.`,
-        prompt: "This setting will persist.",
+        title: `Configure hostname for Containerlab remote (this session only)`,
+        placeHolder: `IPv4, IPv6 or DNS resolvable hostname of the system where containerlab is running`,
+        prompt: "This will persist for only this session of VS Code.",
         validateInput: (input: string) => {
-            if (input.length === 0) { return "Input should not be empty"; }
+            if (input.trim().length === 0) {
+                return "Input should not be empty";
+            }
         }
-    }
+    };
 
     const val = await vscode.window.showInputBox(opts);
-
-    if (!val || val.length === 0) { return false; }
-
-    try {
-        await vscode.workspace.getConfiguration("containerlab").update("remote.hostname", val)
-    } catch (err) {
-        sessionHostname = val;
-        vscode.window.showWarningMessage(`Unable to persist hostname setting in VSCode settings. ${val} will persist as hostname for this session only. ${err}.`)
-        return false
+    if (!val) {
+        return false;
     }
-
+    sessionHostname = val.trim();
+    vscode.window.showInformationMessage(`Session hostname is set to: ${sessionHostname}`);
     return true;
 }
 
 /**
- * Get user input to set the hostname to use for packetcapture for only this session of VS Code.
+ * Determine the best hostname to use for packet capture:
+ *   1. If the user has set a "session" hostname, use it.
+ *   2. If we're in SSH-Remote, try to parse SSH_CONNECTION env variable.
+ *   3. If we're in WSL or local, default to "localhost".
+ *   4. If none of the above, check global config (`containerlab.remote.hostname`).
+ *   5. Prompt user if no solution found, or fallback to empty string.
  */
-export async function setSessionHostname() {
-    const opts: vscode.InputBoxOptions = {
-        title: `Configure hostname for Containerlab remote.`,
-        placeHolder: `IPv4, IPv6 or DNS resolvable hostname of the system that containerlab is running on.`,
-        prompt: "This will persist for only this session of VS Code.",
-        validateInput: (input: string) => {
-            if (input.length === 0) { return "Input should not be empty"; }
+async function getHostname(): Promise<string> {
+    // 1) If sessionHostname is set in-memory, use that
+    if (sessionHostname) {
+        return sessionHostname;
+    }
+
+    // 2) If in an SSH-Remote context, parse the SSH_CONNECTION env var
+    if (vscode.env.remoteName === "ssh-remote") {
+        const sshConnection = process.env.SSH_CONNECTION;
+        if (sshConnection) {
+            const parts = sshConnection.split(" ");
+            // Typically: `client_ip client_port server_ip server_port`
+            if (parts.length >= 3) {
+                const remoteIp = parts[2];
+                if (remoteIp) {
+                    return remoteIp;
+                }
+            }
+            vscode.window.showWarningMessage(`SSH_CONNECTION was present but in an unexpected format: ${sshConnection}`);
+        } else {
+            vscode.window.showWarningMessage("No SSH_CONNECTION variable found. Could not auto-detect remote IP.");
         }
     }
 
-    const val = await vscode.window.showInputBox(opts);
+    // 3) If in WSL or local, just use localhost
+    if (vscode.env.remoteName === "wsl" || !vscode.env.remoteName) {
+        return "localhost";
+    }
 
-    if (!val || val.length === 0) { return false; }
-    sessionHostname = val;
+    // 4) If we still have no hostname, read from user settings
+    const configHostname = vscode.workspace.getConfiguration("containerlab").get<string>("remote.hostname", "");
+    if (configHostname) {
+        return configHostname;
+    }
+
+    // 5) Otherwise, prompt the user
+    const yesBtn = "Set Hostname";
+    const noBtn = "Cancel";
+    const choice = await vscode.window.showWarningMessage(
+        "No remote hostname is configured. Do you want to set it now?",
+        yesBtn, noBtn
+    );
+    if (choice === yesBtn) {
+        await configureHostname();
+        return sessionHostname; // user just typed something above
+    }
+
+    // If user declines, return empty and let the caller handle
+    return "";
+}
+
+/**
+ * Interactively configure a hostname **persisted** in the global containerlab.remote.hostname setting,
+ * or fallback to sessionHostname if we can’t persist it for some reason.
+ */
+async function configureHostname(): Promise<boolean> {
+    const opts: vscode.InputBoxOptions = {
+        title: "Configure remote hostname (global user setting)",
+        placeHolder: "IPv4, IPv6 or DNS name of the remote machine running containerlab",
+        validateInput: (input: string) => {
+            if (input.trim().length === 0) {
+                return "Input should not be empty";
+            }
+        }
+    };
+
+    const input = await vscode.window.showInputBox(opts);
+    if (!input) {
+        return false;
+    }
+
+    const val = input.trim();
+    try {
+        // Attempt to store in user settings
+        await vscode.workspace
+            .getConfiguration("containerlab")
+            .update("remote.hostname", val, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`Global setting "containerlab.remote.hostname" updated to "${val}".`);
+    } catch (err) {
+        // Could fail e.g. if the user’s settings are read-only
+        sessionHostname = val;
+        vscode.window.showWarningMessage(
+            `Could not persist global setting. Will use session hostname = "${val}" until VS Code restarts.`
+        );
+    }
+    return true;
 }
