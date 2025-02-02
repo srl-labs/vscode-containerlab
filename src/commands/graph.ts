@@ -37,19 +37,21 @@ export async function graphDrawIO(node: ClabLabTreeNode) {
   const drawioPath = labPath.replace(/\.(ya?ml)$/i, ".drawio");
   const drawioUri = vscode.Uri.file(drawioPath);
 
-  // Wait for containerlab to finish generating <labFileName>.drawio
-  await graphCmd.run(["--drawio"]).then(
-    () => {
-      // Verify the file exists
-      if (!fs.existsSync(drawioPath)) {
-        return vscode.window.showErrorMessage(
-          `Containerlab failed to generate .drawio file for lab: ${node.name}.`
-        );
-      }
+  // Read the default theme from configuration.
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const drawioTheme = config.get<string>("drawioDefaultTheme", "nokia_modern");
 
-      vscode.commands.executeCommand("vscode.open", drawioUri);
+  // Wait for containerlab to finish generating the .drawio file,
+  // passing the theme argument.
+  await graphCmd.run(["--drawio", "--drawio-args", `--theme ${drawioTheme}`]).then(() => {
+    // Verify the file exists.
+    if (!fs.existsSync(drawioPath)) {
+      return vscode.window.showErrorMessage(
+        `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+      );
     }
-  )
+    vscode.commands.executeCommand("vscode.open", drawioUri);
+});
 }
 
 /**

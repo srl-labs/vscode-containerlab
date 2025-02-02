@@ -26,52 +26,67 @@ export function getRelLabFolderPath(labPath: string): string {
 }
 
 /**
- * If path is absolute, return it.
- * If starts with '~', expand it.
- * If relative, do a best guess approach.
+ * Normalize a lab path by:
+ *   1) Handling empty input
+ *   2) Normalizing slashes
+ *   3) Expanding ~ if present
+ *   4) Handling relative paths (including optional singleFolderBase)
+ *   5) Using realpathSync if the path exists, so symlinks or mount differences are resolved
  */
 export function normalizeLabPath(labPath: string, singleFolderBase?: string): string {
+    // 1) If empty, just return
     if (!labPath) {
-        // console.debug(`normalizeLabPath: received empty labPath`);
-        return labPath;
+      return labPath;
     }
-
-    const originalInput = labPath;
+  
+    // 2) Normalize slashes (e.g. \ vs / on Windows)
     labPath = path.normalize(labPath);
-
-    if (path.isAbsolute(labPath)) {
-        // console.debug(`normalizeLabPath => absolute: ${originalInput} => ${labPath}`);
-        return labPath;
-    }
-
+  
+    // 3) If the path starts with '~', expand to homedir
+    //    e.g. '~' → '/home/bob'
     if (labPath.startsWith('~')) {
-        const homedir = os.homedir();
-        const sub = labPath.replace(/^~[\/\\]?/, '');
-        const expanded = path.normalize(path.join(homedir, sub));
-        // console.debug(`normalizeLabPath => tilde expansion: ${originalInput} => ${expanded}`);
-        return expanded;
+      const homedir = os.homedir();
+      // Remove the tilde and any leading slash
+      const sub = labPath.replace(/^~[\/\\]?/, '');
+      const expanded = path.join(homedir, sub);
+      // Re-normalize after expansion (in case the sub path has odd slashes)
+      labPath = path.normalize(expanded);
     }
-
-    // If truly relative, we do our best guess approach
+  
+    // 4) If path is not yet absolute, handle relative:
+    //    (a) relative to singleFolderBase if provided
+    //    (b) otherwise relative to `process.cwd()`
     let candidatePaths: string[] = [];
-    if (singleFolderBase) {
-        candidatePaths.push(path.normalize(path.resolve(singleFolderBase, labPath)));
+    if (!path.isAbsolute(labPath)) {
+      if (singleFolderBase) {
+        // e.g. /some/base + labPath
+        candidatePaths.push(path.resolve(singleFolderBase, labPath));
+      }
+      // always push a fallback candidate from current working dir
+      candidatePaths.push(path.resolve(process.cwd(), labPath));
+    } else {
+      // It was already absolute—just push it as our sole candidate
+      candidatePaths.push(labPath);
     }
-    candidatePaths.push(path.normalize(path.resolve(process.cwd(), labPath)));
-
+  
+    // 5) For each candidate path, check if it exists
+    //    If so, call fs.realpathSync to resolve symlinks to a canonical path
     for (const candidate of candidatePaths) {
-        // console.debug(`normalizeLabPath => checking if path exists: ${candidate}`);
-        if (fs.existsSync(candidate)) {
-            // console.debug(`normalizeLabPath => found existing path: ${candidate}`);
-            return candidate;
+      if (fs.existsSync(candidate)) {
+        try {
+          // Return the real, canonical path to avoid any symlink mismatch
+          return fs.realpathSync(candidate);
+        } catch (err) {
+          // If realpathSync fails for some reason, just return the candidate
+          return candidate;
         }
+      }
     }
-
-    const chosen = candidatePaths[0];
-    // console.debug(`normalizeLabPath => no candidate path found on disk, fallback to: ${chosen}`);
-    return chosen;
-}
-
+  
+    // If none of the candidates exist, just return the first candidate
+    // (this matches your original fallback behavior)
+    return candidatePaths[0];
+  }
 /*
     Capitalise the first letter of a string
 */
@@ -86,7 +101,7 @@ export function titleCase(str: string) {
  * @returns A string which is either "sudo " or blank ("")
  */
 export function getSudo() {
-    const sudo = vscode.workspace.getConfiguration("containerlab").get<boolean>("sudoEnabledByDefault", true) ? "sudo " : "";
+    const sudo = vscode.workspace.getConfiguration("containerlab").get<boolean>("sudoEnabledByDefault", false) ? "sudo " : "";
     // console.trace();
     // console.log(`[getSudo]:\tReturning: "${sudo}"`);
     return sudo;
