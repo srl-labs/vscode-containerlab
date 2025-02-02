@@ -88,15 +88,14 @@ export function getSudo() {
  * (No longer relying on `/.orbstack` existence.)
  */
 export function isOrbstack(): boolean {
-  if (process.platform !== "darwin") {
-      return false;
-  }
   try {
-      const kernel = execSync("uname -r").toString().trim().toLowerCase();
-      // e.g. "6.12.10-orbstack-..."
-      return kernel.includes("orbstack");
+    const kernel = execSync("uname -r")
+      .toString()
+      .trim()
+      .toLowerCase();
+    // If "orbstack" is in the kernel, assume OrbStack environment
+    return kernel.includes("orbstack");
   } catch {
-      // If something went wrong, just fall back to false
-      return false;
+    return false;
   }
 }

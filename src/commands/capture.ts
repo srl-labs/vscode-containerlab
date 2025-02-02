@@ -164,84 +164,111 @@ export async function setSessionHostname() {
  *   5. If `containerlab.remote.hostname` is set, use that.
  *   6. Otherwise prompt the user to set it (global or session).
  */
-async function getHostname(): Promise<string> {
-    // 1) If sessionHostname is set in-memory
-    if (sessionHostname) {
-        outputChannel.appendLine(`[DEBUG] Using sessionHostname=${sessionHostname}`);
-        return sessionHostname;
-    }
-
-    // 2) If in an SSH-Remote context, parse SSH_CONNECTION env var
-    if (vscode.env.remoteName === "ssh-remote") {
-        const sshConnection = process.env.SSH_CONNECTION;
-        outputChannel.appendLine(`[DEBUG] SSH_CONNECTION=${sshConnection || "(none)"}`);
-        if (sshConnection) {
-            const parts = sshConnection.split(" ");
-            // Typically: client_ip client_port server_ip server_port
-            if (parts.length >= 3) {
-                const remoteIp = parts[2];
-                if (remoteIp) {
-                    outputChannel.appendLine(`[DEBUG] Using remoteIp=${remoteIp} from SSH_CONNECTION`);
-                    return remoteIp;
-                }
-            }
-            vscode.window.showWarningMessage(
-              `SSH_CONNECTION was present but not in the expected format: ${sshConnection}`
-            );
-        } else {
-            vscode.window.showWarningMessage("No SSH_CONNECTION variable found—cannot auto-detect remote IP.");
-        }
-    }
-
-    // 3) OrbStack detection => attempt <hostname>.orb.local or fallback
-    if (utils.isOrbstack()) {
-        try {
-            const orbHost = execSync("hostname", { stdio: ["pipe", "pipe", "ignore"] })
-            .toString()
-            .trim();
-            if (orbHost) {
-                const guess = orbHost + ".orb.local";
-                outputChannel.appendLine(`[DEBUG] isOrbstack => using guess=${guess}`);
-                return guess;
-            }
-        } catch {
-            // fallback
-            const fallback = "host.orbstack.internal";
-            outputChannel.appendLine(`[DEBUG] OrbStack fallback => ${fallback}`);
-            return fallback;
-        }
-    }
-
-    // 4) If we are in WSL or local, default to "localhost"
-    if (vscode.env.remoteName === "wsl" || !vscode.env.remoteName) {
-        outputChannel.appendLine("[DEBUG] WSL or local => using 'localhost'");
-        return "localhost";
-    }
-
-    // 5) If user has a global config "containerlab.remote.hostname" use that
-    const cfgHost = vscode.workspace
-        .getConfiguration("containerlab")
-        .get<string>("remote.hostname", "");
-    if (cfgHost) {
-        outputChannel.appendLine(`[DEBUG] Using containerlab.remote.hostname=${cfgHost}`);
-        return cfgHost;
-    }
-
-    // 6) Prompt user to configure a hostname
-    outputChannel.appendLine("[DEBUG] No suitable hostname found; prompting user.");
-    const yesBtn = "Set Hostname";
-    const noBtn = "Cancel";
-    const choice = await vscode.window.showWarningMessage(
-        "No remote hostname is configured. Do you want to set it now?",
-        yesBtn, noBtn
+export async function getHostname(): Promise<string> {
+  // 1. Global configuration: highest priority.
+  const cfgHost = vscode.workspace
+    .getConfiguration("containerlab")
+    .get<string>("remote.hostname", "");
+  if (cfgHost) {
+    outputChannel.appendLine(
+      `[DEBUG] Using containerlab.remote.hostname from settings: ${cfgHost}`
     );
-    if (choice === yesBtn) {
-        // we’ll let them set a *global user setting* for containerlab.remote.hostname,
-        // or fallback to session if that fails
-        const success = await configureHostname();
-        return success ? sessionHostname : "";
+    return cfgHost;
+  }
+
+  // 2. If in a WSL environment, always use "localhost".
+  if (vscode.env.remoteName === "wsl") {
+    outputChannel.appendLine("[DEBUG] Detected WSL environment; using 'localhost'");
+    return "localhost";
+  }
+
+  // 3. If in an SSH remote session.
+  if (vscode.env.remoteName === "ssh-remote") {
+    // 3.a. If also in Orbstack.
+    if (utils.isOrbstack()) {
+      try {
+        let host = execSync("hostname", {
+          stdio: ["pipe", "pipe", "ignore"],
+        })
+          .toString()
+          .trim();
+        outputChannel.appendLine(
+          `[DEBUG] (SSH+Orb) 'hostname' command returned: ${host}`
+        );
+        // Heuristic: if the hostname contains a period, assume it’s a FQDN.
+        if (host && host !== "localhost" && host.includes(".")) {
+          outputChannel.appendLine(`[DEBUG] (SSH+Orb) Using hostname: ${host}`);
+          return host;
+        } else {
+          outputChannel.appendLine(
+            `[DEBUG] (SSH+Orb) Hostname does not appear fully qualified; falling back to IPv4`
+          );
+          const ipOutput = execSync("ip -4 add show eth0", {
+            stdio: ["pipe", "pipe", "ignore"],
+          }).toString();
+          const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
+          if (ipMatch && ipMatch[1]) {
+            const ip = ipMatch[1];
+            outputChannel.appendLine(
+              `[DEBUG] (SSH+Orb) Using IP from 'ip -4 add show eth0': ${ip}`
+            );
+            return ip;
+          }
+        }
+      } catch (e: any) {
+        outputChannel.appendLine(
+          `[DEBUG] (SSH+Orb) Error: ${e.message || e.toString()}`
+        );
+      }
+    } else {
+      // 3.b. SSH remote without Orbstack: use remote IP from SSH_CONNECTION.
+      const sshConnection = process.env.SSH_CONNECTION;
+      outputChannel.appendLine(`[DEBUG] (SSH non-Orb) SSH_CONNECTION: ${sshConnection}`);
+      if (sshConnection) {
+        const parts = sshConnection.split(" ");
+        if (parts.length >= 3) {
+          const remoteIp = parts[2];
+          outputChannel.appendLine(
+            `[DEBUG] (SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`
+          );
+          return remoteIp;
+        }
+      }
     }
-    return "";
+  } else {
+    // 4. Not SSH remote.
+    if (utils.isOrbstack()) {
+      // In a local Orbstack environment, use the hostname.
+      try {
+        let host = execSync("hostname", {
+          stdio: ["pipe", "pipe", "ignore"],
+        })
+          .toString()
+          .trim();
+        outputChannel.appendLine(`[DEBUG] (Orb non-SSH) 'hostname' command returned: ${host}`);
+        // If the hostname does not appear fully qualified, append ".orb.local".
+        if (host && host !== "localhost" && !host.includes(".")) {
+          host = host + ".orb.local";
+        }
+        outputChannel.appendLine(`[DEBUG] (Orb non-SSH) Using hostname: ${host}`);
+        return host;
+      } catch (e: any) {
+        outputChannel.appendLine(
+          `[DEBUG] (Orb non-SSH) Error: ${e.message || e.toString()}`
+        );
+      }
+    }
+  }
+
+  // 5. If a session hostname was manually set, use it.
+  if (sessionHostname) {
+    outputChannel.appendLine(`[DEBUG] Using sessionHostname: ${sessionHostname}`);
+    return sessionHostname;
+  }
+
+  // 6. Fallback: default to "localhost".
+  outputChannel.appendLine("[DEBUG] No suitable hostname found; defaulting to 'localhost'");
+  return "localhost";
 }
 
 /**
