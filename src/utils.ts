@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from 'path';
 import * as fs from "fs";
 import * as os from "os";
+import { execSync } from "child_process";
 
 export function stripAnsi(input: string): string {
     return input
@@ -83,12 +84,19 @@ export function getSudo() {
 }
 
 /**
- * Minimal detection for OrbStack:
- *  - Typically on macOS
- *  - A file /.orbstack often indicates OrbStack
+ * Detect OrbStack by checking the kernel version from `uname -r` for "orbstack".
+ * (No longer relying on `/.orbstack` existence.)
  */
 export function isOrbstack(): boolean {
-    if (process.platform !== "darwin") return false;
-    // OrbStack typically has a sentinel file at root
-    return fs.existsSync("/.orbstack");
+  if (process.platform !== "darwin") {
+      return false;
+  }
+  try {
+      const kernel = execSync("uname -r").toString().trim().toLowerCase();
+      // e.g. "6.12.10-orbstack-..."
+      return kernel.includes("orbstack");
+  } catch {
+      // If something went wrong, just fall back to false
+      return false;
+  }
 }

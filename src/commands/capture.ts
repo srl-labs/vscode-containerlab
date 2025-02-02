@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import * as utils from "../utils";
 import { ClabInterfaceTreeNode } from "../clabTreeDataProvider"
-import { ChildProcess } from "child_process";
+import { ChildProcess, execSync } from "child_process";
 import { execCommandInOutput } from "./command";
 import { outputChannel } from "../extension";
 
@@ -15,14 +15,13 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
         return vscode.window.showErrorMessage("No interface to capture found.");
     }
 
-    // figure out how to capture
+    // For an SSH-Remote session, prefer edgeshark/packetflix approach
     if (vscode.env.remoteName === "ssh-remote") {
-        // For an SSH-Remote session, prefer edgeshark/packetflix approach
         vscode.window.showInformationMessage("Attempting to capture with edgeshark...");
         return captureInterfaceWithPacketflix(node);
     }
 
-    // Otherwise, try to spawn Wireshark locally or in WSL
+    // Otherwise, spawn Wireshark locally or in WSL
     const captureCmd = `${utils.getSudo()}ip netns exec ${node.nsName} tcpdump -U -nni ${node.name} -w -`;
     let wiresharkCmd = 'wireshark';
 
@@ -100,9 +99,9 @@ export async function setSessionHostname() {
  * Determine the best hostname to use for packet capture:
  *   1. If the user has set a "session" hostname, use it.
  *   2. If we're in SSH-Remote, parse SSH_CONNECTION env variable.
- *   3. If we detect OrbStack, return "host.orbstack.internal".
+ *   3. If we detect OrbStack, try <hostname>.orb.local or fallback to "host.orbstack.internal".
  *   4. If we're in WSL or local, default to "localhost".
- *   5. If still none, check global setting `containerlab.remote.hostname`.
+ *   5. If still none, check global `containerlab.remote.hostname`.
  *   6. Prompt user if no solution found, or fallback to "".
  */
 async function getHostname(): Promise<string> {
@@ -111,7 +110,7 @@ async function getHostname(): Promise<string> {
         return sessionHostname;
     }
 
-    // 2) If in an SSH-Remote context, parse the SSH_CONNECTION env var
+    // 2) If in an SSH-Remote context, parse SSH_CONNECTION env var
     if (vscode.env.remoteName === "ssh-remote") {
         const sshConnection = process.env.SSH_CONNECTION;
         if (sshConnection) {
@@ -129,9 +128,17 @@ async function getHostname(): Promise<string> {
         }
     }
 
-    // [ORBSTACK] 3) If on OrbStack, default to "host.orbstack.internal"
+    // 3) OrbStack detection & attempt to use <hostname>.orb.local
     if (utils.isOrbstack()) {
-        return "host.orbstack.internal";
+        try {
+            const orbHost = execSync("hostname").toString().trim();
+            if (orbHost) {
+                return orbHost + ".orb.local";
+            }
+        } catch {
+            // fallback
+            return "host.orbstack.internal";
+        }
     }
 
     // 4) If in WSL or local, just use localhost
@@ -189,7 +196,6 @@ async function configureHostname(): Promise<boolean> {
             .update("remote.hostname", val, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`Global setting "containerlab.remote.hostname" updated to "${val}".`);
     } catch (err) {
-        // Could fail e.g. if the user’s settings are read-only
         sessionHostname = val;
         vscode.window.showWarningMessage(
             `Could not persist global setting. Will use session hostname = "${val}" until VS Code restarts.`
