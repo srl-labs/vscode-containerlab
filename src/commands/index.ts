@@ -13,3 +13,6 @@ export * from "./copy";
 export * from "./addToWorkspace";
 export * from "./openFolderInNewWindow";
 export * from "./inspect";
+export * from "./capture";
+export * from "./impairments";
+export * from "./edgeshark";

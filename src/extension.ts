@@ -1,34 +1,5 @@
 import * as vscode from 'vscode';
-import {
-  deploy,
-  deployCleanup,
-  deploySpecificFile,
-  destroy,
-  destroyCleanup,
-  redeploy,
-  redeployCleanup,
-  inspectAllLabs,
-  inspectOneLab,
-  openLabFile,
-  openFolderInNewWindow,
-  startNode,
-  stopNode,
-  attachShell,
-  sshToNode,
-  showLogs,
-  graphNextUI,
-  graphDrawIO,
-  graphDrawIOInteractive,
-  addLabFolderToWorkspace,
-  copyLabPath,
-  copyContainerIPv4Address,
-  copyContainerIPv6Address,
-  copyContainerName,
-  copyContainerID,
-  copyContainerImage,
-  copyContainerKind,
-  grapTopoviewer
-} from './commands/index';
+import * as cmd from './commands/index';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
 import {
   ensureClabInstalled,
@@ -67,96 +38,147 @@ export async function activate(context: vscode.ExtensionContext) {
   const provider = new ClabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
 
+  // Register commands
+
+  // Refresh the tree view
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.refresh', () => {
       provider.refresh();
     })
   );
 
-  // Register the remaining commands
+  // Lab file and workspace commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.openFile', openLabFile)
+    vscode.commands.registerCommand('containerlab.lab.openFile', cmd.openLabFile)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.addToWorkspace', addLabFolderToWorkspace)
+    vscode.commands.registerCommand('containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.openFolderInNewWindow', openFolderInNewWindow)
+    vscode.commands.registerCommand('containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.copyPath', copyLabPath)
+    vscode.commands.registerCommand('containerlab.lab.copyPath', cmd.copyLabPath)
+  );
+
+  // Lab deployment commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.deploy', cmd.deploy)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deploy', deploy)
+    vscode.commands.registerCommand('containerlab.lab.deploy.cleanup', cmd.deployCleanup)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deploy.cleanup', deployCleanup)
+    vscode.commands.registerCommand('containerlab.lab.deploy.specificFile', cmd.deploySpecificFile)
+  );
+
+  // Lab redeployment commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.redeploy', cmd.redeploy)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deploy.specificFile', deploySpecificFile)
+    vscode.commands.registerCommand('containerlab.lab.redeploy.cleanup', cmd.redeployCleanup)
+  );
+
+  // Lab destruction commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.destroy', cmd.destroy)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.redeploy', redeploy)
+    vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', cmd.destroyCleanup)
+  );
+
+  // Lab inspection commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(context))
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.redeploy.cleanup', redeployCleanup)
+    vscode.commands.registerCommand('containerlab.inspectOneLab', (node) => cmd.inspectOneLab(node, context))
+  );
+
+  // Lab graph commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph', cmd.graphNextUI)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.destroy', destroy)
+    vscode.commands.registerCommand('containerlab.lab.graph.drawio', cmd.graphDrawIO)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', destroyCleanup)
+    vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.inspectAll', () => inspectAllLabs(context))
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => cmd.grapTopoviewer(node, context))
+  );
+
+  // Node commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.start', cmd.startNode)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.inspectOneLab', (node) => inspectOneLab(node, context))
+    vscode.commands.registerCommand('containerlab.node.stop', cmd.stopNode)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph', graphNextUI)
+    vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.drawio', graphDrawIO)
+    vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', graphDrawIOInteractive)
+    vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => grapTopoviewer(node, context))
+    vscode.commands.registerCommand('containerlab.node.copyIPv4Address', cmd.copyContainerIPv4Address)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.start', startNode)
+    vscode.commands.registerCommand('containerlab.node.copyIPv6Address', cmd.copyContainerIPv6Address)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.stop', stopNode)
+    vscode.commands.registerCommand('containerlab.node.copyName', cmd.copyContainerName)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.attachShell', attachShell)
+    vscode.commands.registerCommand('containerlab.node.copyID', cmd.copyContainerID)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.ssh', sshToNode)
+    vscode.commands.registerCommand('containerlab.node.copyKind', cmd.copyContainerKind)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.showLogs', showLogs)
+    vscode.commands.registerCommand('containerlab.node.copyImage', cmd.copyContainerImage)
+  );
+
+  // Interface commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.capture', cmd.captureInterface)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyIPv4Address', copyContainerIPv4Address)
+    vscode.commands.registerCommand('containerlab.interface.captureWithEdgeshark', cmd.captureInterfaceWithPacketflix)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyIPv6Address', copyContainerIPv6Address)
+    vscode.commands.registerCommand('containerlab.interface.setDelay', cmd.setLinkDelay)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyName', copyContainerName)
+    vscode.commands.registerCommand('containerlab.interface.setJitter', cmd.setLinkJitter)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyID', copyContainerID)
+    vscode.commands.registerCommand('containerlab.interface.setLoss', cmd.setLinkLoss)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyKind', copyContainerKind)
+    vscode.commands.registerCommand('containerlab.interface.setRate', cmd.setLinkRate)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyImage', copyContainerImage)
+    vscode.commands.registerCommand('containerlab.interface.setCorruption', cmd.setLinkCorruption)
+  );
+
+  // Edgeshark commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.install.edgeshark', cmd.installEdgeshark)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark)
+  );
+
+  // Session hostname command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.set.sessionHostname', cmd.setSessionHostname)
   );
 
   // Auto-refresh the TreeView based on user setting
@@ -166,7 +188,7 @@ export async function activate(context: vscode.ExtensionContext) {
     provider.refresh();
   }, refreshInterval);
 
-  // Clean up
+  // Clean up the auto-refresh interval when the extension is deactivated
   context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
 }
 

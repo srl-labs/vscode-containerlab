@@ -27,22 +27,29 @@ export function execCommandInTerminal(command: string, terminalName: string) {
 
 /**
  * Execute a shell command in the extension's Output channel.
- * - We *strip ANSI codes* from both stdout and stderr
- * - We trigger a refresh after it finishes.
+ * We *strip ANSI codes* from both stdout and stderr
+ * We trigger a refresh after it finishes.
+ * 
+ * @param command Command to execute in output.
+ * @param show Whether to focus the output channel or not.
+ * @param stdoutCb Optional extra function to run on stdout data event. The process and cleaned stdout data is passed to the func.
+ * @param stderrCb Optional extra function to run on stderr data. The process and Cleaned stderr data is passed to the func
  */
-export function execCommandInOutput(command: string) {
+export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: Function, stderrCb?: Function) {
     let proc = exec(command);
 
-    outputChannel.show(true);
+    if(show) { outputChannel.show(); }
 
     proc.stdout?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
         outputChannel.append(cleaned);
+        if(stdoutCb) { stdoutCb(proc, cleaned); }
     });
 
     proc.stderr?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
         outputChannel.append(cleaned);
+        if(stderrCb) { stderrCb(proc, cleaned); }
     });
 
     proc.on('close', (code) => {
@@ -112,7 +119,7 @@ export class Command {
     }
 
     private async execSpinner(cmd: string[]) {
-        console.log(cmd);
+        console.log(cmd.join(" "));
         try {
             await vscode.window.withProgress(
                 {
@@ -178,7 +185,9 @@ export class Command {
             vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
             const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${this.command} failed: ${err.message}`;
-            vscode.window.showErrorMessage(failMsg);
+            const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
+            // If view logs button was clicked.
+            if(viewOutputBtn === "View logs") { outputChannel.show(); }
         }
     }
 }
