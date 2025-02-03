@@ -432,7 +432,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private discoverContainerInterfaces(labPath: string, cName: string, cID: string): ClabInterfaceTreeNode[] {
     console.log(`[discovery]:\tDiscovering interfaces for container: ${cName}`);
 
-    const cmd = `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n clab-${cName}`;
+    const cmd = `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`;
 
     let clabStdout;
     try {
