@@ -233,6 +233,10 @@
         "title": "Set corruption"
       },
       {
+        "command": "containerlab.interface.copyMACAddress",
+        "title": "Copy MAC address"
+      },
+      {
         "command": "containerlab.install.edgeshark",
         "title": "Install Edgeshark",
         "category": "Containerlab"
@@ -486,6 +490,11 @@
           "command": "containerlab.interface.setCorruption",
           "when": "viewItem == containerlabInterfaceUp",
           "group": "impairmentContextMenu@4"
+        },
+        {
+          "command": "containerlab.interface.copyMACAddress",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "copyContextMenu@0"
         }
       ],
       "commandPalette": [
