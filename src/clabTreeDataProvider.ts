@@ -468,11 +468,11 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
       let tooltip: string[] = [`Name: ${intf.name}`, `State: ${intf.state}`, `Type: ${intf.type}`, `MAC: ${intf.mac}`, `MTU: ${intf.mtu}`];
       let label: string = intf.name;
-      let description: string = utils.titleCase(intf.state);
+      let description: string = intf.state.toLocaleUpperCase();
 
       if (intf.alias) {
         tooltip[1] = `Alias: ${intf.alias}`;
-        description = `${utils.titleCase(intf.state)} - ${intf.alias}`;
+        description = `${intf.state.toLocaleUpperCase()} - ${intf.alias}`;
       }
 
       // Determine the proper icons based on the interface state.
