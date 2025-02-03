@@ -24,9 +24,9 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
     const impairmentFlag = impairment ? `--${impairment}` : undefined;
     if(impairment && !value) { return; }
 
-    const cmd = `${utils.getSudo()}containerlab tools netem set --node ${node.nsName} --interface ${node.name} ${impairmentFlag} ${value}`
+    const cmd = `${utils.getSudo()}containerlab tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`
     
-    const msg = `set ${impairment} to ${value} for ${node.name} on ${node.nsName}.`
+    const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`
 
     vscode.window.showInformationMessage(`Attempting to ${msg}`);
 
@@ -56,7 +56,7 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
     }
 
     const opts: vscode.InputBoxOptions = {
-        title: `Set link delay for ${node.name} on ${node.nsName}`,
+        title: `Set link delay for ${node.name} on ${node.parentName}`,
         placeHolder: `Link delay with time unit. ie: 50ms, 1s, 30s`,
         validateInput: (input: string) => {
             if (input.length === 0) { return "Input should not be empty"; }
@@ -83,7 +83,7 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
     }
 
     const opts: vscode.InputBoxOptions = {
-        title: `Set link jitter for ${node.name} on ${node.nsName}`,
+        title: `Set link jitter for ${node.name} on ${node.parentName}`,
         placeHolder: `Jitter with time unit. ie: 50ms, 1s, 30s`,
         validateInput: (input: string) => {
             if (input.length === 0) { return "Input should not be empty"; }
@@ -110,7 +110,7 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
     }
 
     const opts: vscode.InputBoxOptions = {
-        title: `Set packet loss for ${node.name} on ${node.nsName}`,
+        title: `Set packet loss for ${node.name} on ${node.parentName}`,
         placeHolder: `Packet loss as a percentage. ie 50 is 50% packet loss`,
         validateInput: (input: string) => {
             if (input.length === 0) { return "Input should not be empty"; }
@@ -137,7 +137,7 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
     }
 
     const opts: vscode.InputBoxOptions = {
-        title: `Set egress rate-limit for ${node.name} on ${node.nsName}`,
+        title: `Set egress rate-limit for ${node.name} on ${node.parentName}`,
         placeHolder: `Rate-limit in kbps. ie 100 is 100kbit/s`,
         validateInput: (input: string) => {
             if (input.length === 0) { return "Input should not be empty"; }
@@ -164,7 +164,7 @@ export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<an
     }
 
     const opts: vscode.InputBoxOptions = {
-        title: `Set packet corruption for ${node.name} on ${node.nsName}`,
+        title: `Set packet corruption for ${node.name} on ${node.parentName}`,
         placeHolder: `Packet corrpution as a percentage. ie 50 is 50% probability of packet corrpution.`,
         validateInput: (input: string) => {
             if (input.length === 0) { return "Input should not be empty"; }
