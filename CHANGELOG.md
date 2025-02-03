@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.5.5] - 2025-02-01
+* Version check and Installation of Containerlab by @FloSch62
+* Interface capture by @Kaelemc
+* Interface impairment by @Kaelemc
+* Edgeshark install/untinstall @Kaelemc
+* Hostname discovery by @FloSch62
+* 
+
 ## [0.4.0] - 2025-02-01
 
 * Refactor the tree provider by @kaelemc in https://github.com/srl-labs/vscode-containerlab/pull/35
