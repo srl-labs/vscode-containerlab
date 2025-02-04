@@ -356,6 +356,7 @@ export class TopoViewerAdaptorClab {
                 const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
                 const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
 
+
                 const edgeId = `Clab-Link${linkIndex}`;
                 const edgeEl: CyElement = {
                     group: 'edges',
@@ -377,6 +378,10 @@ export class TopoViewerAdaptorClab {
                             clabTargetLongName: `clab-${clabName}-${targetNode}`,
                             clabSourcePort: sourceIface,
                             clabTargetPort: targetIface,
+                            clabSourceMacAddress: '',
+                            clabTargetMacAddress: '',
+
+
 
 
                             // Additional placeholder fields can be added here
@@ -468,13 +473,10 @@ export class TopoViewerAdaptorClab {
 
     // Define the method within your class
     public getClabContainerTreeNode(nodeName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabContainerTreeNode | null {
-
         let filteredLabData: ClabLabTreeNode[]
-
         filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
             (item) => item?.name === clabName
         );
-
         // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
 
         // Check if filteredLabData is not empty
@@ -482,7 +484,6 @@ export class TopoViewerAdaptorClab {
             log.warn('No lab data available.');
             return null;
         }
-
         const firstLabNode = filteredLabData[0];
 
         // Ensure that 'containers' is defined
@@ -510,28 +511,9 @@ export class TopoViewerAdaptorClab {
         // Perform any additional logic as required
         // ...
 
-        log.debug(`output of containerData ${JSON.stringify(foundContainerData, null, "\t")}`);
+        // log.debug(`output of containerData ${JSON.stringify(foundContainerData, null, "\t")}`);
         return foundContainerData;
     }
-
-
-
-    // // public getClabContainerInterfaceTreeNode(nodeName: string, interfaceName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabInterfaceTreeNode | null {
-    // public getClabContainerInterfaceTreeNode(nodeName: string, interfaceName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabInterfaceTreeNode | null {
-
-    //     log.info(`clabName: ${clabName}`)
-    //     log.info(`nodeName: ${nodeName}`)
-    //     log.info(`interfaceName: ${interfaceName}`)
-
-    //     let containerData: ClabContainerTreeNode | null
-    //     containerData = this.getClabContainerTreeNode(nodeName, clabTreeDataToTopoviewer, clabName)
-
-
-    //     log.info(`containerData: ${containerData}`)
-
-    //     return containerData
-    // }
-
 
 
     /**
@@ -578,5 +560,4 @@ export class TopoViewerAdaptorClab {
             return null;
         }
     }
-
 }

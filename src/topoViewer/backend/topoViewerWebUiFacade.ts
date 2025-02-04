@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode, ClabTreeDataProvider } from '../../clabTreeDataProvider';
+import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
 
 import {
   captureInterface,
@@ -295,7 +295,7 @@ export class TopoViewer {
 
     // Improved handler for messages coming from the webview (from dev.js)
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
-      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg)}`);
+      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
 
       // Basic validation for the message object
       if (!msg || typeof msg !== 'object') {
@@ -349,13 +349,13 @@ export class TopoViewer {
             } catch (innerError) {
               // Capture and log detailed error information
               result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }
-          case 'ssh-to-node': {
+          case 'clab-node-connect-ssh': {
             try {
-              log.info(`ssh-to-node called with payload: ${payload}`);
+              log.info(`clab-node-connect-ssh called with payload: ${payload}`);
               // get latest ClabTreeDataProvider
               const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
 
@@ -363,7 +363,7 @@ export class TopoViewer {
                 const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
                   ? (payload as string).slice(1, -1)
                   : (payload as string);
-                log.info(`ssh-to-node backend endpoint is called`)
+                log.info(`clab-node-connect-ssh backend endpoint is called`)
                 log.info(`lab name: ${this.lastFolderName}`)
                 log.info(`node name: ${nodeName}`)
                 let containerData = this.adaptor.getClabContainerTreeNode(nodeName as string, updatedClabTreeDataToTopoviewer, this.lastFolderName as string);
@@ -377,11 +377,11 @@ export class TopoViewer {
             } catch (innerError) {
               // Capture and log detailed error information
               result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }
-          case 'get-hostname': {
+          case 'clab-host-get-hostname': {
             try {
               const hostname = await getHostname(); // aarafat-tag: this should be cached in topoViewerData/labName/environment.json
               result = `Endpoint "${endpointName}" executed successfully. Return payload is ${hostname}`;
@@ -393,35 +393,32 @@ export class TopoViewer {
             }
             break;
           }
-          case 'link-capture': {
+          case 'clab-link-capture': {
             try {
-
-              interface LinkCaputreInfo {
+              interface LinkEndpointInfo {
                 nodeName: string;
                 interfaceName: string;
               }
 
               // Parse the JSON string and assert the type
-              const linkCaputreInfo: LinkCaputreInfo = JSON.parse(payload as string);
+              const LinkEndpointInfo: LinkEndpointInfo = JSON.parse(payload as string);
 
-              log.info(`link-capture called with payload: ${linkCaputreInfo}`);
+              log.info(`link-capture called with payload: ${LinkEndpointInfo}`);
 
               // Now TypeScript knows the types of the properties
-              console.log('nodeName:', linkCaputreInfo.nodeName);
-              console.log('interfaceName:', linkCaputreInfo.interfaceName);
+              console.log('nodeName:', LinkEndpointInfo.nodeName);
+              console.log('interfaceName:', LinkEndpointInfo.interfaceName);
 
               // get latest ClabTreeDataProvider
               const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
 
               if (updatedClabTreeDataToTopoviewer) { // ensure updatedClabTreeDataToTopoviewer is safely processed
-                let containerData = this.adaptor.getClabContainerInterfaceTreeNode(linkCaputreInfo.nodeName as string, linkCaputreInfo.interfaceName as string, updatedClabTreeDataToTopoviewer, this.lastFolderName as string);
-                
-
-                if (containerData) {
-                  captureInterfaceWithPacketflix(containerData)
+                let containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(LinkEndpointInfo.nodeName as string, LinkEndpointInfo.interfaceName as string, updatedClabTreeDataToTopoviewer, this.lastFolderName as string)
+                if (containerInterfaceData) {
+                  captureInterfaceWithPacketflix(containerInterfaceData)
                 }
-                
-                result = `Endpoint "${endpointName}" executed successfully. Return payload is ${containerData}`;
+
+                result = `Endpoint "${endpointName}" executed successfully. Return payload is ${containerInterfaceData}`;
                 log.info(result);
               }
 
@@ -429,6 +426,108 @@ export class TopoViewer {
               // Capture and log detailed error information
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
+            }
+            break;
+          }
+          case 'clab-link-subinterfaces': {
+            try {
+              interface LinkEndpointInfo {
+                nodeName: string;
+                interfaceName: string;
+              }
+
+              // Parse the JSON string and assert the type
+              const LinkEndpointInfo: LinkEndpointInfo = JSON.parse(payload as string);
+
+              log.info(`clab-link-subinterfaces called with payload: ${LinkEndpointInfo}`);
+
+              // Now TypeScript knows the types of the properties
+              log.info(`nodeName: ${LinkEndpointInfo.nodeName}`);
+              log.info(`interfaceName: ${LinkEndpointInfo.interfaceName}`);
+
+              // get latest ClabTreeDataProvider
+              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+
+              if (updatedClabTreeDataToTopoviewer) {
+                let containerData = this.adaptor.getClabContainerTreeNode(LinkEndpointInfo.nodeName as string, updatedClabTreeDataToTopoviewer, this.lastFolderName as string);
+
+                containerData?.interfaces
+
+                let parentInterfaceName = LinkEndpointInfo.interfaceName
+
+                // Filter the interfaces whose name starts with parentInterfaceName + '-'
+                const subInterfaces = containerData?.interfaces.filter((intf) =>
+                  intf.name.startsWith(`${parentInterfaceName}-`)
+                );
+
+                log.info(`subInterfaces ${JSON.stringify(subInterfaces, null, 2)}`)
+
+                if (subInterfaces) {
+                  // Map the filtered interface objects to instances of ClabInterfaceTreeNode
+                  subInterfaces.map(
+                    (intf) =>
+                      new ClabInterfaceTreeNode(
+                        intf.label as string,
+                        intf.collapsibleState as vscode.TreeItemCollapsibleState,
+                        intf.parentName,
+                        intf.cID,
+                        intf.name,
+                        intf.type,
+                        intf.alias,
+                        intf.mac,
+                        intf.mtu,
+                        intf.ifIndex,
+                        intf.contextValue
+                      )
+                  );
+                }
+
+                log.info(result);
+                log.info(`Endpoint "${endpointName}" executed successfully. Return payload is ${subInterfaces}`);
+                result = subInterfaces
+
+              }
+            } catch (innerError) {
+              // Capture and log detailed error information
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'clab-link-mac-address': {
+            try {
+              interface LinkEndpointInfo {
+                nodeName: string;
+                interfaceName: string;
+              }
+
+              // Parse the JSON string and assert the type
+              const LinkEndpointInfo: LinkEndpointInfo = JSON.parse(payload as string);
+
+              log.info(`clab-link-mac-address called with payload: ${LinkEndpointInfo}`);
+
+              // Now TypeScript knows the types of the properties
+              log.info(`nodeName: ${LinkEndpointInfo.nodeName}`);
+              log.info(`interfaceName: ${LinkEndpointInfo.interfaceName}`);
+
+              // get latest ClabTreeDataProvider
+              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+
+              if (updatedClabTreeDataToTopoviewer) {
+                let containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(LinkEndpointInfo.nodeName as string, LinkEndpointInfo.interfaceName as string, updatedClabTreeDataToTopoviewer, this.lastFolderName as string)
+
+                log.info(`macAddress ${JSON.stringify(containerInterfaceData?.mac, null, 2)}`)
+
+                log.info(result);
+                log.info(`Endpoint "${endpointName}" executed successfully. Return payload is ${containerInterfaceData?.mac}`);
+                result = containerInterfaceData?.mac
+
+              }
+            } catch (innerError) {
+              // Capture and log detailed error information
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }
@@ -445,12 +544,10 @@ export class TopoViewer {
               log.info(result);
             } catch (innerError) {
               result = `Error executing endpoint "open-external".`;
-              log.error(`Error executing endpoint "open-external": ${JSON.stringify(innerError)}`);
+              log.error(`Error executing endpoint "open-external": ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }
-
-
 
           default: {
             error = `Unknown endpoint "${endpointName}".`;
@@ -459,8 +556,11 @@ export class TopoViewer {
         }
       } catch (err) {
         error = err instanceof Error ? err.message : String(err);
-        log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err)}`);
+        log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err, null, 2)}`);
       }
+
+      log.info("########################################################### RESULT in RESPONSE");
+      log.info(`${JSON.stringify(result, null, 2)}`)
 
       // Send a response back to the webview with the result or error.
       panel.webview.postMessage({
@@ -485,7 +585,7 @@ export class TopoViewer {
 
       return {
         success: true,
-        message: `Received: ${JSON.stringify(payload)} and returning a demonstration result.`,
+        message: `Received: ${JSON.stringify(payload, null, 2)} and returning a demonstration result.`,
       };
     }
 
@@ -497,7 +597,7 @@ export class TopoViewer {
       // Perform some backend logic or disk operations here
       return {
         success: true,
-        message: `Received: ${JSON.stringify(payload)}`,
+        message: `Received: ${JSON.stringify(payload, null, 2)}`,
       };
     }
 
@@ -1420,6 +1520,8 @@ export class TopoViewer {
                                   <hr class="dropdown-divider" />
                                   <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null);" class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)</a>
                                   
+                                  <a class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-a-top"></a>
+
                                   <!-- aarafat-tag: vscode
                                   <a onclick="linkWireshark(event, 'copy', 'source');" class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-a-clipboard">Capture E.Point-A Clipboard</a>
                                   -->
@@ -1428,6 +1530,8 @@ export class TopoViewer {
                                   <hr class="dropdown-divider" />
                                   <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target');" class="dropdown-item label has-text-weight-normal is-small py-0"id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)</a>
                                   
+                                  <a class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-b-top"></a>
+
                                   <!-- aarafat-tag: vscode
                                   <a onclick="linkWireshark(event, 'copy', 'target');" class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-b-clipboard">Capture E.Point-B Clipboard</a>
                                   -->
