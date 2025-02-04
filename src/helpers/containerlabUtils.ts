@@ -30,7 +30,6 @@ export async function runWithSudo(
   let passwordlessAvailable = false;
   try {
     await execAsync(checkCommand);
-    // If we get here, the command succeeded
     passwordlessAvailable = true;
   } catch (checkErr) {
     passwordlessAvailable = false;
@@ -38,15 +37,31 @@ export async function runWithSudo(
 
   if (passwordlessAvailable) {
     try {
-      log(`Passwordless sudo available. Executing command: ${command}`, outputChannel);
-      const { stdout, stderr } = await execAsync(`sudo ${command}`);
-      if (stdout) {
-        outputChannel.appendLine(stdout);
+      log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
+      try {
+        const { stdout, stderr } = await execAsync(`sudo -E ${command}`);
+        if (stdout) {
+          outputChannel.appendLine(stdout);
+        }
+        if (stderr) {
+          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+        }
+        return;
+      } catch (eErr: any) {
+        // Check if the error is about -E not being allowed
+        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
+          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
+          const { stdout, stderr } = await execAsync(`sudo ${command}`);
+          if (stdout) {
+            outputChannel.appendLine(stdout);
+          }
+          if (stderr) {
+            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+          }
+          return;
+        }
+        throw eErr;
       }
-      if (stderr) {
-        outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-      }
-      return;
     } catch (commandErr) {
       throw commandErr;
     }
@@ -70,14 +85,36 @@ export async function runWithSudo(
       throw new Error(`User cancelled sudo password prompt for: ${description}`);
     }
     
-    const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
     log(`Executing command with sudo and provided password: ${command}`, outputChannel);
-    const { stdout, stderr } = await execAsync(cmd);
-    if (stdout) {
-      outputChannel.appendLine(stdout);
-    }
-    if (stderr) {
-      outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+    try {
+      // Try with -E first
+      try {
+        const cmd = `echo '${password}' | sudo -S -E sh -c '${command}'`;
+        const { stdout, stderr } = await execAsync(cmd);
+        if (stdout) {
+          outputChannel.appendLine(stdout);
+        }
+        if (stderr) {
+          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+        }
+      } catch (eErr: any) {
+        // Check if the error is about -E not being allowed
+        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
+          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
+          const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
+          const { stdout, stderr } = await execAsync(cmd);
+          if (stdout) {
+            outputChannel.appendLine(stdout);
+          }
+          if (stderr) {
+            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+          }
+        } else {
+          throw eErr;
+        }
+      }
+    } catch (err) {
+      throw err;
     }
   }
 }
