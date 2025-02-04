@@ -194,6 +194,12 @@ Add this line in the editor (replace <user> with your username):
 
 Note: Future versions of the extension will improve handling of these scenarios to provide a better user experience.
 
+---
+
+### "I do not see any interfaces on my deployed lab" 
+Labs which are deployed with containerlab < 0.64.0 , needing a redeploy.
+
+---
 
 ## Feedback and Contributions
 
