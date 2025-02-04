@@ -1,12 +1,16 @@
 # Change Log
 
+## [0.6.1] - 2025-02-04
+* The extension now works fully sudoless with containerlab 0.64.0
+* fixes for version check and installation
+
 ## [0.5.5] - 2025-02-01
 * Version check and Installation of Containerlab by @FloSch62
 * Interface capture by @Kaelemc
 * Interface impairment by @Kaelemc
 * Edgeshark install/untinstall @Kaelemc
 * Hostname discovery by @FloSch62
-* 
+
 
 ## [0.4.0] - 2025-02-01
 
