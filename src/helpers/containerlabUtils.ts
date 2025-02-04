@@ -12,43 +12,70 @@ function log(message: string, channel: vscode.OutputChannel) {
 }
 
 /**
- * Runs a command via `sudo`, checking for passwordless sudo first.
- * If passwordless sudo isn’t available, prompts for a password.
+ * Runs a command via sudo, checking for passwordless sudo first.
+ * If passwordless sudo isn’t available, it first asks the user if they want
+ * to proceed. Only if the user confirms does it then prompt for a sudo password.
  */
 export async function runWithSudo(
   command: string,
   description: string,
-  outputChannel: vscode.OutputChannel
+  outputChannel: vscode.OutputChannel,
+  checkType: 'generic' | 'containerlab' = 'containerlab'
 ): Promise<void> {
-  // First, check if passwordless sudo is available.
+  const checkCommand =
+    checkType === 'containerlab'
+      ? "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false"
+      : "sudo -n true";
+
   let passwordlessAvailable = false;
   try {
-    await execAsync('sudo -n true');
+    await execAsync(checkCommand);
     passwordlessAvailable = true;
   } catch (checkErr) {
     passwordlessAvailable = false;
   }
 
   if (passwordlessAvailable) {
-    // Try to run the command with sudo.
     try {
-      log(`Passwordless sudo available. Executing command: ${command}`, outputChannel);
-      const { stdout, stderr } = await execAsync(`sudo ${command}`);
-      if (stdout) {
-        outputChannel.appendLine(stdout);
+      log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
+      try {
+        const { stdout, stderr } = await execAsync(`sudo -E ${command}`);
+        if (stdout) {
+          outputChannel.appendLine(stdout);
+        }
+        if (stderr) {
+          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+        }
+        return;
+      } catch (eErr: any) {
+        // Check if the error is about -E not being allowed
+        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
+          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
+          const { stdout, stderr } = await execAsync(`sudo ${command}`);
+          if (stdout) {
+            outputChannel.appendLine(stdout);
+          }
+          if (stderr) {
+            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+          }
+          return;
+        }
+        throw eErr;
       }
-      if (stderr) {
-        outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-      }
-      return;
     } catch (commandErr) {
-      // The command failed for reasons other than sudo password issues.
-      // Propagate the error so that higher-level logic (e.g. installation check) can handle it.
       throw commandErr;
     }
   } else {
-    // If passwordless sudo isn't available, prompt for the sudo password.
-    log(`Passwordless sudo not available. Prompting user for sudo password: ${description}`, outputChannel);
+    log(`Passwordless sudo not available for "${description}".`, outputChannel);
+    const shouldProceed = await vscode.window.showWarningMessage(
+      `The command "${description}" requires you to enter your sudo password. Do you want to proceed?`,
+      { modal: true },
+      'Yes'
+    );
+    if (shouldProceed !== 'Yes') {
+      throw new Error(`User declined to provide sudo password for: ${description}`);
+    }
+
     const password = await vscode.window.showInputBox({
       prompt: `Enter your sudo password for: ${description}`,
       password: true,
@@ -58,26 +85,48 @@ export async function runWithSudo(
       throw new Error(`User cancelled sudo password prompt for: ${description}`);
     }
     
-    // Execute the command using the provided password.
-    const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
     log(`Executing command with sudo and provided password: ${command}`, outputChannel);
-    const { stdout, stderr } = await execAsync(cmd);
-    if (stdout) {
-      outputChannel.appendLine(stdout);
-    }
-    if (stderr) {
-      outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+    try {
+      // Try with -E first
+      try {
+        const cmd = `echo '${password}' | sudo -S -E sh -c '${command}'`;
+        const { stdout, stderr } = await execAsync(cmd);
+        if (stdout) {
+          outputChannel.appendLine(stdout);
+        }
+        if (stderr) {
+          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+        }
+      } catch (eErr: any) {
+        // Check if the error is about -E not being allowed
+        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
+          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
+          const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
+          const { stdout, stderr } = await execAsync(cmd);
+          if (stdout) {
+            outputChannel.appendLine(stdout);
+          }
+          if (stderr) {
+            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+          }
+        } else {
+          throw eErr;
+        }
+      }
+    } catch (err) {
+      throw err;
     }
   }
 }
 
 /**
  * Installs containerlab using the official installer script, via sudo.
+ * Uses the generic sudo check.
  */
 export async function installContainerlab(outputChannel: vscode.OutputChannel): Promise<void> {
   log(`Installing containerlab...`, outputChannel);
   const installerCmd = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
-  await runWithSudo(installerCmd, 'Installing containerlab', outputChannel);
+  await runWithSudo(installerCmd, 'Installing containerlab', outputChannel, 'generic');
 }
 
 /**
@@ -98,7 +147,6 @@ export async function addUserToClabAdminsIfNeeded(outputChannel: vscode.OutputCh
       return;
     }
 
-    // Not in group -> prompt
     const joinAction = 'Add me to clab_admins';
     const skipAction = 'No';
     const choice = await vscode.window.showWarningMessage(
@@ -113,89 +161,66 @@ export async function addUserToClabAdminsIfNeeded(outputChannel: vscode.OutputCh
       return;
     }
 
-    // Run usermod
     log(`Adding user "${currentUser}" to clab_admins.`, outputChannel);
-    await runWithSudo(`usermod -aG clab_admins ${currentUser}`, `Add ${currentUser} to clab_admins`, outputChannel);
+    await runWithSudo(`usermod -aG clab_admins ${currentUser}`, `Add ${currentUser} to clab_admins`, outputChannel, 'generic');
 
     vscode.window.showInformationMessage(
       `Added "${currentUser}" to clab_admins. You must log out and back in for this to take effect.`
     );
-
   } catch (err) {
     log(`Error checking or adding user to clab_admins group: ${err}`, outputChannel);
   }
 }
 
 /**
- * Ensures containerlab is installed. If not, prompts the user to install.
+ * Ensures containerlab is installed by checking if the command is available.
+ * We simply run "which containerlab" and verify that its output is non-empty.
  */
 export async function ensureClabInstalled(
   outputChannel: vscode.OutputChannel
 ): Promise<boolean> {
   try {
-    log(
-      `Verifying containerlab installation by running "containerlab version".`,
-      outputChannel
-    );
-    // Run the version command with sudo using runWithSudo
-    await runWithSudo(
-      'containerlab version',
-      'Verifying containerlab installation',
-      outputChannel
-    );
-    log(`containerlab is already installed.`, outputChannel);
-    return true;
-  } catch (notInstalled) {
-    log(
-      `containerlab is not installed. Prompting user for installation.`,
-      outputChannel
-    );
+    log(`Verifying containerlab installation by running "which containerlab".`, outputChannel);
+    const { stdout } = await execAsync('which containerlab');
+    if (stdout && stdout.trim().length > 0) {
+      log(`containerlab is already installed.`, outputChannel);
+      return true;
+    }
+    throw new Error('containerlab not found.');
+  } catch (err) {
+    log(`containerlab is not installed. Prompting user for installation.`, outputChannel);
     const installAction = 'Install containerlab';
     const cancelAction = 'No';
     const chosen = await vscode.window.showWarningMessage(
-      `Containerlab is not installed. Would you like to install it now?`,
+      'Containerlab is not installed. Would you like to install it now?',
       installAction,
       cancelAction
     );
     if (chosen !== installAction) {
-      log(`User declined containerlab installation.`, outputChannel);
+      log('User declined containerlab installation.', outputChannel);
       return false;
     }
 
-    // User chose to install containerlab
     try {
       await installContainerlab(outputChannel);
-      // Verify the installation using runWithSudo instead of execAsync
-      await runWithSudo(
-        'containerlab version',
-        'Verifying containerlab installation after install',
-        outputChannel
-      );
-      vscode.window.showInformationMessage('Containerlab installed successfully!');
-      log(`containerlab installed successfully.`, outputChannel);
-
-      // Optionally add user to clab_admins group
-      await addUserToClabAdminsIfNeeded(outputChannel);
-
-      return true;
+      // Verify the installation again.
+      const { stdout } = await execAsync('which containerlab');
+      if (stdout && stdout.trim().length > 0) {
+        vscode.window.showInformationMessage('Containerlab installed successfully!');
+        log(`containerlab installed successfully.`, outputChannel);
+        await addUserToClabAdminsIfNeeded(outputChannel);
+        return true;
+      } else {
+        throw new Error('containerlab installation failed; command not found after installation.');
+      }
     } catch (installErr: any) {
-      vscode.window.showErrorMessage(
-        `Failed to install containerlab:\n${installErr.message}\nExtension will be disabled.`
-      );
+      vscode.window.showErrorMessage(`Failed to install containerlab:\n${installErr.message}`);
       log(`Failed to install containerlab: ${installErr}`, outputChannel);
       return false;
     }
   }
 }
 
-
-/**
- * Checks if containerlab is up to date, and if not, prompts the user to update it.
- */
-/**
- * Checks if containerlab is up to date, and if not, prompts the user to update it.
- * If the version check command fails, an error is shown instead of suggesting an update.
- */
 /**
  * Checks if containerlab is up to date, and if not, prompts the user to update it.
  * If the version check command fails or its output is unrecognized,
@@ -203,8 +228,8 @@ export async function ensureClabInstalled(
  */
 export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputChannel): Promise<void> {
   try {
-    log(`Running "sudo clab version check".`, outputChannel);
-    const { stdout, stderr } = await execAsync('sudo clab version check');
+    log(`Running "sudo containerlab version check".`, outputChannel);
+    const { stdout, stderr } = await execAsync('sudo containerlab version check');
 
     if (stdout) {
       outputChannel.appendLine(stdout);
@@ -233,7 +258,7 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
       if (userChoice === updateAction) {
         try {
           log(`User chose to update containerlab. Executing upgrade.`, outputChannel);
-          await runWithSudo('clab version upgrade', 'Upgrading containerlab', outputChannel);
+          await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'containerlab');
           vscode.window.showInformationMessage('Containerlab updated successfully!');
           log(`Containerlab updated successfully.`, outputChannel);
         } catch (upgradeErr: any) {
@@ -242,10 +267,8 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
         }
       }
     } else if (lowerOutput.includes('latest') || lowerOutput.includes('up to date')) {
-      // Example output might include: "You are on the latest version"
       log(`Containerlab is on the latest version.`, outputChannel);
     } else {
-      // If the output doesn't match any expected pattern, treat it as a detection failure.
       throw new Error(`Unrecognized output from version check: "${versionOutput}"`);
     }
   } catch (err: any) {
@@ -253,5 +276,3 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
     vscode.window.showErrorMessage(`Unable to detect containerlab version. Please check your installation.`);
   }
 }
-
-

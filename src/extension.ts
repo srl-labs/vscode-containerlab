@@ -167,6 +167,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.interface.setCorruption', cmd.setLinkCorruption)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.copyMACAddress', cmd.copyMACAddress)
+  );
 
   // Edgeshark commands
   context.subscriptions.push(

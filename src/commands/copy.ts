@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as utils from "../utils";
-import { ClabContainerTreeNode, ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../clabTreeDataProvider";
 
 export function copyLabPath(node: ClabLabTreeNode) {
   if (!node) {
@@ -138,4 +138,26 @@ export function copyContainerImage(node: ClabContainerTreeNode) {
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied image to clipboard succesfully.`);
   });
+}
+
+export function copyMACAddress(node: ClabInterfaceTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No interface node selected.');
+    return;
+  }
+
+  const intfName = node.name || "";
+
+  const data = node.mac;
+  if (!data) {
+    vscode.window.showErrorMessage(`${intfName}: Could not fetch interface MAC address.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${intfName}: Copied MAC address to clipboard succesfully.`);
+  });
+  
+
 }

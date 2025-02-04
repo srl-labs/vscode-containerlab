@@ -4,7 +4,7 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.5.5",
+  "version": "0.6.1",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -231,6 +231,10 @@
       {
         "command": "containerlab.interface.setCorruption",
         "title": "Set corruption"
+      },
+      {
+        "command": "containerlab.interface.copyMACAddress",
+        "title": "Copy MAC address"
       },
       {
         "command": "containerlab.install.edgeshark",
@@ -486,6 +490,11 @@
           "command": "containerlab.interface.setCorruption",
           "when": "viewItem == containerlabInterfaceUp",
           "group": "impairmentContextMenu@4"
+        },
+        {
+          "command": "containerlab.interface.copyMACAddress",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "copyContextMenu@0"
         }
       ],
       "commandPalette": [
