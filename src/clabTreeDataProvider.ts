@@ -184,39 +184,42 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
 
     if (!localLabs && !globalLabs) {
-      console.error("[discovery]:\tNo labs found");
-      return [
-        new ClabLabTreeNode(
-          "No labs found. Add a lab with the '+' icon.",
-          vscode.TreeItemCollapsibleState.None,
-          { absolute: "", relative: "" }
-        )
-      ];
+        console.error("[discovery]:\tNo labs found");
+        return [
+            new ClabLabTreeNode(
+                "No labs found. Add a lab with the '+' icon.",
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: "", relative: "" }
+            )
+        ];
     } else if (!globalLabs) {
-      console.error("[discovery]:\tNo inspected labs found");
-      return Object.values(localLabs!);
+        console.error("[discovery]:\tNo inspected labs found");
+        return Object.values(localLabs!).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
     } else if (!localLabs) {
-      console.error("[discovery]:\tNo local labs found");
-      return Object.values(globalLabs);
+        console.error("[discovery]:\tNo local labs found");
+        return Object.values(globalLabs).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
     }
 
     // Merge them into a single dictionary
     const labs: Record<string, ClabLabTreeNode> = { ...globalLabs };
     for (const labPath in localLabs) {
-      if (!labs.hasOwnProperty(labPath)) {
-        labs[labPath] = localLabs[labPath];
-      }
+        if (!labs.hasOwnProperty(labPath)) {
+            labs[labPath] = localLabs[labPath];
+        }
     }
 
-    // Convert the dict to an array and sort
+    // Convert the dict to an array and sort by:
+    // 1. Deployed labs first
+    // 2. Then by absolute path
     const sortedLabs = Object.values(labs).sort((a, b) => {
-      if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
-        return -1;
-      }
-      if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
-        return 1;
-      }
-      return a.labPath.absolute.localeCompare(b.labPath.absolute);
+        if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
+            return -1;
+        }
+        if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
+            return 1;
+        }
+        // If same deployment status, sort by path
+        return a.labPath.absolute.localeCompare(b.labPath.absolute);
     });
 
     console.log(`[discovery]:\tDiscovered ${sortedLabs.length} labs.`);
