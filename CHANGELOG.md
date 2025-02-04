@@ -1,5 +1,8 @@
 # Change Log
 
+## [0.6.2] - 2025-02-04
+* Fix containerlab version check (now sudoless)
+
 ## [0.6.1] - 2025-02-04
 * The extension now works fully sudoless with containerlab 0.64.0
 * fixes for version check and installation
