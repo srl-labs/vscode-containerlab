@@ -163,9 +163,37 @@ When deploying labs, you can monitor the detailed progress in the Output window:
 
 ## Known Issues
 
-- None reported. If you spot any bug or have a feature request, please open an issue on our repository.
+### "Unable to detect containerlab version" Error
 
----
+If you see this error message despite having containerlab correctly installed, there are two common causes:
+
+1. **GitHub API Rate Limiting**
+   - The version check makes API calls to GitHub to compare versions
+   - Without authentication, these calls are subject to rate limiting
+   - Solution: Set your GitHub token as an environment variable:
+
+```
+export GITHUB_TOKEN=your_github_token_here
+```
+
+2. **Sudo Permission Configuration**
+   - The extension tries to run 'sudo containerlab version check'
+   - This requires passwordless sudo access for the containerlab command
+   - Solution: Configure passwordless sudo specifically for containerlab:
+
+```
+# Replace <user> with your actual username, e.g., john
+sudo visudo -f /etc/sudoers.d/<user>
+```
+
+Add this line in the editor (replace <user> with your username):
+
+```
+<user> ALL=(ALL) NOPASSWD: /usr/bin/containerlab
+```
+
+Note: Future versions of the extension will improve handling of these scenarios to provide a better user experience.
+
 
 ## Feedback and Contributions
 
