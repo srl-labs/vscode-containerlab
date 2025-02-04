@@ -228,8 +228,8 @@ export async function ensureClabInstalled(
  */
 export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputChannel): Promise<void> {
   try {
-    log(`Running "sudo containerlab version check".`, outputChannel);
-    const { stdout, stderr } = await execAsync('sudo containerlab version check');
+    log('Running "containerlab version check".', outputChannel);
+    const { stdout, stderr } = await execAsync('containerlab version check');
 
     if (stdout) {
       outputChannel.appendLine(stdout);
@@ -243,36 +243,50 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
       throw new Error('No output received from version check command.');
     }
 
-    // Use a case-insensitive check for key phrases.
-    const lowerOutput = versionOutput.toLowerCase();
+    // Check for different version patterns
+    if (versionOutput.includes('Version check timed out')) {
+      // This is a newer version but couldn't check for updates
+      log('Version check timed out. Skipping update check.', outputChannel);
+      return;
+    }
 
-    if (lowerOutput.includes('a newer containerlab version')) {
-      log(`A newer version of containerlab is available. Prompting user for update.`, outputChannel);
+    if (versionOutput.includes('You are on the latest version')) {
+      // This is a newer version and it's up to date
+      log('Containerlab is on the latest version.', outputChannel);
+      return;
+    }
+
+    if (versionOutput.includes('version:')) {
+      // This is an older version that just prints version info
+      // Extract version number for logging
+      const versionMatch = versionOutput.match(/version:\s*([\d.]+)/);
+      const version = versionMatch ? versionMatch[1] : 'unknown';
+
+      log(`Detected older containerlab version ${version}. Prompting user for update.`, outputChannel);
       const updateAction = 'Update containerlab';
       const skipAction = 'Skip';
       const userChoice = await vscode.window.showWarningMessage(
-        `A newer version of containerlab is available. See the Output panel for details.`,
+        'An update may be available for containerlab. Would you like to check for updates?',
         updateAction,
         skipAction
       );
+
       if (userChoice === updateAction) {
         try {
-          log(`User chose to update containerlab. Executing upgrade.`, outputChannel);
+          log('User chose to update containerlab. Executing upgrade.', outputChannel);
           await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'containerlab');
           vscode.window.showInformationMessage('Containerlab updated successfully!');
-          log(`Containerlab updated successfully.`, outputChannel);
+          log('Containerlab updated successfully.', outputChannel);
         } catch (upgradeErr: any) {
           vscode.window.showErrorMessage(`Failed to update containerlab:\n${upgradeErr.message}`);
           log(`Failed to update containerlab: ${upgradeErr}`, outputChannel);
         }
       }
-    } else if (lowerOutput.includes('latest') || lowerOutput.includes('up to date')) {
-      log(`Containerlab is on the latest version.`, outputChannel);
     } else {
       throw new Error(`Unrecognized output from version check: "${versionOutput}"`);
     }
   } catch (err: any) {
     log(`containerlab version check failed: ${err.message}`, outputChannel);
-    vscode.window.showErrorMessage(`Unable to detect containerlab version. Please check your installation.`);
+    vscode.window.showErrorMessage('Unable to detect containerlab version. Please check your installation.');
   }
 }
