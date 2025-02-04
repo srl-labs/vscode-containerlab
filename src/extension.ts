@@ -107,8 +107,10 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => cmd.grapTopoviewer(node, context))
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => cmd.graphTopoviewer(node, context))
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)));
 
   // Node commands
   context.subscriptions.push(

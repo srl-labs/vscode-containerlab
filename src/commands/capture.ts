@@ -122,6 +122,9 @@ export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode
     const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
 
     const packetflixUri = `packetflix:ws://${bracketed}:5001/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
+
+    // urlParams =                          `container={"netns":${netNsId},"network-interfaces":["${clabSourcePort}"],"name":"${clabSourceLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${clabSourcePort}`;
+
     outputChannel.appendLine(`[DEBUG] edgeshark/packetflix URI:\n    ${packetflixUri}`);
 
     vscode.window.showInformationMessage(

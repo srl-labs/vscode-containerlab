@@ -66,8 +66,8 @@ function logMessage(level: string, message: string): void {
  * Export a `log` object with convenience methods.
  */
 export const log = {
-    info(msg: string) { logMessage('info', msg); },
-    debug(msg: string) { logMessage('debug', msg); },
-    warn(msg: string) { logMessage('warn', msg); },
-    error(msg: string) { logMessage('error', msg); },
+    info(msg: any) { logMessage('info', msg); },
+    debug(msg: any) { logMessage('debug', msg); },
+    warn(msg: any) { logMessage('warn', msg); },
+    error(msg: any) { logMessage('error', msg); },
 };
