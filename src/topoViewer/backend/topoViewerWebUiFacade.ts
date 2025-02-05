@@ -869,8 +869,8 @@ export class TopoViewer {
                       <select id="select-layout-algo" onchange="layoutAlgoChange(event)">
                         <option>Select Layout Algorithm</option>
                         <option>Force Directed Radial</option>
-                        <option>Vertical</option>
-                        <option>Horizontal</option>
+                        <option>Clos Vertical</option>
+                        <option>Clos Horizontal</option>
                         <option>Geo Positioning</option>
                       </select>
                     </div>
