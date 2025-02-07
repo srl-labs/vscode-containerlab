@@ -128,6 +128,11 @@ export class Command {
                     cancellable: true
                 },
                 async (progress, token) => {
+
+                    progress.report({
+                        message: " [View Logs](command:containerlab.viewLogs)"
+                      });
+
                     return new Promise<void>((resolve, reject) => {
                         const child = spawn(cmd[0], cmd.slice(1));
 
@@ -184,7 +189,8 @@ export class Command {
 
             vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
-            const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${this.command} failed: ${err.message}`;
+            const command = this.useSudo ? cmd[2] : cmd[1];
+            const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
             // If view logs button was clicked.
             if(viewOutputBtn === "View logs") { outputChannel.show(); }
