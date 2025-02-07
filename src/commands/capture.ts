@@ -84,13 +84,41 @@ function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string)
  * Start capture on an interface using edgeshark/packetflix. 
  * This method builds a 'packetflix:' URI that calls edgeshark.
  */
-export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode) {
+export async function captureInterfaceWithPacketflix(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
+) {
     if (!node) {
         return vscode.window.showErrorMessage("No interface to capture found.");
     }
     outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
-    // Make sure we have a valid hostname to connect back to
+    // If user multi‐selected items, we capture them all. 
+    const selected = allSelectedNodes && allSelectedNodes.length > 0
+      ? allSelectedNodes
+      : [node];
+
+    // If multiple selected
+    if (selected.length > 1) {
+      // Check if they are from the same container
+      const uniqueContainers = new Set(selected.map(i => i.parentName));
+      if (uniqueContainers.size > 1) {
+        // from different containers => spawn multiple edgeshark sessions
+        outputChannel.appendLine("[DEBUG] Edgeshark multi selection => multiple containers => launching individually");
+        for (const nd of selected) {
+          await captureInterfaceWithPacketflix(nd); // re-call for single
+        }
+        return;
+      }
+
+    // All from same container => build multi-interface edgeshark link
+    return captureMultipleEdgeshark(selected);
+    }
+
+    // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
+    outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
+
+    // Make sure we have a valid hostname
     const hostname = await getHostname();
     if (!hostname) {
         return vscode.window.showErrorMessage(
@@ -105,12 +133,45 @@ export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode
     const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
 
     const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
-    outputChannel.appendLine(`[DEBUG] edgeshark/packetflix URI:\n    ${packetflixUri}`);
+    outputChannel.appendLine(`[DEBUG] single-edgeShark => ${packetflixUri}`);
 
     vscode.window.showInformationMessage(
       `Starting edgeshark capture on ${node.parentName}/${node.name}...`
     );
     vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
+}
+
+async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
+  const base = nodes[0];
+  const ifNames = nodes.map(n => n.name);
+  outputChannel.appendLine(`[DEBUG] multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
+
+  // We optionally store "netns" in node if needed.
+  const netnsVal = (base as any).netns || 4026532270; // example if you track netns
+  const containerObj = {
+    netns: netnsVal,
+    "network-interfaces": ifNames,
+    name: base.parentName,
+    type: "docker",
+    prefix: ""
+  };
+
+  const containerStr = encodeURIComponent(JSON.stringify(containerObj));
+  const nifParam = encodeURIComponent(ifNames.join("/"));
+
+  const hostname = await getHostname();
+  const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
+
+  const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${nifParam}`;
+
+  vscode.window.showInformationMessage(
+    `Starting multi-interface edgeshark on ${base.parentName} for: ${ifNames.join(", ")}`
+  );
+  outputChannel.appendLine(`[DEBUG] multi-edgeShark => ${packetflixUri}`);
+
+  vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
 }
 
 /**
