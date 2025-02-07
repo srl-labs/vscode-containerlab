@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
+import * as utils from './utils';
 import { ClabTreeDataProvider } from './clabTreeDataProvider';
 import {
   ensureClabInstalled,
@@ -37,6 +38,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);
   vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
+
+  // Determine if local capture is allowed.
+  // (Local capture via tcpdump and Wireshark is allowed only when not running under SSH and not in OrbStack.)
+  const isLocalCaptureAllowed = (vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack());
+  vscode.commands.executeCommand('setContext', 'containerlab:isLocalCaptureAllowed', isLocalCaptureAllowed);
 
   // Register commands
 
