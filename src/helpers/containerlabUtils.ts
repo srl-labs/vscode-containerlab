@@ -12,6 +12,14 @@ function log(message: string, channel: vscode.OutputChannel) {
 }
 
 /**
+ * Replaces any " with \", so that we can safely wrap the entire string in "..."
+ */
+function escapeDoubleQuotes(input: string): string {
+  return input.replace(/"/g, '\\"');
+}
+
+
+/**
  * Runs a command via sudo, checking for passwordless sudo first.
  * If passwordless sudo isn’t available, it first asks the user if they want
  * to proceed. Only if the user confirms does it then prompt for a sudo password.
@@ -22,7 +30,7 @@ export async function runWithSudo(
   outputChannel: vscode.OutputChannel,
   checkType: 'generic' | 'containerlab' = 'containerlab'
 ): Promise<void> {
-  const checkCommand =
+  let checkCommand =
     checkType === 'containerlab'
       ? "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false"
       : "sudo -n true";
@@ -35,89 +43,59 @@ export async function runWithSudo(
     passwordlessAvailable = false;
   }
 
+  // 1) If passwordless sudo is available, run the pipeline with sudo -E
   if (passwordlessAvailable) {
-    try {
-      log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
-      try {
-        const { stdout, stderr } = await execAsync(`sudo -E ${command}`);
-        if (stdout) {
-          outputChannel.appendLine(stdout);
-        }
-        if (stderr) {
-          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-        }
-        return;
-      } catch (eErr: any) {
-        // Check if the error is about -E not being allowed
-        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
-          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
-          const { stdout, stderr } = await execAsync(`sudo ${command}`);
-          if (stdout) {
-            outputChannel.appendLine(stdout);
-          }
-          if (stderr) {
-            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-          }
-          return;
-        }
-        throw eErr;
-      }
-    } catch (commandErr) {
-      throw commandErr;
-    }
-  } else {
-    log(`Passwordless sudo not available for "${description}".`, outputChannel);
-    const shouldProceed = await vscode.window.showWarningMessage(
-      `The command "${description}" requires you to enter your sudo password. Do you want to proceed?`,
-      { modal: true },
-      'Yes'
-    );
-    if (shouldProceed !== 'Yes') {
-      throw new Error(`User declined to provide sudo password for: ${description}`);
-    }
+    log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
 
-    const password = await vscode.window.showInputBox({
-      prompt: `Enter your sudo password for: ${description}`,
-      password: true,
-      ignoreFocusOut: true
-    });
-    if (!password) {
-      throw new Error(`User cancelled sudo password prompt for: ${description}`);
-    }
-    
-    log(`Executing command with sudo and provided password: ${command}`, outputChannel);
+    const escapedCommand = escapeDoubleQuotes(command);
+    const cmdToRun = `sudo -E bash -c "${escapedCommand}"`;
+
     try {
-      // Try with -E first
-      try {
-        const cmd = `echo '${password}' | sudo -S -E sh -c '${command}'`;
-        const { stdout, stderr } = await execAsync(cmd);
-        if (stdout) {
-          outputChannel.appendLine(stdout);
-        }
-        if (stderr) {
-          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-        }
-      } catch (eErr: any) {
-        // Check if the error is about -E not being allowed
-        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
-          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
-          const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
-          const { stdout, stderr } = await execAsync(cmd);
-          if (stdout) {
-            outputChannel.appendLine(stdout);
-          }
-          if (stderr) {
-            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-          }
-        } else {
-          throw eErr;
-        }
-      }
+      const { stdout, stderr } = await execAsync(cmdToRun);
+      if (stdout) outputChannel.appendLine(stdout);
+      if (stderr) outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+      return;
     } catch (err) {
-      throw err;
+      throw new Error(`Command failed: ${cmdToRun}\n${(err as Error).message}`);
     }
   }
-}
+
+  // 2) If passwordless sudo is NOT available, prompt user for password
+  log(`Passwordless sudo not available for "${description}".`, outputChannel);
+
+  const shouldProceed = await vscode.window.showWarningMessage(
+    `The command "${description}" requires you to enter your sudo password. Proceed?`,
+    { modal: true },
+    'Yes'
+  );
+  if (shouldProceed !== 'Yes') {
+    throw new Error(`User cancelled sudo password prompt for: ${description}`);
+  }
+
+  const password = await vscode.window.showInputBox({
+    prompt: `Enter sudo password for: ${description}`,
+    password: true,
+    ignoreFocusOut: true
+  });
+  if (!password) {
+    throw new Error(`No sudo password provided for: ${description}`);
+  }
+
+  log(`Executing command with sudo and provided password: ${command}`, outputChannel);
+
+  // [CHANGED] Same approach, but echo the password => sudo -S -E bash -c "..."
+  try {
+    const escapedCommand = escapeDoubleQuotes(command);
+    const cmdToRun = `echo '${password}' | sudo -S -E bash -c "${escapedCommand}"`;
+
+    const { stdout, stderr } = await execAsync(cmdToRun);
+    if (stdout) outputChannel.appendLine(stdout);
+    if (stderr) outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+  } catch (err) {
+    throw new Error(`Command failed: runWithSudo [non-passwordless]\n${(err as Error).message}`);
+  }
+}  
+  
 
 /**
  * Installs containerlab using the official installer script, via sudo.

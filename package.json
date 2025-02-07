@@ -473,7 +473,7 @@
         },
         {
           "command": "containerlab.interface.captureWithEdgeshark",
-          "when": "viewItem == containerlabInterfaceUp && containerlab:isLocalCaptureAllowed != true",
+          "when": "viewItem == containerlabInterfaceUp",
           "group": "captureContextMenu@1"
         },
         {
