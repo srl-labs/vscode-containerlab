@@ -37,12 +37,22 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);
-  vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
+
+  // If you have a defined "containerlabExplorer" view in package.json, 
+  // you can either do:
+  const treeView = vscode.window.createTreeView('containerlabExplorer', {
+    treeDataProvider: provider,
+    canSelectMany: true
+  });
 
   // Determine if local capture is allowed.
-  // (Local capture via tcpdump and Wireshark is allowed only when not running under SSH and not in OrbStack.)
-  const isLocalCaptureAllowed = (vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack());
-  vscode.commands.executeCommand('setContext', 'containerlab:isLocalCaptureAllowed', isLocalCaptureAllowed);
+  const isLocalCaptureAllowed =
+    vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack();
+  vscode.commands.executeCommand(
+    'setContext',
+    'containerlab:isLocalCaptureAllowed',
+    isLocalCaptureAllowed
+  );
 
   // Register commands
 
@@ -68,7 +78,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.viewLogs', () => {outputChannel.show(true);})
+    vscode.commands.registerCommand('containerlab.viewLogs', () => {
+      outputChannel.show(true);
+    })
   );
 
   // Lab deployment commands
@@ -100,10 +112,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Lab inspection commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(context))
+    vscode.commands.registerCommand('containerlab.inspectAll', () =>
+      cmd.inspectAllLabs(context)
+    )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.inspectOneLab', (node) => cmd.inspectOneLab(node, context))
+    vscode.commands.registerCommand('containerlab.inspectOneLab', node =>
+      cmd.inspectOneLab(node, context)
+    )
   );
 
   // Lab graph commands
@@ -114,10 +130,15 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.graph.drawio', cmd.graphDrawIO)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive)
+    vscode.commands.registerCommand(
+      'containerlab.lab.graph.drawio.interactive',
+      cmd.graphDrawIOInteractive
+    )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => cmd.grapTopoviewer(node, context))
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', node =>
+      cmd.grapTopoviewer(node, context)
+    )
   );
 
   // Node commands
@@ -137,13 +158,21 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("containerlab.node.manageImpairments",(node) => cmd.manageNodeImpairments(node, context))
+    vscode.commands.registerCommand('containerlab.node.manageImpairments', node =>
+      cmd.manageNodeImpairments(node, context)
+    )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyIPv4Address', cmd.copyContainerIPv4Address)
+    vscode.commands.registerCommand(
+      'containerlab.node.copyIPv4Address',
+      cmd.copyContainerIPv4Address
+    )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyIPv6Address', cmd.copyContainerIPv6Address)
+    vscode.commands.registerCommand(
+      'containerlab.node.copyIPv6Address',
+      cmd.copyContainerIPv6Address
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.copyName', cmd.copyContainerName)
@@ -162,9 +191,16 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.interface.capture', cmd.captureInterface)
   );
+
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.captureWithEdgeshark', cmd.captureInterfaceWithPacketflix)
+    vscode.commands.registerCommand(
+      'containerlab.interface.captureWithEdgeshark',
+      (clickedNode, allSelectedNodes) => {
+        cmd.captureInterfaceWithPacketflix(clickedNode, allSelectedNodes); // [CHANGED]
+      }
+    )
   );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.interface.setDelay', cmd.setLinkDelay)
   );
@@ -178,13 +214,16 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.interface.setRate', cmd.setLinkRate)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.setCorruption', cmd.setLinkCorruption)
+    vscode.commands.registerCommand(
+      'containerlab.interface.setCorruption',
+      cmd.setLinkCorruption
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.interface.copyMACAddress', cmd.copyMACAddress)
   );
 
-  // Edgeshark commands
+  // Edgeshark install/uninstall
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.install.edgeshark', cmd.installEdgeshark)
   );
