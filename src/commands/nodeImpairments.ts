@@ -56,28 +56,17 @@ function parseNetemShowOutput(
   { delay: string; jitter: string; loss: string; rate: string; corruption: string }
 > {
   const cleanOutput = stripAnsi(output);
-  outputChannel.appendLine("[DEBUG] Raw netem show output:");
-  outputChannel.appendLine(output);
-  outputChannel.appendLine("[DEBUG] Cleaned netem output:");
-  outputChannel.appendLine(cleanOutput);
-
-  // Select only lines beginning with the vertical bar "│"
+  // Log only an important message if not enough rows are found.
   const tableRows = cleanOutput
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.startsWith("│"));
-
-  outputChannel.appendLine("[DEBUG] Table rows found:");
-  tableRows.forEach((row, idx) =>
-    outputChannel.appendLine(`${idx}: ${row}`)
-  );
-
   if (tableRows.length < 2) {
-    outputChannel.appendLine("[DEBUG] Not enough table rows found.");
+    outputChannel.appendLine("[INFO] Netem output has insufficient rows.");
     return {};
   }
 
-  // Remove the header row (assumed to be the first row)
+  // Remove the header row (first row)
   const dataRows = tableRows.slice(1);
   const result: Record<
     string,
@@ -85,12 +74,9 @@ function parseNetemShowOutput(
   > = {};
 
   dataRows.forEach((row) => {
-    // Split the row by "│" and filter out empty strings.
     const cols = row.split("│").map((s) => s.trim()).filter((s) => s.length > 0);
     if (cols.length !== 6) {
-      outputChannel.appendLine(
-        `[DEBUG] Skipping row (expected 6 columns but got ${cols.length}): ${row}`
-      );
+      // Skip rows that don't have exactly 6 columns.
       return;
     }
     const rawIface = cols[0];
@@ -103,38 +89,28 @@ function parseNetemShowOutput(
       corruption: cleanPercentage(cols[5]),
     };
 
-    // If the interface key already exists, merge non-empty values.
+    // If a duplicate key occurs, merge non-empty values.
     if (result[iface]) {
       for (const field of (["delay", "jitter", "loss", "rate", "corruption"] as Array<keyof typeof parsed>)) {
         if (!result[iface][field] && parsed[field]) {
           result[iface][field] = parsed[field];
         }
       }
-      outputChannel.appendLine(
-        `[DEBUG] Merged duplicate row for ${iface}: ${JSON.stringify(result[iface])}`
-      );
     } else {
       result[iface] = parsed;
-      outputChannel.appendLine(
-        `[DEBUG] Parsed ${iface}: ${JSON.stringify(parsed)}`
-      );
     }
   });
-
-  outputChannel.appendLine("[DEBUG] Final parsed netem settings:");
-  outputChannel.appendLine(JSON.stringify(result, null, 2));
   return result;
 }
 
 /**
- * Manage link impairments for *all* interfaces of a node.
+ * Manage link impairments for all interfaces of a node.
  * Includes a refresh button to re-read the netem settings.
  */
 export async function manageNodeImpairments(
   node: ClabContainerTreeNode,
   context: vscode.ExtensionContext
 ) {
-  // 1) Gather the node's interfaces.
   const allIfs = node.interfaces;
 
   // Function to re-read and update netem settings.
@@ -144,27 +120,26 @@ export async function manageNodeImpairments(
     try {
       const { stdout } = await execAsync(showCmd);
       netemMap = parseNetemShowOutput(stdout);
+      outputChannel.appendLine("[INFO] Netem settings refreshed.");
     } catch (err: any) {
       vscode.window.showWarningMessage(
-        `Failed to retrieve current netem settings: ${err.message}`
+        `Failed to retrieve netem settings: ${err.message}`
       );
-      outputChannel.appendLine(`[DEBUG] Error executing "${showCmd}": ${err}`);
+      outputChannel.appendLine(`[INFO] Error executing "${showCmd}".`);
     }
-    // Ensure every interface is represented; if not, default to "0".
+    // Ensure every interface is represented; default to "0" if missing.
     allIfs.forEach((ifNode) => {
       const norm = normalizeInterfaceName(ifNode.name);
       if (!netemMap[norm]) {
         netemMap[norm] = { delay: "0", jitter: "0", loss: "0", rate: "0", corruption: "0" };
-        outputChannel.appendLine(`[DEBUG] Defaulting values for interface ${norm}`);
+        outputChannel.appendLine(`[INFO] Defaulted values for ${norm}.`);
       }
     });
     return netemMap;
   }
 
-  // Initially, get the settings.
   const netemMap = await refreshNetemSettings();
 
-  // 2) Create the WebView with the pre-populated netem settings.
   const panel = vscode.window.createWebviewPanel(
     "clabNodeImpairments",
     `Link Impairments: ${node.label}`,
@@ -174,16 +149,14 @@ export async function manageNodeImpairments(
 
   panel.webview.html = getNodeImpairmentsHtml(
     panel.webview,
-    node.name, // or node.label as identifier
+    node.name,
     netemMap,
     context.extensionUri
   );
 
-  // 3) Listen for messages from the WebView.
   panel.webview.onDidReceiveMessage(async (msg) => {
     switch (msg.command) {
       case "apply": {
-        // msg.data is an object mapping interface names to netem parameters.
         const netemData = msg.data as Record<string, any>;
         const ops: Promise<any>[] = [];
 
@@ -197,7 +170,6 @@ export async function manageNodeImpairments(
 
           if (netemArgs.length > 0) {
             const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")}`;
-            outputChannel.appendLine(`[DEBUG] Executing: ${cmd}`);
             ops.push(
               runWithSudo(
                 cmd,
@@ -209,29 +181,23 @@ export async function manageNodeImpairments(
         }
 
         if (ops.length === 0) {
-          vscode.window.showInformationMessage(
-            "No netem parameters were specified; nothing to apply."
-          );
+          vscode.window.showInformationMessage("No parameters specified; nothing applied.");
           return;
         }
 
         try {
           await Promise.all(ops);
-          vscode.window.showInformationMessage(
-            `Applied netem parameters for node: ${node.label}`
-          );
+          vscode.window.showInformationMessage(`Applied netem settings for ${node.label}`);
         } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to apply netem: ${err.message}`);
+          vscode.window.showErrorMessage(`Failed to apply settings: ${err.message}`);
         }
         break;
       }
       case "clearAll": {
-        // Clear all netem settings.
         const ops: Promise<any>[] = [];
         for (const ifNode of allIfs) {
           const norm = normalizeInterfaceName(ifNode.name);
           const cmd = `containerlab tools netem set -n ${node.name} -i ${norm}`;
-          outputChannel.appendLine(`[DEBUG] Executing clear: ${cmd}`);
           ops.push(
             runWithSudo(
               cmd,
@@ -240,19 +206,15 @@ export async function manageNodeImpairments(
             )
           );
         }
-
         try {
           await Promise.all(ops);
-          vscode.window.showInformationMessage(
-            `Cleared netem settings for node: ${node.name}`
-          );
+          vscode.window.showInformationMessage(`Cleared netem settings for ${node.name}`);
         } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to clear netem: ${err.message}`);
+          vscode.window.showErrorMessage(`Failed to clear settings: ${err.message}`);
         }
         break;
       }
       case "refresh": {
-        // Refresh netem settings.
         const updated = await refreshNetemSettings();
         panel.webview.postMessage({ command: "updateFields", data: updated });
         vscode.window.showInformationMessage("Netem settings refreshed.");
