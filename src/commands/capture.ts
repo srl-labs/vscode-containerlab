@@ -34,7 +34,7 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
     }
 
     // Otherwise, we do local capture with tcpdump|Wireshark
-    const captureCmd = `ip netns exec "${node.parentName}" tcpdump -U -nni "${node.name}" -w -`;
+    const captureCmd = `ip netns exec ${node.parentName} tcpdump -U -nni ${node.name} -w -`;
     const wifiCmd = await resolveWiresharkCommand();
     const finalCmd = `${captureCmd} | ${wifiCmd} -k -i -`;
 
@@ -42,10 +42,6 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
 
     vscode.window.showInformationMessage(`Starting capture on ${node.parentName}/${node.name}... check "Containerlab" output for logs.`);
 
-    // We can run tcpdump with sudo. Then pipe stdout -> Wireshark.
-    // We'll wrap that in a small script. Alternatively, we can do something like:
-    // runWithSudo('ip netns exec ...', 'Packet capture', ...) but we also must
-    // handle the pipe. So let's do a naive approach:
     runCaptureWithPipe(finalCmd, node.parentName, node.name);
 }
 
@@ -53,52 +49,35 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
  * Spawn Wireshark or Wireshark.exe in WSL.
  */
 async function resolveWiresharkCommand(): Promise<string> {
-    // Default: 'wireshark'
-    // If in WSL, try user config "containerlab.wsl.wiresharkPath"
-    if (vscode.env.remoteName === "wsl") {
-        const cfgWiresharkPath = vscode.workspace
-            .getConfiguration("containerlab")
-            .get<string>("wsl.wiresharkPath");
-        if (cfgWiresharkPath) {
-            return `"${cfgWiresharkPath}"`;
-        }
-        // fallback
-        return `"/mnt/c/Program Files/Wireshark/wireshark.exe"`;
-    }
-    return "wireshark";
-}
+  if (vscode.env.remoteName === "wsl") {
+      const cfgWiresharkPath = vscode.workspace
+          .getConfiguration("containerlab")
+          .get<string>("wsl.wiresharkPath", "/mnt/c/Program Files/Wireshark/wireshark.exe");
 
+      return `"${cfgWiresharkPath}"`;
+  }
+  return "wireshark";
+}
 /**
- * Actually run the pipe (tcpdump -> Wireshark) using the same approach as execCommandInOutput,
- * but with extra logging and runWithSudo for the tcpdump part if needed.
- *
- * The easiest approach is to write a small shell snippet to a temp script and run it with sudo.
+ * Actually run the pipeline with sudo if needed. No extra 'bash -c' here; 
+ * let runWithSudo handle the quoting.
  */
 function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string) {
-    // We'll do a short script like:
-    //    bash -c '<pipeCmd>'
-    // Because runWithSudo() can handle prompting for password if needed.
-    const scriptToRun = `bash -c '${pipeCmd}'`;
+  outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(command=${pipeCmd})`);
 
-    outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(script=${scriptToRun})`);
-
-    runWithSudo(
-        scriptToRun,
-        `TCPDump capture on ${parentName}/${ifName}`,
-        outputChannel,
-        "generic"
-    )
-    .then(() => {
-        outputChannel.appendLine("[DEBUG] Capture process completed or exited");
-    })
-    .catch(err => {
-        vscode.window.showErrorMessage(
-          `Failed to start tcpdump capture:\n${err.message || err}`
-        );
-        outputChannel.appendLine(
-          `[ERROR] runCaptureWithPipe() => ${err.message || err}`
-        );
-    });
+  runWithSudo(
+      pipeCmd, 
+      `TCPDump capture on ${parentName}/${ifName}`,
+      outputChannel,
+      "generic"
+  )
+  .then(() => {
+      outputChannel.appendLine("[DEBUG] Capture process completed or exited");
+  })
+  .catch(err => {
+      vscode.window.showErrorMessage(`Failed to start tcpdump capture:\n${err.message || err}`);
+      outputChannel.appendLine(`[ERROR] runCaptureWithPipe() => ${err.message || err}`);
+  });
 }
 
 /**

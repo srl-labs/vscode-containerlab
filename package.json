@@ -468,7 +468,7 @@
         },
         {
           "command": "containerlab.interface.capture",
-          "when": "viewItem == containerlabInterfaceUp",
+          "when": "viewItem == containerlabInterfaceUp && containerlab:isLocalCaptureAllowed == true",
           "group": "captureContextMenu@1"
         },
         {
