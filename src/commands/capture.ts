@@ -121,7 +121,10 @@ export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode
     // If it's an IPv6 literal, bracket it. e.g. ::1 => [::1]
     const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
 
-    const packetflixUri = `packetflix:ws://${bracketed}:5001/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
+
+    const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
     outputChannel.appendLine(`[DEBUG] edgeshark/packetflix URI:\n    ${packetflixUri}`);
 
     vscode.window.showInformationMessage(

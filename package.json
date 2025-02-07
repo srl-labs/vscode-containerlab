@@ -626,8 +626,12 @@
         "containerlab.remote.hostname": {
           "type": "string",
           "default": "",
-          "scope": "machine",
           "markdownDescription": "The hostname to use for connections to/from this host. Can be either DNS resolvable hostname, or an IPv4/6 address. Used for packet capture.\n\n**Note:** A configured hostname for *this session of VS Code* takes precedence. (Command palette: **Containerlab: Configure session hostname**)"
+        },
+        "containerlab.remote.packetflixPort": {
+          "type": "number",
+          "default": 5001,
+          "description": "Port to use for the packetflix endpoint used for packet capture."
         },
         "containerlab.drawioDefaultTheme": {
           "type": "string",
@@ -638,7 +642,7 @@
           ],
           "default": "nokia_modern",
           "description": "Default theme to use when generating DrawIO graphs."
-        }      
+        }
       }
     }
   },
