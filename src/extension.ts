@@ -67,6 +67,10 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.copyPath', cmd.copyLabPath)
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.viewLogs', () => {outputChannel.show(true);})
+  );
+
   // Lab deployment commands
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.deploy', cmd.deploy)

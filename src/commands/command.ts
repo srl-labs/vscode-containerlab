@@ -128,6 +128,11 @@ export class Command {
                     cancellable: true
                 },
                 async (progress, token) => {
+
+                    progress.report({
+                        message: " [View Logs](command:containerlab.viewLogs)"
+                      });
+
                     return new Promise<void>((resolve, reject) => {
                         const child = spawn(cmd[0], cmd.slice(1));
 

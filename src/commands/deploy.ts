@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 
 export function deploy(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
-    progressMsg: "Deploying Lab... Check the Output window (Containerlab) for detailed progress.",
+    progressMsg: "Deploying Lab... ",
     successMsg: "Lab deployed successfully!"
   };
   const deployCmd = new ClabCommand("deploy", node, spinnerMessages);
@@ -14,7 +14,7 @@ export function deploy(node: ClabLabTreeNode) {
 
 export function deployCleanup(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
-    progressMsg: "Deploying Lab (cleanup)... Check the Output window (Containerlab) for detailed progress.",
+    progressMsg: "Deploying Lab (cleanup)... ",
     successMsg: "Lab deployed (cleanup) successfully!"
   };
   const deployCmd = new ClabCommand("deploy", node, spinnerMessages);
