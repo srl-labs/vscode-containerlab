@@ -18,13 +18,13 @@ export function getNodeImpairmentsHtml(
       <td data-label="Delay">
         <div class="input-wrapper">
           <input type="text" data-intf="${intfName}" data-field="delay" value="${netemState.delay || ""}" placeholder="50"/>
-          <span class="unit">ms</span>
+          <span class="unit">ms/s/m</span>
         </div>
       </td>
       <td data-label="Jitter">
         <div class="input-wrapper">
           <input type="text" data-intf="${intfName}" data-field="jitter" value="${netemState.jitter || ""}" placeholder="10"/>
-          <span class="unit">ms</span>
+          <span class="unit">ms/s/m</span>
         </div>
       </td>
       <td data-label="Loss">
