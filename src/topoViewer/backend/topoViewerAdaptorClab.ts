@@ -75,6 +75,10 @@ log.info(`TopoViewer Version: ${topoViewerVersion}`);
  */
 export class TopoViewerAdaptorClab {
 
+
+    public currentClabTopo: ClabTopology | undefined;
+    public currentIsPresetLayout: boolean = false;
+
     /**
      * Creates the target directory and writes the JSON data files required by TopoViewer.
      * 
@@ -113,6 +117,8 @@ export class TopoViewerAdaptorClab {
 
             const parsed = yaml.load(yamlContent) as ClabTopology;
 
+            this.currentClabTopo = parsed
+
             var clabName = parsed.name
 
             // Define the EnvironmentJson object
@@ -128,6 +134,7 @@ export class TopoViewerAdaptorClab {
                 clabServerPort: "8082",
                 deploymentType: "vs-code",
                 topoviewerVersion: `${topoViewerVersion}`,
+                topviewerPresetLayout: `${this.currentIsPresetLayout.toString()}`,
                 envCyTopoJsonBytes: cytoTopology,
                 envCyTopoJsonBytesAddon: cytoTopology
             };
@@ -200,6 +207,17 @@ export class TopoViewerAdaptorClab {
             return elements;
         }
 
+        // Determine if all non-group nodes (i.e. nodes from parsed.topology.nodes) have preset positions.
+        // We check that both 'topoViewer-presetPosX' and 'topoViewer-presetPosY' exist.
+        if (parsed.topology.nodes) {
+            this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
+                .every(([nodeName, nodeObj]) =>                         // aarafat-tag: nodeName isn't actively used in the logic—it’s just there as part of the destructuring. 
+                    !!nodeObj.labels?.['topoViewer-presetPosX'] &&
+                    !!nodeObj.labels?.['topoViewer-presetPosY']
+                );
+        }
+        log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
+
         // get lab name
         let clabName = parsed.name
 
@@ -257,7 +275,7 @@ export class TopoViewerAdaptorClab {
                         weight: '30',   // Placeholder
                         name: nodeName,
                         parent: parentId || undefined, // Only set parent if non-empty
-                        topoViewerRole: nodeObj.labels?.['topoViewer-role'] || 'router', // 'pe' is default role
+                        topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',  // 'topoViewer-role' take precedence nad router' is default role
                         // sourceEndpoint: '',
                         // targetEndpoint: '',
                         lat: nodeObj.labels?.['topoViewer-geoCoordinateLat'] ?? '',
@@ -286,7 +304,10 @@ export class TopoViewerAdaptorClab {
                             weight: '3', // Placeholder
                         },
                     },
-                    position: { x: 0, y: 0 }, // Placeholder, can be updated with real coordinates of cytoscape
+                    position: {
+                        x: parseFloat(nodeObj.labels?.['topoViewer-presetPosX'] ?? 0),
+                        y: parseFloat(nodeObj.labels?.['topoViewer-presetPosY'] ?? 0)
+                    },
                     removed: false,
                     selected: false,
                     selectable: true,
@@ -438,8 +459,11 @@ export class TopoViewerAdaptorClab {
     private buildParent(nodeObj: ClabNode): string {
         // const grp = nodeObj.group ?? '';
 
-        const grp = nodeObj.labels?.['topoViewer-group'] ?? '';
-        const lvl = nodeObj.labels?.['topoViewer-groupLevel'] ?? '';
+        const grp = nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
+        const lvl = nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '';
+
+
+
         if (grp && lvl) {
             return `${grp}:${lvl}`;
         }
@@ -462,6 +486,7 @@ export class TopoViewerAdaptorClab {
             "clab-server-port": envJson.clabServerPort,
             "deployment-type": envJson.deploymentType,
             "topoviewer-version": envJson.topoviewerVersion,
+            "topoviewer-layout-preset": envJson.topviewerPresetLayout,
             "EnvCyTopoJsonBytes": envJson.envCyTopoJsonBytes,
             "EnvCyTopoJsonBytesAddon": envJson.envCyTopoJsonBytesAddon
         };
