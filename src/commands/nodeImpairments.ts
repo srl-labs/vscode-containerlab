@@ -182,6 +182,9 @@ export async function manageNodeImpairments(
 
         if (ops.length === 0) {
           vscode.window.showInformationMessage("No parameters specified; nothing applied.");
+          // Even if nothing was applied, refresh the webview.
+          const updated = await refreshNetemSettings();
+          panel.webview.postMessage({ command: "updateFields", data: updated });
           return;
         }
 
@@ -191,6 +194,9 @@ export async function manageNodeImpairments(
         } catch (err: any) {
           vscode.window.showErrorMessage(`Failed to apply settings: ${err.message}`);
         }
+        // Refresh the settings in the webview after apply.
+        const updated = await refreshNetemSettings();
+        panel.webview.postMessage({ command: "updateFields", data: updated });
         break;
       }
       case "clearAll": {
@@ -212,6 +218,9 @@ export async function manageNodeImpairments(
         } catch (err: any) {
           vscode.window.showErrorMessage(`Failed to clear settings: ${err.message}`);
         }
+        // Refresh the settings in the webview after clear all.
+        const updated = await refreshNetemSettings();
+        panel.webview.postMessage({ command: "updateFields", data: updated });
         break;
       }
       case "refresh": {
