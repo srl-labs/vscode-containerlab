@@ -85,7 +85,8 @@ function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string)
     runWithSudo(
         scriptToRun,
         `TCPDump capture on ${parentName}/${ifName}`,
-        outputChannel
+        outputChannel,
+        "generic"
     )
     .then(() => {
         outputChannel.appendLine("[DEBUG] Capture process completed or exited");
