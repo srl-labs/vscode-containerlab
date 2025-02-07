@@ -140,6 +140,8 @@ export async function activate(context: vscode.ExtensionContext) {
       cmd.grapTopoviewer(node, context)
     )
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)));
 
   // Node commands
   context.subscriptions.push(

@@ -9,8 +9,42 @@ import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopol
 
 import { version as topoViewerVersion } from '../../../package.json';
 
-import { ClabLabTreeNode, ClabContainerTreeNode } from '../../clabTreeDataProvider';
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
 // log.info(ClabTreeDataProvider.)
+
+import {
+    captureInterface,
+    getHostname,
+    deploy,
+    deployCleanup,
+    deploySpecificFile,
+    destroy,
+    destroyCleanup,
+    redeploy,
+    redeployCleanup,
+    inspectAllLabs,
+    inspectOneLab,
+    openLabFile,
+    openFolderInNewWindow,
+    startNode,
+    stopNode,
+    attachShell,
+    sshToNode,
+    showLogs,
+    graphNextUI,
+    graphDrawIO,
+    graphDrawIOInteractive,
+    addLabFolderToWorkspace,
+    copyLabPath,
+    copyContainerIPv4Address,
+    copyContainerIPv6Address,
+    copyContainerName,
+    copyContainerID,
+    copyContainerImage,
+    copyContainerKind,
+    graphTopoviewer,
+    graphTopoviewerReload
+} from '../../commands/index';
 
 
 log.info(`TopoViewer Version: ${topoViewerVersion}`);
@@ -40,6 +74,10 @@ log.info(`TopoViewer Version: ${topoViewerVersion}`);
  * the Containerlab schema: https://github.com/srl-labs/containerlab/blob/e3a324a45032792258d92b8d3625fd108bdaeb9c/schemas/clab.schema.json
  */
 export class TopoViewerAdaptorClab {
+
+
+    public currentClabTopo: ClabTopology | undefined;
+    public currentIsPresetLayout: boolean = false;
 
     /**
      * Creates the target directory and writes the JSON data files required by TopoViewer.
@@ -79,18 +117,24 @@ export class TopoViewerAdaptorClab {
 
             const parsed = yaml.load(yamlContent) as ClabTopology;
 
+            this.currentClabTopo = parsed
+
             var clabName = parsed.name
 
             // Define the EnvironmentJson object
+
+            const hostname = await getHostname()
+
             const environmentJson: EnvironmentJson = {
                 workingDirectory: ".",
                 clabName: `${clabName}`,
                 clabServerAddress: "",
-                clabAllowedHostname: "nsp-clab1.nice.nokia.net",
-                clabAllowedHostname01: "127.0.0.1",
+                clabAllowedHostname: hostname,
+                clabAllowedHostname01: hostname, // used for edgeshark's packetflix
                 clabServerPort: "8082",
                 deploymentType: "vs-code",
                 topoviewerVersion: `${topoViewerVersion}`,
+                topviewerPresetLayout: `${this.currentIsPresetLayout.toString()}`,
                 envCyTopoJsonBytes: cytoTopology,
                 envCyTopoJsonBytesAddon: cytoTopology
             };
@@ -163,6 +207,17 @@ export class TopoViewerAdaptorClab {
             return elements;
         }
 
+        // Determine if all non-group nodes (i.e. nodes from parsed.topology.nodes) have preset positions.
+        // We check that both 'topoViewer-presetPosX' and 'topoViewer-presetPosY' exist.
+        if (parsed.topology.nodes) {
+            this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
+                .every(([nodeName, nodeObj]) =>                         // aarafat-tag: nodeName isn't actively used in the logic—it’s just there as part of the destructuring. 
+                    !!nodeObj.labels?.['topoViewer-presetPosX'] &&
+                    !!nodeObj.labels?.['topoViewer-presetPosY']
+                );
+        }
+        log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
+
         // get lab name
         let clabName = parsed.name
 
@@ -172,13 +227,13 @@ export class TopoViewerAdaptorClab {
         // Step 2: Convert the object's values into an array
         // Step 3: Filter the items where `name` equals "demo-asad"
 
-        let filteredLabData: ClabLabTreeNode[]
+        // let filteredLabData: ClabLabTreeNode[]
 
-        filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
-            (item) => item?.name === clabName
-        );
+        // filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
+        //     (item) => item?.name === clabName
+        // );
 
-        log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
+        // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
 
 
         // Prepare parent nods
@@ -211,7 +266,7 @@ export class TopoViewerAdaptorClab {
 
                 //get node ManagementIP address
                 log.info(`nodeName: ${nodeName}`)
-                let containerData = this.getClabNodeManagementIpv4Ipv6(`clab-${clabName}-${nodeName}`, filteredLabData);
+                let containerData = this.getClabContainerTreeNode(`clab-${clabName}-${nodeName}`, clabTreeDataToTopoviewer ?? {}, clabName ?? '');
 
                 const nodeEl: CyElement = {
                     group: 'nodes',
@@ -220,7 +275,7 @@ export class TopoViewerAdaptorClab {
                         weight: '30',   // Placeholder
                         name: nodeName,
                         parent: parentId || undefined, // Only set parent if non-empty
-                        topoViewerRole: nodeObj.labels?.['topoViewer-role'] || 'router', // 'pe' is default role
+                        topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',  // 'topoViewer-role' take precedence nad router' is default role
                         // sourceEndpoint: '',
                         // targetEndpoint: '',
                         lat: nodeObj.labels?.['topoViewer-geoCoordinateLat'] ?? '',
@@ -245,11 +300,14 @@ export class TopoViewerAdaptorClab {
                             mgmtNet: '',
                             name: nodeName,
                             shortname: nodeName,
-                            state:`${containerData?.state}`,
+                            state: `${containerData?.state}`,
                             weight: '3', // Placeholder
                         },
                     },
-                    position: { x: 0, y: 0 }, // Placeholder, can be updated with real coordinates of cytoscape
+                    position: {
+                        x: parseFloat(nodeObj.labels?.['topoViewer-presetPosX'] ?? 0),
+                        y: parseFloat(nodeObj.labels?.['topoViewer-presetPosY'] ?? 0)
+                    },
                     removed: false,
                     selected: false,
                     selectable: true,
@@ -319,6 +377,7 @@ export class TopoViewerAdaptorClab {
                 const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
                 const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
 
+
                 const edgeId = `Clab-Link${linkIndex}`;
                 const edgeEl: CyElement = {
                     group: 'edges',
@@ -332,12 +391,22 @@ export class TopoViewerAdaptorClab {
                         targetEndpoint: targetIface,
                         lat: '',
                         lng: '',
-                        extraData: {
-                            clabServerUsername: 'asad', // Placeholder
-                            // Additional placeholder fields can be added here
-                        },
                         source: sourceNode,
                         target: targetNode,
+                        extraData: {
+                            clabServerUsername: 'asad', // Placeholder
+                            clabSourceLongName: `clab-${clabName}-${sourceNode}`,
+                            clabTargetLongName: `clab-${clabName}-${targetNode}`,
+                            clabSourcePort: sourceIface,
+                            clabTargetPort: targetIface,
+                            clabSourceMacAddress: '',
+                            clabTargetMacAddress: '',
+
+
+
+
+                            // Additional placeholder fields can be added here
+                        },
                     },
                     position: { x: 0, y: 0 }, // Placeholder, edges typically do not require positions
                     removed: false,
@@ -390,8 +459,11 @@ export class TopoViewerAdaptorClab {
     private buildParent(nodeObj: ClabNode): string {
         // const grp = nodeObj.group ?? '';
 
-        const grp = nodeObj.labels?.['topoViewer-group'] ?? '';
-        const lvl = nodeObj.labels?.['topoViewer-groupLevel'] ?? '';
+        const grp = nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
+        const lvl = nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '';
+
+
+
         if (grp && lvl) {
             return `${grp}:${lvl}`;
         }
@@ -414,6 +486,7 @@ export class TopoViewerAdaptorClab {
             "clab-server-port": envJson.clabServerPort,
             "deployment-type": envJson.deploymentType,
             "topoviewer-version": envJson.topoviewerVersion,
+            "topoviewer-layout-preset": envJson.topviewerPresetLayout,
             "EnvCyTopoJsonBytes": envJson.envCyTopoJsonBytes,
             "EnvCyTopoJsonBytesAddon": envJson.envCyTopoJsonBytesAddon
         };
@@ -421,9 +494,14 @@ export class TopoViewerAdaptorClab {
         return JSON.stringify(hyphenatedJson, null, 2);
     }
 
-    // Define the method within your class
-    private getClabNodeManagementIpv4Ipv6(nodeName: string, filteredLabData: ClabLabTreeNode[]): ClabContainerTreeNode | null {
 
+
+    // Define the method within your class
+    public getClabContainerTreeNode(nodeName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabContainerTreeNode | null {
+        let filteredLabData: ClabLabTreeNode[]
+        filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
+            (item) => item?.name === clabName
+        );
         // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
 
         // Check if filteredLabData is not empty
@@ -431,7 +509,6 @@ export class TopoViewerAdaptorClab {
             log.warn('No lab data available.');
             return null;
         }
-
         const firstLabNode = filteredLabData[0];
 
         // Ensure that 'containers' is defined
@@ -448,23 +525,64 @@ export class TopoViewerAdaptorClab {
             return null;
         }
 
-        // Assign the found container to containerData
-        const containerData: ClabContainerTreeNode = nodeContainer;
+        // Assign the found container to foundContainerData
+        const foundContainerData: ClabContainerTreeNode = nodeContainer;
 
-        // Now start work with containerData as needed
+        // Now start work with foundContainerData as needed
         // For example, accessing IPv4 and IPv6 addresses:
-        const ipv4 = containerData.IPv4Address;
-        const ipv6 = containerData.IPv6Address;
+        const ipv4 = foundContainerData.IPv4Address;
+        const ipv6 = foundContainerData.IPv6Address;
 
         // Perform any additional logic as required
         // ...
 
-
-        log.info(`output of containerData ${JSON.stringify(containerData, null, "\t")}`);
-
-
-        return containerData;
-
+        // log.debug(`output of containerData ${JSON.stringify(foundContainerData, null, "\t")}`);
+        return foundContainerData;
     }
 
+
+    /**
+     * Retrieves a specific container interface tree node.
+     *
+     * @param nodeName - The name of the container/node.
+     * @param interfaceName - The name of the interface to find.
+     * @param clabTreeDataToTopoviewer - A record mapping container names to tree nodes.
+     * @param clabName - Optional container name.
+     * @returns The matching ClabInterfaceTreeNode, or null if not found.
+     */
+    public getClabContainerInterfaceTreeNode(nodeName: string, interfaceName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabInterfaceTreeNode | null {
+
+        log.info(`clabName: ${clabName}`);
+        log.info(`nodeName: ${nodeName}`);
+        log.info(`interfaceName: ${interfaceName}`);
+
+        // Retrieve the container tree node (assuming this method exists and returns a ClabContainerTreeNode instance)
+        const foundContainerData: ClabContainerTreeNode | null = this.getClabContainerTreeNode(
+            nodeName,
+            clabTreeDataToTopoviewer,
+            clabName
+        );
+
+        log.info(`ContainerData: ${foundContainerData}`);
+
+        if (!foundContainerData) {
+            log.info(`Container not found for node: ${nodeName}`);
+            return null;
+        }
+
+        // Assuming containerData.interfaces is an array of ClabInterfaceTreeNode instances,
+        // use the find method to locate the interface with the matching name.
+        const foundInterface = foundContainerData.interfaces.find(
+            (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
+        );
+
+        if (foundInterface) {
+            log.info(`Found interface: ${foundInterface.name}`);
+            log.debug(`Output of foundInterfaceData ${JSON.stringify(foundInterface, null, "\t")}`);
+            return foundInterface;
+        } else {
+            log.info(`Interface ${interfaceName} not found in container ${nodeName}`);
+            return null;
+        }
+    }
 }
