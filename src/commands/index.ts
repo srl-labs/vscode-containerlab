@@ -7,6 +7,7 @@ export * from "./startNode";
 export * from "./stopNode";
 export * from "./attachShell";
 export * from "./ssh";
+export * from "./nodeImpairments";
 export * from "./showLogs";
 export * from "./graph";
 export * from "./copy";
