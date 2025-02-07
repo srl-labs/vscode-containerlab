@@ -1,4 +1,4 @@
 [submodule "src/topoViewer/webview-ui"]
 	path = src/topoViewer/webview-ui
 	url = https://github.com/asadarafat/topoViewer-frontend.git
-	branch = clab-ins-interfaces-frontend
+	branch = dev-frontend
