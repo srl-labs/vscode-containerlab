@@ -177,6 +177,11 @@
         "icon": "$(list-unordered)"
       },
       {
+        "command": "containerlab.node.manageImpairments",
+        "title": "Link Impairments",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.node.copyIPv4Address",
         "title": "IPv4 Address"
       },
@@ -445,6 +450,11 @@
           "command": "containerlab.node.showLogs",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@4"
+        },
+        {
+          "command": "containerlab.node.manageImpairments",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@5"
         },
         {
           "submenu": "containerlab.submenu.node.copy",

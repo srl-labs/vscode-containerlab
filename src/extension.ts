@@ -127,6 +127,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.node.manageImpairments",(node) => cmd.manageNodeImpairments(node, context))
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.copyIPv4Address', cmd.copyContainerIPv4Address)
   );
   context.subscriptions.push(
