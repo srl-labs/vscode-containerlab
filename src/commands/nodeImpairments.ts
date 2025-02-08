@@ -1,3 +1,4 @@
+// ./src/commands/nodeImpairments.ts
 import * as vscode from "vscode";
 import { ClabContainerTreeNode } from "../clabTreeDataProvider";
 import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
@@ -9,98 +10,11 @@ import { outputChannel } from "../extension";
 const execAsync = promisify(exec);
 
 /**
- * Strips ANSI escape sequences from a string.
- */
-function stripAnsi(input: string): string {
-  return input
-    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
-    .replace(/\x1B[@-Z\\-_]/g, "");
-}
-
-/**
- * If the value equals "N/A" (case insensitive) then return "0".
- */
-function cleanValue(value: string): string {
-  return value.trim().toUpperCase() === "N/A" ? "0" : value.trim();
-}
-
-/**
- * For percentage values (loss, corruption), remove any trailing "%" sign.
- */
-function cleanPercentage(value: string): string {
-  const cleaned = cleanValue(value);
-  return cleaned.endsWith("%") ? cleaned.slice(0, -1).trim() : cleaned;
-}
-
-/**
  * Normalizes an interface name by removing any parenthesized content.
  * For example, "mgmt0-0 (mgmt0.0)" becomes "mgmt0-0".
  */
 function normalizeInterfaceName(iface: string): string {
   return iface.replace(/\s*\(.*\)$/, "").trim();
-}
-
-/**
- * Parses the output of `containerlab tools netem show` (a text table) and returns
- * an object mapping each (normalized) interface name to its netem parameters.
- *
- * For the "loss" and "corruption" fields the trailing "%" sign is removed so that
- * the value can be used in an input field of type "number".
- *
- * @param output The raw stdout from the netem show command.
- */
-function parseNetemShowOutput(
-  output: string
-): Record<
-  string,
-  { delay: string; jitter: string; loss: string; rate: string; corruption: string }
-> {
-  const cleanOutput = stripAnsi(output);
-  // Log only an important message if not enough rows are found.
-  const tableRows = cleanOutput
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith("│"));
-  if (tableRows.length < 2) {
-    outputChannel.appendLine("[INFO] Netem output has insufficient rows.");
-    return {};
-  }
-
-  // Remove the header row (first row)
-  const dataRows = tableRows.slice(1);
-  const result: Record<
-    string,
-    { delay: string; jitter: string; loss: string; rate: string; corruption: string }
-  > = {};
-
-  dataRows.forEach((row) => {
-    const cols = row.split("│").map((s) => s.trim()).filter((s) => s.length > 0);
-    if (cols.length !== 6) {
-      // Skip rows that don't have exactly 6 columns.
-      return;
-    }
-    const rawIface = cols[0];
-    const iface = normalizeInterfaceName(rawIface);
-    const parsed = {
-      delay: cleanValue(cols[1]),
-      jitter: cleanValue(cols[2]),
-      loss: cleanPercentage(cols[3]),
-      rate: cleanValue(cols[4]),
-      corruption: cleanPercentage(cols[5]),
-    };
-
-    // If a duplicate key occurs, merge non-empty values.
-    if (result[iface]) {
-      for (const field of (["delay", "jitter", "loss", "rate", "corruption"] as Array<keyof typeof parsed>)) {
-        if (!result[iface][field] && parsed[field]) {
-          result[iface][field] = parsed[field];
-        }
-      }
-    } else {
-      result[iface] = parsed;
-    }
-  });
-  return result;
 }
 
 /**
@@ -111,27 +25,56 @@ export async function manageNodeImpairments(
   node: ClabContainerTreeNode,
   context: vscode.ExtensionContext
 ) {
+  // Do not show impairment options in WSL connections.
+  if (vscode.env.remoteName === "wsl") {
+    vscode.window.showWarningMessage("Link impairment options are not available for WSL connections.");
+    return;
+  }
+
   const allIfs = node.interfaces;
 
-  // Function to re-read and update netem settings.
+  // Function to re-read and update netem settings via JSON output.
   async function refreshNetemSettings() {
-    const showCmd = `containerlab tools netem show -n ${node.name}`;
-    let netemMap: Record<string, any> = {};
+    // Use JSON output instead of table format.
+    const showCmd = `containerlab tools netem show -n ${node.name} --format json`;
+    let netemMap: Record<
+      string,
+      { delay: string; jitter: string; loss: string; rate: string; corruption: string }
+    > = {};
     try {
       const { stdout } = await execAsync(showCmd);
-      netemMap = parseNetemShowOutput(stdout);
-      outputChannel.appendLine("[INFO] Netem settings refreshed.");
+      const jsonData = JSON.parse(stdout) as Array<{
+        Interface: string;
+        NodeName: string;
+        Delay: string;
+        Jitter: string;
+        PacketLoss?: string;
+        Rate?: string;
+        Corruption?: string;
+      }>;
+      // Convert array to mapping keyed by normalized interface name.
+      jsonData.forEach(item => {
+        const key = normalizeInterfaceName(item.Interface);
+        netemMap[key] = {
+          delay: !item.Delay || item.Delay === "N/A" ? "0s" : item.Delay,
+          jitter: !item.Jitter || item.Jitter === "N/A" ? "0s" : item.Jitter,
+          loss: !item.PacketLoss || item.PacketLoss === "N/A" ? "0.00%" : item.PacketLoss,
+          rate: !item.Rate || item.Rate === "N/A" ? "0" : item.Rate,
+          corruption: !item.Corruption || item.Corruption === "N/A" ? "0.00%" : item.Corruption,
+        };
+      });
+      outputChannel.appendLine("[INFO] Netem settings refreshed via JSON.");
     } catch (err: any) {
       vscode.window.showWarningMessage(
         `Failed to retrieve netem settings: ${err.message}`
       );
       outputChannel.appendLine(`[INFO] Error executing "${showCmd}".`);
     }
-    // Ensure every interface is represented; default to "0" if missing.
+    // Ensure every interface is represented; default to default values if missing.
     allIfs.forEach((ifNode) => {
       const norm = normalizeInterfaceName(ifNode.name);
       if (!netemMap[norm]) {
-        netemMap[norm] = { delay: "0", jitter: "0", loss: "0", rate: "0", corruption: "0" };
+        netemMap[norm] = { delay: "0s", jitter: "0s", loss: "0.00%", rate: "0", corruption: "0.00%" };
         outputChannel.appendLine(`[INFO] Defaulted values for ${norm}.`);
       }
     });
