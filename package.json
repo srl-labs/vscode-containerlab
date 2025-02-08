@@ -453,7 +453,7 @@
         },
         {
           "command": "containerlab.node.manageImpairments",
-          "when": "viewItem == containerlabContainer",
+          "when": "viewItem == false",
           "group": "nodeNavigation@5"
         },
         {
