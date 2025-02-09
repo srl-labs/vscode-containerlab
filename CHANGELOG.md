@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.7.0] - 2025-02-09
+* Save command for labs and nodes
+* Packetcapture with Edgeshark supports now multi-interface selection (ctrl/cmd + click)
+* Packtflix port is now configurable 
+* Fixes
+
 ## [0.6.2] - 2025-02-04
 * Fix containerlab version check (now sudoless)
 

@@ -2,6 +2,8 @@
 
 A Visual Studio Code extension that integrates [containerlab](https://containerlab.dev/) directly into your editor, providing a convenient tree view for managing labs and their containers.
 
+![screencast](https://raw.githubusercontent.com/srl-labs/vscode-containerlab/refs/heads/main/resources/screenshot.png)
+
 ---
 ## Features
 
@@ -13,6 +15,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Yellow**: partially running (some containers running, others stopped)
 - **Right-click context menus** on labs:
   - **Deploy**, **Destroy**, **Redeploy** (with or without cleanup)
+  - **Save** Saves the lab
   - **Open Lab File**, **Copy Lab File Path**
   - **Graph** topologies (local Web or draw.io modes)
   - **Inspect** single lab
@@ -20,6 +23,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Open Folder in New Window**
 - **Right-click context menus** on containers:
   - **Start**, **Stop**  
+  - **Save**
   - **Attach shell** (with user-defined exec commands per node kind)  
   - **SSH**  
   - **View logs**  
@@ -49,6 +53,9 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 
 - **containerlab** must be installed and accessible in your system `PATH`. The extension will offer to install it if not found.
 - (Optional) **Edgeshark** for packet capture features - can be installed directly from the extension using the "Install Edgeshark" command.
+
+
+  - If you want to live capture traffic using Wireshark, please [download the cshargextcap plugin](https://github.com/siemens/cshargextcap/releases) for the OS/distribution and install it.  
 
 Note: The extension will automatically prompt to add your user to the `clab_admins` group during setup to enable running containerlab commands without sudo.
 

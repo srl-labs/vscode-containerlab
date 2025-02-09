@@ -61,6 +61,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     public readonly kind: string,
     public readonly image: string,
     public readonly interfaces: ClabInterfaceTreeNode[],
+    public readonly labPath: LabPath,
     public readonly v4Address?: string,
     public readonly v6Address?: string,
     contextValue?: string,
@@ -412,6 +413,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         container.kind,
         container.image,
         interfaces,
+        { absolute: absLabPath, relative: utils.getRelLabFolderPath(labPath) },
         container.ipv4_address,
         container.ipv6_address,
         "containerlabContainer"

@@ -12,6 +12,14 @@ function log(message: string, channel: vscode.OutputChannel) {
 }
 
 /**
+ * Replaces any " with \", so that we can safely wrap the entire string in "..."
+ */
+function escapeDoubleQuotes(input: string): string {
+  return input.replace(/"/g, '\\"');
+}
+
+
+/**
  * Runs a command via sudo, checking for passwordless sudo first.
  * If passwordless sudo isn’t available, it first asks the user if they want
  * to proceed. Only if the user confirms does it then prompt for a sudo password.
@@ -22,7 +30,7 @@ export async function runWithSudo(
   outputChannel: vscode.OutputChannel,
   checkType: 'generic' | 'containerlab' = 'containerlab'
 ): Promise<void> {
-  const checkCommand =
+  let checkCommand =
     checkType === 'containerlab'
       ? "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false"
       : "sudo -n true";
@@ -35,89 +43,59 @@ export async function runWithSudo(
     passwordlessAvailable = false;
   }
 
+  // 1) If passwordless sudo is available, run the pipeline with sudo -E
   if (passwordlessAvailable) {
-    try {
-      log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
-      try {
-        const { stdout, stderr } = await execAsync(`sudo -E ${command}`);
-        if (stdout) {
-          outputChannel.appendLine(stdout);
-        }
-        if (stderr) {
-          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-        }
-        return;
-      } catch (eErr: any) {
-        // Check if the error is about -E not being allowed
-        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
-          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
-          const { stdout, stderr } = await execAsync(`sudo ${command}`);
-          if (stdout) {
-            outputChannel.appendLine(stdout);
-          }
-          if (stderr) {
-            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-          }
-          return;
-        }
-        throw eErr;
-      }
-    } catch (commandErr) {
-      throw commandErr;
-    }
-  } else {
-    log(`Passwordless sudo not available for "${description}".`, outputChannel);
-    const shouldProceed = await vscode.window.showWarningMessage(
-      `The command "${description}" requires you to enter your sudo password. Do you want to proceed?`,
-      { modal: true },
-      'Yes'
-    );
-    if (shouldProceed !== 'Yes') {
-      throw new Error(`User declined to provide sudo password for: ${description}`);
-    }
+    log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
 
-    const password = await vscode.window.showInputBox({
-      prompt: `Enter your sudo password for: ${description}`,
-      password: true,
-      ignoreFocusOut: true
-    });
-    if (!password) {
-      throw new Error(`User cancelled sudo password prompt for: ${description}`);
-    }
-    
-    log(`Executing command with sudo and provided password: ${command}`, outputChannel);
+    const escapedCommand = escapeDoubleQuotes(command);
+    const cmdToRun = `sudo -E bash -c "${escapedCommand}"`;
+
     try {
-      // Try with -E first
-      try {
-        const cmd = `echo '${password}' | sudo -S -E sh -c '${command}'`;
-        const { stdout, stderr } = await execAsync(cmd);
-        if (stdout) {
-          outputChannel.appendLine(stdout);
-        }
-        if (stderr) {
-          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-        }
-      } catch (eErr: any) {
-        // Check if the error is about -E not being allowed
-        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
-          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
-          const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
-          const { stdout, stderr } = await execAsync(cmd);
-          if (stdout) {
-            outputChannel.appendLine(stdout);
-          }
-          if (stderr) {
-            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
-          }
-        } else {
-          throw eErr;
-        }
-      }
+      const { stdout, stderr } = await execAsync(cmdToRun);
+      if (stdout) outputChannel.appendLine(stdout);
+      if (stderr) outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+      return;
     } catch (err) {
-      throw err;
+      throw new Error(`Command failed: ${cmdToRun}\n${(err as Error).message}`);
     }
   }
-}
+
+  // 2) If passwordless sudo is NOT available, prompt user for password
+  log(`Passwordless sudo not available for "${description}".`, outputChannel);
+
+  const shouldProceed = await vscode.window.showWarningMessage(
+    `The command "${description}" requires you to enter your sudo password. Proceed?`,
+    { modal: true },
+    'Yes'
+  );
+  if (shouldProceed !== 'Yes') {
+    throw new Error(`User cancelled sudo password prompt for: ${description}`);
+  }
+
+  const password = await vscode.window.showInputBox({
+    prompt: `Enter sudo password for: ${description}`,
+    password: true,
+    ignoreFocusOut: true
+  });
+  if (!password) {
+    throw new Error(`No sudo password provided for: ${description}`);
+  }
+
+  log(`Executing command with sudo and provided password: ${command}`, outputChannel);
+
+  // [CHANGED] Same approach, but echo the password => sudo -S -E bash -c "..."
+  try {
+    const escapedCommand = escapeDoubleQuotes(command);
+    const cmdToRun = `echo '${password}' | sudo -S -E bash -c "${escapedCommand}"`;
+
+    const { stdout, stderr } = await execAsync(cmdToRun);
+    if (stdout) outputChannel.appendLine(stdout);
+    if (stderr) outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+  } catch (err) {
+    throw new Error(`Command failed: runWithSudo [non-passwordless]\n${(err as Error).message}`);
+  }
+}  
+  
 
 /**
  * Installs containerlab using the official installer script, via sudo.
@@ -243,50 +221,85 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
       throw new Error('No output received from version check command.');
     }
 
-    // Check for different version patterns
-    if (versionOutput.includes('Version check timed out')) {
-      // This is a newer version but couldn't check for updates
-      log('Version check timed out. Skipping update check.', outputChannel);
+    // If version check timed out, log and skip update check.
+    if (versionOutput.includes("Version check timed out")) {
+      log("Version check timed out. Skipping update check.", outputChannel);
       return;
     }
 
-    if (versionOutput.includes('You are on the latest version')) {
-      // This is a newer version and it's up to date
-      log('Containerlab is on the latest version.', outputChannel);
-      return;
-    }
-
-    if (versionOutput.includes('version:')) {
-      // This is an older version that just prints version info
-      // Extract version number for logging
-      const versionMatch = versionOutput.match(/version:\s*([\d.]+)/);
-      const version = versionMatch ? versionMatch[1] : 'unknown';
-
-      log(`Detected older containerlab version ${version}. Prompting user for update.`, outputChannel);
+    // New release format: output includes "newer containerlab version"
+    if (versionOutput.includes("newer containerlab version")) {
       const updateAction = 'Update containerlab';
+      const openReleaseNotesAction = 'Open Release Notes';
       const skipAction = 'Skip';
-      const userChoice = await vscode.window.showWarningMessage(
-        'An update may be available for containerlab. Would you like to check for updates?',
+
+      let userChoice: string | undefined;
+      do {
+        userChoice = await vscode.window.showWarningMessage(
+          versionOutput,
+          updateAction,
+          openReleaseNotesAction,
+          skipAction
+        );
+
+        if (userChoice === openReleaseNotesAction) {
+          // Extract the first URL from the output.
+          const urlRegex = /https?:\/\/[^\s]+/g;
+          const match = versionOutput.match(urlRegex);
+          if (match && match.length > 0) {
+            await vscode.env.openExternal(vscode.Uri.parse(match[0]));
+          } else {
+            await vscode.window.showInformationMessage("No release notes URL found.");
+          }
+          // Loop repeats so the message is shown again.
+        }
+      } while (userChoice === openReleaseNotesAction);
+
+      if (userChoice === updateAction) {
+        log('User chose to update containerlab. Executing upgrade.', outputChannel);
+        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
+        vscode.window.showInformationMessage('Containerlab updated successfully!');
+        log('Containerlab updated successfully.', outputChannel);
+      } else {
+        log("User skipped the update.", outputChannel);
+      }
+    }
+    // Old release format: if output contains "version:" then consider it as old.
+    else if (versionOutput.includes("version:")) {
+      const updateAction = 'Update containerlab';
+      const openReleaseNotesAction = 'Open Release Notes';
+      const skipAction = 'Skip';
+
+      let userChoice = await vscode.window.showWarningMessage(
+        versionOutput,
         updateAction,
+        openReleaseNotesAction,
         skipAction
       );
 
-      if (userChoice === updateAction) {
-        try {
-          log('User chose to update containerlab. Executing upgrade.', outputChannel);
-          await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'containerlab');
-          vscode.window.showInformationMessage('Containerlab updated successfully!');
-          log('Containerlab updated successfully.', outputChannel);
-        } catch (upgradeErr: any) {
-          vscode.window.showErrorMessage(`Failed to update containerlab:\n${upgradeErr.message}`);
-          log(`Failed to update containerlab: ${upgradeErr}`, outputChannel);
+      if (userChoice === openReleaseNotesAction) {
+        const urlRegex = /https?:\/\/[^\s]+/g;
+        const match = versionOutput.match(urlRegex);
+        if (match && match.length > 0) {
+          await vscode.env.openExternal(vscode.Uri.parse(match[0]));
+        } else {
+          await vscode.window.showInformationMessage("No release notes URL found.");
         }
+      } else if (userChoice === updateAction) {
+        log('User chose to update containerlab. Executing upgrade.', outputChannel);
+        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
+        vscode.window.showInformationMessage('Containerlab updated successfully!');
+        log('Containerlab updated successfully.', outputChannel);
+      } else {
+        log("User skipped the update.", outputChannel);
       }
     } else {
-      throw new Error(`Unrecognized output from version check: "${versionOutput}"`);
+      log("Containerlab is up to date.", outputChannel);
     }
   } catch (err: any) {
     log(`containerlab version check failed: ${err.message}`, outputChannel);
     vscode.window.showErrorMessage('Unable to detect containerlab version. Please check your installation.');
   }
 }
+
+

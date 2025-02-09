@@ -34,7 +34,7 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
     }
 
     // Otherwise, we do local capture with tcpdump|Wireshark
-    const captureCmd = `ip netns exec "${node.parentName}" tcpdump -U -nni "${node.name}" -w -`;
+    const captureCmd = `ip netns exec ${node.parentName} tcpdump -U -nni ${node.name} -w -`;
     const wifiCmd = await resolveWiresharkCommand();
     const finalCmd = `${captureCmd} | ${wifiCmd} -k -i -`;
 
@@ -42,10 +42,6 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
 
     vscode.window.showInformationMessage(`Starting capture on ${node.parentName}/${node.name}... check "Containerlab" output for logs.`);
 
-    // We can run tcpdump with sudo. Then pipe stdout -> Wireshark.
-    // We'll wrap that in a small script. Alternatively, we can do something like:
-    // runWithSudo('ip netns exec ...', 'Packet capture', ...) but we also must
-    // handle the pipe. So let's do a naive approach:
     runCaptureWithPipe(finalCmd, node.parentName, node.name);
 }
 
@@ -53,64 +49,76 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
  * Spawn Wireshark or Wireshark.exe in WSL.
  */
 async function resolveWiresharkCommand(): Promise<string> {
-    // Default: 'wireshark'
-    // If in WSL, try user config "containerlab.wsl.wiresharkPath"
-    if (vscode.env.remoteName === "wsl") {
-        const cfgWiresharkPath = vscode.workspace
-            .getConfiguration("containerlab")
-            .get<string>("wsl.wiresharkPath");
-        if (cfgWiresharkPath) {
-            return `"${cfgWiresharkPath}"`;
-        }
-        // fallback
-        return `"/mnt/c/Program Files/Wireshark/wireshark.exe"`;
-    }
-    return "wireshark";
-}
+  if (vscode.env.remoteName === "wsl") {
+      const cfgWiresharkPath = vscode.workspace
+          .getConfiguration("containerlab")
+          .get<string>("wsl.wiresharkPath", "/mnt/c/Program Files/Wireshark/wireshark.exe");
 
+      return `"${cfgWiresharkPath}"`;
+  }
+  return "wireshark";
+}
 /**
- * Actually run the pipe (tcpdump -> Wireshark) using the same approach as execCommandInOutput,
- * but with extra logging and runWithSudo for the tcpdump part if needed.
- *
- * The easiest approach is to write a small shell snippet to a temp script and run it with sudo.
+ * Actually run the pipeline with sudo if needed. No extra 'bash -c' here; 
+ * let runWithSudo handle the quoting.
  */
 function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string) {
-    // We'll do a short script like:
-    //    bash -c '<pipeCmd>'
-    // Because runWithSudo() can handle prompting for password if needed.
-    const scriptToRun = `bash -c '${pipeCmd}'`;
+  outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(command=${pipeCmd})`);
 
-    outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(script=${scriptToRun})`);
-
-    runWithSudo(
-        scriptToRun,
-        `TCPDump capture on ${parentName}/${ifName}`,
-        outputChannel
-    )
-    .then(() => {
-        outputChannel.appendLine("[DEBUG] Capture process completed or exited");
-    })
-    .catch(err => {
-        vscode.window.showErrorMessage(
-          `Failed to start tcpdump capture:\n${err.message || err}`
-        );
-        outputChannel.appendLine(
-          `[ERROR] runCaptureWithPipe() => ${err.message || err}`
-        );
-    });
+  runWithSudo(
+      pipeCmd, 
+      `TCPDump capture on ${parentName}/${ifName}`,
+      outputChannel,
+      "generic"
+  )
+  .then(() => {
+      outputChannel.appendLine("[DEBUG] Capture process completed or exited");
+  })
+  .catch(err => {
+      vscode.window.showErrorMessage(`Failed to start tcpdump capture:\n${err.message || err}`);
+      outputChannel.appendLine(`[ERROR] runCaptureWithPipe() => ${err.message || err}`);
+  });
 }
 
 /**
  * Start capture on an interface using edgeshark/packetflix. 
  * This method builds a 'packetflix:' URI that calls edgeshark.
  */
-export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode) {
+export async function captureInterfaceWithPacketflix(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
+) {
     if (!node) {
         return vscode.window.showErrorMessage("No interface to capture found.");
     }
     outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
-    // Make sure we have a valid hostname to connect back to
+    // If user multi‐selected items, we capture them all. 
+    const selected = allSelectedNodes && allSelectedNodes.length > 0
+      ? allSelectedNodes
+      : [node];
+
+    // If multiple selected
+    if (selected.length > 1) {
+      // Check if they are from the same container
+      const uniqueContainers = new Set(selected.map(i => i.parentName));
+      if (uniqueContainers.size > 1) {
+        // from different containers => spawn multiple edgeshark sessions
+        outputChannel.appendLine("[DEBUG] Edgeshark multi selection => multiple containers => launching individually");
+        for (const nd of selected) {
+          await captureInterfaceWithPacketflix(nd); // re-call for single
+        }
+        return;
+      }
+
+    // All from same container => build multi-interface edgeshark link
+    return captureMultipleEdgeshark(selected);
+    }
+
+    // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
+    outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
+
+    // Make sure we have a valid hostname
     const hostname = await getHostname();
     if (!hostname) {
         return vscode.window.showErrorMessage(
@@ -121,13 +129,49 @@ export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode
     // If it's an IPv6 literal, bracket it. e.g. ::1 => [::1]
     const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
 
-    const packetflixUri = `packetflix:ws://${bracketed}:5001/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
-    outputChannel.appendLine(`[DEBUG] edgeshark/packetflix URI:\n    ${packetflixUri}`);
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
+
+    const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
+    outputChannel.appendLine(`[DEBUG] single-edgeShark => ${packetflixUri}`);
 
     vscode.window.showInformationMessage(
       `Starting edgeshark capture on ${node.parentName}/${node.name}...`
     );
     vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
+}
+
+async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
+  const base = nodes[0];
+  const ifNames = nodes.map(n => n.name);
+  outputChannel.appendLine(`[DEBUG] multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
+
+  // We optionally store "netns" in node if needed.
+  const netnsVal = (base as any).netns || 4026532270; // example if you track netns
+  const containerObj = {
+    netns: netnsVal,
+    "network-interfaces": ifNames,
+    name: base.parentName,
+    type: "docker",
+    prefix: ""
+  };
+
+  const containerStr = encodeURIComponent(JSON.stringify(containerObj));
+  const nifParam = encodeURIComponent(ifNames.join("/"));
+
+  const hostname = await getHostname();
+  const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
+
+  const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${nifParam}`;
+
+  vscode.window.showInformationMessage(
+    `Starting multi-interface edgeshark on ${base.parentName} for: ${ifNames.join(", ")}`
+  );
+  outputChannel.appendLine(`[DEBUG] multi-edgeShark => ${packetflixUri}`);
+
+  vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
 }
 
 /**
