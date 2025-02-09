@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.7.0] - 2025-02-04
+## [0.7.0] - 2025-02-09
 * Save command for labs and nodes
 * Packetcapture with Edgeshark supports now multi-interface selection (ctrl/cmd + click)
 * Packtflix port is now configurable 
