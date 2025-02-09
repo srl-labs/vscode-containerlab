@@ -2,6 +2,7 @@ export * from "./command";
 export * from "./deploy";
 export * from "./destroy";
 export * from "./redeploy";
+export * from "./save";
 export * from "./openLabFile";
 export * from "./startNode";
 export * from "./stopNode";

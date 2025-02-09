@@ -110,6 +110,11 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', cmd.destroyCleanup)
   );
 
+  // Lab save command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
+  );
+
   // Lab inspection commands
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.inspectAll', () =>
@@ -148,6 +153,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.stop', cmd.stopNode)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.save', cmd.saveNode)
+  ); 
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
   );
@@ -196,7 +204,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       'containerlab.interface.captureWithEdgeshark',
       (clickedNode, allSelectedNodes) => {
-        cmd.captureInterfaceWithPacketflix(clickedNode, allSelectedNodes); // [CHANGED]
+        cmd.captureInterfaceWithPacketflix(clickedNode, allSelectedNodes);
       }
     )
   );
