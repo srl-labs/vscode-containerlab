@@ -37,30 +37,21 @@ export async function manageNodeImpairments(
   async function refreshNetemSettings() {
     // Use JSON output instead of table format.
     const showCmd = `containerlab tools netem show -n ${node.name} --format json`;
-    let netemMap: Record<
-      string,
-      { delay: string; jitter: string; loss: string; rate: string; corruption: string }
-    > = {};
+    let netemMap: Record<string, { delay: string; jitter: string; loss: string; rate: string; corruption: string }> = {};
     try {
       const { stdout } = await execAsync(showCmd);
-      const jsonData = JSON.parse(stdout) as Array<{
-        Interface: string;
-        NodeName: string;
-        Delay: string;
-        Jitter: string;
-        PacketLoss?: string;
-        Rate?: string;
-        Corruption?: string;
-      }>;
+      const rawData = JSON.parse(stdout);
+      // The JSON format now is an object keyed by lab name.
+      const interfacesData = rawData[node.name] || [];
       // Convert array to mapping keyed by normalized interface name.
-      jsonData.forEach(item => {
-        const key = normalizeInterfaceName(item.Interface);
+      interfacesData.forEach((item: any) => {
+        const key = normalizeInterfaceName(item.interface);
         netemMap[key] = {
-          delay: !item.Delay || item.Delay === "N/A" ? "0s" : item.Delay,
-          jitter: !item.Jitter || item.Jitter === "N/A" ? "0s" : item.Jitter,
-          loss: !item.PacketLoss || item.PacketLoss === "N/A" ? "0.00%" : item.PacketLoss,
-          rate: !item.Rate || item.Rate === "N/A" ? "0" : item.Rate,
-          corruption: !item.Corruption || item.Corruption === "N/A" ? "0.00%" : item.Corruption,
+          delay: !item.delay || item.delay === "N/A" ? "0s" : item.delay,
+          jitter: !item.jitter || item.jitter === "N/A" ? "0s" : item.jitter,
+          loss: !item.packet_loss || item.packet_loss === "N/A" ? "0.00%" : item.packet_loss,
+          rate: !item.rate || item.rate === "N/A" ? "0" : item.rate,
+          corruption: !item.corruption || item.corruption === "N/A" ? "0.00%" : item.corruption,
         };
       });
       outputChannel.appendLine("[INFO] Netem settings refreshed via JSON.");
