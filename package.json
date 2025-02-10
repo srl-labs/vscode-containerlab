@@ -4,7 +4,9 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "99.0.0",
+  "author": "SRL Labs",
+  "version": "0.7.0",
+  "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -110,6 +112,11 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.save",
+        "title": "Save Lab",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.inspectAll",
         "title": "Inspect (All Labs)",
         "category": "Containerlab",
@@ -160,6 +167,10 @@
       {
         "command": "containerlab.node.stop",
         "title": "Stop node"
+      },
+      {
+        "command": "containerlab.node.save",
+        "title": "Save node"
       },
       {
         "command": "containerlab.node.attachShell",
@@ -387,9 +398,14 @@
           "group": "navigation@6"
         },
         {
+          "command": "containerlab.lab.save",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "navigation@7"
+        },
+        {
           "command": "containerlab.inspectOneLab",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@7"
+          "group": "navigation@8"
         },
         {
           "command": "containerlab.lab.graph",
@@ -422,6 +438,11 @@
           "group": "nodeNavigation@3"
         },
         {
+          "command": "containerlab.node.save",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@4"
+        },       
+        {
           "command": "containerlab.node.attachShell",
           "when": "viewItem == containerlabContainer",
           "group": "inline@1"
@@ -449,12 +470,12 @@
         {
           "command": "containerlab.node.showLogs",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@4"
+          "group": "nodeNavigation@5"
         },
         {
           "command": "containerlab.node.manageImpairments",
-          "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@5"
+          "when": "viewItem == false",
+          "group": "nodeNavigation@6"
         },
         {
           "submenu": "containerlab.submenu.node.copy",
