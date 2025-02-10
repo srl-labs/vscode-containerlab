@@ -6,6 +6,8 @@ import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
+import * as http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 import {
   captureInterface,
@@ -118,6 +120,10 @@ export class TopoViewer {
       vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
       log.info(`Generating Cytoscape elements from YAML: ${yamlFilePath}`);
 
+
+      log.info(`clabTreeDataToTopoviewer JSON: ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
+
+
       // Read the YAML content from the file.
       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
 
@@ -136,7 +142,11 @@ export class TopoViewer {
       const panel = await this.createWebviewPanel(folderName);
       this.currentTopoViewerPanel = panel;
 
+      // aarafat-tag: test socket.io server
+      this.startSocketIOServer();
+
       return panel;
+
     } catch (err) {
       vscode.window.showErrorMessage(`Error in openViewer: ${err}`);
       log.error(`openViewer: ${err}`);
@@ -347,6 +357,40 @@ export class TopoViewer {
                   sshToNode(containerData);
                 }
               } else {
+                log.error(`Updated Clab tree data is undefined`);
+
+              }
+            } catch (innerError) {
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'clab-node-attach-shell': {
+            try {
+              log.info(`clab-node-attach-shell called with payload: ${payload}`);
+              // Refresh the Containerlab tree data.
+              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              if (updatedClabTreeDataToTopoviewer) {
+                // Remove wrapping quotes if present.
+                const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
+                  ? (payload as string).slice(1, -1)
+                  : (payload as string);
+                log.info(`clab-node-attach-shell backend endpoint is called`);
+                log.info(`lab name: ${this.lastFolderName}`);
+                log.info(`node name: ${nodeName}`);
+
+                // Retrieve container data for the specified node.
+                let containerData = this.adaptor.getClabContainerTreeNode(
+                  nodeName as string,
+                  updatedClabTreeDataToTopoviewer,
+                  this.lastFolderName as string
+                );
+                if (containerData) {
+                  attachShell(containerData);
+                }
+              } else {
                 console.error('Updated Clab tree data is undefined.');
               }
             } catch (innerError) {
@@ -355,6 +399,40 @@ export class TopoViewer {
             }
             break;
           }
+
+          case 'clab-node-view-logs': {
+            try {
+              log.info(`clab-node-view-logs called with payload: ${payload}`);
+              // Refresh the Containerlab tree data.
+              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              if (updatedClabTreeDataToTopoviewer) {
+                // Remove wrapping quotes if present.
+                const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
+                  ? (payload as string).slice(1, -1)
+                  : (payload as string);
+                log.info(`clab-node-view-logs backend endpoint is called`);
+                log.info(`lab name: ${this.lastFolderName}`);
+                log.info(`node name: ${nodeName}`);
+
+                // Retrieve container data for the specified node.
+                let containerData = this.adaptor.getClabContainerTreeNode(
+                  nodeName as string,
+                  updatedClabTreeDataToTopoviewer,
+                  this.lastFolderName as string
+                );
+                if (containerData) {
+                  showLogs(containerData);
+                }
+              } else {
+                console.error('Updated Clab tree data is undefined.');
+              }
+            } catch (innerError) {
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           case 'clab-host-get-hostname': {
             try {
               const hostname = await getHostname();
@@ -644,4 +722,240 @@ export class TopoViewer {
       log.error('Panel is undefined');
     }
   }
+
+  // /**
+  //  * Initializes the Socket.IO server to emit ON-CHANGE events for endpoint state changes.
+  //  *
+  //  * The backend checks the state of endpoints periodically (e.g. every 5 seconds) and, if a state change
+  //  * (Up/Down) is detected, emits an "on-change-edge-state" event to connected clients. Clients can use the provided
+  //  * node name and endpoint to update their UI accordingly.
+  //  */
+  // public startSocketIOServer(): void {
+  //   // Create an HTTP server to attach Socket.IO.
+  //   const server = http.createServer();
+  //   const port = 3000;
+  //   const io = new SocketIOServer(server, {
+  //     cors: { origin: "*" } // Allow all origins for simplicity.
+  //   });
+
+  //   server.listen(port, () => {
+  //     console.log(`Socket.IO server listening on port ${port}`);
+  //     // Optionally, show a notification in VS Code:
+  //     // vscode.window.showInformationMessage(`Socket.IO server running on port ${port}`);
+  //   });
+
+  //   // Storage for the current state of each endpoint, keyed by "nodeName-endpoint".
+  //   const endpointStates: { [key: string]: "Up" | "Down" } = {};
+
+  //   /**
+  //    * Checks the state of an endpoint and emits an on-change-edge-state event if the state has changed.
+  //    * In a real implementation, you would query your actual endpoint state instead of simulating it.
+  //    */
+  //   function checkEndpointStateAndEmit(): void {
+  //     // Simulated data for demonstration purposes.
+  //     // In practice, replace this with actual logic to get the endpoint state.
+  //     const simulatedUpdate = {
+  //       nodeName: "router1",               // The node identifier
+  //       endpoint: "e1-1",            // The endpoint identifier
+  //       state: Math.random() > 0.5 ? "Up" : "Down" // Simulated state change.
+  //     };
+
+  //     const key = `${simulatedUpdate.nodeName}-${simulatedUpdate.endpoint}`;
+
+  //     // Emit only if the state has changed.
+  //     if (endpointStates[key] !== simulatedUpdate.state) {
+  //       endpointStates[key] = simulatedUpdate.state as "Up" | "Down";
+  //       io.emit("on-change-edge-state", simulatedUpdate);
+  //       log.info(`Emitted on-change-edge-state event: ${JSON.stringify(simulatedUpdate)}`);
+  //     }
+  //   }
+
+  //   // Periodically check for endpoint state changes every 1 seconds.
+  //   setInterval(checkEndpointStateAndEmit, 1000);
+
+  //   // Handle Socket.IO connections.
+  //   io.on("connection", (socket) => {
+  //     console.log("A client connected to the Socket.IO server.");
+
+  //     // Optionally, when a client connects, send the current state for all endpoints.
+  //     Object.keys(endpointStates).forEach((key) => {
+  //       const [nodeName, endpoint] = key.split("-");
+  //       socket.emit("on-change-edge-state", {
+  //         nodeName,
+  //         endpoint,
+  //         state: endpointStates[key]
+  //       });
+  //     });
+
+  //     // Optional: Listen for manual messages from the client.
+  //     socket.on("clientMessage", (data) => {
+  //       console.log("Received message from client:", data);
+  //       socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
+  //     });
+
+  //     // Log disconnections.
+  //     socket.on("disconnect", () => {
+  //       console.log("A client disconnected from the Socket.IO server.");
+  //     });
+  //   });
+  // }
+
+  // /**
+  //  * Initializes the Socket.IO server to emit ON-CHANGE events for endpoint state changes.
+  //  *
+  //  * The backend polls for updated lab data periodically (every 1 second) and, if it detects a state change
+  //  * (Up/Down) on any container interface, emits an "on-change-edge-state" event to connected clients.
+  //  * Clients can use the provided node name and endpoint to update their UI accordingly.
+  //  */
+  // public startSocketIOServer(): void {
+  //   // Create an HTTP server to attach Socket.IO.
+  //   const server = http.createServer();
+  //   const port = 3000;
+  //   const io = new SocketIOServer(server, {
+  //     cors: { origin: "*" } // Allow all origins for simplicity.
+  //   });
+
+  //   server.listen(port, () => {
+  //     console.log(`Socket.IO server listening on port ${port}`);
+  //     // Optionally, show a VS Code notification:
+  //     // vscode.window.showInformationMessage(`Socket.IO server running on port ${port}`);
+  //   });
+
+  //   // Cache for the current state of each interface, keyed by "nodeName-endpoint"
+  //   const endpointStates: { [key: string]: "Up" | "Down" } = {};
+
+  //   // Define extractNodeName as an arrow function so it uses the surrounding 'this'
+  //   const extractNodeName = (label: string): string => {
+  //     const labName = this.adaptor.currentClabTopo?.name ?? '';
+  //     log.debug (`labName: ${labName}`);
+  //     return label.replace(new RegExp(`^clab-${labName}-`), '');
+  //   };
+
+  //   // Define processLabData as an arrow function so it can call extractNodeName properly.
+  //   const processLabData = (labData: any): void => {
+  //     // Iterate through each lab (keyed by its YAML file path).
+  //     for (const labPath in labData) {
+  //       const lab = labData[labPath];
+  //       if (!lab || !lab.containers || !Array.isArray(lab.containers)) {
+  //         continue;
+  //       }
+  //       // Process each container in the lab.
+  //       lab.containers.forEach((container: any) => {
+  //         // Extract a simplified node name from the container label.
+  //         // (For example, "clab-ngp-lab-router1" becomes "router1".)
+  //         const nodeName = extractNodeName(container.label);
+  //         if (!container.interfaces || !Array.isArray(container.interfaces)) {
+  //           return;
+  //         }
+  //         // Process each interface.
+  //         container.interfaces.forEach((iface: any) => {
+  //           // Determine the new state from the "description" property.
+  //           // If the description contains "UP" (case-insensitive), consider the state as "Up"; otherwise "Down".
+  //           const description: string = iface.description || "";
+  //           const newState: "Up" | "Down" = description.toUpperCase().includes("UP") ? "Up" : "Down";
+  //           // Use the interface's label as the endpoint identifier.
+  //           const endpoint: string = iface.label;
+  //           // Build a unique cache key.
+  //           const key = `${nodeName}-${endpoint}`;
+  //           // Only emit an event if the state has changed.
+  //           if (endpointStates[key] !== newState) {
+  //             endpointStates[key] = newState;
+  //             const update = {
+  //               nodeName,
+  //               endpoint,
+  //               state: newState
+  //             };
+  //             io.emit("on-change-edge-state", update);
+  //             log.info(`Emitted on-change-edge-state event: ${JSON.stringify(update)}`);
+  //           }
+  //         });
+  //       });
+  //     }
+  //   };
+
+  //   // Periodically poll for updated lab data and process it.
+  //   setInterval(async () => {
+  //     try {
+  //       const labData = await this.clabTreeProviderImported.discoverInspectLabs();
+  //       if (labData) {
+  //         processLabData(labData);
+  //       }
+  //     } catch (error) {
+  //       console.error("Error processing lab data", error);
+  //     }
+  //   }, 500); // 0.5 seconds
+
+  //   // Handle Socket.IO connections.
+  //   io.on("connection", (socket) => {
+  //     console.log("A client connected to the Socket.IO server.");
+
+  //     // When a client connects, send the current state for all endpoints.
+  //     Object.keys(endpointStates).forEach((key) => {
+  //       // Note: Splitting the key assumes the key was built as "nodeName-endpoint"
+  //       const [nodeName, endpoint] = key.split("-");
+  //       socket.emit("on-change-edge-state", {
+  //         nodeName,
+  //         endpoint,
+  //         state: endpointStates[key]
+  //       });
+  //     });
+
+  //     // Optional: Listen for manual messages from the client.
+  //     socket.on("clientMessage", (data) => {
+  //       console.log("Received message from client:", data);
+  //       socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
+  //     });
+
+  //     // Log disconnections.
+  //     socket.on("disconnect", () => {
+  //       console.log("A client disconnected from the Socket.IO server.");
+  //     });
+  //   });
+  // }
+
+  public startSocketIOServer(): void {
+    // Create an HTTP server to attach Socket.IO.
+    const server = http.createServer();
+    const port = 3000;
+    const io = new SocketIOServer(server, {
+      cors: { origin: "*" } // Allow all origins for simplicity.
+    });
+
+    server.listen(port, () => {
+
+      log.info(`Socket.IO server listening on port ${port}`);
+
+      // Optionally, show a notification in VS Code:
+      // vscode.window.showInformationMessage(`Socket.IO server running on port ${port}`);
+    });
+
+    // Periodically poll for updated lab data and emit it without processing.
+    setInterval(async () => {
+      try {
+        const labData = await this.clabTreeProviderImported.discoverInspectLabs();
+        if (labData) {
+          // Emit the raw lab data to the front end.5
+          io.emit("clab-tree-provider-data", labData);
+          // log.info(`Received client message: ${JSON.stringify(labData, null, 2)}`);
+        }
+      } catch (error) {
+        log.error(`Error retrieving lab data: ${JSON.stringify(error, null, 2)}`);
+      }
+    }, 5000); // Every 0.5 seconds (adjust as needed)
+
+    // Handle Socket.IO connections.
+    io.on("connection", (socket) => {
+      log.info("A client connected to the Socket.IO server.");
+      socket.on("clientMessage", (data) => {
+        log.info(`Received client message: ${JSON.stringify(data, null, 2)}`);
+        socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
+      });
+      socket.on("disconnect", () => {
+        log.info("A client disconnected from the Socket.IO server.");
+      });
+    });
+  }
+
+
+
 }

@@ -4,7 +4,7 @@
   "displayName": "Containerlab",
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
-  "version": "0.6.4",
+  "version": "99.0.0",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -667,6 +667,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@vscode/test-cli": "^0.0.10"
+    "@vscode/test-cli": "^0.0.10",
+    "socket.io": "^4.8.1"
   }
 }
