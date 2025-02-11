@@ -441,7 +441,7 @@
           "command": "containerlab.node.save",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@4"
-        },       
+        },
         {
           "command": "containerlab.node.attachShell",
           "when": "viewItem == containerlabContainer",

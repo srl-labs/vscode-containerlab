@@ -319,8 +319,8 @@ export class TopoViewer {
                 const nodeYaml = parsedClabYaml.topology.nodes[id];
                 if (!nodeYaml) continue;
                 nodeYaml.labels = nodeYaml.labels || {};
-                nodeYaml.labels['topoViewer-presetPosX'] = x.toString();
-                nodeYaml.labels['topoViewer-presetPosY'] = y.toString();
+                nodeYaml.labels['graphPosX'] = x.toString();
+                nodeYaml.labels['graphPosY'] = y.toString();
               }
               const prettyYamlString = yaml.dump(parsedClabYaml, { indent: 2 });
               log.info(`topo-viewport-save result: ${prettyYamlString}`);
