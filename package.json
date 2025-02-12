@@ -689,6 +689,7 @@
   },
   "dependencies": {
     "@vscode/test-cli": "^0.0.10",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "yaml": "^2.7.0"
   }
 }

@@ -5,6 +5,8 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import * as yaml from 'js-yaml';
 import { log } from './logger';
+import  * as YAML from 'yaml'; // github.com/eemeli/yaml
+
 import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
 
 import { version as topoViewerVersion } from '../../../package.json';
@@ -73,11 +75,19 @@ log.info(`TopoViewer Version: ${topoViewerVersion}`);
  * **Note:** The class is designed to be extensible, allowing future integration of YAML validation based on
  * the Containerlab schema: https://github.com/srl-labs/containerlab/blob/e3a324a45032792258d92b8d3625fd108bdaeb9c/schemas/clab.schema.json
  */
+
+
+
 export class TopoViewerAdaptorClab {
 
 
     public currentClabTopo: ClabTopology | undefined;
+    public currentClabDoc: YAML.Document.Parsed | undefined; 
     public currentIsPresetLayout: boolean = false;
+    public currentClabName: string  | undefined;
+    public allowedhostname: string | undefined;
+
+
 
     /**
      * Creates the target directory and writes the JSON data files required by TopoViewer.
@@ -116,14 +126,18 @@ export class TopoViewerAdaptorClab {
             await fs.writeFile(dataCytoMarshallPath, dataCytoMarshallContent, 'utf8');
 
             const parsed = yaml.load(yamlContent) as ClabTopology;
-
             this.currentClabTopo = parsed
+            this.currentClabDoc  = YAML.parseDocument(yamlContent); // <-- store the raw Document
+
 
             var clabName = parsed.name
+
+
 
             // Define the EnvironmentJson object
 
             const hostname = await getHostname()
+            this.allowedhostname = hostname
 
             const environmentJson: EnvironmentJson = {
                 workingDirectory: ".",
@@ -212,8 +226,8 @@ export class TopoViewerAdaptorClab {
         if (parsed.topology.nodes) {
             this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
                 .every(([nodeName, nodeObj]) =>                         // aarafat-tag: nodeName isn't actively used in the logic—it’s just there as part of the destructuring. 
-                    !!nodeObj.labels?.['topoViewer-presetPosX'] &&
-                    !!nodeObj.labels?.['topoViewer-presetPosY']
+                    !!nodeObj.labels?.['graphPosX'] &&
+                    !!nodeObj.labels?.['graphPosY']
                 );
         }
         log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
@@ -305,8 +319,8 @@ export class TopoViewerAdaptorClab {
                         },
                     },
                     position: {
-                        x: parseFloat(nodeObj.labels?.['topoViewer-presetPosX'] ?? 0),
-                        y: parseFloat(nodeObj.labels?.['topoViewer-presetPosY'] ?? 0)
+                        x: parseFloat(nodeObj.labels?.['graphPosX'] ?? 0),
+                        y: parseFloat(nodeObj.labels?.['graphPosY'] ?? 0)
                     },
                     removed: false,
                     selected: false,
@@ -503,6 +517,11 @@ export class TopoViewerAdaptorClab {
             (item) => item?.name === clabName
         );
         // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
+
+        log.debug(`clabTreeDataToTopoviewer : ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
+        log.debug(`filteredLabData : ${JSON.stringify(filteredLabData, null, 2)}`);
+        log.debug(`clabName : ${JSON.stringify(clabName, null, 2)}`);
+
 
         // Check if filteredLabData is not empty
         if (filteredLabData.length === 0) {

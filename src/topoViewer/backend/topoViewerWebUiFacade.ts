@@ -1,14 +1,15 @@
+// file: src/topoViewerWebUiFacade.ts
+
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
+import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-
 import {
   captureInterface,
   getHostname,
@@ -45,14 +46,12 @@ import {
 } from '../../commands/index';
 
 /**
- * Class representing the TopoViewer, the primary entry point for the
- * Containerlab Topology Viewer extension in VS Code.
- *
- * Responsibilities:
- * - Parse Containerlab YAML configurations.
- * - Transform YAML data into Cytoscape elements.
- * - Manage JSON file creation for topology data.
- * - Initialize and manage the visualization webview.
+ * Class representing the Containerlab Topology Viewer extension in VS Code.
+ * It is responsible for:
+ * - Parsing Containerlab YAML configurations.
+ * - Transforming YAML data into Cytoscape elements.
+ * - Managing JSON file creation for topology data.
+ * - Initializing and managing the visualization webview.
  */
 export class TopoViewer {
   /**
@@ -81,6 +80,13 @@ export class TopoViewer {
    */
   public currentTopoViewerPanel: vscode.WebviewPanel | undefined;
 
+  private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+
+
+  private socketAssignedPort: number | undefined;
+
+
+
   /**
    * Creates a new instance of TopoViewer.
    *
@@ -94,7 +100,7 @@ export class TopoViewer {
   /**
    * Opens the TopoViewer for a given Containerlab YAML file.
    *
-   * Steps performed:
+   * This method performs the following steps:
    * 1. Reads and parses the YAML file.
    * 2. Converts the YAML to Cytoscape elements.
    * 3. Writes JSON files (e.g. dataCytoMarshall.json and environment.json).
@@ -102,7 +108,7 @@ export class TopoViewer {
    *
    * @param yamlFilePath - The file path to the Containerlab YAML configuration.
    * @param clabTreeDataToTopoviewer - Optional Containerlab lab tree data.
-   * @returns The created webview panel or undefined if an error occurs.
+   * @returns A promise that resolves to the created webview panel or undefined if an error occurs.
    *
    * @example
    * ```typescript
@@ -119,10 +125,7 @@ export class TopoViewer {
     try {
       vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
       log.info(`Generating Cytoscape elements from YAML: ${yamlFilePath}`);
-
-
       log.info(`clabTreeDataToTopoviewer JSON: ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
-
 
       // Read the YAML content from the file.
       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
@@ -137,16 +140,18 @@ export class TopoViewer {
       // Create folder and write JSON files for the webview.
       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
-      // Create and display the webview panel.
+      // Start the Socket.IO server and wait for the port to be assigned.
+      const socketPort = await this.startSocketIOServer();
+
+      // Create and display the webview panel using the assigned socket port.
       log.info(`Creating webview panel for visualization`);
-      const panel = await this.createWebviewPanel(folderName);
+      const panel = await this.createWebviewPanel(folderName, socketPort);
       this.currentTopoViewerPanel = panel;
 
-      // aarafat-tag: test socket.io server
-      this.startSocketIOServer();
+      // Initialize updatedClabTreeDataToTopoviewer
+      this.cacheClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
 
       return panel;
-
     } catch (err) {
       vscode.window.showErrorMessage(`Error in openViewer: ${err}`);
       log.error(`openViewer: ${err}`);
@@ -157,13 +162,19 @@ export class TopoViewer {
   /**
    * Creates and configures a new WebviewPanel for displaying the network topology.
    *
-   * Sets up the resource roots, injects asset URIs into the HTML, and
-   * establishes message handlers for communication between the webview and extension.
+   * This method sets up resource roots, injects asset URIs into the HTML, and
+   * establishes message handlers for communication between the webview and the extension.
    *
    * @param folderName - The subfolder name where JSON data files are stored.
-   * @returns The created WebviewPanel.
+   * @param socketPort - The assigned socket port from the Socket.IO server.
+   * @returns A promise that resolves to the created WebviewPanel.
    */
-  private async createWebviewPanel(folderName: string): Promise<vscode.WebviewPanel> {
+  private async createWebviewPanel(folderName: string, socketPort: number): Promise<vscode.WebviewPanel> {
+    interface CytoViewportPositionPreset {
+      data: { id: string };
+      position: { x: number; y: number };
+    }
+
     const panel = vscode.window.createWebviewPanel(
       'topoViewer',
       `Containerlab Topology: ${folderName}`,
@@ -224,7 +235,9 @@ export class TopoViewer {
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
       isVscodeDeployment,
-      jsOutDir
+      jsOutDir,
+      this.adaptor.allowedhostname as string,
+      socketPort
     );
 
     log.info(`Webview panel created successfully`);
@@ -301,32 +314,45 @@ export class TopoViewer {
           case 'topo-viewport-save': {
             try {
               // Parse the payload to update node positions.
-              const payloadParsed = JSON.parse(payload as string) as {
-                data: { id: string };
-                position: { x: number; y: number };
-              }[];
-              log.info(`topo-viewport-save called with payload: ${JSON.stringify(payloadParsed, null, 2)}`);
+              const payloadParsed = JSON.parse(payload as string) as CytoViewportPositionPreset[];
 
-              // Retrieve the current parsed YAML topology.
-              const parsedClabYaml = this.adaptor.currentClabTopo;
-              if (!parsedClabYaml?.topology?.nodes) {
-                throw new Error('Invalid parsedClabYaml structure');
+              // Retrieve the parsed YAML document (with comments) from the adaptor.
+              const doc: YAML.Document.Parsed | undefined = this.adaptor.currentClabDoc;
+              if (!doc) {
+                throw new Error('No parsed Document found (this.adaptor.currentClabDoc is undefined).');
               }
 
-              // Update node labels with new preset positions.
+              // Update each node’s position in the AST.
               for (const { data: { id }, position: { x, y } } of payloadParsed) {
-                if (!id) continue;
-                const nodeYaml = parsedClabYaml.topology.nodes[id];
-                if (!nodeYaml) continue;
-                nodeYaml.labels = nodeYaml.labels || {};
-                nodeYaml.labels['graphPosX'] = x.toString();
-                nodeYaml.labels['graphPosY'] = y.toString();
+                if (!id) continue;  // Skip if invalid
+                const nodeMap = doc.getIn(['topology', 'nodes', id], true);
+                if (YAML.isMap(nodeMap)) {
+                  nodeMap.setIn(['labels', 'graphPosX'], x.toString());
+                  nodeMap.setIn(['labels', 'graphPosY'], y.toString());
+                }
               }
-              const prettyYamlString = yaml.dump(parsedClabYaml, { indent: 2 });
-              log.info(`topo-viewport-save result: ${prettyYamlString}`);
 
-              // Write the updated YAML back to the file.
-              await fs.promises.writeFile(this.lastYamlFilePath, prettyYamlString, 'utf8');
+              // Optionally convert links.endpoints arrays to "flow" style.
+              const linksNode = doc.getIn(['topology', 'links']);
+              if (YAML.isSeq(linksNode)) {
+                for (const linkItem of linksNode.items) {
+                  if (YAML.isMap(linkItem)) {
+                    const endpointsNode = linkItem.get('endpoints', true);
+                    if (YAML.isSeq(endpointsNode)) {
+                      endpointsNode.flow = true;
+                    }
+                  }
+                }
+              }
+
+              // Serialize back to YAML preserving original comments.
+              const updatedYamlString = doc.toString();
+
+              // Write the updated YAML to disk.
+              await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+
+              result = `Saved topology with preserved comments!`;
+              log.info(result);
             } catch (error) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(error, null, 2)}`);
@@ -336,29 +362,25 @@ export class TopoViewer {
           case 'clab-node-connect-ssh': {
             try {
               log.info(`clab-node-connect-ssh called with payload: ${payload}`);
-              // Refresh the Containerlab tree data.
-              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
               if (updatedClabTreeDataToTopoviewer) {
-                // Remove wrapping quotes if present.
                 const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
                   ? (payload as string).slice(1, -1)
                   : (payload as string);
                 log.info(`clab-node-connect-ssh backend endpoint is called`);
-                log.info(`lab name: ${this.lastFolderName}`);
+                log.info(`lab name: ${this.adaptor.currentClabTopo?.name}`);
                 log.info(`node name: ${nodeName}`);
 
-                // Retrieve container data for the specified node.
-                let containerData = this.adaptor.getClabContainerTreeNode(
-                  nodeName as string,
+                const containerData = this.adaptor.getClabContainerTreeNode(
+                  nodeName,
                   updatedClabTreeDataToTopoviewer,
-                  this.lastFolderName as string
+                  this.adaptor.currentClabTopo?.name
                 );
                 if (containerData) {
                   sshToNode(containerData);
                 }
               } else {
                 log.error(`Updated Clab tree data is undefined`);
-
               }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
@@ -366,27 +388,24 @@ export class TopoViewer {
             }
             break;
           }
-
           case 'clab-node-attach-shell': {
             try {
               log.info(`clab-node-attach-shell called with payload: ${payload}`);
-              // Refresh the Containerlab tree data.
-              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
               if (updatedClabTreeDataToTopoviewer) {
-                // Remove wrapping quotes if present.
                 const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
                   ? (payload as string).slice(1, -1)
                   : (payload as string);
                 log.info(`clab-node-attach-shell backend endpoint is called`);
-                log.info(`lab name: ${this.lastFolderName}`);
+                log.info(`lab name: ${this.adaptor.currentClabTopo?.name}`);
                 log.info(`node name: ${nodeName}`);
 
-                // Retrieve container data for the specified node.
-                let containerData = this.adaptor.getClabContainerTreeNode(
-                  nodeName as string,
+                const containerData = this.adaptor.getClabContainerTreeNode(
+                  nodeName,
                   updatedClabTreeDataToTopoviewer,
-                  this.lastFolderName as string
+                  this.adaptor.currentClabTopo?.name
                 );
+                log.info(`containerData : ${JSON.stringify(containerData, null, 2)}`);
                 if (containerData) {
                   attachShell(containerData);
                 }
@@ -399,26 +418,22 @@ export class TopoViewer {
             }
             break;
           }
-
           case 'clab-node-view-logs': {
             try {
               log.info(`clab-node-view-logs called with payload: ${payload}`);
-              // Refresh the Containerlab tree data.
-              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
               if (updatedClabTreeDataToTopoviewer) {
-                // Remove wrapping quotes if present.
                 const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
                   ? (payload as string).slice(1, -1)
                   : (payload as string);
                 log.info(`clab-node-view-logs backend endpoint is called`);
-                log.info(`lab name: ${this.lastFolderName}`);
+                log.info(`lab name: ${this.adaptor.currentClabTopo?.name}`);
                 log.info(`node name: ${nodeName}`);
 
-                // Retrieve container data for the specified node.
-                let containerData = this.adaptor.getClabContainerTreeNode(
-                  nodeName as string,
+                const containerData = this.adaptor.getClabContainerTreeNode(
+                  nodeName,
                   updatedClabTreeDataToTopoviewer,
-                  this.lastFolderName as string
+                  this.adaptor.currentClabTopo?.name
                 );
                 if (containerData) {
                   showLogs(containerData);
@@ -432,7 +447,6 @@ export class TopoViewer {
             }
             break;
           }
-
           case 'clab-host-get-hostname': {
             try {
               const hostname = await getHostname();
@@ -446,7 +460,6 @@ export class TopoViewer {
           }
           case 'clab-link-capture': {
             try {
-              // Define the expected structure of the payload.
               interface LinkEndpointInfo {
                 nodeName: string;
                 interfaceName: string;
@@ -454,14 +467,13 @@ export class TopoViewer {
               const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
               log.info(`clab-link-capture called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
 
-              // Update lab data and retrieve the relevant interface node.
-              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
               if (updatedClabTreeDataToTopoviewer) {
-                let containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
+                const containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
                   linkInfo.nodeName,
                   linkInfo.interfaceName,
                   updatedClabTreeDataToTopoviewer,
-                  this.lastFolderName as string
+                  this.adaptor.currentClabTopo?.name as string
                 );
                 if (containerInterfaceData) {
                   captureInterfaceWithPacketflix(containerInterfaceData);
@@ -484,16 +496,15 @@ export class TopoViewer {
               const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
               log.info(`clab-link-subinterfaces called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
 
-              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
               if (updatedClabTreeDataToTopoviewer) {
-                let containerData = this.adaptor.getClabContainerTreeNode(
+                const containerData = this.adaptor.getClabContainerTreeNode(
                   linkInfo.nodeName,
                   updatedClabTreeDataToTopoviewer,
-                  this.lastFolderName as string
+                  this.adaptor.currentClabTopo?.name as string
                 );
                 const parentInterfaceName = linkInfo.interfaceName;
 
-                // Filter subinterfaces based on naming convention.
                 const subInterfaces = containerData?.interfaces.filter((intf) =>
                   intf.name.startsWith(`${parentInterfaceName}-`)
                 );
@@ -501,7 +512,6 @@ export class TopoViewer {
                 log.info(`subInterfaces: ${JSON.stringify(subInterfaces, null, 2)}`);
 
                 if (subInterfaces) {
-                  // Map the filtered interfaces to ClabInterfaceTreeNode instances.
                   subInterfaces.map(
                     (intf) =>
                       new ClabInterfaceTreeNode(
@@ -537,13 +547,13 @@ export class TopoViewer {
               const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
               log.info(`clab-link-mac-address called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
 
-              const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
               if (updatedClabTreeDataToTopoviewer) {
-                let containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
+                const containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
                   linkInfo.nodeName,
                   linkInfo.interfaceName,
                   updatedClabTreeDataToTopoviewer,
-                  this.lastFolderName as string
+                  this.adaptor.currentClabTopo?.name as string
                 );
                 log.info(`macAddress: ${JSON.stringify(containerInterfaceData?.mac, null, 2)}`);
                 result = containerInterfaceData?.mac;
@@ -557,7 +567,6 @@ export class TopoViewer {
           }
           case 'open-external': {
             try {
-              // Assume the payload is a JSON string containing the URL.
               const url: string = JSON.parse(payload as string);
               await vscode.env.openExternal(vscode.Uri.parse(url));
               result = `Opened external URL: ${url}`;
@@ -605,7 +614,7 @@ export class TopoViewer {
     }
 
     /**
-     * Another example backend function for demonstration.
+     * Another example backend function for demonstration purposes.
      *
      * @param payload - Arbitrary payload from the webview.
      * @returns A demonstration result object.
@@ -625,11 +634,12 @@ export class TopoViewer {
    *
    * @param cssUri - URI for the CSS assets.
    * @param jsUri - URI for the JavaScript assets.
-   * @param imagesUri - URI for image assets.
+   * @param imagesUri - URI for the image assets.
    * @param jsonFileUrlDataCytoMarshall - URI for the dataCytoMarshall.json file.
    * @param jsonFileUrlDataEnvironment - URI for the environment.json file.
-   * @param isVscodeDeployment - Whether the extension is running inside VS Code.
+   * @param isVscodeDeployment - Indicates whether the extension is running inside VS Code.
    * @param jsOutDir - URI for the compiled JavaScript directory.
+   * @param socketAssignedPort - The assigned Socket.IO port.
    * @returns The complete HTML content as a string.
    */
   private getWebviewContent(
@@ -639,7 +649,9 @@ export class TopoViewer {
     jsonFileUrlDataCytoMarshall: string,
     jsonFileUrlDataEnvironment: string,
     isVscodeDeployment: boolean,
-    jsOutDir: string
+    jsOutDir: string,
+    allowedhostname: string,
+    socketAssignedPort: number
   ): string {
     return getHTMLTemplate(
       cssUri,
@@ -648,20 +660,22 @@ export class TopoViewer {
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
       isVscodeDeployment,
-      jsOutDir
+      jsOutDir,
+      allowedhostname,
+      socketAssignedPort
     );
   }
 
   /**
    * Updates the webview panel's HTML with the latest topology data.
    *
-   * Reads the YAML file, regenerates Cytoscape elements, updates JSON files,
+   * This method reads the YAML file, regenerates Cytoscape elements, updates JSON files,
    * and refreshes the webview content.
    *
    * @param panel - The active WebviewPanel to update.
+   * @returns A promise that resolves when the panel has been updated.
    */
   public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<void> {
-    // If no viewer has been opened, exit early.
     if (!this.lastFolderName) {
       return;
     }
@@ -669,30 +683,24 @@ export class TopoViewer {
     const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.lastFolderName;
 
-    // Discover updated Containerlab lab data.
-    const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+    const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
-    // Read the latest YAML content.
     const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
 
-    // Convert the YAML to Cytoscape elements.
     const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
       updatedClabTreeDataToTopoviewer
     );
 
-    // Write updated JSON files.
     this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
     if (panel) {
-      // Regenerate asset URIs.
       const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
       const jsOutDir = panel.webview
         .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'out'))
         .toString();
 
-      // Compute new URIs for JSON data files.
       const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
       const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
       const jsonFileUrlDataCytoMarshall = panel.webview
@@ -706,7 +714,6 @@ export class TopoViewer {
 
       const isVscodeDeployment = true;
 
-      // Update the panel's HTML content.
       panel.webview.html = this.getWebviewContent(
         css,
         js,
@@ -714,7 +721,9 @@ export class TopoViewer {
         jsonFileUrlDataCytoMarshall,
         jsonFileUrlDataEnvironment,
         isVscodeDeployment,
-        jsOutDir
+        jsOutDir,
+        this.adaptor.allowedhostname as string,
+        this.socketAssignedPort || 0
       );
 
       vscode.window.showInformationMessage('TopoViewer Webview reloaded!');
@@ -723,239 +732,60 @@ export class TopoViewer {
     }
   }
 
-  // /**
-  //  * Initializes the Socket.IO server to emit ON-CHANGE events for endpoint state changes.
-  //  *
-  //  * The backend checks the state of endpoints periodically (e.g. every 5 seconds) and, if a state change
-  //  * (Up/Down) is detected, emits an "on-change-edge-state" event to connected clients. Clients can use the provided
-  //  * node name and endpoint to update their UI accordingly.
-  //  */
-  // public startSocketIOServer(): void {
-  //   // Create an HTTP server to attach Socket.IO.
-  //   const server = http.createServer();
-  //   const port = 3000;
-  //   const io = new SocketIOServer(server, {
-  //     cors: { origin: "*" } // Allow all origins for simplicity.
-  //   });
-
-  //   server.listen(port, () => {
-  //     console.log(`Socket.IO server listening on port ${port}`);
-  //     // Optionally, show a notification in VS Code:
-  //     // vscode.window.showInformationMessage(`Socket.IO server running on port ${port}`);
-  //   });
-
-  //   // Storage for the current state of each endpoint, keyed by "nodeName-endpoint".
-  //   const endpointStates: { [key: string]: "Up" | "Down" } = {};
-
-  //   /**
-  //    * Checks the state of an endpoint and emits an on-change-edge-state event if the state has changed.
-  //    * In a real implementation, you would query your actual endpoint state instead of simulating it.
-  //    */
-  //   function checkEndpointStateAndEmit(): void {
-  //     // Simulated data for demonstration purposes.
-  //     // In practice, replace this with actual logic to get the endpoint state.
-  //     const simulatedUpdate = {
-  //       nodeName: "router1",               // The node identifier
-  //       endpoint: "e1-1",            // The endpoint identifier
-  //       state: Math.random() > 0.5 ? "Up" : "Down" // Simulated state change.
-  //     };
-
-  //     const key = `${simulatedUpdate.nodeName}-${simulatedUpdate.endpoint}`;
-
-  //     // Emit only if the state has changed.
-  //     if (endpointStates[key] !== simulatedUpdate.state) {
-  //       endpointStates[key] = simulatedUpdate.state as "Up" | "Down";
-  //       io.emit("on-change-edge-state", simulatedUpdate);
-  //       log.info(`Emitted on-change-edge-state event: ${JSON.stringify(simulatedUpdate)}`);
-  //     }
-  //   }
-
-  //   // Periodically check for endpoint state changes every 1 seconds.
-  //   setInterval(checkEndpointStateAndEmit, 1000);
-
-  //   // Handle Socket.IO connections.
-  //   io.on("connection", (socket) => {
-  //     console.log("A client connected to the Socket.IO server.");
-
-  //     // Optionally, when a client connects, send the current state for all endpoints.
-  //     Object.keys(endpointStates).forEach((key) => {
-  //       const [nodeName, endpoint] = key.split("-");
-  //       socket.emit("on-change-edge-state", {
-  //         nodeName,
-  //         endpoint,
-  //         state: endpointStates[key]
-  //       });
-  //     });
-
-  //     // Optional: Listen for manual messages from the client.
-  //     socket.on("clientMessage", (data) => {
-  //       console.log("Received message from client:", data);
-  //       socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
-  //     });
-
-  //     // Log disconnections.
-  //     socket.on("disconnect", () => {
-  //       console.log("A client disconnected from the Socket.IO server.");
-  //     });
-  //   });
-  // }
-
-  // /**
-  //  * Initializes the Socket.IO server to emit ON-CHANGE events for endpoint state changes.
-  //  *
-  //  * The backend polls for updated lab data periodically (every 1 second) and, if it detects a state change
-  //  * (Up/Down) on any container interface, emits an "on-change-edge-state" event to connected clients.
-  //  * Clients can use the provided node name and endpoint to update their UI accordingly.
-  //  */
-  // public startSocketIOServer(): void {
-  //   // Create an HTTP server to attach Socket.IO.
-  //   const server = http.createServer();
-  //   const port = 3000;
-  //   const io = new SocketIOServer(server, {
-  //     cors: { origin: "*" } // Allow all origins for simplicity.
-  //   });
-
-  //   server.listen(port, () => {
-  //     console.log(`Socket.IO server listening on port ${port}`);
-  //     // Optionally, show a VS Code notification:
-  //     // vscode.window.showInformationMessage(`Socket.IO server running on port ${port}`);
-  //   });
-
-  //   // Cache for the current state of each interface, keyed by "nodeName-endpoint"
-  //   const endpointStates: { [key: string]: "Up" | "Down" } = {};
-
-  //   // Define extractNodeName as an arrow function so it uses the surrounding 'this'
-  //   const extractNodeName = (label: string): string => {
-  //     const labName = this.adaptor.currentClabTopo?.name ?? '';
-  //     log.debug (`labName: ${labName}`);
-  //     return label.replace(new RegExp(`^clab-${labName}-`), '');
-  //   };
-
-  //   // Define processLabData as an arrow function so it can call extractNodeName properly.
-  //   const processLabData = (labData: any): void => {
-  //     // Iterate through each lab (keyed by its YAML file path).
-  //     for (const labPath in labData) {
-  //       const lab = labData[labPath];
-  //       if (!lab || !lab.containers || !Array.isArray(lab.containers)) {
-  //         continue;
-  //       }
-  //       // Process each container in the lab.
-  //       lab.containers.forEach((container: any) => {
-  //         // Extract a simplified node name from the container label.
-  //         // (For example, "clab-ngp-lab-router1" becomes "router1".)
-  //         const nodeName = extractNodeName(container.label);
-  //         if (!container.interfaces || !Array.isArray(container.interfaces)) {
-  //           return;
-  //         }
-  //         // Process each interface.
-  //         container.interfaces.forEach((iface: any) => {
-  //           // Determine the new state from the "description" property.
-  //           // If the description contains "UP" (case-insensitive), consider the state as "Up"; otherwise "Down".
-  //           const description: string = iface.description || "";
-  //           const newState: "Up" | "Down" = description.toUpperCase().includes("UP") ? "Up" : "Down";
-  //           // Use the interface's label as the endpoint identifier.
-  //           const endpoint: string = iface.label;
-  //           // Build a unique cache key.
-  //           const key = `${nodeName}-${endpoint}`;
-  //           // Only emit an event if the state has changed.
-  //           if (endpointStates[key] !== newState) {
-  //             endpointStates[key] = newState;
-  //             const update = {
-  //               nodeName,
-  //               endpoint,
-  //               state: newState
-  //             };
-  //             io.emit("on-change-edge-state", update);
-  //             log.info(`Emitted on-change-edge-state event: ${JSON.stringify(update)}`);
-  //           }
-  //         });
-  //       });
-  //     }
-  //   };
-
-  //   // Periodically poll for updated lab data and process it.
-  //   setInterval(async () => {
-  //     try {
-  //       const labData = await this.clabTreeProviderImported.discoverInspectLabs();
-  //       if (labData) {
-  //         processLabData(labData);
-  //       }
-  //     } catch (error) {
-  //       console.error("Error processing lab data", error);
-  //     }
-  //   }, 500); // 0.5 seconds
-
-  //   // Handle Socket.IO connections.
-  //   io.on("connection", (socket) => {
-  //     console.log("A client connected to the Socket.IO server.");
-
-  //     // When a client connects, send the current state for all endpoints.
-  //     Object.keys(endpointStates).forEach((key) => {
-  //       // Note: Splitting the key assumes the key was built as "nodeName-endpoint"
-  //       const [nodeName, endpoint] = key.split("-");
-  //       socket.emit("on-change-edge-state", {
-  //         nodeName,
-  //         endpoint,
-  //         state: endpointStates[key]
-  //       });
-  //     });
-
-  //     // Optional: Listen for manual messages from the client.
-  //     socket.on("clientMessage", (data) => {
-  //       console.log("Received message from client:", data);
-  //       socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
-  //     });
-
-  //     // Log disconnections.
-  //     socket.on("disconnect", () => {
-  //       console.log("A client disconnected from the Socket.IO server.");
-  //     });
-  //   });
-  // }
-
-  public startSocketIOServer(): void {
-    // Create an HTTP server to attach Socket.IO.
-    const server = http.createServer();
-    const port = 3000;
-    const io = new SocketIOServer(server, {
-      cors: { origin: "*" } // Allow all origins for simplicity.
-    });
-
-    server.listen(port, () => {
-
-      log.info(`Socket.IO server listening on port ${port}`);
-
-      // Optionally, show a notification in VS Code:
-      // vscode.window.showInformationMessage(`Socket.IO server running on port ${port}`);
-    });
-
-    // Periodically poll for updated lab data and emit it without processing.
-    setInterval(async () => {
-      try {
-        const labData = await this.clabTreeProviderImported.discoverInspectLabs();
-        if (labData) {
-          // Emit the raw lab data to the front end.5
-          io.emit("clab-tree-provider-data", labData);
-          // log.info(`Received client message: ${JSON.stringify(labData, null, 2)}`);
-        }
-      } catch (error) {
-        log.error(`Error retrieving lab data: ${JSON.stringify(error, null, 2)}`);
-      }
-    }, 5000); // Every 0.5 seconds (adjust as needed)
-
-    // Handle Socket.IO connections.
-    io.on("connection", (socket) => {
-      log.info("A client connected to the Socket.IO server.");
-      socket.on("clientMessage", (data) => {
-        log.info(`Received client message: ${JSON.stringify(data, null, 2)}`);
-        socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
+  /**
+   * Initializes the Socket.IO server to periodically emit lab data to connected clients.
+   *
+   * The server is configured to:
+   * - Listen on a dynamically assigned port.
+   * - Allow cross-origin requests from any origin.
+   * - Poll for updated lab data periodically and emit the raw data via the "clab-tree-provider-data" event.
+   *
+   * @returns A Promise that resolves with the assigned port number.
+   */
+  public startSocketIOServer(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const server = http.createServer();
+      const io = new SocketIOServer(server, {
+        cors: {
+          origin: "*",
+          methods: ["GET", "POST"],
+          allowedHeaders: ["Content-Type"],
+          credentials: false,
+        },
       });
-      socket.on("disconnect", () => {
-        log.info("A client disconnected from the Socket.IO server.");
+
+      // Let the OS assign an available port by listening on port 0.
+      server.listen(0, () => {
+        const address = server.address();
+        const socketAssignedPortNumber = typeof address === 'string' ? 0 : (address?.port || 0);
+        this.socketAssignedPort = socketAssignedPortNumber;
+        log.info(`Socket.IO server listening on port ${this.socketAssignedPort}`);
+        resolve(this.socketAssignedPort);
+      });
+
+      // Periodically poll for updated lab data and emit it.
+      setInterval(async () => {
+        try {
+          const labData = await this.clabTreeProviderImported.discoverInspectLabs();
+          if (labData) {
+            io.emit("clab-tree-provider-data", labData);
+          }
+        } catch (error) {
+          log.error(`Error retrieving lab data: ${JSON.stringify(error, null, 2)}`);
+        }
+      }, 5000);
+
+      // Handle Socket.IO connections.
+      io.on("connection", (socket) => {
+        log.info("A client connected to the Socket.IO server.");
+        socket.on("clientMessage", (data) => {
+          log.info(`Received client message: ${JSON.stringify(data, null, 2)}`);
+          socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
+        });
+        socket.on("disconnect", () => {
+          log.info("A client disconnected from the Socket.IO server.");
+        });
       });
     });
   }
-
-
-
 }

@@ -62,6 +62,15 @@ export interface EnvironmentJson {
     deploymentType: string;
     topoviewerVersion: string;
     topviewerPresetLayout: string
-    envCyTopoJsonBytes: CytoTopology;
-    envCyTopoJsonBytesAddon: CytoTopology;
+    envCyTopoJsonBytes: CytoTopology | '';
+    envCyTopoJsonBytesAddon: CytoTopology | '';
 }
+
+
+// /**
+//  * Represents CytoPosition for preset layout
+//  */
+// export interface CytoViewportSaveItem {
+//     data: { id: string };
+//     position: { x: number; y: number };
+//   }
