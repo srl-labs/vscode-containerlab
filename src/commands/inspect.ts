@@ -8,7 +8,10 @@ const execAsync = promisify(exec);
 
 export async function inspectAllLabs(context: vscode.ExtensionContext) {
   try {
-    const { stdout } = await execAsync("sudo containerlab inspect --all --format json");
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
+
+    const { stdout } = await execAsync(`sudo containerlab inspect -r ${runtime} --all --format json`);
     const parsed = JSON.parse(stdout);
 
     showInspectWebview(parsed.containers || [], "Inspect - All Labs", context.extensionUri);
@@ -24,7 +27,10 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
   }
 
   try {
-    const { stdout } = await execAsync(`sudo containerlab inspect -t "${node.labPath.absolute}" --format json`);
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
+
+    const { stdout } = await execAsync(`sudo containerlab inspect -r ${runtime} -t "${node.labPath.absolute}" --format json`);
     const parsed = JSON.parse(stdout);
 
     showInspectWebview(parsed.containers || [], `Inspect - ${node.label}`, context.extensionUri);
