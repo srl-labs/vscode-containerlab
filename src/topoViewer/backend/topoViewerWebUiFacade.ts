@@ -140,6 +140,8 @@ export class TopoViewer {
       // Create folder and write JSON files for the webview.
       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
+      log.info(`allowedHostname: ${this.adaptor.allowedhostname}`);
+
       // Start the Socket.IO server and wait for the port to be assigned.
       const socketPort = await this.startSocketIOServer();
 
@@ -327,8 +329,8 @@ export class TopoViewer {
                 if (!id) continue;  // Skip if invalid
                 const nodeMap = doc.getIn(['topology', 'nodes', id], true);
                 if (YAML.isMap(nodeMap)) {
-                  nodeMap.setIn(['labels', 'graphPosX'], x.toString());
-                  nodeMap.setIn(['labels', 'graphPosY'], y.toString());
+                  nodeMap.setIn(['labels', 'graph-posX'], x.toString());
+                  nodeMap.setIn(['labels', 'graph-posY'], y.toString());
                 }
               }
 

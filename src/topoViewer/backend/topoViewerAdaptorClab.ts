@@ -226,8 +226,8 @@ export class TopoViewerAdaptorClab {
         if (parsed.topology.nodes) {
             this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
                 .every(([nodeName, nodeObj]) =>                         // aarafat-tag: nodeName isn't actively used in the logic—it’s just there as part of the destructuring. 
-                    !!nodeObj.labels?.['graphPosX'] &&
-                    !!nodeObj.labels?.['graphPosY']
+                    !!nodeObj.labels?.['graph-posX'] &&
+                    !!nodeObj.labels?.['graph-posY']
                 );
         }
         log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
@@ -292,8 +292,8 @@ export class TopoViewerAdaptorClab {
                         topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',  // 'topoViewer-role' take precedence nad router' is default role
                         // sourceEndpoint: '',
                         // targetEndpoint: '',
-                        lat: nodeObj.labels?.['topoViewer-geoCoordinateLat'] ?? '',
-                        lng: nodeObj.labels?.['topoViewer-geoCoordinateLng'] ?? '',
+                        lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
+                        lng: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
                         extraData: {
                             clabServerUsername: 'asad', // Placeholder
                             fqdn: `${nodeName}.${clabName}.io`,
@@ -319,8 +319,8 @@ export class TopoViewerAdaptorClab {
                         },
                     },
                     position: {
-                        x: parseFloat(nodeObj.labels?.['graphPosX'] ?? 0),
-                        y: parseFloat(nodeObj.labels?.['graphPosY'] ?? 0)
+                        x: parseFloat(nodeObj.labels?.['graph-posX'] ?? 0),
+                        y: parseFloat(nodeObj.labels?.['graph-posY'] ?? 0)
                     },
                     removed: false,
                     selected: false,
