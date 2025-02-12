@@ -441,7 +441,7 @@
           "command": "containerlab.node.save",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@4"
-        },       
+        },
         {
           "command": "containerlab.node.attachShell",
           "when": "viewItem == containerlabContainer",
@@ -673,6 +673,16 @@
           ],
           "default": "nokia_modern",
           "description": "Default theme to use when generating DrawIO graphs."
+        },
+        "containerlab.runtime": {
+          "type": "string",
+          "enum": [
+            "docker",
+            "podman",
+            "ignite"
+          ],
+          "default": "docker",
+          "description": "Set container runtime used by containerlab."
         }
       }
     }
@@ -688,6 +698,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@vscode/test-cli": "^0.0.10"
+    "@vscode/test-cli": "^0.0.10",
+    "vscode": "^1.1.37"
   }
 }

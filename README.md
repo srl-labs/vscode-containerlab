@@ -152,6 +152,12 @@ You can customize the following settings under `containerlab.*`:
   Options: `nokia_modern`, `nokia`, `grafana`  
   Default: `nokia_modern`
 
+- **`containerlab.runtime`** (string)  
+  Container runtime used by containerlab.  
+  Options: `docker`, `podman`, `ignite`  
+  Default: `docker`
+
+
 ---
 
 ## Monitor Deployment Progress
