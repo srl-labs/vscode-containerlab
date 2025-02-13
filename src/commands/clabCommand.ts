@@ -6,9 +6,10 @@ import { ClabLabTreeNode } from "../clabTreeDataProvider";
  * A helper class to build a 'containerlab' command (with optional sudo, etc.)
  * and run it either in the Output channel or in a Terminal.
  */
-export class ClabCommand extends cmd.Command  {
+export class ClabCommand extends cmd.Command {
     private node?: ClabLabTreeNode;
     private action: string;
+    private runtime: string;
 
     constructor(
         action: string,
@@ -25,6 +26,10 @@ export class ClabCommand extends cmd.Command  {
         };
         super(options);
 
+        // Read the runtime from configuration.
+        const config = vscode.workspace.getConfiguration("containerlab");
+        this.runtime = config.get<string>("runtime", "docker");
+
         this.action = action;
         this.node = node instanceof ClabLabTreeNode ? node : undefined;
     }
@@ -37,27 +42,27 @@ export class ClabCommand extends cmd.Command  {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 vscode.window.showErrorMessage(
-                  'No lab node or topology file selected'
+                    'No lab node or topology file selected'
                 );
                 return;
             }
             labPath = editor.document.uri.fsPath;
         }
         else {
-            labPath = this.node.labPath.absolute 
+            labPath = this.node.labPath.absolute
         }
 
         if (!labPath) {
             vscode.window.showErrorMessage(
-              `No labPath found for command "${this.action}".`
+                `No labPath found for command "${this.action}".`
             );
             return;
         }
 
         // Build the command
         const cmdArgs = flags
-            ? [this.action, ...flags, "-t", labPath]
-            : [this.action, "-t", labPath];
+            ? [this.action, "-r", this.runtime, ...flags, "-t", labPath]
+            : [this.action, "-r", this.runtime, "-t", labPath];
 
         // Return the promise from .execute() so we can await
         return this.execute(cmdArgs);

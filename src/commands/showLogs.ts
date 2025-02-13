@@ -15,9 +15,11 @@ export function showLogs(node: ClabContainerTreeNode) {
         vscode.window.showErrorMessage('No containerID for logs.');
         return;
     }
-    
+
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
     execCommandInTerminal(
-      `${getSudo()}docker logs -f ${containerId}`,
-      `Logs - ${containerLabel}`
+        `${getSudo()}${runtime} logs -f ${containerId}`,
+        `Logs - ${containerLabel}`
     );
 }
