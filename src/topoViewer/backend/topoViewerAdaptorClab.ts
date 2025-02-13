@@ -5,7 +5,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import * as yaml from 'js-yaml';
 import { log } from './logger';
-import  * as YAML from 'yaml'; // github.com/eemeli/yaml
+import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
 import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
 
@@ -82,9 +82,9 @@ export class TopoViewerAdaptorClab {
 
 
     public currentClabTopo: ClabTopology | undefined;
-    public currentClabDoc: YAML.Document.Parsed | undefined; 
+    public currentClabDoc: YAML.Document.Parsed | undefined;
     public currentIsPresetLayout: boolean = false;
-    public currentClabName: string  | undefined;
+    public currentClabName: string | undefined;
     public allowedhostname: string | undefined;
 
 
@@ -127,7 +127,7 @@ export class TopoViewerAdaptorClab {
 
             const parsed = yaml.load(yamlContent) as ClabTopology;
             this.currentClabTopo = parsed
-            this.currentClabDoc  = YAML.parseDocument(yamlContent); // <-- store the raw Document
+            this.currentClabDoc = YAML.parseDocument(yamlContent); // <-- store the raw Document
 
 
             var clabName = parsed.name
@@ -592,11 +592,12 @@ export class TopoViewerAdaptorClab {
         // Assuming containerData.interfaces is an array of ClabInterfaceTreeNode instances,
         // use the find method to locate the interface with the matching name.
         const foundInterface = foundContainerData.interfaces.find(
-            (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
+            // (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
+            (intf: ClabInterfaceTreeNode) => intf.label === interfaceName // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
         );
 
         if (foundInterface) {
-            log.info(`Found interface: ${foundInterface.name}`);
+            log.info(`Found interface: ${foundInterface.label}`);
             log.debug(`Output of foundInterfaceData ${JSON.stringify(foundInterface, null, "\t")}`);
             return foundInterface;
         } else {
