@@ -1,0 +1,3673 @@
+=== ./package.json ===
+{
+  "name": "vscode-containerlab",
+  "publisher": "srl-labs",
+  "displayName": "Containerlab",
+  "icon": "resources/containerlab.png",
+  "description": "Manages containerlab topologies in VS Code",
+  "version": "0.6.2",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srl-labs/vscode-containerlab"
+  },
+  "extensionPack": [
+    "hediet.vscode-drawio",
+    "redhat.vscode-yaml"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "containerlab",
+    "clab",
+    "docker",
+    "container",
+    "containers"
+  ],
+  "license": "Apache-2.0",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "containerlabViewContainer",
+          "title": "Containerlab",
+          "icon": "resources/containerlab.svg"
+        }
+      ]
+    },
+    "views": {
+      "containerlabViewContainer": [
+        {
+          "id": "containerlabExplorer",
+          "name": "Containerlab Explorer"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "containerlab.refresh",
+        "title": "Refresh Containerlab Explorer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "containerlab.lab.openFile",
+        "title": "Edit Lab topology",
+        "icon": "$(pencil)"
+      },
+      {
+        "command": "containerlab.lab.copyPath",
+        "title": "Copy Lab file path",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "containerlab.lab.deploy",
+        "title": "Deploy",
+        "icon": "$(play)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.deploy.cleanup",
+        "title": "Deploy (cleanup)",
+        "icon": "$(play)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.deploy.specificFile",
+        "title": "Deploy lab file",
+        "icon": "$(plus)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.redeploy",
+        "title": "Redeploy",
+        "icon": "$(refresh)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.redeploy.cleanup",
+        "title": "Redeploy (cleanup)",
+        "icon": "$(refresh)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.destroy",
+        "title": "Destroy",
+        "icon": "$(trash)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.destroy.cleanup",
+        "title": "Destroy (cleanup)",
+        "icon": "$(trash)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.inspectAll",
+        "title": "Inspect (All Labs)",
+        "category": "Containerlab",
+        "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.inspectOneLab",
+        "title": "Inspect Lab",
+        "category": "Containerlab",
+        "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.lab.graph",
+        "title": "Graph Lab (Web)",
+        "icon": "$(graph-line)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio",
+        "title": "Graph Lab (draw.io)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.interactive",
+        "title": "Graph Lab (draw.io, Interactive)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.topoViewer",
+        "title": "Graph Lab (TopoViewer)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.addToWorkspace",
+        "title": "Add Lab to Workspace",
+        "category": "Containerlab",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "containerlab.lab.openFolderInNewWindow",
+        "title": "Open Folder in New Window",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "containerlab.node.start",
+        "title": "Start node"
+      },
+      {
+        "command": "containerlab.node.stop",
+        "title": "Stop node"
+      },
+      {
+        "command": "containerlab.node.attachShell",
+        "title": "Attach shell",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "containerlab.node.ssh",
+        "title": "Connect to SSH",
+        "icon": "$(remote)"
+      },
+      {
+        "command": "containerlab.node.showLogs",
+        "title": "View logs",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "containerlab.node.manageImpairments",
+        "title": "Link Impairments",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.node.copyIPv4Address",
+        "title": "IPv4 Address"
+      },
+      {
+        "command": "containerlab.node.copyIPv6Address",
+        "title": "IPv6 Address"
+      },
+      {
+        "command": "containerlab.node.copyName",
+        "title": "Name"
+      },
+      {
+        "command": "containerlab.node.copyID",
+        "title": "Container ID"
+      },
+      {
+        "command": "containerlab.node.copyKind",
+        "title": "Kind"
+      },
+      {
+        "command": "containerlab.node.copyImage",
+        "title": "Image"
+      },
+      {
+        "command": "containerlab.interface.capture",
+        "title": "Capture interface",
+        "icon": {
+          "light": "resources/icons/wireshark_light.svg",
+          "dark": "resources/icons/wireshark_dark.svg"
+        }
+      },
+      {
+        "command": "containerlab.interface.captureWithEdgeshark",
+        "title": "Capture interface (Edgeshark)"
+      },
+      {
+        "command": "containerlab.interface.setDelay",
+        "title": "Set delay"
+      },
+      {
+        "command": "containerlab.interface.setJitter",
+        "title": "Set jitter"
+      },
+      {
+        "command": "containerlab.interface.setLoss",
+        "title": "Set packet loss"
+      },
+      {
+        "command": "containerlab.interface.setRate",
+        "title": "Set rate-limit"
+      },
+      {
+        "command": "containerlab.interface.setCorruption",
+        "title": "Set corruption"
+      },
+      {
+        "command": "containerlab.interface.copyMACAddress",
+        "title": "Copy MAC address"
+      },
+      {
+        "command": "containerlab.install.edgeshark",
+        "title": "Install Edgeshark",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.uninstall.edgeshark",
+        "title": "Uninstall Edgeshark",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.set.sessionHostname",
+        "title": "Configure hostname for this session",
+        "category": "Containerlab"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "containerlab.submenu.node.copy",
+        "label": "Copy"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "containerlab.refresh",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "containerlab.lab.deploy.specificFile",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.inspectAll",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.graph",
+          "group": "navigation@0"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy",
+          "group": "navigation@1"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy.cleanup",
+          "group": "navigation@2"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy",
+          "group": "navigation@3"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy.cleanup",
+          "group": "navigation@4"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy",
+          "group": "navigation@5"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy.cleanup",
+          "group": "navigation@6"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "containerlab.refresh",
+          "when": "view == containerlabExplorer",
+          "group": "refresh@99"
+        },
+        {
+          "command": "containerlab.lab.openFile",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "inline@0"
+        },
+        {
+          "command": "containerlab.lab.copyPath",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "inline@1"
+        },
+        {
+          "command": "containerlab.lab.openFile",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@0"
+        },
+        {
+          "command": "containerlab.lab.copyPath",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@1"
+        },
+        {
+          "command": "containerlab.lab.addToWorkspace",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "labFile@2"
+        },
+        {
+          "command": "containerlab.lab.openFolderInNewWindow",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "labFile@3"
+        },
+        {
+          "command": "containerlab.lab.deploy",
+          "when": "viewItem == containerlabLabUndeployed",
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.lab.deploy.cleanup",
+          "when": "viewItem == containerlabLabUndeployed",
+          "group": "navigation@2"
+        },
+        {
+          "command": "containerlab.lab.destroy",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "containerlab.lab.destroy.cleanup",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@4"
+        },
+        {
+          "command": "containerlab.lab.redeploy",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@5"
+        },
+        {
+          "command": "containerlab.lab.redeploy.cleanup",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@6"
+        },
+        {
+          "command": "containerlab.inspectOneLab",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "navigation@7"
+        },
+        {
+          "command": "containerlab.lab.graph",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "graph@0"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "graph@1"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "graph@2"
+        },
+        {
+          "command": "containerlab.lab.graph.topoViewer",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "graph@3"
+        },
+        {
+          "command": "containerlab.node.start",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@2"
+        },
+        {
+          "command": "containerlab.node.stop",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@3"
+        },
+        {
+          "command": "containerlab.node.attachShell",
+          "when": "viewItem == containerlabContainer",
+          "group": "inline@1"
+        },
+        {
+          "command": "containerlab.node.ssh",
+          "when": "viewItem == containerlabContainer",
+          "group": "inline@2"
+        },
+        {
+          "command": "containerlab.node.showLogs",
+          "when": "viewItem == containerlabContainer",
+          "group": "inline@0"
+        },
+        {
+          "command": "containerlab.node.attachShell",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@1"
+        },
+        {
+          "command": "containerlab.node.ssh",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@0"
+        },
+        {
+          "command": "containerlab.node.showLogs",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@4"
+        },
+        {
+          "command": "containerlab.node.manageImpairments",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@5"
+        },
+        {
+          "submenu": "containerlab.submenu.node.copy",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeCopySubmenu"
+        },
+        {
+          "command": "containerlab.interface.capture",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "inline@1"
+        },
+        {
+          "command": "containerlab.interface.capture",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "captureContextMenu@1"
+        },
+        {
+          "command": "containerlab.interface.captureWithEdgeshark",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "captureContextMenu@1"
+        },
+        {
+          "command": "containerlab.interface.setDelay",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "impairmentContextMenu@0"
+        },
+        {
+          "command": "containerlab.interface.setJitter",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "impairmentContextMenu@1"
+        },
+        {
+          "command": "containerlab.interface.setLoss",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "impairmentContextMenu@2"
+        },
+        {
+          "command": "containerlab.interface.setRate",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "impairmentContextMenu@3"
+        },
+        {
+          "command": "containerlab.interface.setCorruption",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "impairmentContextMenu@4"
+        },
+        {
+          "command": "containerlab.interface.copyMACAddress",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "copyContextMenu@0"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "containerlab.lab.deploy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.deploy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.redeploy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.redeploy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.destroy",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.destroy.cleanup",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
+        },
+        {
+          "command": "containerlab.install.edgeshark",
+          "when": "true"
+        },
+        {
+          "command": "containerlab.uninstall.edgeshark",
+          "when": "true"
+        }
+      ],
+      "containerlab.submenu.node.copy": [
+        {
+          "command": "containerlab.node.copyName",
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.node.copyID",
+          "group": "navigation@2"
+        },
+        {
+          "command": "containerlab.node.copyIPv4Address",
+          "group": "navigation@3"
+        },
+        {
+          "command": "containerlab.node.copyIPv6Address",
+          "group": "navigation@4"
+        },
+        {
+          "command": "containerlab.node.copyKind",
+          "group": "navigation@5"
+        },
+        {
+          "command": "containerlab.node.copyImage",
+          "group": "navigation@6"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d",
+        "command": "containerlab.lab.deploy"
+      },
+      {
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "command": "containerlab.lab.redeploy"
+      },
+      {
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "command": "containerlab.lab.destroy"
+      },
+      {
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g",
+        "command": "containerlab.lab.graph"
+      }
+    ],
+    "configuration": {
+      "title": "Containerlab",
+      "properties": {
+        "containerlab.defaultSshUser": {
+          "type": "string",
+          "default": "admin",
+          "description": "Default SSH user to use when connecting to containerlab nodes."
+        },
+        "containerlab.sudoEnabledByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to prepend 'sudo' to all containerlab commands by default."
+        },
+        "containerlab.refreshInterval": {
+          "type": "number",
+          "default": 10000,
+          "description": "Refresh interval (in milliseconds) for the Containerlab Explorer."
+        },
+        "containerlab.node.execCommandMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
+        },
+        "containerlab.wsl.wiresharkPath": {
+          "type": "string",
+          "default": "/mnt/c/Program Files/Wireshark/wireshark.exe",
+          "markdownDescription": "The path to the wireshark executable on windows from inside WSL. The default path is `/mnt/c/Program Files/Wireshark/wireshark.exe`."
+        },
+        "containerlab.remote.hostname": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The hostname to use for connections to/from this host. Can be either DNS resolvable hostname, or an IPv4/6 address. Used for packet capture.\n\n**Note:** A configured hostname for *this session of VS Code* takes precedence. (Command palette: **Containerlab: Configure session hostname**)"
+        },
+        "containerlab.remote.packetflixPort": {
+          "type": "number",
+          "default": 5001,
+          "description": "Port to use for the packetflix endpoint used for packet capture."
+        },
+        "containerlab.drawioDefaultTheme": {
+          "type": "string",
+          "enum": [
+            "nokia_modern",
+            "nokia",
+            "grafana"
+          ],
+          "default": "nokia_modern",
+          "description": "Default theme to use when generating DrawIO graphs."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p ."
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.70.0",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@vscode/test-cli": "^0.0.10"
+  }
+}
+=== ./src/commands/addToWorkspace.ts ===
+import * as vscode from "vscode";
+import * as path from "path";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+
+export async function addLabFolderToWorkspace(node: ClabLabTreeNode) {
+  if (!node.labPath.absolute) {
+    return new Error("No lab path found for this lab")
+  }
+
+  // Get the folder that contains the .clab.yaml
+  const folderPath = path.dirname(node.labPath.absolute);
+
+  // Add it to the current workspace
+  const existingCount = vscode.workspace.workspaceFolders
+    ? vscode.workspace.workspaceFolders.length
+    : 0;
+
+  vscode.workspace.updateWorkspaceFolders(
+    existingCount,
+    null,
+    {
+      uri: vscode.Uri.file(folderPath),
+      name: node.label // or any other display name
+    }
+  );
+
+  vscode.window.showInformationMessage(
+    `Added "${node.name}" to your workspace.`
+  );
+}
+
+=== ./src/commands/attachShell.ts ===
+import * as vscode from "vscode";
+import * as utils from "../utils"
+import { execCommandInTerminal } from "./command";
+import { execCmdMapping } from "../extension";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+
+export function attachShell(node: ClabContainerTreeNode) {
+    if (!node) {
+        return new Error("No container node selected.")
+    }
+
+    const containerId = node.cID;
+    const containerKind = node.kind;
+    const containerLabel = node.label || "Container";
+
+    if (!containerId) { return vscode.window.showErrorMessage('No containerId for shell attach.');}
+    if (!containerKind) { return vscode.window.showErrorMessage('No container kind for shell attach.');}
+
+    let execCmd = execCmdMapping[containerKind] || "sh";
+
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const userExecMapping = config.get("node.execCommandMapping") as { [key: string]: string };
+
+    execCmd = userExecMapping[containerKind] || execCmd;
+
+    execCommandInTerminal(
+      `${utils.getSudo()}docker exec -it ${containerId} ${execCmd}`,
+      `Shell - ${containerLabel}`
+    );
+}
+=== ./src/commands/dockerCommand.ts ===
+import * as cmd from './command';
+
+/**
+ * A helper class to build a 'docker' command (with optional sudo, etc.)
+ * and run it either in the Output channel or in a Terminal.
+ */
+export class DockerCommand extends cmd.Command  {
+    private action: string;
+
+    constructor(action: string, spinnerMsg?: cmd.SpinnerMsg) {4;
+        const options: cmd.CmdOptions = {
+            command: "docker",
+            useSpinner: true,
+            spinnerMsg: spinnerMsg,       
+        };
+        super(options);
+
+        this.action = action;
+    }
+
+    public run(containerID: string) {
+
+        // Build the command
+        const cmd = [this.action, containerID];
+
+        this.execute(cmd);
+    }
+}
+=== ./src/commands/inspect.ts ===
+import * as vscode from "vscode";
+import { promisify } from "util";
+import { exec } from "child_process";
+import { getInspectHtml } from "../webview/inspectHtml";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+
+const execAsync = promisify(exec);
+
+export async function inspectAllLabs(context: vscode.ExtensionContext) {
+  try {
+    const { stdout } = await execAsync("sudo containerlab inspect --all --format json");
+    const parsed = JSON.parse(stdout);
+
+    showInspectWebview(parsed.containers || [], "Inspect - All Labs", context.extensionUri);
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Failed to run containerlab inspect --all: ${err.message}`);
+  }
+}
+
+export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+  if (!node.labPath.absolute) {
+    vscode.window.showErrorMessage("No lab path found for this lab.");
+    return;
+  }
+
+  try {
+    const { stdout } = await execAsync(`sudo containerlab inspect -t "${node.labPath.absolute}" --format json`);
+    const parsed = JSON.parse(stdout);
+
+    showInspectWebview(parsed.containers || [], `Inspect - ${node.label}`, context.extensionUri);
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Failed to inspect lab: ${err.message}`);
+  }
+}
+
+function showInspectWebview(containers: any[], title: string, extensionUri: vscode.Uri) {
+  const panel = vscode.window.createWebviewPanel(
+    "clabInspect",
+    title,
+    vscode.ViewColumn.One,
+    { enableScripts: true }
+  );
+
+  // Pass `panel.webview` + `extensionUri` to your HTML builder
+  panel.webview.html = getInspectHtml(panel.webview, containers, extensionUri);
+}
+
+=== ./src/commands/openFolderInNewWindow.ts ===
+import * as vscode from "vscode";
+import * as path from "path";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+
+export async function openFolderInNewWindow(node: ClabLabTreeNode) {
+    if (!node.labPath.absolute) {
+        vscode.window.showErrorMessage("No lab path found for this lab.");
+        return;
+    }
+
+    // The folder that contains the .clab.(yml|yaml)
+    const folderPath = path.dirname(node.labPath.absolute);
+    const uri = vscode.Uri.file(folderPath);
+
+    // Force opening that folder in a brand-new window
+    await vscode.commands.executeCommand("vscode.openFolder", uri, {
+        forceNewWindow: true
+    });
+}
+=== ./src/commands/openLabFile.ts ===
+import * as vscode from "vscode";
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+
+export function openLabFile(node: ClabLabTreeNode) {
+    if (!node) {
+      vscode.window.showErrorMessage('No lab node selected.');
+      return;
+    }
+
+    const labPath = node.labPath.absolute;
+    if (!labPath) {
+      vscode.window.showErrorMessage('No labPath found.');
+      return;
+    }
+    
+    const uri = vscode.Uri.file(labPath);
+    vscode.commands.executeCommand('vscode.open', uri);
+}
+=== ./src/commands/showLogs.ts ===
+import * as vscode from "vscode";
+import { execCommandInTerminal } from "./command";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { getSudo } from "../utils";
+
+export function showLogs(node: ClabContainerTreeNode) {
+    if (!node) {
+        vscode.window.showErrorMessage('No container node selected.');
+        return;
+    }
+    const containerId = node.cID;
+    const containerLabel = node.label || "Container";
+
+    if (!containerId) {
+        vscode.window.showErrorMessage('No containerID for logs.');
+        return;
+    }
+    
+    execCommandInTerminal(
+      `${getSudo()}docker logs -f ${containerId}`,
+      `Logs - ${containerLabel}`
+    );
+}
+=== ./src/commands/ssh.ts ===
+import * as vscode from "vscode";
+import { execCommandInTerminal } from "./command";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+
+export function sshToNode(node: ClabContainerTreeNode) {
+    if (!node) {
+        vscode.window.showErrorMessage('No container node selected.');
+        return;
+    }
+
+    let sshTarget: string | undefined;
+
+    if(node.name) {sshTarget = node.name}
+    else if(node.v6Address) {sshTarget = node.v6Address;}
+    else if(node.v4Address) {sshTarget = node.v4Address}
+    else if(node.cID) {sshTarget = node.cID}
+    else { return vscode.window.showErrorMessage("No target to connect to container"); }
+
+    // Pull the default SSH user from settings
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const sshUser = config.get<string>("defaultSshUser", "admin");
+
+    const containerLabel = node.label || "Container";
+
+    execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${containerLabel}`);
+}
+=== ./src/commands/startNode.ts ===
+import * as vscode from "vscode";
+import { SpinnerMsg } from "./command";
+import { DockerCommand } from "./dockerCommand";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+
+
+export async function startNode(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage("No container node selected.");
+    return;
+  }
+
+  const containerId = node.cID;
+  if (!containerId) {
+    vscode.window.showErrorMessage("No containerId found.");
+    return;
+  }
+
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: `Starting node ${containerId}...`,
+    successMsg: `Node '${containerId}' started successfully`,
+    failMsg: `Could not start node '${containerId}'`
+  };
+
+  const startCmd = new DockerCommand("start", spinnerMessages);
+  startCmd.run(containerId);
+
+}
+=== ./src/commands/stopNode.ts ===
+import * as vscode from "vscode";
+import { SpinnerMsg } from "./command";
+import { DockerCommand } from "./dockerCommand";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+
+
+export async function stopNode(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage("No container node selected.");
+    return;
+  }
+
+  const containerId = node.cID;
+  if (!containerId) {
+    vscode.window.showErrorMessage("No containerId found.");
+    return;
+  }
+
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: `Stopping node ${containerId}...`,
+    successMsg: `Node '${containerId}' stopped successfully`,
+    failMsg: `Could not stop node '${containerId}'`
+  };
+
+  const startCmd = new DockerCommand("stop", spinnerMessages);
+  startCmd.run(containerId);
+}
+=== ./src/commands/clabCommand.ts ===
+import * as vscode from "vscode";
+import * as cmd from './command';
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+
+/**
+ * A helper class to build a 'containerlab' command (with optional sudo, etc.)
+ * and run it either in the Output channel or in a Terminal.
+ */
+export class ClabCommand extends cmd.Command  {
+    private node?: ClabLabTreeNode;
+    private action: string;
+
+    constructor(
+        action: string,
+        node: ClabLabTreeNode,
+        spinnerMsg?: cmd.SpinnerMsg,
+        useTerminal?: boolean,
+        terminalName?: string
+    ) {
+        const options: cmd.CmdOptions = {
+            command: "containerlab",
+            useSpinner: useTerminal ? false : true,
+            spinnerMsg,
+            terminalName,
+        };
+        super(options);
+
+        this.action = action;
+        this.node = node instanceof ClabLabTreeNode ? node : undefined;
+    }
+
+    public async run(flags?: string[]): Promise<void> {
+        // Try node.details -> fallback to active editor
+        let labPath: string;
+        console.log(this.node);
+        if (!this.node) {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage(
+                  'No lab node or topology file selected'
+                );
+                return;
+            }
+            labPath = editor.document.uri.fsPath;
+        }
+        else {
+            labPath = this.node.labPath.absolute 
+        }
+
+        if (!labPath) {
+            vscode.window.showErrorMessage(
+              `No labPath found for command "${this.action}".`
+            );
+            return;
+        }
+
+        // Build the command
+        const cmdArgs = flags
+            ? [this.action, ...flags, "-t", labPath]
+            : [this.action, "-t", labPath];
+
+        // Return the promise from .execute() so we can await
+        return this.execute(cmdArgs);
+    }
+}
+=== ./src/commands/edgeshark.ts ===
+import { execCommandInTerminal } from "./command";
+
+export async function installEdgeshark() {
+    execCommandInTerminal("curl -sL \
+https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml \
+| DOCKER_DEFAULT_PLATFORM= docker compose -f - up -d", "Edgeshark Installation");
+}
+
+export async function uninstallEdgeshark() {
+    execCommandInTerminal("curl -sL \
+https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml \
+| DOCKER_DEFAULT_PLATFORM= docker compose -f - down", "Edgeshark Uninstallation");
+}
+=== ./src/commands/graph.ts ===
+import * as vscode from "vscode";
+import * as fs from "fs";
+import { ClabCommand } from "./clabCommand";
+import { SpinnerMsg } from "./command";
+import { ClabLabTreeNode, ClabTreeDataProvider } from "../clabTreeDataProvider";
+
+import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
+
+
+/**
+ * Graph Lab (Web) => run in Terminal (no spinner).
+ */
+export function graphNextUI(node: ClabLabTreeNode) {
+  const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - Web");
+
+  graphCmd.run();
+}
+
+/**
+ * Graph Lab (draw.io) => use spinner, then open .drawio file in hediet.vscode-drawio
+ */
+export async function graphDrawIO(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Generating DrawIO graph...",
+    successMsg: "DrawIO Graph Completed!",
+    failMsg: "Graph (draw.io) Failed",
+  };
+
+  const graphCmd = new ClabCommand("graph", node, spinnerMessages);
+
+  // Figure out the .drawio filename
+  if (!node.labPath.absolute) {
+    vscode.window.showErrorMessage("No lab path found. Cannot open .drawio file.");
+    return;
+  }
+  const labPath = node.labPath.absolute;
+  const drawioPath = labPath.replace(/\.(ya?ml)$/i, ".drawio");
+  const drawioUri = vscode.Uri.file(drawioPath);
+
+  // Read the default theme from configuration.
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const drawioTheme = config.get<string>("drawioDefaultTheme", "nokia_modern");
+
+  // Wait for containerlab to finish generating the .drawio file,
+  // passing the theme argument.
+  await graphCmd.run(["--drawio", "--drawio-args", `--theme ${drawioTheme}`]).then(() => {
+    // Verify the file exists.
+    if (!fs.existsSync(drawioPath)) {
+      return vscode.window.showErrorMessage(
+        `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+      );
+    }
+    vscode.commands.executeCommand("vscode.open", drawioUri);
+});
+}
+
+/**
+ * Graph Lab (draw.io, Interactive) => always run in Terminal
+ */
+export function graphDrawIOInteractive(node: ClabLabTreeNode) {
+  const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - drawio Interactive");
+
+  graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
+}
+
+
+/**
+ * Graph Lab (TopoViewer) 
+ */
+export async function grapTopoviewer(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+
+  const provider = new ClabTreeDataProvider(context);
+  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
+  const viewer = new TopoViewer(context);
+
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const labPath = node.labPath.absolute;
+
+  // const labPath = node.details?.labPath;
+  const labLabel = node.label || "Lab";
+  if (!labPath) {
+    vscode.window.showErrorMessage('No labPath to redeploy.');
+    return;
+  }
+
+  // const yamlFilePath = path.join(__dirname, '..', 'clab-demo.yaml');
+  try {
+    await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
+  } catch (err) {
+    vscode.window.showErrorMessage(`Failed to open Topology Viewer: ${err}`);
+    console.error(`[ERROR] Failed to open topology viewer`, err);
+  }
+
+}
+=== ./src/commands/capture.ts ===
+import * as vscode from "vscode"
+import { execSync } from "child_process";
+import { runWithSudo } from "../helpers/containerlabUtils";
+import { outputChannel } from "../extension";
+import * as utils from "../utils";
+import { ClabInterfaceTreeNode } from "../clabTreeDataProvider";
+
+let sessionHostname: string = "";
+
+/**
+ * Begin packet capture on an interface.
+ *   - If remoteName = ssh-remote, we always do edgeshark/packetflix.
+ *   - If on OrbStack (Mac), we also do edgeshark because netns approach doesn't work well on macOS.
+ *   - Otherwise, we spawn tcpdump + Wireshark locally (or in WSL).
+ */
+export async function captureInterface(node: ClabInterfaceTreeNode) {
+    if (!node) {
+        return vscode.window.showErrorMessage("No interface to capture found.");
+    }
+
+    outputChannel.appendLine(`[DEBUG] captureInterface() called for node=${node.parentName}, interface=${node.name}`);
+    outputChannel.appendLine(`[DEBUG] remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`);
+
+    // SSH-remote => use edgeshark/packetflix
+    if (vscode.env.remoteName === "ssh-remote") {
+        outputChannel.appendLine("[DEBUG] In SSH-Remote environment → captureInterfaceWithPacketflix()");
+        return captureInterfaceWithPacketflix(node);
+    }
+
+    // On OrbStack macOS, netns is typically not workable => edgeshark
+    if (utils.isOrbstack()) {
+        outputChannel.appendLine("[DEBUG] Detected OrbStack environment → captureInterfaceWithPacketflix()");
+        return captureInterfaceWithPacketflix(node);
+    }
+
+    // Otherwise, we do local capture with tcpdump|Wireshark
+    const captureCmd = `ip netns exec "${node.parentName}" tcpdump -U -nni "${node.name}" -w -`;
+    const wifiCmd = await resolveWiresharkCommand();
+    const finalCmd = `${captureCmd} | ${wifiCmd} -k -i -`;
+
+    outputChannel.appendLine(`[DEBUG] Attempting local capture with command:\n    ${finalCmd}`);
+
+    vscode.window.showInformationMessage(`Starting capture on ${node.parentName}/${node.name}... check "Containerlab" output for logs.`);
+
+    // We can run tcpdump with sudo. Then pipe stdout -> Wireshark.
+    // We'll wrap that in a small script. Alternatively, we can do something like:
+    // runWithSudo('ip netns exec ...', 'Packet capture', ...) but we also must
+    // handle the pipe. So let's do a naive approach:
+    runCaptureWithPipe(finalCmd, node.parentName, node.name);
+}
+
+/**
+ * Spawn Wireshark or Wireshark.exe in WSL.
+ */
+async function resolveWiresharkCommand(): Promise<string> {
+    // Default: 'wireshark'
+    // If in WSL, try user config "containerlab.wsl.wiresharkPath"
+    if (vscode.env.remoteName === "wsl") {
+        const cfgWiresharkPath = vscode.workspace
+            .getConfiguration("containerlab")
+            .get<string>("wsl.wiresharkPath");
+        if (cfgWiresharkPath) {
+            return `"${cfgWiresharkPath}"`;
+        }
+        // fallback
+        return `"/mnt/c/Program Files/Wireshark/wireshark.exe"`;
+    }
+    return "wireshark";
+}
+
+/**
+ * Actually run the pipe (tcpdump -> Wireshark) using the same approach as execCommandInOutput,
+ * but with extra logging and runWithSudo for the tcpdump part if needed.
+ *
+ * The easiest approach is to write a small shell snippet to a temp script and run it with sudo.
+ */
+function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string) {
+    // We'll do a short script like:
+    //    bash -c '<pipeCmd>'
+    // Because runWithSudo() can handle prompting for password if needed.
+    const scriptToRun = `bash -c '${pipeCmd}'`;
+
+    outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(script=${scriptToRun})`);
+
+    runWithSudo(
+        scriptToRun,
+        `TCPDump capture on ${parentName}/${ifName}`,
+        outputChannel,
+        "generic"
+    )
+    .then(() => {
+        outputChannel.appendLine("[DEBUG] Capture process completed or exited");
+    })
+    .catch(err => {
+        vscode.window.showErrorMessage(
+          `Failed to start tcpdump capture:\n${err.message || err}`
+        );
+        outputChannel.appendLine(
+          `[ERROR] runCaptureWithPipe() => ${err.message || err}`
+        );
+    });
+}
+
+/**
+ * Start capture on an interface using edgeshark/packetflix. 
+ * This method builds a 'packetflix:' URI that calls edgeshark.
+ */
+export async function captureInterfaceWithPacketflix(node: ClabInterfaceTreeNode) {
+    if (!node) {
+        return vscode.window.showErrorMessage("No interface to capture found.");
+    }
+    outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
+
+    // Make sure we have a valid hostname to connect back to
+    const hostname = await getHostname();
+    if (!hostname) {
+        return vscode.window.showErrorMessage(
+          "No known hostname/IP address to connect to for packet capture."
+        );
+    }
+
+    // If it's an IPv6 literal, bracket it. e.g. ::1 => [::1]
+    const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
+
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
+
+    const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
+    outputChannel.appendLine(`[DEBUG] edgeshark/packetflix URI:\n    ${packetflixUri}`);
+
+    vscode.window.showInformationMessage(
+      `Starting edgeshark capture on ${node.parentName}/${node.name}...`
+    );
+    vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
+}
+
+/**
+ * If a user calls the "Set session hostname" command, we store it in-memory here,
+ * overriding the auto-detected or config-based hostname until the user closes VS Code.
+ */
+export async function setSessionHostname() {
+    const opts: vscode.InputBoxOptions = {
+        title: `Configure hostname for Containerlab remote (this session only)`,
+        placeHolder: `IPv4, IPv6 or DNS resolvable hostname of the system where containerlab is running`,
+        prompt: "This will persist for only this session of VS Code.",
+        validateInput: (input: string) => {
+            if (input.trim().length === 0) {
+                return "Input should not be empty";
+            }
+        }
+    };
+
+    const val = await vscode.window.showInputBox(opts);
+    if (!val) {
+        return false;
+    }
+    sessionHostname = val.trim();
+    vscode.window.showInformationMessage(`Session hostname is set to: ${sessionHostname}`);
+    return true;
+}
+
+/**
+ * Determine the hostname (or IP) to use for packet capture based on environment:
+ *
+ * - If a global setting "containerlab.remote.hostname" is set, that value is used.
+ * - If in a WSL environment (or SSH in WSL), always return "localhost".
+ * - If in an Orbstack environment (regardless of SSH), always use the IPv4 address from "ip -4 add show eth0".
+ * - If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.
+ * - Otherwise, if a session hostname was set, use it.
+ * - Otherwise, default to "localhost".
+ */
+export async function getHostname(): Promise<string> {
+  // 1. Global configuration takes highest priority.
+  const cfgHost = vscode.workspace
+    .getConfiguration("containerlab")
+    .get<string>("remote.hostname", "");
+  if (cfgHost) {
+    outputChannel.appendLine(
+      `[DEBUG] Using containerlab.remote.hostname from settings: ${cfgHost}`
+    );
+    return cfgHost;
+  }
+
+  // 2. If in a WSL environment, always use "localhost".
+  if (vscode.env.remoteName === "wsl") {
+    outputChannel.appendLine("[DEBUG] Detected WSL environment; using 'localhost'");
+    return "localhost";
+  }
+
+  // 3. If in an Orbstack environment (whether SSH or not), always use IPv4.
+  if (utils.isOrbstack()) {
+    try {
+      const ipOutput = execSync("ip -4 add show eth0", {
+        stdio: ["pipe", "pipe", "ignore"],
+      }).toString();
+      const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
+      if (ipMatch && ipMatch[1]) {
+        outputChannel.appendLine(
+          `[DEBUG] (Orbstack) Using IPv4 from 'ip -4 add show eth0': ${ipMatch[1]}`
+        );
+        return ipMatch[1];
+      } else {
+        outputChannel.appendLine(
+          "[DEBUG] (Orbstack) Could not extract IPv4 address from 'ip -4 add show eth0'"
+        );
+      }
+    } catch (e: any) {
+      outputChannel.appendLine(
+        `[DEBUG] (Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`
+      );
+    }
+  }
+
+  // 4. If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.
+  if (vscode.env.remoteName === "ssh-remote") {
+    const sshConnection = process.env.SSH_CONNECTION;
+    outputChannel.appendLine(`[DEBUG] (SSH non-Orb) SSH_CONNECTION: ${sshConnection}`);
+    if (sshConnection) {
+      const parts = sshConnection.split(" ");
+      if (parts.length >= 3) {
+        const remoteIp = parts[2];
+        outputChannel.appendLine(
+          `[DEBUG] (SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`
+        );
+        return remoteIp;
+      }
+    }
+  }
+
+  // 5. If a session hostname was manually set, use it.
+  if (sessionHostname) {
+    outputChannel.appendLine(`[DEBUG] Using sessionHostname: ${sessionHostname}`);
+    return sessionHostname;
+  }
+
+  // 6. Fallback: default to "localhost".
+  outputChannel.appendLine("[DEBUG] No suitable hostname found; defaulting to 'localhost'");
+  return "localhost";
+}
+
+/**
+ * Let user persist a hostname in global user settings if possible.
+ * If that fails (e.g. permission issues), fallback to sessionHostname.
+ */
+async function configureHostname(): Promise<boolean> {
+    outputChannel.appendLine("[DEBUG] configureHostname() called.");
+
+    const opts: vscode.InputBoxOptions = {
+        title: "Configure remote hostname (global user setting)",
+        placeHolder: "IPv4, IPv6 or DNS name of the remote machine running containerlab",
+        validateInput: (input: string) => {
+            if (input.trim().length === 0) {
+                return "Input should not be empty";
+            }
+        }
+    };
+
+    const input = await vscode.window.showInputBox(opts);
+    if (!input) {
+        return false;
+    }
+
+    const val = input.trim();
+    try {
+        outputChannel.appendLine(`[DEBUG] Attempting to store containerlab.remote.hostname=${val}`);
+        await vscode.workspace
+            .getConfiguration("containerlab")
+            .update("remote.hostname", val, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(
+          `Global setting "containerlab.remote.hostname" updated to "${val}".`
+        );
+        // Also store in session so it’s immediate
+        sessionHostname = val;
+        return true;
+    } catch (err: any) {
+        outputChannel.appendLine(`[ERROR] Could not persist global setting => ${err?.message || err}`);
+        sessionHostname = val;
+        vscode.window.showWarningMessage(
+            `Could not persist global setting. Using sessionHostname="${val}" for now.`
+        );
+    }
+    return true;
+}
+
+=== ./src/commands/copy.ts ===
+import * as vscode from "vscode";
+import * as utils from "../utils";
+import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../clabTreeDataProvider";
+
+export function copyLabPath(node: ClabLabTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const labPath = node.labPath.absolute;
+  if (!labPath) {
+    vscode.window.showErrorMessage('No labPath found.');
+    return;
+  }
+
+  const labName = node.labPath.absolute || utils.getRelativeFolderPath(labPath);
+
+  vscode.env.clipboard.writeText(labPath).then(() => {
+    vscode.window.showInformationMessage(`Copied file path of ${labName} to clipboard.`);
+  });
+}
+
+export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const containerName = node.name || "";
+
+  const data = node.IPv4Address;
+  if (!data) {
+    vscode.window.showErrorMessage(`${containerName}: Could not fetch IPv4 address.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${containerName}: Copied IPv4 address to clipboard succesfully.`);
+  });
+}
+
+export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const containerName = node.name || "";
+
+  const data = node.IPv6Address;
+  if (!data) {
+    vscode.window.showErrorMessage(`${containerName}: Could not fetch IPv6 address.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${containerName}: Copied IPv6 address to clipboard succesfully.`);
+  });
+}
+
+export function copyContainerName(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const containerName = node.name || "";
+
+  if (!containerName) {
+    vscode.window.showErrorMessage(`${containerName}: Could not fetch container hostname.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(containerName).then(() => {
+    vscode.window.showInformationMessage(`${containerName}: Copied hostname to clipboard succesfully.`);
+  });
+}
+
+export function copyContainerID(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const containerName = node.name || "";
+
+  const data = node.cID;
+  if (!data) {
+    vscode.window.showErrorMessage(`${containerName}: Could not fetch container ID.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${containerName}: Copied ID to clipboard succesfully.`);
+  });
+}
+
+export function copyContainerKind(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const containerName = node.name || "";
+
+  const data = node.kind;
+  if (!data) {
+    vscode.window.showErrorMessage(`${containerName}: Could not fetch kind.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${containerName}: Copied kind to clipboard succesfully.`);
+  });
+}
+
+export function copyContainerImage(node: ClabContainerTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No lab node selected.');
+    return;
+  }
+
+  const containerName = node.name || "";
+
+  const data = node.image;
+  if (!data) {
+    vscode.window.showErrorMessage(`${containerName}: Could not fetch image.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${containerName}: Copied image to clipboard succesfully.`);
+  });
+}
+
+export function copyMACAddress(node: ClabInterfaceTreeNode) {
+  if (!node) {
+    vscode.window.showErrorMessage('No interface node selected.');
+    return;
+  }
+
+  const intfName = node.name || "";
+
+  const data = node.mac;
+  if (!data) {
+    vscode.window.showErrorMessage(`${intfName}: Could not fetch interface MAC address.`);
+    return;
+  }
+
+
+  vscode.env.clipboard.writeText(data).then(() => {
+    vscode.window.showInformationMessage(`${intfName}: Copied MAC address to clipboard succesfully.`);
+  });
+  
+
+}
+=== ./src/commands/deploy.ts ===
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabCommand } from "./clabCommand";
+import { SpinnerMsg } from "./command";
+import * as vscode from "vscode";
+
+export function deploy(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Deploying Lab... Check the Output window (Containerlab) for detailed progress.",
+    successMsg: "Lab deployed successfully!"
+  };
+  const deployCmd = new ClabCommand("deploy", node, spinnerMessages);
+  deployCmd.run();
+}
+
+export function deployCleanup(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Deploying Lab (cleanup)... Check the Output window (Containerlab) for detailed progress.",
+    successMsg: "Lab deployed (cleanup) successfully!"
+  };
+  const deployCmd = new ClabCommand("deploy", node, spinnerMessages);
+  deployCmd.run(["-c"]);
+}
+
+export function deploySpecificFile() {
+
+  const opts: vscode.OpenDialogOptions = {
+    title: "Select containerlab topology file",
+    filters: {
+      yaml: ["yaml", "yml"]
+    },
+  };
+
+  vscode.window.showOpenDialog(opts).then(uri => {
+    if (!uri || !uri.length) {
+      return;
+    }
+    const picked = uri[0].fsPath;
+    const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {absolute: picked, relative: ""});
+    deploy(tempNode);
+  });
+}
+
+=== ./src/commands/destroy.ts ===
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabCommand } from "./clabCommand";
+import { SpinnerMsg } from "./command";
+
+export function destroy(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Destroying Lab... Check the Output window (Containerlab) for detailed progress.",
+    successMsg: "Lab destroyed successfully!"
+  };
+  const destroyCmd = new ClabCommand("destroy", node, spinnerMessages);
+  destroyCmd.run();
+}
+
+export function destroyCleanup(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Destroying Lab (cleanup)... Check the Output window (Containerlab) for detailed progress.",
+    successMsg: "Lab destroyed (cleanup) successfully!"
+  };
+  const destroyCmd = new ClabCommand("destroy", node, spinnerMessages);
+  destroyCmd.run(["-c"]);
+}
+
+=== ./src/commands/impairments.ts ===
+import * as vscode from "vscode";
+import * as utils from "../utils";
+import { ClabInterfaceTreeNode } from "../clabTreeDataProvider";
+import { execCommandInOutput } from "./command";
+
+/**
+ * Function to get link impairments and generate a WebView.
+ * 
+ * @param node 
+ */
+export async function getImpairments(node: ClabInterfaceTreeNode) {
+
+}
+
+/**
+ * Base function to apply the impairment to an interface.
+ * 
+ * @param node Interface to set the link impairment on
+ * @param impairment The impairment flag (ie. 'jitter', 'loss' etc.)
+ * @param value The value of the impairment (ie. If impairment is jitter, this could be '50ms').
+ */
+async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, value?: string): Promise<any> {
+
+    const impairmentFlag = impairment ? `--${impairment}` : undefined;
+    if(impairment && !value) { return; }
+
+    const cmd = `${utils.getSudo()}containerlab tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`
+    
+    const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`
+
+    vscode.window.showInformationMessage(`Attempting to ${msg}`);
+
+    // Begin the capture.
+    execCommandInOutput(cmd, false,
+        () => {
+            vscode.window.showInformationMessage(`Successfully ${msg}`)
+        },
+
+        (proc: unknown, stderr: string) => {
+            vscode.window.showErrorMessage(`Failed to ${msg}\n\n${stderr}.`)
+        }
+    );
+}
+
+/**
+ * Set delay on a link
+ * https://containerlab.dev/cmd/tools/netem/set/#delay
+ * 
+ * @param node Interface that delay is to be set on.
+ */
+export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
+
+    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+        vscode.window.showErrorMessage("No interface selected to set delay for.")
+        return
+    }
+
+    const opts: vscode.InputBoxOptions = {
+        title: `Set link delay for ${node.name} on ${node.parentName}`,
+        placeHolder: `Link delay with time unit. ie: 50ms, 1s, 30s`,
+        validateInput: (input: string) => {
+            if (input.length === 0) { return "Input should not be empty"; }
+            if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be number and unit of time. Either ms (milliseconds) or s (seconds)" }
+        }
+    }
+
+    const val = await vscode.window.showInputBox(opts);
+
+    setImpairment(node, "delay", val);
+}
+
+/**
+ * Set jitter on a link
+ * https://containerlab.dev/cmd/tools/netem/set/#jitter
+ * 
+ * @param node Interface that jitter is to be set on.
+ */
+export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
+
+    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+        vscode.window.showErrorMessage("No interface selected to set jitter for.")
+        return
+    }
+
+    const opts: vscode.InputBoxOptions = {
+        title: `Set link jitter for ${node.name} on ${node.parentName}`,
+        placeHolder: `Jitter with time unit. ie: 50ms, 1s, 30s`,
+        validateInput: (input: string) => {
+            if (input.length === 0) { return "Input should not be empty"; }
+            if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be number and unit of time. Either ms (milliseconds) or s (seconds)" }
+        }
+    }
+
+    const val = await vscode.window.showInputBox(opts);
+
+    setImpairment(node, "jitter", val);
+}
+
+/**
+ * Set packet loss on a link
+ * https://containerlab.dev/cmd/tools/netem/set/#loss
+ * 
+ * @param node Interface that packet loss is to be set on.
+ */
+export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
+
+    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+        vscode.window.showErrorMessage("No interface selected to set loss for.")
+        return
+    }
+
+    const opts: vscode.InputBoxOptions = {
+        title: `Set packet loss for ${node.name} on ${node.parentName}`,
+        placeHolder: `Packet loss as a percentage. ie 50 is 50% packet loss`,
+        validateInput: (input: string) => {
+            if (input.length === 0) { return "Input should not be empty"; }
+            if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100." }
+        }
+    }
+
+    const val = await vscode.window.showInputBox(opts);
+
+    setImpairment(node, "loss", val);
+}
+
+/**
+ * Set egress rate-limit on a link
+ * https://containerlab.dev/cmd/tools/netem/set/#rate
+ * 
+ * @param node Interface that rate-limiting is to be set on.
+ */
+export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
+
+    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+        vscode.window.showErrorMessage("No interface selected to set a rate-limit for.")
+        return
+    }
+
+    const opts: vscode.InputBoxOptions = {
+        title: `Set egress rate-limit for ${node.name} on ${node.parentName}`,
+        placeHolder: `Rate-limit in kbps. ie 100 is 100kbit/s`,
+        validateInput: (input: string) => {
+            if (input.length === 0) { return "Input should not be empty"; }
+            if (!(input.match("[0-9]+"))) { return "Input should be a number" }
+        }
+    }
+
+    const val = await vscode.window.showInputBox(opts);
+
+    setImpairment(node, "rate", val);
+}
+
+/**
+ * Set corruption on a link
+ * https://containerlab.dev/cmd/tools/netem/set/#corruption
+ * 
+ * @param node Interface that link corruption is to be set on.
+ */
+export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<any> {
+
+    if (!node || !(node instanceof ClabInterfaceTreeNode)) {
+        vscode.window.showErrorMessage("No interface selected to set packet corruption for.")
+        return
+    }
+
+    const opts: vscode.InputBoxOptions = {
+        title: `Set packet corruption for ${node.name} on ${node.parentName}`,
+        placeHolder: `Packet corrpution as a percentage. ie 50 is 50% probability of packet corrpution.`,
+        validateInput: (input: string) => {
+            if (input.length === 0) { return "Input should not be empty"; }
+            if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100." }
+        }
+    }
+
+    const val = await vscode.window.showInputBox(opts);
+
+    setImpairment(node, "corruption", val);
+}
+=== ./src/commands/redeploy.ts ===
+import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabCommand } from "./clabCommand";
+import { SpinnerMsg } from "./command";
+
+export function redeploy(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Redeploying Lab... Check the Output window (Containerlab) for detailed progress.",
+    successMsg: "Lab redeployed successfully!"
+  };
+  const redeployCmd = new ClabCommand("redeploy", node, spinnerMessages);
+  redeployCmd.run();
+}
+
+export function redeployCleanup(node: ClabLabTreeNode) {
+  const spinnerMessages: SpinnerMsg = {
+    progressMsg: "Redeploying Lab (cleanup)... Check the Output window (Containerlab) for detailed progress.",
+    successMsg: "Lab redeployed (cleanup) successfully!"
+  };
+  const redeployCmd = new ClabCommand("redeploy", node, spinnerMessages);
+  redeployCmd.run(["-c"]);
+}
+
+=== ./src/commands/command.ts ===
+import * as vscode from 'vscode';
+import * as utils from '../utils';
+import { exec, spawn } from 'child_process';
+import { outputChannel } from '../extension';
+
+/**
+ * Run a shell command in a named VS Code terminal.
+ * If that terminal already exists, we send a Ctrl+C first.
+ */
+export function execCommandInTerminal(command: string, terminalName: string) {
+    let terminal: vscode.Terminal | undefined;
+    for (const term of vscode.window.terminals) {
+        if (term.name === terminalName) {
+            terminal = term;
+            // Send Ctrl+C & enter to stop any previous command
+            term.sendText("\x03\r");
+            break;
+        }
+    }
+    if (!terminal) {
+        terminal = vscode.window.createTerminal({ name: terminalName });
+    }
+
+    terminal.sendText(command);
+    terminal.show();
+}
+
+/**
+ * Execute a shell command in the extension's Output channel.
+ * We *strip ANSI codes* from both stdout and stderr
+ * We trigger a refresh after it finishes.
+ * 
+ * @param command Command to execute in output.
+ * @param show Whether to focus the output channel or not.
+ * @param stdoutCb Optional extra function to run on stdout data event. The process and cleaned stdout data is passed to the func.
+ * @param stderrCb Optional extra function to run on stderr data. The process and Cleaned stderr data is passed to the func
+ */
+export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: Function, stderrCb?: Function) {
+    let proc = exec(command);
+
+    if(show) { outputChannel.show(); }
+
+    proc.stdout?.on('data', (data) => {
+        const cleaned = utils.stripAnsi(data.toString());
+        outputChannel.append(cleaned);
+        if(stdoutCb) { stdoutCb(proc, cleaned); }
+    });
+
+    proc.stderr?.on('data', (data) => {
+        const cleaned = utils.stripAnsi(data.toString());
+        outputChannel.append(cleaned);
+        if(stderrCb) { stderrCb(proc, cleaned); }
+    });
+
+    proc.on('close', (code) => {
+        outputChannel.appendLine(`Exited with code ${code}`);
+        // trigger a refresh after execution
+        vscode.commands.executeCommand('containerlab.refresh');
+    });
+}
+
+export type CmdOptions = {
+    command: string;
+    useSpinner: boolean;
+    terminalName?: string;
+    spinnerMsg?: SpinnerMsg;
+}
+
+export type SpinnerMsg = {
+    progressMsg: string;
+    successMsg: string;
+    failMsg?: string;
+}
+
+/**
+ * A base command class which can be derived to build specific commmand classes (ie. Docker, Clab)
+ */
+export class Command {
+    protected command: string;
+    protected useSpinner: boolean;
+    protected useSudo: boolean;
+    protected spinnerMsg?: SpinnerMsg;
+    protected terminalName?: string;
+
+    constructor(options: CmdOptions) {
+        this.command = options.command;
+        this.useSpinner = options.useSpinner;
+
+        if(this.useSpinner) {
+            if(options.terminalName) {throw new Error("useSpinner is true. terminalName should NOT be defined.");}
+            if(!options.spinnerMsg) {throw new Error("useSpinner is true, but spinnerMsg is undefined.");}
+            this.spinnerMsg = options.spinnerMsg;
+        }
+        else {
+            if(!options.terminalName) {throw new Error("UseSpinner is false. terminalName must be defined.");}
+                this.terminalName = options.terminalName;
+        }
+
+        const config = vscode.workspace.getConfiguration("containerlab");
+        this.useSudo = config.get<boolean>("sudoEnabledByDefault", true);
+    }
+
+    protected execute(args?: string[]): Promise<void> {
+        let cmd: string[] = [];
+
+        if(this.useSudo) {cmd.push("sudo");}
+        cmd.push(this.command);
+        if(args) {cmd.push(...args);}
+
+        outputChannel.appendLine(`[${this.command}] Running: ${cmd.join(" ")}`);
+
+        if(this.useSpinner) {
+            return this.execSpinner(cmd);
+        }
+        else {
+            execCommandInTerminal(cmd.join(" "), this.terminalName!);
+            return Promise.resolve();
+        }
+    }
+
+    private async execSpinner(cmd: string[]) {
+        console.log(cmd.join(" "));
+        try {
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: this.spinnerMsg?.progressMsg,
+                    cancellable: true
+                },
+                async (progress, token) => {
+                    return new Promise<void>((resolve, reject) => {
+                        const child = spawn(cmd[0], cmd.slice(1));
+
+                        // If user clicks Cancel, kill the child process
+                        token.onCancellationRequested(() => {
+                            child.kill();
+                            reject(new Error(`User cancelled the '${this.command.toLowerCase()}' command.`));
+                        });
+
+                        // On stdout, parse lines and update spinner + output channel
+                        child.stdout.on("data", (data: Buffer) => {
+                            const lines = data.toString().split("\n");
+                            for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (trimmed) {
+                                    const cleanLine = utils.stripAnsi(trimmed);
+                                    progress.report({ message: cleanLine });
+                                    outputChannel.appendLine(cleanLine);
+                                }
+                            }
+                        });
+
+                        // stderr lines → output channel only
+                        child.stderr.on("data", (data: Buffer) => {
+                            const lines = data.toString().split("\n");
+                            for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (trimmed) {
+                                    outputChannel.appendLine(`[stderr] ${utils.stripAnsi(trimmed)}`);
+                                }
+                            }
+                        });
+
+                        // When the process completes
+                        child.on("close", (code) => {
+                            if (code === 0) {
+                                resolve();
+                            } else {
+                                reject(new Error(`Process exited with code ${code}`));
+                            }
+                        });
+                    });
+                }
+            );
+
+            // If we get here, the command succeeded
+            vscode.window
+                .showInformationMessage(this.spinnerMsg?.successMsg!, "Show Logs")
+                .then((choice) => {
+                    if (choice === "Show Logs") {
+                        outputChannel.show(true);
+                    }
+                });
+
+            vscode.commands.executeCommand("containerlab.refresh");
+        } catch (err: any) {
+            const command = this.useSudo ? cmd[2] : cmd[1];
+            const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
+            const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
+            // If view logs button was clicked.
+            if(viewOutputBtn === "View logs") { outputChannel.show(); }
+        }
+    }
+}
+=== ./src/commands/index.ts ===
+export * from "./command";
+export * from "./deploy";
+export * from "./destroy";
+export * from "./redeploy";
+export * from "./openLabFile";
+export * from "./startNode";
+export * from "./stopNode";
+export * from "./attachShell";
+export * from "./ssh";
+export * from "./nodeImpairments";
+export * from "./showLogs";
+export * from "./graph";
+export * from "./copy";
+export * from "./addToWorkspace";
+export * from "./openFolderInNewWindow";
+export * from "./inspect";
+export * from "./capture";
+export * from "./impairments";
+export * from "./edgeshark";
+=== ./src/commands/nodeImpairments.ts ===
+import * as vscode from "vscode";
+import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
+import { runWithSudo } from "../helpers/containerlabUtils";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { outputChannel } from "../extension";
+
+const execAsync = promisify(exec);
+
+/**
+ * Strips ANSI escape sequences from a string.
+ */
+function stripAnsi(input: string): string {
+  return input
+    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1B[@-Z\\-_]/g, "");
+}
+
+/**
+ * If the value equals "N/A" (case insensitive) then return "0".
+ */
+function cleanValue(value: string): string {
+  return value.trim().toUpperCase() === "N/A" ? "0" : value.trim();
+}
+
+/**
+ * For percentage values (loss, corruption), remove any trailing "%" sign.
+ */
+function cleanPercentage(value: string): string {
+  const cleaned = cleanValue(value);
+  return cleaned.endsWith("%") ? cleaned.slice(0, -1).trim() : cleaned;
+}
+
+/**
+ * Normalizes an interface name by removing any parenthesized content.
+ * For example, "mgmt0-0 (mgmt0.0)" becomes "mgmt0-0".
+ */
+function normalizeInterfaceName(iface: string): string {
+  return iface.replace(/\s*\(.*\)$/, "").trim();
+}
+
+/**
+ * Parses the output of `containerlab tools netem show` (a text table) and returns
+ * an object mapping each (normalized) interface name to its netem parameters.
+ *
+ * For the "loss" and "corruption" fields the trailing "%" sign is removed so that
+ * the value can be used in an input field of type "number".
+ *
+ * @param output The raw stdout from the netem show command.
+ */
+function parseNetemShowOutput(
+  output: string
+): Record<
+  string,
+  { delay: string; jitter: string; loss: string; rate: string; corruption: string }
+> {
+  const cleanOutput = stripAnsi(output);
+  // Log only an important message if not enough rows are found.
+  const tableRows = cleanOutput
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("│"));
+  if (tableRows.length < 2) {
+    outputChannel.appendLine("[INFO] Netem output has insufficient rows.");
+    return {};
+  }
+
+  // Remove the header row (first row)
+  const dataRows = tableRows.slice(1);
+  const result: Record<
+    string,
+    { delay: string; jitter: string; loss: string; rate: string; corruption: string }
+  > = {};
+
+  dataRows.forEach((row) => {
+    const cols = row.split("│").map((s) => s.trim()).filter((s) => s.length > 0);
+    if (cols.length !== 6) {
+      // Skip rows that don't have exactly 6 columns.
+      return;
+    }
+    const rawIface = cols[0];
+    const iface = normalizeInterfaceName(rawIface);
+    const parsed = {
+      delay: cleanValue(cols[1]),
+      jitter: cleanValue(cols[2]),
+      loss: cleanPercentage(cols[3]),
+      rate: cleanValue(cols[4]),
+      corruption: cleanPercentage(cols[5]),
+    };
+
+    // If a duplicate key occurs, merge non-empty values.
+    if (result[iface]) {
+      for (const field of (["delay", "jitter", "loss", "rate", "corruption"] as Array<keyof typeof parsed>)) {
+        if (!result[iface][field] && parsed[field]) {
+          result[iface][field] = parsed[field];
+        }
+      }
+    } else {
+      result[iface] = parsed;
+    }
+  });
+  return result;
+}
+
+/**
+ * Manage link impairments for all interfaces of a node.
+ * Includes a refresh button to re-read the netem settings.
+ */
+export async function manageNodeImpairments(
+  node: ClabContainerTreeNode,
+  context: vscode.ExtensionContext
+) {
+  const allIfs = node.interfaces;
+
+  // Function to re-read and update netem settings.
+  async function refreshNetemSettings() {
+    const showCmd = `containerlab tools netem show -n ${node.name}`;
+    let netemMap: Record<string, any> = {};
+    try {
+      const { stdout } = await execAsync(showCmd);
+      netemMap = parseNetemShowOutput(stdout);
+      outputChannel.appendLine("[INFO] Netem settings refreshed.");
+    } catch (err: any) {
+      vscode.window.showWarningMessage(
+        `Failed to retrieve netem settings: ${err.message}`
+      );
+      outputChannel.appendLine(`[INFO] Error executing "${showCmd}".`);
+    }
+    // Ensure every interface is represented; default to "0" if missing.
+    allIfs.forEach((ifNode) => {
+      const norm = normalizeInterfaceName(ifNode.name);
+      if (!netemMap[norm]) {
+        netemMap[norm] = { delay: "0", jitter: "0", loss: "0", rate: "0", corruption: "0" };
+        outputChannel.appendLine(`[INFO] Defaulted values for ${norm}.`);
+      }
+    });
+    return netemMap;
+  }
+
+  const netemMap = await refreshNetemSettings();
+
+  const panel = vscode.window.createWebviewPanel(
+    "clabNodeImpairments",
+    `Link Impairments: ${node.label}`,
+    vscode.ViewColumn.One,
+    { enableScripts: true }
+  );
+
+  panel.webview.html = getNodeImpairmentsHtml(
+    panel.webview,
+    node.name,
+    netemMap,
+    context.extensionUri
+  );
+
+  panel.webview.onDidReceiveMessage(async (msg) => {
+    switch (msg.command) {
+      case "apply": {
+        const netemData = msg.data as Record<string, any>;
+        const ops: Promise<any>[] = [];
+
+        for (const [intfName, fields] of Object.entries(netemData)) {
+          const netemArgs: string[] = [];
+          if (fields.delay) netemArgs.push(`--delay ${fields.delay}`);
+          if (fields.jitter) netemArgs.push(`--jitter ${fields.jitter}`);
+          if (fields.loss) netemArgs.push(`--loss ${fields.loss}`);
+          if (fields.rate) netemArgs.push(`--rate ${fields.rate}`);
+          if (fields.corruption) netemArgs.push(`--corruption ${fields.corruption}`);
+
+          if (netemArgs.length > 0) {
+            const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")}`;
+            ops.push(
+              runWithSudo(
+                cmd,
+                `Applying netem on ${node.name}/${intfName}`,
+                vscode.window.createOutputChannel("Netem")
+              )
+            );
+          }
+        }
+
+        if (ops.length === 0) {
+          vscode.window.showInformationMessage("No parameters specified; nothing applied.");
+          // Even if nothing was applied, refresh the webview.
+          const updated = await refreshNetemSettings();
+          panel.webview.postMessage({ command: "updateFields", data: updated });
+          return;
+        }
+
+        try {
+          await Promise.all(ops);
+          vscode.window.showInformationMessage(`Applied netem settings for ${node.label}`);
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`Failed to apply settings: ${err.message}`);
+        }
+        // Refresh the settings in the webview after apply.
+        const updated = await refreshNetemSettings();
+        panel.webview.postMessage({ command: "updateFields", data: updated });
+        break;
+      }
+      case "clearAll": {
+        const ops: Promise<any>[] = [];
+        for (const ifNode of allIfs) {
+          const norm = normalizeInterfaceName(ifNode.name);
+          const cmd = `containerlab tools netem set -n ${node.name} -i ${norm}`;
+          ops.push(
+            runWithSudo(
+              cmd,
+              `Clearing netem on ${node.name}/${norm}`,
+              vscode.window.createOutputChannel("Netem")
+            )
+          );
+        }
+        try {
+          await Promise.all(ops);
+          vscode.window.showInformationMessage(`Cleared netem settings for ${node.name}`);
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`Failed to clear settings: ${err.message}`);
+        }
+        // Refresh the settings in the webview after clear all.
+        const updated = await refreshNetemSettings();
+        panel.webview.postMessage({ command: "updateFields", data: updated });
+        break;
+      }
+      case "refresh": {
+        const updated = await refreshNetemSettings();
+        panel.webview.postMessage({ command: "updateFields", data: updated });
+        vscode.window.showInformationMessage("Netem settings refreshed.");
+        break;
+      }
+    }
+  });
+}
+
+=== ./src/webview/inspectHtml.ts ===
+import * as vscode from "vscode";
+import * as path from "path";
+
+/**
+ * Build the HTML string for the webview, grouping containers by lab_name or labPath.
+ */
+function stateToClass(state: string): string {
+  switch (state) {
+    case "running":
+      return "state-running";
+    case "exited":
+    case "stopped":
+      return "state-exited";
+    default:
+      return "state-other";
+  }
+}
+
+export function getInspectHtml(
+  webview: vscode.Webview,
+  containers: any[],
+  extensionUri: vscode.Uri
+): string {
+  const styleUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "src", "webview", "inspect.css")
+  );
+
+  // Group containers ...
+  const grouped: Record<string, any[]> = {};
+  containers.forEach((c) => {
+    const key = c.lab_name || c.labPath || "unknown-lab";
+    if (!grouped[key]) {
+      grouped[key] = [];
+    }
+    grouped[key].push(c);
+  });
+
+  // Build tables
+  let allTables = "";
+  for (const [labName, arr] of Object.entries(grouped)) {
+    let rows = arr.map((ctr) => {
+      const cls = stateToClass(ctr.state);
+      return `
+        <tr>
+          <td>${ctr.name}</td>
+          <td>${ctr.kind}</td>
+          <td>${ctr.image}</td>
+          <td class="${cls}">${ctr.state}</td>
+          <td>${ctr.ipv4_address}</td>
+          <td>${ctr.ipv6_address}</td>
+        </tr>
+      `;
+    }).join("");
+
+    allTables += `
+      <h2>${labName}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Kind</th>
+            <th>Image</th>
+            <th>State</th>
+            <th>IPv4</th>
+            <th>IPv6</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
+
+  return /* html */ `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <link rel="stylesheet" href="${styleUri}">
+      <title>Containerlab Inspect</title>
+    </head>
+    <body>
+      ${allTables || "<p>No containers found.</p>"}
+    </body>
+    </html>
+  `;
+}
+
+=== ./src/webview/nodeImpairmentsHtml.ts ===
+import * as vscode from "vscode";
+
+export function getNodeImpairmentsHtml(
+  webview: vscode.Webview,
+  nodeName: string,
+  interfacesData: Record<string, any>,
+  extensionUri: vscode.Uri
+): string {
+  const styleUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "src", "webview", "nodeImpairments.css")
+  );
+
+  let rowsHtml = "";
+  for (const [intfName, netemState] of Object.entries(interfacesData)) {
+    rowsHtml += `
+    <tr>
+      <td data-label="Interface">${intfName}</td>
+      <td data-label="Delay">
+        <div class="input-wrapper">
+          <input type="text" data-intf="${intfName}" data-field="delay" value="${netemState.delay || ""}" placeholder="50"/>
+          <span class="unit">ms/s/m</span>
+        </div>
+      </td>
+      <td data-label="Jitter">
+        <div class="input-wrapper">
+          <input type="text" data-intf="${intfName}" data-field="jitter" value="${netemState.jitter || ""}" placeholder="10"/>
+          <span class="unit">ms/s/m</span>
+        </div>
+      </td>
+      <td data-label="Loss">
+        <div class="input-wrapper">
+          <input type="number" data-intf="${intfName}" data-field="loss" value="${netemState.loss || ""}" placeholder="0"/>
+          <span class="unit">%</span>
+        </div>
+      </td>
+      <td data-label="Rate">
+        <div class="input-wrapper">
+          <input type="number" data-intf="${intfName}" data-field="rate" value="${netemState.rate || ""}" placeholder="1000"/>
+          <span class="unit">kb/s</span>
+        </div>
+      </td>
+      <td data-label="Corruption">
+        <div class="input-wrapper">
+          <input type="number" data-intf="${intfName}" data-field="corruption" value="${netemState.corruption || ""}" placeholder="0"/>
+          <span class="unit">%</span>
+        </div>
+      </td>
+    </tr>
+    `;
+  }
+
+  return /* html */ `
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <link rel="stylesheet" href="${styleUri}">
+      <title>Manage Link Impairments for ${nodeName}</title>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>Link Impairments: ${nodeName}</h2>
+          <div class="buttons">
+            <button id="applyBtn">Apply</button>
+            <button id="clearAllBtn" class="secondary">Clear All</button>
+            <button id="refreshBtn" class="secondary">Refresh</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Interface</th>
+              <th>Delay</th>
+              <th>Jitter</th>
+              <th>Loss</th>
+              <th>Rate-limit</th>
+              <th>Corruption</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+
+      <script>
+        const vscode = acquireVsCodeApi();
+
+        function gatherNetemData() {
+          const inputs = document.querySelectorAll("input[data-intf]");
+          const results = {};
+          inputs.forEach(input => {
+            const intfName = input.getAttribute("data-intf");
+            const field = input.getAttribute("data-field");
+            const value = input.value.trim();
+            if (!results[intfName]) {
+              results[intfName] = {};
+            }
+            results[intfName][field] = value;
+          });
+          return results;
+        }
+
+        document.getElementById("applyBtn").addEventListener("click", () => {
+          const data = gatherNetemData();
+          vscode.postMessage({ command: "apply", data });
+        });
+
+        document.getElementById("clearAllBtn").addEventListener("click", () => {
+          vscode.postMessage({ command: "clearAll" });
+        });
+
+        document.getElementById("refreshBtn").addEventListener("click", () => {
+          vscode.postMessage({ command: "refresh" });
+        });
+
+        window.addEventListener("message", event => {
+          const message = event.data;
+          if (message.command === "updateFields") {
+            const newData = message.data;
+            const inputs = document.querySelectorAll("input[data-intf]");
+            inputs.forEach(input => {
+              const intfName = input.getAttribute("data-intf");
+              const field = input.getAttribute("data-field");
+              if (newData[intfName] && newData[intfName][field] !== undefined) {
+                input.value = newData[intfName][field];
+              }
+            });
+          }
+        });
+      </script>
+    </body>
+  </html>
+  `;
+}
+
+=== ./src/helpers/containerlabUtils.ts ===
+import * as vscode from 'vscode';
+import { promisify } from 'util';
+import { exec } from 'child_process';
+
+const execAsync = promisify(exec);
+
+/**
+ * Log info messages to the output channel.
+ */
+function log(message: string, channel: vscode.OutputChannel) {
+  channel.appendLine(`[INFO] ${message}`);
+}
+
+/**
+ * Runs a command via sudo, checking for passwordless sudo first.
+ * If passwordless sudo isn’t available, it first asks the user if they want
+ * to proceed. Only if the user confirms does it then prompt for a sudo password.
+ */
+export async function runWithSudo(
+  command: string,
+  description: string,
+  outputChannel: vscode.OutputChannel,
+  checkType: 'generic' | 'containerlab' = 'containerlab'
+): Promise<void> {
+  const checkCommand =
+    checkType === 'containerlab'
+      ? "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false"
+      : "sudo -n true";
+
+  let passwordlessAvailable = false;
+  try {
+    await execAsync(checkCommand);
+    passwordlessAvailable = true;
+  } catch (checkErr) {
+    passwordlessAvailable = false;
+  }
+
+  if (passwordlessAvailable) {
+    try {
+      log(`Passwordless sudo available. Trying with -E first: ${command}`, outputChannel);
+      try {
+        const { stdout, stderr } = await execAsync(`sudo -E ${command}`);
+        if (stdout) {
+          outputChannel.appendLine(stdout);
+        }
+        if (stderr) {
+          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+        }
+        return;
+      } catch (eErr: any) {
+        // Check if the error is about -E not being allowed
+        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
+          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
+          const { stdout, stderr } = await execAsync(`sudo ${command}`);
+          if (stdout) {
+            outputChannel.appendLine(stdout);
+          }
+          if (stderr) {
+            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+          }
+          return;
+        }
+        throw eErr;
+      }
+    } catch (commandErr) {
+      throw commandErr;
+    }
+  } else {
+    log(`Passwordless sudo not available for "${description}".`, outputChannel);
+    const shouldProceed = await vscode.window.showWarningMessage(
+      `The command "${description}" requires you to enter your sudo password. Do you want to proceed?`,
+      { modal: true },
+      'Yes'
+    );
+    if (shouldProceed !== 'Yes') {
+      throw new Error(`User declined to provide sudo password for: ${description}`);
+    }
+
+    const password = await vscode.window.showInputBox({
+      prompt: `Enter your sudo password for: ${description}`,
+      password: true,
+      ignoreFocusOut: true
+    });
+    if (!password) {
+      throw new Error(`User cancelled sudo password prompt for: ${description}`);
+    }
+    
+    log(`Executing command with sudo and provided password: ${command}`, outputChannel);
+    try {
+      // Try with -E first
+      try {
+        const cmd = `echo '${password}' | sudo -S -E sh -c '${command}'`;
+        const { stdout, stderr } = await execAsync(cmd);
+        if (stdout) {
+          outputChannel.appendLine(stdout);
+        }
+        if (stderr) {
+          outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+        }
+      } catch (eErr: any) {
+        // Check if the error is about -E not being allowed
+        if (eErr.stderr?.includes('sorry, you are not allowed to preserve the environment')) {
+          log(`sudo -E not allowed, falling back to regular sudo`, outputChannel);
+          const cmd = `echo '${password}' | sudo -S sh -c '${command}'`;
+          const { stdout, stderr } = await execAsync(cmd);
+          if (stdout) {
+            outputChannel.appendLine(stdout);
+          }
+          if (stderr) {
+            outputChannel.appendLine(`[${description} stderr]: ${stderr}`);
+          }
+        } else {
+          throw eErr;
+        }
+      }
+    } catch (err) {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Installs containerlab using the official installer script, via sudo.
+ * Uses the generic sudo check.
+ */
+export async function installContainerlab(outputChannel: vscode.OutputChannel): Promise<void> {
+  log(`Installing containerlab...`, outputChannel);
+  const installerCmd = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
+  await runWithSudo(installerCmd, 'Installing containerlab', outputChannel, 'generic');
+}
+
+/**
+ * Adds the current user to the "clab_admins" group if needed.
+ */
+export async function addUserToClabAdminsIfNeeded(outputChannel: vscode.OutputChannel): Promise<void> {
+  const currentUser = process.env.USER || '';
+  if (!currentUser) {
+    log('Cannot detect current user from environment; skipping clab_admins check.', outputChannel);
+    return;
+  }
+
+  try {
+    log(`Checking if user "${currentUser}" is in group clab_admins.`, outputChannel);
+    const { stdout } = await execAsync('id -nG');
+    if (stdout.includes('clab_admins')) {
+      log(`User "${currentUser}" is already in clab_admins.`, outputChannel);
+      return;
+    }
+
+    const joinAction = 'Add me to clab_admins';
+    const skipAction = 'No';
+    const choice = await vscode.window.showWarningMessage(
+      `Your user "${currentUser}" is not in the "clab_admins" group.\n` +
+      `Joining this group helps run containerlab commands without sudo.\n\n` +
+      `Add yourself to that group now?`,
+      joinAction,
+      skipAction
+    );
+    if (choice !== joinAction) {
+      log(`User declined to join clab_admins.`, outputChannel);
+      return;
+    }
+
+    log(`Adding user "${currentUser}" to clab_admins.`, outputChannel);
+    await runWithSudo(`usermod -aG clab_admins ${currentUser}`, `Add ${currentUser} to clab_admins`, outputChannel, 'generic');
+
+    vscode.window.showInformationMessage(
+      `Added "${currentUser}" to clab_admins. You must log out and back in for this to take effect.`
+    );
+  } catch (err) {
+    log(`Error checking or adding user to clab_admins group: ${err}`, outputChannel);
+  }
+}
+
+/**
+ * Ensures containerlab is installed by checking if the command is available.
+ * We simply run "which containerlab" and verify that its output is non-empty.
+ */
+export async function ensureClabInstalled(
+  outputChannel: vscode.OutputChannel
+): Promise<boolean> {
+  try {
+    log(`Verifying containerlab installation by running "which containerlab".`, outputChannel);
+    const { stdout } = await execAsync('which containerlab');
+    if (stdout && stdout.trim().length > 0) {
+      log(`containerlab is already installed.`, outputChannel);
+      return true;
+    }
+    throw new Error('containerlab not found.');
+  } catch (err) {
+    log(`containerlab is not installed. Prompting user for installation.`, outputChannel);
+    const installAction = 'Install containerlab';
+    const cancelAction = 'No';
+    const chosen = await vscode.window.showWarningMessage(
+      'Containerlab is not installed. Would you like to install it now?',
+      installAction,
+      cancelAction
+    );
+    if (chosen !== installAction) {
+      log('User declined containerlab installation.', outputChannel);
+      return false;
+    }
+
+    try {
+      await installContainerlab(outputChannel);
+      // Verify the installation again.
+      const { stdout } = await execAsync('which containerlab');
+      if (stdout && stdout.trim().length > 0) {
+        vscode.window.showInformationMessage('Containerlab installed successfully!');
+        log(`containerlab installed successfully.`, outputChannel);
+        await addUserToClabAdminsIfNeeded(outputChannel);
+        return true;
+      } else {
+        throw new Error('containerlab installation failed; command not found after installation.');
+      }
+    } catch (installErr: any) {
+      vscode.window.showErrorMessage(`Failed to install containerlab:\n${installErr.message}`);
+      log(`Failed to install containerlab: ${installErr}`, outputChannel);
+      return false;
+    }
+  }
+}
+
+/**
+ * Checks if containerlab is up to date, and if not, prompts the user to update it.
+ * If the version check command fails or its output is unrecognized,
+ * an error is shown stating that the version cannot be detected.
+ */
+export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputChannel): Promise<void> {
+  try {
+    log('Running "containerlab version check".', outputChannel);
+    const { stdout, stderr } = await execAsync('containerlab version check');
+
+    if (stdout) {
+      outputChannel.appendLine(stdout);
+    }
+    if (stderr) {
+      outputChannel.appendLine(`[version check stderr]: ${stderr}`);
+    }
+
+    const versionOutput = stdout.trim();
+    if (!versionOutput) {
+      throw new Error('No output received from version check command.');
+    }
+
+    // Check for different version patterns
+    if (versionOutput.includes('Version check timed out')) {
+      // This is a newer version but couldn't check for updates
+      log('Version check timed out. Skipping update check.', outputChannel);
+      return;
+    }
+
+    if (versionOutput.includes('You are on the latest version')) {
+      // This is a newer version and it's up to date
+      log('Containerlab is on the latest version.', outputChannel);
+      return;
+    }
+
+    if (versionOutput.includes('version:')) {
+      // This is an older version that just prints version info
+      // Extract version number for logging
+      const versionMatch = versionOutput.match(/version:\s*([\d.]+)/);
+      const version = versionMatch ? versionMatch[1] : 'unknown';
+
+      log(`Detected older containerlab version ${version}. Prompting user for update.`, outputChannel);
+      const updateAction = 'Update containerlab';
+      const skipAction = 'Skip';
+      const userChoice = await vscode.window.showWarningMessage(
+        'An update may be available for containerlab. Would you like to check for updates?',
+        updateAction,
+        skipAction
+      );
+
+      if (userChoice === updateAction) {
+        try {
+          log('User chose to update containerlab. Executing upgrade.', outputChannel);
+          await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'containerlab');
+          vscode.window.showInformationMessage('Containerlab updated successfully!');
+          log('Containerlab updated successfully.', outputChannel);
+        } catch (upgradeErr: any) {
+          vscode.window.showErrorMessage(`Failed to update containerlab:\n${upgradeErr.message}`);
+          log(`Failed to update containerlab: ${upgradeErr}`, outputChannel);
+        }
+      }
+    } else {
+      throw new Error(`Unrecognized output from version check: "${versionOutput}"`);
+    }
+  } catch (err: any) {
+    log(`containerlab version check failed: ${err.message}`, outputChannel);
+    vscode.window.showErrorMessage('Unable to detect containerlab version. Please check your installation.');
+  }
+}
+
+=== ./src/utils.ts ===
+import * as vscode from "vscode";
+import * as path from 'path';
+import * as fs from "fs";
+import * as os from "os";
+import { execSync } from "child_process";
+
+export function stripAnsi(input: string): string {
+    return input
+        // remove ANSI escape sequences
+        .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
+        .replace(/\x1B[@-Z\\-_]/g, "");
+}
+
+export function stripFileName(p: string): string {
+    return p.substring(0, p.lastIndexOf("/"));
+}
+
+export function getRelativeFolderPath(targetPath: string): string {
+    const workspacePath = vscode.workspace.workspaceFolders
+        ? vscode.workspace.workspaceFolders[0].uri.path
+        : "";
+    return path.relative(workspacePath, targetPath);
+}
+
+export function getRelLabFolderPath(labPath: string): string {
+    return stripFileName(getRelativeFolderPath(labPath));
+}
+
+/**
+ * Normalize a lab path by:
+ *   1) Handling empty input
+ *   2) Normalizing slashes
+ *   3) Expanding ~ if present
+ *   4) Handling relative paths
+ *   5) Using realpathSync if exists
+ */
+export function normalizeLabPath(labPath: string, singleFolderBase?: string): string {
+    if (!labPath) {
+      return labPath;
+    }
+    labPath = path.normalize(labPath);
+
+    if (labPath.startsWith('~')) {
+      const homedir = os.homedir();
+      const sub = labPath.replace(/^~[\/\\]?/, '');
+      labPath = path.normalize(path.join(homedir, sub));
+    }
+
+    let candidatePaths: string[] = [];
+    if (!path.isAbsolute(labPath)) {
+      if (singleFolderBase) {
+        candidatePaths.push(path.resolve(singleFolderBase, labPath));
+      }
+      candidatePaths.push(path.resolve(process.cwd(), labPath));
+    } else {
+      candidatePaths.push(labPath);
+    }
+
+    for (const candidate of candidatePaths) {
+      if (fs.existsSync(candidate)) {
+        try {
+          return fs.realpathSync(candidate);
+        } catch {
+          return candidate;
+        }
+      }
+    }
+    return candidatePaths[0];
+}
+
+export function titleCase(str: string) {
+    return str[0].toLocaleUpperCase() + str.slice(1);
+}
+
+/**
+ * If sudo is enabled in config, return 'sudo ', else ''.
+ */
+export function getSudo() {
+    const sudo = vscode.workspace.getConfiguration("containerlab")
+        .get<boolean>("sudoEnabledByDefault", false)
+        ? "sudo "
+        : "";
+    return sudo;
+}
+
+/**
+ * Detect OrbStack by checking the kernel version from `uname -r` for "orbstack".
+ * (No longer relying on `/.orbstack` existence.)
+ */
+export function isOrbstack(): boolean {
+  try {
+    const kernel = execSync("uname -r")
+      .toString()
+      .trim()
+      .toLowerCase();
+    // If "orbstack" is in the kernel, assume OrbStack environment
+    return kernel.includes("orbstack");
+  } catch {
+    return false;
+  }
+}
+
+=== ./src/clabTreeDataProvider.ts ===
+import * as vscode from "vscode"
+import * as utils from "./utils"
+import { promisify } from "util";
+import { exec, execSync } from "child_process";
+import path = require("path");
+
+const execAsync = promisify(exec);
+
+// Enum to store types of container state icons.
+enum CtrStateIcons {
+  RUNNING = "icons/running.svg",
+  STOPPED = "icons/stopped.svg",
+  PARTIAL = "icons/partial.svg",
+  UNDEPLOYED = "icons/undeployed.svg"
+}
+
+// Enum to store interface state icons.
+enum IntfStateIcons {
+  UP = "icons/ethernet-port-green.svg",
+  DOWN = "icons/ethernet-port-red.svg",
+  LIGHT = "icons/ethernet-port-light.svg",
+  DARK = "icons/ethernet-port-dark.svg",
+}
+
+/**
+ * A tree node for labs
+ */
+export class ClabLabTreeNode extends vscode.TreeItem {
+  constructor(
+    public readonly label: string,
+    collapsibleState: vscode.TreeItemCollapsibleState,
+    public readonly labPath: LabPath,
+    public readonly name?: string,
+    public readonly owner?: string,
+    public readonly containers?: ClabContainerTreeNode[],
+    contextValue?: string,
+  ) {
+    super(label, collapsibleState);
+    this.contextValue = contextValue;
+  }
+}
+
+/**
+ * Interface which stores relative and absolute lab path.
+ */
+export interface LabPath {
+  absolute: string,
+  relative: string
+}
+
+/**
+ * Tree node for containers (children of ClabLabTreeNode)
+ */
+export class ClabContainerTreeNode extends vscode.TreeItem {
+  constructor(
+    label: string,
+    collapsibleState: vscode.TreeItemCollapsibleState,
+    public readonly name: string,
+    public readonly cID: string,
+    public readonly state: string,
+    public readonly kind: string,
+    public readonly image: string,
+    public readonly interfaces: ClabInterfaceTreeNode[],
+    public readonly v4Address?: string,
+    public readonly v6Address?: string,
+    contextValue?: string,
+  ) {
+    super(label, collapsibleState);
+    this.contextValue = contextValue;
+  }
+
+  // Get the IPv4 address without CIDR mask
+  public get IPv4Address() {
+    if (!(this.v4Address === "N/A")) {
+      return this.v4Address?.split('/')[0];
+    } else {
+      return "";
+    }
+  }
+
+  // Get the IPv6 address without CIDR mask
+  public get IPv6Address() {
+    if (!(this.v6Address === "N/A")) {
+      return this.v6Address?.split('/')[0];
+    } else {
+      return "";
+    }
+  }
+}
+
+/**
+ * Interface which stores fields we expect from
+ * clab inspect data (in JSON format).
+ */
+interface ClabJSON {
+  container_id: string,
+  image: string,
+  ipv4_address: string,
+  ipv6_address: string,
+  kind: string,
+  lab_name: string,
+  labPath: string,
+  name: string,
+  owner: string,
+  state: string,
+}
+
+/**
+ * Interface corresponding to fields in the
+ *  the JSON output of 'clab ins interfaces'
+ */
+interface ClabInsIntfJSON {
+  name: string,
+  interfaces: [
+    {
+      name: string,
+      type: string,
+      state: string,
+      alias: string,
+      mac: string,
+      mtu: number,
+      ifindex: number,
+    }
+  ]
+}
+
+/**
+ * Tree node to store information about a container interface.
+ */
+export class ClabInterfaceTreeNode extends vscode.TreeItem {
+  constructor(
+    label: string,
+    collapsibleState: vscode.TreeItemCollapsibleState,
+    public readonly parentName: string, // name of the parent container/node
+    public readonly cID: string,        // parent container ID
+    public readonly name: string,       // the interface name itself
+    public readonly type: string,       // the interface type (veth, dummy, etc.)
+    public readonly alias: string,      // the interface name alias (ie ge-0/0/x -> ethX)
+    public readonly mac: string,
+    public readonly mtu: number,  
+    public readonly ifIndex: number,
+    contextValue?: string,
+  ) {
+    super(label, collapsibleState);
+    this.contextValue = contextValue;
+  }
+}
+
+export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTreeNode | ClabContainerTreeNode> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<ClabLabTreeNode | ClabContainerTreeNode | undefined | void>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  constructor(private context: vscode.ExtensionContext) { }
+
+  refresh(): void {
+    this._onDidChangeTreeData.fire();
+  }
+
+  getTreeItem(element: ClabLabTreeNode | ClabContainerTreeNode): vscode.TreeItem {
+    return element;
+  }
+
+  /**
+   * Return tree children. If called with ClabLabTreeNode as args it will return the ClabLabTreeNode's
+   * array of containers.
+   */
+  async getChildren(element?: ClabLabTreeNode | ClabContainerTreeNode | ClabInterfaceTreeNode): Promise<any> {
+    // Discover labs to populate tree
+    if (!element) { return this.discoverLabs(); }
+    // Find containers belonging to a lab
+    if (element instanceof ClabLabTreeNode) { return element.containers; }
+    // For containers or interfaces we do not show further children
+    if (element instanceof ClabContainerTreeNode) {
+      return element.interfaces;
+    }
+
+    return [];
+  }
+
+  private async discoverLabs(): Promise<ClabLabTreeNode[]> {
+    console.log("[discovery]:\tDiscovering labs");
+
+    const localLabs = await this.discoverLocalLabs();     // Undeployed topologies
+    const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
+
+    if (!localLabs && !globalLabs) {
+        console.error("[discovery]:\tNo labs found");
+        return [
+            new ClabLabTreeNode(
+                "No labs found. Add a lab with the '+' icon.",
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: "", relative: "" }
+            )
+        ];
+    } else if (!globalLabs) {
+        console.error("[discovery]:\tNo inspected labs found");
+        return Object.values(localLabs!).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
+    } else if (!localLabs) {
+        console.error("[discovery]:\tNo local labs found");
+        return Object.values(globalLabs).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
+    }
+
+    // Merge them into a single dictionary
+    const labs: Record<string, ClabLabTreeNode> = { ...globalLabs };
+    for (const labPath in localLabs) {
+        if (!labs.hasOwnProperty(labPath)) {
+            labs[labPath] = localLabs[labPath];
+        }
+    }
+
+    // Convert the dict to an array and sort by:
+    // 1. Deployed labs first
+    // 2. Then by absolute path
+    const sortedLabs = Object.values(labs).sort((a, b) => {
+        if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
+            return -1;
+        }
+        if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
+            return 1;
+        }
+        // If same deployment status, sort by path
+        return a.labPath.absolute.localeCompare(b.labPath.absolute);
+    });
+
+    console.log(`[discovery]:\tDiscovered ${sortedLabs.length} labs.`);
+    return sortedLabs;
+  }
+
+  private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    console.log("[discovery]:\tDiscovering local labs...");
+
+    const clabGlobPatterns = ["**/*.clab.yml", "**/*.clab.yaml"];
+    const ignorePattern = "**/node_modules/**";
+
+    let uris: vscode.Uri[] = [];
+    for (const pattern of clabGlobPatterns) {
+      const found = await vscode.workspace.findFiles(pattern, ignorePattern);
+      uris.push(...found);
+    }
+
+    if (!uris.length) {
+      return undefined;
+    }
+
+    const labs: Record<string, ClabLabTreeNode> = {};
+
+    uris.forEach((uri) => {
+      const normPath = utils.normalizeLabPath(uri.fsPath);
+      if (!labs[normPath]) {
+        const labNode = new ClabLabTreeNode(
+          path.basename(uri.fsPath),
+          vscode.TreeItemCollapsibleState.None,
+          {
+            relative: uri.fsPath,
+            absolute: normPath
+          },
+          undefined,
+          undefined,
+          undefined,
+          "containerlabLabUndeployed"
+        );
+
+        labNode.description = utils.getRelLabFolderPath(uri.fsPath);
+
+        const icon = this.getResourceUri(CtrStateIcons.UNDEPLOYED);
+        labNode.iconPath = { light: icon, dark: icon };
+
+        labs[normPath] = labNode;
+      }
+    });
+
+    return labs;
+  }
+
+  public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    console.log("[discovery]:\tDiscovering labs via inspect...");
+
+    const inspectData = await this.getInspectData();
+    if (!inspectData) {
+      return undefined;
+    }
+
+    const labs: Record<string, ClabLabTreeNode> = {};
+
+    // The 'containers' array in the JSON contains data for each deployed container
+    inspectData.containers.forEach((container: ClabJSON) => {
+      const normPath = utils.normalizeLabPath(container.labPath);
+      if (!labs[normPath]) {
+        const label = `${container.lab_name} (${container.owner})`;
+
+        const labPathObj: LabPath = {
+          absolute: normPath,
+          relative: utils.getRelLabFolderPath(container.labPath)
+        };
+
+        // Discover the containers for this lab
+        const discoveredContainers: ClabContainerTreeNode[] =
+          this.discoverContainers(inspectData, container.labPath, labPathObj.absolute);
+
+        // Count how many are running
+        let runningCount = 0;
+        for (const c of discoveredContainers) {
+          if (c.state === "running") {
+            runningCount++;
+          }
+        }
+
+        // Pick icon
+        let icon: string;
+        if (runningCount === 0) {
+          icon = CtrStateIcons.STOPPED;
+        } else if (runningCount === discoveredContainers.length) {
+          icon = CtrStateIcons.RUNNING;
+        } else {
+          icon = CtrStateIcons.PARTIAL;
+        }
+
+        const labNode = new ClabLabTreeNode(
+          label,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          labPathObj,
+          container.lab_name,
+          container.owner,
+          discoveredContainers,
+          "containerlabLabDeployed"
+        );
+        labNode.description = labPathObj.relative;
+
+        const iconUri = this.getResourceUri(icon);
+        labNode.iconPath = { light: iconUri, dark: iconUri };
+
+        labs[normPath] = labNode;
+      }
+    });
+
+    return labs;
+  }
+
+  private async getInspectData(): Promise<any> {
+    const cmd = `${utils.getSudo()}containerlab inspect --all --format json`;
+
+    let clabStdout;
+    let clabStderr;
+    try {
+      const { stdout, stderr } = await execAsync(cmd);
+      clabStdout = stdout;
+      clabStderr = stderr;
+    } catch (err) {
+      throw new Error(`Could not run ${cmd}.\n${err}`);
+    }
+
+    if (clabStderr) {
+      console.error(`[stderr]:\t${clabStderr}`.replace("\n", ""));
+    }
+
+    if (!clabStdout) {
+      return undefined;
+    }
+
+    const inspectObject = JSON.parse(clabStdout);
+    return inspectObject;
+  }
+
+  /**
+   * Discover containers that belong to a specific lab path.
+   */
+  private discoverContainers(inspectData: any, labPath: string, absLabPath: string): ClabContainerTreeNode[] {
+    console.log(`[discovery]:\tDiscovering containers for ${labPath}...`);
+
+    // filter the data to only relevant containers
+    const filtered = inspectData.containers.filter((container: ClabJSON) => container.labPath === labPath);
+
+    let containers: ClabContainerTreeNode[] = [];
+
+    filtered.forEach((container: ClabJSON) => {
+      let tooltip = [
+        `Container: ${container.name}`,
+        `ID: ${container.container_id}`,
+        `State: ${container.state}`,
+        `Kind: ${container.kind}`,
+        `Image: ${container.image}`
+      ];
+
+      if (!(container.ipv4_address === "N/A")) {
+        const v4Addr = container.ipv4_address.split('/')[0];
+        tooltip.push(`IPv4: ${v4Addr}`);
+      }
+
+      if (!(container.ipv6_address === "N/A")) {
+        const v6Addr = container.ipv6_address.split('/')[0];
+        tooltip.push(`IPv6: ${v6Addr}`);
+      }
+
+      let icon: string;
+      if (container.state === "running") { icon = CtrStateIcons.RUNNING; }
+      else { icon = CtrStateIcons.STOPPED; }
+
+      // Gather container interfaces
+      const interfaces: ClabInterfaceTreeNode[] = this.discoverContainerInterfaces(absLabPath, container.name, container.container_id)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const collapsible = interfaces.length > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None;
+
+      const node = new ClabContainerTreeNode(
+        container.name,
+        collapsible,
+        container.name,
+        container.container_id,
+        container.state,
+        container.kind,
+        container.image,
+        interfaces,
+        container.ipv4_address,
+        container.ipv6_address,
+        "containerlabContainer"
+      );
+
+      node.description = utils.titleCase(container.state);
+      node.tooltip = tooltip.join("\n");
+
+      const iconPath = this.getResourceUri(icon);
+      node.iconPath = { light: iconPath, dark: iconPath };
+
+      containers.push(node);
+    });
+
+    return containers;
+  }
+
+  /**
+   * Handle OrbStack (fallback to `docker exec`).
+   */
+  private discoverContainerInterfaces(labPath: string, cName: string, cID: string): ClabInterfaceTreeNode[] {
+    console.log(`[discovery]:\tDiscovering interfaces for container: ${cName}`);
+
+    const cmd = `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`;
+
+    let clabStdout;
+    try {
+      const stdout = execSync(cmd);
+      if (!stdout) {
+        return [];
+      }
+      clabStdout = stdout.toString();
+    } catch (err) {
+      console.error(
+        `[discovery]:\tInterface detection failed for ${cName}`,
+        err
+      );
+      return [];
+    }
+
+    let clabInsJSON: ClabInsIntfJSON[];
+    try {
+      clabInsJSON = JSON.parse(clabStdout);
+    } catch (parseErr) {
+      return [];
+    }
+
+    let interfaces: ClabInterfaceTreeNode[] = [];
+
+    // when using node filter, node is always 0th in the list.
+    clabInsJSON[0].interfaces.map((intf) => {
+      if (intf.state === "unknown") {
+        // Skip 'lo' or transitional interfaces that report UNKNOWN
+        return;
+      }
+
+
+      let tooltip: string[] = [`Name: ${intf.name}`, `State: ${intf.state}`, `Type: ${intf.type}`, `MAC: ${intf.mac}`, `MTU: ${intf.mtu}`];
+      let label: string = intf.name;
+      let description: string = intf.state.toLocaleUpperCase();
+
+      if (intf.alias) {
+        label = intf.alias;
+        tooltip[1] = `Alias: ${intf.alias}`;
+        description = `${intf.state.toLocaleUpperCase()} - ${intf.name}`;
+      }
+
+      // Determine the proper icons based on the interface state.
+      let context = "containerlabInterface";
+      let iconLight: vscode.Uri;
+      let iconDark: vscode.Uri;
+
+      if (intf.state === "up") {
+        context = "containerlabInterfaceUp";
+        iconLight = this.getResourceUri(IntfStateIcons.UP);
+        iconDark = this.getResourceUri(IntfStateIcons.UP);
+      } else if (intf.state === "down") {
+        context = "containerlabInterfaceDown";
+        iconLight = this.getResourceUri(IntfStateIcons.DOWN);
+        iconDark = this.getResourceUri(IntfStateIcons.DOWN);
+      } else {  
+        iconLight = this.getResourceUri(IntfStateIcons.LIGHT);
+        iconDark = this.getResourceUri(IntfStateIcons.DARK);
+      }
+
+      const node = new ClabInterfaceTreeNode(
+        label,
+        vscode.TreeItemCollapsibleState.None,
+        cName,
+        cID,
+        intf.name,
+        intf.type,
+        intf.alias,
+        intf.mac,
+        intf.mtu,
+        intf.ifindex,
+        context
+      );
+      node.tooltip = tooltip.join("\n");
+      node.description = description;
+      node.iconPath = { light: iconLight, dark: iconDark };
+
+      interfaces.push(node);
+    });
+
+    console.log(`[discovery]:\tDiscovered ${interfaces.length} interfaces for ${cName}`);
+    return interfaces;
+  }
+
+
+  /**
+  * Convert the filepath of something in the ./resources dir
+  * to an extension context Uri.
+  */
+  private getResourceUri(resource: string) {
+    return vscode.Uri.file(this.context.asAbsolutePath(path.join("resources", resource)));
+  }
+}
+
+=== ./src/extension.ts ===
+import * as vscode from 'vscode';
+import * as cmd from './commands/index';
+import { ClabTreeDataProvider } from './clabTreeDataProvider';
+import {
+  ensureClabInstalled,
+  checkAndUpdateClabIfNeeded
+} from './helpers/containerlabUtils';
+
+/** Our global output channel */
+export let outputChannel: vscode.OutputChannel;
+
+/** If you rely on this, keep it; otherwise remove. */
+export const execCmdMapping = require('../resources/exec_cmd.json');
+
+/**
+ * Called when VSCode activates your extension.
+ */
+export async function activate(context: vscode.ExtensionContext) {
+  // Create and register the output channel
+  outputChannel = vscode.window.createOutputChannel('Containerlab');
+  context.subscriptions.push(outputChannel);
+
+  outputChannel.appendLine('[DEBUG] Containerlab extension activated.');
+
+  // 1) Ensure containerlab is installed
+  const clabInstalled = await ensureClabInstalled(outputChannel);
+  if (!clabInstalled) {
+    // If user declined installation, bail out
+    return;
+  }
+
+  // 2) If installed, check for updates
+  await checkAndUpdateClabIfNeeded(outputChannel);
+
+  // *** Proceed with normal extension logic ***
+
+  // Tree data provider
+  const provider = new ClabTreeDataProvider(context);
+  vscode.window.registerTreeDataProvider('containerlabExplorer', provider);
+
+  // Register commands
+
+  // Refresh the tree view
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.refresh', () => {
+      provider.refresh();
+    })
+  );
+
+  // Lab file and workspace commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.openFile', cmd.openLabFile)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.copyPath', cmd.copyLabPath)
+  );
+
+  // Lab deployment commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.deploy', cmd.deploy)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.deploy.cleanup', cmd.deployCleanup)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.deploy.specificFile', cmd.deploySpecificFile)
+  );
+
+  // Lab redeployment commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.redeploy', cmd.redeploy)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.redeploy.cleanup', cmd.redeployCleanup)
+  );
+
+  // Lab destruction commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.destroy', cmd.destroy)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', cmd.destroyCleanup)
+  );
+
+  // Lab inspection commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(context))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.inspectOneLab', (node) => cmd.inspectOneLab(node, context))
+  );
+
+  // Lab graph commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph', cmd.graphNextUI)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph.drawio', cmd.graphDrawIO)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', (node) => cmd.grapTopoviewer(node, context))
+  );
+
+  // Node commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.start', cmd.startNode)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.stop', cmd.stopNode)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.node.manageImpairments",(node) => cmd.manageNodeImpairments(node, context))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.copyIPv4Address', cmd.copyContainerIPv4Address)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.copyIPv6Address', cmd.copyContainerIPv6Address)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.copyName', cmd.copyContainerName)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.copyID', cmd.copyContainerID)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.copyKind', cmd.copyContainerKind)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.copyImage', cmd.copyContainerImage)
+  );
+
+  // Interface commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.capture', cmd.captureInterface)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.captureWithEdgeshark', cmd.captureInterfaceWithPacketflix)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.setDelay', cmd.setLinkDelay)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.setJitter', cmd.setLinkJitter)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.setLoss', cmd.setLinkLoss)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.setRate', cmd.setLinkRate)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.setCorruption', cmd.setLinkCorruption)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.interface.copyMACAddress', cmd.copyMACAddress)
+  );
+
+  // Edgeshark commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.install.edgeshark', cmd.installEdgeshark)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark)
+  );
+
+  // Session hostname command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.set.sessionHostname', cmd.setSessionHostname)
+  );
+
+  // Auto-refresh the TreeView based on user setting
+  const config = vscode.workspace.getConfiguration('containerlab');
+  const refreshInterval = config.get<number>('refreshInterval', 10000);
+  const intervalId = setInterval(() => {
+    provider.refresh();
+  }, refreshInterval);
+
+  // Clean up the auto-refresh interval when the extension is deactivated
+  context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
+}
+
+export function deactivate() {
+  if (outputChannel) {
+    outputChannel.appendLine('[DEBUG] Deactivating Containerlab extension.');
+  }
+}
+
