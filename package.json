@@ -673,6 +673,16 @@
           ],
           "default": "nokia_modern",
           "description": "Default theme to use when generating DrawIO graphs."
+        },
+        "containerlab.runtime": {
+          "type": "string",
+          "enum": [
+            "docker",
+            "podman",
+            "ignite"
+          ],
+          "default": "docker",
+          "description": "Set container runtime used by containerlab."
         }
       }
     }

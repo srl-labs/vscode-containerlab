@@ -138,7 +138,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     public readonly type: string,       // the interface type (veth, dummy, etc.)
     public readonly alias: string,      // the interface name alias (ie ge-0/0/x -> ethX)
     public readonly mac: string,
-    public readonly mtu: number,  
+    public readonly mtu: number,
     public readonly ifIndex: number,
     contextValue?: string,
   ) {
@@ -185,42 +185,42 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
 
     if (!localLabs && !globalLabs) {
-        console.error("[discovery]:\tNo labs found");
-        return [
-            new ClabLabTreeNode(
-                "No labs found. Add a lab with the '+' icon.",
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: "", relative: "" }
-            )
-        ];
+      console.error("[discovery]:\tNo labs found");
+      return [
+        new ClabLabTreeNode(
+          "No labs found. Add a lab with the '+' icon.",
+          vscode.TreeItemCollapsibleState.None,
+          { absolute: "", relative: "" }
+        )
+      ];
     } else if (!globalLabs) {
-        console.error("[discovery]:\tNo inspected labs found");
-        return Object.values(localLabs!).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
+      console.error("[discovery]:\tNo inspected labs found");
+      return Object.values(localLabs!).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
     } else if (!localLabs) {
-        console.error("[discovery]:\tNo local labs found");
-        return Object.values(globalLabs).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
+      console.error("[discovery]:\tNo local labs found");
+      return Object.values(globalLabs).sort((a, b) => a.labPath.absolute.localeCompare(b.labPath.absolute));
     }
 
     // Merge them into a single dictionary
     const labs: Record<string, ClabLabTreeNode> = { ...globalLabs };
     for (const labPath in localLabs) {
-        if (!labs.hasOwnProperty(labPath)) {
-            labs[labPath] = localLabs[labPath];
-        }
+      if (!labs.hasOwnProperty(labPath)) {
+        labs[labPath] = localLabs[labPath];
+      }
     }
 
     // Convert the dict to an array and sort by:
     // 1. Deployed labs first
     // 2. Then by absolute path
     const sortedLabs = Object.values(labs).sort((a, b) => {
-        if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
-            return -1;
-        }
-        if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
-            return 1;
-        }
-        // If same deployment status, sort by path
-        return a.labPath.absolute.localeCompare(b.labPath.absolute);
+      if (a.contextValue === "containerlabLabDeployed" && b.contextValue === "containerlabLabUndeployed") {
+        return -1;
+      }
+      if (a.contextValue === "containerlabLabUndeployed" && b.contextValue === "containerlabLabDeployed") {
+        return 1;
+      }
+      // If same deployment status, sort by path
+      return a.labPath.absolute.localeCompare(b.labPath.absolute);
     });
 
     console.log(`[discovery]:\tDiscovered ${sortedLabs.length} labs.`);
@@ -338,7 +338,9 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   }
 
   private async getInspectData(): Promise<any> {
-    const cmd = `${utils.getSudo()}containerlab inspect --all --format json`;
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
+    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --format json`;
 
     let clabStdout;
     let clabStderr;
@@ -494,7 +496,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         context = "containerlabInterfaceDown";
         iconLight = this.getResourceUri(IntfStateIcons.DOWN);
         iconDark = this.getResourceUri(IntfStateIcons.DOWN);
-      } else {  
+      } else {
         iconLight = this.getResourceUri(IntfStateIcons.LIGHT);
         iconDark = this.getResourceUri(IntfStateIcons.DARK);
       }
