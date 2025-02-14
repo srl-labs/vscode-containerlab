@@ -36,7 +36,9 @@ export async function manageNodeImpairments(
   // Function to re-read and update netem settings via JSON output.
   async function refreshNetemSettings() {
     // Use JSON output instead of table format.
-    const showCmd = `containerlab tools netem show -n ${node.name} --format json`;
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
+    const showCmd = `containerlab tools -r ${runtime} netem show -n ${node.name} --format json`;
     let netemMap: Record<string, { delay: string; jitter: string; loss: string; rate: string; corruption: string }> = {};
     try {
       const { stdout } = await execAsync(showCmd);

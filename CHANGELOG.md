@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.8.0] - 2025-02-14
+* TopoViewer Enhancement by @asadarafat
+    * Added topology management with preset layout saving and reload functionality
+    * Implemented MAC address detection and subinterface discovery system
+    * Enhanced link operational state detection and WebSocket-based property updates
+    * Improved UI responsiveness with streamlined node/link panels and action handling
+* fixes 
+
 ## [0.7.0] - 2025-02-09
 * Save command for labs and nodes
 * Packetcapture with Edgeshark supports now multi-interface selection (ctrl/cmd + click)
