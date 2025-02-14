@@ -474,9 +474,7 @@ export class TopoViewerAdaptorClab {
         // const grp = nodeObj.group ?? '';
 
         const grp = nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
-        const lvl = nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '';
-
-
+        const lvl = nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '1';
 
         if (grp && lvl) {
             return `${grp}:${lvl}`;
