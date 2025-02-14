@@ -61,6 +61,16 @@ export interface EnvironmentJson {
     clabServerPort: string;
     deploymentType: string;
     topoviewerVersion: string;
-    envCyTopoJsonBytes: CytoTopology;
-    envCyTopoJsonBytesAddon: CytoTopology;
+    topviewerPresetLayout: string
+    envCyTopoJsonBytes: CytoTopology | '';
+    envCyTopoJsonBytesAddon: CytoTopology | '';
 }
+
+
+// /**
+//  * Represents CytoPosition for preset layout
+//  */
+// export interface CytoViewportSaveItem {
+//     data: { id: string };
+//     position: { x: number; y: number };
+//   }
