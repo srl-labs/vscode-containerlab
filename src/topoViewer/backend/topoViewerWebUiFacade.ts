@@ -173,7 +173,7 @@ export class TopoViewer {
    */
   private async createWebviewPanel(folderName: string, socketPort: number): Promise<vscode.WebviewPanel> {
     interface CytoViewportPositionPreset {
-      data: { id: string };
+      data: { id: string; parent: string; };
       position: { x: number; y: number };
     }
 
@@ -258,6 +258,9 @@ export class TopoViewer {
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
       log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
 
+      const payloadObj = JSON.parse(msg.payload as string);
+      log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
+
       // Validate that the message is an object.
       if (!msg || typeof msg !== 'object') {
         log.error('Invalid message received.');
@@ -325,12 +328,23 @@ export class TopoViewer {
               }
 
               // Update each node’s position in the AST.
-              for (const { data: { id }, position: { x, y } } of payloadParsed) {
+
+              // data: { id: string; parent: string; name: string; };
+              // position: { x: number; y: number };
+
+              for (const { data: { id, parent }, position: { x, y } } of payloadParsed) {
                 if (!id) continue;  // Skip if invalid
                 const nodeMap = doc.getIn(['topology', 'nodes', id], true);
                 if (YAML.isMap(nodeMap)) {
                   nodeMap.setIn(['labels', 'graph-posX'], x.toString());
                   nodeMap.setIn(['labels', 'graph-posY'], y.toString());
+
+                  if (parent){
+                    nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
+                    nodeMap.setIn(['labels', 'graph-level'], parent.split(":")[1]);
+
+                  }
+
                 }
               }
 
