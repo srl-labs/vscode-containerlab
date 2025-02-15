@@ -3,6 +3,7 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import { getInspectHtml } from "../webview/inspectHtml";
 import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { getSudo } from "../utils";
 
 const execAsync = promisify(exec);
 
@@ -10,8 +11,10 @@ export async function inspectAllLabs(context: vscode.ExtensionContext) {
   try {
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
-
-    const { stdout } = await execAsync(`sudo containerlab inspect -r ${runtime} --all --format json`);
+    const sudoPrefix = getSudo();
+    const { stdout } = await execAsync(
+      `${sudoPrefix}containerlab inspect -r ${runtime} --all --format json`
+    );
     const parsed = JSON.parse(stdout);
 
     showInspectWebview(parsed.containers || [], "Inspect - All Labs", context.extensionUri);
@@ -29,8 +32,10 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
   try {
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
-
-    const { stdout } = await execAsync(`sudo containerlab inspect -r ${runtime} -t "${node.labPath.absolute}" --format json`);
+    const sudoPrefix = getSudo();
+    const { stdout } = await execAsync(
+      `${sudoPrefix}containerlab inspect -r ${runtime} -t "${node.labPath.absolute}" --format json`
+    );
     const parsed = JSON.parse(stdout);
 
     showInspectWebview(parsed.containers || [], `Inspect - ${node.label}`, context.extensionUri);
@@ -47,6 +52,5 @@ function showInspectWebview(containers: any[], title: string, extensionUri: vsco
     { enableScripts: true }
   );
 
-  // Pass `panel.webview` + `extensionUri` to your HTML builder
   panel.webview.html = getInspectHtml(panel.webview, containers, extensionUri);
 }
