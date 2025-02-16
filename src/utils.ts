@@ -68,8 +68,11 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
     return candidatePaths[0];
 }
 
-export function titleCase(str: string) {
-    return str[0].toLocaleUpperCase() + str.slice(1);
+export function titleCase(str: string): string {
+  if (!str || str.length === 0) {
+    return '';
+  }
+  return str[0].toLocaleUpperCase() + str.slice(1);
 }
 
 /**
