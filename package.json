@@ -690,8 +690,8 @@
   "scripts": {
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
-    "test": "npm run compile && node ./out/test/runTest.js",
-    "test:watch": "npm run compile && node ./out/test/runTest.js --watch"
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@types/chai": "^4.3.5",
