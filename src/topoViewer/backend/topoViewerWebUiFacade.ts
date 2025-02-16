@@ -339,7 +339,7 @@ export class TopoViewer {
                   nodeMap.setIn(['labels', 'graph-posX'], x.toString());
                   nodeMap.setIn(['labels', 'graph-posY'], y.toString());
 
-                  if (parent){
+                  if (parent) {
                     nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
                     nodeMap.setIn(['labels', 'graph-level'], parent.split(":")[1]);
 
@@ -369,6 +369,8 @@ export class TopoViewer {
 
               result = `Saved topology with preserved comments!`;
               log.info(result);
+              vscode.window.showInformationMessage(result as string);
+
             } catch (error) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(error, null, 2)}`);
@@ -581,6 +583,43 @@ export class TopoViewer {
             }
             break;
           }
+          case 'clab-show-vscode-message': {
+            try {
+              // Parse the payload from the webview
+              const data = JSON.parse(payload as string) as {
+                type: 'info' | 'warning' | 'error';
+                message: string;
+              };
+
+              // Display the message based on its type
+              switch (data.type) {
+                case 'info':
+                  await vscode.window.showInformationMessage(data.message);
+                  break;
+                case 'warning':
+                  await vscode.window.showWarningMessage(data.message);
+                  break;
+                case 'error':
+                  await vscode.window.showErrorMessage(data.message);
+                  break;
+                default:
+                  // throw new Error(`Unsupported message type: ${data.type}`);
+
+                  log.error(
+                    `Unsupported message type: ${JSON.stringify(data.type, null, 2)}`
+                  );
+              }
+              result = `Displayed ${data.type} message: ${data.message}`;
+              log.info(result);
+            } catch (innerError) {
+              result = `Error executing endpoint "clab-show-vscode-message".`;
+              log.error(
+                `Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(innerError, null, 2)}`
+              );
+            }
+            break;
+          }
+
           case 'open-external': {
             try {
               const url: string = JSON.parse(payload as string);
