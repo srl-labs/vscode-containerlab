@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as utils from '../utils';
 import { exec, spawn } from 'child_process';
-import { outputChannel } from '../extension';
+import { outputChannel } from '../logger';
 
 /**
  * Run a shell command in a named VS Code terminal.
@@ -79,7 +79,7 @@ export class Command {
     protected command: string;
     protected useSpinner: boolean;
     protected useSudo: boolean;
-    protected spinnerMsg?: SpinnerMsg;
+    public spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
 
     constructor(options: CmdOptions) {

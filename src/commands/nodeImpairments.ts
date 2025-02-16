@@ -5,7 +5,7 @@ import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
 import { runWithSudo } from "../helpers/containerlabUtils";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { outputChannel } from "../extension";
+import { outputChannel } from '../logger';
 
 const execAsync = promisify(exec);
 

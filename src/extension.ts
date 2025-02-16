@@ -8,7 +8,7 @@ import {
 } from './helpers/containerlabUtils';
 
 /** Our global output channel */
-export let outputChannel: vscode.OutputChannel;
+import { outputChannel } from './logger';  // <-- NEW: import from logger
 
 /** If you rely on this, keep it; otherwise remove. */
 export const execCmdMapping = require('../resources/exec_cmd.json');
@@ -17,8 +17,6 @@ export const execCmdMapping = require('../resources/exec_cmd.json');
  * Called when VSCode activates your extension.
  */
 export async function activate(context: vscode.ExtensionContext) {
-  // Create and register the output channel
-  outputChannel = vscode.window.createOutputChannel('Containerlab');
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('[DEBUG] Containerlab extension activated.');

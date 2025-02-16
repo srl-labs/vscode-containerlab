@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { execSync } from "child_process";
 import { runWithSudo } from "../helpers/containerlabUtils";
-import { outputChannel } from "../extension";
+import { outputChannel } from '../logger';
 import * as utils from "../utils";
 import { ClabInterfaceTreeNode } from "../clabTreeDataProvider";
 
