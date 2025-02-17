@@ -86,8 +86,6 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
 
   let labPath: string;
 
-  console.error(node)
-
   if (!(node instanceof ClabLabTreeNode) || !node) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
