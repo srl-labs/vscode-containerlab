@@ -342,9 +342,11 @@ export class TopoViewer {
                   if (parent) {
                     nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
                     nodeMap.setIn(['labels', 'graph-level'], parent.split(":")[1]);
-
+                  } else {
+                    // If no parent exists, remove these keys.
+                    nodeMap.deleteIn(['labels', 'graph-group']);
+                    nodeMap.deleteIn(['labels', 'graph-level']);
                   }
-
                 }
               }
 
