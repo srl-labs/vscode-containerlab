@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.8.1] - 2025-02-18
+* Make TopoViewer the default graph action.
+* Add commands to the editor tab context menu (right click on the open editor tab).
+* Add TopoViewer support for getting labPath via the open editor filepath.
+
 ## [0.8.0] - 2025-02-14
 * TopoViewer Enhancement by @asadarafat
     * Added topology management with preset layout saving and reload functionality
