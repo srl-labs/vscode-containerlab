@@ -81,19 +81,32 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
   currentTopoViewer = viewer;
 
   // do the same logic as before...
-  const provider = new ClabTreeDataProvider(context);5
+  const provider = new ClabTreeDataProvider(context);
   const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
 
-  // if node, if labPath, etc...
-  const yamlFilePath = node.labPath.absolute;
-  if (!yamlFilePath) {
-    vscode.window.showErrorMessage('No labPath to redeploy.');
-    return;
+  let labPath: string;
+
+  if (!(node instanceof ClabLabTreeNode) || !node) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage(
+        'No lab node or topology file selected'
+      );
+      return;
+    }
+    labPath = editor.document.uri.fsPath;
+  }
+  else {
+    labPath = node.labPath.absolute;
+    if (!labPath) {
+      vscode.window.showErrorMessage('Lab path not found');
+      return;
+    }
   }
 
   try {
     // 3) call openViewer, which returns (panel | undefined).
-    currentTopoViewerPanel = await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
+    currentTopoViewerPanel = await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
 
     // await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
     // currentTopoViewerPanel = viewer.currentTopoViewerPanel
