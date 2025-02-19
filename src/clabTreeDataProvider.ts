@@ -561,6 +561,10 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     }, 10000); // Check every 10 seconds
   }
 
+  /**
+  * Convert the filepath of something in the ./resources dir
+  * to an extension context Uri.
+  */
   private getResourceUri(resource: string) {
     return vscode.Uri.file(this.context.asAbsolutePath(path.join("resources", resource)));
   }
