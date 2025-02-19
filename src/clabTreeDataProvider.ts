@@ -151,9 +151,14 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private _onDidChangeTreeData = new vscode.EventEmitter<ClabLabTreeNode | ClabContainerTreeNode | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+  // Cache for container interfaces ---
+  private containerInterfacesCache: Map<string, ClabInterfaceTreeNode[]> = new Map();
+
   constructor(private context: vscode.ExtensionContext) { }
 
   refresh(): void {
+    // Clear the cache on refresh so that new interface changes are picked up
+    this.containerInterfacesCache.clear();
     this._onDidChangeTreeData.fire();
   }
 
@@ -394,7 +399,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       if (container.state === "running") { icon = CtrStateIcons.RUNNING; }
       else { icon = CtrStateIcons.STOPPED; }
 
-      // Gather container interfaces
+      // Gather container interfaces (cached for performance)
       const interfaces: ClabInterfaceTreeNode[] = this.discoverContainerInterfaces(absLabPath, container.name, container.container_id)
         .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -435,15 +440,17 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private discoverContainerInterfaces(labPath: string, cName: string, cID: string): ClabInterfaceTreeNode[] {
     console.log(`[discovery]:\tDiscovering interfaces for container: ${cName}`);
 
+    // Use a cache to avoid duplicate execSync calls ---
+    const cacheKey = `${labPath}::${cName}::${cID}`;
+    if (this.containerInterfacesCache.has(cacheKey)) {
+      return this.containerInterfacesCache.get(cacheKey)!;
+    }
+
     const cmd = `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`;
 
     let clabStdout;
     try {
-      const stdout = execSync(cmd);
-      if (!stdout) {
-        return [];
-      }
-      clabStdout = stdout.toString();
+      clabStdout = execSync(cmd).toString();
     } catch (err) {
       console.error(
         `[discovery]:\tInterface detection failed for ${cName}`,
@@ -467,7 +474,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         // Skip 'lo' or transitional interfaces that report UNKNOWN
         return;
       }
-
 
       let tooltip: string[] = [`Name: ${intf.name}`, `State: ${intf.state}`, `Type: ${intf.type}`, `MAC: ${intf.mac}`, `MTU: ${intf.mtu}`];
       let label: string = intf.name;
@@ -518,9 +524,10 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     });
 
     console.log(`[discovery]:\tDiscovered ${interfaces.length} interfaces for ${cName}`);
+    // Cache the result before returning
+    this.containerInterfacesCache.set(cacheKey, interfaces);
     return interfaces;
   }
-
 
   /**
   * Convert the filepath of something in the ./resources dir
