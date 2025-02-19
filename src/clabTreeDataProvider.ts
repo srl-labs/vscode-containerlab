@@ -521,27 +521,27 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
           intf.state,  // Store raw state value
           contextValue
         );
-  
+
         node.tooltip = tooltip.join("\n");
         node.description = description;
         node.iconPath = { light: iconLight, dark: iconDark };
-  
+
         interfaces.push(node);
       });
-  
+
       // Update cache with state and timestamp
       this.containerInterfacesCache.set(cacheKey, {
         state: containerState,
         timestamp: Date.now(),
         interfaces
       });
-  
+
       console.log(`[cache] Stored interfaces for ${cName} (${containerState})`);
-  
+
     } catch (err) {
       console.error(`Interface detection failed for ${cName}`, err);
     }
-  
+
     return interfaces;
   }
 
@@ -559,23 +559,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       });
       this._onDidChangeTreeData.fire();
     }, 10000); // Check every 10 seconds
-  }
-
-  public invalidateLabCache(labPath: string) {
-    const normalized = utils.normalizeLabPath(labPath);
-    Array.from(this.containerInterfacesCache.keys()).forEach(key => {
-      if (key.startsWith(normalized)) this.containerInterfacesCache.delete(key);
-    });
-    this._onDidChangeTreeData.fire();
-  }
-
-  public invalidateContainerCache(labPath: string, containerName: string) {
-    const normalized = utils.normalizeLabPath(labPath);
-    const prefix = `${normalized}::${containerName}`;
-    Array.from(this.containerInterfacesCache.keys()).forEach(key => {
-      if (key.startsWith(prefix)) this.containerInterfacesCache.delete(key);
-    });
-    this._onDidChangeTreeData.fire();
   }
 
   private getResourceUri(resource: string) {
