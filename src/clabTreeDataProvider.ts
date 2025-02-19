@@ -230,14 +230,10 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering local labs...");
 
-    const clabGlobPatterns = ["**/*.clab.yml", "**/*.clab.yaml"];
+    const clabGlobPatterns = "{**/*.clab.yml,**/*.clab.yaml}";
     const ignorePattern = "**/node_modules/**";
 
-    let uris: vscode.Uri[] = [];
-    for (const pattern of clabGlobPatterns) {
-      const found = await vscode.workspace.findFiles(pattern, ignorePattern);
-      uris.push(...found);
-    }
+    const uris = await vscode.workspace.findFiles(clabGlobPatterns, ignorePattern);
 
     if (!uris.length) {
       return undefined;
