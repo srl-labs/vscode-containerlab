@@ -527,6 +527,7 @@ export class TopoViewer {
                         intf.mac,
                         intf.mtu,
                         intf.ifIndex,
+                        intf.state,
                         intf.contextValue
                       )
                   );
