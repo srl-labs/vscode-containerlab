@@ -173,11 +173,7 @@ export class TopoViewer {
    */
   private async createWebviewPanel(folderName: string, socketPort: number): Promise<vscode.WebviewPanel> {
     interface CytoViewportPositionPreset {
-<<<<<<< HEAD
-      data: { id: string; parent: string; };
-=======
-      data: { id: string };
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
+      data: { id: string, parent: string };
       position: { x: number; y: number };
     }
 
@@ -262,12 +258,9 @@ export class TopoViewer {
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
       log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
 
-<<<<<<< HEAD
       const payloadObj = JSON.parse(msg.payload as string);
       log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
 
-=======
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
       // Validate that the message is an object.
       if (!msg || typeof msg !== 'object') {
         log.error('Invalid message received.');
@@ -335,21 +328,16 @@ export class TopoViewer {
               }
 
               // Update each node’s position in the AST.
-<<<<<<< HEAD
 
               // data: { id: string; parent: string; name: string; };
               // position: { x: number; y: number };
 
               for (const { data: { id, parent }, position: { x, y } } of payloadParsed) {
-=======
-              for (const { data: { id }, position: { x, y } } of payloadParsed) {
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
                 if (!id) continue;  // Skip if invalid
                 const nodeMap = doc.getIn(['topology', 'nodes', id], true);
                 if (YAML.isMap(nodeMap)) {
                   nodeMap.setIn(['labels', 'graph-posX'], x.toString());
                   nodeMap.setIn(['labels', 'graph-posY'], y.toString());
-<<<<<<< HEAD
 
                   if (parent) {
                     nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
@@ -359,8 +347,6 @@ export class TopoViewer {
                     nodeMap.deleteIn(['labels', 'graph-group']);
                     nodeMap.deleteIn(['labels', 'graph-level']);
                   }
-=======
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
                 }
               }
 
@@ -385,11 +371,8 @@ export class TopoViewer {
 
               result = `Saved topology with preserved comments!`;
               log.info(result);
-<<<<<<< HEAD
               vscode.window.showInformationMessage(result as string);
 
-=======
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
             } catch (error) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(error, null, 2)}`);
@@ -562,10 +545,7 @@ export class TopoViewer {
                         intf.mac,
                         intf.mtu,
                         intf.ifIndex,
-<<<<<<< HEAD
-=======
                         intf.state,
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
                         intf.contextValue
                       )
                   );
@@ -606,7 +586,6 @@ export class TopoViewer {
             }
             break;
           }
-<<<<<<< HEAD
           case 'clab-show-vscode-message': {
             try {
               // Parse the payload from the webview
@@ -644,8 +623,6 @@ export class TopoViewer {
             break;
           }
 
-=======
->>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
           case 'open-external': {
             try {
               const url: string = JSON.parse(payload as string);
