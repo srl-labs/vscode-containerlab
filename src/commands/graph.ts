@@ -79,6 +79,7 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
 
   // 2) store the viewer in the global variable
   currentTopoViewer = viewer;
+<<<<<<< HEAD
 
   // do the same logic as before...
   const provider = new ClabTreeDataProvider(context);5
@@ -94,6 +95,36 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
   try {
     // 3) call openViewer, which returns (panel | undefined).
     currentTopoViewerPanel = await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
+=======
+
+  // do the same logic as before...
+  const provider = new ClabTreeDataProvider(context);
+  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
+
+  let labPath: string;
+
+  if (!(node instanceof ClabLabTreeNode) || !node) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage(
+        'No lab node or topology file selected'
+      );
+      return;
+    }
+    labPath = editor.document.uri.fsPath;
+  }
+  else {
+    labPath = node.labPath.absolute;
+    if (!labPath) {
+      vscode.window.showErrorMessage('Lab path not found');
+      return;
+    }
+  }
+
+  try {
+    // 3) call openViewer, which returns (panel | undefined).
+    currentTopoViewerPanel = await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
+>>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
 
     // await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
     // currentTopoViewerPanel = viewer.currentTopoViewerPanel
@@ -137,4 +168,8 @@ export async function graphTopoviewerReload(context: vscode.ExtensionContext) {
 
   // 3) Now call updatePanelHtml on the existing panel
   currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 8d403307b34d5bd7d37285d21501e76fc175afc1
