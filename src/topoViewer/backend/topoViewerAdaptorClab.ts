@@ -364,7 +364,7 @@ export class TopoViewerAdaptorClab {
                         locked: false,
                         grabbed: false,
                         grabbable: true,
-                        classes: '',
+                        classes: nodeObj.labels?.['graph-groupLabelPos'],
                     };
 
                     elements.push(groupNodeEl);

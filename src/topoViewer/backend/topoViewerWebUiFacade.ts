@@ -173,8 +173,16 @@ export class TopoViewer {
    */
   private async createWebviewPanel(folderName: string, socketPort: number): Promise<vscode.WebviewPanel> {
     interface CytoViewportPositionPreset {
-      data: { id: string, parent: string };
-      position: { x: number; y: number };
+      data: {
+        id: string,
+        parent: string,
+        groupLabelPos: string
+      };
+      position:
+      {
+        x: number;
+        y: number
+      };
     }
 
     const panel = vscode.window.createWebviewPanel(
@@ -332,7 +340,7 @@ export class TopoViewer {
               // data: { id: string; parent: string; name: string; };
               // position: { x: number; y: number };
 
-              for (const { data: { id, parent }, position: { x, y } } of payloadParsed) {
+              for (const { data: { id, parent, groupLabelPos }, position: { x, y } } of payloadParsed) {
                 if (!id) continue;  // Skip if invalid
                 const nodeMap = doc.getIn(['topology', 'nodes', id], true);
                 if (YAML.isMap(nodeMap)) {
@@ -346,6 +354,12 @@ export class TopoViewer {
                     // If no parent exists, remove these keys.
                     nodeMap.deleteIn(['labels', 'graph-group']);
                     nodeMap.deleteIn(['labels', 'graph-level']);
+                  }
+                  if (groupLabelPos) {
+                    nodeMap.setIn(['labels', 'graph-groupLabelPos'], groupLabelPos);
+                  } else {
+                    // If no groupLabelPos exists, defaulting to bottom-center.
+                    nodeMap.setIn(['labels', 'graph-groupLabelPos'], "bottom-center");
                   }
                 }
               }
