@@ -224,7 +224,7 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
       } while (userChoice === openReleaseNotesAction);
       if (userChoice === updateAction) {
         log('User chose to update containerlab. Executing upgrade.', outputChannel);
-        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'containerlab');
+        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
         vscode.window.showInformationMessage('Containerlab updated successfully!');
         log('Containerlab updated successfully.', outputChannel);
       } else {
@@ -252,7 +252,7 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
         }
       } else if (userChoice === updateAction) {
         log('User chose to update containerlab. Executing upgrade.', outputChannel);
-        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'containerlab');
+        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
         vscode.window.showInformationMessage('Containerlab updated successfully!');
         log('Containerlab updated successfully.', outputChannel);
       } else {
