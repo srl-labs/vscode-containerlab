@@ -736,6 +736,11 @@
           ],
           "default": "docker",
           "description": "Set container runtime used by containerlab."
+        },
+        "containerlab.skipCleanupWarning": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
         }
       }
     }
