@@ -159,13 +159,21 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     interfaces: ClabInterfaceTreeNode[]
   }> = new Map();
 
+  // Cache for labs: both local and inspect (running) labs.
+  private labsCache: {
+    local: { data: Record<string, ClabLabTreeNode> | undefined, timestamp: number } | null,
+    inspect: { data: Record<string, ClabLabTreeNode> | undefined, timestamp: number } | null,
+  } = { local: null, inspect: null };
+
   constructor(private context: vscode.ExtensionContext) { 
     this.startCacheJanitor();
   }
 
   refresh(): void {
-    // Clear the cache on refresh so that new interface changes are picked up
+    // Clear caches on refresh so that new changes are picked up
     this.containerInterfacesCache.clear();
+    this.labsCache.local = null;
+    this.labsCache.inspect = null;
     this._onDidChangeTreeData.fire();
   }
 
@@ -241,6 +249,11 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
   private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering local labs...");
+    const CACHE_TTL = 30000; // 30 seconds TTL for labs
+
+    if (this.labsCache.local && (Date.now() - this.labsCache.local.timestamp < CACHE_TTL)) {
+      return this.labsCache.local.data;
+    }
 
     const clabGlobPatterns = "{**/*.clab.yml,**/*.clab.yaml}";
     const ignorePattern = "**/node_modules/**";
@@ -278,11 +291,17 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       }
     });
 
+    this.labsCache.local = { data: labs, timestamp: Date.now() };
     return labs;
   }
 
   public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering labs via inspect...");
+    const CACHE_TTL = 30000; // 30 seconds TTL for inspect labs
+
+    if (this.labsCache.inspect && (Date.now() - this.labsCache.inspect.timestamp < CACHE_TTL)) {
+      return this.labsCache.inspect.data;
+    }
 
     const inspectData = await this.getInspectData();
     if (!inspectData) {
@@ -342,6 +361,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       }
     });
 
+    this.labsCache.inspect = { data: labs, timestamp: Date.now() };
     return labs;
   }
 
@@ -557,6 +577,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
           this.containerInterfacesCache.delete(key);
         }
       });
+      // Optionally, we could also clear labsCache here if needed.
       this._onDidChangeTreeData.fire();
     }, 10000); // Check every 10 seconds
   }
