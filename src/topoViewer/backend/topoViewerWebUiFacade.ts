@@ -826,10 +826,31 @@ export class TopoViewer {
         },
       });
 
+
+
+      // // Let the OS assign an available port by listening on port 0.
+      // server.listen(0, () => {
+      //   const address = server.address();
+      //   const socketAssignedPortNumber = typeof address === 'string' ? 0 : (address?.port || 0);
+      //   this.socketAssignedPort = socketAssignedPortNumber;
+      //   log.info(`Socket.IO server listening on port ${this.socketAssignedPort}`);
+      //   resolve(this.socketAssignedPort);
+      // });
+
+      const config = vscode.workspace.getConfiguration('containerlab.remote');
+      // This default (0) only applies if the setting is completely undefined.
+      // But if package.json defines it as an empty string, you'll get that.
+      const configValue = config.get<number | string>('topviewerSocketPort', 0);
+      
+      // Ensure we use 0 if the returned value is an empty string.
+      const portToUse = configValue === '' ? 0 : Number(configValue);
+      
+      // Now listen on the determined port
       // Let the OS assign an available port by listening on port 0.
-      server.listen(0, () => {
+      server.listen(portToUse, () => {
         const address = server.address();
-        const socketAssignedPortNumber = typeof address === 'string' ? 0 : (address?.port || 0);
+        const socketAssignedPortNumber =
+          typeof address === 'string' ? 0 : (address?.port || 0);
         this.socketAssignedPort = socketAssignedPortNumber;
         log.info(`Socket.IO server listening on port ${this.socketAssignedPort}`);
         resolve(this.socketAssignedPort);
@@ -849,6 +870,7 @@ export class TopoViewer {
 
       // Handle Socket.IO connections.
       io.on("connection", (socket) => {
+        log.info(`Socket.IO server listening on port ${this.socketAssignedPort}`);
         log.info("A client connected to the Socket.IO server.");
         socket.on("clientMessage", (data) => {
           log.info(`Received client message: ${JSON.stringify(data, null, 2)}`);

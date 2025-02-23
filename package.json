@@ -717,6 +717,11 @@
           "default": 5001,
           "description": "Port to use for the packetflix endpoint used for packet capture."
         },
+        "containerlab.remote.topviewerSocketPort": {
+          "type": "number",
+          "default": 0,
+          "description": "Specifies the port for the topoviewer socket. If set to 0, the system automatically assigns an available port."
+        },
         "containerlab.drawioDefaultTheme": {
           "type": "string",
           "enum": [
