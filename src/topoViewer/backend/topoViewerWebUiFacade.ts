@@ -173,8 +173,16 @@ export class TopoViewer {
    */
   private async createWebviewPanel(folderName: string, socketPort: number): Promise<vscode.WebviewPanel> {
     interface CytoViewportPositionPreset {
-      data: { id: string };
-      position: { x: number; y: number };
+      data: {
+        id: string,
+        parent: string,
+        groupLabelPos: string
+      };
+      position:
+      {
+        x: number;
+        y: number
+      };
     }
 
     const panel = vscode.window.createWebviewPanel(
@@ -258,6 +266,9 @@ export class TopoViewer {
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
       log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
 
+      const payloadObj = JSON.parse(msg.payload as string);
+      log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
+
       // Validate that the message is an object.
       if (!msg || typeof msg !== 'object') {
         log.error('Invalid message received.');
@@ -325,12 +336,31 @@ export class TopoViewer {
               }
 
               // Update each node’s position in the AST.
-              for (const { data: { id }, position: { x, y } } of payloadParsed) {
+
+              // data: { id: string; parent: string; name: string; };
+              // position: { x: number; y: number };
+
+              for (const { data: { id, parent, groupLabelPos }, position: { x, y } } of payloadParsed) {
                 if (!id) continue;  // Skip if invalid
                 const nodeMap = doc.getIn(['topology', 'nodes', id], true);
                 if (YAML.isMap(nodeMap)) {
                   nodeMap.setIn(['labels', 'graph-posX'], x.toString());
                   nodeMap.setIn(['labels', 'graph-posY'], y.toString());
+
+                  if (parent) {
+                    nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
+                    nodeMap.setIn(['labels', 'graph-level'], parent.split(":")[1]);
+                  } else {
+                    // If no parent exists, remove these keys.
+                    nodeMap.deleteIn(['labels', 'graph-group']);
+                    nodeMap.deleteIn(['labels', 'graph-level']);
+                  }
+                  if (groupLabelPos) {
+                    nodeMap.setIn(['labels', 'graph-groupLabelPos'], groupLabelPos);
+                  } else {
+                    // If no groupLabelPos exists, defaulting to bottom-center.
+                    nodeMap.setIn(['labels', 'graph-groupLabelPos'], "bottom-center");
+                  }
                 }
               }
 
@@ -355,6 +385,8 @@ export class TopoViewer {
 
               result = `Saved topology with preserved comments!`;
               log.info(result);
+              vscode.window.showInformationMessage(result as string);
+
             } catch (error) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(error, null, 2)}`);
@@ -568,6 +600,43 @@ export class TopoViewer {
             }
             break;
           }
+          case 'clab-show-vscode-message': {
+            try {
+              // Parse the payload from the webview
+              const data = JSON.parse(payload as string) as {
+                type: 'info' | 'warning' | 'error';
+                message: string;
+              };
+
+              // Display the message based on its type
+              switch (data.type) {
+                case 'info':
+                  await vscode.window.showInformationMessage(data.message);
+                  break;
+                case 'warning':
+                  await vscode.window.showWarningMessage(data.message);
+                  break;
+                case 'error':
+                  await vscode.window.showErrorMessage(data.message);
+                  break;
+                default:
+                  // throw new Error(`Unsupported message type: ${data.type}`);
+
+                  log.error(
+                    `Unsupported message type: ${JSON.stringify(data.type, null, 2)}`
+                  );
+              }
+              result = `Displayed ${data.type} message: ${data.message}`;
+              log.info(result);
+            } catch (innerError) {
+              result = `Error executing endpoint "clab-show-vscode-message".`;
+              log.error(
+                `Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(innerError, null, 2)}`
+              );
+            }
+            break;
+          }
+
           case 'open-external': {
             try {
               const url: string = JSON.parse(payload as string);
