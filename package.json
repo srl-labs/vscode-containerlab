@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.70.0"
@@ -527,7 +527,7 @@
         },
         {
           "command": "containerlab.node.manageImpairments",
-          "when": "viewItem == false",
+          "when": "viewItem == containerlabContainer",
           "group": "nodeNavigation@6"
         },
         {
@@ -736,6 +736,11 @@
           ],
           "default": "docker",
           "description": "Set container runtime used by containerlab."
+        },
+        "containerlab.skipCleanupWarning": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
         }
       }
     }
@@ -752,6 +757,7 @@
   },
   "dependencies": {
     "@vscode/test-cli": "^0.0.10",
+    "@vscode/vsce": "^3.2.2",
     "socket.io": "^4.8.1",
     "yaml": "^2.7.0"
   }

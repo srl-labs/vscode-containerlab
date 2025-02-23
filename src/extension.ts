@@ -21,6 +21,16 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel('Containerlab');
   context.subscriptions.push(outputChannel);
 
+  outputChannel.appendLine(process.platform);
+
+  // Allow activation only on Linux or when connected via WSL.
+  if (process.platform !== "linux" && vscode.env.remoteName !== "wsl") {
+    vscode.window.showWarningMessage(
+      "The Containerlab extension is only supported on Linux or WSL. It will not be activated on this system."
+    );
+    return; // Do not activate the extension.
+  }
+
   outputChannel.appendLine('[DEBUG] Containerlab extension activated.');
 
   // 1) Ensure containerlab is installed

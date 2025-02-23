@@ -153,6 +153,16 @@ input:focus {
   box-shadow: 0 0 0 1px var(--accent-color);
 }
 
+/* Highlight invalid inputs (e.g. jitter>0 but delay=0) */
+.invalid-input {
+  border-color: red !important;
+}
+
+.validation-error .error-text {
+  color: red;
+  font-size: 0.8rem;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -203,9 +213,14 @@ input:focus {
   }
 }
 
-/* For very small screens */
+/* For very small screens (mobile) */
 @media (max-width: 640px) {
-  table, thead, tbody, th, td, tr {
+  table,
+  thead,
+  tbody,
+  th,
+  td,
+  tr {
     display: block;
   }
 

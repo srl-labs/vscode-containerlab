@@ -1,4 +1,19 @@
 # Change Log
+## [0.9.0] - 2025-02-23
+* Performance Improvements
+* Link Impairments via Webview
+* Extension only activates if Linux or WSL
+* Warnings when destroy, deploy or redeploy with cleanup
+* TopoViewer enhancements:
+    * Ctrl + Click: Connect to the node via SSH.
+    * Shift + Click (non-group): Create a new group and reassign the clicked node to it.
+    * Shift + Click (group): Open the editor panel to modify an existing group.
+    * Alt + Click: Release the node from its group and remove an empty group if applicable.
+    * Regular Click: Toggle the display of node properties in the UI.
+    * Drag & Drop: Assign a node to a group by dragging it into the desired group.
+    * New viewport button to add groups for easier group creation.
+    * Enhanced node actions to release a node from its group directly.
+
 
 ## [0.8.1] - 2025-02-18
 * Make TopoViewer the default graph action.

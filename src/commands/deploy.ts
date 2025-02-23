@@ -12,7 +12,22 @@ export function deploy(node: ClabLabTreeNode) {
   deployCmd.run();
 }
 
-export function deployCleanup(node: ClabLabTreeNode) {
+export async function deployCleanup(node: ClabLabTreeNode) {
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const skipWarning = config.get<boolean>("skipCleanupWarning", false);
+  if (!skipWarning) {
+    const selection = await vscode.window.showWarningMessage(
+      "WARNING: Deploy (cleanup) will remove all configuration artifacts.. Are you sure you want to proceed?",
+      { modal: true },
+      "Yes", "Don't warn me again"
+    );
+    if (!selection) {
+      return; // user cancelled
+    }
+    if (selection === "Don't warn me again") {
+      await config.update("skipCleanupWarning", true, vscode.ConfigurationTarget.Global);
+    }
+  }
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Deploying Lab (cleanup)... ",
     successMsg: "Lab deployed (cleanup) successfully!"

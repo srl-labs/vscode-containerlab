@@ -140,9 +140,11 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     public readonly mac: string,
     public readonly mtu: number,
     public readonly ifIndex: number,
+    public readonly state: string,      // Added state tracking
     contextValue?: string,
   ) {
     super(label, collapsibleState);
+    this.state = state;
     this.contextValue = contextValue;
   }
 }
@@ -151,9 +153,27 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private _onDidChangeTreeData = new vscode.EventEmitter<ClabLabTreeNode | ClabContainerTreeNode | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor(private context: vscode.ExtensionContext) { }
+  private containerInterfacesCache: Map<string, {
+    state: string,
+    timestamp: number,
+    interfaces: ClabInterfaceTreeNode[]
+  }> = new Map();
+
+  // Cache for labs: both local and inspect (running) labs.
+  private labsCache: {
+    local: { data: Record<string, ClabLabTreeNode> | undefined, timestamp: number } | null,
+    inspect: { data: Record<string, ClabLabTreeNode> | undefined, timestamp: number } | null,
+  } = { local: null, inspect: null };
+
+  constructor(private context: vscode.ExtensionContext) { 
+    this.startCacheJanitor();
+  }
 
   refresh(): void {
+    // Clear caches on refresh so that new changes are picked up
+    this.containerInterfacesCache.clear();
+    this.labsCache.local = null;
+    this.labsCache.inspect = null;
     this._onDidChangeTreeData.fire();
   }
 
@@ -229,15 +249,16 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
   private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering local labs...");
+    const CACHE_TTL = 30000; // 30 seconds TTL for labs
 
-    const clabGlobPatterns = ["**/*.clab.yml", "**/*.clab.yaml"];
+    if (this.labsCache.local && (Date.now() - this.labsCache.local.timestamp < CACHE_TTL)) {
+      return this.labsCache.local.data;
+    }
+
+    const clabGlobPatterns = "{**/*.clab.yml,**/*.clab.yaml}";
     const ignorePattern = "**/node_modules/**";
 
-    let uris: vscode.Uri[] = [];
-    for (const pattern of clabGlobPatterns) {
-      const found = await vscode.workspace.findFiles(pattern, ignorePattern);
-      uris.push(...found);
-    }
+    const uris = await vscode.workspace.findFiles(clabGlobPatterns, ignorePattern);
 
     if (!uris.length) {
       return undefined;
@@ -270,11 +291,17 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       }
     });
 
+    this.labsCache.local = { data: labs, timestamp: Date.now() };
     return labs;
   }
 
   public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering labs via inspect...");
+    const CACHE_TTL = 30000; // 30 seconds TTL for inspect labs
+
+    if (this.labsCache.inspect && (Date.now() - this.labsCache.inspect.timestamp < CACHE_TTL)) {
+      return this.labsCache.inspect.data;
+    }
 
     const inspectData = await this.getInspectData();
     if (!inspectData) {
@@ -334,6 +361,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       }
     });
 
+    this.labsCache.inspect = { data: labs, timestamp: Date.now() };
     return labs;
   }
 
@@ -372,7 +400,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
     // filter the data to only relevant containers
     const filtered = inspectData.containers.filter((container: ClabJSON) => container.labPath === labPath);
-
     let containers: ClabContainerTreeNode[] = [];
 
     filtered.forEach((container: ClabJSON) => {
@@ -398,9 +425,12 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       if (container.state === "running") { icon = CtrStateIcons.RUNNING; }
       else { icon = CtrStateIcons.STOPPED; }
 
-      // Gather container interfaces
-      const interfaces: ClabInterfaceTreeNode[] = this.discoverContainerInterfaces(absLabPath, container.name, container.container_id)
-        .sort((a, b) => a.name.localeCompare(b.name));
+      const interfaces = this.discoverContainerInterfaces(
+        absLabPath,
+        container.name,
+        container.container_id,
+        container.state // Pass container state to discovery
+      ).sort((a, b) => a.name.localeCompare(b.name));
 
       const collapsible = interfaces.length > 0
         ? vscode.TreeItemCollapsibleState.Collapsed
@@ -433,98 +463,124 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     return containers;
   }
 
-  /**
-   * Handle OrbStack (fallback to `docker exec`).
-   */
-  private discoverContainerInterfaces(labPath: string, cName: string, cID: string): ClabInterfaceTreeNode[] {
-    console.log(`[discovery]:\tDiscovering interfaces for container: ${cName}`);
+  private discoverContainerInterfaces(
+    labPath: string,
+    cName: string,
+    cID: string,
+    containerState: string
+  ): ClabInterfaceTreeNode[] {
+    const CACHE_TTL = 30000; // 30 seconds
+    const normalizedLabPath = utils.normalizeLabPath(labPath);
+    const cacheKey = `${normalizedLabPath}::${cName}::${cID}`;
 
-    const cmd = `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`;
+    // Cache validation check
+    if (this.containerInterfacesCache.has(cacheKey)) {
+      const cached = this.containerInterfacesCache.get(cacheKey)!;
+      const valid = cached.state === containerState && 
+                   Date.now() - cached.timestamp < CACHE_TTL;
 
-    let clabStdout;
-    try {
-      const stdout = execSync(cmd);
-      if (!stdout) {
-        return [];
-      }
-      clabStdout = stdout.toString();
-    } catch (err) {
-      console.error(
-        `[discovery]:\tInterface detection failed for ${cName}`,
-        err
-      );
-      return [];
-    }
-
-    let clabInsJSON: ClabInsIntfJSON[];
-    try {
-      clabInsJSON = JSON.parse(clabStdout);
-    } catch (parseErr) {
-      return [];
+      if (valid) return cached.interfaces;
     }
 
     let interfaces: ClabInterfaceTreeNode[] = [];
 
-    // when using node filter, node is always 0th in the list.
-    clabInsJSON[0].interfaces.map((intf) => {
-      if (intf.state === "unknown") {
-        // Skip 'lo' or transitional interfaces that report UNKNOWN
-        return;
-      }
+    try {
+      const clabStdout = execSync(
+        `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`
+      ).toString();
 
+      const clabInsJSON: ClabInsIntfJSON[] = JSON.parse(clabStdout);
 
-      let tooltip: string[] = [`Name: ${intf.name}`, `State: ${intf.state}`, `Type: ${intf.type}`, `MAC: ${intf.mac}`, `MTU: ${intf.mtu}`];
-      let label: string = intf.name;
-      let description: string = intf.state.toLocaleUpperCase();
+      clabInsJSON[0].interfaces.forEach(intf => {
+        if (intf.state === "unknown") return;
 
-      if (intf.alias) {
-        label = intf.alias;
-        tooltip[1] = `Alias: ${intf.alias}`;
-        description = `${intf.state.toLocaleUpperCase()} - ${intf.name}`;
-      }
+        let tooltip: string[] = [
+          `Name: ${intf.name}`,
+          `State: ${intf.state}`,
+          `Type: ${intf.type}`,
+          `MAC: ${intf.mac}`,
+          `MTU: ${intf.mtu}`
+        ];
 
-      // Determine the proper icons based on the interface state.
-      let context = "containerlabInterface";
-      let iconLight: vscode.Uri;
-      let iconDark: vscode.Uri;
+        let label: string = intf.name;
+        let description: string = intf.state.toUpperCase();
 
-      if (intf.state === "up") {
-        context = "containerlabInterfaceUp";
-        iconLight = this.getResourceUri(IntfStateIcons.UP);
-        iconDark = this.getResourceUri(IntfStateIcons.UP);
-      } else if (intf.state === "down") {
-        context = "containerlabInterfaceDown";
-        iconLight = this.getResourceUri(IntfStateIcons.DOWN);
-        iconDark = this.getResourceUri(IntfStateIcons.DOWN);
-      } else {
-        iconLight = this.getResourceUri(IntfStateIcons.LIGHT);
-        iconDark = this.getResourceUri(IntfStateIcons.DARK);
-      }
+        if (intf.alias) {
+          label = intf.alias;
+          tooltip[1] = `Alias: ${intf.alias}`;
+          description = `${intf.state.toUpperCase()} - ${intf.name}`;
+        }
 
-      const node = new ClabInterfaceTreeNode(
-        label,
-        vscode.TreeItemCollapsibleState.None,
-        cName,
-        cID,
-        intf.name,
-        intf.type,
-        intf.alias,
-        intf.mac,
-        intf.mtu,
-        intf.ifindex,
-        context
-      );
-      node.tooltip = tooltip.join("\n");
-      node.description = description;
-      node.iconPath = { light: iconLight, dark: iconDark };
+        // Determine icons based on interface state
+        let iconLight: vscode.Uri;
+        let iconDark: vscode.Uri;
+        const contextValue = this.getInterfaceContextValue(intf.state);
 
-      interfaces.push(node);
-    });
+        if (intf.state === "up") {
+          iconLight = this.getResourceUri(IntfStateIcons.UP);
+          iconDark = this.getResourceUri(IntfStateIcons.UP);
+        } else if (intf.state === "down") {
+          iconLight = this.getResourceUri(IntfStateIcons.DOWN);
+          iconDark = this.getResourceUri(IntfStateIcons.DOWN);
+        } else {
+          iconLight = this.getResourceUri(IntfStateIcons.LIGHT);
+          iconDark = this.getResourceUri(IntfStateIcons.DARK);
+        }
 
-    console.log(`[discovery]:\tDiscovered ${interfaces.length} interfaces for ${cName}`);
+        const node = new ClabInterfaceTreeNode(
+          label,
+          vscode.TreeItemCollapsibleState.None,
+          cName,
+          cID,
+          intf.name,
+          intf.type,
+          intf.alias,
+          intf.mac,
+          intf.mtu,
+          intf.ifindex,
+          intf.state,  // Store raw state value
+          contextValue
+        );
+
+        node.tooltip = tooltip.join("\n");
+        node.description = description;
+        node.iconPath = { light: iconLight, dark: iconDark };
+
+        interfaces.push(node);
+      });
+
+      // Update cache with state and timestamp
+      this.containerInterfacesCache.set(cacheKey, {
+        state: containerState,
+        timestamp: Date.now(),
+        interfaces
+      });
+
+      console.log(`[cache] Stored interfaces for ${cName} (${containerState})`);
+
+    } catch (err) {
+      console.error(`Interface detection failed for ${cName}`, err);
+    }
+
     return interfaces;
   }
 
+  private getInterfaceContextValue(state: string): string {
+    return state === 'up' ? 'containerlabInterfaceUp' : 'containerlabInterfaceDown';
+  }
+
+  private startCacheJanitor() {
+    setInterval(() => {
+      const now = Date.now();
+      this.containerInterfacesCache.forEach((value, key) => {
+        if (now - value.timestamp > 30000) { // 30s TTL
+          this.containerInterfacesCache.delete(key);
+        }
+      });
+      // Optionally, we could also clear labsCache here if needed.
+      this._onDidChangeTreeData.fire();
+    }, 10000); // Check every 10 seconds
+  }
 
   /**
   * Convert the filepath of something in the ./resources dir
