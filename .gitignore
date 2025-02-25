@@ -3,4 +3,7 @@ dist
 node_modules
 .vscode-test/
 topoViewerData
-.vscode
+.vscode/
+package.json
+.vscode/launch.json
+.gitignore
