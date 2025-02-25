@@ -1,10 +1,4 @@
-// file: src/logger.ts
-
-
-// aarafat-tag: 
-// This is custom logger to provide the following log entry:
-// time=2024-12-29T09:37:21Z level=info msg=Hello file=topoViewer.ts:108
-// the objective is to provide quick code tracing during debugging. Im open to suggestion if there is better way to do the objective as long as not using heavy library.
+// file: src/topoViewer/backend/logger.ts
 
 import * as vscode from 'vscode';
 
@@ -43,6 +37,7 @@ function getCallerFileLine(): string {
 
 /**
  * Logs a formatted message to the OutputChannel.
+ * Only logs to VS Code output channel, not to browser console to avoid duplicate messages.
  *
  * @param level "info", "debug", "warn", "error", etc.
  * @param message The log message to display
@@ -55,11 +50,8 @@ function logMessage(level: string, message: string): void {
     // time=2024-12-29T09:37:21Z level=info msg=Hello file=topoViewer.ts:108
     const logLine = `time=${now} level=${level} msg=${message} file=${fileLine}`;
 
-    // Write to the OutputChannel
+    // Write to the OutputChannel but don't use console.* methods
     outputChannel.appendLine(logLine);
-
-    // If you want to auto-show the channel:
-    // outputChannel.show(true);
 }
 
 /**
