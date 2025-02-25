@@ -368,20 +368,15 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private async getInspectData(): Promise<any> {
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
-    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --format json`;
+    
+    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --format json 2>/dev/null`;
 
     let clabStdout;
-    let clabStderr;
     try {
-      const { stdout, stderr } = await execAsync(cmd);
+      const { stdout } = await execAsync(cmd);
       clabStdout = stdout;
-      clabStderr = stderr;
     } catch (err) {
       throw new Error(`Could not run ${cmd}.\n${err}`);
-    }
-
-    if (clabStderr) {
-      console.error(`[stderr]:\t${clabStderr}`.replace("\n", ""));
     }
 
     if (!clabStdout) {
@@ -486,7 +481,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
     try {
       const clabStdout = execSync(
-        `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`
+        `${utils.getSudo()}containerlab inspect interfaces -t ${labPath} -f json -n ${cName}`,
+        { stdio: ['pipe', 'pipe', 'ignore'] }
       ).toString();
 
       const clabInsJSON: ClabInsIntfJSON[] = JSON.parse(clabStdout);
@@ -559,7 +555,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       console.log(`[cache] Stored interfaces for ${cName} (${containerState})`);
 
     } catch (err) {
-      console.error(`Interface detection failed for ${cName}`, err);
+      console.error(`Interface detection failed for ${cName}. ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return interfaces;
