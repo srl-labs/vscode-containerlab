@@ -717,6 +717,16 @@
           "default": 5001,
           "description": "Port to use for the packetflix endpoint used for packet capture."
         },
+        "containerlab.remote.topoviewerUseSocket": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the topoviewer will use Socket.IO for communication. If false, it will use native VS Code postMessage."
+        },
+        "containerlab.remote.topviewerSocketPort": {
+          "type": "number",
+          "default": 0,
+          "description": "Port to use for the topoviewer socket when using Socket.IO. Default is 0 to allow the system to automatically assign an available port."
+        },
         "containerlab.drawioDefaultTheme": {
           "type": "string",
           "enum": [

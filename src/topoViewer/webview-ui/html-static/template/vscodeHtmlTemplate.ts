@@ -11,6 +11,7 @@ jsonFileUrlDataEnvironment: string,
 isVscodeDeployment: boolean,
 jsOutDir: string,
 allowedHostname: string,
+useSocket: boolean,
 socketAssignedPort: number
 ): string {
 
@@ -1781,7 +1782,10 @@ return `
     <!-- Inject allowedHostname string as a global variable -->
     <script> window.allowedHostname = "${allowedHostname}"; </script>
 
-    <!-- Inject allowedHostname number as a global variable -->
+    <!-- Inject useSocket boolean as a global variable -->
+    <script> window.useSocket = "${useSocket}"; </script>
+
+    <!-- Inject socketAssignedPort number as a global variable -->
     <script> window.socketAssignedPort = "${socketAssignedPort}"; </script>
 
 

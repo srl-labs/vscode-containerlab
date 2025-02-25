@@ -367,7 +367,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
 
       // console.log(`assignedParent id: ${assignedParent.id()}, assignedParentChildren: ${assignedParent.children()}` )
-      
+
 
       if (assignedParent) {
         // If dragged inside a parent, reassign the node to that parent
@@ -382,7 +382,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         // Get the dummy child node using topoViewerRole
         const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
 
-        console.log(`assignedParent id: ${assignedParent.id()}, assignedParentChildren: ${assignedParent.children()}, assignedParentDoummyChild: ${dummyChild.id()}` )
+        console.log(`assignedParent id: ${assignedParent.id()}, assignedParentChildren: ${assignedParent.children()}, assignedParentDoummyChild: ${dummyChild.id()}`)
 
         // Only proceed if the dummy child exists
         if (dummyChild.length > 0) {
@@ -4161,8 +4161,16 @@ function loadCytoStyle(cy) {
     restoreDynamicStyles();
   }
 
-  // Ensure the socket event binding reflects the current toggle.
-  updateSocketBinding();
+  const globalUseSocketIO = window.useSocket
+  // Decide which method to be use to stream data from backend() to frontend(webview)
+  if (globalUseSocketIO == "true") {
+    // use socket io
+    updateSocketBinding();
+  } else {
+    // use vscode native post messsage
+    console.log("window.useSocket", globalUseSocketIO)
+    updateMessageStreamBinding();
+  }
 }
 
 /**
