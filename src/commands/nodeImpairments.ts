@@ -60,7 +60,17 @@ export async function manageNodeImpairments(
     > = {};
 
     try {
-      const { stdout } = await execAsync(showCmd);
+      const stdoutResult = await runWithSudo(
+        showCmd,
+        `Retrieving netem settings for ${node.name}`,
+        outputChannel,
+        "containerlab",
+        true
+      );
+      if (!stdoutResult) {
+        throw new Error("No output from netem show command");
+      }
+      const stdout = stdoutResult as string;
       const rawData = JSON.parse(stdout);
       // The JSON format is an object keyed by the node's name.
       const interfacesData = rawData[node.name] || [];
@@ -189,7 +199,7 @@ export async function manageNodeImpairments(
                 cmd,
                 `Applying netem on ${node.name}/${intfName}`,
                 outputChannel,
-                "generic"
+                "containerlab"
               )
             );
           }
@@ -229,7 +239,7 @@ export async function manageNodeImpairments(
               cmd,
               `Clearing netem on ${node.name}/${norm}`,
               outputChannel,
-              "generic"
+              "containerlab"
             )
           );
         }
