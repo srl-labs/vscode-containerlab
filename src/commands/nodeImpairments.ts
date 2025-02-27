@@ -60,7 +60,17 @@ export async function manageNodeImpairments(
     > = {};
 
     try {
-      const { stdout } = await execAsync(showCmd);
+      const stdoutResult = await runWithSudo(
+        showCmd,
+        `Retrieving netem settings for ${node.name}`,
+        outputChannel,
+        "containerlab",
+        true
+      );
+      if (!stdoutResult) {
+        throw new Error("No output from netem show command");
+      }
+      const stdout = stdoutResult as string;
       const rawData = JSON.parse(stdout);
       // The JSON format is an object keyed by the node's name.
       const interfacesData = rawData[node.name] || [];
@@ -183,13 +193,14 @@ export async function manageNodeImpairments(
           }
 
           if (netemArgs.length > 0) {
-            const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")}`;
+            // Minimal change: Append redirection to suppress command output.
+            const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")} > /dev/null 2>&1`;
             ops.push(
               runWithSudo(
                 cmd,
                 `Applying netem on ${node.name}/${intfName}`,
                 outputChannel,
-                "generic"
+                "containerlab"
               )
             );
           }
@@ -223,13 +234,14 @@ export async function manageNodeImpairments(
           if (norm === "lo") {
             continue;
           }
-          const cmd = `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001`;
+          // Minimal change: Append output redirection.
+          const cmd = `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001 > /dev/null 2>&1`;
           ops.push(
             runWithSudo(
               cmd,
               `Clearing netem on ${node.name}/${norm}`,
               outputChannel,
-              "generic"
+              "containerlab"
             )
           );
         }
