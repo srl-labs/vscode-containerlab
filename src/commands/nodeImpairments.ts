@@ -193,7 +193,8 @@ export async function manageNodeImpairments(
           }
 
           if (netemArgs.length > 0) {
-            const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")}`;
+            // Minimal change: Append redirection to suppress command output.
+            const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")} > /dev/null 2>&1`;
             ops.push(
               runWithSudo(
                 cmd,
@@ -233,7 +234,8 @@ export async function manageNodeImpairments(
           if (norm === "lo") {
             continue;
           }
-          const cmd = `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001`;
+          // Minimal change: Append output redirection.
+          const cmd = `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001 > /dev/null 2>&1`;
           ops.push(
             runWithSudo(
               cmd,
