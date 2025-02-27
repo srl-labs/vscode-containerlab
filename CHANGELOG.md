@@ -1,4 +1,8 @@
 # Change Log
+
+## [0.9.1] - 2025-02-27
+* Fixes for: Link Impairments via Webview (but remains buggy for some OS until the next clab release)
+
 ## [0.9.0] - 2025-02-23
 * Performance Improvements
 * Link Impairments via Webview
