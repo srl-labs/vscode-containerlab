@@ -41,7 +41,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // 2) If installed, check for updates
-  await checkAndUpdateClabIfNeeded(outputChannel);
+  checkAndUpdateClabIfNeeded(outputChannel).catch(err => {
+    outputChannel.appendLine(`[ERROR] Error checking for updates: ${err}`);
+  });
 
   // *** Proceed with normal extension logic ***
 
