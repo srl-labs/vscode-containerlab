@@ -29,6 +29,8 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 - **Inspection:**  
   Use webviews to inspect either all labs or a single lab’s deployed containers in a neatly grouped table.
 
+- **Remote Labs:**  
+  Works perfectly with the: [SSH-Remote extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh) to manage labs on remote servers.
 
 ---
 
