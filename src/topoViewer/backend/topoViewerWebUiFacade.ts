@@ -355,8 +355,8 @@ export class TopoViewer {
                 if (!id) continue;  // Skip if invalid
                 const nodeMap = doc.getIn(['topology', 'nodes', id], true);
                 if (YAML.isMap(nodeMap)) {
-                  nodeMap.setIn(['labels', 'graph-posX'], x.toString());
-                  nodeMap.setIn(['labels', 'graph-posY'], y.toString());
+                  nodeMap.setIn(['labels', 'graph-posX'], Math.round(x).toString());
+                  nodeMap.setIn(['labels', 'graph-posY'], Math.round(y).toString());
 
                   if (parent) {
                     nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
