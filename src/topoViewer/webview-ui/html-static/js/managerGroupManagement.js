@@ -38,6 +38,22 @@ function createNewParent({ nodeToReparent = null, createDummyChild = false } = {
   }
   console.log("Unique Parent ID:", newParentId);
 
+  // Get the current viewport bounds in model coordinates
+  var ext = cy.extent();
+
+  // Define boundaries for the random offset
+  var offsetMin = 10;  // minimum offset from the top edge
+  var offsetMax = 50;  // maximum offset from the top edge
+
+  // Generate a random offset between offsetMin and offsetMax
+  var randomOffset = Math.random() * (offsetMax - offsetMin) + offsetMin;
+
+  // Calculate the horizontal left of the viewport
+  var topCenterX = (ext.x1 + ext.x2 + randomOffset) / 2;
+
+  // Calculate the top center Y position using the random offset
+  var topCenterY = ext.y1 + (2 * randomOffset);
+
   // Build the parent node data
   const parentNodeData = {
     group: 'nodes',
@@ -54,7 +70,10 @@ function createNewParent({ nodeToReparent = null, createDummyChild = false } = {
         topoViewerGroupLevel: newParentId.split(":")[1]
       }
     },
-    position: "",
+    position: {
+      x: topCenterX,
+      y: topCenterY
+    },
     removed: false,
     selected: false,
     selectable: true,
@@ -80,6 +99,10 @@ function createNewParent({ nodeToReparent = null, createDummyChild = false } = {
       selected: false,
       selectable: false,
       locked: false,
+      position: {
+        x: topCenterX,
+        y: topCenterY
+      },
       grabbed: false,
       grabbable: false,
       classes: 'dummy'
@@ -359,19 +382,26 @@ function nodeParentRemoval() {
       throw new Error(`No parent node found with id "${parentNodeId}".`);
     }
 
+    const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
+    if (!dummyChild || dummyChild.empty()) {
+      throw new Error(`No dummyChild node found with id "${dummyChild}".`);
+    }
+
     // Get all child nodes of the parent
     const children = parentNode.children();
     if (!children) {
       console.warn(`Parent node with id "${parentNodeId}" has no children collection.`);
     }
 
+
     // Reparent each child node by setting its parent to null
     children.forEach(child => {
       child.move({ parent: null });
     });
 
-    // Remove the parent node
+    // Remove the parent node and its dummy child
     parentNode.remove();
+    dummyChild.remove()
     console.info(`Parent node "${parentNodeId}" removed successfully along with reparenting its children.`);
 
     // Hide the node editor parent panel if it exists

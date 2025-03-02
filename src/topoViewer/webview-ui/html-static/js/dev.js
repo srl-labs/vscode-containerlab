@@ -1,23 +1,3 @@
-require.config({
-  paths: {
-    'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs'
-  }
-});
-
-// Example: Load Monaco Editor on DOMContentLoaded or similar
-document.addEventListener('DOMContentLoaded', function () {
-  require(['vs/editor/editor.main'], function () {
-    // Monaco is now loaded
-    // You can set up your editor or do any post-load logic here
-    console.log("Monaco Editor is initialized.");
-
-    // You might set up your editor here, for example:
-    // window.monacoEditor = monaco.editor.create(document.getElementById('editorContainer'), ...);
-  });
-});
-
-
-
 
 document.addEventListener("DOMContentLoaded", async function () {
   // vertical layout
@@ -367,7 +347,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       });
 
       // console.log(`assignedParent id: ${assignedParent.id()}, assignedParentChildren: ${assignedParent.children()}` )
-      
+
 
       if (assignedParent) {
         // If dragged inside a parent, reassign the node to that parent
@@ -382,7 +362,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         // Get the dummy child node using topoViewerRole
         const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
 
-        console.log(`assignedParent id: ${assignedParent.id()}, assignedParentChildren: ${assignedParent.children()}, assignedParentDoummyChild: ${dummyChild.id()}` )
+        console.log(`assignedParent id: ${assignedParent.id()}, assignedParentChildren: ${assignedParent.children()}, assignedParentDoummyChild: ${dummyChild.id()}`)
 
         // Only proceed if the dummy child exists
         if (dummyChild.length > 0) {
@@ -2963,6 +2943,411 @@ function viewportButtonContainerStatusVisibility() {
   }
 }
 
+async function viewportButtonsCaptureViewportAsPng(cy) {
+  // Find the canvas element for layer2-node
+  const canvasElement = document.querySelector(
+    '#cy canvas[data-id="layer2-node"]',
+  );
+
+  const zoomScaleFactor = 1;
+
+  // Check if the canvas element exists and is an HTMLCanvasElement
+  if (canvasElement instanceof HTMLCanvasElement) {
+    // Calculate the new canvas dimensions based on the high resolution factor
+    const newWidth = canvasElement.width * zoomScaleFactor;
+    const newHeight = canvasElement.height * zoomScaleFactor;
+
+    // Create a new canvas element with the increased dimensions
+    const newCanvas = document.createElement("canvas");
+    newCanvas.width = newWidth;
+    newCanvas.height = newHeight;
+    const newCanvasContext = newCanvas.getContext("2d");
+
+    // Scale the canvas content to the new dimensions
+    newCanvasContext.scale(zoomScaleFactor, zoomScaleFactor);
+
+    // detect light or dark mode
+    const colorScheme = detectColorScheme();
+    var pngBackground = "white";
+
+    if (colorScheme === "dark") {
+      pngBackground = "black"
+    } else {
+      pngBackground = "white"
+    }
+
+    // Fill the new canvas with pngBackground
+    newCanvasContext.fillStyle = pngBackground;
+
+    newCanvasContext.fillRect(0, 0, newWidth, newHeight);
+
+    // Draw the original canvas content on the new canvas
+    newCanvasContext.drawImage(canvasElement, 0, 0);
+
+    // Convert the new canvas to a data URL with a white background
+    const dataUrl = newCanvas.toDataURL("image/png");
+
+    // Create an anchor element to trigger the download
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = "cytoscape-viewport.png";
+
+    await sleep(2000);
+    // Simulate a click to trigger the download
+    link.click();
+  } else {
+    console.error(
+      "Canvas element for layer2-node is not found or is not a valid HTML canvas element.",
+    );
+  }
+}
+
+/**
+ * Exports the Cytoscape viewport as an SVG and triggers a download.
+ * Z‑index order (bottom to top):
+ *   1. Parent (group) nodes,
+ *   2. Parallel edges (drawn as offset cubic Bezier curves),
+ *   3. Normal nodes,
+ *   4. Labels (node labels and edge endpoint labels).
+ *
+ * Parallel edges and their endpoint labels are offset so that each parallel edge’s label is distinct.
+ *
+ * @param {Object} cy - A Cytoscape instance.
+ */
+function viewportButtonsCaptureViewportAsSvg(cy) {
+  try {
+    if (!cy || typeof cy.elements !== 'function') {
+      throw new Error("A valid Cytoscape instance is required.");
+    }
+
+    // ---------------- HELPER FUNCTIONS ----------------
+
+    // Group parallel edges by "source|target" key.
+    function groupParallelEdges(cy) {
+      const map = new Map();
+      cy.edges().forEach(edge => {
+        const srcId = edge.source().id();
+        const tgtId = edge.target().id();
+        const key = `${srcId}|${tgtId}`;
+        if (!map.has(key)) {
+          map.set(key, []);
+        }
+        map.get(key).push(edge);
+      });
+      return map;
+    }
+
+    // Draw a single edge as a cubic Bezier curve, offset by its index among parallel edges.
+    function drawBezierEdge(edge, index, total, svgElem) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const srcPos = edge.source().position();
+      const tgtPos = edge.target().position();
+      const dx = tgtPos.x - srcPos.x;
+      const dy = tgtPos.y - srcPos.y;
+      const angle = Math.atan2(dy, dx);
+      const midX = (srcPos.x + tgtPos.x) / 2;
+      const midY = (srcPos.y + tgtPos.y) / 2;
+
+      const edgeOffset = 20; // base offset distance
+      const offsetIndex = index - (total - 1) / 2;
+      const perpAngle = angle + Math.PI / 2;
+      const offsetMag = offsetIndex * edgeOffset;
+      const offsetX = offsetMag * Math.cos(perpAngle);
+      const offsetY = offsetMag * Math.sin(perpAngle);
+
+      // Use two control points (both near the midpoint) offset by the perpendicular vector.
+      const cp1X = midX + offsetX;
+      const cp1Y = midY + offsetY;
+      const cp2X = cp1X;
+      const cp2Y = cp1Y;
+
+      const pathEl = document.createElementNS(svgNS, "path");
+      const d = `M ${srcPos.x},${srcPos.y} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${tgtPos.x},${tgtPos.y}`;
+      pathEl.setAttribute("d", d);
+      pathEl.setAttribute("fill", "none");
+      pathEl.setAttribute("stroke", edge.style('line-color') || "#000");
+      pathEl.setAttribute("stroke-width", edge.style('width') || "1");
+      pathEl.setAttribute("stroke-opacity", edge.style('opacity') || "1");
+      svgElem.appendChild(pathEl);
+    }
+
+    // Calculate an endpoint label position along a node border.
+    function calculateEndpointLabelPosition(node, angle, extraMargin) {
+      const width = parseFloat(node.style('width'));
+      const height = parseFloat(node.style('height'));
+      let distX = Math.abs(width / 2 / Math.cos(angle));
+      let distY = Math.abs(height / 2 / Math.sin(angle));
+      if (isNaN(distX)) { distX = Infinity; }
+      if (isNaN(distY)) { distY = Infinity; }
+      const borderDist = Math.min(distX, distY);
+      return {
+        x: node.position().x + (borderDist + extraMargin) * Math.cos(angle),
+        y: node.position().y + (borderDist + extraMargin) * Math.sin(angle)
+      };
+    }
+    // For target labels, reverse the angle.
+    function calculateTargetEndpointLabelPosition(node, angle, extraMargin) {
+      return calculateEndpointLabelPosition(node, angle + Math.PI, extraMargin);
+    }
+    // Now, add a parallel offset to the label position.
+    function calculateEndpointLabelPositionWithParallel(node, angle, extraMargin, parallelOffset) {
+      const basePos = calculateEndpointLabelPosition(node, angle, extraMargin);
+      const offsetX = parallelOffset * Math.cos(angle + Math.PI / 2);
+      const offsetY = parallelOffset * Math.sin(angle + Math.PI / 2);
+      return { x: basePos.x + offsetX, y: basePos.y + offsetY };
+    }
+    function calculateTargetEndpointLabelPositionWithParallel(node, angle, extraMargin, parallelOffset) {
+      return calculateEndpointLabelPositionWithParallel(node, angle + Math.PI, extraMargin, parallelOffset);
+    }
+
+    // ------------------ Variables to accumulate label data ------------------
+    const nodeLabelData = []; // { x, y, text, styleObj }
+    const edgeLabelData = []; // { x, y, text, styleObj }
+
+    // ------------------ Render Functions ------------------
+
+    // Render a node rectangle (for group or normal nodes) and collect its label.
+    function renderNodeRect(node, svgElem, isGroup) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const pos = node.position();
+      let width, height;
+      if (isGroup) {
+        const bounding = node.boundingBox();
+        width = bounding.w;
+        height = bounding.h;
+      } else {
+        width = parseFloat(node.style('width')) || 60;
+        height = parseFloat(node.style('height')) || 40;
+      }
+
+      const rect = document.createElementNS(svgNS, "rect");
+      rect.setAttribute("x", pos.x - width / 2);
+      rect.setAttribute("y", pos.y - height / 2);
+      rect.setAttribute("width", width);
+      rect.setAttribute("height", height);
+      if (isGroup) {
+        rect.setAttribute("fill", "#3b3d40");
+        rect.setAttribute("stroke", "#acacad");
+        rect.setAttribute("stroke-width", "0.5");
+      } else {
+        const bgColor = node.style('background-color') || "#000";
+        rect.setAttribute("fill", bgColor);
+        if (node.style('border-color') && parseFloat(node.style('border-width')) > 0) {
+          rect.setAttribute("stroke", node.style('border-color'));
+          rect.setAttribute("stroke-width", node.style('border-width'));
+        }
+      }
+      svgElem.appendChild(rect);
+
+      const label = node.data("name");
+      if (label) {
+        const labelY = pos.y + height / 2 + 8;
+        nodeLabelData.push({
+          x: pos.x,
+          y: labelY,
+          text: label,
+          styleObj: node
+        });
+      }
+
+      if (!isGroup && node.data("topoViewerRole") && typeof generateEncodedSVG === 'function') {
+        const role = node.data("topoViewerRole");
+        if (role !== "group") {
+          const svgDataUrl = generateEncodedSVG(role, "#001135");
+          const image = document.createElementNS(svgNS, "image");
+          image.setAttribute("x", pos.x - width / 2);
+          image.setAttribute("y", pos.y - height / 2);
+          image.setAttribute("width", width);
+          image.setAttribute("height", height);
+          image.setAttributeNS("http://www.w3.org/1999/xlink", "href", svgDataUrl);
+          svgElem.appendChild(image);
+        }
+      }
+    }
+
+    // Create a <text> element for a label.
+    function createLabelText(x, y, textValue, styleObj) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const textEl = document.createElementNS(svgNS, "text");
+      textEl.setAttribute("x", x);
+      textEl.setAttribute("y", y);
+      textEl.setAttribute("text-anchor", "middle");
+      const fontSize = styleObj.style("font-size") || "10px";
+      textEl.setAttribute("font-size", fontSize);
+      const fontFamily = styleObj.style("font-family") || "sans-serif";
+      textEl.setAttribute("font-family", fontFamily);
+      // For labels, use the element's "color" property.
+      const fillColor = styleObj.style("color") || "#000";
+      textEl.setAttribute("fill", fillColor);
+      const outlineWidth = styleObj.style("text-outline-width");
+      const outlineColor = styleObj.style("text-outline-color");
+      if (outlineColor && outlineWidth && parseFloat(outlineWidth) > 0) {
+        textEl.setAttribute("stroke", outlineColor);
+        textEl.setAttribute("stroke-width", outlineWidth);
+        textEl.setAttribute("paint-order", "stroke");
+      }
+      textEl.textContent = textValue;
+      return textEl;
+    }
+
+    // ------------------ MAIN SVG EXPORT LOGIC ------------------
+
+    function exportCyToSVG(cy) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const serializer = new XMLSerializer();
+      const margin = 10;
+
+      const bb = cy.elements().boundingBox();
+      const svgWidth = bb.w + 2 * margin;
+      const svgHeight = bb.h + 2 * margin;
+
+      const svgElem = document.createElementNS(svgNS, "svg");
+      svgElem.setAttribute("xmlns", svgNS);
+      svgElem.setAttribute("width", svgWidth);
+      svgElem.setAttribute("height", svgHeight);
+      svgElem.setAttribute("viewBox", `${bb.x1 - margin} ${bb.y1 - margin} ${svgWidth} ${svgHeight}`);
+
+      // (A) Render group (parent) nodes first.
+      const groupNodes = cy.nodes().filter(n => n.data("topoViewerRole") === "group");
+      groupNodes.forEach(node => {
+        renderNodeRect(node, svgElem, true);
+      });
+
+      // (B) Group parallel edges and draw them as Bezier curves.
+      const parallelMap = groupParallelEdges(cy);
+      parallelMap.forEach((edgeArray) => {
+        const total = edgeArray.length;
+        edgeArray.forEach((edge, index) => {
+          drawBezierEdge(edge, index, total, svgElem);
+        });
+      });
+
+      // (C) Render normal nodes (above edges).
+      const normalNodes = cy.nodes().filter(n => n.data("topoViewerRole") !== "group");
+      normalNodes.forEach(node => {
+        renderNodeRect(node, svgElem, false);
+      });
+
+      // (D) Process edge endpoint labels.
+      parallelMap.forEach((edgeArray) => {
+        const total = edgeArray.length;
+        edgeArray.forEach((edge, index) => {
+          const srcPos = edge.source().position();
+          const tgtPos = edge.target().position();
+          const dx = tgtPos.x - srcPos.x;
+          const dy = tgtPos.y - srcPos.y;
+          const angle = Math.atan2(dy, dx);
+          // Use the same parallel offset as for the edge.
+          const edgeOffset = 20;
+          const offsetIndex = index - (total - 1) / 2;
+          const parallelOffset = offsetIndex * edgeOffset;
+          // Source endpoint label.
+          const sourceLabel = edge.data("sourceEndpoint");
+          if (sourceLabel) {
+            const extraMargin = 15;
+            const posObj = calculateEndpointLabelPositionWithParallel(edge.source(), angle, extraMargin, parallelOffset);
+            edgeLabelData.push({
+              x: posObj.x,
+              y: posObj.y + 2,
+              text: sourceLabel,
+              styleObj: edge
+            });
+          }
+          // Target endpoint label.
+          const targetLabel = edge.data("targetEndpoint");
+          if (targetLabel) {
+            const extraMargin = 15;
+            const posObj = calculateTargetEndpointLabelPositionWithParallel(edge.target(), angle, extraMargin, parallelOffset);
+            edgeLabelData.push({
+              x: posObj.x,
+              y: posObj.y + 2,
+              text: targetLabel,
+              styleObj: edge
+            });
+          }
+        });
+      });
+
+      // (E) Render all node labels.
+      const nodeLabelSvgEls = [];
+      nodeLabelData.forEach(labelObj => {
+        const textEl = createLabelText(labelObj.x, labelObj.y, labelObj.text, labelObj.styleObj);
+        svgElem.appendChild(textEl);
+        if (labelObj.styleObj.style('text-background-color')) {
+          nodeLabelSvgEls.push({
+            textEl: textEl,
+            padding: parseFloat(labelObj.styleObj.style('text-background-padding') || "1"),
+            bgColor: labelObj.styleObj.style('text-background-color'),
+            bgOpacity: labelObj.styleObj.style('text-background-opacity')
+          });
+        }
+      });
+
+      // (F) Render all edge endpoint labels.
+      const edgeLabelSvgEls = [];
+      edgeLabelData.forEach(lbl => {
+        const textEl = createLabelText(lbl.x, lbl.y, lbl.text, lbl.styleObj);
+        svgElem.appendChild(textEl);
+        if (lbl.styleObj.style("text-background-color")) {
+          edgeLabelSvgEls.push({
+            textEl: textEl,
+            padding: parseFloat(lbl.styleObj.style("text-background-padding") || "1"),
+            bgColor: lbl.styleObj.style("text-background-color"),
+            bgOpacity: lbl.styleObj.style("text-background-opacity")
+          });
+        }
+      });
+
+      // (G) Combine all labels and insert background rectangles behind each.
+      const allLabelEls = nodeLabelSvgEls.concat(edgeLabelSvgEls);
+      const tempDiv = document.createElement("div");
+      tempDiv.style.visibility = "hidden";
+      tempDiv.style.position = "absolute";
+      tempDiv.style.top = "-10000px";
+      tempDiv.appendChild(svgElem);
+      document.body.appendChild(tempDiv);
+
+      allLabelEls.forEach(item => {
+        const { textEl, padding, bgColor, bgOpacity } = item;
+        const bbox = textEl.getBBox();
+        const bgRect = document.createElementNS(svgNS, "rect");
+        bgRect.setAttribute("x", bbox.x - padding);
+        bgRect.setAttribute("y", bbox.y - padding);
+        bgRect.setAttribute("width", bbox.width + 2 * padding);
+        bgRect.setAttribute("height", bbox.height + 2 * padding);
+        bgRect.setAttribute("rx", 2);
+        bgRect.setAttribute("ry", 2);
+        bgRect.setAttribute("fill", bgColor);
+        if (bgOpacity !== undefined) {
+          bgRect.setAttribute("fill-opacity", bgOpacity);
+        }
+        svgElem.insertBefore(bgRect, textEl);
+      });
+
+      document.body.removeChild(tempDiv);
+      return serializer.serializeToString(svgElem);
+    }
+
+    // ------------------ FINAL DOWNLOAD STEP ------------------
+    const svgString = exportCyToSVG(cy);
+
+
+    console.log("svgString", svgString)
+
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const dataUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = `viewport-containerlab-${globalLabName}.svg`;
+
+    link.click();
+
+  } catch (error) {
+    console.error("Error exporting Cytoscape topology as SVG:", error);
+  }
+}
+
+
 
 function viewportDrawerCaptureFunc() {
   console.info("viewportDrawerCaptureButton() - clicked")
@@ -3718,6 +4103,24 @@ function loadCytoStyle(cy) {
       }
     },
     {
+      "selector": "node[topoViewerRole=\"ue\"]",
+      "style": {
+        "width": "14",
+        "height": "14",
+        "background-image": `${generateEncodedSVG("ue", "#001135")}`,
+        "background-fit": "cover"
+      }
+    },
+    {
+      "selector": "node[topoViewerRole=\"cloud\"]",
+      "style": {
+        "width": "14",
+        "height": "14",
+        "background-image": `${generateEncodedSVG("cloud", "#001135")}`,
+        "background-fit": "cover"
+      }
+    },
+    {
       "selector": "node[topoViewerRole=\"client\"]",
       "style": {
         "width": "14",
@@ -3882,12 +4285,7 @@ function loadCytoStyle(cy) {
         "source-text-offset": 20,
         "target-text-offset": 20,
         "arrow-scale": "0.5",
-        "source-text-color": "#000000",
-        "target-text-color": "#000000",
-
-        // 'source-text-background-color': '#CACBCC',
-        // 'target-text-background-color': '#00CBCC',
-
+        "color": "#000000",
         "text-outline-width": "0.3px",
         "text-outline-color": "#FFFFFF",
         "text-background-color": "#CACBCC",
@@ -4161,8 +4559,16 @@ function loadCytoStyle(cy) {
     restoreDynamicStyles();
   }
 
-  // Ensure the socket event binding reflects the current toggle.
-  updateSocketBinding();
+  const globalUseSocketIO = window.useSocket
+  // Decide which method to be use to stream data from backend() to frontend(webview)
+  if (globalUseSocketIO == "true") {
+    // use socket io
+    updateSocketBinding();
+  } else {
+    // use vscode native post messsage
+    console.log("window.useSocket", globalUseSocketIO)
+    updateMessageStreamBinding();
+  }
 }
 
 /**
@@ -4847,6 +5253,3 @@ function pathFinderDijkstraDrawer(cy) {
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-
-// ASAD
