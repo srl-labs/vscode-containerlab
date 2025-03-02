@@ -589,15 +589,16 @@ body {
   .has-background-4a {
     z-index: 1;
     background-color: rgba(70, 86, 246, 1);
-    box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.4);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
   }
 
   .panel-block {
     background-color: white;
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
   }
 
   .panel {
-    box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.4);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
     background-color: white;
   }
 

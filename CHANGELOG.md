@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.9.2] - 2025-02-27
+* TopoViewer Enhancements
+* Fix: New version will not intervent extension activation.
+
 ## [0.9.1] - 2025-02-27
 * Fixes for: Link Impairments via Webview (but remains buggy for some OS until the next clab release)
 

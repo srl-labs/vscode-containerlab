@@ -11,6 +11,7 @@ jsonFileUrlDataEnvironment: string,
 isVscodeDeployment: boolean,
 jsOutDir: string,
 allowedHostname: string,
+useSocket: boolean,
 socketAssignedPort: number
 ): string {
 
@@ -211,6 +212,15 @@ return `
             </span>
           </a>
         </p>
+
+        <!-- <p class="control p-0">
+          <a id="viewport-capture-viewport" href="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
+            class="button px-4 py-4 is-smallest-element" style="outline: none;">
+            <span class="icon is-small">
+              <i class="fa-solid fa-camera"></i>
+            </span>
+          </a>
+        </p> -->
 
         <p class="control p-0">
           <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"
@@ -1736,6 +1746,8 @@ return `
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 
 
+
+
     <script src="${jsUri}/library/lodash.min.js?ver=1"></script>
 
     <script src="${jsUri}/library/cola.min.js?ver=1"></script>
@@ -1750,6 +1762,8 @@ return `
     <script src="${jsUri}/library/cytoscape-grid-guide.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-edgehandles.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-expand-collapse.min.js"></script>
+    <!-- cytoscape svg-->
+    <script src=https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js></script>
 
     <!-- custom textbox with rich text editor -->
 
@@ -1757,7 +1771,7 @@ return `
     <script src="${jsUri}/library/quill-2-0-3.min.js"></script>
     <script src="${jsUri}/managerCyTextBox.js?ver=1"></script>
 
-    <script src="${jsUri}/library/socket.io.min.js?ver=1"></script>
+    <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
 
     <script src="https://unpkg.com/@floating-ui/core@1.5.0"></script>
     <script src="https://unpkg.com/@floating-ui/dom@1.5.3"></script>
@@ -1781,7 +1795,10 @@ return `
     <!-- Inject allowedHostname string as a global variable -->
     <script> window.allowedHostname = "${allowedHostname}"; </script>
 
-    <!-- Inject allowedHostname number as a global variable -->
+    <!-- Inject useSocket boolean as a global variable -->
+    <script> window.useSocket = "${useSocket}"; </script>
+
+    <!-- Inject socketAssignedPort number as a global variable -->
     <script> window.socketAssignedPort = "${socketAssignedPort}"; </script>
 
 
