@@ -1,6 +1,9 @@
 import cytoscape from 'cytoscape';
 import edgehandles from 'cytoscape-edgehandles';
 
+import loadCytoStyle from './managerCytoscapeStyle';
+
+
 cytoscape.use(edgehandles);
 
 interface NodeData {
@@ -53,29 +56,56 @@ class TopoViewerEditorEngine {
     this.cy = cytoscape({
       container,
       elements: [
-        { data: { id: 'a' } },
-        { data: { id: 'b' } },
-        { data: { id: 'd' } },
-        { data: { id: 'ab', source: 'a', target: 'b' } }
-      ],
-      style: [
         {
-          selector: 'node',
-          style: {
-            'background-color': '#666',
-            'label': 'data(id)'
+          data:
+          {
+            id: 'a',
+            name: "A",
+            topoViewerRole: 'pe'
           }
         },
         {
-          selector: 'edge',
-          style: {
-            'width': 3,
-            'line-color': '#ccc',
-            'target-arrow-color': '#ccc',
-            'target-arrow-shape': 'triangle'
+          data:
+          {
+            id: 'b',
+            name: "B",
+            topoViewerRole: 'pe'
           }
-        }
+        },
+        {
+          data:
+          {
+            id: 'c',
+            name: "C",
+            topoViewerRole: 'pe'
+          }
+        },
+        {
+          data:
+          {
+            id: 'd',
+            name: "D",
+            topoViewerRole: 'pe'
+          }
+        },
+
+        { data: { id: 'ab1', source: 'a', target: 'b' } },
+        { data: { id: 'ac1', source: 'a', target: 'c' } },
+
+        { data: { id: 'ab2', source: 'a', target: 'b' } },
+        { data: { id: 'ac2', source: 'a', target: 'c' } },
+
+        { data: { id: 'ad', source: 'a', target: 'd' } },
+
+        { data: { id: 'bd', source: 'b', target: 'd' } },
+
+        { data: { id: 'cd', source: 'c', target: 'd' } },
+
+
+
+
       ],
+
       layout: {
         name: 'grid',
         rows: 1
@@ -84,6 +114,18 @@ class TopoViewerEditorEngine {
 
     this.initializeEdgehandles();
     this.registerEvents();
+
+    // Apply styles once the graph is ready.
+    this.loadCytoStyle();
+  }
+
+
+  /**
+ * Loads Cytoscape styles by delegating to the external manager function.
+ * This method is private to the class.
+ */
+  private loadCytoStyle(): void {
+    loadCytoStyle(this.cy);
   }
 
   /**
@@ -150,7 +192,7 @@ class TopoViewerEditorEngine {
         case originalEvent.altKey && isNodeInEditMode:
           console.info("Alt+click on node: deleting node", extraData?.longname || node.id());
           node.remove();
-          // TODO: Persist the node deletion on your server or file system if necessary
+          // TODO: Persist the node deletion if necessary
           break;
 
         default:
@@ -158,7 +200,7 @@ class TopoViewerEditorEngine {
       }
     });
 
-    // Edge click: delete edge when Shift is held.
+    // Edge click: delete edge when Alt is held.
     this.cy.on('click', 'edge', (event) => {
       const edge = event.target;
       const originalEvent = event.originalEvent as MouseEvent;
@@ -166,7 +208,7 @@ class TopoViewerEditorEngine {
         case originalEvent.altKey && this.isViewportDrawerClabEditorChecked:
           console.info("Alt+click on edge: deleting edge", edge.id());
           edge.remove();
-          // TODO: Persist the edge deletion on your server or file system if necessary
+          // TODO: Persist the edge deletion if necessary
           break;
         default:
           break;
@@ -193,7 +235,7 @@ class TopoViewerEditorEngine {
         editor: 'true',
       });
 
-      // TODO: Persist the edge to your server or file system if necessary
+      // TODO: Persist the edge if necessary
     });
   }
 
@@ -212,16 +254,8 @@ class TopoViewerEditorEngine {
       topoViewerRole: "pe",
       sourceEndpoint: "",
       targetEndpoint: "",
-      containerDockerExtraAttribute: {
-        state: "",
-        status: "",
-      },
-      extraData: {
-        kind: "container",
-        longname: "",
-        image: "",
-        mgmtIpv4Addresss: "",
-      },
+      containerDockerExtraAttribute: { state: "", status: "" },
+      extraData: { kind: "container", longname: "", image: "", mgmtIpv4Addresss: "" },
     };
 
     this.cy.add({
@@ -276,8 +310,16 @@ class TopoViewerEditorEngine {
 
     return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
   }
-  
-  // Optionally, expose additional methods to update state, retrieve graph data, or persist changes.
+
+
+  /**
+   * Detects the user's preferred color scheme.
+   * @returns {string} "dark" or "light"
+   */
+  private detectColorScheme(): string {
+    // Use the Window matchMedia API.
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
+  }
 }
 
 // Instantiate the TopoViewerEditorEngine when the DOM is fully loaded.

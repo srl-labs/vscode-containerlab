@@ -65,7 +65,7 @@ return `
       <div class="p-0 is-flex is-justify-content-space-evenly is-flex-direction-column">
         <p class="title    m-0 px-1 py-0   is-4 is-unselectable has-text-weight-normal has-text-white"> containerlab</p>
         <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white"
-          id="ClabSubtitle">Topology name: clab ::: Uptime: 10m10s</p>
+          id="ClabSubtitle">Editor ::: Topology name: Königsberger Brücken</p>
       </div>
     </div>
 
