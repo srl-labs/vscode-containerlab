@@ -6,6 +6,7 @@ import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
+import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
@@ -158,7 +159,17 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)));
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)
+    )
+  );
+
+  const editor = new TopoViewerEditor(context);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerEditor', () => editor.createOrShow(context)
+    )
+  );
+
+
 
   // Node commands
   context.subscriptions.push(
@@ -169,7 +180,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.save', cmd.saveNode)
-  ); 
+  );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
   );
