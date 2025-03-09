@@ -36,7 +36,7 @@ return `
 
   <!-- Quill CSS (Snow theme) -->
   <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"> -->
-  <link rel="stylesheet" href="${cssUri}/quill.css?ver=1" />
+  <!-- <link rel="stylesheet" href="${cssUri}/quill.css?ver=1" /> -->
 
   <!-- highlight.js style -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -127,9 +127,10 @@ return `
         </span>
       </button>
     </div>
+    
     <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
-        <p class="control p-0">
+        <!-- <p class="control p-0">
           <a id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
@@ -137,8 +138,6 @@ return `
             </span>
           </a>
         </p>
-
-
 
         <p class="control p-0">
           <a id="viewport-layout" href="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
@@ -148,8 +147,6 @@ return `
             </span>
           </a>
         </p>
-
-
 
         <p class="control p-0">
           <a id="viewport-topology-overview" href="Find Node" onclick="viewportButtonsTopologyOverview(event)"
@@ -166,7 +163,7 @@ return `
               <i class="fas fa-tag"></i>
             </span>
           </a>
-        </p>
+        </p> -->
 
         <!-- aarafat-tag: vs-code  
 
@@ -203,14 +200,14 @@ return `
                 </p>
                 -->
 
-        <p class="control p-0">
+        <!-- <p class="control p-0">
           <a id="viewport-reload-topo" href="Add Group" onclick="viewportButtonsAddGroup()"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-notes-medical"></i>
             </span>
           </a>
-        </p>
+        </p> -->
 
         <!-- <p class="control p-0">
           <a id="viewport-capture-viewport" href="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
@@ -221,17 +218,18 @@ return `
           </a>
         </p> -->
 
-        <p class="control p-0">
+        <!-- <p class="control p-0">
           <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </span>
           </a>
-        </p>
+        </p> -->
 
         <p class="control p-0">
-          <a id="viewport-save-topo" href="Save TopoViewer" onclick="viewportButtonsSaveTopo(cy)"
+          <a id="viewport-save-topo" href="Save TopoViewer"
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsSaveTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-floppy-disk"></i>
@@ -1022,6 +1020,195 @@ return `
       </div> <!-- End .panel-tabContainer -->
     </section>
 
+    <section class="panel is-link" id="panel-node-editor" aria-labelledby="node-editor-heading" style="display: none;">
+      <header class="panel-heading is-size-7" id="node-editor-heading">
+        Node Properties Editor
+      </header>
+      <form class="panel-tabContainer" novalidate>
+        <div class="panel-block p-0">
+          <div class="column px-0">
+            <!-- Id (read-only) -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-editor-id" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Id
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <output id="panel-node-editor-id"
+                      class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal"></output>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-block p-0">
+          <div class="column px-0">
+
+            <!-- Node Name -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-editor-name" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Node Name
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <input type="text" id="panel-node-editor-name"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- Kind Dropdown -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-kind-dropdown" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Kind
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <div class="dropdown is-hoverable" id="panel-node-kind-dropdown">
+                      <div class="dropdown-trigger">
+                        <button class="button is-size-7" type="button" aria-haspopup="true"
+                          aria-controls="dropdown-menu">
+                          <span>Select Kind</span>
+                          <span class="icon is-small">
+                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                          </span>
+                        </button>
+                      </div>
+                      <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                        <div class="dropdown-content" id="panel-node-kind-dropdown-content">
+                          <!-- Dropdown items go here -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TopoViewer Role or Icons Dropdown -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-topoviewerrole-dropdown"
+                      class="label is-size-7 has-text-right has-text-weight-medium">
+                      Icons
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <div class="dropdown is-hoverable" id="panel-node-topoviewerrole-dropdown">
+                      <div class="dropdown-trigger">
+                        <button class="button is-size-7" type="button" aria-haspopup="true"
+                          aria-controls="dropdown-menu-topoviewerrole">
+                          <span>Select Icons</span>
+                          <span class="icon is-small">
+                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                          </span>
+                        </button>
+                      </div>
+                      <div class="dropdown-menu" id="dropdown-menu-topoviewerrole" role="menu">
+                        <div class="dropdown-content" id="panel-node-topoviewerrole-dropdown-content">
+                          <!-- Dropdown items go here -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Image -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-editor-image" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Image
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <input type="text" id="panel-node-editor-image"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Group -->
+            <!--
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-editor-group" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Group
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <input type="text" id="panel-node-editor-group"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            -->
+          </div>
+        </div>
+
+        <div class="panel-block p-0">
+          <div class="column px-0">
+
+            <!-- File Input and Action Buttons -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <!-- Empty label for alignment -->
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <div class="field is-grouped">
+                      <div class="control">
+                        <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
+                      </div>
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small"
+                          id="panel-node-editor-save-button">
+                          Save
+                        </button>
+                      </div>
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small"
+                          id="panel-node-editor-close-button">
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </form>
+    </section>
+
+
+    <!-- 
     <div class="panel is-link" id="panel-node-editor" style="display: none;">
       <p class="panel-heading is-size-7">Node Properties Editor</p>
       <div class="panel-tabContainer">
@@ -1149,6 +1336,7 @@ return `
         </div>
       </div>
     </div>
+     -->
 
     <!-- 
     <div class="panel-tabContainer">
@@ -1742,7 +1930,7 @@ return `
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <!-- 3) Quill (v2 beta) -->
-    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script> -->
 
 
 
@@ -1754,7 +1942,7 @@ return `
     <script src="${jsUri}/library/tippy.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape.min.js?ver=1"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
-<!-- 
+    <!-- 
     <script src="${jsUri}/library/cytoscape-leaflet.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-cola.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-popper.min.js?ver=1"></script>
@@ -1767,7 +1955,7 @@ return `
     <!-- custom textbox with rich text editor -->
 
     <script src="${jsUri}/library/highlight-11-9-0.min.js"></script>
-    <script src="${jsUri}/library/quill-2-0-3.min.js"></script>
+    <!-- <script src="${jsUri}/library/quill-2-0-3.min.js"></script> -->
     <script src="${jsUri}/managerCyTextBox.js?ver=1"></script>
 
     <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
@@ -1778,6 +1966,8 @@ return `
     <script src="${jsUri}/library/js-yaml.min.js?ver=1"></script>
     <script src="${jsUri}/library/monaco-loader.js?ver=1"></script>
 
+    <!-- Inject jsUri as a global variable -->
+    <script> window.jsUrl = "${jsUri}"; </script>
 
     <!-- Inject imagesUri as a global variable -->
     <script> window.imagesUrl = "${imagesUri}"; </script>
@@ -1803,7 +1993,7 @@ return `
     <script src="${jsOutDir}/topoViewerEditorEngine.js?ver=1"></script>
 
 
-<!-- 
+    <!-- 
     <script src="${jsUri}/common.js?ver=1"></script>
     <script src="${jsUri}/dev.js?ver=1"></script> -->
 
@@ -1818,7 +2008,7 @@ return `
     <script src="${jsUri}/managerGroupManagement.js?ver=1"></script> -->
 
 
-<!-- 
+    <!-- 
     <script src="${jsUri}/backupRestore.js?ver=1"></script>
     <script src="${jsUri}/managerClabEditor.js?ver=1"></script> -->
 

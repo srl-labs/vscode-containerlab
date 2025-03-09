@@ -151,9 +151,9 @@
         "category": "Containerlab"
       },
       {
-        "command": "containerlab.lab.graph.topoViewerEditor",
-        "title": "Graph Lab (Containerlab-TopoEditor)",
-        "icon": "$(graph-line)",
+        "command": "containerlab.editor.topoViewerEditor",
+        "title": "New topology file",
+        "icon": "$(new-file)",
         "category": "Containerlab"
       },
       {
@@ -292,6 +292,11 @@
           "command": "containerlab.lab.deploy.specificFile",
           "when": "view == containerlabExplorer",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.editor.topoViewerEditor",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@3"
         },
         {
           "command": "containerlab.inspectAll",
@@ -485,11 +490,6 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "viewItem == containerlabLabDeployed",
           "group": "graph@3"
-        },
-        {
-          "command": "containerlab.lab.graph.topoViewerEditor",
-          "when": "viewItem == containerlabLabDeployed",
-          "group": "graph@4"
         },
         {
           "command": "containerlab.node.start",
@@ -773,7 +773,9 @@
     "@vscode/test-cli": "^0.0.10",
     "@vscode/vsce": "^3.2.2",
     "cytoscape": "^3.31.1",
+    "cytoscape-cola": "^2.5.1",
     "cytoscape-edgehandles": "^4.0.1",
+    "cytoscape-grid-guide": "^2.3.3",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
     "yaml": "^2.7.0"

@@ -1,11 +1,22 @@
+// file: topoViewerEditorEngine.ts
+
 import cytoscape from 'cytoscape';
 import edgehandles from 'cytoscape-edgehandles';
+import cola from 'cytoscape-cola';
+import gridGuide from 'cytoscape-grid-guide';
 
 import loadCytoStyle from './managerCytoscapeStyle';
-
+import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
+import { ManagerViewportButtons } from './managerViewportButtons';
+import { ManagerViewportPanels } from './managerViewportPanels';
 
 cytoscape.use(edgehandles);
+cytoscape.use(cola);
+cytoscape.use(gridGuide);
 
+/**
+ * Interface representing node data.
+ */
 interface NodeData {
   id: string;
   editor?: string;
@@ -27,6 +38,9 @@ interface NodeData {
   };
 }
 
+/**
+ * Interface representing edge data.
+ */
 interface EdgeData {
   id: string;
   source: string;
@@ -36,15 +50,23 @@ interface EdgeData {
   editor?: string;
 }
 
+/**
+ * TopoViewerEditorEngine class is responsible for initializing the Cytoscape instance,
+ * managing edge creation, node editing and viewport panels/buttons.
+ */
 class TopoViewerEditorEngine {
   private cy: cytoscape.Core;
   private eh: any;
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
+  private viewportButtons: ManagerViewportButtons;
+  private viewportPanels: ManagerViewportPanels;
+
   /**
-   * Creates a new TopoViewerEditorEngine instance.
-   * @param containerId - The id of the HTML element that will host the Cytoscape container.
+   * Creates an instance of TopoViewerEditorEngine.
+   * @param containerId - The ID of the container element for Cytoscape.
+   * @throws Will throw an error if the container element is not found.
    */
   constructor(containerId: string) {
     const container = document.getElementById(containerId);
@@ -52,84 +74,85 @@ class TopoViewerEditorEngine {
       throw new Error("Cytoscape container element not found");
     }
 
+    // Detect and apply color scheme
+    this.detectColorScheme();
+
     // Initialize Cytoscape instance
     this.cy = cytoscape({
       container,
-      elements: [
-        {
-          data:
-          {
-            id: 'a',
-            name: "A",
-            topoViewerRole: 'pe'
-          }
-        },
-        {
-          data:
-          {
-            id: 'b',
-            name: "B",
-            topoViewerRole: 'pe'
-          }
-        },
-        {
-          data:
-          {
-            id: 'c',
-            name: "C",
-            topoViewerRole: 'pe'
-          }
-        },
-        {
-          data:
-          {
-            id: 'd',
-            name: "D",
-            topoViewerRole: 'pe'
-          }
-        },
-
-        { data: { id: 'ab1', source: 'a', target: 'b' } },
-        { data: { id: 'ac1', source: 'a', target: 'c' } },
-
-        { data: { id: 'ab2', source: 'a', target: 'b' } },
-        { data: { id: 'ac2', source: 'a', target: 'c' } },
-
-        { data: { id: 'ad', source: 'a', target: 'd' } },
-
-        { data: { id: 'bd', source: 'b', target: 'd' } },
-
-        { data: { id: 'cd', source: 'c', target: 'd' } },
-
-
-
-
-      ],
-
-      layout: {
-        name: 'grid',
-        rows: 1
-      }
+      elements: [],
+      wheelSensitivity: 0.2,
     });
 
-    this.initializeEdgehandles();
-    this.registerEvents();
+    // Enable grid guide extension (casting cy as any to satisfy TypeScript)
+    (this.cy as any).gridGuide({
+      snapToGridOnRelease: true,
+      snapToGridDuringDrag: false,
+      snapToAlignmentLocationOnRelease: true,
+      snapToAlignmentLocationDuringDrag: false,
+      distributionGuidelines: false,
+      geometricGuideline: false,
+      initPosAlignment: false,
+      centerToEdgeAlignment: false,
+      resize: false,
+      parentPadding: false,
+      drawGrid: true,
 
-    // Apply styles once the graph is ready.
-    this.loadCytoStyle();
-  }
+      gridSpacing: 10,
+      snapToGridCenter: true,
 
+      zoomDash: true,
+      panGrid: true,
+      gridStackOrder: -1,
+      gridColor: '#434343',
+      lineWidth: 0.5,
 
-  /**
- * Loads Cytoscape styles by delegating to the external manager function.
- * This method is private to the class.
- */
-  private loadCytoStyle(): void {
+      guidelinesStackOrder: 4,
+      guidelinesTolerance: 2.0,
+      guidelinesStyle: {
+        strokeStyle: "#8b7d6b",
+        geometricGuidelineRange: 400,
+        range: 100,
+        minDistRange: 10,
+        distGuidelineOffset: 10,
+        horizontalDistColor: "#ff0000",
+        verticalDistColor: "#00ff00",
+        initPosAlignmentColor: "#0000ff",
+        lineDash: [0, 0],
+        horizontalDistLine: [0, 0],
+        verticalDistLine: [0, 0],
+        initPosAlignmentLine: [0, 0],
+      },
+
+      parentSpacing: -1,
+    });
+
     loadCytoStyle(this.cy);
+    fetchAndLoadData(this.cy);
+
+    // Fetch and load data from the environment and update the subtitle
+    (async () => {
+      try {
+        const result = await fetchAndLoadDataEnvironment(["clab-name"]);
+        this.updateSubtitle(result["clab-name"] || "Unknown");
+      } catch (error) {
+        console.error("Error loading lab name:", error);
+      }
+    })();
+
+    this.registerEvents();
+    this.initializeEdgehandles();
+
+    // Initiate viewport buttons and panels
+    this.viewportButtons = new ManagerViewportButtons();
+    this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy);
+    this.viewportPanels.registerTogglePanels(containerId);
   }
 
   /**
-   * Configures and enables the edgehandles plugin.
+   * Initializes the edgehandles extension with defined options.
+   * Enables the edgehandles instance for creating edges.
+   * @private
    */
   private initializeEdgehandles(): void {
     const edgehandlesOptions = {
@@ -139,16 +162,13 @@ class TopoViewerEditorEngine {
       snapFrequency: 150,
       noEdgeEventsInDraw: false,
       disableBrowserGestures: false,
-      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean => {
-        return !sourceNode.same(targetNode) && !sourceNode.isParent() && !targetNode.isParent();
-      },
-      edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => {
-        return {
-          id: `${sourceNode.id()}-${targetNode.id()}`,
-          source: sourceNode.id(),
-          target: targetNode.id(),
-        };
-      },
+      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean =>
+        !sourceNode.same(targetNode) && !sourceNode.isParent() && !targetNode.isParent(),
+      edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => ({
+        id: `${sourceNode.id()}-${targetNode.id()}`,
+        source: sourceNode.id(),
+        target: targetNode.id(),
+      }),
     };
 
     this.eh = (this.cy as any).edgehandles(edgehandlesOptions);
@@ -157,20 +177,23 @@ class TopoViewerEditorEngine {
   }
 
   /**
-   * Registers all event listeners: canvas clicks, node clicks, edge clicks, and edge creation.
+   * Registers event handlers for Cytoscape elements such as canvas, nodes, and edges.
+   * @private
    */
-  private registerEvents(): void {
+  private async registerEvents(): Promise<void> {
     // Canvas click: add node when Shift is held.
     this.cy.on('click', (event) => {
       const mouseEvent = event.originalEvent as MouseEvent;
       if (event.target === this.cy && mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
         console.log("Canvas clicked with Shift key - adding node.");
         this.addNodeAtPosition(event.position);
+      } else {
+        this.viewportButtons.viewportButtonsSaveTopo(this.cy);
       }
     });
 
-    // Node click: handle orphaning, edge creation, and deletion using a switch-case.
-    this.cy.on('click', 'node', (event) => {
+    // Node click: handle orphaning, edge creation, and deletion.
+    this.cy.on('click', 'node', async (event) => {
       const node = event.target;
       console.info("Node clicked:", node.id());
       const originalEvent = event.originalEvent as MouseEvent;
@@ -178,23 +201,27 @@ class TopoViewerEditorEngine {
       const isNodeInEditMode = node.data("editor") === "true";
 
       switch (true) {
+        // Remove node from parent if Ctrl is pressed and node is a child.
         case originalEvent.ctrlKey && node.isChild():
           console.info(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
           node.move({ parent: null });
           break;
-
+        // Start edge creation if Shift is pressed.
         case originalEvent.shiftKey:
           console.info("Shift+click on node: starting edge creation from node:", extraData?.longname || node.id());
           this.isEdgeHandlerActive = true;
           this.eh.start(node);
           break;
-
+        // Delete node if Alt is pressed and node is in edit mode.
         case originalEvent.altKey && isNodeInEditMode:
           console.info("Alt+click on node: deleting node", extraData?.longname || node.id());
           node.remove();
-          // TODO: Persist the node deletion if necessary
           break;
-
+        // Open node editor for a normal click.
+        case !originalEvent.shiftKey:
+          console.info("Opening node editor for node:", extraData?.longname || node.id());
+          await this.viewportPanels.panelNodeEditor(node);
+          break;
         default:
           break;
       }
@@ -204,14 +231,9 @@ class TopoViewerEditorEngine {
     this.cy.on('click', 'edge', (event) => {
       const edge = event.target;
       const originalEvent = event.originalEvent as MouseEvent;
-      switch (true) {
-        case originalEvent.altKey && this.isViewportDrawerClabEditorChecked:
-          console.info("Alt+click on edge: deleting edge", edge.id());
-          edge.remove();
-          // TODO: Persist the edge deletion if necessary
-          break;
-        default:
-          break;
+      if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
+        console.info("Alt+click on edge: deleting edge", edge.id());
+        edge.remove();
       }
     });
 
@@ -220,55 +242,43 @@ class TopoViewerEditorEngine {
       console.info(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
       console.info("Added edge:", addedEdge);
 
-      // Reset the edge handler flag after a short delay.
       setTimeout(() => {
         this.isEdgeHandlerActive = false;
       }, 100);
 
-      // Calculate endpoints for the new edge.
       const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
       const targetEndpoint = this.getNextEndpoint(targetNode.id());
-
-      addedEdge.data({
-        sourceEndpoint,
-        targetEndpoint,
-        editor: 'true',
-      });
-
-      // TODO: Persist the edge if necessary
+      addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
     });
   }
 
   /**
    * Adds a new node at the specified position.
-   * @param position - The position to place the new node.
+   * @param position - The position where the node will be added.
+   * @private
    */
   private addNodeAtPosition(position: cytoscape.Position): void {
-    const newNodeId = `nodeId-${this.cy.nodes().length + 1}`;
+    const newNodeId = `id:nodeId-${this.cy.nodes().length + 1}`;
     const newNodeData: NodeData = {
       id: newNodeId,
       editor: "true",
       weight: "30",
-      name: newNodeId,
+      name: newNodeId.split(":")[1],
       parent: "",
       topoViewerRole: "pe",
       sourceEndpoint: "",
       targetEndpoint: "",
       containerDockerExtraAttribute: { state: "", status: "" },
-      extraData: { kind: "container", longname: "", image: "", mgmtIpv4Addresss: "" },
+      extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Addresss: "" },
     };
-
-    this.cy.add({
-      group: 'nodes',
-      data: newNodeData,
-      position,
-    });
+    this.cy.add({ group: 'nodes', data: newNodeData, position });
   }
 
   /**
-   * Determines the next available endpoint string for a given node.
-   * @param nodeId - The id of the node.
-   * @returns The next endpoint string (e.g., "e1-2" or "eth2").
+   * Determines the next available endpoint identifier for a given node.
+   * @param nodeId - The ID of the node.
+   * @returns The next available endpoint string.
+   * @private
    */
   private getNextEndpoint(nodeId: string): string {
     const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
@@ -284,7 +294,6 @@ class TopoViewerEditorEngine {
           (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
           (edge.data('target') === nodeId && key === 'targetEndpoint');
         if (!endpoint || !isNodeEndpoint) return;
-
         let match = endpoint.match(e1Pattern);
         if (match) {
           usedNumbers.add(parseInt(match[1], 10));
@@ -311,21 +320,48 @@ class TopoViewerEditorEngine {
     return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
   }
 
+  /**
+   * Detects the user's preferred color scheme and applies the corresponding theme.
+   * @returns The applied theme ("dark" or "light").
+   */
+  public detectColorScheme(): string {
+    const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    this.applyTheme(darkMode ? 'dark' : 'light');
+    return darkMode ? 'dark' : 'light';
+  }
 
   /**
-   * Detects the user's preferred color scheme.
-   * @returns {string} "dark" or "light"
+   * Applies a theme to the root element.
+   * @param theme - The theme to apply ("dark" or "light").
+   * @private
    */
-  private detectColorScheme(): string {
-    // Use the Window matchMedia API.
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "dark" : "light";
+  private applyTheme(theme: string): void {
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.setAttribute('data-theme', theme);
+      console.log("Applied Theme:", theme);
+    } else {
+      console.warn("'root' element not found; cannot apply theme:", theme);
+    }
+  }
+
+  /**
+   * Updates the subtitle element with the provided text.
+   * @param newText - The new text to display in the subtitle.
+   */
+  public updateSubtitle(newText: string): void {
+    const subtitleElement = document.getElementById("ClabSubtitle");
+    if (subtitleElement) {
+      subtitleElement.textContent = `Topology Editor ::: ${newText}`;
+    } else {
+      console.warn("Subtitle element not found");
+    }
   }
 }
 
-// Instantiate the TopoViewerEditorEngine when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
-  // Ensure that your HTML includes an element with id "cy" and proper CSS dimensions.
-  new TopoViewerEditorEngine('cy');
+  // Create and store the instance globally
+  (window as any).topoViewerEditorEngine = new TopoViewerEditorEngine('cy');
 });
 
 export default TopoViewerEditorEngine;

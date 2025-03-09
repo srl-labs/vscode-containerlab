@@ -7,6 +7,9 @@ import {
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
+import * as path from 'path';
+
+
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
@@ -163,9 +166,37 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  const editor = new TopoViewerEditor(context);
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerEditor', () => editor.createOrShow(context)
+    vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', async () => {
+
+      // Prompt the user for a lab name.
+      const labName = await vscode.window.showInputBox({
+        prompt: 'Enter the lab name (e.g., clab-topo)',
+        placeHolder: 'clab-topo'
+      });
+      if (!labName) {
+        vscode.window.showWarningMessage('Lab name not provided. Operation cancelled.');
+        return;
+      }
+      try {
+        // Create an instance of TopoViewerEditor.
+        const topoViewerEditor = new TopoViewerEditor(context);
+
+        // Create the template file.
+        await topoViewerEditor.createTemplateFile(context, labName);
+
+        await topoViewerEditor.createWebviewPanel(context, labName)
+
+        // Build the file path using the same naming convention as in createTemplateFile().
+        const folderPath = path.join(context.extensionUri.fsPath, 'topoViewerData', labName);
+        const filePath = path.join(folderPath, `${labName}.yaml`);
+
+        // Open the created file in a split editor.
+        await topoViewerEditor.openTemplateFile(filePath);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error creating template file: ${error}`);
+      }
+    }
     )
   );
 
