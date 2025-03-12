@@ -328,6 +328,19 @@ topology:
       try {
         switch (endpointName) {
 
+          case 'topo-editor-reload-viewport': {
+            try {
+              // Refresh the webview content.
+              await this.updatePanelHtml(this.currentPanel);
+              result = `Endpoint "${endpointName}" executed successfully.`;
+              log.info(result);
+            } catch (innerError) {
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           /**
           * Handles the "topo-editor-viewport-save" endpoint.
           * This function updates the YAML document with the current topology state (nodes and edges)
@@ -579,7 +592,7 @@ topology:
             break;
           }
 
-          case 'clab-show-vscode-message': {
+          case 'topo-editor-show-vscode-message': {
             try {
               // Parse the payload from the webview
               const data = JSON.parse(payload as string) as {

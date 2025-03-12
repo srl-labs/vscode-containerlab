@@ -130,8 +130,8 @@ return `
     
     <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
-        <!-- <p class="control p-0">
-          <a id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)"
+        <p class="control p-0">
+          <a id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-expand"></i>
@@ -139,6 +139,7 @@ return `
           </a>
         </p>
 
+        <!-- 
         <p class="control p-0">
           <a id="viewport-layout" href="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
@@ -147,7 +148,7 @@ return `
             </span>
           </a>
         </p>
-
+        
         <p class="control p-0">
           <a id="viewport-topology-overview" href="Find Node" onclick="viewportButtonsTopologyOverview(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
@@ -156,14 +157,16 @@ return `
             </span>
           </a>
         </p>
+       
+        -->
         <p class="control p-0">
-          <a id="viewport-label-endpoint" href="Toggle Endpoint Label" onclick="viewportButtonsLabelEndpoint()"
+          <a id="viewport-label-endpoint" href="Toggle Endpoint Label" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-tag"></i>
             </span>
           </a>
-        </p> -->
+        </p> 
 
         <!-- aarafat-tag: vs-code  
 
@@ -218,14 +221,14 @@ return `
           </a>
         </p> -->
 
-        <!-- <p class="control p-0">
-          <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"
+        <p class="control p-0">
+          <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </span>
           </a>
-        </p> -->
+        </p>
 
         <p class="control p-0">
           <a id="viewport-save-topo" href="Save TopoViewer"

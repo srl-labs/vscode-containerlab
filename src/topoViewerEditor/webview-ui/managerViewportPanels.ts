@@ -3,6 +3,7 @@
 import cytoscape from 'cytoscape';
 import { ManagerViewportButtons } from './managerViewportButtons';
 import { extractNodeIcons } from './managerCytoscapeStyle';
+import { VscodeMessageSender } from './managerVscodeWebview';
 
 
 /**
@@ -25,7 +26,8 @@ export class ManagerViewportPanels {
    */
   constructor(
     private viewportButtons: ManagerViewportButtons,
-    private cy: cytoscape.Core
+    private cy: cytoscape.Core,
+    private messageSender: VscodeMessageSender
   ) { }
 
   /**
@@ -177,7 +179,7 @@ export class ManagerViewportPanels {
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           // Now trigger the viewportButtonsSaveTopo method.
-          await this.viewportButtons.viewportButtonsSaveTopo(this.cy);
+          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender);
         }, { once: true });
       }
     } catch (error: any) {

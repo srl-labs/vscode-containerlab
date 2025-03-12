@@ -6,6 +6,7 @@ import cola from 'cytoscape-cola';
 import gridGuide from 'cytoscape-grid-guide';
 
 import loadCytoStyle from './managerCytoscapeStyle';
+import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerViewportButtons } from './managerViewportButtons';
 import { ManagerViewportPanels } from './managerViewportPanels';
@@ -60,6 +61,7 @@ class TopoViewerEditorEngine {
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
+  private messageSender: VscodeMessageSender;
   private viewportButtons: ManagerViewportButtons;
   private viewportPanels: ManagerViewportPanels;
 
@@ -73,6 +75,9 @@ class TopoViewerEditorEngine {
     if (!container) {
       throw new Error("Cytoscape container element not found");
     }
+
+    // Initialize message sender
+    this.messageSender = new VscodeMessageSender();
 
     // Detect and apply color scheme
     this.detectColorScheme();
@@ -128,7 +133,7 @@ class TopoViewerEditorEngine {
     });
 
     loadCytoStyle(this.cy);
-    fetchAndLoadData(this.cy);
+    fetchAndLoadData(this.cy, this.messageSender);
 
     // Fetch and load data from the environment and update the subtitle
     (async () => {
@@ -144,8 +149,8 @@ class TopoViewerEditorEngine {
     this.initializeEdgehandles();
 
     // Initiate viewport buttons and panels
-    this.viewportButtons = new ManagerViewportButtons();
-    this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy);
+    this.viewportButtons = new ManagerViewportButtons(this.messageSender);
+    this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
     this.viewportPanels.registerTogglePanels(containerId);
   }
 
@@ -188,7 +193,7 @@ class TopoViewerEditorEngine {
         console.log("Canvas clicked with Shift key - adding node.");
         this.addNodeAtPosition(event.position);
       } else {
-        this.viewportButtons.viewportButtonsSaveTopo(this.cy);
+        this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender);
       }
     });
 

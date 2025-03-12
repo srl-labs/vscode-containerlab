@@ -1,5 +1,7 @@
 // file: managerCytoscapeFetchAndLoad.ts
 import cytoscape from 'cytoscape';
+import { VscodeMessageSender } from './managerVscodeWebview';
+
 
 /**
  * Interface representing an item in the input data array.
@@ -13,13 +15,24 @@ export interface DataItem {
   };
 }
 
+
 /**
  * Fetches data from a JSON file, processes it using assignMissingLatLng(),
  * and loads it into the provided Cytoscape instance.
  *
  * @param cy - The Cytoscape instance to update.
  */
-export async function fetchAndLoadData(cy: cytoscape.Core): Promise<void> {
+export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: VscodeMessageSender): Promise<void> {
+
+  // // Create an instance of VscodeMessageSender
+  // let messageSender: VscodeMessageSender | undefined;
+  // try {
+  //   messageSender = new VscodeMessageSender();
+  // } catch (error) {
+  //   console.error("VS Code API not available. Running in a non-VS Code environment.", error);
+  // }
+
+
   try {
 
     const isVscodeDeployment = true;
@@ -99,7 +112,13 @@ export async function fetchAndLoadData(cy: cytoscape.Core): Promise<void> {
     // }, 2000);
 
   } catch (error) {
-    console.error("Error loading graph data:", error);
+    console.error("Error loading graph data from topology yaml:", error);
+    if (messageSender) {
+      messageSender.sendMessageToVscodeEndpointPost('topo-editor-show-vscode-message', {
+        type: 'warning',
+        message: `Error loading graph data from topology yaml: ${error}`
+      });
+    }
   }
 }
 
@@ -189,9 +208,9 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
 
   console.log("Updated dataArray:", dataArray);
   return dataArray;
-  
+
 }
-type EnvironmentKeys = 
+type EnvironmentKeys =
   | "working-directory"
   | "clab-name"
   | "clab-server-address"
