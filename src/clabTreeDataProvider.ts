@@ -150,9 +150,9 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
 }
 
 export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTreeNode | ClabContainerTreeNode> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<ClabLabTreeNode | ClabContainerTreeNode | undefined | void>();
+  private _onDidChangeTreeData = new vscode.EventEmitter<void | ClabLabTreeNode | ClabContainerTreeNode | null | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
-
+  
   private containerInterfacesCache: Map<string, {
     state: string,
     timestamp: number,
@@ -169,12 +169,39 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     this.startCacheJanitor();
   }
 
-  refresh(): void {
-    // Clear caches on refresh so that new changes are picked up
-    this.containerInterfacesCache.clear();
-    this.labsCache.local = null;
-    this.labsCache.inspect = null;
-    this._onDidChangeTreeData.fire();
+  refresh(element?: ClabLabTreeNode | ClabContainerTreeNode): void {
+    if (!element) {
+      // Full refresh - clear all caches
+      this.containerInterfacesCache.clear();
+      this.labsCache.local = null;
+      this.labsCache.inspect = null;
+      this._onDidChangeTreeData.fire();
+    } else {
+      // Selective refresh - only refresh this element
+      this._onDidChangeTreeData.fire(element);
+    }
+  }
+
+  // Add to ClabTreeDataProvider class
+  async hasChanges(): Promise<boolean> {
+    const now = Date.now();
+    
+    // Check for expired caches
+    for (const [key, value] of this.containerInterfacesCache.entries()) {
+      if (now - value.timestamp > 30000) {
+        return true;
+      }
+    }
+    
+    if (this.labsCache.local && now - this.labsCache.local.timestamp > 30000) {
+      return true;
+    }
+    
+    if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp > 30000) {
+      return true;
+    }
+    
+    return false;
   }
 
   getTreeItem(element: ClabLabTreeNode | ClabContainerTreeNode): vscode.TreeItem {
@@ -568,13 +595,31 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   private startCacheJanitor() {
     setInterval(() => {
       const now = Date.now();
+      let hasExpired = false;
+      
+      // Check for expired container interfaces
       this.containerInterfacesCache.forEach((value, key) => {
         if (now - value.timestamp > 30000) { // 30s TTL
           this.containerInterfacesCache.delete(key);
+          hasExpired = true;
         }
       });
-      // Optionally, we could also clear labsCache here if needed.
-      this._onDidChangeTreeData.fire();
+      
+      // Check for expired labs caches
+      if (this.labsCache.local && now - this.labsCache.local.timestamp > 30000) {
+        this.labsCache.local = null;
+        hasExpired = true;
+      }
+      
+      if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp > 30000) {
+        this.labsCache.inspect = null;
+        hasExpired = true;
+      }
+      
+      // Only fire the event if something actually expired
+      if (hasExpired) {
+        this._onDidChangeTreeData.fire();
+      }
     }, 10000); // Check every 10 seconds
   }
 
