@@ -702,6 +702,14 @@
           "default": {},
           "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
         },
+        "containerlab.node.sshUserMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
+        },
         "containerlab.wsl.wiresharkPath": {
           "type": "string",
           "default": "/mnt/c/Program Files/Wireshark/wireshark.exe",
