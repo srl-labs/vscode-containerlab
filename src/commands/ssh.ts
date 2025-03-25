@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
 import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { sshUserMapping } from "../extension";
 
 export function sshToNode(node: ClabContainerTreeNode) {
     if (!node) {
@@ -18,7 +19,11 @@ export function sshToNode(node: ClabContainerTreeNode) {
 
     // Pull the default SSH user from settings
     const config = vscode.workspace.getConfiguration("containerlab");
-    const sshUser = config.get<string>("defaultSshUser", "admin");
+    const defaultSshUser = config.get<string>("defaultSshUser", "admin");
+
+    // Check for a kind-specific SSH user in user settings, then in defaults
+    const userSshMapping = config.get("node.sshUserMapping") as { [key: string]: string };
+    const sshUser = userSshMapping?.[node.kind] || sshUserMapping[node.kind] || defaultSshUser;
 
     const containerLabel = node.label || "Container";
 

@@ -12,6 +12,7 @@ import { WelcomePage } from './welcomePage';
 export let outputChannel: vscode.OutputChannel;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
+export const sshUserMapping = require('../resources/ssh_users.json');
 
 /**
  * Called when VSCode activates your extension.
