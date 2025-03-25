@@ -180,6 +180,11 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.openBrowser', cmd.openBrowser)
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.manageImpairments', node =>
       cmd.manageNodeImpairments(node, context)
