@@ -267,6 +267,12 @@
         "command": "containerlab.set.sessionHostname",
         "title": "Configure hostname for this session",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.node.openBrowser",
+        "title": "Open Port in Browser",
+        "icon": "$(globe)",
+        "category": "Containerlab"
       }
     ],
     "submenus": [
@@ -456,9 +462,14 @@
           "group": "navigation@7"
         },
         {
+          "command": "containerlab.node.openBrowser",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@8"
+        },
+        {
           "command": "containerlab.inspectOneLab",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@8"
+          "group": "navigation@9"
         },
         {
           "command": "containerlab.lab.graph",
@@ -625,6 +636,10 @@
         {
           "command": "containerlab.uninstall.edgeshark",
           "when": "true"
+        },
+        {
+          "command": "containerlab.node.openBrowser",
+          "when": "viewItem == containerlabContainer"
         }
       ],
       "containerlab.submenu.node.copy": [

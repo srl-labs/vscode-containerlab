@@ -18,3 +18,4 @@ export * from "./inspect";
 export * from "./capture";
 export * from "./impairments";
 export * from "./edgeshark";
+export * from "./openBrowser";
