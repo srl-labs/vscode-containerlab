@@ -694,11 +694,6 @@
     "configuration": {
       "title": "Containerlab",
       "properties": {
-        "containerlab.defaultSshUser": {
-          "type": "string",
-          "default": "admin",
-          "description": "Default SSH user to use when connecting to containerlab nodes."
-        },
         "containerlab.sudoEnabledByDefault": {
           "type": "boolean",
           "default": false,

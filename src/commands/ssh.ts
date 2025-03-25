@@ -17,13 +17,12 @@ export function sshToNode(node: ClabContainerTreeNode) {
     else if(node.cID) {sshTarget = node.cID}
     else { return vscode.window.showErrorMessage("No target to connect to container"); }
 
-    // Pull the default SSH user from settings
+    // Get the SSH user mapping from user settings
     const config = vscode.workspace.getConfiguration("containerlab");
-    const defaultSshUser = config.get<string>("defaultSshUser", "admin");
-
-    // Check for a kind-specific SSH user in user settings, then in defaults
     const userSshMapping = config.get("node.sshUserMapping") as { [key: string]: string };
-    const sshUser = userSshMapping?.[node.kind] || sshUserMapping[node.kind] || defaultSshUser;
+
+    // Use user setting first, then default mapping, then fallback to "admin"
+    const sshUser = userSshMapping?.[node.kind] || sshUserMapping[node.kind] || "admin";
 
     const containerLabel = node.label || "Container";
 
