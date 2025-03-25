@@ -6,12 +6,13 @@ import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
+import { WelcomePage } from './welcomePage';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
 
-/** If you rely on this, keep it; otherwise remove. */
 export const execCmdMapping = require('../resources/exec_cmd.json');
+export const sshUserMapping = require('../resources/ssh_users.json');
 
 /**
  * Called when VSCode activates your extension.
@@ -41,11 +42,11 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // 2) If installed, check for updates
-  checkAndUpdateClabIfNeeded(outputChannel).catch(err => {
-    outputChannel.appendLine(`[ERROR] Error checking for updates: ${err}`);
-  });
+  await checkAndUpdateClabIfNeeded(outputChannel);
 
-  // *** Proceed with normal extension logic ***
+  // Show welcome page
+  const welcomePage = new WelcomePage(context);
+  await welcomePage.show();
 
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);
@@ -179,6 +180,11 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.openBrowser', cmd.openBrowser)
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.manageImpairments', node =>
       cmd.manageNodeImpairments(node, context)
@@ -261,8 +267,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const intervalId = setInterval(() => {
-    provider.refresh();
+  const intervalId = setInterval(async () => {
+    // Only refresh if there are changes
+    if (await provider.hasChanges()) {
+      provider.refresh();
+    }
   }, refreshInterval);
 
   // Clean up the auto-refresh interval when the extension is deactivated

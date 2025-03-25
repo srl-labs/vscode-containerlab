@@ -6,3 +6,6 @@ topoViewerData
 .vscode/
 package.json
 .vscode/launch.json
+.DS_Store
+**/.DS_Store
+*.vsix

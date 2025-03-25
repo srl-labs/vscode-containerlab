@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.10.0] - 2025-03-25
+* Changed the way of updating the tree
+* Welcome page with a quick start guide
+* Managing default ssh-user per kind via settings
+* Open in Browser for exposed ports
+
 ## [0.9.2] - 2025-02-27
 * TopoViewer Enhancements
 * Fix: New version will not intervent extension activation.

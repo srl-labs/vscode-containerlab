@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.70.0"
@@ -267,6 +267,12 @@
         "command": "containerlab.set.sessionHostname",
         "title": "Configure hostname for this session",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.node.openBrowser",
+        "title": "Open Port in Browser",
+        "icon": "$(globe)",
+        "category": "Containerlab"
       }
     ],
     "submenus": [
@@ -456,9 +462,14 @@
           "group": "navigation@7"
         },
         {
+          "command": "containerlab.node.openBrowser",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@8"
+        },
+        {
           "command": "containerlab.inspectOneLab",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@8"
+          "group": "navigation@9"
         },
         {
           "command": "containerlab.lab.graph",
@@ -625,6 +636,10 @@
         {
           "command": "containerlab.uninstall.edgeshark",
           "when": "true"
+        },
+        {
+          "command": "containerlab.node.openBrowser",
+          "when": "viewItem == containerlabContainer"
         }
       ],
       "containerlab.submenu.node.copy": [
@@ -679,11 +694,6 @@
     "configuration": {
       "title": "Containerlab",
       "properties": {
-        "containerlab.defaultSshUser": {
-          "type": "string",
-          "default": "admin",
-          "description": "Default SSH user to use when connecting to containerlab nodes."
-        },
         "containerlab.sudoEnabledByDefault": {
           "type": "boolean",
           "default": false,
@@ -701,6 +711,14 @@
           },
           "default": {},
           "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
+        },
+        "containerlab.node.sshUserMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
         },
         "containerlab.wsl.wiresharkPath": {
           "type": "string",
@@ -741,6 +759,11 @@
           "type": "boolean",
           "default": false,
           "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
+        },
+        "containerlab.showWelcomePage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the welcome page when the extension activates."
         }
       }
     }
