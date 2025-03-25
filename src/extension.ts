@@ -6,11 +6,11 @@ import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
+import { WelcomePage } from './welcomePage';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
 
-/** If you rely on this, keep it; otherwise remove. */
 export const execCmdMapping = require('../resources/exec_cmd.json');
 
 /**
@@ -43,7 +43,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // 2) If installed, check for updates
   await checkAndUpdateClabIfNeeded(outputChannel);
 
-  // *** Proceed with normal extension logic ***
+  // Show welcome page
+  const welcomePage = new WelcomePage(context);
+  await welcomePage.show();
 
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);

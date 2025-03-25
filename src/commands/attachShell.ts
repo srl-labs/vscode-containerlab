@@ -3,7 +3,6 @@ import * as utils from "../utils"
 import { execCommandInTerminal } from "./command";
 import { execCmdMapping } from "../extension";
 import { ClabContainerTreeNode } from "../clabTreeDataProvider";
-import { exec } from "child_process";
 
 export function attachShell(node: ClabContainerTreeNode) {
   if (!node) {
