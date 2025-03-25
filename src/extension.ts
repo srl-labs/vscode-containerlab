@@ -41,9 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // 2) If installed, check for updates
-  checkAndUpdateClabIfNeeded(outputChannel).catch(err => {
-    outputChannel.appendLine(`[ERROR] Error checking for updates: ${err}`);
-  });
+  await checkAndUpdateClabIfNeeded(outputChannel);
 
   // *** Proceed with normal extension logic ***
 
@@ -261,8 +259,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const intervalId = setInterval(() => {
-    provider.refresh();
+  const intervalId = setInterval(async () => {
+    // Only refresh if there are changes
+    if (await provider.hasChanges()) {
+      provider.refresh();
+    }
   }, refreshInterval);
 
   // Clean up the auto-refresh interval when the extension is deactivated
