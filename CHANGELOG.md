@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.9.3] - 2025-03-25
+* Changed the way of updating the tree
+* Welcome page with a quick start guide
+
 ## [0.9.2] - 2025-02-27
 * TopoViewer Enhancements
 * Fix: New version will not intervent extension activation.
