@@ -300,6 +300,26 @@ topology:
             <h1>Welcome to the Containerlab Extension</h1>
         </div>
 
+        <div class="badges" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; justify-content: center;">
+            <a href="https://github.com/srl-labs/containerlab/releases/">
+                <img src="https://img.shields.io/github/release/srl-labs/containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="GitHub release" />
+            </a>
+            <a href="https://github.com/srl-labs/containerlab/releases/">
+                <img src="https://img.shields.io/github/downloads/srl-labs/containerlab/total.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Github all releases" />
+            </a>
+            <a href="https://containerlab.dev">
+                <img src="https://img.shields.io/badge/Docs-containerlab.dev-blue?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Doc" />
+            </a>
+            <a href="https://bsky.app/profile/containerlab.dev">
+                <img src="https://img.shields.io/badge/follow-containerlab-1DA1F2?logo=bluesky&style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Bluesky" />
+            </a>
+            <a href="https://discord.gg/vAyddtaEV9">
+                <img src="https://img.shields.io/discord/860500297297821756?style=flat-square&label=discord&logo=discord&color=00c9ff&labelColor=bec8d2" alt="Discord" />
+            </a>
+        </div>
+
+        <div class="card">
+
         <div class="card">
             <h2>Getting Started</h2>
             <p>The Containerlab extension integrates <a href="https://containerlab.dev/">containerlab</a> directly into Visual Studio Code, providing a convenient tree view for managing labs and their containers.</p>
