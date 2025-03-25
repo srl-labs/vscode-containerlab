@@ -63,9 +63,6 @@ Note: The extension will automatically prompt to add your user to the `clab_admi
 
 Customize your experience under `containerlab.*` in VS Code Settings:
 
-- **`containerlab.defaultSshUser`** (string)  
-  Default SSH user (e.g. `"admin"`).
-
 - **`containerlab.sudoEnabledByDefault`** (boolean)  
   Whether to prepend `sudo` to containerlab commands.  
   _Default: `true`_
@@ -76,6 +73,9 @@ Customize your experience under `containerlab.*` in VS Code Settings:
 
 - **`containerlab.node.execCommandMapping`** (object)  
   Map a node’s `kind` to its preferred exec command (e.g. `{ "nokia_srlinux": "sr_cli" }`).
+
+- **`containerlab.node.sshUserMapping`** (object)  
+  Map a node’s `kind` to its preferred ssh user (e.g. `{ "nokia_srlinux": "clab" }`).
 
 - **`containerlab.wsl.wiresharkPath`** (string)  
   Path to Wireshark in Windows from inside WSL.  
