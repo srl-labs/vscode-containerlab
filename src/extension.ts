@@ -42,7 +42,9 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // 2) If installed, check for updates
-  await checkAndUpdateClabIfNeeded(outputChannel);
+  checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
+    outputChannel.appendLine(`[ERROR] Update check error: ${err.message}`);
+  });
 
   // Show welcome page
   const welcomePage = new WelcomePage(context);
