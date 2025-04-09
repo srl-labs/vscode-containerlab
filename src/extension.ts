@@ -10,6 +10,7 @@ import { WelcomePage } from './welcomePage';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
+export let treeView: any;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -55,7 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // If you have a defined "containerlabExplorer" view in package.json, 
   // you can either do:
-  const treeView = vscode.window.createTreeView('containerlabExplorer', {
+  treeView = vscode.window.createTreeView('containerlabExplorer', {
     treeDataProvider: provider,
     canSelectMany: true
   });

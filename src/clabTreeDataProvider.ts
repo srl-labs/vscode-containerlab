@@ -3,6 +3,7 @@ import * as utils from "./utils"
 import { promisify } from "util";
 import { exec, execSync } from "child_process";
 import path = require("path");
+import { treeView } from "./extension";
 
 const execAsync = promisify(exec);
 
@@ -332,6 +333,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
     const inspectData = await this.getInspectData();
     if (!inspectData) {
+      this.updateBadge(0);
       return undefined;
     }
 
@@ -387,6 +389,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         labs[normPath] = labNode;
       }
     });
+
+    this.updateBadge(Object.keys(labs).length);
 
     this.labsCache.inspect = { data: labs, timestamp: Date.now() };
     return labs;
@@ -629,5 +633,17 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
   */
   private getResourceUri(resource: string) {
     return vscode.Uri.file(this.context.asAbsolutePath(path.join("resources", resource)));
+  }
+
+  private updateBadge(runningLabs: number) {
+    if (runningLabs < 1) {
+      treeView.badge = undefined;
+    } else {
+      treeView.badge = {
+        value: runningLabs,
+        tooltip: `${runningLabs} running labs`
+      }
+    }
+
   }
 }
