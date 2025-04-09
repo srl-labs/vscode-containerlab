@@ -184,9 +184,15 @@ topology:
     nokia_srlinux:
       type: ixrd3
       image: ghcr.io/nokia/srlinux
+
   nodes:
-    srl:
+    srl1:
       kind: nokia_srlinux
+    srl2:
+      kind: nokia_srlinux
+
+  links:
+    - endpoints: ["srl1:e1-1","srl2:e1-1"]
 `;
 
     // Create the file
