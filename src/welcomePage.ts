@@ -212,12 +212,14 @@ topology:
    */
   private async getWebviewContent(): Promise<string> {
 
+    const cssURI = this.panel?.webview.asWebviewUri(vscode.Uri.file(path.join(this.context.extensionPath, 'resources', 'tailwind.js'))).toString();
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="${cssURI}"></script>
     <title>Welcome to Containerlab</title>
     <style>
       .repoListItem {
