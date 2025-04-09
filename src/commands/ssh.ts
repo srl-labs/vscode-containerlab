@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
-import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode, ClabLabTreeNode } from "../clabTreeDataProvider";
 import { sshUserMapping } from "../extension";
 
 export function sshToNode(node: ClabContainerTreeNode) {
@@ -27,4 +27,21 @@ export function sshToNode(node: ClabContainerTreeNode) {
     const containerLabel = node.label || "Container";
 
     execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${containerLabel}`);
+}
+
+export function sshToLab(node: ClabLabTreeNode) {
+    if (!node) {
+        vscode.window.showErrorMessage('No lab node selected.');
+        return;
+    }
+
+    if(!node.containers) {
+        return vscode.window.showErrorMessage("No child containers to connect to");
+    }
+
+    node.containers?.forEach(
+        (node) => {
+            sshToNode(node);
+        }
+    )
 }

@@ -10,6 +10,7 @@ import { WelcomePage } from './welcomePage';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
+export let treeView: any;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -55,7 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // If you have a defined "containerlabExplorer" view in package.json, 
   // you can either do:
-  const treeView = vscode.window.createTreeView('containerlabExplorer', {
+  treeView = vscode.window.createTreeView('containerlabExplorer', {
     treeDataProvider: provider,
     canSelectMany: true
   });
@@ -130,6 +131,11 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
   );
 
+  // Lab connecto to SSH
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshToAllNodes', cmd.sshToLab)
+  );
+
   // Lab inspection commands
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.inspectAll', () =>
@@ -172,12 +178,15 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.save', cmd.saveNode)
-  ); 
+  );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.telnet', cmd.telnetToNode)
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
