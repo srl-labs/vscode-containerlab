@@ -641,7 +641,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     } else {
       treeView.badge = {
         value: runningLabs,
-        tooltip: `${runningLabs} running labs`
+        tooltip: `${runningLabs} running lab(s)`
       }
     }
 
