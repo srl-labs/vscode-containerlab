@@ -181,6 +181,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.telnet', cmd.telnetToNode)
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
 

@@ -19,3 +19,4 @@ export * from "./capture";
 export * from "./impairments";
 export * from "./edgeshark";
 export * from "./openBrowser";
+export * from "./telnet";

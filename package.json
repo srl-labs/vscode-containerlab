@@ -61,12 +61,12 @@
       },
       {
         "command": "containerlab.lab.openFile",
-        "title": "Edit Lab topology",
+        "title": "Edit topology",
         "icon": "$(pencil)"
       },
       {
         "command": "containerlab.lab.copyPath",
-        "title": "Copy Lab file path",
+        "title": "Copy file path",
         "icon": "$(copy)"
       },
       {
@@ -113,7 +113,7 @@
       },
       {
         "command": "containerlab.lab.save",
-        "title": "Save Lab",
+        "title": "Save configs",
         "category": "Containerlab"
       },
       {
@@ -124,35 +124,35 @@
       },
       {
         "command": "containerlab.inspectOneLab",
-        "title": "Inspect Lab",
+        "title": "Inspect",
         "category": "Containerlab",
         "icon": "$(search)"
       },
       {
         "command": "containerlab.lab.graph",
-        "title": "Graph Lab (Web)",
+        "title": "Graph (Web)",
         "icon": "$(graph-line)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.drawio",
-        "title": "Graph Lab (draw.io)",
+        "title": "Graph (draw.io)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.drawio.interactive",
-        "title": "Graph Lab (draw.io, Interactive)",
+        "title": "Graph (draw.io, Interactive)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.topoViewer",
-        "title": "Graph Lab (TopoViewer)",
+        "title": "Graph (TopoViewer)",
         "icon": "$(graph-line)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.addToWorkspace",
-        "title": "Add Lab to Workspace",
+        "title": "Add to Workspace",
         "category": "Containerlab",
         "icon": "$(folder-opened)"
       },
@@ -163,15 +163,15 @@
       },
       {
         "command": "containerlab.node.start",
-        "title": "Start node"
+        "title": "Start"
       },
       {
         "command": "containerlab.node.stop",
-        "title": "Stop node"
+        "title": "Stop"
       },
       {
         "command": "containerlab.node.save",
-        "title": "Save node"
+        "title": "Save config"
       },
       {
         "command": "containerlab.node.attachShell",
@@ -180,8 +180,12 @@
       },
       {
         "command": "containerlab.node.ssh",
-        "title": "Connect to SSH",
+        "title": "Connect (SSH)",
         "icon": "$(remote)"
+      },
+      {
+        "command": "containerlab.node.telnet",
+        "title": "Connect (Telnet)"
       },
       {
         "command": "containerlab.node.showLogs",
@@ -524,12 +528,17 @@
         {
           "command": "containerlab.node.attachShell",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@1"
+          "group": "nodeConnect@2"
         },
         {
           "command": "containerlab.node.ssh",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@0"
+          "group": "nodeConnect@0"
+        },
+        {
+          "command": "containerlab.node.telnet",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeConnect@1"
         },
         {
           "command": "containerlab.node.showLogs",
@@ -764,6 +773,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show the welcome page when the extension activates."
+        },
+        "containerlab.node.telnetPort": {
+          "type": "number",
+          "default": 5000,
+          "description": "Port to connect when telnetting to the node with 'docker exec -it <node> telnet 127.0.0.1 <port>'"
         }
       }
     }
