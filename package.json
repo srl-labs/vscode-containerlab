@@ -162,6 +162,10 @@
         "icon": "$(folder-opened)"
       },
       {
+        "command": "containerlab.lab.sshToAllNodes",
+        "title": "SSH (All nodes)"
+      },
+      {
         "command": "containerlab.node.start",
         "title": "Start"
       },
@@ -464,6 +468,11 @@
           "command": "containerlab.lab.save",
           "when": "viewItem =~ /containerlabLab/",
           "group": "navigation@7"
+        },
+        {
+          "command": "containerlab.lab.sshToAllNodes",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "connect@0"
         },
         {
           "command": "containerlab.node.openBrowser",

@@ -131,6 +131,11 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
   );
 
+  // Lab connecto to SSH
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshToAllNodes', cmd.sshToLab)
+  );
+
   // Lab inspection commands
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.inspectAll', () =>
@@ -173,7 +178,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.save', cmd.saveNode)
-  ); 
+  );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
   );
