@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.10.1] - 2025-04-09
+## [0.11.0] - 2025-04-09
 * Changed the look and feel of the welcome page
     * Example topology now has 2 nodes and a link connecting them
 * Added badge to the extension icon which shows number of running labs
