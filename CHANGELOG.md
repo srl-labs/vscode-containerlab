@@ -1,5 +1,8 @@
 # Change Log
 
+## [0.11.1] - 2025-04-10
+* Fix: Update terminal name for telnet
+
 ## [0.11.0] - 2025-04-09
 * Changed the look and feel of the welcome page
     * Example topology now has 2 nodes and a link connecting them
