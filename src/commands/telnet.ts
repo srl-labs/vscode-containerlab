@@ -22,6 +22,6 @@ export function telnetToNode(node: ClabContainerTreeNode) {
 
   execCommandInTerminal(
     `${utils.getSudo()}${runtime} exec -it ${containerId} telnet 127.0.0.1 ${port}`,
-    `Shell - ${containerLabel}`
+    `Telnet - ${containerLabel}`
   );
 }
