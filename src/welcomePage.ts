@@ -233,7 +233,7 @@ topology:
       }
     </style>
 </head>
-<body class="w-full h-screen overflow-hidden flex items-center justify-center">
+<body class="w-full h-screen flex items-center justify-center">
     <div class="max-w-7xl max-h-[600px]">
         <div>
           <div class="flex items-center gap-x-5">
@@ -252,14 +252,17 @@ topology:
               <div>
                 <h1 class="text-3xl">Welcome to Containerlab</h1>
                 <div class="inline-flex gap-x-2 mt-2">
-                  <a href="https://github.com/srl-labs/containerlab/releases/">
-                      <img src="https://img.shields.io/github/release/srl-labs/containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="GitHub release" />
+                  <a href="https://github.com/srl-labs/vscode-containerlab/releases/">
+                      <img src="https://img.shields.io/github/v/release/srl-labs/vscode-containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Latest extension version" />
+                  </a>
+                  <a href="https://github.com/srl-labs/containerlab/releases/latest">
+                      <img src="https://img.shields.io/github/release/srl-labs/containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Latest containerlab version" />
                   </a>
                   <a href="https://github.com/srl-labs/containerlab/releases/">
-                      <img src="https://img.shields.io/github/downloads/srl-labs/containerlab/total.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Github all releases" />
+                      <img src="https://img.shields.io/github/downloads/srl-labs/containerlab/total.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Containerlab downloads" />
                   </a>
                   <a href="https://discord.gg/vAyddtaEV9">
-                      <img src="https://img.shields.io/discord/860500297297821756?style=flat-square&label=discord&logo=discord&color=00c9ff&labelColor=bec8d2" alt="Discord" />
+                      <img src="https://img.shields.io/discord/860500297297821756?style=flat-square&label=discord&logo=discord&color=00c9ff&labelColor=bec8d2" alt="Discord server" />
                   </a>
                 </div>
               </div>
