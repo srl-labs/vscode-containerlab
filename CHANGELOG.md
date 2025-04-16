@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.11.2] - 2025-04-10
+* Fix: Welcomepage
+* Patch: Support of containerlab 0.68.0
+
 ## [0.11.1] - 2025-04-10
 * Fix: Update terminal name for telnet
 
