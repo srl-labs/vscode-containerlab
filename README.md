@@ -1,5 +1,11 @@
 # vscode-containerlab
 
+[![GitHub releases](https://img.shields.io/github/v/release/srl-labs/vscode-containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2)](https://github.com/srl-labs/vscode-containerlab/releases)
+[![VS Code extension page](https://img.shields.io/visual-studio-marketplace/d/srl-labs.vscode-containerlab?style=flat-square&color=00c9ff&labelColor=bec8d2)](https://marketplace.visualstudio.com/items?itemName=srl-labs.vscode-containerlab)
+[![Doc](https://img.shields.io/badge/Docs-containerlab.dev-blue?style=flat-square&color=00c9ff&labelColor=bec8d2)](https://containerlab.dev/manual/vsc-extension/)
+[![Bluesky](https://img.shields.io/badge/follow-containerlab-1DA1F2?logo=bluesky&style=flat-square&color=00c9ff&labelColor=bec8d2)](https://bsky.app/profile/containerlab.dev)
+[![Discord](https://img.shields.io/discord/860500297297821756?style=flat-square&label=discord&logo=discord&color=00c9ff&labelColor=bec8d2)](https://discord.gg/vAyddtaEV9)
+
 A Visual Studio Code extension that integrates [containerlab](https://containerlab.dev/) directly into your editor, providing a convenient tree view for managing labs and their containers.
 
 ![screencast](https://raw.githubusercontent.com/srl-labs/vscode-containerlab/refs/heads/main/resources/screenshot.png)
