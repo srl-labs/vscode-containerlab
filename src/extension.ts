@@ -191,17 +191,35 @@ export async function activate(context: vscode.ExtensionContext) {
         // Create an instance of TopoViewerEditor.
         const topoViewerEditor = new TopoViewerEditor(context);
 
-        // Create the template file.
-        await topoViewerEditor.createTemplateFile(context, labName);
+        if (vscode.workspace.workspaceFolders?.length) {
+          // Create the template file.
+          await topoViewerEditor.createTemplateFile(context, labName);
+          
+          // Open the webview panel topoViewerEditor.
+          await topoViewerEditor.createWebviewPanel(context, labName)
 
-        await topoViewerEditor.createWebviewPanel(context, labName)
+          // Open the created file in a split editor.
+          await topoViewerEditor.openTemplateFile(topoViewerEditor.lastYamlFilePath);
 
-        // Build the file path using the same naming convention as in createTemplateFile().
-        const folderPath = path.join(context.extensionUri.fsPath, 'topoViewerData', labName);
-        const filePath = path.join(folderPath, `${labName}.yaml`);
+        } else {
+          vscode.window.showErrorMessage('No workspace folder is open. Please open a workspace folder to create the template file.');
+        }
 
-        // Open the created file in a split editor.
-        await topoViewerEditor.openTemplateFile(filePath);
+        // // Create the template file.
+        // await topoViewerEditor.createTemplateFile(context, labName);
+
+
+        // await topoViewerEditor.createWebviewPanel(context, labName)
+
+        // // Build the file path using the same naming convention as in createTemplateFile().
+        // // const folderPath = path.join(context.extensionUri.fsPath, 'topoViewerData', labName);
+        // // const filePath = path.join(folderPath, `${labName}.yaml`);
+
+        // const filePath = topoViewerEditor.lastYamlFilePath
+
+        // // Open the created file in a split editor.
+        // await topoViewerEditor.openTemplateFile(filePath);
+
       } catch (error) {
         vscode.window.showErrorMessage(`Error creating template file: ${error}`);
       }

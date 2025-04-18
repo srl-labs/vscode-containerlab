@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as os from 'os';
 import * as path from 'path';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 
@@ -25,12 +26,16 @@ export class TopoViewerEditor {
   /**
    * Stores the YAML file path from the last topenViewerEditor call.
    */
-  private lastYamlFilePath: string = '';
+  public lastYamlFilePath: string = '';
 
   /**
    * Stores the folder name (derived from the YAML file name) where JSON data files are stored.
    */
-  private lastFolderName: string | undefined;
+  public lastFolderName: string | undefined;
+
+  public targetDirPath: string | undefined;
+
+  public createTopoYamlTemplateSuccess: boolean = false;
 
   /**
    * Stores the last folder name used in the webview.
@@ -54,72 +59,122 @@ export class TopoViewerEditor {
    * @param labName - The name of the lab which will use to create file to create inside the folder.
    */
   public async createTemplateFile(context: vscode.ExtensionContext, labName: string): Promise<void> {
+    //     try {
+    //       // Ensure there is an open workspace folder.
+    //       const workspaceFolders = vscode.workspace.workspaceFolders;
+    //       if (!workspaceFolders || workspaceFolders.length === 0) {
+    //         vscode.window.showErrorMessage('No workspace folder is open.');
+    //         return;
+    //       }
+
+    //       this.currentLabName = labName
+
+    //       const folderName = labName // as folder name
+    //       this.lastFolderName = folderName // pass it to global const
+
+    //       // Define the target directory URI and path
+    //       const targetDirUri = vscode.Uri.joinPath(
+    //         context.extensionUri,
+    //         'topoViewerData',
+    //         folderName
+    //       );
+    //       const targetDirPath = targetDirUri.fsPath;
+
+    //       // Create the folder recursively if it does not exist.
+    //       await fs.promises.mkdir(targetDirPath, { recursive: true });
+
+    //       const yamlFilePath = path.join(targetDirPath, `${labName}.yaml`);
+    //       this.lastYamlFilePath = yamlFilePath // pass it to global const
+
+    //       const templateContent = `
+    // name: ${labName}
+
+    // topology:
+    //   nodes:
+    //     srl1:
+    //       kind: nokia_srlinux
+    //       image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
+    //       startup-config: configs/srl.cfg
+    //     srl2:
+    //       kind: nokia_srlinux
+    //       image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
+    //       startup-config: configs/srl.cfg
+
+    //   links:
+    //     # inter-switch link
+    //     - endpoints: [ srl1:e1-11, srl2:e1-11 ]
+    // `;
+    //       await fs.promises.writeFile(yamlFilePath, templateContent, 'utf8');
+    //       vscode.window.showInformationMessage(`Template file created at ${yamlFilePath}`);
+
+    //       // Read the YAML content from the file.
+    //       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+
+    //       const provider = new ClabTreeDataProvider(context);
+    //       const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
+
+    //       // Transform YAML into Cytoscape elements.
+    //       const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
+
+    //       // Create folder and write JSON files for the webview.
+    //       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+
+
+    //     } catch (error) {
+    //       vscode.window.showErrorMessage(`Error creating template file: ${error}`);
+    //     }
+    //   }
+
     try {
-      // Ensure there is an open workspace folder.
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('No workspace folder is open.');
+      this.currentLabName = labName;
+      this.lastFolderName = labName;
+
+      if (vscode.workspace.workspaceFolders?.length) {
+        // write inside the first workspace folder
+        const wsUri = vscode.workspace.workspaceFolders[0].uri;
+        this.targetDirPath = path.join(wsUri.fsPath, 'topoViewerData', labName);
+
+      } else {
+        vscode.window.showWarningMessage('No folder in workspace.');
         return;
       }
 
-      this.currentLabName = labName
+      // make sure it exists
+      await fs.promises.mkdir(this.targetDirPath, { recursive: true });
 
-      const folderName = labName // as folder name
-      this.lastFolderName = folderName // pass it to global const
+      // write out the YAML template
+      const yamlFilePath = path.join(this.targetDirPath, `${labName}.yaml`);
+      this.lastYamlFilePath = yamlFilePath;
 
-      // Define the target directory URI and path
-      const targetDirUri = vscode.Uri.joinPath(
-        context.extensionUri,
-        'topoViewerData',
-        folderName
-      );
-      const targetDirPath = targetDirUri.fsPath;
-
-      // Create the folder recursively if it does not exist.
-      await fs.promises.mkdir(targetDirPath, { recursive: true });
-
-      const yamlFilePath = path.join(targetDirPath, `${labName}.yaml`);
-      this.lastYamlFilePath = yamlFilePath // pass it to global const
+      log.debug(`Target Directory Path ${this.targetDirPath}`);
 
       const templateContent = `
 name: ${labName}
 
 topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-      startup-config: configs/srl.cfg
-    srl2:
-      kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-      startup-config: configs/srl.cfg
+nodes:
+  srl1:
+    kind: nokia_srlinux
+    image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
+    startup-config: configs/srl.cfg
+  srl2:
+    kind: nokia_srlinux
+    image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
+    startup-config: configs/srl.cfg
 
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-11, srl2:e1-11 ]
+links:
+  # inter-switch link
+  - endpoints: [ srl1:e1-11, srl2:e1-11 ]
 `;
       await fs.promises.writeFile(yamlFilePath, templateContent, 'utf8');
-      vscode.window.showInformationMessage(`Template file created at ${yamlFilePath}`);
+      vscode.window.showInformationMessage(`Template created at ${yamlFilePath}`);
 
-      // Read the YAML content from the file.
-      const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+      // …then your existing logic for reading it back, converting to Cytoscape, etc…
 
-      const provider = new ClabTreeDataProvider(context);
-      const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
-
-      // Transform YAML into Cytoscape elements.
-      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
-
-      // Create folder and write JSON files for the webview.
-      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
-
-
-    } catch (error) {
-      vscode.window.showErrorMessage(`Error creating template file: ${error}`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Error creating template: ${err}`);
     }
   }
-
 
   /**
    * Updates the webview panel's HTML with the latest topology data.
