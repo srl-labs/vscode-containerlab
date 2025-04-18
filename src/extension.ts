@@ -6,14 +6,11 @@ import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
-<<<<<<< HEAD
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
 import * as path from 'path';
 
 
-=======
 import { WelcomePage } from './welcomePage';
->>>>>>> e79fb9fcc373969178e4095562e440bc919d18c7
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;

@@ -131,12 +131,12 @@ return `
     <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
         <p class="control p-0">
-          <a id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-expand"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <!-- 
