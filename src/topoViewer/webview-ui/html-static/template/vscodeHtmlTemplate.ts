@@ -213,14 +213,14 @@ return `
           </a>
         </p>
 
-        <!-- <p class="control p-0">
+        <p class="control p-0">
           <a id="viewport-capture-viewport" href="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-camera"></i>
             </span>
           </a>
-        </p> -->
+        </p>
 
         <p class="control p-0">
           <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"

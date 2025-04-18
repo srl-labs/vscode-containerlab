@@ -1,5 +1,28 @@
 # Change Log
 
+## [0.11.2] - 2025-04-10
+* Fix: Welcomepage
+* Patch: Support of containerlab 0.68.0
+
+## [0.11.1] - 2025-04-10
+* Fix: Update terminal name for telnet
+
+## [0.11.0] - 2025-04-09
+* Changed the look and feel of the welcome page
+    * Example topology now has 2 nodes and a link connecting them
+* Added badge to the extension icon which shows number of running labs
+    * Hovering over the extension icon shows a tooltip which also reflects the running lab count
+* Added 'Connect (Telnet)' to context menu of node in TreeView. Telents to a node using docker exec -it <node> telnet 127.0.0.1 <port>.
+    * <port> defaults to 5000, but is changeable with user modifable setting of `containerlab.node.telnetPort`
+* Added 'SSH (All nodes)' to context menu of lab in TreeView. Will open VSCode terminals which SSH to all lab nodes
+
+
+## [0.10.0] - 2025-03-25
+* Changed the way of updating the tree
+* Welcome page with a quick start guide
+* Managing default ssh-user per kind via settings
+* Open in Browser for exposed ports
+
 ## [0.9.2] - 2025-02-27
 * TopoViewer Enhancements
 * Fix: New version will not intervent extension activation.

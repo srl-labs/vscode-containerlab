@@ -6,16 +6,21 @@ import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
+<<<<<<< HEAD
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
 import * as path from 'path';
 
 
+=======
+import { WelcomePage } from './welcomePage';
+>>>>>>> e79fb9fcc373969178e4095562e440bc919d18c7
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
+export let treeView: any;
 
-/** If you rely on this, keep it; otherwise remove. */
 export const execCmdMapping = require('../resources/exec_cmd.json');
+export const sshUserMapping = require('../resources/ssh_users.json');
 
 /**
  * Called when VSCode activates your extension.
@@ -45,18 +50,20 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // 2) If installed, check for updates
-  checkAndUpdateClabIfNeeded(outputChannel).catch(err => {
-    outputChannel.appendLine(`[ERROR] Error checking for updates: ${err}`);
+  checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
+    outputChannel.appendLine(`[ERROR] Update check error: ${err.message}`);
   });
 
-  // *** Proceed with normal extension logic ***
+  // Show welcome page
+  const welcomePage = new WelcomePage(context);
+  await welcomePage.show();
 
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);
 
   // If you have a defined "containerlabExplorer" view in package.json, 
   // you can either do:
-  const treeView = vscode.window.createTreeView('containerlabExplorer', {
+  treeView = vscode.window.createTreeView('containerlabExplorer', {
     treeDataProvider: provider,
     canSelectMany: true
   });
@@ -129,6 +136,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // Lab save command
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
+  );
+
+  // Lab connecto to SSH
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshToAllNodes', cmd.sshToLab)
   );
 
   // Lab inspection commands
@@ -219,8 +231,16 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.telnet', cmd.telnetToNode)
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.openBrowser', cmd.openBrowser)
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.manageImpairments', node =>
       cmd.manageNodeImpairments(node, context)
@@ -303,8 +323,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const intervalId = setInterval(() => {
-    provider.refresh();
+  const intervalId = setInterval(async () => {
+    // Only refresh if there are changes
+    if (await provider.hasChanges()) {
+      provider.refresh();
+    }
   }, refreshInterval);
 
   // Clean up the auto-refresh interval when the extension is deactivated
