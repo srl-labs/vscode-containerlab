@@ -66,7 +66,7 @@ export class TopoViewer {
   private clabTreeProviderImported: ClabTreeDataProvider;
 
   /**
-   * Stores the YAML file path from the last openViewer call.
+   * Stores the YAML file path from the last topenViewer call.
    */
   private lastYamlFilePath: string = '';
 

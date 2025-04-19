@@ -151,6 +151,12 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.editor.topoViewerEditor",
+        "title": "New topology file",
+        "icon": "$(new-file)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.addToWorkspace",
         "title": "Add to Workspace",
         "category": "Containerlab",
@@ -300,6 +306,11 @@
           "command": "containerlab.lab.deploy.specificFile",
           "when": "view == containerlabExplorer",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.editor.topoViewerEditor",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@3"
         },
         {
           "command": "containerlab.inspectAll",
@@ -793,18 +804,26 @@
   },
   "scripts": {
     "compile": "tsc -p .",
-    "watch": "tsc -w -p ."
+    "watch": "tsc -w -p .",
+    "build:webview": "webpack --config webpack.config.js"
   },
   "devDependencies": {
+    "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.70.0",
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@types/cytoscape": "^3.21.9",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/vsce": "^3.2.2",
+    "cytoscape": "^3.31.1",
+    "cytoscape-cola": "^2.5.1",
+    "cytoscape-edgehandles": "^4.0.1",
+    "cytoscape-grid-guide": "^2.3.3",
     "socket.io": "^4.8.1",
+    "ts-loader": "^9.5.2",
     "yaml": "^2.7.0"
   }
 }
