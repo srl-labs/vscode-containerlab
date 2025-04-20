@@ -209,6 +209,8 @@ export class ManagerViewportPanels {
 
     // Retrieve current node data.
     const currentData = targetNode.data();
+    const oldName = currentData.name as string;              // remember old name
+    const newName = nodeNameInput.value;                    // the new name
 
     // Build updated extraData, preserving other fields.
     const updatedExtraData = {
@@ -228,7 +230,32 @@ export class ManagerViewportPanels {
 
     // Update the Cytoscape node data.
     targetNode.data(updatedData);
-    console.log("Cytoscape node updated with new data:", updatedData);
+    console.log("Cytoscape node updated with new data_::", updatedData);
+
+    // If the node’s name actually changed, update connected edges.
+    if (oldName !== newName) {
+      const edges = targetNode.connectedEdges();
+      edges.forEach(edge => {
+        const edgeData = edge.data();
+        let modified = false;
+        const updatedEdgeData: any = { ...edgeData };
+
+        // Update sourceName if it pointed to our old name
+        if (edgeData.sourceName === oldName) {
+          updatedEdgeData.sourceName = newName;
+          modified = true;
+        }
+        // Update targetName if it pointed to our old name
+        if (edgeData.targetName === oldName) {
+          updatedEdgeData.targetName = newName;
+          modified = true;
+        }
+        if (modified) {
+          edge.data(updatedEdgeData);
+          console.log(`Edge ${edge.id()} updated to reflect node rename:`, updatedEdgeData);
+        }
+      });
+    }
 
     // Optionally, hide the node editor panel.
     const panelNodeEditor = document.getElementById("panel-node-editor");

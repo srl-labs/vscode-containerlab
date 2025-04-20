@@ -11,6 +11,8 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerViewportButtons } from './managerViewportButtons';
 import { ManagerViewportPanels } from './managerViewportPanels';
 
+
+
 cytoscape.use(edgehandles);
 cytoscape.use(cola);
 cytoscape.use(gridGuide);
@@ -18,7 +20,7 @@ cytoscape.use(gridGuide);
 /**
  * Interface representing node data.
  */
-interface NodeData {
+export interface NodeData {
   id: string;
   editor?: string;
   weight?: string;
@@ -42,7 +44,7 @@ interface NodeData {
 /**
  * Interface representing edge data.
  */
-interface EdgeData {
+export interface EdgeData {
   id: string;
   source: string;
   target: string;
@@ -57,6 +59,7 @@ interface EdgeData {
  */
 class TopoViewerEditorEngine {
   private cy: cytoscape.Core;
+  private cyEvent: cytoscape.EventObject | undefined;
   private eh: any;
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
@@ -87,6 +90,11 @@ class TopoViewerEditorEngine {
       container,
       elements: [],
       wheelSensitivity: 0.2,
+    });
+
+    this.cy.on('tap', (event) => {
+      this.cyEvent = event as cytoscape.EventObject;
+      console.log("Cytoscape event:", event);
     });
 
     // Enable grid guide extension (casting cy as any to satisfy TypeScript)
@@ -191,7 +199,12 @@ class TopoViewerEditorEngine {
       const mouseEvent = event.originalEvent as MouseEvent;
       if (event.target === this.cy && mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
         console.log("Canvas clicked with Shift key - adding node.");
-        this.addNodeAtPosition(event.position);
+
+        // this.addNodeAtPosition(event.position);
+
+        this.viewportButtons.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
+
+
       } else {
         this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender);
       }
@@ -257,27 +270,30 @@ class TopoViewerEditorEngine {
     });
   }
 
-  /**
-   * Adds a new node at the specified position.
-   * @param position - The position where the node will be added.
-   * @private
-   */
-  private addNodeAtPosition(position: cytoscape.Position): void {
-    const newNodeId = `id:nodeId-${this.cy.nodes().length + 1}`;
-    const newNodeData: NodeData = {
-      id: newNodeId,
-      editor: "true",
-      weight: "30",
-      name: newNodeId.split(":")[1],
-      parent: "",
-      topoViewerRole: "pe",
-      sourceEndpoint: "",
-      targetEndpoint: "",
-      containerDockerExtraAttribute: { state: "", status: "" },
-      extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Addresss: "" },
-    };
-    this.cy.add({ group: 'nodes', data: newNodeData, position });
-  }
+  // /**
+  //  * Adds a new node at the specified position.
+  //  * @param position - The position where the node will be added.
+  //  * @public
+  //  */
+  // public addNodeAtPosition(position: cytoscape.Position): void {
+  //   // const newNodeId = `id:nodeId-${this.cy.nodes().length + 1}`;
+  //   const newNodeId = `nodeId-${this.cy.nodes().length + 1}`;
+
+  //   const newNodeData: NodeData = {
+  //     id: newNodeId,
+  //     editor: "true",
+  //     weight: "30",
+  //     // name: newNodeId.split(":")[1]
+  //     name: newNodeId,
+  //     parent: "",
+  //     topoViewerRole: "pe",
+  //     sourceEndpoint: "",
+  //     targetEndpoint: "",
+  //     containerDockerExtraAttribute: { state: "", status: "" },
+  //     extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Addresss: "" },
+  // };
+  //   this.cy.add({ group: 'nodes', data: newNodeData, position });
+  // }
 
   /**
    * Determines the next available endpoint identifier for a given node.
@@ -286,54 +302,54 @@ class TopoViewerEditorEngine {
    * @private
    */
   private getNextEndpoint(nodeId: string): string {
-    const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-    const e1Pattern = /^e1-(\d+)$/;
-    const ethPattern = /^eth(\d+)$/;
-    const usedNumbers = new Set<number>();
-    let selectedPattern: RegExp | null = null;
+  const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
+  const e1Pattern = /^e1-(\d+)$/;
+  const ethPattern = /^eth(\d+)$/;
+  const usedNumbers = new Set<number>();
+  let selectedPattern: RegExp | null = null;
 
-    edges.forEach(edge => {
-      ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
-        const endpoint = edge.data(key);
-        const isNodeEndpoint =
-          (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
-          (edge.data('target') === nodeId && key === 'targetEndpoint');
-        if (!endpoint || !isNodeEndpoint) return;
-        let match = endpoint.match(e1Pattern);
+  edges.forEach(edge => {
+    ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
+      const endpoint = edge.data(key);
+      const isNodeEndpoint =
+        (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
+        (edge.data('target') === nodeId && key === 'targetEndpoint');
+      if (!endpoint || !isNodeEndpoint) return;
+      let match = endpoint.match(e1Pattern);
+      if (match) {
+        usedNumbers.add(parseInt(match[1], 10));
+        if (!selectedPattern) selectedPattern = e1Pattern;
+      } else {
+        match = endpoint.match(ethPattern);
         if (match) {
           usedNumbers.add(parseInt(match[1], 10));
-          if (!selectedPattern) selectedPattern = e1Pattern;
-        } else {
-          match = endpoint.match(ethPattern);
-          if (match) {
-            usedNumbers.add(parseInt(match[1], 10));
-            if (!selectedPattern) selectedPattern = ethPattern;
-          }
+          if (!selectedPattern) selectedPattern = ethPattern;
         }
-      });
+      }
     });
+  });
 
-    if (!selectedPattern) {
-      selectedPattern = e1Pattern;
-    }
-
-    let endpointNum = 1;
-    while (usedNumbers.has(endpointNum)) {
-      endpointNum++;
-    }
-
-    return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
+  if (!selectedPattern) {
+    selectedPattern = e1Pattern;
   }
+
+  let endpointNum = 1;
+  while (usedNumbers.has(endpointNum)) {
+    endpointNum++;
+  }
+
+  return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
+}
 
   /**
    * Detects the user's preferred color scheme and applies the corresponding theme.
    * @returns The applied theme ("dark" or "light").
    */
   public detectColorScheme(): string {
-    const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    this.applyTheme(darkMode ? 'dark' : 'light');
-    return darkMode ? 'dark' : 'light';
-  }
+  const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  this.applyTheme(darkMode ? 'dark' : 'light');
+  return darkMode ? 'dark' : 'light';
+}
 
   /**
    * Applies a theme to the root element.
@@ -341,27 +357,27 @@ class TopoViewerEditorEngine {
    * @private
    */
   private applyTheme(theme: string): void {
-    const rootElement = document.getElementById('root');
-    if (rootElement) {
-      rootElement.setAttribute('data-theme', theme);
-      console.log("Applied Theme:", theme);
-    } else {
-      console.warn("'root' element not found; cannot apply theme:", theme);
-    }
+  const rootElement = document.getElementById('root');
+  if(rootElement) {
+    rootElement.setAttribute('data-theme', theme);
+    console.log("Applied Theme:", theme);
+  } else {
+    console.warn("'root' element not found; cannot apply theme:", theme);
   }
+}
 
   /**
    * Updates the subtitle element with the provided text.
    * @param newText - The new text to display in the subtitle.
    */
   public updateSubtitle(newText: string): void {
-    const subtitleElement = document.getElementById("ClabSubtitle");
-    if (subtitleElement) {
-      subtitleElement.textContent = `Topology Editor ::: ${newText}`;
-    } else {
-      console.warn("Subtitle element not found");
-    }
+  const subtitleElement = document.getElementById("ClabSubtitle");
+  if(subtitleElement) {
+    subtitleElement.textContent = `Topology Editor ::: ${newText}`;
+  } else {
+    console.warn("Subtitle element not found");
   }
+}
 }
 
 document.addEventListener('DOMContentLoaded', () => {

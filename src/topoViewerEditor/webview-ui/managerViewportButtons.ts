@@ -5,6 +5,7 @@ import loadCytoStyle from './managerCytoscapeStyle';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { VscodeMessageSender } from './managerVscodeWebview';
 
+import { NodeData, EdgeData } from './topoViewerEditorEngine';
 
 // Declare global functions/variables if they are not imported from other modules.
 declare const globalCytoscapeLeafletLeaf: { fit: () => void };
@@ -24,7 +25,7 @@ export class ManagerViewportButtons {
    */
   constructor(
     private messageSender: VscodeMessageSender
-  ) {  }
+  ) { }
 
   /**
    * Updates node positions and sends the topology data to the backend.
@@ -170,7 +171,17 @@ export class ManagerViewportButtons {
     }
   }
 
-
+  /**
+   * Reloads the topology viewport in Cytoscape by requesting fresh data from the backend.
+   *
+   * This method sends a reload command to the VS Code extension backend, waits briefly
+   * to allow the backend to process the request, and then re-fetches and re-loads
+   * the topology data into the provided Cytoscape instance.
+   *
+   * @async
+   * @param cy - The Cytoscape core instance whose viewport will be reloaded.
+   * @returns A promise that resolves once the reload sequence has been initiated.
+   */
   public async viewportButtonsReloadTopo(cy: cytoscape.Core): Promise<void> {
     try {
       const response = await this.messageSender.sendMessageToVscodeEndpointPost("topo-editor-reload-viewport", "Empty Payload");
@@ -182,6 +193,48 @@ export class ManagerViewportButtons {
     } catch (err) {
       console.error("############### Backend call failed:", err);
     }
+  }
+
+  /**
+   * Adds a new Containerlab node to the Cytoscape canvas.
+   * <p>
+   * Generates a unique node ID based on the current number of nodes, sets up
+   * default NodeData fields, and adds the node at the event’s position (if provided)
+   * or at a random position within [100, 200] for both x and y.
+   * After adding, fits the viewport to include all nodes.
+   * </p>
+   *
+   * @param cy - The Cytoscape core instance where the node will be added.
+   * @param event - The Cytoscape event object that triggered this action.
+   *                Its `position` (if present) is used for the new node’s placement.
+   * @returns void
+   */
+  public viewportButtonsAddContainerlabNode(cy: cytoscape.Core, event: cytoscape.EventObject): void {
+    const newNodeId = `nodeId-${cy.nodes().length + 1}`;
+
+    const newNodeData: NodeData = {
+      id: newNodeId,
+      editor: "true",
+      weight: "30",
+      // name: newNodeId.split(":")[1]
+      name: newNodeId,
+      parent: "",
+      topoViewerRole: "pe",
+      sourceEndpoint: "",
+      targetEndpoint: "",
+      containerDockerExtraAttribute: { state: "", status: "" },
+      extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Addresss: "" },
+    };
+
+    const position = event.position || {
+      x: Math.random() * 100 + 100,
+      y: Math.random() * 100 + 100,
+    }; // [0,1)*100 tobe [0,100) +100 tobe [100,200)
+
+    cy.add({ group: 'nodes', data: newNodeData, position });
+
+    // Fit all nodes with default padding.
+    cy.fit();
   }
 
 

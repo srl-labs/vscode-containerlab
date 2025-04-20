@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
 import * as utils from './utils';
-import { ClabTreeDataProvider } from './clabTreeDataProvider';
+import { ClabTreeDataProvider, ClabLabTreeNode } from './clabTreeDataProvider';
 import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
@@ -178,55 +178,41 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', async () => {
 
-      // Prompt the user for a lab name.
-      const labName = await vscode.window.showInputBox({
-        prompt: 'Enter the lab name (e.g., clab-topo)',
-        placeHolder: 'clab-topo'
-      });
-      if (!labName) {
-        vscode.window.showWarningMessage('Lab name not provided. Operation cancelled.');
+      // Show a single "Save As" dialog where they both pick the folder AND type the filename:
+      const uri = await vscode.window.showSaveDialog({
+        title: 'Enter containerlab topology template file name',
+        defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,  // start in first workspace folder otherwise in home directory
+        saveLabel: 'Create Containerlab topology template file',
+        filters: { 'YAML': ['yaml', 'yml'] }
+      })
+      vscode.window.showInformationMessage(`Containerlab topology template file name: ${uri?.fsPath}`);
+
+      if (!uri) {
+        vscode.window.showWarningMessage('No file path selected. Operation canceled.');
         return;
       }
+
+      // Derive the labName (without extension) from what they typed:
+      const labName = path.basename(uri.fsPath, path.extname(uri.fsPath));
+
+      // Delegate to your template‑writer helper:
+      const editor = new TopoViewerEditor(context);
       try {
-        // Create an instance of TopoViewerEditor.
-        const topoViewerEditor = new TopoViewerEditor(context);
+        await editor.createTemplateFile(context, uri, labName);
 
-        if (vscode.workspace.workspaceFolders?.length) {
-          // Create the template file.
-          await topoViewerEditor.createTemplateFile(context, labName);
-          
-          // Open the webview panel topoViewerEditor.
-          await topoViewerEditor.createWebviewPanel(context, labName)
+        // Open the webview panel topoViewerEditor.
+        await editor.createWebviewPanel(context, uri, labName)
 
-          // Open the created file in a split editor.
-          await topoViewerEditor.openTemplateFile(topoViewerEditor.lastYamlFilePath);
+        // Open the created file in a split editor.
+        await editor.openTemplateFile(editor.lastYamlFilePath);
 
-        } else {
-          vscode.window.showErrorMessage('No workspace folder is open. Please open a workspace folder to create the template file.');
-        }
-
-        // // Create the template file.
-        // await topoViewerEditor.createTemplateFile(context, labName);
-
-
-        // await topoViewerEditor.createWebviewPanel(context, labName)
-
-        // // Build the file path using the same naming convention as in createTemplateFile().
-        // // const folderPath = path.join(context.extensionUri.fsPath, 'topoViewerData', labName);
-        // // const filePath = path.join(folderPath, `${labName}.yaml`);
-
-        // const filePath = topoViewerEditor.lastYamlFilePath
-
-        // // Open the created file in a split editor.
-        // await topoViewerEditor.openTemplateFile(filePath);
-
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error creating template file: ${error}`);
+      } catch (err) {
+        // createTemplateFile will have already shown an error
+        return;
       }
-    }
-    )
-  );
 
+    })
+  );
 
 
   // Node commands

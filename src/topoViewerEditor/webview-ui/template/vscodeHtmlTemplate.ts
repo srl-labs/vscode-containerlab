@@ -139,6 +139,15 @@ return `
           </button>
         </p>
 
+        <p class="control p-0">
+          <a id="viewport-add-clab-node" href="Add Containerlab Node" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
+            class="button px-4 py-4 is-smallest-element" style="outline: none;">
+            <span class="icon is-small">
+              <i class="fa-solid fa-plus"></i>
+            </span>
+          </a>
+        </p>
+
         <!-- 
         <p class="control p-0">
           <a id="viewport-layout" href="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"

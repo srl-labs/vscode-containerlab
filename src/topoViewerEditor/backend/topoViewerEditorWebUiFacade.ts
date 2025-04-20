@@ -21,7 +21,6 @@ export class TopoViewerEditor {
   private currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = 'topoViewerEditor';
   private adaptor: TopoViewerAdaptorClab;
-  private currentLabName: string | undefined;
 
   /**
    * Stores the YAML file path from the last topenViewerEditor call.
@@ -36,6 +35,8 @@ export class TopoViewerEditor {
   public targetDirPath: string | undefined;
 
   public createTopoYamlTemplateSuccess: boolean = false;
+
+  private currentLabName: string = '';
 
   /**
    * Stores the last folder name used in the webview.
@@ -52,130 +53,73 @@ export class TopoViewerEditor {
   }
 
   /**
-   * Creates a folder (if it doesn't exist) in the first workspace folder
-   * and writes a YAML template file with predefined content.
+   * Creates the directory (if needed) and writes out the YAML template
+   * to exactly the given `fileUri`.
    *
-   * @param folderName - The name of the folder to create.
-   * @param labName - The name of the lab which will use to create file to create inside the folder.
+   * @param fileUri - the full path (including filename) where to write.
+   * @param labName - used to seed the template content.
    */
-  public async createTemplateFile(context: vscode.ExtensionContext, labName: string): Promise<void> {
-    //     try {
-    //       // Ensure there is an open workspace folder.
-    //       const workspaceFolders = vscode.workspace.workspaceFolders;
-    //       if (!workspaceFolders || workspaceFolders.length === 0) {
-    //         vscode.window.showErrorMessage('No workspace folder is open.');
-    //         return;
-    //       }
+  public async createTemplateFile(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): Promise<void> {
+    this.currentLabName = labName;
+    this.lastFolderName = path.basename(path.dirname(fileUri.fsPath));
 
-    //       this.currentLabName = labName
-
-    //       const folderName = labName // as folder name
-    //       this.lastFolderName = folderName // pass it to global const
-
-    //       // Define the target directory URI and path
-    //       const targetDirUri = vscode.Uri.joinPath(
-    //         context.extensionUri,
-    //         'topoViewerData',
-    //         folderName
-    //       );
-    //       const targetDirPath = targetDirUri.fsPath;
-
-    //       // Create the folder recursively if it does not exist.
-    //       await fs.promises.mkdir(targetDirPath, { recursive: true });
-
-    //       const yamlFilePath = path.join(targetDirPath, `${labName}.yaml`);
-    //       this.lastYamlFilePath = yamlFilePath // pass it to global const
-
-    //       const templateContent = `
-    // name: ${labName}
-
-    // topology:
-    //   nodes:
-    //     srl1:
-    //       kind: nokia_srlinux
-    //       image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-    //       startup-config: configs/srl.cfg
-    //     srl2:
-    //       kind: nokia_srlinux
-    //       image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-    //       startup-config: configs/srl.cfg
-
-    //   links:
-    //     # inter-switch link
-    //     - endpoints: [ srl1:e1-11, srl2:e1-11 ]
-    // `;
-    //       await fs.promises.writeFile(yamlFilePath, templateContent, 'utf8');
-    //       vscode.window.showInformationMessage(`Template file created at ${yamlFilePath}`);
-
-    //       // Read the YAML content from the file.
-    //       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
-
-    //       const provider = new ClabTreeDataProvider(context);
-    //       const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
-
-    //       // Transform YAML into Cytoscape elements.
-    //       const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
-
-    //       // Create folder and write JSON files for the webview.
-    //       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
-
-
-    //     } catch (error) {
-    //       vscode.window.showErrorMessage(`Error creating template file: ${error}`);
-    //     }
-    //   }
-
-    try {
-      this.currentLabName = labName;
-      this.lastFolderName = labName;
-
-      if (vscode.workspace.workspaceFolders?.length) {
-        // write inside the first workspace folder
-        const wsUri = vscode.workspace.workspaceFolders[0].uri;
-        this.targetDirPath = path.join(wsUri.fsPath, 'topoViewerData', labName);
-
-      } else {
-        vscode.window.showWarningMessage('No folder in workspace.');
-        return;
-      }
-
-      // make sure it exists
-      await fs.promises.mkdir(this.targetDirPath, { recursive: true });
-
-      // write out the YAML template
-      const yamlFilePath = path.join(this.targetDirPath, `${labName}.yaml`);
-      this.lastYamlFilePath = yamlFilePath;
-
-      log.debug(`Target Directory Path ${this.targetDirPath}`);
-
-      const templateContent = `
-name: ${labName}
+    // Build the template
+    const templateContent = `
+name: ${labName} # saved as ${(fileUri.fsPath)}
 
 topology:
-nodes:
-  srl1:
-    kind: nokia_srlinux
-    image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-    startup-config: configs/srl.cfg
-  srl2:
-    kind: nokia_srlinux
-    image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-    startup-config: configs/srl.cfg
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
+      startup-config: configs/srl.cfg
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
+      startup-config: configs/srl.cfg
 
-links:
-  # inter-switch link
-  - endpoints: [ srl1:e1-11, srl2:e1-11 ]
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-11, srl2:e1-11 ]
 `;
-      await fs.promises.writeFile(yamlFilePath, templateContent, 'utf8');
-      vscode.window.showInformationMessage(`Template created at ${yamlFilePath}`);
 
-      // …then your existing logic for reading it back, converting to Cytoscape, etc…
+    try {
+      // Ensure the directory exists
+      const dirUri = fileUri.with({ path: path.dirname(fileUri.path) });
+      await vscode.workspace.fs.createDirectory(dirUri);
+
+      // Write the file
+      const data = Buffer.from(templateContent, 'utf8');
+      await vscode.workspace.fs.writeFile(fileUri, data);
+
+      // Remember where it went
+      this.lastYamlFilePath = fileUri.fsPath;
+
+      log.info(`Template file created at: ${fileUri.fsPath}`);
+
+      // Notify the user
+      vscode.window.showInformationMessage(`Template created at ${fileUri.fsPath}`);
+
+
+      // Convert the YAML file to JSON and write it to the webview.
+      // Read the YAML content from the file.
+      const yamlContent = fs.readFileSync( this.lastYamlFilePath, 'utf8');
+      log.debug(`YAML content: ${yamlContent}`);
+
+      // Transform YAML into Cytoscape elements.
+      const cytoTopology = this.adaptor.clabYamlToCytoscapeElementsEditor(yamlContent);
+      log.debug(`Cytoscape topology: ${JSON.stringify(cytoTopology, null, 2)}`);
+
+      // Create folder and write JSON files for the webview.
+      // use currentLabName to create the folder
+      const folderName = this.currentLabName;
+      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
     } catch (err) {
       vscode.window.showErrorMessage(`Error creating template: ${err}`);
+      throw err;
     }
   }
-
   /**
    * Updates the webview panel's HTML with the latest topology data.
    *
@@ -186,12 +130,12 @@ links:
    * @returns A promise that resolves when the panel has been updated.
    */
   public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<void> {
-    if (!this.lastFolderName) {
+    if (!this.currentLabName) {
       return;
     }
 
     const yamlFilePath = this.lastYamlFilePath;
-    const folderName = this.lastFolderName;
+    const folderName = this.currentLabName;
 
     const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
@@ -203,7 +147,7 @@ links:
       updatedClabTreeDataToTopoviewer
     );
 
-    this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
     if (panel) {
       const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
@@ -247,7 +191,7 @@ links:
    * Creates a new webview panel or reveals the current one.
    * @param context The extension context.
    */
-  public createWebviewPanel(context: vscode.ExtensionContext, labName: string): void {
+  public createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): void {
 
     interface CytoViewportPositionPreset {
       data: {
@@ -769,6 +713,4 @@ links:
       vscode.window.showErrorMessage(`Error opening template file: ${error}`);
     }
   }
-
-
 }
