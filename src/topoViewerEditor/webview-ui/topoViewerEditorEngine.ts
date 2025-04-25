@@ -4,6 +4,9 @@ import cytoscape from 'cytoscape';
 import edgehandles from 'cytoscape-edgehandles';
 import cola from 'cytoscape-cola';
 import gridGuide from 'cytoscape-grid-guide';
+// Import and register context-menu plugin
+import cxtmenu from 'cytoscape-cxtmenu';
+// import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
 
 import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from './managerVscodeWebview';
@@ -16,6 +19,8 @@ import { ManagerViewportPanels } from './managerViewportPanels';
 cytoscape.use(edgehandles);
 cytoscape.use(cola);
 cytoscape.use(gridGuide);
+cytoscape.use(cxtmenu);
+
 
 /**
  * Interface representing node data.
@@ -155,6 +160,7 @@ class TopoViewerEditorEngine {
 
     this.registerEvents();
     this.initializeEdgehandles();
+    this.initializeContextMenu();
 
     // Initiate viewport buttons and panels
     this.viewportButtons = new ManagerViewportButtons(this.messageSender);
@@ -190,6 +196,70 @@ class TopoViewerEditorEngine {
   }
 
   /**
+ * Initializes the circular context menu on nodes.
+ */
+  private initializeContextMenu(): void {
+    const self = this;
+    this.cy.cxtmenu({
+      selector: 'node',
+      commands: [
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Edit Node</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // inside here TS infers ele is NodeSingular
+            this.viewportPanels.panelNodeEditor(ele);
+          }
+        },
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Delete Node</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            ele.remove();
+          }
+        },
+
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-link" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Add Edge</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            // initiate edgehandles drawing from this node
+            self.eh.start(ele);
+          }
+        }
+      ],
+      menuRadius: 110, // the radius of the menu
+      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      activePadding: 5, // additional size in pixels for the active command
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
+      separatorWidth: 3, // the empty spacing in pixels between successive commands
+      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+      adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      openMenuEvents: 'cxttapstart taphold', // space-separated cytoscape events that will open the menu; only `cxttapstart` and/or `taphold` work here
+      itemColor: 'white', // the colour of text in the command's content
+      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      zIndex: 9999, // the z-index of the ui div
+      atMouse: false, // draw menu at mouse position
+      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer 
+    });
+  }
+
+  /**
    * Registers event handlers for Cytoscape elements such as canvas, nodes, and edges.
    * @private
    */
@@ -206,7 +276,8 @@ class TopoViewerEditorEngine {
 
 
       } else {
-        this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender);
+        const suppressNotification = true;
+        this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
       }
     });
 
@@ -238,7 +309,7 @@ class TopoViewerEditorEngine {
         // Open node editor for a normal click.
         case !originalEvent.shiftKey:
           console.info("Opening node editor for node:", extraData?.longname || node.id());
-          await this.viewportPanels.panelNodeEditor(node);
+          // await this.viewportPanels.panelNodeEditor(node);
           break;
         default:
           break;
@@ -302,54 +373,54 @@ class TopoViewerEditorEngine {
    * @private
    */
   private getNextEndpoint(nodeId: string): string {
-  const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-  const e1Pattern = /^e1-(\d+)$/;
-  const ethPattern = /^eth(\d+)$/;
-  const usedNumbers = new Set<number>();
-  let selectedPattern: RegExp | null = null;
+    const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
+    const e1Pattern = /^e1-(\d+)$/;
+    const ethPattern = /^eth(\d+)$/;
+    const usedNumbers = new Set<number>();
+    let selectedPattern: RegExp | null = null;
 
-  edges.forEach(edge => {
-    ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
-      const endpoint = edge.data(key);
-      const isNodeEndpoint =
-        (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
-        (edge.data('target') === nodeId && key === 'targetEndpoint');
-      if (!endpoint || !isNodeEndpoint) return;
-      let match = endpoint.match(e1Pattern);
-      if (match) {
-        usedNumbers.add(parseInt(match[1], 10));
-        if (!selectedPattern) selectedPattern = e1Pattern;
-      } else {
-        match = endpoint.match(ethPattern);
+    edges.forEach(edge => {
+      ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
+        const endpoint = edge.data(key);
+        const isNodeEndpoint =
+          (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
+          (edge.data('target') === nodeId && key === 'targetEndpoint');
+        if (!endpoint || !isNodeEndpoint) return;
+        let match = endpoint.match(e1Pattern);
         if (match) {
           usedNumbers.add(parseInt(match[1], 10));
-          if (!selectedPattern) selectedPattern = ethPattern;
+          if (!selectedPattern) selectedPattern = e1Pattern;
+        } else {
+          match = endpoint.match(ethPattern);
+          if (match) {
+            usedNumbers.add(parseInt(match[1], 10));
+            if (!selectedPattern) selectedPattern = ethPattern;
+          }
         }
-      }
+      });
     });
-  });
 
-  if (!selectedPattern) {
-    selectedPattern = e1Pattern;
+    if (!selectedPattern) {
+      selectedPattern = e1Pattern;
+    }
+
+    let endpointNum = 1;
+    while (usedNumbers.has(endpointNum)) {
+      endpointNum++;
+    }
+
+    return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
   }
-
-  let endpointNum = 1;
-  while (usedNumbers.has(endpointNum)) {
-    endpointNum++;
-  }
-
-  return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
-}
 
   /**
    * Detects the user's preferred color scheme and applies the corresponding theme.
    * @returns The applied theme ("dark" or "light").
    */
   public detectColorScheme(): string {
-  const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  this.applyTheme(darkMode ? 'dark' : 'light');
-  return darkMode ? 'dark' : 'light';
-}
+    const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    this.applyTheme(darkMode ? 'dark' : 'light');
+    return darkMode ? 'dark' : 'light';
+  }
 
   /**
    * Applies a theme to the root element.
@@ -357,27 +428,27 @@ class TopoViewerEditorEngine {
    * @private
    */
   private applyTheme(theme: string): void {
-  const rootElement = document.getElementById('root');
-  if(rootElement) {
-    rootElement.setAttribute('data-theme', theme);
-    console.log("Applied Theme:", theme);
-  } else {
-    console.warn("'root' element not found; cannot apply theme:", theme);
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.setAttribute('data-theme', theme);
+      console.log("Applied Theme:", theme);
+    } else {
+      console.warn("'root' element not found; cannot apply theme:", theme);
+    }
   }
-}
 
   /**
    * Updates the subtitle element with the provided text.
    * @param newText - The new text to display in the subtitle.
    */
   public updateSubtitle(newText: string): void {
-  const subtitleElement = document.getElementById("ClabSubtitle");
-  if(subtitleElement) {
-    subtitleElement.textContent = `Topology Editor ::: ${newText}`;
-  } else {
-    console.warn("Subtitle element not found");
+    const subtitleElement = document.getElementById("ClabSubtitle");
+    if (subtitleElement) {
+      subtitleElement.textContent = `Topology Editor ::: ${newText}`;
+    } else {
+      console.warn("Subtitle element not found");
+    }
   }
-}
 }
 
 document.addEventListener('DOMContentLoaded', () => {

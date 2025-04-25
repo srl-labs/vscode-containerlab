@@ -39,7 +39,7 @@ export class ManagerViewportButtons {
    * @param cy - The Cytoscape instance containing the graph elements.
    * @returns A promise that resolves when the data has been processed and sent.
    */
-  public async viewportButtonsSaveTopo(cy: cytoscape.Core, messageSender: VscodeMessageSender): Promise<void> {
+  public async viewportButtonsSaveTopo(cy: cytoscape.Core, messageSender: VscodeMessageSender, suppressNotification: boolean): Promise<void> {
     const isVscodeDeployment = true; // adjust this flag as needed
     if (!isVscodeDeployment) return;
 
@@ -112,12 +112,25 @@ export class ManagerViewportButtons {
       const updatedElements = [...updatedNodes, ...updatedEdges];
       console.log("Updated Topology Data:", JSON.stringify(updatedElements, null, 2));
 
-      // Send the updated topology data to the backend.
-      const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-        "topo-editor-viewport-save",
-        updatedElements
-      );
-      console.log("Response from backend:", response);
+      if (!suppressNotification) {
+        console.log("Not Suppressing notification for save action.");
+        // Send the updated topology data to the backend.
+        const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+          "topo-editor-viewport-save",
+          updatedElements
+        );
+        console.log("Response from backend:", response);
+      } else { 
+        console.log("Suppressing notification for save action.");
+        // Send the updated topology data to the backend.
+        const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+          "topo-editor-viewport-save-suppress-notification",
+          updatedElements
+        );
+        console.log("Response from backend:", response);
+       }
+
+
     } catch (err) {
       console.error("Backend call failed:", err);
     }

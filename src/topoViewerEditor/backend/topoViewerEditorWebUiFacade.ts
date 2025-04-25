@@ -103,7 +103,7 @@ topology:
 
       // Convert the YAML file to JSON and write it to the webview.
       // Read the YAML content from the file.
-      const yamlContent = fs.readFileSync( this.lastYamlFilePath, 'utf8');
+      const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
       log.debug(`YAML content: ${yamlContent}`);
 
       // Transform YAML into Cytoscape elements.
@@ -579,14 +579,266 @@ topology:
               const result = `Saved topology with preserved comments!`;
               log.info(result);
               vscode.window.showInformationMessage(result);
+
+
               log.info(doc);
               log.info(this.lastYamlFilePath);
-
 
 
             } catch (error) {
               const result = `Error executing endpoint "topo-editor-viewport-save".`;
               log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(error, null, 2)}`);
+            }
+            break;
+          }
+
+
+          /**
+          * Handles the "topo-editor-viewport-save-suppress-notification" endpoint.
+          * This function updates the YAML document with the current topology state (nodes and edges)
+          * received from the frontend. It synchronizes additions, updates, and deletions.
+          *
+          * @param payload - The JSON payload string sent from the frontend.
+          */
+          case 'topo-editor-viewport-save-suppress-notification': {
+            try {
+              // Helper function to compute a consistent endpoints string from edge data.
+              function computeEndpointsStr(data: any): string {
+                let endpoints: string[];
+                if (data.sourceEndpoint && data.targetEndpoint) {
+                  endpoints = [
+                    `${data.source}:${data.sourceEndpoint}`,
+                    `${data.target}:${data.targetEndpoint}`
+                  ];
+                } else if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length > 0) {
+                  endpoints = data.endpoints.every((ep: string) => ep.includes(':'))
+                    ? data.endpoints
+                    : [data.source, data.target];
+                } else {
+                  endpoints = [data.source, data.target];
+                }
+                return endpoints.join(',');
+              }
+
+              // Parse the JSON payload from the frontend.
+              const payloadParsed: any[] = JSON.parse(payload as string);
+
+              // Retrieve the current YAML document (with comments preserved) from the adaptor.
+              const doc: YAML.Document.Parsed | undefined = this.adaptor.currentClabDoc;
+              if (!doc) {
+                throw new Error('No parsed Document found (this.adaptor.currentClabDoc is undefined).');
+              }
+
+              // Create a map to track node key updates (oldKey -> newKey).
+              const updatedKeys = new Map<string, string>();
+
+              // --- Process Nodes ---
+
+              // Retrieve the nodes map from the YAML document.
+              const nodesMaybe = doc.getIn(['topology', 'nodes'], true);
+              if (!YAML.isMap(nodesMaybe)) {
+                throw new Error('YAML topology nodes is not a map');
+              }
+              const yamlNodes: YAML.YAMLMap = nodesMaybe;
+
+              // Iterate through payload nodes to add/update nodes in YAML.
+              payloadParsed.filter(el => el.group === 'nodes').forEach(element => {
+                // Use the stable id from payload as the lookup key.
+                var nodeId: string = element.data.id;
+
+                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as YAML.YAMLMap | undefined;
+                if (!nodeYaml) {
+                  // Create a new mapping if it does not exist.
+                  nodeYaml = new YAML.YAMLMap();
+                  yamlNodes.set(nodeId, nodeYaml);
+                }
+
+                // For new nodes, extraData may be missing. Provide fallbacks.
+                const extraData = element.data.extraData || {};
+
+                // Update the node's properties.
+                nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
+                nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
+                // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
+
+                // --- Update Labels ---
+                // Ensure labels exist and are a YAML map.
+                let labels = nodeYaml.get('labels', true) as YAML.YAMLMap | undefined;
+                if (!labels || !YAML.isMap(labels)) {
+                  labels = new YAML.YAMLMap();
+                  nodeYaml.set('labels', labels);
+                }
+                // Merge any extra labels from the payload.
+                if (extraData.labels) {
+                  for (const [key, value] of Object.entries(extraData.labels)) {
+                    labels.set(key, doc.createNode(value));
+                  }
+                }
+                // Update the position-related labels (using element.position, with fallback values).
+                const x = element.position?.x || 0;
+                const y = element.position?.y || 0;
+                labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
+                labels.set('graph-posY', doc.createNode(Math.round(y).toString()));
+
+                // Update the node's icon
+                labels.set('graph-icon', doc.createNode(element.data.topoViewerRole || 'pe'));
+
+                // Update group-related labels if a parent string is provided.
+                const parent = element.parent;
+                if (parent) {
+                  const parts = parent.split(":");
+                  labels.set('graph-group', doc.createNode(parts[0]));
+                  labels.set('graph-level', doc.createNode(parts[1]));
+                } else {
+                  labels.delete('graph-group');
+                  labels.delete('graph-level');
+                }
+                // Set the group label position (defaulting to 'bottom-center' if not provided).
+                const groupLabelPos = element.groupLabelPos;
+                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
+
+                // --- Update YAML mapping key if the node's display name has changed ---
+                // Here, we want the mapping key to reflect the new node name.
+                const newKey = element.data.name;
+                if (nodeId !== newKey) {
+                  yamlNodes.set(newKey, nodeYaml); // Add node with new key.
+                  yamlNodes.delete(nodeId);        // Remove the old key.
+                  updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
+                }
+              });
+
+              // Remove YAML nodes that are not present in the payload.
+              const payloadNodeIds = new Set(
+                payloadParsed.filter(el => el.group === 'nodes').map(el => el.data.id)
+              );
+              for (const item of [...yamlNodes.items]) {
+                const keyStr = String(item.key);
+                // Check against both original IDs and updated keys.
+                if (!payloadNodeIds.has(keyStr) && ![...updatedKeys.values()].includes(keyStr)) {
+                  yamlNodes.delete(item.key);
+                }
+              }
+
+              // --- Process Edges (Links) ---
+
+              // Retrieve or create the links sequence.
+              const maybeLinksNode = doc.getIn(['topology', 'links'], true);
+              let linksNode: YAML.YAMLSeq;
+              if (YAML.isSeq(maybeLinksNode)) {
+                linksNode = maybeLinksNode;
+              } else {
+                linksNode = new YAML.YAMLSeq();
+                const topologyNode = doc.getIn(['topology'], true);
+                if (YAML.isMap(topologyNode)) {
+                  topologyNode.set('links', linksNode);
+                }
+              }
+
+              // Process each edge element to add or update links in YAML.
+              payloadParsed.filter(el => el.group === 'edges').forEach(element => {
+                const data = element.data;
+                const endpointsStr = computeEndpointsStr(data);
+
+                // Look for an existing link with these endpoints.
+                let linkFound = false;
+                for (const linkItem of linksNode.items) {
+                  if (YAML.isMap(linkItem)) {
+                    const eps = linkItem.get('endpoints', true);
+                    if (YAML.isSeq(eps)) {
+                      // Convert each YAML node in the sequence to a string.
+                      const yamlEndpointsStr = eps.items
+                        .map(item => String((item as any).value ?? item))
+                        .join(',');
+                      if (yamlEndpointsStr === endpointsStr) {
+                        linkFound = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+                if (!linkFound) {
+                  // Add a new link if not found.
+                  const newLink = new YAML.YAMLMap();
+                  // Rebuild endpoints array for setting.
+                  let endpoints: string[];
+                  if (data.sourceEndpoint && data.targetEndpoint) {
+                    endpoints = [
+                      `${data.source}:${data.sourceEndpoint}`,
+                      `${data.target}:${data.targetEndpoint}`
+                    ];
+                  } else if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length > 0) {
+                    endpoints = data.endpoints.every((ep: string) => ep.includes(':'))
+                      ? data.endpoints
+                      : [data.source, data.target];
+                  } else {
+                    endpoints = [data.source, data.target];
+                  }
+                  // Create the endpoints node as a YAML sequence and enforce flow style.
+                  const endpointsNode = doc.createNode(endpoints) as YAML.YAMLSeq;
+                  endpointsNode.flow = true;
+                  newLink.set('endpoints', endpointsNode);
+                  linksNode.add(newLink);
+                }
+              });
+
+              // Remove any YAML links that are not present in the updated payload.
+              const payloadEdgeEndpoints = new Set(
+                payloadParsed
+                  .filter(el => el.group === 'edges')
+                  .map(el => computeEndpointsStr(el.data))
+              );
+              linksNode.items = linksNode.items.filter(linkItem => {
+                if (YAML.isMap(linkItem)) {
+                  const endpointsNode = linkItem.get('endpoints', true);
+                  if (YAML.isSeq(endpointsNode)) {
+                    const endpointsStr = endpointsNode.items
+                      .map(item => String((item as any).value ?? item))
+                      .join(',');
+                    return payloadEdgeEndpoints.has(endpointsStr);
+                  }
+                }
+                return true;
+              });
+
+              // After processing edges, update each link's endpoints to reflect any updated node keys.
+              for (const linkItem of linksNode.items) {
+                if (YAML.isMap(linkItem)) {
+                  const endpointsNode = linkItem.get('endpoints', true);
+                  if (YAML.isSeq(endpointsNode)) {
+                    endpointsNode.items = endpointsNode.items.map(item => {
+                      let endpointStr = String((item as any).value ?? item);
+                      // If the endpoint contains a colon, split into nodeKey and the rest.
+                      if (endpointStr.includes(':')) {
+                        const [nodeKey, rest] = endpointStr.split(':');
+                        if (updatedKeys.has(nodeKey)) {
+                          endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+                        }
+                      } else {
+                        if (updatedKeys.has(endpointStr)) {
+                          endpointStr = updatedKeys.get(endpointStr)!;
+                        }
+                      }
+                      return doc.createNode(endpointStr);
+                    });
+                    endpointsNode.flow = true; // Ensure flow style.
+                  }
+                }
+              }
+
+              // --- Serialize and Save the Updated YAML Document ---
+              const updatedYamlString = doc.toString();
+              await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+
+              // const result = `Saved topology with preserved comments aaaa!`;
+              // log.info(result);
+              // vscode.window.showInformationMessage(result);
+
+              log.info(doc);
+              log.info(this.lastYamlFilePath);
+
+            } catch (error) {
+              const result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
+              log.error(`Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(error, null, 2)}`);
             }
             break;
           }

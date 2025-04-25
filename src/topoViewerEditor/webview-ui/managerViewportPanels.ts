@@ -179,7 +179,9 @@ export class ManagerViewportPanels {
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           // Now trigger the viewportButtonsSaveTopo method.
-          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender);
+          
+          const suppressNotification = false;
+          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
         }, { once: true });
       }
     } catch (error: any) {
