@@ -143,7 +143,6 @@ topology:
       log.info(`Template file created at: ${finalFileUri.fsPath}`);
 
       // Notify the user with the actual path used
-      vscode.window.showInformationMessage(`Template created at ${finalFileUri.fsPath}`);
       this.createTopoYamlTemplateSuccess = true; // Indicate success
 
 
