@@ -131,7 +131,7 @@ return `
     <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
         <p class="control p-0">
-          <button id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-zoom-to-fit" title="Fit to Viewport" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-expand"></i>
@@ -140,41 +140,41 @@ return `
         </p>
 
         <p class="control p-0">
-          <a id="viewport-add-clab-node" href="Add Containerlab Node" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
+          <button id="viewport-add-clab-node" title="Add Containerlab Node" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-plus"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <!-- 
         <p class="control p-0">
-          <a id="viewport-layout" href="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
+          <button id="viewport-layout" title="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-circle-nodes"></i>
             </span>
-          </a>
+          </button>
         </p>
         
         <p class="control p-0">
-          <a id="viewport-topology-overview" href="Find Node" onclick="viewportButtonsTopologyOverview(event)"
+          <button id="viewport-topology-overview" title="Find Node" onclick="viewportButtonsTopologyOverview(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-binoculars"></i>
             </span>
-          </a>
+          </button>
         </p>
        
         -->
         <p class="control p-0">
-          <a id="viewport-label-endpoint" href="Toggle Endpoint Label" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-label-endpoint" title="Toggle Endpoint Label" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-tag"></i>
             </span>
-          </a>
+          </button>
         </p> 
 
         <!-- aarafat-tag: vs-code  
@@ -210,72 +210,72 @@ return `
                     </span>
                   </a>
                 </p>
-                -->
+        -->
 
         <!-- <p class="control p-0">
-          <a id="viewport-reload-topo" href="Add Group" onclick="viewportButtonsAddGroup()"
+          <button id="viewport-reload-topo" title="Add Group" onclick="viewportButtonsAddGroup()"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-notes-medical"></i>
             </span>
-          </a>
+          </button>
         </p> -->
 
         <!-- <p class="control p-0">
-          <a id="viewport-capture-viewport" href="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
+          <button id="viewport-capture-viewport" title="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-camera"></i>
             </span>
-          </a>
+          </button>
         </p> -->
 
         <p class="control p-0">
-          <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-reload-topo" title="Reload TopoViewer" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <p class="control p-0">
-          <a id="viewport-save-topo" href="Save TopoViewer"
+          <button id="viewport-save-topo" title="Save TopoViewer"
             onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsSaveTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-floppy-disk"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <!-- <p class="control p-0">
-          <a id="viewport-add-node-texbox" href="Add Texbox" onclick="viewportButtonsAddNodeTextbox(cy)"
+          <button id="viewport-add-node-texbox" title="Add Texbox" onclick="viewportButtonsAddNodeTextbox(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-pen-to-square"></i>
             </span>
-          </a>
+          </button>
         </p> -->
 
 
         <!-- <p class="control p-0">
-          <a id="viewport-save-topo" href="Toggle Link Operational State" onclick="viewportButtonsLinkOperState(cy)"
+          <button id="viewport-save-topo" title="Toggle Link Operational State" onclick="viewportButtonsLinkOperState(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-diagram-project"></i>
             </span>
-          </a>
+          </button>
         </p> -->
 
         <!-- <p class="control p-0">
-                  <a  id="viewport-test-call-backend" href="Test Call to Backend" onclick="viewportButtonsReloadTopo()" class="button px-4 py-4 is-smallest-element" style="outline: none;">
-                    <span class="icon is-small">
-                      <i class="fa-solid fa-phone"></i>
-                    </span>
-                  </a>
-                </p>       -->
-
+          <button id="viewport-test-call-backend" title="Test Call to Backend" onclick="viewportButtonsReloadTopo()" 
+            class="button px-4 py-4 is-smallest-element" style="outline: none;">
+            <span class="icon is-small">
+              <i class="fa-solid fa-phone"></i>
+            </span>
+          </button>
+        </p> -->
 
 
         <hr id="viewport-geo-map-divider" class="my-1 viewport-geo-map is-hidden"
@@ -283,22 +283,22 @@ return `
 
 
         <p class="control p-0">
-          <a id="viewport-geo-map-pan" href="#" onclick="viewportButtonsGeoMapPan(event)"
+          <button id="viewport-geo-map-pan" href="#" onclick="viewportButtonsGeoMapPan(event)"
             class="button px-4 py-4 is-smallest-element viewport-geo-map is-hidden is-inverted" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-hand"></i>
             </span>
-          </a>
+          </button>
         </p>
 
 
         <p class="control p-0">
-          <a id="viewport-geo-map-edit" href="#" onclick="viewportButtonsGeoMapEdit(event)"
+          <button id="viewport-geo-map-edit" href="#" onclick="viewportButtonsGeoMapEdit(event)"
             class="button px-4 py-4 is-smallest-element viewport-geo-map is-hidden is-inverted" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-pointer"></i>
             </span>
-          </a>
+          </button>
         </p>
 
 
