@@ -21,7 +21,7 @@ function escapeDoubleQuotes(input: string): string {
 
 /**
  * Runs a command, checking for two possibilities in order:
- *   1) If checkType is "containerlab" and the user is NOT forced to always use sudo 
+ *   1) If checkType is "containerlab" and the user is NOT forced to always use sudo
  *      (i.e. settings do not force sudo) and the user is in the "clab_admins" group,
  *      run the command directly (i.e. without sudo).
  *   2) If passwordless sudo is available, run with "sudo -E".
@@ -177,7 +177,11 @@ export async function ensureClabInstalled(outputChannel: vscode.OutputChannel): 
  * Checks if containerlab is up to date, and if not, prompts the user to update it.
  * This version uses runWithSudo to execute the version check only once.
  */
-export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputChannel): Promise<void> {
+// In containerlabUtils.ts
+export async function checkAndUpdateClabIfNeeded(
+  outputChannel: vscode.OutputChannel,
+  context: vscode.ExtensionContext
+): Promise<void> {
   try {
     log('Running "containerlab version check".', outputChannel);
     // Run the version check via runWithSudo and capture output.
@@ -192,72 +196,48 @@ export async function checkAndUpdateClabIfNeeded(outputChannel: vscode.OutputCha
     if (!versionOutput) {
       throw new Error('No output from containerlab version check command.');
     }
-    // At this point, the command has been executed only once (via runWithSudo)
-    // and its output was already appended to the output channel.
-    // Handle update logic based on the version output.
+
     if (versionOutput.includes("Version check timed out")) {
       log("Version check timed out. Skipping update check.", outputChannel);
       return;
     }
-    // For newer containerlab releases.
-    if (versionOutput.includes("newer containerlab version")) {
-      const updateAction = 'Update containerlab';
-      const openReleaseNotesAction = 'Open Release Notes';
-      const skipAction = 'Skip';
-      let userChoice: string | undefined;
-      do {
-        userChoice = await vscode.window.showWarningMessage(
-          versionOutput,
-          updateAction,
-          openReleaseNotesAction,
-          skipAction
-        );
-        if (userChoice === openReleaseNotesAction) {
+
+    // Register update command if there's a new version
+    if (versionOutput.includes("newer containerlab version") || versionOutput.includes("version:")) {
+      // Register command for performing the update
+      const updateCommandId = 'containerlab.updateClab';
+      context.subscriptions.push(
+        vscode.commands.registerCommand(updateCommandId, async () => {
+          try {
+            await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
+            vscode.window.showInformationMessage('Containerlab updated successfully!');
+            log('Containerlab updated successfully.', outputChannel);
+          } catch (err: any) {
+            vscode.window.showErrorMessage(`Update failed: ${err.message}`);
+          }
+        })
+      );
+
+      // Show non-modal notification with options
+      vscode.window.showInformationMessage(
+        versionOutput,
+        'Update Now',
+        'View Release Notes',
+        'Dismiss'
+      ).then(selection => {
+        if (selection === 'Update Now') {
+          vscode.commands.executeCommand(updateCommandId);
+        } else if (selection === 'View Release Notes') {
           const urlRegex = /https?:\/\/[^\s]+/g;
           const match = versionOutput.match(urlRegex);
           if (match && match.length > 0) {
-            await vscode.env.openExternal(vscode.Uri.parse(match[0]));
+            vscode.env.openExternal(vscode.Uri.parse(match[0]));
           } else {
-            await vscode.window.showInformationMessage("No release notes URL found.");
+            vscode.window.showInformationMessage("No release notes URL found.");
           }
         }
-      } while (userChoice === openReleaseNotesAction);
-      if (userChoice === updateAction) {
-        log('User chose to update containerlab. Executing upgrade.', outputChannel);
-        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
-        vscode.window.showInformationMessage('Containerlab updated successfully!');
-        log('Containerlab updated successfully.', outputChannel);
-      } else {
-        log("User skipped the update.", outputChannel);
-      }
-    }
-    // For older containerlab releases.
-    else if (versionOutput.includes("version:")) {
-      const updateAction = 'Update containerlab';
-      const openReleaseNotesAction = 'Open Release Notes';
-      const skipAction = 'Skip';
-      const userChoice = await vscode.window.showWarningMessage(
-        versionOutput,
-        updateAction,
-        openReleaseNotesAction,
-        skipAction
-      );
-      if (userChoice === openReleaseNotesAction) {
-        const urlRegex = /https?:\/\/[^\s]+/g;
-        const match = versionOutput.match(urlRegex);
-        if (match && match.length > 0) {
-          await vscode.env.openExternal(vscode.Uri.parse(match[0]));
-        } else {
-          await vscode.window.showInformationMessage("No release notes URL found.");
-        }
-      } else if (userChoice === updateAction) {
-        log('User chose to update containerlab. Executing upgrade.', outputChannel);
-        await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
-        vscode.window.showInformationMessage('Containerlab updated successfully!');
-        log('Containerlab updated successfully.', outputChannel);
-      } else {
-        log("User skipped the update.", outputChannel);
-      }
+        // For 'Dismiss' we do nothing
+      });
     } else {
       log("Containerlab is up to date.", outputChannel);
     }

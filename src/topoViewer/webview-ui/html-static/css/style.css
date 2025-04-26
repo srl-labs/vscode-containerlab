@@ -351,23 +351,13 @@ body {
   z-index: 991;
 }
 
+
 #panel-node-editor {
   bottom: 10px;
   left: 40px;
   width: 340px;
   max-height: 700px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: fixed;
-  z-index: 21;
-}
-
-#panel-node-editor-parent {
-  bottom: 10px;
-  left: 40px;
-  width: 340px;
-  max-height: 700px;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   position: fixed;
   z-index: 21;
@@ -381,8 +371,8 @@ body {
 }
 
 #panel-node-topoviewerrole-dropdown-content {
-  max-height: 120px;
-  /* Adjust height to show about 5 items */
+  max-height: 100px;
+  /* Adjust height to show about 4 items */
   overflow-y: auto;
   /* Enables vertical scrolling */
 }
@@ -403,6 +393,17 @@ body {
   right: 40px;
   width: 600px;
   overflow-y: hidden;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-node-editor-parent {
+  bottom: 10px;
+  left: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
   overflow-x: hidden;
   position: fixed;
   z-index: 21;
@@ -589,15 +590,16 @@ body {
   .has-background-4a {
     z-index: 1;
     background-color: rgba(70, 86, 246, 1);
-    box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.4);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
   }
 
   .panel-block {
     background-color: white;
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
   }
 
   .panel {
-    box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.4);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
     background-color: white;
   }
 

@@ -1,5 +1,11 @@
 # vscode-containerlab
 
+[![GitHub releases](https://img.shields.io/github/v/release/srl-labs/vscode-containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2)](https://github.com/srl-labs/vscode-containerlab/releases)
+[![VS Code extension page](https://img.shields.io/visual-studio-marketplace/d/srl-labs.vscode-containerlab?style=flat-square&color=00c9ff&labelColor=bec8d2)](https://marketplace.visualstudio.com/items?itemName=srl-labs.vscode-containerlab)
+[![Doc](https://img.shields.io/badge/Docs-containerlab.dev-blue?style=flat-square&color=00c9ff&labelColor=bec8d2)](https://containerlab.dev/manual/vsc-extension/)
+[![Bluesky](https://img.shields.io/badge/follow-containerlab-1DA1F2?logo=bluesky&style=flat-square&color=00c9ff&labelColor=bec8d2)](https://bsky.app/profile/containerlab.dev)
+[![Discord](https://img.shields.io/discord/860500297297821756?style=flat-square&label=discord&logo=discord&color=00c9ff&labelColor=bec8d2)](https://discord.gg/vAyddtaEV9)
+
 A Visual Studio Code extension that integrates [containerlab](https://containerlab.dev/) directly into your editor, providing a convenient tree view for managing labs and their containers.
 
 ![screencast](https://raw.githubusercontent.com/srl-labs/vscode-containerlab/refs/heads/main/resources/screenshot.png)
@@ -25,10 +31,13 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Web-based:** Opens the topology in a dedicated Terminal session.
   - **Draw.io:** Generates a `.drawio` file for visual editing.
   - **Interactive TopoViewer:** Launches a dynamic, web-based view of your topology.
+  - **Interactive TopoEditor:** Let's your create in a graphical way network topologies
 
 - **Inspection:**  
   Use webviews to inspect either all labs or a single lab’s deployed containers in a neatly grouped table.
 
+- **Remote Labs:**  
+  Works perfectly with the: [SSH-Remote extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh) to manage labs on remote servers.
 
 ---
 
@@ -61,9 +70,6 @@ Note: The extension will automatically prompt to add your user to the `clab_admi
 
 Customize your experience under `containerlab.*` in VS Code Settings:
 
-- **`containerlab.defaultSshUser`** (string)  
-  Default SSH user (e.g. `"admin"`).
-
 - **`containerlab.sudoEnabledByDefault`** (boolean)  
   Whether to prepend `sudo` to containerlab commands.  
   _Default: `true`_
@@ -74,6 +80,9 @@ Customize your experience under `containerlab.*` in VS Code Settings:
 
 - **`containerlab.node.execCommandMapping`** (object)  
   Map a node’s `kind` to its preferred exec command (e.g. `{ "nokia_srlinux": "sr_cli" }`).
+
+- **`containerlab.node.sshUserMapping`** (object)  
+  Map a node’s `kind` to its preferred ssh user (e.g. `{ "nokia_srlinux": "clab" }`).
 
 - **`containerlab.wsl.wiresharkPath`** (string)  
   Path to Wireshark in Windows from inside WSL.  

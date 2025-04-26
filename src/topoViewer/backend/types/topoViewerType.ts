@@ -1,5 +1,6 @@
 // file: src/types/topoViewerType.ts
 
+
 /**
  * Represents a Containerlab node definition as specified in the YAML configuration.
  */
@@ -74,3 +75,4 @@ export interface EnvironmentJson {
 //     data: { id: string };
 //     position: { x: number; y: number };
 //   }
+

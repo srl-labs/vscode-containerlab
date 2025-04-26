@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.9.0",
+  "version": "0.12.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.70.0"
@@ -61,12 +61,12 @@
       },
       {
         "command": "containerlab.lab.openFile",
-        "title": "Edit Lab topology",
+        "title": "Edit topology",
         "icon": "$(pencil)"
       },
       {
         "command": "containerlab.lab.copyPath",
-        "title": "Copy Lab file path",
+        "title": "Copy file path",
         "icon": "$(copy)"
       },
       {
@@ -113,7 +113,7 @@
       },
       {
         "command": "containerlab.lab.save",
-        "title": "Save Lab",
+        "title": "Save configs",
         "category": "Containerlab"
       },
       {
@@ -124,35 +124,41 @@
       },
       {
         "command": "containerlab.inspectOneLab",
-        "title": "Inspect Lab",
+        "title": "Inspect",
         "category": "Containerlab",
         "icon": "$(search)"
       },
       {
         "command": "containerlab.lab.graph",
-        "title": "Graph Lab (Web)",
+        "title": "Graph (Web)",
         "icon": "$(graph-line)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.drawio",
-        "title": "Graph Lab (draw.io)",
+        "title": "Graph (draw.io)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.drawio.interactive",
-        "title": "Graph Lab (draw.io, Interactive)",
+        "title": "Graph (draw.io, Interactive)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.graph.topoViewer",
-        "title": "Graph Lab (TopoViewer)",
+        "title": "Graph (TopoViewer)",
         "icon": "$(graph-line)",
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.editor.topoViewerEditor",
+        "title": "New topology file",
+        "icon": "$(new-file)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.lab.addToWorkspace",
-        "title": "Add Lab to Workspace",
+        "title": "Add to Workspace",
         "category": "Containerlab",
         "icon": "$(folder-opened)"
       },
@@ -162,16 +168,20 @@
         "icon": "$(folder-opened)"
       },
       {
+        "command": "containerlab.lab.sshToAllNodes",
+        "title": "SSH (All nodes)"
+      },
+      {
         "command": "containerlab.node.start",
-        "title": "Start node"
+        "title": "Start"
       },
       {
         "command": "containerlab.node.stop",
-        "title": "Stop node"
+        "title": "Stop"
       },
       {
         "command": "containerlab.node.save",
-        "title": "Save node"
+        "title": "Save config"
       },
       {
         "command": "containerlab.node.attachShell",
@@ -180,8 +190,12 @@
       },
       {
         "command": "containerlab.node.ssh",
-        "title": "Connect to SSH",
+        "title": "Connect (SSH)",
         "icon": "$(remote)"
+      },
+      {
+        "command": "containerlab.node.telnet",
+        "title": "Connect (Telnet)"
       },
       {
         "command": "containerlab.node.showLogs",
@@ -267,6 +281,12 @@
         "command": "containerlab.set.sessionHostname",
         "title": "Configure hostname for this session",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.node.openBrowser",
+        "title": "Open Port in Browser",
+        "icon": "$(globe)",
+        "category": "Containerlab"
       }
     ],
     "submenus": [
@@ -286,6 +306,11 @@
           "command": "containerlab.lab.deploy.specificFile",
           "when": "view == containerlabExplorer",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.editor.topoViewerEditor",
+          "when": "view == containerlabExplorer",
+          "group": "navigation@3"
         },
         {
           "command": "containerlab.inspectAll",
@@ -456,9 +481,19 @@
           "group": "navigation@7"
         },
         {
+          "command": "containerlab.lab.sshToAllNodes",
+          "when": "viewItem == containerlabLabDeployed",
+          "group": "connect@0"
+        },
+        {
+          "command": "containerlab.node.openBrowser",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@8"
+        },
+        {
           "command": "containerlab.inspectOneLab",
           "when": "viewItem == containerlabLabDeployed",
-          "group": "navigation@8"
+          "group": "navigation@9"
         },
         {
           "command": "containerlab.lab.graph",
@@ -513,12 +548,17 @@
         {
           "command": "containerlab.node.attachShell",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@1"
+          "group": "nodeConnect@2"
         },
         {
           "command": "containerlab.node.ssh",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@0"
+          "group": "nodeConnect@0"
+        },
+        {
+          "command": "containerlab.node.telnet",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeConnect@1"
         },
         {
           "command": "containerlab.node.showLogs",
@@ -625,6 +665,10 @@
         {
           "command": "containerlab.uninstall.edgeshark",
           "when": "true"
+        },
+        {
+          "command": "containerlab.node.openBrowser",
+          "when": "viewItem == containerlabContainer"
         }
       ],
       "containerlab.submenu.node.copy": [
@@ -679,11 +723,6 @@
     "configuration": {
       "title": "Containerlab",
       "properties": {
-        "containerlab.defaultSshUser": {
-          "type": "string",
-          "default": "admin",
-          "description": "Default SSH user to use when connecting to containerlab nodes."
-        },
         "containerlab.sudoEnabledByDefault": {
           "type": "boolean",
           "default": false,
@@ -701,6 +740,14 @@
           },
           "default": {},
           "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
+        },
+        "containerlab.node.sshUserMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
         },
         "containerlab.wsl.wiresharkPath": {
           "type": "string",
@@ -741,24 +788,52 @@
           "type": "boolean",
           "default": false,
           "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
+        },
+        "containerlab.showWelcomePage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the welcome page when the extension activates."
+        },
+        "containerlab.node.telnetPort": {
+          "type": "number",
+          "default": 5000,
+          "description": "Port to connect when telnetting to the node with 'docker exec -it <node> telnet 127.0.0.1 <port>'"
         }
       }
     }
   },
-  "scripts": {
-    "compile": "tsc -p .",
-    "watch": "tsc -w -p ."
+"scripts": {
+  "compile": "tsc -p .",
+  "watch": "tsc -w -p .",
+  "build:webview": "webpack --config webpack.config.js",
+  "package": "npm run compile && npm run build:webview && vsce package",
+  "package:dev": "npm run watch & webpack --config webpack.config.js --watch"
   },
   "devDependencies": {
+    "@types/cytoscape-cxtmenu": "^3.4.4",
+    "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.70.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-brands-svg-icons": "^6.7.2",
+    "@fortawesome/free-regular-svg-icons": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@types/cytoscape": "^3.21.9",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/vsce": "^3.2.2",
+    "cytoscape": "^3.31.1",
+    "cytoscape-cola": "^2.5.1",
+    "cytoscape-cxtmenu": "^3.5.0",
+    "cytoscape-edgehandles": "^4.0.1",
+    "cytoscape-grid-guide": "^2.3.3",
     "socket.io": "^4.8.1",
+    "ts-loader": "^9.5.2",
     "yaml": "^2.7.0"
   }
 }

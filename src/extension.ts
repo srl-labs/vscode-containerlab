@@ -1,17 +1,23 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
 import * as utils from './utils';
-import { ClabTreeDataProvider } from './clabTreeDataProvider';
+import { ClabTreeDataProvider, ClabLabTreeNode } from './clabTreeDataProvider';
 import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
+import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
+import * as path from 'path';
+
+
+import { WelcomePage } from './welcomePage';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
+export let treeView: any;
 
-/** If you rely on this, keep it; otherwise remove. */
 export const execCmdMapping = require('../resources/exec_cmd.json');
+export const sshUserMapping = require('../resources/ssh_users.json');
 
 /**
  * Called when VSCode activates your extension.
@@ -41,16 +47,20 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // 2) If installed, check for updates
-  await checkAndUpdateClabIfNeeded(outputChannel);
+  checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
+    outputChannel.appendLine(`[ERROR] Update check error: ${err.message}`);
+  });
 
-  // *** Proceed with normal extension logic ***
+  // Show welcome page
+  const welcomePage = new WelcomePage(context);
+  await welcomePage.show();
 
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);
 
   // If you have a defined "containerlabExplorer" view in package.json, 
   // you can either do:
-  const treeView = vscode.window.createTreeView('containerlabExplorer', {
+  treeView = vscode.window.createTreeView('containerlabExplorer', {
     treeDataProvider: provider,
     canSelectMany: true
   });
@@ -125,6 +135,11 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
   );
 
+  // Lab connecto to SSH
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshToAllNodes', cmd.sshToLab)
+  );
+
   // Lab inspection commands
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.inspectAll', () =>
@@ -156,7 +171,56 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)));
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', async () => {
+
+      // Show a single "Save As" dialog where they both pick the folder AND type the filename:
+      const uri = await vscode.window.showSaveDialog({
+        title: 'Enter containerlab topology template file name',
+        defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,  // start in first workspace folder otherwise in home directory
+        saveLabel: 'Create Containerlab topology template file',
+        filters: { 'YAML': ['yaml', 'yml'] }
+      })
+
+      if (!uri) {
+        vscode.window.showWarningMessage('No file path selected. Operation canceled.');
+        return;
+      }
+
+      // Derive the labName (without extension) from what they typed:
+      const labName = path.basename(uri.fsPath, path.extname(uri.fsPath));
+
+      // Delegate to your template‑writer helper:
+      const editor = new TopoViewerEditor(context);
+      try {
+        await editor.createTemplateFile(context, uri, labName);
+
+        // Open the webview panel topoViewerEditor.
+        await editor.createWebviewPanel(context, uri, labName)
+
+        // Open the created file in a split editor.
+        await editor.openTemplateFile(editor.lastYamlFilePath);
+
+      } catch (err) {
+        // createTemplateFile will have already shown an error
+        return;
+      }
+
+    })
+  );
+
+  // Register configuration for file watching
+  vscode.workspace.onDidChangeConfiguration(e => {
+    if (e.affectsConfiguration('containerlab.autoSync')) {
+      // Handle configuration change if needed
+      const autoSync = vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
+      // You could pass this to your editor instance if needed
+    }
+  });
 
   // Node commands
   context.subscriptions.push(
@@ -167,7 +231,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.save', cmd.saveNode)
-  ); 
+  );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
   );
@@ -175,8 +239,16 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.telnet', cmd.telnetToNode)
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.node.openBrowser', cmd.openBrowser)
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.node.manageImpairments', node =>
       cmd.manageNodeImpairments(node, context)
@@ -259,8 +331,11 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const intervalId = setInterval(() => {
-    provider.refresh();
+  const intervalId = setInterval(async () => {
+    // Only refresh if there are changes
+    if (await provider.hasChanges()) {
+      provider.refresh();
+    }
   }, refreshInterval);
 
   // Clean up the auto-refresh interval when the extension is deactivated

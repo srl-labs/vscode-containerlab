@@ -11,6 +11,7 @@ jsonFileUrlDataEnvironment: string,
 isVscodeDeployment: boolean,
 jsOutDir: string,
 allowedHostname: string,
+useSocket: boolean,
 socketAssignedPort: number
 ): string {
 
@@ -129,43 +130,41 @@ return `
     </div>
     <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
+
         <p class="control p-0">
-          <a id="viewport-zoom-to-fit" href="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)"
+          <button id="viewport-zoom-to-fit" title="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-expand"></i>
             </span>
-          </a>
+          </button>
         </p>
 
-
-
         <p class="control p-0">
-          <a id="viewport-layout" href="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
+          <button id="viewport-layout" title="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-circle-nodes"></i>
             </span>
-          </a>
+          </button>
         </p>
 
-
-
         <p class="control p-0">
-          <a id="viewport-topology-overview" href="Find Node" onclick="viewportButtonsTopologyOverview(event)"
+          <button id="viewport-topology-overview" title="Find Node" onclick="viewportButtonsTopologyOverview(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-binoculars"></i>
             </span>
-          </a>
+          </button>
         </p>
+
         <p class="control p-0">
-          <a id="viewport-label-endpoint" href="Toggle Endpoint Label" onclick="viewportButtonsLabelEndpoint()"
+          <button id="viewport-label-endpoint" title="Toggle Endpoint Label" onclick="viewportButtonsLabelEndpoint()"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-tag"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <!-- aarafat-tag: vs-code  
@@ -201,62 +200,71 @@ return `
                     </span>
                   </a>
                 </p>
-                -->
+        -->
 
         <p class="control p-0">
-          <a id="viewport-reload-topo" href="Add Group" onclick="viewportButtonsAddGroup()"
+          <button id="viewport-reload-topo" title="Add Group" onclick="viewportButtonsAddGroup()"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-notes-medical"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <p class="control p-0">
-          <a id="viewport-reload-topo" href="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"
+          <button id="viewport-capture-viewport" title="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
+            class="button px-4 py-4 is-smallest-element" style="outline: none;">
+            <span class="icon is-small">
+              <i class="fa-solid fa-camera"></i>
+            </span>
+          </button>
+        </p>
+
+        <p class="control p-0">
+          <button id="viewport-reload-topo" title="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <p class="control p-0">
-          <a id="viewport-save-topo" href="Save TopoViewer" onclick="viewportButtonsSaveTopo(cy)"
+          <button id="viewport-save-topo" title="Save TopoViewer" onclick="viewportButtonsSaveTopo(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-floppy-disk"></i>
             </span>
-          </a>
+          </button>
         </p>
 
         <!-- <p class="control p-0">
-          <a id="viewport-add-node-texbox" href="Add Texbox" onclick="viewportButtonsAddNodeTextbox(cy)"
+          <button id="viewport-add-node-texbox" title="Add Texbox" onclick="viewportButtonsAddNodeTextbox(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-pen-to-square"></i>
             </span>
-          </a>
+          </button>
         </p> -->
 
 
         <!-- <p class="control p-0">
-          <a id="viewport-save-topo" href="Toggle Link Operational State" onclick="viewportButtonsLinkOperState(cy)"
+          <button id="viewport-save-topo" title="Toggle Link Operational State" onclick="viewportButtonsLinkOperState(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-diagram-project"></i>
             </span>
-          </a>
+          </button>
         </p> -->
 
         <!-- <p class="control p-0">
-                  <a  id="viewport-test-call-backend" href="Test Call to Backend" onclick="viewportButtonsReloadTopo()" class="button px-4 py-4 is-smallest-element" style="outline: none;">
-                    <span class="icon is-small">
-                      <i class="fa-solid fa-phone"></i>
-                    </span>
-                  </a>
-                </p>       -->
-
+          <button id="viewport-test-call-backend" title="Test Call to Backend" onclick="viewportButtonsReloadTopo()" 
+          class="button px-4 py-4 is-smallest-element" style="outline: none;">
+            <span class="icon is-small">
+              <i class="fa-solid fa-phone"></i>
+            </span>
+          </button>
+        </p> -->
 
 
         <hr id="viewport-geo-map-divider" class="my-1 viewport-geo-map is-hidden"
@@ -264,22 +272,21 @@ return `
 
 
         <p class="control p-0">
-          <a id="viewport-geo-map-pan" href="#" onclick="viewportButtonsGeoMapPan(event)"
+          <button id="viewport-geo-map-pan" tittle="#" onclick="viewportButtonsGeoMapPan(event)"
             class="button px-4 py-4 is-smallest-element viewport-geo-map is-hidden is-inverted" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-hand"></i>
             </span>
-          </a>
+          </button>
         </p>
 
-
         <p class="control p-0">
-          <a id="viewport-geo-map-edit" href="#" onclick="viewportButtonsGeoMapEdit(event)"
+          <button id="viewport-geo-map-edit" title="#" onclick="viewportButtonsGeoMapEdit(event)"
             class="button px-4 py-4 is-smallest-element viewport-geo-map is-hidden is-inverted" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-pointer"></i>
             </span>
-          </a>
+          </button>
         </p>
 
 
@@ -1556,100 +1563,6 @@ return `
         </div>
       </div>
     </div>
-    <div class="panel panel-overlay is-link" id="panel-introduction" style="display: block;">
-      <p class="panel-heading is-size-7">Introduction</p>
-      <div id="tabContainer-" class="panel-tabContainer">
-        <div id="panelBlock-tabContainer-" class="panel-block py-2">
-          <div id="panelBlock-tabContainer--divPanelBlock" class="column p-0">
-            <div class="px-2" style="max-height: 280px; overflow-y: auto;">
-              <div class="content is-small pb-2">
-                <h6>Welcome to TopoViewer!</h6>
-                <p>
-                  TopoViewer is a powerful network topology visualization tool designed to help you easily manage and
-                  monitor your network infrastructure. Whether you're a network administrator, engineer, or simply
-                  curious about your network, TopoViewer has you covered.<br>
-                </p>
-                <p>
-                  Designed and developed by <strong><a href="https://www.linkedin.com/in/asadarafat/">Asad
-                      Arafat</a></strong> <br>
-                </p>
-                <p>Key Features: </p>
-                <ul>
-                  <li>Visualize your network topology with ease.</li>
-                  <li>View detailed attributes of nodes and links by clicking on them.</li>
-                </ul>
-                <p>
-                  Getting Started:
-                </p>
-                <ul>
-                  <li>Click on nodes and links to explore your network.</li>
-                  <li>Navigate the viewport menu to fine-tune your topology view.</li>
-                  <li>Modifier key combinations and node behavior:</li>
-                  <ul>
-                    <li><strong>Ctrl + Click:</strong> Connects the user to the node via SSH.</li>
-                    <li><strong>Shift + Click:</strong> Creates a new group and reassigns the clickednode to
-                      this group.</li>
-                    <li><strong>Alt + Click:</strong> Release node from its group and potentially removes an empty
-                      group.</li>
-                    <li><strong>Assign Node to Group:</strong> Drag the node into the desired group.</li>
-                  </ul>
-
-
-                  <li>
-                    Visit the GitHub repository for more details:
-                    <a href="https://github.com/asadarafat/topoViewer"
-                      target="_blank">https://github.com/asadarafat/topoViewer</a>
-                  </li>
-
-                </ul>
-
-                We hope you find TopoViewer a valuable tool for your network needs. If you have any questions or
-                feedback, please don't hesitate to reach out to me.
-                </p>
-                <p>
-                  Special Thanks:
-                <ul>
-                  <li>
-                    <strong><a href="https://www.linkedin.com/in/rdodin/">Roman Dodin</a></strong> - For his invaluable
-                    help during TopoViewer's early stages.
-                  </li>
-                  <li>
-                    <strong><a href="https://www.linkedin.com/in/siva19susi/">Siva Sivakumar</a></strong> - For
-                    pioneering the integration of Bulma CSS, significantly enhancing TopoViewer design and usability.
-                  </li>
-                  <li>
-                    <strong><a href="https://www.linkedin.com/in/gatot-susilo-b073166//">Gatot Susilo</a></strong> - For
-                    seamlessly incorporating TopoViewer into the Komodo2 tool, bridging functionality with innovation.
-                  </li>
-                  <li>
-                    <strong><a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/">Gusman Dharma
-                        Putra</a></strong> - For his invaluable contribution in integrating TopoViewer into Komodo2,
-                    enriching its capabilities.
-                  </li>
-                  <li>
-                    <strong><a href="https://www.linkedin.com/in/sven-wisotzky-44788333/">Sven Wisotzky</a></strong> -
-                    For offering insightful feedback that led to significant full stack optimizations.
-                  </li>
-                  <li>
-                    <strong><a href="https://linkedin.com/in/florian-schwarz-812a34145">Florian Schwarz</a></strong> -
-                    Spearheaded the integration of TopoViewer into the vscode-containerlab plugin and offered valuable
-                    feedback to enhance TopoViewer's functionality.
-                  </li>
-                  <li>
-                    <strong><a href="https://linkedin.com/in/kaelem-chandra">Kaelem Chandra</a></strong> - Leads the
-                    maintenance of the vscode-containerlab plugin, ensuring seamless TopoViewer integration while
-                    providing expert insights and continuous support.
-                  </li>
-
-                </ul>
-                </p>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
     <div class="panel is-link" id="panel-log-messages" style="display: none;">
       <p class="panel-heading is-size-7">Log Messages</p>
       <div class="panel-block py-2 px-2">
@@ -1736,6 +1649,8 @@ return `
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 
 
+
+
     <script src="${jsUri}/library/lodash.min.js?ver=1"></script>
 
     <script src="${jsUri}/library/cola.min.js?ver=1"></script>
@@ -1750,6 +1665,8 @@ return `
     <script src="${jsUri}/library/cytoscape-grid-guide.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-edgehandles.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-expand-collapse.min.js"></script>
+    <!-- cytoscape svg-->
+    <script src=https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js></script>
 
     <!-- custom textbox with rich text editor -->
 
@@ -1757,7 +1674,7 @@ return `
     <script src="${jsUri}/library/quill-2-0-3.min.js"></script>
     <script src="${jsUri}/managerCyTextBox.js?ver=1"></script>
 
-    <script src="${jsUri}/library/socket.io.min.js?ver=1"></script>
+    <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
 
     <script src="https://unpkg.com/@floating-ui/core@1.5.0"></script>
     <script src="https://unpkg.com/@floating-ui/dom@1.5.3"></script>
@@ -1781,7 +1698,10 @@ return `
     <!-- Inject allowedHostname string as a global variable -->
     <script> window.allowedHostname = "${allowedHostname}"; </script>
 
-    <!-- Inject allowedHostname number as a global variable -->
+    <!-- Inject useSocket boolean as a global variable -->
+    <script> window.useSocket = "${useSocket}"; </script>
+
+    <!-- Inject socketAssignedPort number as a global variable -->
     <script> window.socketAssignedPort = "${socketAssignedPort}"; </script>
 
 
