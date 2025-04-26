@@ -31,6 +31,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Web-based:** Opens the topology in a dedicated Terminal session.
   - **Draw.io:** Generates a `.drawio` file for visual editing.
   - **Interactive TopoViewer:** Launches a dynamic, web-based view of your topology.
+  - **Interactive TopoEditor:** Let's your create in a graphical way network topologies
 
 - **Inspection:**  
   Use webviews to inspect either all labs or a single lab’s deployed containers in a neatly grouped table.

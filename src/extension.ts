@@ -1,11 +1,15 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
 import * as utils from './utils';
-import { ClabTreeDataProvider } from './clabTreeDataProvider';
+import { ClabTreeDataProvider, ClabLabTreeNode } from './clabTreeDataProvider';
 import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
+import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
+import * as path from 'path';
+
+
 import { WelcomePage } from './welcomePage';
 
 /** Our global output channel */
@@ -167,7 +171,49 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)));
+    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', async () => {
+
+      // Show a single "Save As" dialog where they both pick the folder AND type the filename:
+      const uri = await vscode.window.showSaveDialog({
+        title: 'Enter containerlab topology template file name',
+        defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,  // start in first workspace folder otherwise in home directory
+        saveLabel: 'Create Containerlab topology template file',
+        filters: { 'YAML': ['yaml', 'yml'] }
+      })
+      vscode.window.showInformationMessage(`Containerlab topology template file name: ${uri?.fsPath}`);
+
+      if (!uri) {
+        vscode.window.showWarningMessage('No file path selected. Operation canceled.');
+        return;
+      }
+
+      // Derive the labName (without extension) from what they typed:
+      const labName = path.basename(uri.fsPath, path.extname(uri.fsPath));
+
+      // Delegate to your template‑writer helper:
+      const editor = new TopoViewerEditor(context);
+      try {
+        await editor.createTemplateFile(context, uri, labName);
+
+        // Open the webview panel topoViewerEditor.
+        await editor.createWebviewPanel(context, uri, labName)
+
+        // Open the created file in a split editor.
+        await editor.openTemplateFile(editor.lastYamlFilePath);
+
+      } catch (err) {
+        // createTemplateFile will have already shown an error
+        return;
+      }
+
+    })
+  );
+
 
   // Node commands
   context.subscriptions.push(
