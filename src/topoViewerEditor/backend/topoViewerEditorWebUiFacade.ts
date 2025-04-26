@@ -218,7 +218,6 @@ topology:
         8080
       );
 
-      vscode.window.showInformationMessage('TopoViewer Webview reloaded!');
     } else {
       log.error('Panel is undefined');
     }
