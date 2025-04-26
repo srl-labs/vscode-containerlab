@@ -57,37 +57,42 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     const updatedElements = assignMissingLatLng(elements);
     console.log("Updated Elements:", updatedElements);
 
-    // Clear current Cytoscape elements.
     cy.json({ elements: [] });
 
     // Determine elements to add. Check if updatedElements is an array or has an elements property.
     const elementsToAdd = Array.isArray(updatedElements)
       ? updatedElements
       : ((updatedElements as { elements?: any[] }).elements ?? updatedElements);
+
+    // Apply positions from graph-posX and graph-posY labels
+    elementsToAdd.forEach((element: any) => {
+      if (element.group === 'nodes' && element.data?.extraData?.labels) {
+        const labels = element.data.extraData.labels;
+        if (labels['graph-posX'] && labels['graph-posY']) {
+          element.position = {
+            x: parseFloat(labels['graph-posX']),
+            y: parseFloat(labels['graph-posY'])
+          };
+        }
+      }
+    });
+
     cy.add(elementsToAdd);
 
     // Set all node to have a editor flag.
     cy.nodes().data('editor', 'true');
 
 
-    // Run a layout.
-    const globalIsPresetLayout = (window as any).globalIsPresetLayout || false;
-    if (globalIsPresetLayout) {
-      const layout = cy.layout({
-        name: 'preset',
-        animate: true,
-        randomize: false,
-        maxSimulationTime: 10
-      } as any);
-      layout.run();
-    } else {
-      const layout = cy.layout({
-        name: 'random',
-        animate: true,
-        maxSimulationTime: 10
-      } as any);
-      layout.run();
-    }
+    // Run a layout - always use preset to respect specified positions
+    const layout = cy.layout({
+      name: 'preset',
+      animate: true,
+      randomize: false,
+      maxSimulationTime: 10,
+      positions: undefined, // Use the positions already set on elements
+      fit: false // Don't auto-fit to viewport, keep the specified positions
+    } as any);
+    layout.run();
 
     // Remove specific nodes by name.
     cy.filter('node[name = "topoviewer"]').remove();
@@ -110,6 +115,11 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     //     }, 2000);
     //   }
     // }, 2000);
+    // Fit the viewport to show all nodes after layout is complete
+    layout.promiseOn('layoutstop').then(() => {
+      cy.fit(cy.nodes(), 50); // Add padding of 50px
+      console.log('Viewport fitted to show all nodes');
+    });
 
   } catch (error) {
     console.error("Error loading graph data from topology yaml:", error);
@@ -224,7 +234,7 @@ type EnvironmentKeys =
 /**
  * Fetches and returns selective environment attributes based on the provided keys.
  * Implements lazy loading by only retrieving the requested properties.
- * 
+ *
  * @param {EnvironmentKeys[]} keys - An array of environment attribute keys to fetch.
  * @returns {Promise<Partial<Record<EnvironmentKeys, string>>>} A promise resolving to the requested key-value pairs.
  * @throws {Error} Throws an error if the fetch request fails, the URL is missing, or the JSON response is invalid.

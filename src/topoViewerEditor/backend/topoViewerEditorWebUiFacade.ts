@@ -109,9 +109,19 @@ topology:
     srl1:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux:latest
+      labels:
+        graph-posX: "65"
+        graph-posY: "25"
+        graph-icon: router
+        graph-groupLabelPos: bottom-center
     srl2:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux:latest
+      labels:
+        graph-posX: "165"
+        graph-posY: "25"
+        graph-icon: router
+        graph-groupLabelPos: bottom-center
 
   links:
     # inter-switch link
@@ -622,7 +632,6 @@ topology:
 
               const result = `Saved topology with preserved comments!`;
               log.info(result);
-              vscode.window.showInformationMessage(result);
 
 
               log.info(doc);
@@ -630,7 +639,6 @@ topology:
 
 
             } catch (error) {
-              const result = `Error executing endpoint "topo-editor-viewport-save".`;
               log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(error, null, 2)}`);
               this.isInternalUpdate = false;
             }
