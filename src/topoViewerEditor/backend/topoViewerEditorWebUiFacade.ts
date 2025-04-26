@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as os from 'os';
 import * as path from 'path';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 
@@ -21,51 +20,55 @@ export class TopoViewerEditor {
   private currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = 'topoViewerEditor';
   private adaptor: TopoViewerAdaptorClab;
-
-  /**
-   * Stores the YAML file path from the last topenViewerEditor call.
-   */
   public lastYamlFilePath: string = '';
-
-  /**
-   * Stores the folder name (derived from the YAML file name) where JSON data files are stored.
-   */
   public lastFolderName: string | undefined;
-
   public targetDirPath: string | undefined;
-
   public createTopoYamlTemplateSuccess: boolean = false;
-
   private currentLabName: string = '';
-
-  /**
-   * Stores the last folder name used in the webview.
-   */
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
 
-  /**
-   * Creates a new instance of TopoViewerEditor.
-   *
-   * @param context - The VS Code extension context.
-   */
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
   }
 
   /**
    * Creates the directory (if needed) and writes out the YAML template
-   * to exactly the given `fileUri`.
+   * to a file path, ensuring it ends with '.clab.yml'.
    *
-   * @param fileUri - the full path (including filename) where to write.
-   * @param labName - used to seed the template content.
+   * @param context - The VS Code extension context.
+   * @param requestedFileUri - The URI suggested by the user (e.g., from a save dialog).
+   * @param labName - Used to seed the template content and derive the folder name.
    */
-  public async createTemplateFile(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): Promise<void> {
-    this.currentLabName = labName;
-    this.lastFolderName = path.basename(path.dirname(fileUri.fsPath));
+  public async createTemplateFile(context: vscode.ExtensionContext, requestedFileUri: vscode.Uri, labName: string): Promise<void> {
+    this.currentLabName = labName; // Use labName directly for folder
+
+    // --- Start: Extension Enforcement Logic ---
+    let finalFileUri: vscode.Uri;
+    const desiredExtension = '.clab.yml';
+    const requestedPath = requestedFileUri.fsPath;
+    const parsedPath = path.parse(requestedPath);
+
+    // Construct the base path without any .yml or .yaml extension
+    let baseNameWithoutExt = parsedPath.name;
+    if (baseNameWithoutExt.toLowerCase().endsWith('.clab')) {
+       // Handle cases like 'myfile.clab.yml' -> 'myfile' or 'myfile.clab' -> 'myfile'
+       baseNameWithoutExt = baseNameWithoutExt.substring(0, baseNameWithoutExt.length - 5);
+    } else if (parsedPath.ext.toLowerCase() === '.yml' || parsedPath.ext.toLowerCase() === '.yaml') {
+    }
+
+    const finalFileName = baseNameWithoutExt + desiredExtension;
+    const finalPath = path.join(parsedPath.dir, finalFileName);
+
+    // Use the adjusted path to create the final URI
+    finalFileUri = vscode.Uri.file(finalPath);
+    // --- End: Extension Enforcement Logic ---
+
+    // Use the labName passed in as the folder name for data storage
+    this.lastFolderName = labName;
 
     // Build the template
     const templateContent = `
-name: ${labName} # saved as ${(fileUri.fsPath)}
+name: ${labName} # saved as ${finalFileUri.fsPath}
 
 topology:
   nodes:
@@ -84,21 +87,22 @@ topology:
 `;
 
     try {
-      // Ensure the directory exists
-      const dirUri = fileUri.with({ path: path.dirname(fileUri.path) });
+      // Ensure the directory exists using the final URI's directory
+      const dirUri = finalFileUri.with({ path: path.dirname(finalFileUri.path) });
       await vscode.workspace.fs.createDirectory(dirUri);
 
-      // Write the file
+      // Write the file using the final URI
       const data = Buffer.from(templateContent, 'utf8');
-      await vscode.workspace.fs.writeFile(fileUri, data);
+      await vscode.workspace.fs.writeFile(finalFileUri, data);
 
-      // Remember where it went
-      this.lastYamlFilePath = fileUri.fsPath;
+      // Remember the actual path where it was written
+      this.lastYamlFilePath = finalFileUri.fsPath;
 
-      log.info(`Template file created at: ${fileUri.fsPath}`);
+      log.info(`Template file created at: ${finalFileUri.fsPath}`);
 
-      // Notify the user
-      vscode.window.showInformationMessage(`Template created at ${fileUri.fsPath}`);
+      // Notify the user with the actual path used
+      vscode.window.showInformationMessage(`Template created at ${finalFileUri.fsPath}`);
+      this.createTopoYamlTemplateSuccess = true; // Indicate success
 
 
       // Convert the YAML file to JSON and write it to the webview.
@@ -111,13 +115,13 @@ topology:
       log.debug(`Cytoscape topology: ${JSON.stringify(cytoTopology, null, 2)}`);
 
       // Create folder and write JSON files for the webview.
-      // use currentLabName to create the folder
-      const folderName = this.currentLabName;
-      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+      // Use the enforced folderName (which is the labName)
+      await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
 
     } catch (err) {
       vscode.window.showErrorMessage(`Error creating template: ${err}`);
-      throw err;
+      this.createTopoYamlTemplateSuccess = false; // Indicate failure
+      throw err; // Re-throw the error if needed
     }
   }
   /**
