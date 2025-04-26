@@ -7,15 +7,15 @@
     * Node context-menu (right-click) on each node: 
     * Edit Node — open its properties panel.
     * Delete Node — remove the node.
-    * Add Edge — begin edge creation      
+    * Add Link — begin link creation      
   * Shortcuts
 
     | Shortcut                   | Action                   |
     |----------------------------|--------------------------|
     | Shift + Click (canvas)     | Add node at pointer      |
-    | Shift + Click (on node)    | Begin edge creation      |
+    | Shift + Click (on node)    | Begin link creation      |
     | Alt + Click (on node)      | Delete node              |
-    | Alt + Click (on edge)      | Delete edge              |
+    | Alt + Click (on link)      | Delete link              |
 
 ## [0.11.2] - 2025-04-10
 * Fix: Welcomepage
