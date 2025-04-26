@@ -185,7 +185,6 @@ export async function activate(context: vscode.ExtensionContext) {
         saveLabel: 'Create Containerlab topology template file',
         filters: { 'YAML': ['yaml', 'yml'] }
       })
-      vscode.window.showInformationMessage(`Containerlab topology template file name: ${uri?.fsPath}`);
 
       if (!uri) {
         vscode.window.showWarningMessage('No file path selected. Operation canceled.');
