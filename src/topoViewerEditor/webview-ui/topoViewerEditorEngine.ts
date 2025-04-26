@@ -73,6 +73,30 @@ class TopoViewerEditorEngine {
   private viewportButtons: ManagerViewportButtons;
   private viewportPanels: ManagerViewportPanels;
 
+
+  private debounce<T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): (...args: Parameters<T>) => void {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return (...args: Parameters<T>) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  }
+
+  // Add automatic save on change
+  private setupAutoSave(): void {
+    // Debounced save function
+    const autoSave = this.debounce(async () => {
+      const suppressNotification = true;
+      await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
+    }, 500); // Wait 500ms after last change before saving
+
+    // Listen for topology changes
+    this.cy.on('add remove data position', autoSave);
+  }
+
   /**
    * Creates an instance of TopoViewerEditorEngine.
    * @param containerId - The ID of the container element for Cytoscape.
@@ -166,6 +190,8 @@ class TopoViewerEditorEngine {
     this.viewportButtons = new ManagerViewportButtons(this.messageSender);
     this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
     this.viewportPanels.registerTogglePanels(containerId);
+
+    this.setupAutoSave();
   }
 
   /**
@@ -269,15 +295,7 @@ class TopoViewerEditorEngine {
       const mouseEvent = event.originalEvent as MouseEvent;
       if (event.target === this.cy && mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
         console.log("Canvas clicked with Shift key - adding node.");
-
-        // this.addNodeAtPosition(event.position);
-
         this.viewportButtons.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
-
-
-      } else {
-        const suppressNotification = true;
-        this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
       }
     });
 
