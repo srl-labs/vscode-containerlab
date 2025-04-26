@@ -74,12 +74,10 @@ topology:
   nodes:
     srl1:
       kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-      startup-config: configs/srl.cfg
+      image: ghcr.io/nokia/srlinux:latest
     srl2:
       kind: nokia_srlinux
-      image: ghcr.io/nokia/srlinux:24.10.2-357-arm64
-      startup-config: configs/srl.cfg
+      image: ghcr.io/nokia/srlinux:latest
 
   links:
     # inter-switch link
