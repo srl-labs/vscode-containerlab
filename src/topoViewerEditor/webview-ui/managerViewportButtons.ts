@@ -120,11 +120,16 @@ export class ManagerViewportButtons {
           updatedElements
         );
         console.log("Response from backend:", response);
-      } else { 
+      } else {
+
+        const endpoint = suppressNotification
+        ? "topo-editor-viewport-save-suppress-notification"
+        : "topo-editor-viewport-save";
+
         console.log("Suppressing notification for save action.");
         // Send the updated topology data to the backend.
         const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-          "topo-editor-viewport-save-suppress-notification",
+          endpoint,
           updatedElements
         );
         console.log("Response from backend:", response);
@@ -241,11 +246,11 @@ export class ManagerViewportButtons {
 
     // Get the current viewport bounds
     const extent = cy.extent();
-    
+
     // Use event position if available and within viewport
     let position = event.position;
-    
-    if (!position || 
+
+    if (!position ||
         position.x < extent.x1 || position.x > extent.x2 ||
         position.y < extent.y1 || position.y > extent.y2) {
       // Calculate a position within the current viewport
@@ -253,11 +258,11 @@ export class ManagerViewportButtons {
       const viewportCenterY = (extent.y1 + extent.y2) / 2;
       const viewportWidth = extent.x2 - extent.x1;
       const viewportHeight = extent.y2 - extent.y1;
-      
+
       // Add some randomness but keep within 60% of the viewport size from center
       const maxOffsetX = viewportWidth * 0.3;
       const maxOffsetY = viewportHeight * 0.3;
-      
+
       position = {
         x: viewportCenterX + (Math.random() - 0.5) * maxOffsetX,
         y: viewportCenterY + (Math.random() - 0.5) * maxOffsetY
