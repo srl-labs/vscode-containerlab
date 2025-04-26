@@ -98,26 +98,9 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     cy.filter('node[name = "topoviewer"]').remove();
     cy.filter('node[name = "TopoViewer:1"]').remove();
 
-    // // Setup expand/collapse functionality.
-    // const cyExpandCollapse = (cy as any).expandCollapse({
-    //   layoutBy: null,
-    //   undoable: false,
-    //   fisheye: false,
-    //   animationDuration: 10,
-    //   animate: true
-    // });
-    // setTimeout(() => {
-    //   const parent = cy.$('#parent');
-    //   if (parent.nonempty()) {
-    //     cyExpandCollapse.collapse(parent);
-    //     setTimeout(() => {
-    //       cyExpandCollapse.expand(parent);
-    //     }, 2000);
-    //   }
-    // }, 2000);
     // Fit the viewport to show all nodes after layout is complete
     layout.promiseOn('layoutstop').then(() => {
-      cy.fit(cy.nodes(), 50); // Add padding of 50px
+      cy.fit(cy.nodes(), 120); // Add padding of 50px
       console.log('Viewport fitted to show all nodes');
     });
 
