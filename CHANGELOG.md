@@ -1,5 +1,22 @@
 # Change Log
 
+## [0.12.0] - 2025-04-26
+* TopoViewer Editor - A full GUI for authoring ContainerLab topology files webview:
+  * Viewport “+” button for adding nodes.
+  * Shift+Click on the canvas to place a new node at the click position.
+    * Node context-menu (right-click) on each node: 
+    * Edit Node — open its properties panel.
+    * Delete Node — remove the node.
+    * Add Edge — begin edge creation      
+  * Shortcuts
+
+    | Shortcut                   | Action                   |
+    |----------------------------|--------------------------|
+    | Shift + Click (canvas)     | Add node at pointer      |
+    | Shift + Click (on node)    | Begin edge creation      |
+    | Alt + Click (on node)      | Delete node              |
+    | Alt + Click (on edge)      | Delete edge              |
+
 ## [0.11.2] - 2025-04-10
 * Fix: Welcomepage
 * Patch: Support of containerlab 0.68.0

@@ -197,7 +197,7 @@ class TopoViewerEditorEngine {
 
   /**
  * Initializes the circular context menu on nodes.
- */
+  */
   private initializeContextMenu(): void {
     const self = this;
     this.cy.cxtmenu({
@@ -244,7 +244,7 @@ class TopoViewerEditorEngine {
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
-      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
+      indicatorSize: 20, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
       separatorWidth: 3, // the empty spacing in pixels between successive commands
       spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
@@ -258,6 +258,106 @@ class TopoViewerEditorEngine {
       outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer 
     });
   }
+
+  // inside TopoViewerEditorEngine
+
+  // private initializeContextMenu(): void {
+  //   const self = this;
+
+  //   // 1) Configure the plugin to open on cxttapstart + taphold
+  //   const cxtOpts = {
+  //     selector: 'node',
+  //     commands: [
+  //       {
+  //         content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+  //                   <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+  //                   <div style="height:0.5em;"></div>
+  //                   <span>Edit Node</span>
+  //                 </div>`,
+  //         select: (ele: cytoscape.Singular) => {
+  //           if (!ele.isNode()) { return; }
+  //           this.viewportPanels.panelNodeEditor(ele);
+  //         }
+  //       },
+  //       {
+  //         content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+  //                   <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+  //                   <div style="height:0.5em;"></div>
+  //                   <span>Delete Node</span>
+  //                 </div>`,
+  //         select: (ele: cytoscape.Singular) => {
+  //           ele.remove();
+  //         }
+  //       },
+  //       {
+  //         content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+  //                   <i class="fas fa-link" style="font-size:1.5em;"></i>
+  //                   <div style="height:0.5em;"></div>
+  //                   <span>Add Edge</span>
+  //                 </div>`,
+  //         select: (ele: cytoscape.Singular) => {
+  //           self.eh.start(ele);
+  //         }
+  //       }
+  //     ],
+  //     menuRadius: 110,
+  //     fillColor: 'rgba(31, 31, 31, 0.75)',
+  //     activeFillColor: 'rgba(66, 88, 255, 1)',
+  //     activePadding: 5,
+  //     indicatorSize: 20,
+  //     separatorWidth: 3,
+  //     spotlightPadding: 20,
+  //     adaptativeNodeSpotlightRadius: true,
+  //     minSpotlightRadius: 24,
+  //     maxSpotlightRadius: 38,
+
+  //     // trigger on right‐touch start or long‐press
+  //     openMenuEvents: 'cxttapstart taphold',
+
+  //     // disable built-in drag-away cancel
+  //     outsideMenuCancel: false as false,
+
+  //     atMouse: false,
+  //     itemColor: 'white',
+  //     itemTextShadowColor: 'rgba(61, 62, 64, 1)',
+  //     zIndex: 9999
+  //   };
+
+  //   // 2) Instantiate
+  //   this.cy.cxtmenu(cxtOpts);
+
+  //   // 3) Grab the wrapper and its inner “parent” container
+  //   const container = this.cy.container();
+  //   const wrapper = container ? container.querySelector('.cxtmenu') : null;
+  //   if (wrapper && wrapper.firstChild) {
+  //     const parentEl = wrapper.firstChild as HTMLElement;
+
+  //     // 4) Observe any attempts to hide it, and undo them immediately
+  //     const observer = new MutationObserver(muts => {
+  //       for (const m of muts) {
+  //         if (m.attributeName === 'style' && parentEl.style.display === 'none') {
+  //           parentEl.style.display = 'block';
+  //         }
+  //       }
+  //     });
+  //     observer.observe(parentEl, {
+  //       attributes: true,
+  //       attributeFilter: ['style']
+  //     });
+  //   }
+
+  //   // 5) Finally, close it only when tapping the background
+  //   this.cy.on('tap', (evt) => {
+  //     if (evt.target === this.cy) {
+  //       const container = this.cy.container();
+  //       const w = container ? container.querySelector('.cxtmenu') : null;
+  //       if (w && w.firstChild) {
+  //         (w.firstChild as HTMLElement).style.display = 'none';
+  //       }
+  //     }
+  //   });
+  // }
+
 
   /**
    * Registers event handlers for Cytoscape elements such as canvas, nodes, and edges.
