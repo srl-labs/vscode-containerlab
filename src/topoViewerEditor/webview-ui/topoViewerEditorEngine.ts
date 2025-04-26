@@ -232,7 +232,7 @@ class TopoViewerEditorEngine {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                       <i class="fas fa-link" style="font-size:1.5em;"></i>
                       <div style="height:0.5em;"></div>
-                      <span>Add Edge</span>
+                      <span>Add Link</span>
                     </div>`,
           select: (ele: cytoscape.Singular) => {
             // initiate edgehandles drawing from this node
