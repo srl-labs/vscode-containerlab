@@ -26,9 +26,43 @@ export class TopoViewerEditor {
   public createTopoYamlTemplateSuccess: boolean = false;
   private currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+  private fileWatcher: vscode.FileSystemWatcher | undefined;
+  private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
 
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private setupFileWatcher(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.dispose();
+    }
+
+    if (this.lastYamlFilePath) {
+      const fileUri = vscode.Uri.file(this.lastYamlFilePath);
+      this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
+
+      this.fileWatcher.onDidChange(async (uri) => {
+        // Prevent feedback loop
+        if (this.isInternalUpdate) {
+          return;
+        }
+
+        // Delay to ensure file write is complete
+        await this.sleep(100);
+
+        try {
+          await this.updatePanelHtml(this.currentPanel);
+          log.info(`Topology updated from file change: ${uri.fsPath}`);
+        } catch (err) {
+          log.error(`Error updating topology from file change: ${err}`);
+        }
+      });
+    }
   }
 
   /**
@@ -115,6 +149,7 @@ topology:
       // Create folder and write JSON files for the webview.
       // Use the enforced folderName (which is the labName)
       await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
+      this.setupFileWatcher();
 
     } catch (err) {
       vscode.window.showErrorMessage(`Error creating template: ${err}`);
@@ -273,9 +308,15 @@ topology:
       8080
     );
 
+    this.setupFileWatcher();
+
     // Clean up when the panel is disposed.
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
+      if (this.fileWatcher) {
+        this.fileWatcher.dispose();
+        this.fileWatcher = undefined;
+      }
     }, null, context.subscriptions);
 
     /**
@@ -576,7 +617,9 @@ topology:
 
               // --- Serialize and Save the Updated YAML Document ---
               const updatedYamlString = doc.toString();
+              this.isInternalUpdate = true;
               await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+              this.isInternalUpdate = false;
 
               const result = `Saved topology with preserved comments!`;
               log.info(result);
@@ -590,6 +633,7 @@ topology:
             } catch (error) {
               const result = `Error executing endpoint "topo-editor-viewport-save".`;
               log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(error, null, 2)}`);
+              this.isInternalUpdate = false;
             }
             break;
           }
@@ -829,7 +873,9 @@ topology:
 
               // --- Serialize and Save the Updated YAML Document ---
               const updatedYamlString = doc.toString();
+              this.isInternalUpdate = true;
               await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+              this.isInternalUpdate = false;
 
               // const result = `Saved topology with preserved comments aaaa!`;
               // log.info(result);
@@ -841,6 +887,7 @@ topology:
             } catch (error) {
               const result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
               log.error(`Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(error, null, 2)}`);
+              this.isInternalUpdate = false;
             }
             break;
           }
