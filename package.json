@@ -814,7 +814,7 @@
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^18.0.0",
-    "@types/vscode": "^1.70.0",
+    "@types/vscode": "^1.99.1",
     "typescript": "^5.7.3",
     "webpack-cli": "^6.0.1"
   },
