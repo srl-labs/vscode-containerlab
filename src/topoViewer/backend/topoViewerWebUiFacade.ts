@@ -121,7 +121,7 @@ export class TopoViewer {
    */
   public async openViewer(
     yamlFilePath: string,
-    clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined
+    _unusedParam?: Record<string, ClabLabTreeNode>
   ): Promise<vscode.WebviewPanel | undefined> {
     this.lastYamlFilePath = yamlFilePath;
 
@@ -131,7 +131,13 @@ export class TopoViewer {
       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
 
       // Transform YAML into Cytoscape elements.
-      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
+      const labTree = await this.clabTreeProviderImported.discoverInspectLabs();
+      this.cacheClabTreeDataToTopoviewer = labTree;              // keep a copy for later
+
+      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+        yamlContent,
+        labTree                                                 // ⬅ enriched!
+      );
 
       // Determine folder name based on the YAML file name.
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));

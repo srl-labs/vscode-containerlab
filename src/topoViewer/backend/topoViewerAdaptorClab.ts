@@ -204,7 +204,10 @@ export class TopoViewerAdaptorClab {
    * @param yamlContent - The Containerlab YAML content as a string.
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
-  public clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): CyElement[] {
+  public clabYamlToCytoscapeElements(
+    yamlContent: string,
+    tree: Record<string, ClabLabTreeNode> | undefined
+  ): CyElement[] {
 
     const parsed = yaml.load(yamlContent) as ClabTopology;
     const elements: CyElement[] = [];
@@ -262,6 +265,15 @@ export class TopoViewerAdaptorClab {
 
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+  
+        const container = this.getClabContainerTreeNode(
+          `clab-${clabName}-${nodeName}`,
+          tree ?? {},
+          clabName ?? ''
+        );
+
+        const online   = Boolean(container);
+        const stateStr = online ? container!.state : 'offline';
 
         // Attempt to build parent ID
         const parentId = this.buildParent(nodeObj);
@@ -270,10 +282,6 @@ export class TopoViewerAdaptorClab {
         if (parentId) {
           parentSet.add(parentId);
         }
-
-        //get node ManagementIP address
-        log.info(`nodeName: ${nodeName}`)
-        let containerData = this.getClabContainerTreeNode(`clab-${clabName}-${nodeName}`, clabTreeDataToTopoviewer ?? {}, clabName ?? '');
 
         const nodeEl: CyElement = {
           group: 'nodes',
@@ -301,13 +309,13 @@ export class TopoViewerAdaptorClab {
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
-              mgmtIpv4Addresss: `${containerData?.IPv4Address}`,
-              mgmtIpv6Address: `${containerData?.IPv6Address}`,
+              mgmtIpv4Addresss: online ? container!.IPv4Address : '',
+              mgmtIpv6Address: online ? container!.IPv6Address : '',
               mgmtIpv6AddressLength: 0,
               mgmtNet: '',
               name: nodeName,
               shortname: nodeName,
-              state: `${containerData?.state}`,
+              state: stateStr,
               weight: '3', // Placeholder
             },
           },
