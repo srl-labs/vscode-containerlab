@@ -23,6 +23,7 @@ export interface ClabLink {
  */
 export interface ClabTopology {
     name?: string
+    prefix?: string;
     topology?: {
         nodes?: Record<string, ClabNode>;
         links?: ClabLink[];

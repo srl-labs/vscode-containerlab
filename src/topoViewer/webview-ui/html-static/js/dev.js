@@ -739,6 +739,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     cytoTopologyJson = environments["EnvCyTopoJsonBytes"]
     clabServerAddress = environments["clab-server-address"]
 
+
     // Ignore the click event if edge handler is active
     if (isEdgeHandlerActive) {
       return;
@@ -748,6 +749,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     const extraData = node.data("extraData");
     const isNodeInEditMode = node.data("editor") === "true";
     const checkboxChecked = setupCheckboxListener('#viewport-drawer-clab-editor-content-01 .checkbox-input');
+
+    globalSelectedNode = extraData.longname;
 
     if (checkboxChecked) {
       // Handle node modification actions based on keyboard modifiers

@@ -1,3 +1,5 @@
+/* Base Styles
+-------------------------------------------------- */
 html,
 body {
   height: 100%;
@@ -5,13 +7,13 @@ body {
   margin: 0;
   padding: 0;
   overflow-y: hidden;
+  font: 14px helvetica neue, helvetica, arial, sans-serif;
+
   /*overflow-y: hidden; /* Prevents vertical scrollbar DISABLE THIS FOR DEBUG */
 }
 
-body {
-  font: 14px helvetica neue, helvetica, arial, sans-serif;
-}
-
+/* Settings Panel
+-------------------------------------------------- */
 #settings {
   /*top: 70px;
  */
@@ -21,6 +23,8 @@ body {
   position: absolute;
 }
 
+/* Popup/Popper Component
+-------------------------------------------------- */
 .popper-div {
   background: rgba(202, 203, 204, 0.7);
   border: 1px solid #aaa;
@@ -42,18 +46,21 @@ body {
   font-weight: bold;
   outline-color: #FFFFFF;
   z-index: 99999;
-
 }
 
 .popper-div a:hover {
   text-decoration: underline;
 }
 
+/* Controls Styling
+-------------------------------------------------- */
 #edgeLength,
 #nodeSpacing #nodeGap {
   width: 100%;
 }
 
+/* Main Visualization Containers
+-------------------------------------------------- */
 #cy {
   width: 100%;
   height: 100%;
@@ -74,9 +81,8 @@ body {
   /* Initially hide the Leaflet map */
 }
 
-/* horizontal split layout */
-/* horizontal split layout */
-/* Root div for Cytoscape container */
+/* Horizontal Split Layout (Currently Commented)
+-------------------------------------------------- */
 /* #root-div {
       width: 100%; 
       height: 70%;
@@ -84,7 +90,6 @@ body {
       z-index: 1; 
     } */
 
-/* Data display panel */
 /* #data-display {
       width: 100%;
       height: 30%;
@@ -97,13 +102,11 @@ body {
       transition: 0.3s ease;
     } */
 
-/* Semi-transparency styling */
 /* #data-display.transparent {
       background:rgba(24,24, 24, 0.90 );
       z-index: 11;
     } */
 
-/* Divider styling */
 /* #divider {
       position: relative;
       width: 100%;
@@ -116,7 +119,6 @@ body {
       z-index: 12;
     } */
 
-/* Divider button styling */
 /* #divider button {
       background: #007bff;
       color: white;
@@ -126,12 +128,8 @@ body {
       font-size: 14px;
     } */
 
-/* vertical split layout */
-/* vertical split layout */
-
-
-/* Root div for Cytoscape container */
-
+/* Vertical Split Layout (Active)
+-------------------------------------------------- */
 #root-div {
   height: 100%;
   width: 100%;
@@ -153,8 +151,6 @@ body {
   display: flex;
   justify-content: flex-start;
   /* Aligns content at the top */
-
-
   /* overflow-y: auto; */
   /* transition: 0.3s ease; */
 }
@@ -193,8 +189,8 @@ body {
   font-size: 14px;
 }
 
-
-
+/* Logo and Viewport Controls
+-------------------------------------------------- */
 #logo {
   top: 20px;
   left: 30px;
@@ -209,6 +205,34 @@ body {
   z-index: 9;
 }
 
+/* Navigation Bar Styling
+-------------------------------------------------- */
+/* make the top <nav> a flex container */
+.navbar {
+  display: flex;
+  align-items: center;
+  /* vertical-center brand + end */
+}
+
+/* group logo + title together */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+}
+
+/* push everything after .navbar-brand to the far right */
+.navbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* ensure the dropdown panel itself is right-aligned */
+.dropdown.is-right .dropdown-menu {
+  right: 0;
+  left: auto;
+}
+
 .logo-image {
   height: 40px;
   /* Set the desired height */
@@ -218,7 +242,8 @@ body {
   /* Ensure the image is displayed as a block-level element */
 }
 
-
+/* Viewport & Drawer Components
+-------------------------------------------------- */
 .viewport-drawer {
   top: 75px;
   left: 90px;
@@ -232,6 +257,8 @@ body {
   padding: 0px 0px 0px 0px;
 }
 
+/* Typography Utility Classes
+-------------------------------------------------- */
 .is-smallest {
   font-size: 10px;
 }
@@ -257,14 +284,14 @@ body {
   padding-top: 0
 }
 
+/* Button & Input Styling
+-------------------------------------------------- */
 .button {
   height: 24px;
-
 }
 
 .button-data-display {
   height: 20px;
-
 }
 
 .button-modal {
@@ -275,6 +302,14 @@ body {
   height: 24px;
 }
 
+.button-no-outline {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Utility Classes
+-------------------------------------------------- */
 .link-impairment-widht {
   width: 190px;
   white-space: normal;
@@ -299,6 +334,8 @@ body {
   pointer-events: none;
 }
 
+/* Hover Text Component
+-------------------------------------------------- */
 .hover-text.is-hidden {
   display: none;
 }
@@ -313,6 +350,8 @@ body {
   z-index: 100;
 }
 
+/* Accessibility & Notification Styling
+-------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {}
 
 .notification {
@@ -324,11 +363,15 @@ body {
   display: block;
 }
 
+/* Panel & UI Component Styling
+-------------------------------------------------- */
 .data-display-sharp {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
 
+/* Individual Panel Positioning & Styling
+-------------------------------------------------- */
 #panel-data-display-sharp {
   top: 85px;
   right: 40px;
@@ -350,7 +393,6 @@ body {
   position: fixed;
   z-index: 991;
 }
-
 
 #panel-node-editor {
   bottom: 10px;
@@ -383,6 +425,17 @@ body {
   width: 340px;
   max-height: 900px;
   overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-link-editor {
+  bottom: 10px;
+  left: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: hidden;
   overflow-x: hidden;
   position: fixed;
   z-index: 21;
@@ -449,6 +502,10 @@ body {
   z-index: 21;
 }
 
+#panel-topoviewer-about ul li {
+  font-weight: normal !important;
+}
+
 #panel-backup-restore {
   top: 85px;
   right: 40px;
@@ -458,6 +515,8 @@ body {
   z-index: 21;
 }
 
+/* Sidebar & Drawer Components
+-------------------------------------------------- */
 #sidebar {
   height: 100vh;
   width: 60px;
@@ -476,9 +535,10 @@ body {
   left: calc(5em + 60px);
   display: none;
   /* Initially hidden */
-
 }
 
+/* Editor Container
+-------------------------------------------------- */
 #editor-container {
   height: calc(80vh - 80px);
   /* height: auto; */
@@ -492,6 +552,8 @@ body {
   text-align: center;
 }
 
+/* Loading & Spinner Components
+-------------------------------------------------- */
 #loading-spinner-global-button {
   width: 50px;
   height: 50px;
@@ -506,6 +568,8 @@ body {
   transform: translate(-50%, -50%);
 }
 
+/* Monaco Editor Fixes
+-------------------------------------------------- */
 .monaco-editor .inputarea {
   position: fixed;
   top: 0;
@@ -514,12 +578,19 @@ body {
   height: 100px;
 }
 
+/* Theme Styling - Dark Mode
+-------------------------------------------------- */
 [data-theme=dark],
 .theme-dark {
   .has-background-4a {
-    z-index: 0;
+    z-index: 3;
     background-color: rgba(24, 24, 24, 1);
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  .navbar-element-4a {
+    z-index: 3;
+    background-color: rgba(24, 24, 24, 1);
   }
 
   .panel-block {
@@ -567,8 +638,7 @@ body {
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
   }
 
-  /* sidebar to be removed */
-
+  /* Sidebar-specific styling - to be removed */
   .button.is-sidebar {
     border-top-right-radius: 2px;
     border-bottom-right-radius: 2px;
@@ -585,12 +655,19 @@ body {
   }
 }
 
+/* Theme Styling - Light Mode
+-------------------------------------------------- */
 [data-theme=light],
 .theme-light {
   .has-background-4a {
-    z-index: 1;
+    z-index: 3;
     background-color: rgba(70, 86, 246, 1);
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-element-4a {
+    z-index: 3;
+    background-color: rgba(70, 86, 246, 1);
   }
 
   .panel-block {
@@ -625,12 +702,8 @@ body {
   }
 }
 
-/* Overlay container (textbox overlay) */
-/* Overlay container (textbox overlay) */
-/* Overlay container (textbox overlay) */
-
-
-/* Overlay container (textbox overlay) */
+/* HTML Label Overlay & Quill Editor Components
+-------------------------------------------------- */
 .html-label {
   position: absolute;
   pointer-events: none;
@@ -644,9 +717,6 @@ body {
   padding-bottom: 0.25rem;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
-
-
-
   border-radius: 8px;
   box-shadow: 0 0 10px #000;
   z-index: 9999;
@@ -672,6 +742,8 @@ body {
   /* margin-top: 0.5rem; */
 }
 
+/* Quill Editor Styling
+-------------------------------------------------- */
 .ql-editor {
   color: #000 !important;
 }
@@ -681,14 +753,14 @@ body {
   margin-top: 0.5rem;
 }
 
-
 .ql-snow .ql-color-picker .ql-picker-label svg .ql-color-label.ql-stroke.ql-transparent {
   stroke: #000;
   opacity: 1 !important;
   /* or a specific hex: #ff0000 !important; */
 }
 
-
+/* Quill Button & Resize Handler Styling
+-------------------------------------------------- */
 /* Button row styling */
 .button-row {
   margin-bottom: 0.5rem;
@@ -725,6 +797,8 @@ body {
   cursor: e-resize;
 }
 
+/* Utility Classes for Editor Interaction
+-------------------------------------------------- */
 /* Disable text selection while resizing */
 .no-select {
   user-select: none;
@@ -735,4 +809,3 @@ body {
 select {
   pointer-events: auto;
 }
-

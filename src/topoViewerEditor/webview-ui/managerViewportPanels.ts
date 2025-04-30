@@ -14,7 +14,7 @@ export class ManagerViewportPanels {
   private isPanel01Cy: boolean = false;
   private nodeClicked: boolean = false;
   private edgeClicked: boolean = false;
-  private globalSelectedNode: string = "";
+  // private globalSelectedNode: string = "";
   // Variables to store the current selection for dropdowns.
   private panelNodeEditorKind: string = "nokia_srlinux";
   private panelNodeEditorTopoViewerRole: string = "pe";
@@ -178,9 +178,9 @@ export class ManagerViewportPanels {
         panelNodeEditorSaveButton.parentNode?.replaceChild(newSaveButton, panelNodeEditorSaveButton);
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
-          // Now trigger the viewportButtonsSaveTopo method.
-          
           const suppressNotification = false;
+
+          // Now trigger the viewportButtonsSaveTopo method.
           await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
         }, { once: true });
       }
@@ -189,6 +189,115 @@ export class ManagerViewportPanels {
       throw error;
     }
   }
+
+
+  /**
+   * Displays the edge editor panel for the provided edge.
+   * Removes any overlay panels, updates form fields with the edge’s current source/target endpoints,
+   * and wires up the Close/Save buttons.
+   *
+   * @param edge - The Cytoscape edge to edit.
+   * @returns A promise that resolves when the panel is fully configured and shown.
+   */
+  public async panelEdgeEditor(edge: cytoscape.EdgeSingular): Promise<void> {
+    try {
+      // 1) Hide other overlays
+      const overlays = document.getElementsByClassName("panel-overlay");
+      Array.from(overlays).forEach(el => (el as HTMLElement).style.display = "none");
+
+      // 2) Grab the static parts and initial data
+      const panelLinkEditor = document.getElementById("panel-link-editor");
+      const panelLinkEditorIdLabel = document.getElementById("panel-link-editor-id");
+      const panelLinkEditorIdLabelSrcInput = document.getElementById("panel-link-editor-source-endpoint") as HTMLInputElement | null;
+      const panelLinkEditorIdLabelTgtInput = document.getElementById("panel-link-editor-target-endpoint") as HTMLInputElement | null;
+      const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
+      const panelLinkEditorIdLabelSaveBtn = document.getElementById("panel-link-editor-save-button");
+
+      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
+        console.error("panelEdgeEditor: missing required DOM elements");
+        return;
+      }
+      const source = edge.data("source") as string;
+      const target = edge.data("target") as string;
+      const sourceEP = (edge.data("sourceEndpoint") as string) || "";
+      const targetEP = (edge.data("targetEndpoint") as string) || "";
+
+      // Populate inputs with current endpoint values
+      panelLinkEditorIdLabelSrcInput.value = sourceEP;
+      panelLinkEditorIdLabelTgtInput.value = targetEP;
+
+      // Helper to sync the ID label from whatever is in the inputs right now
+      const updateLabel = () => {
+        const s = panelLinkEditorIdLabelSrcInput.value.trim();
+        const t = panelLinkEditorIdLabelTgtInput.value.trim();
+        panelLinkEditorIdLabel.innerHTML =
+          `┌ ${source} :: ${s}<br>` +
+          `└ ${target} :: ${t}`;
+      };
+
+      // Initial label fill
+      updateLabel();
+
+      // 3) Show the panel
+      panelLinkEditor.style.display = "block";
+
+      // 4) Re-wire Close button (one-shot)
+      const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
+      panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
+      freshClose.addEventListener("click", () => panelLinkEditor.style.display = "none", { once: true });
+
+      // 5) Wire real-time preview (optional but helpful)
+      panelLinkEditorIdLabelSrcInput.addEventListener("input", updateLabel);
+      panelLinkEditorIdLabelTgtInput.addEventListener("input", updateLabel);
+
+      // 6) Wire up Save button
+      if (panelLinkEditorIdLabelSaveBtn) {
+        const freshSave = panelLinkEditorIdLabelSaveBtn.cloneNode(true) as HTMLElement;
+        panelLinkEditorIdLabelSaveBtn.parentNode?.replaceChild(freshSave, panelLinkEditorIdLabelSaveBtn);
+
+        freshSave.addEventListener(
+          "click",
+          async () => {
+            try {
+              // 6a) Update edge data from inputs
+              const newSourceEP = panelLinkEditorIdLabelSrcInput.value.trim();
+              const newTargetEP = panelLinkEditorIdLabelTgtInput.value.trim();
+              edge.data({
+                sourceEndpoint: newSourceEP,
+                targetEndpoint: newTargetEP
+              });
+
+              // 6b) Persist changes (with notification)
+              await this.viewportButtons.viewportButtonsSaveTopo(
+                this.cy,
+                this.messageSender,
+                /* suppressNotification */ false
+              );
+
+              // 6c) Refresh the ID label so it shows saved values
+              if (panelLinkEditorIdLabel) {
+                panelLinkEditorIdLabel.innerHTML =
+                  `┌ ${source} :: ${sourceEP}<br>` +
+                  `└ ${target} :: ${targetEP}`;
+              }
+
+              // 6d) Hide the panel
+              panelLinkEditor.style.display = "none";
+            } catch (saveErr) {
+              console.error("panelEdgeEditor: error during save", saveErr);
+              // TODO: show user-facing notification if needed
+            }
+          },
+          { once: true }
+        );
+      }
+
+    } catch (err) {
+      console.error("panelEdgeEditor: unexpected error", err);
+      // TODO: show user-facing notification if needed
+    }
+  }
+
 
   /**
    * Updates the provided Cytoscape node with data from the editor panel.
@@ -362,6 +471,37 @@ export class ManagerViewportPanels {
       dropdownContent.appendChild(optionElement);
     });
   }
+
+  /**
+    * Displays the TopoViewer panel
+    * Removes any overlay panels, updates form fields with the edge’s current source/target endpoints,
+    *
+    * @returns A promise that resolves when the panel is fully configured and shown.
+    */
+  public async panelAbout(): Promise<void> {
+    try {
+      // 1) Hide other overlays
+      const overlays = document.getElementsByClassName("panel-overlay");
+      Array.from(overlays).forEach(el => (el as HTMLElement).style.display = "none");
+
+      // 2) Grab the static parts and initial data
+      const panelTopoviewerAbout = document.getElementById("panel-topoviewer-about");
+
+      if (!panelTopoviewerAbout) {
+        console.error("panelTopoviewerAbout: missing required DOM elements");
+        return;
+      }
+
+      // 3) Show the panel
+      panelTopoviewerAbout.style.display = "block";
+
+    }
+    catch (err) {
+      console.error("panelEdgeEditor: unexpected error", err);
+      // TODO: surface user-facing notification
+    }
+  }
+
 
   /**
    * Extracts type enumeration options from the JSON schema based on a kind pattern.

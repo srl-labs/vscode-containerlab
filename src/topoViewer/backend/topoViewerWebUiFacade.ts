@@ -3,10 +3,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as yaml from 'js-yaml';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
+import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
+
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
 import * as http from 'http';
 // import { Server as SocketIOServer } from 'socket.io';
@@ -123,12 +126,32 @@ export class TopoViewer {
     this.lastYamlFilePath = yamlFilePath;
 
     try {
-      vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
-      log.info(`Generating Cytoscape elements from YAML: ${yamlFilePath}`);
-      log.info(`clabTreeDataToTopoviewer JSON: ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
 
       // Read the YAML content from the file.
       const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+
+      // JSON topology data for the webview.
+      const parsed = yaml.load(yamlContent) as ClabTopology;
+      const labName = parsed.name;
+
+
+      // Loading clab topology-data.json file and tranforming it into Cytoscape elements.
+
+      // const baseDir = path.dirname(yamlFilePath);
+      // const clabSubdir = `clab-${labName}`;
+      // const fileName = 'topology-data.json';
+      // const clabTopologyJsonFilePath = path.join(baseDir, clabSubdir, fileName);
+      // log.info(`clabTopologyJsonFilePath: ${clabTopologyJsonFilePath}`);
+      // const jsonContent = JSON.parse(await fs.promises.readFile(clabTopologyJsonFilePath, 'utf-8'));
+
+      // Transform JSON into Cytoscape elements.
+      // const cytoTopology = this.adaptor.clabJsonToCytoscapeElements(jsonContent, clabTreeDataToTopoviewer);
+
+
+
+      vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
+      log.info(`Generating Cytoscape elements from YAML: ${yamlFilePath}`);
+      log.info(`clabTreeDataToTopoviewer JSON: ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
 
       // Transform YAML into Cytoscape elements.
       const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
@@ -137,8 +160,11 @@ export class TopoViewer {
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
       this.lastFolderName = folderName;
 
-      // Create folder and write JSON files for the webview.
+      // Create folder and write Cyto Data JSON files for the webview.
+      // await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+
       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+
 
       log.info(`allowedHostname: ${this.adaptor.allowedhostname}`);
 
@@ -768,6 +794,7 @@ export class TopoViewer {
     const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.lastFolderName;
 
+
     const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
@@ -820,6 +847,7 @@ export class TopoViewer {
 
   // /**
   //  * Initializes the Socket.IO server to periodically emit lab data to connected clients.
+  //  * Keep this method commented out for now.
   //  *
   //  * The server is configured to:
   //  * - Listen on a dynamically assigned port.

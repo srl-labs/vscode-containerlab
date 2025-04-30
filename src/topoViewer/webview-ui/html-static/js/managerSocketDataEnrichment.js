@@ -1,11 +1,11 @@
 //// ENRICHER FUNCTION
 
-//        +---------------------------------------------------+
-//        | Socket.io Feed: "clab-tree-provider-data"         |
-//        |  (Extension Backend sends lab data via socket.io) |
-//        +---------------------------------------------------+
-//                                 |
-//                                 v
+//  +------------------------------------------------------------------+
+//  |  Socket.io/vscode message  Feed: "clab-tree-provider-data"       |
+//  |  (Extension Backend sends lab data via socket.io/vscode message) |
+//  +------------------------------------------------------------------+
+//                                  |
+//                                  v
 //                      +-----------------------+
 //                      |     Lab Data          |
 //                      | (clabTreeProviderData)|
@@ -17,7 +17,7 @@
 // | (Enriches Cytoscape Edges)    |   |  (Enriches Cytoscape Nodes)   |
 // +-------------------------------+   +-------------------------------+
 //                   |                                  |
-//                   | Updates edge data (MAC, MTU,     | Updates node data (state, image)
+//                   | Updates edge data (MAC, MTU,     | Updates node data (state, image, longname)
 //                   | type for source/target)          |
 //                   v                                  v
 //        +-----------------------+         +-----------------------+
@@ -60,13 +60,15 @@ function socketDataEncrichmentLink(labData) {
                     if (typeof container.label !== "string") return;
                     // Remove lab-specific prefix; adjust the regex as needed.
                     //   const nodeName = container.label.replace(/^clab-.*?-/, '');
+
+                    console.log("socketDataEncrichmentLink - container: ", container);
                     const nodeClabName = container.label
 
                     const getRouterName = (fullString, keyword) =>
                         fullString.split(keyword)[1].replace(/^-/, '');
 
                     nodeName = getRouterName(nodeClabName, lab.name); // Outputs: router1
-                    // console.log("socketDataEncrichmentLink - nodeName: ", nodeName);
+                    console.log("socketDataEncrichmentLink - nodeName: ", nodeName);
 
                     if (!Array.isArray(container.interfaces)) return;
                     container.interfaces.forEach(iface => {
@@ -110,6 +112,9 @@ function socketDataEncrichmentLink(labData) {
         cy.edges().forEach(edge => {
             const data = edge.data();
 
+            console.log("nodeName - endPointName", nodeName, endPointName);
+            console.log("socketDataEncrichmentLink - edge data: ", data.source, data.target, data.sourceEndpoint, data.targetEndpoint);
+
             // If the edge's source matches the node and endpoint from the key, update its sourceMac
             if (data.source === nodeName && data.sourceEndpoint === endPointName) {
                 edge.data('sourceMac', iface.mac);
@@ -123,6 +128,7 @@ function socketDataEncrichmentLink(labData) {
                 edge.data('targetMtu', iface.mtu);
                 edge.data('targetType', iface.type);
             }
+            // console.log("socketDataEncrichmentLink - edge data: ", edge.data());
         });
     });
 }
@@ -149,7 +155,10 @@ function socketDataEncrichmentLink(labData) {
  */
 function socketDataEncrichmentNode(labData) {
     const nodeDataEncrichmentMap = {};
+
     for (const labPath in labData) {
+        console.log("socketDataEncrichmentNode - labData: ", labData);
+
         try {
             const lab = labData[labPath];
             console.log("socketDataEncrichmentNode - labName: ", lab.name);
@@ -157,55 +166,78 @@ function socketDataEncrichmentNode(labData) {
             if (lab.name === globalLabName) {
                 console.log("socketDataEncrichmentNode - globalLabName: ", globalLabName);
 
+                // Ensure containers are present
                 if (!lab || !Array.isArray(lab.containers)) continue;
+
                 lab.containers.forEach(container => {
                     if (typeof container.label !== "string") return;
-                    // Remove lab-specific prefix; adjust the regex as needed.
-                    //   const nodeName = container.label.replace(/^clab-.*?-/, '');
-                    const nodeClabName = container.label
 
+                    const nodeClabName = container.label;
+
+                    // Extract node name from container label using lab name as keyword
                     const getRouterName = (fullString, keyword) =>
                         fullString.split(keyword)[1].replace(/^-/, '');
 
-                    nodeName = getRouterName(nodeClabName, lab.name); // Outputs: router1
-                    // console.log("socketDataEncrichmentNode - nodeName: ", nodeName);
+                    nodeName = getRouterName(nodeClabName, lab.name);
 
-                    const state = container.state
-                    const image = container.image
+                    const state = container.state;
+                    const image = container.image;
+                    const longname = container.name;
 
-                    const key = `${lab.name}::${nodeName}`;
-                    const nodeDataUpdate = { state, image };
+                    const key = longname;  // Use longname as unique identifier
+                    const nodeDataUpdate = { state, image, longname };
 
                     nodeDataEncrichmentMap[key] = nodeDataUpdate;
-
                 });
             }
         } catch (err) {
             console.error(`socketDataEncrichmentNode - Error processing labPath "${labPath}" in node data enrichment:`, err);
         }
     }
-    console.log("socketDataEncrichmentNode - node-data-update for: ", nodeDataEncrichmentMap);
-    console.log("socketDataEncrichmentNode - globalLabName: ", globalLabName);
 
-    // aarafat-tag: update cytoscape edge data
+    // console.log("socketDataEncrichmentNode - node-data-update for: ", nodeDataEncrichmentMap);
+    // console.log("socketDataEncrichmentNode - globalLabName: ", globalLabName);
 
-    // Loop over each interface key
+    // Iterate over the node enrichment map and apply updates to Cytoscape nodes
     Object.keys(nodeDataEncrichmentMap).forEach(key => {
-        // Split the key into [labName, nodeName, endPointName]
-        const parts = key.split("::");
-        if (parts.length !== 2) return; // skip keys not matching the expected format
-        const [labName, nodeName] = parts;
-        const nodeData = nodeDataEncrichmentMap[key];
+        nodeName = key; // aarafat-tag: key of nodeDataEncrichmentMap a streamed data
+        nodeData = nodeDataEncrichmentMap[key];
 
-        // Iterate over each Cytoscape edge
         cy.nodes().forEach(node => {
             const data = node.data();
 
-            // If the node's source matches the node key, update its corresponding data
-            if (data.id === nodeName) {
+            // Extract longname suffix from Cytoscape node and enrichment data
+            const lastPartLongnameDataMarshall = (data?.extraData?.longname || "").split("-").pop();
+            const lastPartLongnameStreamedData = (nodeName || "").split("-").pop();
+
+            let updatedLongname;
+
+            // Determine which longname to assign based on suffix match
+            if (nodeName == lastPartLongnameStreamedData) {
+                updatedLongname = lastPartLongnameStreamedData;
+            } else {
+                updatedLongname = nodeName;
+            }
+
+            // Check if the suffixes match to apply updates
+            if (lastPartLongnameDataMarshall === lastPartLongnameStreamedData) {
                 node.data('state', nodeData.state);
                 node.data('image', nodeData.image);
-                // node.data(("extraData").image, nodeData.image);
+
+                // Update the node's extraData.longname field
+                if (node && node.data("extraData")) {
+                    const updatedExtraData = {
+                        ...node.data("extraData"),
+                        longname: updatedLongname
+                    };
+                    node.data("extraData", updatedExtraData);
+
+                    console.log("Updated longname:", node.data("extraData").longname);
+                } else {
+                    console.warn(`Node ${nodeId} missing or doesn't have extraData.`);
+                }
+
+                console.log("socketDataEncrichmentNode - cy node data after update from streamed data: ", node.data());
             }
         });
     });
