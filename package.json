@@ -8,7 +8,7 @@
   "version": "0.12.1",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
-    "vscode": "^1.70.0"
+    "vscode": "^1.99.1"
   },
   "repository": {
     "type": "git",
@@ -813,9 +813,9 @@
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^18.0.0",
-    "@types/vscode": "^1.70.0",
-    "typescript": "^5.7.3",
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.99.1",
+    "typescript": "^5.8.3",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
@@ -834,6 +834,6 @@
     "cytoscape-grid-guide": "^2.3.3",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
-    "yaml": "^2.7.0"
+    "yaml": "^2.7.1"
   }
 }
