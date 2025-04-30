@@ -58,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Tree data provider
   const provider = new ClabTreeDataProvider(context);
 
-  // If you have a defined "containerlabExplorer" view in package.json, 
+  // If you have a defined "containerlabExplorer" view in package.json,
   // you can either do:
   treeView = vscode.window.createTreeView('containerlabExplorer', {
     treeDataProvider: provider,
@@ -172,6 +172,30 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'containerlab.editor.topoViewerEditor.open',
+      async (node: ClabLabTreeNode) => {
+        const yamlUri  = vscode.Uri.file(node.labPath.absolute);
+        const labName  = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
+
+        const editor = new TopoViewerEditor(context);
+
+        /* remember where the file lives – needed by helper functions */
+        editor.lastYamlFilePath = yamlUri.fsPath;
+
+        /* 1. create / show the web-view panel */
+        await editor.createWebviewPanel(context, yamlUri, labName);
+
+        /* 2. update it with the YAML we just opened                 */
+        await editor.updatePanelHtml((editor as any).currentPanel);
+
+        /* 3. finally open the YAML itself beside the web-view        */
+        await editor.openTemplateFile(yamlUri.fsPath);      // ← split-view
+      }
     )
   );
 

@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.12.1] - 2025-04-30
+* TopoEditor: Now supports link editing
+* TopoViewer: Can now be used with undeployed labs
+
 ## [0.12.0] - 2025-04-26
 * TopoViewer Editor - A full GUI for authoring ContainerLab topology files webview:
   * Viewport “+” button for adding nodes.
