@@ -48,12 +48,8 @@ export function getHTMLTemplate(
 </head>
 
 <body>
-  <style>
-
-  </style>
 
   <nav class="navbar is-fixed-top has-background-4a px-3 py-1" role="navigation" aria-label="main navigation">
-
     <!-- left side: logo + title -->
     <div class="navbar-brand">
       <div class="pt-1 pr-2">

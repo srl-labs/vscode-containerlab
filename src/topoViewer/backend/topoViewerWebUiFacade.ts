@@ -134,21 +134,6 @@ export class TopoViewer {
       const parsed = yaml.load(yamlContent) as ClabTopology;
       const labName = parsed.name;
 
-
-      // Loading clab topology-data.json file and tranforming it into Cytoscape elements.
-
-      // const baseDir = path.dirname(yamlFilePath);
-      // const clabSubdir = `clab-${labName}`;
-      // const fileName = 'topology-data.json';
-      // const clabTopologyJsonFilePath = path.join(baseDir, clabSubdir, fileName);
-      // log.info(`clabTopologyJsonFilePath: ${clabTopologyJsonFilePath}`);
-      // const jsonContent = JSON.parse(await fs.promises.readFile(clabTopologyJsonFilePath, 'utf-8'));
-
-      // Transform JSON into Cytoscape elements.
-      // const cytoTopology = this.adaptor.clabJsonToCytoscapeElements(jsonContent, clabTreeDataToTopoviewer);
-
-
-
       vscode.window.showInformationMessage(`Opening Viewer for ${yamlFilePath}`);
       log.info(`Generating Cytoscape elements from YAML: ${yamlFilePath}`);
       log.info(`clabTreeDataToTopoviewer JSON: ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
@@ -161,8 +146,6 @@ export class TopoViewer {
       this.lastFolderName = folderName;
 
       // Create folder and write Cyto Data JSON files for the webview.
-      // await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
-
       await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
 
