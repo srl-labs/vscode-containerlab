@@ -14,7 +14,6 @@ export class ManagerViewportPanels {
   private isPanel01Cy: boolean = false;
   private nodeClicked: boolean = false;
   private edgeClicked: boolean = false;
-  // private globalSelectedNode: string = "";
   // Variables to store the current selection for dropdowns.
   private panelNodeEditorKind: string = "nokia_srlinux";
   private panelNodeEditorTopoViewerRole: string = "pe";
@@ -179,8 +178,6 @@ export class ManagerViewportPanels {
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           const suppressNotification = false;
-
-          // Now trigger the viewportButtonsSaveTopo method.
           await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
         }, { once: true });
       }

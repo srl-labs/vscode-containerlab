@@ -112,8 +112,8 @@ function socketDataEncrichmentLink(labData) {
         cy.edges().forEach(edge => {
             const data = edge.data();
 
-            console.log("nodeName - endPointName", nodeName, endPointName);
-            console.log("socketDataEncrichmentLink - edge data: ", data.source, data.target, data.sourceEndpoint, data.targetEndpoint);
+            // console.log("nodeName - endPointName", nodeName, endPointName);
+            // console.log("socketDataEncrichmentLink - edge data: ", data.source, data.target, data.sourceEndpoint, data.targetEndpoint);
 
             // If the edge's source matches the node and endpoint from the key, update its sourceMac
             if (data.source === nodeName && data.sourceEndpoint === endPointName) {
@@ -157,8 +157,7 @@ function socketDataEncrichmentNode(labData) {
     const nodeDataEncrichmentMap = {};
 
     for (const labPath in labData) {
-        console.log("socketDataEncrichmentNode - labData: ", labData);
-
+        // console.log("socketDataEncrichmentNode - labData: ", labData);
         try {
             const lab = labData[labPath];
             console.log("socketDataEncrichmentNode - labName: ", lab.name);
