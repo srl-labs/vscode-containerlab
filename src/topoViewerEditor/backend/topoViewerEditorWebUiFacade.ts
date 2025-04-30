@@ -125,7 +125,7 @@ topology:
 
   links:
     # inter-switch link
-    - endpoints: [ srl1:e1-11, srl2:e1-11 ]
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
 `;
 
     try {
