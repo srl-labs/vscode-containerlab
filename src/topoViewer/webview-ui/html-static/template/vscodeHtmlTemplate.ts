@@ -50,65 +50,52 @@ return `
 
 <body>
 
-  <nav class="level m-0 px-3 py-1 has-background-4a">
-
+  <nav class="navbar is-fixed-top has-background-4a px-3 py-1" role="navigation" aria-label="main navigation">
     <div class="is-flex is-justify-content-flex-start">
-      <!-- <div class="pt-1 pr-2">
-        <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
-      </div> -->
-
       <div class="pt-1 pr-2">
         <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
           <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
         </a>
       </div>
-
       <div class="p-0 is-flex is-justify-content-space-evenly is-flex-direction-column">
         <p class="title    m-0 px-1 py-0   is-4 is-unselectable has-text-weight-normal has-text-white"> containerlab</p>
-        <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white"
-          id="ClabSubtitle">Topology name: clab ::: Uptime: 10m10s</p>
+        <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white" id="ClabSubtitle">
+          Editor ::: Topology name: Königsberger Brücken</p>
       </div>
     </div>
-
+    <!-- 
     <div class="level-right">
+      <div class="level-item">
+        <div class="dropdown is-hoverable is-right">
+          <div class="dropdown-trigger">
+            <button class="button is-small">
+              <i class="icon fas fa-bars" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="dropdown-menu" id="dropdown-menu" role="menu">
+            <div class="dropdown-content">
+              <a id="about" href="#" onclick="showPanelAbout(event);"
+                class="dropdown-item label has-text-weight-normal is-small py-0">About TopoViewer</a>
 
-      <!--   aarafat-tag: vs-code
+              <hr class="dropdown-divider py-0">
+              <a id="getAllEndpointDetail" href="#" onclick="getActualNodesEndpoints(event);"
+                class="dropdown-item label has-text-weight-normal is-small py-0">Action - Retrieve Actual Endpoint
+                Label</a>
+              <a id="logMessagesDropdownItem" href="#" onclick="showPanelLogMessages(event);"
+                class="dropdown-item label has-text-weight-normal is-small py-0">Action - Log Messages</a>
+              <hr class="dropdown-divider py-0">
+              <a id="clabClientDropdownItem" href="#" onclick="showPanelTopoViewerClient();"
+                class="dropdown-item label has-text-weight-normal is-small py-0">TopoViewer Helper App</a>
+            </div>
+          </div>
+        </div>
 
-              <div class="level-item">
-                <div class="dropdown is-hoverable is-right">
-                <div class="dropdown-trigger">
-                  <button class="button is-small">
-                  <i class="icon fas fa-bars" aria-hidden="true"></i>
-                  </button>
-                </div>
-                <div class="dropdown-menu" id="dropdown-menu" role="menu">
-                  <div class="dropdown-content">
-                    <a id="about" href="#" onclick="showPanelAbout(event);" class="dropdown-item label has-text-weight-normal is-small py-0">About TopoViewer</a>                      
-
-                    <hr class="dropdown-divider py-0">
-                    <a id="getAllEndpointDetail" href="#" onclick="getActualNodesEndpoints(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Retrieve Actual Endpoint Label</a>     
-                    <a id="logMessagesDropdownItem" href="#" onclick="showPanelLogMessages(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Log Messages</a>       
-                    <hr class="dropdown-divider py-0">
-                    <a id="clabClientDropdownItem" href="#" onclick="showPanelTopoViewerClient();"        class="dropdown-item label has-text-weight-normal is-small py-0">TopoViewer Helper App</a>                  
-                    
-
-                  </div>
-                </div>
-              </div>
-              -->
-
-      <!--   aarafat-tag: vs-code
-              <div id="nokia-logo">
-                <img
-                  id="nokia-logo-img"
-                  src="${imagesUri}/containerlab.svg"
-                  alt="Containerlab Logo"
-                  class="logo-image"
-                >
-              </div>
-              -->
-
+        <div id="nokia-logo">
+          <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
+        </div>
+      </div>
     </div>
+    -->
   </nav>
 
   <div id="root-div">
@@ -1147,27 +1134,6 @@ return `
         </div>
       </div>
     </div>
-
-    <!-- 
-    <div class="panel-tabContainer">
-      <div class="panel-block p-0">
-        <div class="column px-0">
-          <div class="column my-auto is-11">
-            <div class="panel-content">
-              <div class="columns is-mobile is-multiline py-auto">
-                <div class="column is-full-mobile is-half-tablet is-4 p-1"><label
-                    class="label is-size-7 has-text-right has-text-weight-medium px-auto">Node Name</label></div>
-                <div class="column is-8 p-1 pl-3">
-                  <label
-                    class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content"
-                    id="panel-node-name">node-name-placeholder</label>
-                </div>
-              </div>
-            </div>
-          </div> 
-        
-        -->
-
 
     <!-- Link Properties Panel with Improved Semantic Markup & Responsive Design -->
     <!-- Link Properties Panel with Improved Semantic Markup & Responsive Design -->

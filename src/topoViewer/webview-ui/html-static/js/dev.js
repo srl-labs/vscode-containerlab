@@ -700,7 +700,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             "kind": "container",
             "longname": "",
             "image": "",
-            "mgmtIpv4Addresss": "",
+            "mgmtIpv4Address": "",
           },
         },
         position: {
@@ -739,6 +739,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     cytoTopologyJson = environments["EnvCyTopoJsonBytes"]
     clabServerAddress = environments["clab-server-address"]
 
+
     // Ignore the click event if edge handler is active
     if (isEdgeHandlerActive) {
       return;
@@ -748,6 +749,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     const extraData = node.data("extraData");
     const isNodeInEditMode = node.data("editor") === "true";
     const checkboxChecked = setupCheckboxListener('#viewport-drawer-clab-editor-content-01 .checkbox-input');
+
+    globalSelectedNode = extraData.longname;
 
     if (checkboxChecked) {
       // Handle node modification actions based on keyboard modifiers
@@ -835,7 +838,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
           document.getElementById("panel-node-name").textContent = extraData.longname;
           document.getElementById("panel-node-kind").textContent = extraData.kind;
-          document.getElementById("panel-node-mgmtipv4").textContent = extraData.mgmtIpv4Addresss;
+          document.getElementById("panel-node-mgmtipv4").textContent = extraData.mgmtIpv4Address;
           document.getElementById("panel-node-mgmtipv6").textContent = extraData.mgmtIpv6Address;
           document.getElementById("panel-node-fqdn").textContent = extraData.fqdn;
           document.getElementById("panel-node-topoviewerrole").textContent = node.data("topoViewerRole");
@@ -1819,7 +1822,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           "containerDockerExtraAttribute",
           containerDockerExtraAttributeData,
         );
-        node.data("extraData").mgmtIpv4Addresss = IPAddress;
+        node.data("extraData").mgmtIpv4Address = IPAddress;
         node.data("extraData").mgmtIpv6Address = GlobalIPv6Address;
 
       }
@@ -2026,8 +2029,8 @@ async function nodeActionConnectToSSH(event) {
       console.info("nodeActionConnectToSSH - environments: ", environments)
       cytoTopologyJson = environments["EnvCyTopoJsonBytes"]
       routerData = findCytoElementByLongname(cytoTopologyJson, routerName)
-      console.info("nodeActionConnectToSSH: ", `${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Addresss"]}?RouterName=${routerName}`)
-      window.open(`${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Addresss"]}?RouterName=${routerName}`);
+      console.info("nodeActionConnectToSSH: ", `${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Address"]}?RouterName=${routerName}`)
+      window.open(`${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Address"]}?RouterName=${routerName}`);
     } catch (error) {
       console.error('Error executing restore configuration:', error);
     }
@@ -2051,8 +2054,8 @@ async function nodeActionAttachShell(event) {
       console.info("nodeActionAttachShell - environments: ", environments)
       cytoTopologyJson = environments["EnvCyTopoJsonBytes"]
       routerData = findCytoElementByLongname(cytoTopologyJson, routerName)
-      console.info("nodeActionAttachShell: ", `${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Addresss"]}?RouterName=${routerName}`)
-      window.open(`${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Addresss"]}?RouterName=${routerName}`);
+      console.info("nodeActionAttachShell: ", `${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Address"]}?RouterName=${routerName}`)
+      window.open(`${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Address"]}?RouterName=${routerName}`);
     } catch (error) {
       console.error('Error executing restore configuration:', error);
     }
@@ -2076,8 +2079,8 @@ async function nodeActionViewLogs(event) {
       console.info("nodeActionViewLogs - environments: ", environments)
       cytoTopologyJson = environments["EnvCyTopoJsonBytes"]
       routerData = findCytoElementByLongname(cytoTopologyJson, routerName)
-      console.info("nodeActionViewLogs: ", `${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Addresss"]}?RouterName=${routerName}`)
-      window.open(`${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Addresss"]}?RouterName=${routerName}`);
+      console.info("nodeActionViewLogs: ", `${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Address"]}?RouterName=${routerName}`)
+      window.open(`${globalShellUrl}?RouterID=${routerData["data"]["extraData"]["mgmtIpv4Address"]}?RouterName=${routerName}`);
     } catch (error) {
       console.error('Error executing restore configuration:', error);
     }

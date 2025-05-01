@@ -74,35 +74,32 @@ export class TopoViewerEditor {
    * @param labName - Used to seed the template content and derive the folder name.
    */
   public async createTemplateFile(context: vscode.ExtensionContext, requestedFileUri: vscode.Uri, labName: string): Promise<void> {
-    this.currentLabName = labName; // Use labName directly for folder
-
-    // --- Start: Extension Enforcement Logic ---
-    let finalFileUri: vscode.Uri;
-    const desiredExtension = '.clab.yml';
+    // Parse the requested file path
     const requestedPath = requestedFileUri.fsPath;
     const parsedPath = path.parse(requestedPath);
 
-    // Construct the base path without any .yml or .yaml extension
+    // Extract the base name (without any extension)
     let baseNameWithoutExt = parsedPath.name;
+
+    // Handle case where the name might include ".clab"
     if (baseNameWithoutExt.toLowerCase().endsWith('.clab')) {
-       // Handle cases like 'myfile.clab.yml' -> 'myfile' or 'myfile.clab' -> 'myfile'
-       baseNameWithoutExt = baseNameWithoutExt.substring(0, baseNameWithoutExt.length - 5);
-    } else if (parsedPath.ext.toLowerCase() === '.yml' || parsedPath.ext.toLowerCase() === '.yaml') {
+        baseNameWithoutExt = baseNameWithoutExt.substring(0, baseNameWithoutExt.length - 5);
     }
 
-    const finalFileName = baseNameWithoutExt + desiredExtension;
+    // Use the basename as the lab name
+    this.currentLabName = baseNameWithoutExt;
+
+    // Enforce the .clab.yml extension
+    const finalFileName = baseNameWithoutExt + '.clab.yml';
     const finalPath = path.join(parsedPath.dir, finalFileName);
+    const finalFileUri = vscode.Uri.file(finalPath);
 
-    // Use the adjusted path to create the final URI
-    finalFileUri = vscode.Uri.file(finalPath);
-    // --- End: Extension Enforcement Logic ---
+    // Use the derived lab name for folder storage
+    this.lastFolderName = baseNameWithoutExt;
 
-    // Use the labName passed in as the folder name for data storage
-    this.lastFolderName = labName;
-
-    // Build the template
+    // Build the template with the actual lab name
     const templateContent = `
-name: ${labName} # saved as ${finalFileUri.fsPath}
+name: ${baseNameWithoutExt} # saved as ${finalFileUri.fsPath}
 
 topology:
   nodes:
@@ -125,47 +122,48 @@ topology:
 
   links:
     # inter-switch link
-    - endpoints: [ srl1:e1-11, srl2:e1-11 ]
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
 `;
 
     try {
-      // Ensure the directory exists using the final URI's directory
-      const dirUri = finalFileUri.with({ path: path.dirname(finalFileUri.path) });
-      await vscode.workspace.fs.createDirectory(dirUri);
+        // Ensure the directory exists using the final URI's directory
+        const dirUri = finalFileUri.with({ path: path.dirname(finalFileUri.path) });
+        await vscode.workspace.fs.createDirectory(dirUri);
 
-      // Write the file using the final URI
-      const data = Buffer.from(templateContent, 'utf8');
-      await vscode.workspace.fs.writeFile(finalFileUri, data);
+        // Write the file using the final URI
+        const data = Buffer.from(templateContent, 'utf8');
+        await vscode.workspace.fs.writeFile(finalFileUri, data);
 
-      // Remember the actual path where it was written
-      this.lastYamlFilePath = finalFileUri.fsPath;
+        // Remember the actual path where it was written
+        this.lastYamlFilePath = finalFileUri.fsPath;
 
-      log.info(`Template file created at: ${finalFileUri.fsPath}`);
+        log.info(`Template file created at: ${finalFileUri.fsPath}`);
 
-      // Notify the user with the actual path used
-      this.createTopoYamlTemplateSuccess = true; // Indicate success
+        // Notify the user with the actual path used
+        this.createTopoYamlTemplateSuccess = true; // Indicate success
 
+        // IMPORTANT: Update the requestedFileUri to match our modified file path
+        // This ensures any code that still uses the original URI will now use the correct one
+        requestedFileUri = finalFileUri;
 
-      // Convert the YAML file to JSON and write it to the webview.
-      // Read the YAML content from the file.
-      const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
-      log.debug(`YAML content: ${yamlContent}`);
+        // Convert the YAML file to JSON and write it to the webview.
+        const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
+        log.debug(`YAML content: ${yamlContent}`);
 
-      // Transform YAML into Cytoscape elements.
-      const cytoTopology = this.adaptor.clabYamlToCytoscapeElementsEditor(yamlContent);
-      log.debug(`Cytoscape topology: ${JSON.stringify(cytoTopology, null, 2)}`);
+        // Transform YAML into Cytoscape elements.
+        const cytoTopology = this.adaptor.clabYamlToCytoscapeElementsEditor(yamlContent);
+        log.debug(`Cytoscape topology: ${JSON.stringify(cytoTopology, null, 2)}`);
 
-      // Create folder and write JSON files for the webview.
-      // Use the enforced folderName (which is the labName)
-      await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
-      this.setupFileWatcher();
+        // Create folder and write JSON files for the webview.
+        await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
+        this.setupFileWatcher();
 
     } catch (err) {
-      vscode.window.showErrorMessage(`Error creating template: ${err}`);
-      this.createTopoYamlTemplateSuccess = false; // Indicate failure
-      throw err; // Re-throw the error if needed
+        vscode.window.showErrorMessage(`Error creating template: ${err}`);
+        this.createTopoYamlTemplateSuccess = false; // Indicate failure
+        throw err; // Re-throw the error if needed
     }
-  }
+}
   /**
    * Updates the webview panel's HTML with the latest topology data.
    *
@@ -236,21 +234,12 @@ topology:
    * Creates a new webview panel or reveals the current one.
    * @param context The extension context.
    */
-  public createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): void {
-
-    interface CytoViewportPositionPreset {
-      data: {
-        id: string,
-        parent: string,
-        groupLabelPos: string,
-        extraData: any
-      };
-      parent: string;
-      position:
-      {
-        x: number;
-        y: number
-      };
+  public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): Promise<void> {
+    if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
+        // If we have a lastYamlFilePath and it's different from the fileUri,
+        // create a new URI from the lastYamlFilePath
+        fileUri = vscode.Uri.file(this.lastYamlFilePath);
+        log.info(`Using corrected file path: ${fileUri.fsPath}`);
     }
 
     const column = vscode.window.activeTextEditor
@@ -283,6 +272,32 @@ topology:
 
     this.currentPanel = panel;
 
+    try {
+      // Check if the file exists before attempting to read it
+      try {
+        await vscode.workspace.fs.stat(fileUri);
+      } catch (e) {
+        // File doesn't exist, try with the corrected path if available
+        if (this.lastYamlFilePath) {
+          fileUri = vscode.Uri.file(this.lastYamlFilePath);
+          log.info(`Fallback to lastYamlFilePath: ${fileUri.fsPath}`);
+        } else {
+          throw new Error(`File not found: ${fileUri.fsPath}`);
+        }
+      }
+
+      const yaml = fs.readFileSync(fileUri.fsPath, 'utf8');
+      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, undefined);
+      await this.adaptor.createFolderAndWriteJson(
+        this.context,
+        labName,                // folder below <extension>/topoViewerData/
+        cyElements,
+        yaml
+      );
+    } catch (e) {
+      vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
+      return;
+    }
 
     // Generate URIs for CSS, JavaScript, and image assets.
     const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);

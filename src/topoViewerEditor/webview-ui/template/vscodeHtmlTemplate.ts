@@ -3,22 +3,22 @@
 import { log } from '../../../topoViewer/backend/logger';
 
 export function getHTMLTemplate(
-cssUri: string,
-jsUri: string,
-imagesUri: string,
-jsonFileUrlDataCytoMarshall: string,
-jsonFileUrlDataEnvironment: string,
-isVscodeDeployment: boolean,
-jsOutDir: string,
-allowedHostname: string,
-useSocket: boolean,
-socketAssignedPort: number
+  cssUri: string,
+  jsUri: string,
+  imagesUri: string,
+  jsonFileUrlDataCytoMarshall: string,
+  jsonFileUrlDataEnvironment: string,
+  isVscodeDeployment: boolean,
+  jsOutDir: string,
+  allowedHostname: string,
+  useSocket: boolean,
+  socketAssignedPort: number
 ): string {
 
-log.info(`allowedHostname in vscodeHtmlTemplate.ts: ${allowedHostname}`);
+  log.info(`allowedHostname in vscodeHtmlTemplate.ts: ${allowedHostname}`);
 
 
-return `
+  return `
 <!DOCTYPE html>
 <html lang="en" id="root">
 
@@ -49,65 +49,48 @@ return `
 
 <body>
 
-  <nav class="level m-0 px-3 py-1 has-background-4a">
-
-    <div class="is-flex is-justify-content-flex-start">
-      <!-- <div class="pt-1 pr-2">
-        <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
-      </div> -->
-
+  <nav class="navbar is-fixed-top has-background-4a px-3 py-1" role="navigation" aria-label="main navigation">
+    <!-- left side: logo + title -->
+    <div class="navbar-brand">
       <div class="pt-1 pr-2">
         <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-          <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
+          <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image" />
         </a>
       </div>
-
-      <div class="p-0 is-flex is-justify-content-space-evenly is-flex-direction-column">
-        <p class="title    m-0 px-1 py-0   is-4 is-unselectable has-text-weight-normal has-text-white"> containerlab</p>
-        <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white"
-          id="ClabSubtitle">Editor ::: Topology name: Königsberger Brücken</p>
+      <div class="p-0 is-flex is-flex-direction-column">
+        <p class="title is-4 m-0 is-unselectable has-text-weight-normal has-text-white">
+          containerlab
+        </p>
+        <p class="subtitle is-6 m-0 has-text-weight-light has-text-white" id="ClabSubtitle">
+          Editor ::: Topology name: Königsberger Brücken
+        </p>
       </div>
     </div>
 
-    <div class="level-right">
-
-      <!--   aarafat-tag: vs-code
-
-              <div class="level-item">
-                <div class="dropdown is-hoverable is-right">
-                <div class="dropdown-trigger">
-                  <button class="button is-small">
-                  <i class="icon fas fa-bars" aria-hidden="true"></i>
-                  </button>
-                </div>
-                <div class="dropdown-menu" id="dropdown-menu" role="menu">
-                  <div class="dropdown-content">
-                    <a id="about" href="#" onclick="showPanelAbout(event);" class="dropdown-item label has-text-weight-normal is-small py-0">About TopoViewer</a>                      
-
-                    <hr class="dropdown-divider py-0">
-                    <a id="getAllEndpointDetail" href="#" onclick="getActualNodesEndpoints(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Retrieve Actual Endpoint Label</a>     
-                    <a id="logMessagesDropdownItem" href="#" onclick="showPanelLogMessages(event);" class="dropdown-item label has-text-weight-normal is-small py-0">Action - Log Messages</a>       
-                    <hr class="dropdown-divider py-0">
-                    <a id="clabClientDropdownItem" href="#" onclick="showPanelTopoViewerClient();"        class="dropdown-item label has-text-weight-normal is-small py-0">TopoViewer Helper App</a>                  
-                    
-
-                  </div>
-                </div>
-              </div>
-              -->
-
-      <!--   aarafat-tag: vs-code
-              <div id="nokia-logo">
-                <img
-                  id="nokia-logo-img"
-                  src="${imagesUri}/containerlab.svg"
-                  alt="Containerlab Logo"
-                  class="logo-image"
-                >
-              </div>
-              -->
-
+    <!-- right side: burger dropdown always on the right edge -->
+    <div class="navbar-end">
+      <div class="dropdown is-hoverable is-right">
+        <div class="dropdown-trigger">
+          <button class="button is-medium navbar-element-4a button-no-outline">
+              <span class="icon">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+              </span>
+          </button>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu" role="menu">
+          <div class="dropdown-content">
+            <button id="about" title="" onclick="window.topoViewerEditorEngine.viewportPanels.panelAbout();" class="dropdown-item is-small">
+              About
+            </button>
+            <!-- 
+            <hr class="dropdown-divider py-0" />
+            …other items… 
+            -->
+          </div>
+        </div>
+      </div>
     </div>
+
   </nav>
 
   <div id="root-div">
@@ -127,11 +110,12 @@ return `
         </span>
       </button>
     </div>
-    
+
     <div id="viewport-buttons" class="box p-2 is-flex" style="display: block; height: auto;">
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
         <p class="control p-0">
-          <button id="viewport-zoom-to-fit" title="Fit to Viewport" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-zoom-to-fit" title="Fit to Viewport"
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-expand"></i>
@@ -140,7 +124,8 @@ return `
         </p>
 
         <p class="control p-0">
-          <button id="viewport-add-clab-node" title="Add Containerlab Node" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
+          <button id="viewport-add-clab-node" title="Add Containerlab Node"
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-plus"></i>
@@ -169,13 +154,14 @@ return `
        
         -->
         <p class="control p-0">
-          <button id="viewport-label-endpoint" title="Toggle Endpoint Label" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-label-endpoint" title="Toggle Endpoint Label"
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-tag"></i>
             </span>
           </button>
-        </p> 
+        </p>
 
         <!-- aarafat-tag: vs-code  
 
@@ -231,7 +217,8 @@ return `
         </p> -->
 
         <p class="control p-0">
-          <button id="viewport-reload-topo" title="Reload TopoViewer" onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
+          <button id="viewport-reload-topo" title="Reload TopoViewer"
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-rotate-right"></i>
@@ -258,7 +245,6 @@ return `
           </button>
         </p> -->
 
-
         <!-- <p class="control p-0">
           <button id="viewport-save-topo" title="Toggle Link Operational State" onclick="viewportButtonsLinkOperState(cy)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
@@ -277,10 +263,8 @@ return `
           </button>
         </p> -->
 
-
         <hr id="viewport-geo-map-divider" class="my-1 viewport-geo-map is-hidden"
           style="border-top: 1px solid #dbdbdb;">
-
 
         <p class="control p-0">
           <button id="viewport-geo-map-pan" href="#" onclick="viewportButtonsGeoMapPan(event)"
@@ -290,7 +274,6 @@ return `
             </span>
           </button>
         </p>
-
 
         <p class="control p-0">
           <button id="viewport-geo-map-edit" href="#" onclick="viewportButtonsGeoMapEdit(event)"
@@ -501,11 +484,8 @@ return `
                     <strong>Hint:</strong><br>
 
                     <!-- aarafat-gat: vs-code
-
                             Check the enable checkbox to activate Geo Positioning layout algorithm.
-
                             -->
-
                   </p>
                   <p>
                     Click the <i class="fa-solid fa-hand"></i> <strong>Pan</strong> icon to navigate the map,
@@ -513,16 +493,14 @@ return `
                     with nodes and edges. Both icons are located in the viewport buttons.
                   </p>
 
-                  <!-- aarafat-gat: vs-code
-
+                  <!-- aarafat-tag: vs-code
                           <p>
                             Note that Pan and Edit modes are mutually exclusive, and Edit mode is active by default. 
                           </p>	
                           <p>
                             To switch to a different layout, first turn off the Geo Positioning layout by uncheck the enable checkbox.  
                           </p>	
-                          -->
-
+                  -->
                 </div>
               </div>
             </div>
@@ -531,7 +509,6 @@ return `
       </div>
 
     </div>
-
 
 
     <div id="viewport-drawer-topology-overview" class="panel p-1 is-1 viewport-drawer" style="display: none; ">
@@ -1032,6 +1009,8 @@ return `
       </div> <!-- End .panel-tabContainer -->
     </section>
 
+
+    <!-- node Properties Editor Panel with Improved Semantic Markup & Responsive Design -->
     <section class="panel is-link" id="panel-node-editor" aria-labelledby="node-editor-heading" style="display: none;">
       <header class="panel-heading is-size-7" id="node-editor-heading">
         Node Properties Editor
@@ -1219,125 +1198,102 @@ return `
       </form>
     </section>
 
-
-    <!-- 
-    <div class="panel is-link" id="panel-node-editor" style="display: none;">
-      <p class="panel-heading is-size-7">Node Properties Editor</p>
-      <div class="panel-tabContainer">
+    <!-- link Properties Editor Panel with Improved Semantic Markup & Responsive Design -->
+    <section class="panel is-link" id="panel-link-editor" aria-labelledby="link-editor-heading" style="display: none;">
+      <header class="panel-heading is-size-7" id="link-editor-heading">
+        Link Properties Editor
+      </header>
+      <form class="panel-tabContainer" novalidate>
         <div class="panel-block p-0">
           <div class="column px-0">
+            <!-- Id (read-only) -->
             <div class="column my-auto is-11">
               <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"><label
-                      class="label is-size-7 has-text-right has-text-weight-medium px-auto">Node Name</label></div>
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-link-editor-id" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Id
+                    </label>
+                  </div>
                   <div class="column is-8 p-1 pl-3">
-                    <input
-                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content"
-                      id="panel-node-editor-name"></input>
+                    <output id="panel-link-editor-id"
+                      class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal"></output>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
         <div class="panel-block p-0">
           <div class="column px-0">
+
+            <!-- source Endpoint Label -->
             <div class="column my-auto is-11">
               <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1">
-                    <label class="label is-size-7 has-text-right has-text-weight-medium px-auto">Kind</label>
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-link-editor-source-endpoint"
+                      class="label is-size-7 has-text-right has-text-weight-medium">
+                      Source Endpoint
+                    </label>
                   </div>
                   <div class="column is-8 p-1 pl-3">
-                    <div class="dropdown" id="panel-node-kind-dropdown">
-                      <div class="dropdown-trigger">
-                        <button class="button is-size-7" aria-haspopup="true" aria-controls="dropdown-menu">
-                          <span>Select Kind</span>
-                          <span class="icon is-small">
-                            <i class="fas fa-angle-down" aria-hidden="true"></i>
-                          </span>
-                        </button>
-                      </div>
-                      <div class="dropdown-menu" id="dropdown-menu" role="menu">
-                        <div class="dropdown-content" id="panel-node-kind-dropdown-content">
-                        </div>
-                      </div>
-                    </div>
+                    <input type="text" id="panel-link-editor-source-endpoint"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
                   </div>
                 </div>
               </div>
             </div>
+
+            <!-- target Endpoint Label -->
             <div class="column my-auto is-11">
               <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1">
-                    <label class="label is-size-7 has-text-right has-text-weight-medium px-auto">TopoViewer Role</label>
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-link-editor-target-endpoint"
+                      class="label is-size-7 has-text-right has-text-weight-medium">
+                      Target Endpoint
+                    </label>
                   </div>
                   <div class="column is-8 p-1 pl-3">
-                    <div class="dropdown" id="panel-node-topoviewerrole-dropdown">
-                      <div class="dropdown-trigger">
-                        <button class="button is-size-7" aria-haspopup="true" aria-controls="dropdown-menu">
-                          <span>Select TopoViewerRole</span>
-                          <span class="icon is-small">
-                            <i class="fas fa-angle-down" aria-hidden="true"></i>
-                          </span>
-                        </button>
-                      </div>
-                      <div class="dropdown-menu" id="dropdown-menu-topoviewerrole" role="menu">
-                        <div class="dropdown-content" id="panel-node-topoviewerrole-dropdown-content">
-                        </div>
-                      </div>
-                    </div>
+                    <input type="text" id="panel-link-editor-target-endpoint"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
                   </div>
                 </div>
               </div>
             </div>
+
+          </div>
+        </div>
+
+        <div class="panel-block p-0">
+          <div class="column px-0">
+
+            <!-- File Input and Action Buttons -->
             <div class="column my-auto is-11">
               <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"><label
-                      class="label is-size-7 has-text-right has-text-weight-medium px-auto">Id</label></div>
-                  <div class="column is-8 p-1 pl-3"><label
-                      class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content"
-                      id="panel-node-editor-id"></label></div>
-                </div>
-              </div>
-            </div>
-            <div class="column my-auto is-11">
-              <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"><label
-                      class="label is-size-7 has-text-right has-text-weight-medium px-auto">Image</label></div>
-                  <div class="column is-8 p-1 pl-3"><input
-                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content"
-                      id="panel-node-editor-image"></input></div>
-                </div>
-              </div>
-            </div>
-            <div class="column my-auto is-11">
-              <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"><label
-                      class="label is-size-7 has-text-right has-text-weight-medium px-auto">Group</label></div>
-                  <div class="column is-8 p-1 pl-3"><input
-                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content"
-                      id="panel-node-editor-group"></input></div>
-                </div>
-              </div>
-            </div>
-            <div class="column my-auto is-11">
-              <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"></div>
+                <div class="columns is-mobile is-multiline py-auto">
+                  <!-- Empty label for alignment -->
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
+                  </div>
                   <div class="column is-8 p-1 pl-3">
-                    <div class="field">
+                    <div class="field is-grouped">
                       <div class="control">
-                        <input type="file" id="panel-clab-editor-file-input" class="file-input">
-                        <button class="button is-link is-outlined is-small"
-                          onclick="saveNodeToEditorToFile()">Save</button>
-                        <button class="button is-link is-outlined is-small"
-                          id="panel-node-editor-close-button">Close</button>
+                        <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
+                      </div>
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small"
+                          id="panel-link-editor-save-button">
+                          Save
+                        </button>
+                      </div>
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small"
+                          id="panel-link-editor-close-button">
+                          Close
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1346,30 +1302,99 @@ return `
             </div>
           </div>
         </div>
+      </form>
+    </section>
+
+    <!-- About Panel with Improved Semantic Markup & Responsive Design -->
+    <aside id="panel-topoviewer-about" class="panel panel-overlay is-link" role="complementary" aria-labelledby="about-heading" style="display: none;">
+      <header class="panel-heading is-size-7" id="about-heading">
+        About TopoViewer
+      </header>
+
+      <div class="panel-block py-2">
+        <article class="content is-small px-2" style="max-height: 280px; overflow-y: auto;">
+          <section class="mb-4">
+            <p>
+              TopoViewer is a powerful, interactive network-topology visualization framework that makes it easy to explore
+              your infrastructure.
+              In this vscode-Containerlab extension, it is customized to provide an intuitive view of your Containerlab
+              topologies.
+            </p>
+
+            <p><strong>Author</strong></p>
+            <p>
+              Designed and developed by
+              <strong><a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener">Asad
+                  Arafat</a></strong>
+            </p>
+
+            <p><strong>Key Features</p>
+            <ul>
+              <li>Effortlessly visualize your Containerlab topologies with an intuitive interface.</li>
+              <li>Click on nodes and links to explore detailed attributes on demand.</li>
+              <li>Full GUI to create and edit Containerlab topology files.</li>
+            </ul>
+
+            <p><strong>Getting Started</strong></p>
+            <ul>
+              <li>Click on nodes and links to explore your network.</li>
+              <li>Use the layout feature to fine-tune your topology view.</li>
+              <li>Right click on nodes and links to perform action in editor mode.</li>
+            </ul>
+
+            <p><strong>Viewer Shortcuts</strong></p>
+            <ul>
+              <li><strong>Ctrl + Click:</strong> Connect to node via SSH</li>
+              <li><strong>Shift + Click:</strong> Create/reassign group</li>
+              <li><strong>Alt + Click:</strong> Release node/remove empty group</li>
+              <li><strong>Drag + Drop:</strong> Assign node to group</li>
+            </ul>
+
+            <p><strong>Editor Shortcuts</strong></p>
+            <ul>
+              <li><strong>Shift + Click (canvas):</strong> Add node at pointer</li>
+              <li><strong>Shift + Click (node):</strong> Begin link creation</li>
+              <li><strong>Alt + Click (node):</strong> Delete node</li>
+              <li><strong>Alt + Click (link):</strong> Delete link</li>
+            </ul>
+
+            <p><strong>Repositories</strong></p>
+            <ul>
+              <li>
+                <strong>VSCode Containerlab extension:</strong>
+                <a href="https://github.com/srl-labs/vscode-containerlab/" target="_blank" rel="noopener">
+                  github.com/srl-labs/vscode-containerlab
+                </a>
+              </li>
+              <li>
+                <strong>Original TopoViewer repo:</strong>
+                <a href="https://github.com/asadarafat/topoViewer" target="_blank" rel="noopener">
+                  github.com/asadarafat/topoViewer
+                </a>
+              </li>
+            </ul>
+
+            <p><strong>Special Thanks</strong></p>
+            <ul>
+              <li><strong><a href="https://www.linkedin.com/in/rdodin/" target="_blank" rel="noopener">Roman
+                    Dodin</a></strong> – Early-stage guidance</li>
+              <li><strong><a href="https://www.linkedin.com/in/siva19susi/" target="_blank" rel="noopener">Siva
+                    Sivakumar</a></strong> – Bulma CSS integration</li>
+              <li><strong><a href="https://www.linkedin.com/in/gatot-susilo-b073166/" target="_blank" rel="noopener">Gatot
+                    Susilo</a></strong> – Komodo2 integration</li>
+              <li><strong><a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/" target="_blank"
+                    rel="noopener">Gusman Dharma Putra</a></strong> – Komodo2 contributions</li>
+              <li><strong><a href="https://www.linkedin.com/in/sven-wisotzky-44788333/" target="_blank" rel="noopener">Sven
+                    Wisotzky</a></strong> – Full-stack optimizations</li>
+              <li><strong><a href="https://linkedin.com/in/florian-schwarz-812a34145" target="_blank" rel="noopener">Florian
+                    Schwarz</a></strong> – VSCode plugin integration</li>
+              <li><strong><a href="https://linkedin.com/in/kaelem-chandra" target="_blank" rel="noopener">Kaelem
+                    Chandra</a></strong> – Plugin maintenance & support</li>
+            </ul>
+          </section>
+        </article>
       </div>
-    </div>
-     -->
-
-    <!-- 
-    <div class="panel-tabContainer">
-      <div class="panel-block p-0">
-        <div class="column px-0">
-          <div class="column my-auto is-11">
-            <div class="panel-content">
-              <div class="columns is-mobile is-multiline py-auto">
-                <div class="column is-full-mobile is-half-tablet is-4 p-1"><label
-                    class="label is-size-7 has-text-right has-text-weight-medium px-auto">Node Name</label></div>
-                <div class="column is-8 p-1 pl-3">
-                  <label
-                    class="label is-size-7 has-text-left link-impairment-widht has-text-weight-normal mr-0 is-max-content"
-                    id="panel-node-name">node-name-placeholder</label>
-                </div>
-              </div>
-            </div>
-          </div> 
-        
-        -->
-
+    </aside>
 
     <!-- Link Properties Panel with Improved Semantic Markup & Responsive Design -->
     <!-- Link Properties Panel with Improved Semantic Markup & Responsive Design -->
@@ -1391,7 +1416,6 @@ return `
                 </div>
               </div>
             </div>
-
 
             <div class="column my-auto is-11">
               <div class="panel-content">
@@ -1689,11 +1713,8 @@ return `
           </div>
         </panel-block-impairment-b-a>  -->
 
-
       </div>
     </section>
-
-
 
     <div class="panel panel-overlay is-link" id="panel-backup-restore" style="display: none;">
       <p class="panel-heading is-size-7" id="diff-panel-title">Diff</p>
@@ -1790,7 +1811,7 @@ return `
         </div>
       </div>
     </div>
-    <div class="panel panel-overlay is-link" id="panel-topoviewer-about" style="display: none;">
+    <div class="panel panel-overlay is-link" id="panel-topoviewer-about-old" style="display: none;">
       <p class="panel-heading is-size-7">TopoViewer About</p>
       <div id="tabContainer-" class="panel-tabContainer">
         <div id="panelBlock-tabContainer-" class="panel-block py-2">
@@ -1803,7 +1824,6 @@ return `
         </div>
       </div>
     </div>
-
 
     <div class="modal" id="wiresharkModal">
       <div class="modal-background"></div>
@@ -1849,9 +1869,6 @@ return `
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <!-- 3) Quill (v2 beta) -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script> -->
-
-
-
 
     <!-- <script src="${jsUri}/library/lodash.min.js?ver=1"></script> -->
 
@@ -1910,7 +1927,6 @@ return `
 
     <script src="${jsOutDir}/topoViewerEditorEngine.js?ver=1"></script>
 
-
     <!-- 
     <script src="${jsUri}/common.js?ver=1"></script>
     <script src="${jsUri}/dev.js?ver=1"></script> -->
@@ -1919,20 +1935,16 @@ return `
     <!-- <script src="${jsUri}/managerOnChangeFramework.js?ver=1"></script>
     <script src="${jsUri}/managerSocketDataEnrichment.js?ver=1"></script> -->
 
-
     <!-- <script src="${jsUri}/managerVscodeWebview.js?ver=1"></script>
     <script src="${jsUri}/managerSvg.js?ver=1"></script>
     <script src="${jsUri}/managerLayoutAlgo.js?ver=1"></script>
     <script src="${jsUri}/managerGroupManagement.js?ver=1"></script> -->
 
-
     <!-- 
     <script src="${jsUri}/backupRestore.js?ver=1"></script>
     <script src="${jsUri}/managerClabEditor.js?ver=1"></script> -->
 
-
   </div>
-
 </body>
 
 </html>
