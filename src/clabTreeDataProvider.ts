@@ -549,7 +549,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
 
-    // Updated to use --details flag
     const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --details --format json 2>/dev/null`;
 
     let clabStdout;
@@ -620,18 +619,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       // Extract lab name from the container
       let labName = "unknown";
 
-      // // Try to get lab name from Labels
-      // if (container.Labels && container.Labels['clab-owner']) {
-      //   labName = container.Labels['clab-owner'];
-      // } else if (container.Names && container.Names.length > 0) {
-      //   // Fallback: try to extract from container name (format: clab-LABNAME-NODENAME)
-      //   const match = container.Names[0].match(/^clab-([^-]+)-/);
-      //   if (match && match[1]) {
-      //     labName = match[1];
-      //   }
-      // }
-
-      // aarafat-tag: get the lab name from the containerlab item
+      // get the lab name from the containerlab item
       labName = container.Labels['containerlab']
 
       // Initialize array for this lab if it doesn't exist
@@ -758,13 +746,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         (Date.now() - cached.timestamp < CACHE_TTL);
 
       if (isValid) {
-        // console.log(`[cache] HIT interfaces for ${cName} (${containerState})`);
         return cached.interfaces;
-      } else {
-        // console.log(`[cache] STALE interfaces for ${cName} (Cached: ${cached.state}, Current: ${containerState}, Age: ${Date.now() - cached.timestamp}ms)`);
       }
-    } else {
-      // console.log(`[cache] MISS interfaces for ${cName} (${containerState})`);
     }
 
 
@@ -857,8 +840,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         timestamp: Date.now(),
         interfaces
       });
-
-      // console.log(`[cache] STORED interfaces for ${cName} (${containerState})`);
 
     } catch (err: any) {
       // Log specific errors
