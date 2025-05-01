@@ -157,7 +157,7 @@ function socketDataEncrichmentNode(labData) {
     const nodeDataEncrichmentMap = {};
 
     for (const labPath in labData) {
-        // console.log("socketDataEncrichmentNode - labData: ", labData);
+        console.log("socketDataEncrichmentNode - labData: ", labData);
         try {
             const lab = labData[labPath];
             console.log("socketDataEncrichmentNode - labName: ", lab.name);
@@ -182,9 +182,11 @@ function socketDataEncrichmentNode(labData) {
                     const state = container.state;
                     const image = container.image;
                     const longname = container.name;
+                    const mgmtIpv4Address = container.v4Address;
+                    const mgmtIpv6Address = container.v6Address;
 
                     const key = longname;  // Use longname as unique identifier
-                    const nodeDataUpdate = { state, image, longname };
+                    const nodeDataUpdate = { state, image, longname, mgmtIpv4Address, mgmtIpv6Address };
 
                     nodeDataEncrichmentMap[key] = nodeDataUpdate;
                 });
@@ -227,7 +229,9 @@ function socketDataEncrichmentNode(labData) {
                 if (node && node.data("extraData")) {
                     const updatedExtraData = {
                         ...node.data("extraData"),
-                        longname: updatedLongname
+                        longname: updatedLongname,
+                        mgmtIpv4Address: nodeData.mgmtIpv4Address,
+                        mgmtIpv6Address: nodeData.mgmtIpv6Address,
                     };
                     node.data("extraData", updatedExtraData);
 

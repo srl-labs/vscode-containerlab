@@ -136,13 +136,16 @@ function onChangeRuleInterfaceOperState(labData) {
                 if (typeof container.label !== "string") return;
                 // Remove lab-specific prefix; adjust the regex as needed.
                 //   const nodeName = container.label.replace(/^clab-.*?-/, '');
-                const nodeClabName = container.label
+                
+                // const nodeClabName = container.label
 
-                const getRouterName = (fullString, keyword) =>
-                    fullString.split(keyword)[1].replace(/^-/, '');
+                // const getRouterName = (fullString, keyword) =>
+                //     fullString.split(keyword)[1].replace(/^-/, '');
 
-                nodeName = getRouterName(nodeClabName, lab.name); // Outputs: router1
+                // nodeName = getRouterName(nodeClabName, lab.name); // Outputs: router1
 
+                nodeClabNameShort = container.name_short
+                nodeName = nodeClabNameShort
 
                 console.log("nodeName: ", nodeName);
 

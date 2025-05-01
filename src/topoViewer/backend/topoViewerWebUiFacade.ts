@@ -900,6 +900,9 @@ export class TopoViewer {
     setInterval(async () => {
       try {
         const labData = await this.clabTreeProviderImported.discoverInspectLabs();
+
+        // log.info(`labData: ${JSON.stringify(labData, null, 2)}`);
+
         if (labData && this.currentTopoViewerPanel) {
           // Send the lab data to the webview.
           this.currentTopoViewerPanel.webview.postMessage({

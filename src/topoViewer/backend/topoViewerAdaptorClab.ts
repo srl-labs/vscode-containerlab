@@ -297,7 +297,7 @@ export class TopoViewerAdaptorClab {
               kind: nodeObj.kind ?? '',
               labdir: `clab-${clabName}/`, // Placeholder
               labels: nodeObj.labels ?? {},
-              longname: `clab-${clabName}-${nodeName}`,
+              longname: `clab-${clabName}-${nodeName}`,  // Placeholder
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
@@ -538,7 +538,7 @@ export class TopoViewerAdaptorClab {
               kind: nodeObj.kind ?? '',
               labdir: `clab-${clabName}/`, // Placeholder
               labels: nodeObj.labels ?? {},
-              longname: `clab-${clabName}-${nodeName}`,
+              longname: `clab-${clabName}-${nodeName}`,  // Placeholder
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
