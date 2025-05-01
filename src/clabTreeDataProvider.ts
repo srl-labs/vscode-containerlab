@@ -57,6 +57,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     label: string,
     collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly name: string,
+    public readonly name_short: string,  // Added short name from clab-node-name
     public readonly cID: string,
     public readonly state: string,
     public readonly kind: string,
@@ -65,6 +66,8 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     public readonly labPath: LabPath,
     public readonly v4Address?: string,
     public readonly v6Address?: string,
+    public readonly nodeType?: string,   // Added node type from clab-node-type
+    public readonly nodeGroup?: string,  // Added node group from clab-node-group
     contextValue?: string,
   ) {
     super(label, collapsibleState);
@@ -91,8 +94,45 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
 }
 
 /**
- * Interface which stores fields we expect from
- * clab inspect data (in JSON format).
+ * Interface for detailed container info from `containerlab inspect --all --details`
+ */
+interface ClabDetailedJSON {
+  Names: string[];
+  ID: string;
+  ShortID: string;
+  Image: string;
+  State: string;
+  Status: string;
+  Labels: {
+    'clab-node-kind': string;
+    'clab-node-lab-dir': string;
+    'clab-node-longname': string;
+    'clab-node-name': string;
+    'clab-owner': string;
+    'clab-topo-file': string;
+    [key: string]: string | undefined;
+    'clab-node-type'?: string;
+    'clab-node-group'?: string;
+  };
+  NetworkSettings: {
+    IPv4addr?: string;
+    IPv4pLen?: number;
+    IPv4Gw?: string;
+    IPv6addr?: string;
+    IPv6pLen?: number;
+    IPv6Gw?: string;
+  };
+  Mounts: Array<{
+    Source: string;
+    Destination: string;
+  }>;
+  Ports: Array<any>;
+  Pid?: number;
+}
+
+/**
+ * Interface which stores fields from simple clab inspect format
+ * (used for backward compatibility and as a standard format)
  */
 interface ClabJSON {
   container_id: string;
@@ -104,9 +144,12 @@ interface ClabJSON {
   labPath: string;      // Path as provided by containerlab (might be relative)
   absLabPath?: string;  // Absolute path (present in newer versions >= 0.68.0)
   name: string;
+  name_short?: string;  // Short name without lab prefix
   owner: string;
   state: string;
-  status?: string; // Also add the optional status field from the new format
+  status?: string;      // Also add the optional status field
+  node_type?: string;   // Node type (e.g. ixrd3, srlinux, etc.)
+  node_group?: string;  // Node group
 }
 
 /**
@@ -330,6 +373,58 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     return labs;
   }
 
+  /**
+   * Convert detailed container data to the simpler format used by the existing code.
+   * This maintains backward compatibility while adding new fields.
+   */
+  private convertDetailedToSimpleFormat(detailedData: Record<string, ClabDetailedJSON[]>): Record<string, ClabJSON[]> {
+    const result: Record<string, ClabJSON[]> = {};
+
+    // Process each lab
+    for (const labName in detailedData) {
+      if (!Array.isArray(detailedData[labName])) continue;
+
+      result[labName] = detailedData[labName].map(container => {
+        // Construct IPv4 and IPv6 addresses with prefix length
+        let ipv4Address = "N/A";
+        if (container.NetworkSettings.IPv4addr && container.NetworkSettings.IPv4pLen !== undefined) {
+          ipv4Address = `${container.NetworkSettings.IPv4addr}/${container.NetworkSettings.IPv4pLen}`;
+        }
+
+        let ipv6Address = "N/A";
+        if (container.NetworkSettings.IPv6addr && container.NetworkSettings.IPv6pLen !== undefined) {
+          ipv6Address = `${container.NetworkSettings.IPv6addr}/${container.NetworkSettings.IPv6pLen}`;
+        }
+
+        // Extract name from Names array or Labels
+        const name = container.Names[0] || container.Labels['clab-node-longname'];
+        // Always get absolute lab path
+        const absLabPath = container.Labels['clab-topo-file'];
+
+        // Convert to the simpler format
+        return {
+          container_id: container.ShortID,
+          image: container.Image,
+          ipv4_address: ipv4Address,
+          ipv6_address: ipv6Address,
+          kind: container.Labels['clab-node-kind'],
+          lab_name: labName,
+          labPath: absLabPath,
+          absLabPath: absLabPath,
+          name: name,
+          name_short: container.Labels['clab-node-name'],
+          owner: container.Labels['clab-owner'],
+          state: container.State,
+          status: container.Status,
+          node_type: container.Labels['clab-node-type'] || undefined,
+          node_group: container.Labels['clab-node-group'] || undefined
+        };
+      });
+    }
+
+    return result;
+  }
+
   public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering labs via inspect...");
     const CACHE_TTL = 30000; // 30 seconds TTL for inspect labs
@@ -340,21 +435,23 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
     const inspectData = await this.getInspectData(); // Fetches and parses JSON
 
+    // If we get detailed data format, convert it to the simplified format
+    // that the rest of the code expects
+    let processedData = inspectData;
+
     // --- Normalize inspectData into a flat list of containers ---
     let allContainers: ClabJSON[] = [];
-    if (inspectData && Array.isArray(inspectData.containers)) {
+    if (processedData && Array.isArray(processedData.containers)) {
       // Old format: Top-level "containers" array
       console.log("[discovery]:\tDetected old inspect format (flat container list).");
-      allContainers = inspectData.containers;
-    } else if (inspectData && typeof inspectData === 'object' && !Array.isArray(inspectData) && Object.keys(inspectData).length > 0) {
+      allContainers = processedData.containers;
+    } else if (processedData && typeof processedData === 'object' && !Array.isArray(processedData) && Object.keys(processedData).length > 0) {
       // New format: Object with lab names as keys
       console.log("[discovery]:\tDetected new inspect format (grouped by lab).");
-      for (const labName in inspectData) {
-        if (Array.isArray(inspectData[labName])) {
+      for (const labName in processedData) {
+        if (Array.isArray(processedData[labName])) {
           // Add containers from this lab to the flat list
-          // Ensure each container object has the necessary fields (like labPath, absLabPath if needed)
-          // The sample output shows labPath and absLabPath are present in the new format too.
-          allContainers.push(...inspectData[labName]);
+          allContainers.push(...processedData[labName]);
         }
       }
     } else {
@@ -445,7 +542,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
 
-    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --format json 2>/dev/null`;
+    // Updated to use --details flag
+    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --details --format json 2>/dev/null`;
 
     let clabStdout;
     try {
@@ -459,8 +557,30 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       return undefined;
     }
 
-    const inspectObject = JSON.parse(clabStdout);
-    return inspectObject;
+    const detailedInspectObject = JSON.parse(clabStdout);
+
+    // Determine if we have the detailed format by looking at the object structure
+    let hasDetailedFormat = false;
+    if (detailedInspectObject && typeof detailedInspectObject === 'object') {
+      // Check if any lab has a container with Labels property
+      for (const labName in detailedInspectObject) {
+        if (Array.isArray(detailedInspectObject[labName]) &&
+            detailedInspectObject[labName].length > 0 &&
+            detailedInspectObject[labName][0].Labels) {
+          hasDetailedFormat = true;
+          break;
+        }
+      }
+    }
+
+    // If we have detailed format, convert it to the standard format
+    if (hasDetailedFormat) {
+      console.log("[discovery]: Converting detailed format to standard format");
+      return this.convertDetailedToSimpleFormat(detailedInspectObject);
+    }
+
+    // Otherwise return as-is (standard format or empty)
+    return detailedInspectObject;
   }
 
   /**
@@ -472,6 +592,10 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     let containerNodes: ClabContainerTreeNode[] = [];
 
     containersForThisLab.forEach((container: ClabJSON) => {
+      // Use name_short if available, otherwise extract from name
+      const name_short = container.name_short ||
+                        container.name.replace(/^clab-[^-]+-/, '');
+
       let tooltipParts = [
         `Container: ${container.name}`,
         `ID: ${container.container_id}`,
@@ -479,6 +603,16 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         `Kind: ${container.kind}`,
         `Image: ${container.image}`
       ];
+
+      // Add node type if available
+      if (container.node_type) {
+        tooltipParts.push(`Type: ${container.node_type}`);
+      }
+
+      // Add node group if available and not empty
+      if (container.node_group && container.node_group.trim() !== '') {
+        tooltipParts.push(`Group: ${container.node_group}`);
+      }
 
       // Add IPs to tooltip if valid
       const v4Addr = container.ipv4_address?.split('/')[0];
@@ -507,11 +641,12 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None;
 
-      // Create the container node
+      // Create the container node with optional fields
       const node = new ClabContainerTreeNode(
         container.name, // Use container name as label
         collapsible,
         container.name,
+        name_short,
         container.container_id,
         container.state,
         container.kind,
@@ -520,11 +655,20 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         { absolute: absLabPath, relative: utils.getRelLabFolderPath(container.labPath) }, // Lab path info
         container.ipv4_address, // Full address with mask
         container.ipv6_address, // Full address with mask
+        container.node_type, // Node type (if available)
+        container.node_group, // Node group (if available)
         "containerlabContainer" // Context value
       );
 
       // Set description (e.g., "Running", "Stopped") and tooltip
-      node.description = utils.titleCase(container.state);
+      const description = [utils.titleCase(container.state)];
+
+      // Add node type to description if available
+      if (container.node_type) {
+        description.push(`(${container.node_type})`);
+      }
+
+      node.description = description.join(" ");
       node.tooltip = tooltipParts.join("\n");
 
       // Set icon path
