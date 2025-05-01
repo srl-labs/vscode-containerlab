@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.12.1] - 2025-04-30
+## [0.12.1] - 2025-05-01
 * TopoEditor: Now supports link editing
 * TopoViewer: Can now be used with undeployed labs
 
@@ -8,10 +8,10 @@
 * TopoViewer Editor - A full GUI for authoring ContainerLab topology files webview:
   * Viewport “+” button for adding nodes.
   * Shift+Click on the canvas to place a new node at the click position.
-    * Node context-menu (right-click) on each node: 
+    * Node context-menu (right-click) on each node:
     * Edit Node — open its properties panel.
     * Delete Node — remove the node.
-    * Add Link — begin link creation      
+    * Add Link — begin link creation
   * Shortcuts
 
     | Shortcut                   | Action                   |
@@ -78,12 +78,12 @@
     * Implemented MAC address detection and subinterface discovery system
     * Enhanced link operational state detection and WebSocket-based property updates
     * Improved UI responsiveness with streamlined node/link panels and action handling
-* fixes 
+* fixes
 
 ## [0.7.0] - 2025-02-09
 * Save command for labs and nodes
 * Packetcapture with Edgeshark supports now multi-interface selection (ctrl/cmd + click)
-* Packtflix port is now configurable 
+* Packtflix port is now configurable
 * Fixes
 
 ## [0.6.2] - 2025-02-04
