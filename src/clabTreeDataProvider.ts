@@ -433,25 +433,32 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       return this.labsCache.inspect.data;
     }
 
-    const inspectData = await this.getInspectData(); // Fetches and parses JSON
+    const inspectData = await this.getInspectData(); // This now properly handles both formats
 
-    // If we get detailed data format, convert it to the simplified format
-    // that the rest of the code expects
-    let processedData = inspectData;
+    if (!inspectData) {
+      this.updateBadge(0);
+      this.labsCache.inspect = { data: undefined, timestamp: Date.now() }; // Cache empty result
+      return undefined;
+    }
 
     // --- Normalize inspectData into a flat list of containers ---
     let allContainers: ClabJSON[] = [];
-    if (processedData && Array.isArray(processedData.containers)) {
-      // Old format: Top-level "containers" array
+
+    if (Array.isArray(inspectData)) {
+      // Old format: Flat array of containers
       console.log("[discovery]:\tDetected old inspect format (flat container list).");
-      allContainers = processedData.containers;
-    } else if (processedData && typeof processedData === 'object' && !Array.isArray(processedData) && Object.keys(processedData).length > 0) {
+      allContainers = inspectData;
+    } else if (inspectData.containers && Array.isArray(inspectData.containers)) {
+      // Old format: Top-level "containers" array
+      console.log("[discovery]:\tDetected old inspect format (flat container list with 'containers' key).");
+      allContainers = inspectData.containers;
+    } else if (typeof inspectData === 'object' && Object.keys(inspectData).length > 0) {
       // New format: Object with lab names as keys
       console.log("[discovery]:\tDetected new inspect format (grouped by lab).");
-      for (const labName in processedData) {
-        if (Array.isArray(processedData[labName])) {
+      for (const labName in inspectData) {
+        if (Array.isArray(inspectData[labName])) {
           // Add containers from this lab to the flat list
-          allContainers.push(...processedData[labName]);
+          allContainers.push(...inspectData[labName]);
         }
       }
     } else {
@@ -513,7 +520,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
            icon = CtrStateIcons.STOPPED; // Default if no containers somehow (shouldn't happen here)
         }
 
-
         const labNode = new ClabLabTreeNode(
           label,
           vscode.TreeItemCollapsibleState.Collapsed, // Always collapsed initially for deployed labs
@@ -557,16 +563,28 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       return undefined;
     }
 
-    const detailedInspectObject = JSON.parse(clabStdout);
+    const parsedData = JSON.parse(clabStdout);
 
-    // Determine if we have the detailed format by looking at the object structure
+    // Determine the format of the returned data
+    // Check if it's an array (old flat format) or an object with lab keys (new grouped format)
+    const isOldFlatFormat = Array.isArray(parsedData);
+    const isNewGroupedFormat = !isOldFlatFormat &&
+                              typeof parsedData === 'object' &&
+                              Object.keys(parsedData).length > 0 &&
+                              Object.values(parsedData).some(val => Array.isArray(val));
+
+    // Check if we have the detailed format (contains Labels property)
     let hasDetailedFormat = false;
-    if (detailedInspectObject && typeof detailedInspectObject === 'object') {
-      // Check if any lab has a container with Labels property
-      for (const labName in detailedInspectObject) {
-        if (Array.isArray(detailedInspectObject[labName]) &&
-            detailedInspectObject[labName].length > 0 &&
-            detailedInspectObject[labName][0].Labels) {
+
+    if (isOldFlatFormat) {
+      // Check first item in array for Labels
+      hasDetailedFormat = parsedData.length > 0 && 'Labels' in parsedData[0];
+    } else if (isNewGroupedFormat) {
+      // Check first container in first lab
+      for (const labName in parsedData) {
+        if (Array.isArray(parsedData[labName]) &&
+            parsedData[labName].length > 0 &&
+            'Labels' in parsedData[labName][0]) {
           hasDetailedFormat = true;
           break;
         }
@@ -576,11 +594,52 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     // If we have detailed format, convert it to the standard format
     if (hasDetailedFormat) {
       console.log("[discovery]: Converting detailed format to standard format");
-      return this.convertDetailedToSimpleFormat(detailedInspectObject);
+
+      if (isOldFlatFormat) {
+        // Convert flat array to lab-grouped format first
+        const grouped = this.convertFlatToGroupedFormat(parsedData);
+        return this.convertDetailedToSimpleFormat(grouped);
+      } else {
+        // Already lab-grouped, just convert the format
+        return this.convertDetailedToSimpleFormat(parsedData);
+      }
     }
 
-    // Otherwise return as-is (standard format or empty)
-    return detailedInspectObject;
+    // Return as-is if not detailed format (might already be in simple format)
+    return parsedData;
+  }
+
+  /**
+   * Convert a flat array of containers to a lab-grouped format
+   */
+  private convertFlatToGroupedFormat(flatContainers: any[]): Record<string, any[]> {
+    const result: Record<string, any[]> = {};
+
+    flatContainers.forEach(container => {
+      // Extract lab name from the container
+      let labName = "unknown";
+
+      // Try to get lab name from Labels
+      if (container.Labels && container.Labels['clab-owner']) {
+        labName = container.Labels['clab-owner'];
+      } else if (container.Names && container.Names.length > 0) {
+        // Fallback: try to extract from container name (format: clab-LABNAME-NODENAME)
+        const match = container.Names[0].match(/^clab-([^-]+)-/);
+        if (match && match[1]) {
+          labName = match[1];
+        }
+      }
+
+      // Initialize array for this lab if it doesn't exist
+      if (!result[labName]) {
+        result[labName] = [];
+      }
+
+      // Add container to the lab group
+      result[labName].push(container);
+    });
+
+    return result;
   }
 
   /**
@@ -662,11 +721,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
       // Set description (e.g., "Running", "Stopped") and tooltip
       const description = [utils.titleCase(container.state)];
-
-      // Add node type to description if available
-      if (container.node_type) {
-        description.push(`(${container.node_type})`);
-      }
 
       node.description = description.join(" ");
       node.tooltip = tooltipParts.join("\n");
