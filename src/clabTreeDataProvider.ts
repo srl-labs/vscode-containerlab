@@ -68,6 +68,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     public readonly v6Address?: string,
     public readonly nodeType?: string,   // Added node type from clab-node-type
     public readonly nodeGroup?: string,  // Added node group from clab-node-group
+    public readonly status?: string,
     contextValue?: string,
   ) {
     super(label, collapsibleState);
@@ -92,6 +93,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     }
   }
 }
+
 
 /**
  * Interface for detailed container info from `containerlab inspect --all --details`
@@ -212,10 +214,22 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     inspect: { data: Record<string, ClabLabTreeNode> | undefined, timestamp: number } | null,
   } = { local: null, inspect: null };
 
+  private refreshInterval: number = 10000; // Default to 10 seconds
+  private cacheTTL: number = 30000; // Default to 30 seconds, will be overridden
+
   constructor(private context: vscode.ExtensionContext) {
+    // Get the refresh interval from configuration
+    const config = vscode.workspace.getConfiguration('containerlab');
+    this.refreshInterval = config.get<number>('refreshInterval', 10000);
+
+    let calculatedTTL = this.refreshInterval - 1000; // e.g., 1 second less
+    if (this.refreshInterval <= 5000) { // If refreshInterval is very short, make TTL even shorter or equal
+        calculatedTTL = this.refreshInterval * 0.8;
+    }
+    this.cacheTTL = Math.max(calculatedTTL, 4000); // Ensure a minimum reasonable TTL (e.g., 4s to avoid being too aggressive)
+
     this.startCacheJanitor();
   }
-
   refresh(element?: ClabLabTreeNode | ClabContainerTreeNode): void {
     if (!element) {
       // Full refresh - clear all caches
@@ -235,16 +249,16 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
     // Check for expired caches
     for (const [key, value] of this.containerInterfacesCache.entries()) {
-      if (now - value.timestamp > 30000) {
+      if (now - value.timestamp > this.cacheTTL) {
         return true;
       }
     }
 
-    if (this.labsCache.local && now - this.labsCache.local.timestamp > 30000) {
+    if (this.labsCache.local && now - this.labsCache.local.timestamp >= this.cacheTTL) {
       return true;
     }
 
-    if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp > 30000) {
+    if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp >= this.cacheTTL) {
       return true;
     }
 
@@ -328,9 +342,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
   private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering local labs...");
-    const CACHE_TTL = 30000; // 30 seconds TTL for labs
 
-    if (this.labsCache.local && (Date.now() - this.labsCache.local.timestamp < CACHE_TTL)) {
+    if (this.labsCache.local && (Date.now() - this.labsCache.local.timestamp < this.cacheTTL)) {
       return this.labsCache.local.data;
     }
 
@@ -428,9 +441,8 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
 
   public async discoverInspectLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering labs via inspect...");
-    const CACHE_TTL = 30000; // 30 seconds TTL for inspect labs
 
-    if (this.labsCache.inspect && (Date.now() - this.labsCache.inspect.timestamp < CACHE_TTL)) {
+    if (this.labsCache.inspect && (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
       return this.labsCache.inspect.data;
     }
 
@@ -503,22 +515,31 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         const discoveredContainers: ClabContainerTreeNode[] =
           this.discoverContainers(containersForThisLab, labPathObj.absolute); // Pass filtered list
 
-        // Determine lab icon based on container states
+        // Determine lab icon based on container states and health
         let runningCount = 0;
+        let unhealthyCount = 0;
         for (const c of discoveredContainers) {
           if (c.state === "running") {
             runningCount++;
+            // Check if container is unhealthy based on status
+            const status = c.status?.toLowerCase() || "";
+            if (status.includes("health: starting") || status.includes("unhealthy")) {
+              unhealthyCount++;
+            }
           }
         }
+
         let icon: string;
-        if (runningCount === 0 && discoveredContainers.length > 0) { // Check length > 0
-          icon = CtrStateIcons.STOPPED;
-        } else if (runningCount === discoveredContainers.length) {
-          icon = CtrStateIcons.RUNNING;
-        } else if (discoveredContainers.length > 0) { // Only show partial if there are containers
-          icon = CtrStateIcons.PARTIAL;
+        if (runningCount === 0 && discoveredContainers.length > 0) {
+          icon = CtrStateIcons.STOPPED;  // All containers stopped
+        } else if (runningCount === discoveredContainers.length && unhealthyCount === 0) {
+          icon = CtrStateIcons.RUNNING;  // All containers running and healthy
+        } else if (runningCount === discoveredContainers.length && unhealthyCount > 0) {
+          icon = CtrStateIcons.PARTIAL;  // All running but some unhealthy
+        } else if (discoveredContainers.length > 0) {
+          icon = CtrStateIcons.PARTIAL;  // Some running, some stopped
         } else {
-          icon = CtrStateIcons.STOPPED; // Default if no containers somehow (shouldn't happen here)
+          icon = CtrStateIcons.STOPPED;  // Default if no containers somehow
         }
 
         const labNode = new ClabLabTreeNode(
@@ -651,6 +672,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         `Container: ${container.name}`,
         `ID: ${container.container_id}`,
         `State: ${container.state}`,
+        `Status: ${container.status || "Unknown"}`,
         `Kind: ${container.kind}`,
         `Image: ${container.image}`
       ];
@@ -676,7 +698,18 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       }
 
       // Determine icon based on state
-      const icon = container.state === "running" ? CtrStateIcons.RUNNING : CtrStateIcons.STOPPED;
+      let icon: string;
+      if (container.state === "running") {
+        // Check status for health information if available
+        const status = container.status?.toLowerCase() || "";
+        if (status.includes("health: starting") || status.includes("unhealthy")) {
+          icon = CtrStateIcons.PARTIAL; // Reusing partial icon for unhealthy state
+        } else {
+          icon = CtrStateIcons.RUNNING; // Default for running containers
+        }
+      } else {
+        icon = CtrStateIcons.STOPPED;
+      }
 
       // Discover interfaces for this specific container
       // The interface discovery logic already uses caching based on container ID and state
@@ -708,13 +741,12 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
         container.ipv6_address, // Full address with mask
         container.node_type, // Node type (if available)
         container.node_group, // Node group (if available)
+        container.status,
         "containerlabContainer" // Context value
       );
 
-      // Set description (e.g., "Running", "Stopped") and tooltip
-      const description = [utils.titleCase(container.state)];
-
-      node.description = description.join(" ");
+      // Set description with status
+      node.description = container.status ? ` ${container.status}` : "";
       node.tooltip = tooltipParts.join("\n");
 
       // Set icon path
@@ -734,7 +766,6 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     cID: string,
     containerState: string
   ): ClabInterfaceTreeNode[] {
-    const CACHE_TTL = 30000; // 30 seconds
     // Use a consistent cache key including the absolute path
     const cacheKey = `${absLabPath}::${cName}::${cID}`;
 
@@ -743,7 +774,7 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
       const cached = this.containerInterfacesCache.get(cacheKey)!;
       // Check if container state matches and cache is not expired
       const isValid = cached.state === containerState &&
-        (Date.now() - cached.timestamp < CACHE_TTL);
+        (Date.now() - cached.timestamp < this.cacheTTL);
 
       if (isValid) {
         return cached.interfaces;
@@ -866,33 +897,31 @@ export class ClabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTree
     setInterval(() => {
       const now = Date.now();
       let hasExpired = false;
-      const cacheTTL = 30000; // Use consistent TTL
 
       // Check for expired container interfaces
       this.containerInterfacesCache.forEach((value, key) => {
-        if (now - value.timestamp > cacheTTL) {
+        if (now - value.timestamp >= this.cacheTTL) {
           this.containerInterfacesCache.delete(key);
           hasExpired = true;
         }
       });
 
       // Check for expired labs caches
-      if (this.labsCache.local && now - this.labsCache.local.timestamp > cacheTTL) {
+      if (this.labsCache.local && now - this.labsCache.local.timestamp >= this.cacheTTL) {
         this.labsCache.local = null;
         hasExpired = true;
       }
 
-      if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp > cacheTTL) {
+      if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp >= this.cacheTTL) {
         this.labsCache.inspect = null;
         hasExpired = true;
       }
 
       // Only fire the event if something actually expired
       if (hasExpired) {
-        // console.log("[cache]: Janitor expired some cache entries, refreshing tree.");
         this._onDidChangeTreeData.fire();
       }
-    }, 10000); // Check every 10 seconds
+    }, Math.min(this.refreshInterval, this.cacheTTL));
   }
 
   // getResourceUri remains unchanged
