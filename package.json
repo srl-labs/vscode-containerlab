@@ -48,8 +48,12 @@
     "views": {
       "containerlabViewContainer": [
         {
-          "id": "containerlabExplorer",
-          "name": "Containerlab Explorer"
+          "id": "runningLabs",
+          "name": "Running Labs"
+        },
+        {
+          "id": "localLabs",
+          "name": "Local Labs"
         }
       ]
     },
@@ -303,22 +307,22 @@
       "view/title": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabExplorer",
+          "when": "view == containerlabViewContainer",
           "group": "navigation@2"
         },
         {
           "command": "containerlab.lab.deploy.specificFile",
-          "when": "view == containerlabExplorer",
+          "when": "view == containerlabViewContainer",
           "group": "navigation@1"
         },
         {
           "command": "containerlab.editor.topoViewerEditor",
-          "when": "view == containerlabExplorer",
+          "when": "view == containerlabViewContainer",
           "group": "navigation@3"
         },
         {
           "command": "containerlab.inspectAll",
-          "when": "view == containerlabExplorer",
+          "when": "view == containerlabViewContainer",
           "group": "navigation@9"
         }
       ],
@@ -416,7 +420,6 @@
       "view/item/context": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabExplorer",
           "group": "refresh@99"
         },
         {
