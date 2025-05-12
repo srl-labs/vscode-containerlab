@@ -60,11 +60,11 @@
     "viewsWelcome": [
       {
         "view": "runningLabs",
-        "contents": "No running labs discovered\n[A button](command:blank)\n...[Some Link](https://test.com)"
+        "contents": "No running labs discovered\n[Deploy an existing lab](command:containerlab.lab.deploy.specificFile)"
       },
       {
         "view": "localLabs",
-        "contents": "No labs discovered in the current directory"
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)"
       }
     ],
     "commands": [
