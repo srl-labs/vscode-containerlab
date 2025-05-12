@@ -57,6 +57,16 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "runningLabs",
+        "contents": "No running labs discovered\n[A button](command:blank)\n...[Some Link](https://test.com)"
+      },
+      {
+        "view": "localLabs",
+        "contents": "No labs discovered in the current directory"
+      }
+    ],
     "commands": [
       {
         "command": "containerlab.refresh",
