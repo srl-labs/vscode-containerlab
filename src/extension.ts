@@ -11,10 +11,15 @@ import * as path from 'path';
 
 
 import { WelcomePage } from './welcomePage';
+import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
+import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
 export let treeView: any;
+export let localTreeView: any;
+export let runningTreeView: any;
+
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -56,14 +61,26 @@ export async function activate(context: vscode.ExtensionContext) {
   await welcomePage.show();
 
   // Tree data provider
-  const provider = new ClabTreeDataProvider(context);
+  const localLabsProvider = new LocalLabTreeDataProvider(context);
+  const runningLabsProvider = new RunningLabTreeDataProvider(context);
 
-  // If you have a defined "containerlabExplorer" view in package.json,
-  // you can either do:
-  treeView = vscode.window.createTreeView('containerlabExplorer', {
-    treeDataProvider: provider,
+
+  localTreeView = vscode.window.createTreeView('localLabs', {
+    treeDataProvider: localLabsProvider,
     canSelectMany: true
   });
+
+  runningTreeView = vscode.window.createTreeView('runningLabs', {
+    treeDataProvider: runningLabsProvider,
+    canSelectMany: true
+  });
+
+  // // If you have a defined "containerlabExplorer" view in package.json,
+  // // you can either do:
+  // treeView = vscode.window.createTreeView('localLabs', {
+  //   treeDataProvider: provider,
+  //   canSelectMany: true
+  // });
 
   // Determine if local capture is allowed.
   const isLocalCaptureAllowed =
@@ -79,7 +96,8 @@ export async function activate(context: vscode.ExtensionContext) {
   // Refresh the tree view
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.refresh', () => {
-      provider.refresh();
+      localLabsProvider.refresh();
+      runningLabsProvider.refresh();
     })
   );
 
@@ -179,8 +197,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       'containerlab.editor.topoViewerEditor.open',
       async (node: ClabLabTreeNode) => {
-        const yamlUri  = vscode.Uri.file(node.labPath.absolute);
-        const labName  = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
+        const yamlUri = vscode.Uri.file(node.labPath.absolute);
+        const labName = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
 
         const editor = new TopoViewerEditor(context);
 
@@ -355,15 +373,23 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const intervalId = setInterval(async () => {
+  const localLabIntervalId = setInterval(async () => {
     // Only refresh if there are changes
-    if (await provider.hasChanges()) {
-      provider.refresh();
+    if (await localLabsProvider.hasChanges()) {
+      localLabsProvider.refresh();
+    }
+  }, refreshInterval);
+
+  const runningLabIntervalId = setInterval(async () => {
+    // Only refresh if there are changes
+    if (await runningLabsProvider.hasChanges()) {
+      runningLabsProvider.refresh();
     }
   }, refreshInterval);
 
   // Clean up the auto-refresh interval when the extension is deactivated
-  context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
+  context.subscriptions.push({ dispose: () => clearInterval(localLabIntervalId) });
+  context.subscriptions.push({ dispose: () => clearInterval(runningLabIntervalId) });
 }
 
 export function deactivate() {
