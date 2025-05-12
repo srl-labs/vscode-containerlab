@@ -3,7 +3,8 @@ import * as utils from "../utils"
 import { promisify } from "util";
 import { exec, execSync } from "child_process";
 import path = require("path");
-import { treeView } from "../extension";
+import * as c from "./common";
+import { runningTreeView } from "../extension";
 
 const execAsync = promisify(exec);
 
@@ -763,12 +764,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<ClabL
 
   // updateBadge remains unchanged
   private updateBadge(runningLabs: number) {
-    if (!treeView) return; // Guard against treeView not being initialized yet
+        if (!runningTreeView) return; // Guard against treeView not being initialized yet
 
     if (runningLabs < 1) {
-      treeView.badge = undefined;
+            runningTreeView.badge = undefined;
     } else {
-      treeView.badge = {
+            runningTreeView.badge = {
         value: runningLabs,
         tooltip: `${runningLabs} running lab(s)`
       };
