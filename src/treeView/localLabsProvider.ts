@@ -10,11 +10,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
   private _onDidChangeTreeData = new vscode.EventEmitter<void | ClabLabTreeNode | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  private watcher = vscode.workspace.createFileSystemWatcher(CLAB_GLOB_PATTERN, false, false, false);
+  // glob everything so we can events when folders are deleted
+  private watcher = vscode.workspace.createFileSystemWatcher("**", false, false, false);
 
   constructor(private context: vscode.ExtensionContext) {
     this.watcher.onDidCreate(() => {this.refresh();});
     this.watcher.onDidDelete(() => {this.refresh();});
+    this.watcher.onDidChange(() => {this.refresh();});
   }
 
   refresh(): void {
