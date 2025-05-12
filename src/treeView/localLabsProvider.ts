@@ -3,6 +3,9 @@ import * as utils from "../utils"
 import { CtrStateIcons } from "./common";
 import path = require("path");
 
+const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
+const IGNORE_GLOB_PATTERN = "**/node_modules/**";
+
 // Tree node for a lab
 export class ClabLabTreeNode extends vscode.TreeItem {
   constructor(
@@ -28,47 +31,27 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
   private _onDidChangeTreeData = new vscode.EventEmitter<void | ClabLabTreeNode | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  // Cache for labs: both local and inspect (running) labs.
-  private labsCache: {
-    local: { data: Record<string, ClabLabTreeNode> | undefined, timestamp: number } | undefined,
-    } = { local: undefined};
+  private watcher = vscode.workspace.createFileSystemWatcher(CLAB_GLOB_PATTERN, false, false, false);
 
   private refreshInterval: number = 10000; // Default to 10 seconds
-  private cacheTTL: number = 30000; // Default to 30 seconds, will be overridden
 
   constructor(private context: vscode.ExtensionContext) {
     // Get the refresh interval from configuration
     const config = vscode.workspace.getConfiguration('containerlab');
     this.refreshInterval = config.get<number>('refreshInterval', 10000);
 
-    let calculatedTTL = this.refreshInterval - 1000; // e.g., 1 second less
-    if (this.refreshInterval <= 5000) { // If refreshInterval is very short, make TTL even shorter or equal
-        calculatedTTL = this.refreshInterval * 0.8;
-    }
-    this.cacheTTL = Math.max(calculatedTTL, 4000); // Ensure a minimum reasonable TTL (e.g., 4s to avoid being too aggressive)
+    this.watcher.onDidCreate(() => {this.refresh();});
+    this.watcher.onDidDelete(() => {this.refresh();});
 
-    this.startCacheJanitor();
   }
 
   refresh(element?: ClabLabTreeNode): void {
     if (!element) {
-      this.labsCache.local = undefined ;
       this._onDidChangeTreeData.fire();
     } else {
       // Selective refresh - only refresh this element
       this._onDidChangeTreeData.fire(element);
     }
-  }
-
-  // Add to ClabTreeDataProvider class
-  async hasChanges(): Promise<boolean> {
-    const now = Date.now();
-
-    if (this.labsCache.local && now - this.labsCache.local.timestamp >= this.cacheTTL) {
-      return true;
-    }
-
-    return false;
   }
 
   getTreeItem(element: ClabLabTreeNode): vscode.TreeItem {
@@ -83,9 +66,9 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
   }
 
   private async discoverLabs(): Promise<ClabLabTreeNode[]> {
-    console.log("[discovery]:\tDiscovering labs");
+    console.log("[LocalLabTreeDataProvider]:\tDiscovering labs");
 
-    const localLabs = await this.discoverLocalLabs();     // Undeployed topologies
+    const localLabs = await this.discoverLocalLabs();
 
     // --- Combine local and global labs ---
     // Initialize with global labs (deployed)
@@ -106,14 +89,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
   private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
     console.log("[discovery]:\tDiscovering local labs...");
 
-    if (this.labsCache.local && (Date.now() - this.labsCache.local.timestamp < this.cacheTTL)) {
-      return this.labsCache.local.data;
-    }
-
-    const clabGlobPatterns = "{**/*.clab.yml,**/*.clab.yaml}";
-    const ignorePattern = "**/node_modules/**";
-
-    const uris = await vscode.workspace.findFiles(clabGlobPatterns, ignorePattern);
+    const uris = await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN);
 
     if (!uris.length) {
       return undefined;
@@ -145,27 +121,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
       }
     });
 
-    this.labsCache.local = { data: labs, timestamp: Date.now() };
     return labs;
-  }
-
-  // startCacheJanitor remains unchanged
-  private startCacheJanitor() {
-    setInterval(() => {
-      const now = Date.now();
-      let hasExpired = false;
-
-      // Check for expired labs caches
-      if (this.labsCache.local && now - this.labsCache.local.timestamp >= this.cacheTTL) {
-        this.labsCache.local = undefined;
-        hasExpired = true;
-      }
-
-      // Only fire the event if something actually expired
-      if (hasExpired) {
-        this._onDidChangeTreeData.fire();
-      }
-    }, Math.min(this.refreshInterval, this.cacheTTL));
   }
 
   // getResourceUri remains unchanged
