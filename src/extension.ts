@@ -373,7 +373,6 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-
   const runningLabIntervalId = setInterval(async () => {
     // Only refresh if there are changes
     if (await runningLabsProvider.hasChanges()) {
@@ -381,7 +380,18 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   }, refreshInterval);
 
+  runningLabsProvider.onDidChangeTreeData(
+    () => {
+      localLabsProvider.refresh();
+    }
+  )
+
+//   const localLabIntervalId = setInterval(async () => {
+//     localLabsProvider.refresh();
+// }, refreshInterval);
+
   // Clean up the auto-refresh interval when the extension is deactivated
+  // context.subscriptions.push({ dispose: () => clearInterval(localLabIntervalId) });
   context.subscriptions.push({ dispose: () => clearInterval(runningLabIntervalId) });
 }
 
