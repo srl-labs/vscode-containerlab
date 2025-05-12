@@ -87,8 +87,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
       }
     });
 
-    // return array of ClabLabTreeNode(s)
-    return Object.values(labs);
+    // return sorted array of ClabLabTreeNode(s)
+    return Object.values(labs).sort(
+        (a, b) => {
+            // sort based on labPath as it has to be unique
+            return a.labPath.absolute.localeCompare(b.labPath.absolute);
+        }
+    );
   }
 
   // getResourceUri remains unchanged
