@@ -1,31 +1,10 @@
 import * as vscode from "vscode"
 import * as utils from "../utils"
-import { CtrStateIcons } from "./common";
+import {CtrStateIcons, ClabLabTreeNode} from "./common";
 import path = require("path");
 
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
 const IGNORE_GLOB_PATTERN = "**/node_modules/**";
-
-// Tree node for a lab
-export class ClabLabTreeNode extends vscode.TreeItem {
-  constructor(
-    public readonly label: string,
-    collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly labPath: LabPath,
-    public readonly name?: string,
-    public readonly owner?: string,
-    contextValue?: string,
-  ) {
-    super(label, collapsibleState);
-    this.contextValue = contextValue;
-  }
-}
-
-// LabPath interface
-export interface LabPath {
-  absolute: string,
-  relative: string
-}
 
 export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLabTreeNode | undefined> {
   private _onDidChangeTreeData = new vscode.EventEmitter<void | ClabLabTreeNode | undefined>();
