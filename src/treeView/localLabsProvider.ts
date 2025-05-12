@@ -33,25 +33,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
 
   private watcher = vscode.workspace.createFileSystemWatcher(CLAB_GLOB_PATTERN, false, false, false);
 
-  private refreshInterval: number = 10000; // Default to 10 seconds
-
   constructor(private context: vscode.ExtensionContext) {
-    // Get the refresh interval from configuration
-    const config = vscode.workspace.getConfiguration('containerlab');
-    this.refreshInterval = config.get<number>('refreshInterval', 10000);
-
     this.watcher.onDidCreate(() => {this.refresh();});
     this.watcher.onDidDelete(() => {this.refresh();});
-
   }
 
-  refresh(element?: ClabLabTreeNode): void {
-    if (!element) {
-      this._onDidChangeTreeData.fire();
-    } else {
-      // Selective refresh - only refresh this element
-      this._onDidChangeTreeData.fire(element);
-    }
+  refresh(): void {
+    this._onDidChangeTreeData.fire();
   }
 
   getTreeItem(element: ClabLabTreeNode): vscode.TreeItem {
@@ -59,38 +47,16 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
   }
 
   // Populate the tree
-  async getChildren(element?: ClabLabTreeNode): Promise<any> {
-    // Discover labs to populate tree
-    if (!element) { return this.discoverLabs(); }
-    return undefined;
+  async getChildren(): Promise<any> {
+    return this.discoverLabs();
   }
 
-  private async discoverLabs(): Promise<ClabLabTreeNode[]> {
-    console.log("[LocalLabTreeDataProvider]:\tDiscovering labs");
-
-    const localLabs = await this.discoverLocalLabs();
-
-    // --- Combine local and global labs ---
-    // Initialize with global labs (deployed)
-    const labs: Record<string, ClabLabTreeNode> = localLabs ? { ...localLabs } : {};
-
-    // Convert the dict to an array and sort by:
-    // 1. Deployed labs first
-    // 2. Then by absolute path
-    const sortedLabs = Object.values(labs).sort((a, b) => {
-        // sort by labPath
-        return a.labPath.absolute.localeCompare(b.labPath.absolute);
-    });
-
-    console.log(`[discovery]:\tDiscovered ${sortedLabs.length} labs.`);
-    return sortedLabs;
-  }
-
-  private async discoverLocalLabs(): Promise<Record<string, ClabLabTreeNode> | undefined> {
-    console.log("[discovery]:\tDiscovering local labs...");
+  private async discoverLabs(): Promise<ClabLabTreeNode[] | undefined> {
+    console.log("[LocalTreeDataProvider]:\tDiscovering labs...");
 
     const uris = await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN);
 
+    // empty tree if no files were discovered
     if (!uris.length) {
       return undefined;
     }
@@ -121,7 +87,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<ClabLab
       }
     });
 
-    return labs;
+    // return array of ClabLabTreeNode(s)
+    return Object.values(labs);
   }
 
   // getResourceUri remains unchanged
