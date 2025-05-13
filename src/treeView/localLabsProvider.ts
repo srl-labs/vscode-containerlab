@@ -4,13 +4,16 @@ import * as c from "./common";
 import path = require("path");
 import { exec } from "child_process";
 import { promisify } from "util";
-import { outputChannel } from "../extension";
 
 const execAsync = promisify(exec);
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
 const IGNORE_GLOB_PATTERN = "**/node_modules/**";
+
+interface Folder {
+    [key: string]: Folder | c.ClabLabTreeNode;
+}
 
 export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabLabTreeNode | undefined> {
     private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | undefined>();
@@ -33,8 +36,14 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     }
 
     // Populate the tree
-    async getChildren(): Promise<any> {
-        return this.discoverLabs();
+    async getChildren(element: any): Promise<any> {
+        if(!element) {
+            return this.discoverLabs();
+        } else if(element instanceof c.ClabFolderTreeNode) {
+            return element.children;
+        } else {
+            return undefined;
+        }
     }
 
     private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
@@ -50,11 +59,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
         const labPaths = await this.getInspectData();
+        const localPaths = new Set<string>;
 
         uris.forEach((uri) => {
             const normPath = utils.normalizeLabPath(uri.fsPath);
+            const relPath = path.relative(vscode.workspace.workspaceFolders![0].uri.path, uri.fsPath);
 
-            if (!labs[normPath] && !(labPaths?.has(normPath))) {
+            if (!labs[relPath] && !(labPaths?.has(normPath))) {
                 const labNode = new c.ClabLabTreeNode(
                     path.basename(uri.fsPath),
                     vscode.TreeItemCollapsibleState.None,
@@ -68,16 +79,110 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
                     "containerlabLabUndeployed"
                 );
 
-                labNode.description = utils.getRelLabFolderPath(uri.fsPath);
+                localPaths.add(utils.stripFileName(normPath));
 
-                const icon = vscode.ThemeIcon.File;
-                labNode.iconPath = icon;
-                // labNode.iconPath = { light: icon, dark: icon };
-
-                labs[normPath] = labNode;
+                labs[relPath] = labNode;
             }
         });
 
+        if (localPaths.size > 1) {
+            return this.groupIntoFolders(labs);
+        }
+        else {
+            return this.sortOnLabPath(labs);
+        }
+
+    }
+
+    private groupIntoFolders(labs: Record<string, c.ClabLabTreeNode>) {
+
+        let root: Folder = {};
+
+        for (const [key, value] of Object.entries(labs)) {
+            const parts = key.split('/');
+
+            let current: Folder = root;
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+
+                const folder_key = parts.slice(0, i+1).join("/")
+                // const folder_key = part;
+
+                if (i === parts.length - 1) {
+                    // final section is the lab object.
+                    current[folder_key] = value;
+                } else {
+                    // folder object, create if folder doesn't exist.
+                    if (!current[folder_key]) {
+                        current[folder_key] = {};
+                    }
+                    current = current[folder_key] as Folder;
+                }
+            }
+        }
+
+        return this.getFolderChildren(root)
+    }
+
+    // private groupIntoFolders1(labs: Record<string, c.ClabLabTreeNode>) {
+
+    //     let root: any[] = [];
+
+    //     for (const [key, value] of Object.entries(labs)) {
+    //         const parts = key.split('/');
+
+    //         let current: any = root;
+
+    //         for (let i = 0; i < parts.length; i++) {
+    //             const part = parts[i];
+
+    //             const folder_key = parts.slice(0, i+1).join("/")
+    //             // const folder_key = part;
+
+    //             const obj = new c.ClabFolderTreeNode(
+    //                 part,
+    //                 vscode.TreeItemCollapsibleState.Collapsed,
+    //                 folder_key,
+    //             )
+
+    //             if (i === parts.length - 1) {
+    //                 // final section is the lab object.
+    //                 current[folder_key] = value;
+    //             } else {
+    //                 // folder object, create if folder doesn't exist.
+    //                 if (!current[folder_key]) {
+    //                     current[folder_key] = {};
+    //                 }
+    //                 current = current[folder_key] as Folder;
+    //             }
+    //         }
+
+    //     }
+
+    // }
+
+    private getFolderChildren(obj: any) {
+        const result: any[] = [];
+
+        for (const [key, value] of Object.entries(obj)) {
+            if (value instanceof c.ClabLabTreeNode) {
+                result.push(value);
+            } else {
+                const children = this.getFolderChildren(value);
+                const folder = new c.ClabFolderTreeNode(key.substring(key.lastIndexOf("/")+1), vscode.TreeItemCollapsibleState.Expanded, children, "containerlabFolder");
+                result.push(folder);
+            }
+        }
+
+        return result.sort(
+            (a, b) => {
+                return a.label.localeCompare(b.label);
+            }
+        );
+    }
+
+    private sortOnLabPath(labs: Record<string, c.ClabLabTreeNode>) {
         // return sorted array of c.ClabLabTreeNode(s)
         return Object.values(labs).sort(
             (a, b) => {
@@ -85,11 +190,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
                 return a.labPath.absolute.localeCompare(b.labPath.absolute);
             }
         );
-    }
-
-    // getResourceUri remains unchanged
-    private getResourceUri(resource: string) {
-        return vscode.Uri.file(this.context.asAbsolutePath(path.join("resources", resource)));
     }
 
     // Parse clab inspect data and return a set of absolute labPaths.
@@ -102,22 +202,22 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         let clabStdout;
         try {
-          const { stdout } = await execAsync(cmd);
-          clabStdout = stdout;
+            const { stdout } = await execAsync(cmd);
+            clabStdout = stdout;
         } catch (err) {
-          throw new Error(`Could not run ${cmd}.\n${err}`);
+            throw new Error(`Could not run ${cmd}.\n${err}`);
         }
-    
+
         if (!clabStdout) {
-          return undefined;
+            return undefined;
         }
-    
+
         const parsedData = JSON.parse(clabStdout);
 
         const labPaths = new Set<string>();
 
         for (const [key, value] of Object.entries(parsedData)) {
-            if(value instanceof Array) {
+            if (value instanceof Array) {
                 labPaths.add(value[0]['absLabPath']);
             }
         }

@@ -22,15 +22,40 @@ export enum IntfStateIcons {
     DARK = "icons/ethernet-port-dark.svg",
 }
 
-export class ClabFolderTreeNode extends vscode.TreeItem {
+/**
+ * Interface which stores relative and absolute lab path.
+ */
+export interface LabPath {
+    absolute: string,
+    relative: string
+}
+
+export class ClabUserTreeNode extends vscode.TreeItem {
     constructor(
         public readonly label: string,
-        collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly labs: ClabLabTreeNode[],
+        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Expanded,
+        public readonly children: any[],
         contextValue?: string,
     ) {
         super(label, collapsibleState);
         this.contextValue = contextValue;
+        this.iconPath = new vscode.ThemeIcon("person");
+    }
+}
+
+
+export class ClabFolderTreeNode extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Expanded,
+        public readonly children: any[],
+        public readonly path: string,
+        contextValue?: string,
+    ) {
+        super(label, collapsibleState);
+        this.contextValue = contextValue;
+        this.resourceUri = vscode.Uri.parse(label);
+        this.iconPath = vscode.ThemeIcon.Folder;
     }
 }
 
@@ -49,15 +74,9 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     ) {
         super(label, collapsibleState);
         this.contextValue = contextValue;
+        this.resourceUri = vscode.Uri.file(labPath.absolute);
+        this.iconPath = vscode.ThemeIcon.File;
     }
-}
-
-/**
- * Interface which stores relative and absolute lab path.
- */
-export interface LabPath {
-    absolute: string,
-    relative: string
 }
 
 /**
