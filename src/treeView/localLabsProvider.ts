@@ -8,7 +8,7 @@ import { outputChannel } from "../extension";
 
 const execAsync = promisify(exec);
 
-const WATCHER_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}"
+const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
 const IGNORE_GLOB_PATTERN = "**/node_modules/**";
 
