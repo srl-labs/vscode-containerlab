@@ -138,13 +138,13 @@
         "command": "containerlab.inspectAll",
         "title": "Inspect (All Labs)",
         "category": "Containerlab",
-        "icon": "$(search)"
+        "icon": "$(info)"
       },
       {
         "command": "containerlab.inspectOneLab",
         "title": "Inspect",
         "category": "Containerlab",
-        "icon": "$(search)"
+        "icon": "$(info)"
       },
       {
         "command": "containerlab.lab.graph",
