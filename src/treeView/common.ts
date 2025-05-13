@@ -30,35 +30,6 @@ export interface LabPath {
     relative: string
 }
 
-export class ClabUserTreeNode extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Expanded,
-        public readonly children: any[],
-        contextValue?: string,
-    ) {
-        super(label, collapsibleState);
-        this.contextValue = contextValue;
-        this.iconPath = new vscode.ThemeIcon("person");
-    }
-}
-
-
-export class ClabFolderTreeNode extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Expanded,
-        public readonly children: any[],
-        public readonly path: string,
-        contextValue?: string,
-    ) {
-        super(label, collapsibleState);
-        this.contextValue = contextValue;
-        this.resourceUri = vscode.Uri.parse(label);
-        this.iconPath = vscode.ThemeIcon.Folder;
-    }
-}
-
 /**
  * A tree node for labs
  */
@@ -74,7 +45,6 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     ) {
         super(label, collapsibleState);
         this.contextValue = contextValue;
-        this.resourceUri = vscode.Uri.file(labPath.absolute);
         this.iconPath = vscode.ThemeIcon.File;
     }
 }
