@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { promisify } from "util";
 import { exec } from "child_process";
 import { outputChannel } from "../extension";
-import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode } from "../treeView/common";
 import { getSudo } from "../utils";
 
 const execAsync = promisify(exec);

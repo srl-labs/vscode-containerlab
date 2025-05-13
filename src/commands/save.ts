@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { SpinnerMsg } from "./command";
 import { ClabCommand } from "./clabCommand";
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
 import * as path from "path";
 
 /**

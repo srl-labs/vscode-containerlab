@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as utils from "../utils"
 import { execCommandInTerminal } from "./command";
-import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode } from "../treeView/common";
 
 export function telnetToNode(node: ClabContainerTreeNode) {
   if (!node) {

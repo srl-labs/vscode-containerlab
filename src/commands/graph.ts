@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
-import { ClabLabTreeNode, ClabTreeDataProvider } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
+import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
 
 
 /**
@@ -81,7 +82,7 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
   currentTopoViewer = viewer;
 
   // do the same logic as before...
-  const provider = new ClabTreeDataProvider(context);
+  const provider = new RunningLabTreeDataProvider(context);
   const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
 
   let labPath: string;

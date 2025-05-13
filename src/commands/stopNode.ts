@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { SpinnerMsg } from "./command";
 import { DockerCommand } from "./dockerCommand";
-import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode } from "../treeView/common";
 
 
 export async function stopNode(node: ClabContainerTreeNode) {

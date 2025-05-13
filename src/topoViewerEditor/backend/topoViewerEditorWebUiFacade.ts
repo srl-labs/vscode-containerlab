@@ -8,8 +8,7 @@ import { log } from '../../topoViewer/backend/logger';
 
 import { getHTMLTemplate } from '../webview-ui/template/vscodeHtmlTemplate';
 import { TopoViewerAdaptorClab } from '../../topoViewer/backend/topoViewerAdaptorClab';
-import { ClabLabTreeNode, ClabTreeDataProvider } from "../../clabTreeDataProvider";
-
+import { ClabLabTreeNode } from "../../treeView/common";
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.

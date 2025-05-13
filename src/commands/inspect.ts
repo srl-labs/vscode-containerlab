@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { promisify } from "util";
 import { exec } from "child_process";
 import { getInspectHtml } from "../webview/inspectHtml";
-import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 import { getSudo } from "../utils";
 import { outputChannel } from "../extension"; // Import outputChannel for logging
 

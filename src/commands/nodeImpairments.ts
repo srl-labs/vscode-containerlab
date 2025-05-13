@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode } from "../treeView/common";
 import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
 import { runWithSudo } from "../helpers/containerlabUtils";
 import { exec } from "child_process";
