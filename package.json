@@ -317,23 +317,23 @@
       "view/title": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabViewContainer",
-          "group": "navigation@2"
+          "when": "view == runningLabs",
+          "group": "navigation@9"
         },
         {
           "command": "containerlab.lab.deploy.specificFile",
-          "when": "view == containerlabViewContainer",
+          "when": "view == runningLabs",
           "group": "navigation@1"
         },
         {
-          "command": "containerlab.editor.topoViewerEditor",
-          "when": "view == containerlabViewContainer",
-          "group": "navigation@3"
+          "command": "containerlab.inspectAll",
+          "when": "view == runningLabs",
+          "group": "navigation@2"
         },
         {
-          "command": "containerlab.inspectAll",
-          "when": "view == containerlabViewContainer",
-          "group": "navigation@9"
+          "command": "containerlab.editor.topoViewerEditor",
+          "when": "view == localLabs",
+          "group": "navigation@1"
         }
       ],
       "editor/title": [
