@@ -823,7 +823,7 @@
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.15.17",
     "@types/vscode": "^1.99.1",
     "typescript": "^5.8.3",
     "webpack-cli": "^6.0.1"
