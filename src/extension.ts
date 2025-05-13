@@ -20,7 +20,7 @@ export let treeView: any;
 export let localTreeView: any;
 export let runningTreeView: any;
 export let username: string;
-export let hideNonOwnedLabsState: boolean;
+export let hideNonOwnedLabsState: boolean = false;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -394,7 +394,20 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  hideNonOwnedLabs(false);
+  // Search/filter command handler
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.list.find', () => {
+      vscode.commands.executeCommand("runningLabs.focus")
+      vscode.commands.executeCommand("list.find")
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.localLabs.list.find', () => {
+      vscode.commands.executeCommand("localLabs.focus")
+      vscode.commands.executeCommand("list.find")
+    })
+  );
 
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
@@ -411,13 +424,6 @@ export async function activate(context: vscode.ExtensionContext) {
       localLabsProvider.refresh();
     }
   )
-
-//   const localLabIntervalId = setInterval(async () => {
-//     localLabsProvider.refresh();
-// }, refreshInterval);
-
-  // Clean up the auto-refresh interval when the extension is deactivated
-  // context.subscriptions.push({ dispose: () => clearInterval(localLabIntervalId) });
   context.subscriptions.push({ dispose: () => clearInterval(runningLabIntervalId) });
 }
 

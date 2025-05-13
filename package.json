@@ -313,6 +313,16 @@
       {
         "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
         "title": "Show non-owned"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.list.find",
+        "title": "Search running labs",
+        "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.list.find",
+        "title": "Search local labs",
+        "icon": "$(search)"
       }
     ],
     "submenus": [
@@ -326,7 +336,7 @@
         {
           "command": "containerlab.refresh",
           "when": "view == runningLabs",
-          "group": "navigation@9"
+          "group": "navigation@8"
         },
         {
           "command": "containerlab.lab.deploy.specificFile",
@@ -352,6 +362,16 @@
           "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
           "when": "view == runningLabs && containerlab:nonOwnedLabsHidden",
           "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.list.find",
+          "when": "view == runningLabs",
+          "group": "navigation@99"
+        },
+        {
+          "command": "containerlab.treeView.localLabs.list.find",
+          "when": "view == localLabs",
+          "group": "navigation@99"
         }
       ],
       "editor/title": [
