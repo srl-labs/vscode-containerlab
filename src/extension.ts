@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
 import * as utils from './utils';
-import { ClabTreeDataProvider, ClabLabTreeNode } from './clabTreeDataProvider';
+import { ClabLabTreeNode } from './treeView/common';
 import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
@@ -19,7 +19,8 @@ export let outputChannel: vscode.OutputChannel;
 export let treeView: any;
 export let localTreeView: any;
 export let runningTreeView: any;
-
+export let username: string;
+export let hideNonOwnedLabsState: boolean;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -74,6 +75,9 @@ export async function activate(context: vscode.ExtensionContext) {
     treeDataProvider: runningLabsProvider,
     canSelectMany: true
   });
+
+  // get the username
+  username = utils.getUsername();
 
   // // If you have a defined "containerlabExplorer" view in package.json,
   // // you can either do:
@@ -369,6 +373,28 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.set.sessionHostname', cmd.setSessionHostname)
   );
+
+  // Hide/show non-owned labs
+  const hideNonOwnedLabs = (hide: boolean) => {
+    hideNonOwnedLabsState = hide;
+    vscode.commands.executeCommand('setContext', 'containerlab:nonOwnedLabsHidden', hide);
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.hideNonOwnedLabs', () => {
+      runningLabsProvider.refresh();
+      hideNonOwnedLabs(true);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.showNonOwnedLabs', () => {
+      runningLabsProvider.refresh();
+      hideNonOwnedLabs(false);
+    })
+  );
+
+  hideNonOwnedLabs(false);
 
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');

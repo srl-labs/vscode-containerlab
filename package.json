@@ -305,6 +305,14 @@
         "title": "Open Port in Browser",
         "icon": "$(globe)",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+        "title": "Hide non-owned"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
+        "title": "Show non-owned"
       }
     ],
     "submenus": [
@@ -334,6 +342,16 @@
           "command": "containerlab.editor.topoViewerEditor",
           "when": "view == localLabs",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+          "when": "view == runningLabs && !containerlab:nonOwnedLabsHidden",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
+          "when": "view == runningLabs && containerlab:nonOwnedLabsHidden",
+          "group": "navigation@0"
         }
       ],
       "editor/title": [

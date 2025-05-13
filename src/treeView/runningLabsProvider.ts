@@ -4,7 +4,7 @@ import { promisify } from "util";
 import { exec, execSync } from "child_process";
 import path = require("path");
 import * as c from "./common";
-import { runningTreeView } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username } from "../extension";
 
 const execAsync = promisify(exec);
 
@@ -119,6 +119,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         this.startCacheJanitor();
     }
+
     refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode): void {
         if (!element) {
             // Full refresh - clear all caches
@@ -180,6 +181,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         // --- Combine local and global labs ---
         // Initialize with global labs (deployed)
         const labs: Record<string, c.ClabLabTreeNode> = globalLabs ? { ...globalLabs } : {};
+
+        if(hideNonOwnedLabsState) {
+            for(const [key, value] of Object.entries(labs)) {
+                if(value.owner != username) {
+                    delete labs[key];
+                }
+            }
+        }
 
         // Convert the dict to an array and sort by:
         // 1. Deployed labs first
