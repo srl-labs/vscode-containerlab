@@ -48,11 +48,25 @@
     "views": {
       "containerlabViewContainer": [
         {
-          "id": "containerlabExplorer",
-          "name": "Containerlab Explorer"
+          "id": "runningLabs",
+          "name": "Running Labs"
+        },
+        {
+          "id": "localLabs",
+          "name": "Undeployed Local Labs"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "runningLabs",
+        "contents": "No running labs discovered\n[Deploy an existing lab](command:containerlab.lab.deploy.specificFile)"
+      },
+      {
+        "view": "localLabs",
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)"
+      }
+    ],
     "commands": [
       {
         "command": "containerlab.refresh",
@@ -124,13 +138,13 @@
         "command": "containerlab.inspectAll",
         "title": "Inspect (All Labs)",
         "category": "Containerlab",
-        "icon": "$(search)"
+        "icon": "$(info)"
       },
       {
         "command": "containerlab.inspectOneLab",
         "title": "Inspect",
         "category": "Containerlab",
-        "icon": "$(search)"
+        "icon": "$(info)"
       },
       {
         "command": "containerlab.lab.graph",
@@ -291,6 +305,24 @@
         "title": "Open Port in Browser",
         "icon": "$(globe)",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+        "title": "Hide non-owned"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
+        "title": "Show non-owned"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.list.find",
+        "title": "Search running labs",
+        "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.list.find",
+        "title": "Search local labs",
+        "icon": "$(search)"
       }
     ],
     "submenus": [
@@ -303,23 +335,43 @@
       "view/title": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabExplorer",
-          "group": "navigation@2"
+          "when": "view == runningLabs",
+          "group": "navigation@8"
         },
         {
           "command": "containerlab.lab.deploy.specificFile",
-          "when": "view == containerlabExplorer",
+          "when": "view == runningLabs",
           "group": "navigation@1"
         },
         {
-          "command": "containerlab.editor.topoViewerEditor",
-          "when": "view == containerlabExplorer",
-          "group": "navigation@3"
+          "command": "containerlab.inspectAll",
+          "when": "view == runningLabs",
+          "group": "navigation@2"
         },
         {
-          "command": "containerlab.inspectAll",
-          "when": "view == containerlabExplorer",
-          "group": "navigation@9"
+          "command": "containerlab.editor.topoViewerEditor",
+          "when": "view == localLabs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+          "when": "view == runningLabs && !containerlab:nonOwnedLabsHidden",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
+          "when": "view == runningLabs && containerlab:nonOwnedLabsHidden",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.list.find",
+          "when": "view == runningLabs",
+          "group": "navigation@99"
+        },
+        {
+          "command": "containerlab.treeView.localLabs.list.find",
+          "when": "view == localLabs",
+          "group": "navigation@99"
         }
       ],
       "editor/title": [
@@ -416,7 +468,6 @@
       "view/item/context": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabExplorer",
           "group": "refresh@99"
         },
         {

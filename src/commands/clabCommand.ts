@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as cmd from './command';
-import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 
 /**
  * A helper class to build a 'containerlab' command (with optional sudo, etc.)

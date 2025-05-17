@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import { runWithSudo } from "../helpers/containerlabUtils";
 import { outputChannel } from "../extension";
 import * as utils from "../utils";
-import { ClabInterfaceTreeNode } from "../clabTreeDataProvider";
+import { ClabInterfaceTreeNode } from "../treeView/common";
 
 let sessionHostname: string = "";
 

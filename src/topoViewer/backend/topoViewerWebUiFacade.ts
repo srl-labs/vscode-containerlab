@@ -7,7 +7,8 @@ import * as yaml from 'js-yaml';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
+import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
@@ -66,7 +67,7 @@ export class TopoViewer {
   /**
    * Tree data provider to manage Containerlab lab nodes.
    */
-  private clabTreeProviderImported: ClabTreeDataProvider;
+  private clabTreeProviderImported: RunningLabTreeDataProvider;
 
   /**
    * Stores the YAML file path from the last topenViewer call.
@@ -97,7 +98,7 @@ export class TopoViewer {
    */
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
-    this.clabTreeProviderImported = new ClabTreeDataProvider(context);
+    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
 
   /**
