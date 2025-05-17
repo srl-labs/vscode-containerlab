@@ -387,14 +387,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.runningLabs.hideNonOwnedLabs', () => {
-      runningLabsProvider.refresh();
+      runningLabsProvider.refreshWithoutDiscovery();
       hideNonOwnedLabs(true);
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.runningLabs.showNonOwnedLabs', () => {
-      runningLabsProvider.refresh();
+      runningLabsProvider.refreshWithoutDiscovery();
       hideNonOwnedLabs(false);
     })
   );
@@ -421,10 +421,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const refreshTaskID = setInterval(
     async ()=> {
       ins.update().then( () => {
-        if (runningLabsProvider.hasChanges()) {
-          localLabsProvider.refresh();
-          runningLabsProvider.refresh();
-        }
+        localLabsProvider.refresh();
+        runningLabsProvider.refresh();
       })
     }, refreshInterval
   )

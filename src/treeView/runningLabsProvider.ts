@@ -30,6 +30,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | c.ClabContainerTreeNode | null | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+    private treeItems: c.ClabLabTreeNode[] = [];
+
+
     private containerInterfacesCache: Map<string, {
         state: string,
         timestamp: number,
@@ -38,9 +41,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     // Cache for labs: both local and inspect (running) labs.
     private labsCache: {
-        local: { data: Record<string, c.ClabLabTreeNode> | undefined, timestamp: number } | null,
         inspect: { data: Record<string, c.ClabLabTreeNode> | undefined, timestamp: number } | null,
-    } = { local: null, inspect: null };
+    } = { inspect: null };
 
     private refreshInterval: number = 10000; // Default to 10 seconds
     private cacheTTL: number = 30000; // Default to 30 seconds, will be overridden
@@ -59,11 +61,38 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         this.startCacheJanitor();
     }
 
-    refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode): void {
+    async refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
         if (!element) {
             // Full refresh - clear all caches
             this.containerInterfacesCache.clear();
             this.labsCache.inspect = null;
+
+            await ins.update();
+            await this.discoverLabs();
+            this._onDidChangeTreeData.fire();
+        } else {
+            // Selective refresh - only refresh this element
+            this._onDidChangeTreeData.fire(element); 
+        }
+    }
+
+    // a soft refresh will update the treeview without pulling the latest inspect data
+    async softRefresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
+        if (!element) {
+            // Full refresh - clear all caches
+            this.containerInterfacesCache.clear();
+            this.labsCache.inspect = null;
+
+            await this.discoverLabs();
+            this._onDidChangeTreeData.fire();
+        } else {
+            // Selective refresh - only refresh this element
+            this._onDidChangeTreeData.fire(element); 
+        }
+    }
+
+    async refreshWithoutDiscovery(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
+        if (!element) {
             this._onDidChangeTreeData.fire();
         } else {
             // Selective refresh - only refresh this element
@@ -89,7 +118,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return false;
     }
 
-    getTreeItem(element: c.ClabLabTreeNode | c.ClabContainerTreeNode): vscode.TreeItem {
+    getTreeItem(element: c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode): vscode.TreeItem {
         return element;
     }
 
@@ -98,8 +127,18 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * array of containers.
      */
     async getChildren(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode): Promise<any> {
+        if (!this.treeItems.length) {
+            await this.discoverLabs();
+        }
+
         // Discover labs to populate tree
-        if (!element) { return this.discoverLabs(); }
+        if (!element) {
+            if (hideNonOwnedLabsState) {
+                return this.treeItems.filter(labNode => labNode.owner == username);
+            } else {
+                return this.treeItems;
+            }
+        }
         // Find containers belonging to a lab
         if (element instanceof c.ClabLabTreeNode) { return element.containers; }
         // Find interfaces belonging to a container
@@ -112,7 +151,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return undefined;
     }
 
-    private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
+    private async discoverLabs() {
         console.log("[RunningLabTreeDataProvider]:\tDiscovering labs");
 
         const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
@@ -120,14 +159,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         // --- Combine local and global labs ---
         // Initialize with global labs (deployed)
         const labs: Record<string, c.ClabLabTreeNode> = globalLabs ? { ...globalLabs } : {};
-
-        if(hideNonOwnedLabsState) {
-            for(const [key, value] of Object.entries(labs)) {
-                if(value.owner != username) {
-                    delete labs[key];
-                }
-            }
-        }
 
         // Convert the dict to an array and sort by:
         // 1. Deployed labs first
@@ -147,7 +178,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         });
 
         console.log(`[RunningLabTreeDataProvider]:\tDiscovered ${sortedLabs.length} labs.`);
-        return sortedLabs;
+        this.treeItems = sortedLabs;
     }
 
     /**
@@ -361,7 +392,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         // If we have detailed format, convert it to the standard format
         if (hasDetailedFormat) {
-            console.log("[RunningLabTreeDataProvider]: Converting detailed format to standard format");
+            console.log("[RunningLabTreeDataProvider]:\tConverting detailed format to standard format");
 
             if (isOldFlatFormat) {
                 // Convert flat array to lab-grouped format first
