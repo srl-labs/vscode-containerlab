@@ -1,72 +1,11 @@
 import * as vscode from "vscode"
 import * as utils from "../utils"
-import { promisify } from "util";
-import { exec, execSync } from "child_process";
-import path = require("path");
 import * as c from "./common";
+import * as ins from "./inspector"
+
+import { execSync } from "child_process";
+import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username } from "../extension";
-
-const execAsync = promisify(exec);
-
-/**
- * Interface for detailed container info from `containerlab inspect --all --details`
- */
-interface ClabDetailedJSON {
-    Names: string[];
-    ID: string;
-    ShortID: string;
-    Image: string;
-    State: string;
-    Status: string;
-    Labels: {
-        'clab-node-kind': string;
-        'clab-node-lab-dir': string;
-        'clab-node-longname': string;
-        'clab-node-name': string;
-        'clab-owner': string;
-        'clab-topo-file': string;
-        [key: string]: string | undefined;
-        'clab-node-type'?: string;
-        'clab-node-group'?: string;
-        'containerlab'?: string; // lab name
-    };
-    NetworkSettings: {
-        IPv4addr?: string;
-        IPv4pLen?: number;
-        IPv4Gw?: string;
-        IPv6addr?: string;
-        IPv6pLen?: number;
-        IPv6Gw?: string;
-    };
-    Mounts: Array<{
-        Source: string;
-        Destination: string;
-    }>;
-    Ports: Array<any>;
-    Pid?: number;
-}
-
-/**
- * Interface which stores fields from simple clab inspect format
- * (used for backward compatibility and as a standard format)
- */
-interface ClabJSON {
-    container_id: string;
-    image: string;
-    ipv4_address: string;
-    ipv6_address: string;
-    kind: string;
-    lab_name: string;
-    labPath: string;      // Path as provided by containerlab (might be relative)
-    absLabPath?: string;  // Absolute path (present in newer versions >= 0.68.0)
-    name: string; // Always use the long name if CLAB PREFIX Provided (e.g., clab-labname-node)
-    name_short?: string;  // Short name without lab prefix
-    owner: string;
-    state: string;
-    status?: string;      // Also add the optional status field
-    node_type?: string;   // Node type (e.g. ixrd3, srlinux, etc.)
-    node_group?: string;  // Node group
-}
 
 /**
  * Interface corresponding to fields in the
@@ -133,7 +72,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     // Add to ClabTreeDataProvider class
-    async hasChanges(): Promise<boolean> {
+    hasChanges(): boolean {
         const now = Date.now();
 
         // Check for expired caches
@@ -174,7 +113,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
-        console.log("[discovery]:\tDiscovering labs");
+        console.log("[RunningLabTreeDataProvider]:\tDiscovering labs");
 
         const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
 
@@ -207,7 +146,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             return a.labPath.absolute.localeCompare(b.labPath.absolute);
         });
 
-        console.log(`[discovery]:\tDiscovered ${sortedLabs.length} labs.`);
+        console.log(`[RunningLabTreeDataProvider]:\tDiscovered ${sortedLabs.length} labs.`);
         return sortedLabs;
     }
 
@@ -215,8 +154,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * Convert detailed container data to the simpler format used by the existing code.
      * This maintains backward compatibility while adding new fields.
      */
-    private convertDetailedToSimpleFormat(detailedData: Record<string, ClabDetailedJSON[]>): Record<string, ClabJSON[]> {
-        const result: Record<string, ClabJSON[]> = {};
+    private convertDetailedToSimpleFormat(detailedData: Record<string, c.ClabDetailedJSON[]>): Record<string, c.ClabJSON[]> {
+        const result: Record<string, c.ClabJSON[]> = {};
 
         // Process each lab
         for (const labName in detailedData) {
@@ -264,7 +203,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     public async discoverInspectLabs(): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
-        console.log("[discovery]:\tDiscovering labs via inspect...");
+        console.log("[RunningLabTreeDataProvider]:\tDiscovering labs via inspect...");
 
         if (this.labsCache.inspect && (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
             return this.labsCache.inspect.data;
@@ -279,19 +218,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
 
         // --- Normalize inspectData into a flat list of containers ---
-        let allContainers: ClabJSON[] = [];
+        let allContainers: c.ClabJSON[] = [];
 
         if (Array.isArray(inspectData)) {
             // Old format: Flat array of containers
-            console.log("[discovery]:\tDetected old inspect format (flat container list).");
+            console.log("[RunningLabTreeDataProvider]:\tDetected old inspect format (flat container list).");
             allContainers = inspectData;
         } else if (inspectData.containers && Array.isArray(inspectData.containers)) {
             // Old format: Top-level "containers" array
-            console.log("[discovery]:\tDetected old inspect format (flat container list with 'containers' key).");
+            console.log("[RunningLabTreeDataProvider]:\tDetected old inspect format (flat container list with 'containers' key).");
             allContainers = inspectData.containers;
         } else if (typeof inspectData === 'object' && Object.keys(inspectData).length > 0) {
             // New format: Object with lab names as keys
-            console.log("[discovery]:\tDetected new inspect format (grouped by lab).");
+            console.log("[RunningLabTreeDataProvider]:\tDetected new inspect format (grouped by lab).");
             for (const labName in inspectData) {
                 if (Array.isArray(inspectData[labName])) {
                     // Add containers from this lab to the flat list
@@ -300,7 +239,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             }
         } else {
             // Handle cases where inspectData is invalid, empty, or not the expected object/array
-            console.log("[discovery]:\tInspect data is empty or in an unexpected format.");
+            console.log("[RunningLabTreeDataProvider]:\tInspect data is empty or in an unexpected format.");
             this.updateBadge(0);
             this.labsCache.inspect = { data: undefined, timestamp: Date.now() }; // Cache empty result
             return undefined;
@@ -316,7 +255,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         // --- Process the flat allContainers list ---
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
-        allContainers.forEach((container: ClabJSON) => {
+        allContainers.forEach((container: c.ClabJSON) => {
             // Use absLabPath if available, otherwise normalize labPath as fallback
             const normPath = container.absLabPath || utils.normalizeLabPath(container.labPath);
 
@@ -332,7 +271,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
                 // Filter the flat list to get all containers for *this specific lab path*
                 const containersForThisLab = allContainers.filter(
-                    (c: ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
+                    (c: c.ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
                 );
 
                 // Discover the container nodes for this lab using the filtered list
@@ -391,24 +330,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     private async getInspectData(): Promise<any> {
-        const config = vscode.workspace.getConfiguration("containerlab");
-        const runtime = config.get<string>("runtime", "docker");
 
-        const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --details --format json 2>/dev/null`;
-
-        let clabStdout;
-        try {
-            const { stdout } = await execAsync(cmd);
-            clabStdout = stdout;
-        } catch (err) {
-            throw new Error(`Could not run ${cmd}.\n${err}`);
-        }
-
-        if (!clabStdout) {
-            return undefined;
-        }
-
-        const parsedData = JSON.parse(clabStdout);
+        const parsedData = ins.rawInspectData;
 
         // Determine the format of the returned data
         // Check if it's an array (old flat format) or an object with lab keys (new grouped format)
@@ -438,7 +361,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         // If we have detailed format, convert it to the standard format
         if (hasDetailedFormat) {
-            console.log("[discovery]: Converting detailed format to standard format");
+            console.log("[RunningLabTreeDataProvider]: Converting detailed format to standard format");
 
             if (isOldFlatFormat) {
                 // Convert flat array to lab-grouped format first
@@ -482,12 +405,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     /**
      * Discover containers that belong to a specific lab path.
      */
-    private discoverContainers(containersForThisLab: ClabJSON[], absLabPath: string): c.ClabContainerTreeNode[] {
-        console.log(`[discovery]:\tProcessing ${containersForThisLab.length} containers for ${absLabPath}...`);
+    private discoverContainers(containersForThisLab: c.ClabJSON[], absLabPath: string): c.ClabContainerTreeNode[] {
+        console.log(`[RunningLabTreeDataProvider]:\tProcessing ${containersForThisLab.length} containers for ${absLabPath}...`);
 
         let containerNodes: c.ClabContainerTreeNode[] = [];
 
-        containersForThisLab.forEach((container: ClabJSON) => {
+        containersForThisLab.forEach((container: c.ClabJSON) => {
             // Use name_short if available, otherwise extract from name
             const name_short = container.name_short ||
                 container.name.replace(/^clab-[^-]+-/, '');
@@ -685,7 +608,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     interfaces.push(node);
                 });
             } else {
-                console.warn(`[discovery]: Unexpected JSON structure from inspect interfaces for ${cName}`);
+                console.warn(`[RunningLabTreeDataProvider]: Unexpected JSON structure from inspect interfaces for ${cName}`);
             }
 
 
@@ -699,9 +622,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         } catch (err: any) {
             // Log specific errors
             if (err.killed || err.signal === 'SIGTERM') {
-                console.error(`[discovery]: Interface detection timed out for ${cName}. Cmd: ${err.cmd}`);
+                console.error(`[RunningLabTreeDataProvider]: Interface detection timed out for ${cName}. Cmd: ${err.cmd}`);
             } else {
-                console.error(`[discovery]: Interface detection failed for ${cName}. ${err.message || String(err)}`);
+                console.error(`[RunningLabTreeDataProvider]: Interface detection failed for ${cName}. ${err.message || String(err)}`);
             }
             // Clear cache entry on error to force refetch next time
             this.containerInterfacesCache.delete(cacheKey);

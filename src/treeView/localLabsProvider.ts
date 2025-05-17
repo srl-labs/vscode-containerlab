@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import * as utils from "../utils"
 import * as c from "./common";
+import * as ins from "./inspector";
 import path = require("path");
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -38,18 +39,23 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     }
 
     private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
-        console.log("[LocalTreeDataProvider]:\tDiscovering labs...");
+        console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
         const uris = await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN);
 
+        const length = uris.length;
+
+        console.log(`[LocalTreeDataProvider]:\tDiscovered ${length} labs.`);
+
         // empty tree if no files were discovered
-        if (!uris.length) {
+        if (!length) {
             return undefined;
         }
 
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
-        const labPaths = await this.getInspectData();
+        // get a list of running labPaths so we can filter out any running labs.
+        const labPaths = this.getLabPaths();
 
         uris.forEach((uri) => {
             const normPath = utils.normalizeLabPath(uri.fsPath);
@@ -87,29 +93,10 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
     // Parse clab inspect data and return a set of absolute labPaths.
     // Used to check if a locally discovered lab is deployed or not.
-    private async getInspectData() {
-        const config = vscode.workspace.getConfiguration("containerlab");
-        const runtime = config.get<string>("runtime", "docker");
-
-        const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --format json 2>/dev/null`;
-
-        let clabStdout;
-        try {
-            const { stdout } = await execAsync(cmd);
-            clabStdout = stdout;
-        } catch (err) {
-            throw new Error(`Could not run ${cmd}.\n${err}`);
-        }
-
-        if (!clabStdout) {
-            return undefined;
-        }
-
-        const parsedData = JSON.parse(clabStdout);
-
+    private getLabPaths() {
         const labPaths = new Set<string>();
 
-        for (const [key, value] of Object.entries(parsedData)) {
+        for (const [key, value] of Object.entries(ins.rawInspectData)) {
             if (value instanceof Array) {
                 labPaths.add(value[0]['absLabPath']);
             }

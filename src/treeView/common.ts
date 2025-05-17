@@ -117,3 +117,70 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         this.contextValue = contextValue;
     }
 }
+
+/** -------------
+ * Interfaces
+ * -------------*/
+
+/**
+ * Interface for detailed container info from `containerlab inspect --all --details`
+ */
+/**
+ * Interface for detailed container info from `containerlab inspect --all --details`
+ */
+export interface ClabDetailedJSON {
+    Names: string[];
+    ID: string;
+    ShortID: string;
+    Image: string;
+    State: string;
+    Status: string;
+    Labels: {
+        'clab-node-kind': string;
+        'clab-node-lab-dir': string;
+        'clab-node-longname': string;
+        'clab-node-name': string;
+        'clab-owner': string;
+        'clab-topo-file': string;
+        [key: string]: string | undefined;
+        'clab-node-type'?: string;
+        'clab-node-group'?: string;
+        'containerlab'?: string; // lab name
+    };
+    NetworkSettings: {
+        IPv4addr?: string;
+        IPv4pLen?: number;
+        IPv4Gw?: string;
+        IPv6addr?: string;
+        IPv6pLen?: number;
+        IPv6Gw?: string;
+    };
+    Mounts: Array<{
+        Source: string;
+        Destination: string;
+    }>;
+    Ports: Array<any>;
+    Pid?: number;
+}
+
+/**
+ * Interface which stores fields from simple clab inspect format
+ * (used for backward compatibility and as a standard format)
+ */
+export interface ClabJSON {
+    container_id: string;
+    image: string;
+    ipv4_address: string;
+    ipv6_address: string;
+    kind: string;
+    lab_name: string;
+    labPath: string;      // Path as provided by containerlab (might be relative)
+    absLabPath?: string;  // Absolute path (present in newer versions >= 0.68.0)
+    name: string; // Always use the long name if CLAB PREFIX Provided (e.g., clab-labname-node)
+    name_short?: string;  // Short name without lab prefix
+    owner: string;
+    state: string;
+    status?: string;      // Also add the optional status field
+    node_type?: string;   // Node type (e.g. ixrd3, srlinux, etc.)
+    node_group?: string;  // Node group
+}

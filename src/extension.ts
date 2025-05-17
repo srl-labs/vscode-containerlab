@@ -1,13 +1,15 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
 import * as utils from './utils';
-import { ClabLabTreeNode } from './treeView/common';
+import * as ins from "./treeView/inspector"
+import * as c from './treeView/common';
+import * as path from 'path';
+
 import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
-import * as path from 'path';
 
 
 import { WelcomePage } from './welcomePage';
@@ -60,6 +62,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // Show welcome page
   const welcomePage = new WelcomePage(context);
   await welcomePage.show();
+
+  // Initial pull of inspect data
+  ins.update();
 
   // Tree data provider
   const localLabsProvider = new LocalLabTreeDataProvider(context);
@@ -200,7 +205,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'containerlab.editor.topoViewerEditor.open',
-      async (node: ClabLabTreeNode) => {
+      async (node: c.ClabLabTreeNode) => {
         const yamlUri = vscode.Uri.file(node.labPath.absolute);
         const labName = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
 
@@ -412,19 +417,19 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const runningLabIntervalId = setInterval(async () => {
-    // Only refresh if there are changes
-    if (await runningLabsProvider.hasChanges()) {
-      runningLabsProvider.refresh();
-    }
-  }, refreshInterval);
-
-  runningLabsProvider.onDidChangeTreeData(
-    () => {
-      localLabsProvider.refresh();
-    }
+  
+  const refreshTaskID = setInterval(
+    async ()=> {
+      ins.update().then( () => {
+        if (runningLabsProvider.hasChanges()) {
+          localLabsProvider.refresh();
+          runningLabsProvider.refresh();
+        }
+      })
+    }, refreshInterval
   )
-  context.subscriptions.push({ dispose: () => clearInterval(runningLabIntervalId) });
+
+  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID)});
 }
 
 export function deactivate() {
