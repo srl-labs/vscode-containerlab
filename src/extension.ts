@@ -84,13 +84,6 @@ export async function activate(context: vscode.ExtensionContext) {
   // get the username
   username = utils.getUsername();
 
-  // // If you have a defined "containerlabExplorer" view in package.json,
-  // // you can either do:
-  // treeView = vscode.window.createTreeView('localLabs', {
-  //   treeDataProvider: provider,
-  //   canSelectMany: true
-  // });
-
   // Determine if local capture is allowed.
   const isLocalCaptureAllowed =
     vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack();
@@ -422,7 +415,7 @@ export async function activate(context: vscode.ExtensionContext) {
     async ()=> {
       ins.update().then( () => {
         localLabsProvider.refresh();
-        runningLabsProvider.refresh();
+        runningLabsProvider.softRefresh();
       })
     }, refreshInterval
   )
