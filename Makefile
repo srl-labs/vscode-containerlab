@@ -1,10 +1,10 @@
-compile:
+build:
 	npx tsc -p .
 	
 packages:
 	npm install
 
-build:
+vsix:
 	npx vsce package
 
 download-node:
