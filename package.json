@@ -64,7 +64,13 @@
       },
       {
         "view": "localLabs",
-        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)"
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)",
+        "when": "workbenchState != empty"
+      },
+      {
+        "view": "localLabs",
+        "contents": "No workspace open\n[Open folder](command:vscode.openFolder)",
+        "when": "workbenchState == empty"
       }
     ],
     "commands": [
