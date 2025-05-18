@@ -67,7 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
   ins.update();
 
   // Tree data provider
-  const localLabsProvider = new LocalLabTreeDataProvider(context);
+  const localLabsProvider = new LocalLabTreeDataProvider();
   const runningLabsProvider = new RunningLabTreeDataProvider(context);
 
 

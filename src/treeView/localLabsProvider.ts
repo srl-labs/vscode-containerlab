@@ -3,10 +3,6 @@ import * as utils from "../utils"
 import * as c from "./common";
 import * as ins from "./inspector";
 import path = require("path");
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
@@ -20,7 +16,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     // match on subdirs. deletion events only.
     private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
 
-    constructor(private context: vscode.ExtensionContext) {
+    constructor() {
         this.watcher.onDidCreate(() => { this.refresh(); });
         this.watcher.onDidDelete(() => { this.refresh(); });
         this.watcher.onDidChange(() => { this.refresh(); });
@@ -114,7 +110,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private getLabPaths() {
         const labPaths = new Set<string>();
 
-        for (const [key, value] of Object.entries(ins.rawInspectData)) {
+        for (const value of Object.values(ins.rawInspectData)) {
             if (value instanceof Array) {
                 labPaths.add(value[0]['absLabPath']);
             }
