@@ -74,12 +74,12 @@ class TopoViewerEditorEngine {
   private viewportPanels: ManagerViewportPanels;
 
 
-  private debounce<T extends (...args: any[]) => any>(
-    func: T,
+  private debounce(
+    func: (...args: any[]) => any, // eslint-disable-line no-unused-vars
     wait: number
-  ): (...args: Parameters<T>) => void {
+  ) {
     let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: Parameters<T>) => {
+    return (...args: any[]) => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };

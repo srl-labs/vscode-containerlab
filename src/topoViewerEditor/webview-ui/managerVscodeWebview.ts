@@ -7,12 +7,16 @@ declare function acquireVsCodeApi(): any;
  * VscodeMessageSender handles communication between the webview and the VS Code extension backend.
  * It sends messages to the extension and listens for responses, managing pending requests.
  */
+interface PendingRequest {
+  // eslint-disable-next-line no-unused-vars
+  resolve(value: any): void;
+  // eslint-disable-next-line no-unused-vars
+  reject(reason?: any): void;
+}
+
 export class VscodeMessageSender {
   private vsCode: any;
-  private pendingRequests = new Map<
-    string,
-    { resolve: (value: any) => void; reject: (reason?: any) => void }
-  >();
+  private pendingRequests = new Map<string, PendingRequest>();
   private requestCounter = 0;
 
   /**
