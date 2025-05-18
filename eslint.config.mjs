@@ -26,6 +26,19 @@ export default [
         project: './tsconfig.json',  // must include all src TS
         ecmaVersion: 'latest',
         sourceType: 'module'
+      },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        require: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        fetch: 'readonly'
       }
     },
     plugins: { '@typescript-eslint': tseslint.plugin },
