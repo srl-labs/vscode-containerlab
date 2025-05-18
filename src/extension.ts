@@ -241,7 +241,7 @@ export async function activate(context: vscode.ExtensionContext) {
       // Delegate to your template‑writer helper:
       const editor = new TopoViewerEditor(context);
       try {
-        await editor.createTemplateFile(context, uri, labName);
+        await editor.createTemplateFile(context, uri);
 
         // Open the webview panel topoViewerEditor.
         await editor.createWebviewPanel(context, uri, labName)

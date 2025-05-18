@@ -19,6 +19,7 @@ export class TopoViewerEditor {
   private currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = 'topoViewerEditor';
   private adaptor: TopoViewerAdaptorClab;
+  private context: vscode.ExtensionContext;
   public lastYamlFilePath: string = '';
   public lastFolderName: string | undefined;
   public targetDirPath: string | undefined;
@@ -28,7 +29,8 @@ export class TopoViewerEditor {
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
 
-  constructor(private context: vscode.ExtensionContext) {
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
   }
 
@@ -72,7 +74,7 @@ export class TopoViewerEditor {
    * @param requestedFileUri - The URI suggested by the user (e.g., from a save dialog).
    * @param labName - Used to seed the template content and derive the folder name.
    */
-  public async createTemplateFile(context: vscode.ExtensionContext, requestedFileUri: vscode.Uri, labName: string): Promise<void> {
+  public async createTemplateFile(context: vscode.ExtensionContext, requestedFileUri: vscode.Uri): Promise<void> {
     // Parse the requested file path
     const requestedPath = requestedFileUri.fsPath;
     const parsedPath = path.parse(requestedPath);
@@ -275,7 +277,7 @@ topology:
       // Check if the file exists before attempting to read it
       try {
         await vscode.workspace.fs.stat(fileUri);
-      } catch (e) {
+      } catch {
         // File doesn't exist, try with the corrected path if available
         if (this.lastYamlFilePath) {
           fileUri = vscode.Uri.file(this.lastYamlFilePath);
@@ -905,8 +907,10 @@ topology:
               log.info(this.lastYamlFilePath);
 
             } catch (error) {
-              const result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
-              log.error(`Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(error, null, 2)}`);
+              result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
+              log.error(
+                `Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(error, null, 2)}`
+              );
               this.isInternalUpdate = false;
             }
             break;
