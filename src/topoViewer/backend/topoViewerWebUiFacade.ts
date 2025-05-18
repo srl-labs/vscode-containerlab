@@ -3,49 +3,19 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
-import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
-import * as http from 'http';
 // import { Server as SocketIOServer } from 'socket.io';
 import {
-  captureInterface,
   getHostname,
-  deploy,
-  deployCleanup,
-  deploySpecificFile,
-  destroy,
-  destroyCleanup,
-  redeploy,
-  redeployCleanup,
-  inspectAllLabs,
-  inspectOneLab,
-  openLabFile,
-  openFolderInNewWindow,
-  startNode,
-  stopNode,
   attachShell,
   sshToNode,
   showLogs,
-  graphNextUI,
-  graphDrawIO,
-  graphDrawIOInteractive,
-  addLabFolderToWorkspace,
-  copyLabPath,
-  copyContainerIPv4Address,
-  copyContainerIPv6Address,
-  copyContainerName,
-  copyContainerID,
-  copyContainerImage,
-  copyContainerKind,
-  graphTopoviewer,
-  graphTopoviewerReload,
   captureInterfaceWithPacketflix,
 } from '../../commands/index';
 
