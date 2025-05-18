@@ -17,14 +17,17 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private watcher = vscode.workspace.createFileSystemWatcher(WATCHER_GLOB_PATTERN, false, false, false);
+    // match on subdirs. deletion events only.
+    private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
 
     constructor(private context: vscode.ExtensionContext) {
         this.watcher.onDidCreate(() => { this.refresh(); });
         this.watcher.onDidDelete(() => { this.refresh(); });
         this.watcher.onDidChange(() => { this.refresh(); });
-
-        // Also refresh when files are deleted via VS Code APIs
-        vscode.workspace.onDidDeleteFiles(() => { this.refresh(); });
+        // refresh when a subdir is deleted so we can check if any
+        // clab.yaml/yml files have been also deleted as a result
+        // of the subdir deletion.
+        this.delSubdirWatcher.onDidDelete( () => {this.refresh();} );
     }
 
     refresh(): void {
