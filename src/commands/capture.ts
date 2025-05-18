@@ -59,14 +59,14 @@ async function resolveWiresharkCommand(): Promise<string> {
   return "wireshark";
 }
 /**
- * Actually run the pipeline with sudo if needed. No extra 'bash -c' here; 
+ * Actually run the pipeline with sudo if needed. No extra 'bash -c' here;
  * let runWithSudo handle the quoting.
  */
 function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string) {
   outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(command=${pipeCmd})`);
 
   runWithSudo(
-      pipeCmd, 
+      pipeCmd,
       `TCPDump capture on ${parentName}/${ifName}`,
       outputChannel,
       "generic"
@@ -81,7 +81,7 @@ function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string)
 }
 
 /**
- * Start capture on an interface using edgeshark/packetflix. 
+ * Start capture on an interface using edgeshark/packetflix.
  * This method builds a 'packetflix:' URI that calls edgeshark.
  */
 export async function captureInterfaceWithPacketflix(
@@ -93,7 +93,7 @@ export async function captureInterfaceWithPacketflix(
     }
     outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
-    // If user multi‐selected items, we capture them all. 
+    // If user multi‐selected items, we capture them all.
     const selected = allSelectedNodes && allSelectedNodes.length > 0
       ? allSelectedNodes
       : [node];

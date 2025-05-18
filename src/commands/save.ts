@@ -41,7 +41,7 @@ export async function saveNode(node: ClabContainerTreeNode) {
     vscode.window.showErrorMessage("No container node selected.");
     return;
   }
-  
+
   if (!node.labPath || !node.labPath.absolute) {
     vscode.window.showErrorMessage("Error: Could not determine lab path for this node.");
     return;

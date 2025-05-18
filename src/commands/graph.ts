@@ -67,7 +67,7 @@ export function graphDrawIOInteractive(node: ClabLabTreeNode) {
 
 
 /**
- * Graph Lab (TopoViewer) 
+ * Graph Lab (TopoViewer)
  */
 
 let currentTopoViewer: TopoViewer | undefined;
@@ -134,7 +134,7 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
 
 
 /**
- * Graph Lab (TopoViewer Reload) 
+ * Graph Lab (TopoViewer Reload)
  */
 export async function graphTopoviewerReload() {
   // 1) If there's no panel, show an error

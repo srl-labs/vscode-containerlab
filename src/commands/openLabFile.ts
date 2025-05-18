@@ -12,7 +12,7 @@ export function openLabFile(node: ClabLabTreeNode) {
       vscode.window.showErrorMessage('No labPath found.');
       return;
     }
-    
+
     const uri = vscode.Uri.file(labPath);
     vscode.commands.executeCommand('vscode.open', uri);
 }

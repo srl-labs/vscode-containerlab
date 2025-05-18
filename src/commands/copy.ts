@@ -158,6 +158,6 @@ export function copyMACAddress(node: ClabInterfaceTreeNode) {
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${intfName}: Copied MAC address to clipboard succesfully.`);
   });
-  
+
 
 }

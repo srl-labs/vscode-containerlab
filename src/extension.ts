@@ -411,7 +411,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  
+
   const refreshTaskID = setInterval(
     async ()=> {
       ins.update().then( () => {

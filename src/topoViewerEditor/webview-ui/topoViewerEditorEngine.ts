@@ -270,7 +270,7 @@ class TopoViewerEditorEngine {
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
-      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
       spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
@@ -281,7 +281,7 @@ class TopoViewerEditorEngine {
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer 
+      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer
     });
 
     this.cy.cxtmenu({
@@ -318,7 +318,7 @@ class TopoViewerEditorEngine {
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
-      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
       spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
@@ -329,7 +329,7 @@ class TopoViewerEditorEngine {
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: 10 // if set to a number, this will cancel the command if the pointer 
+      outsideMenuCancel: 10 // if set to a number, this will cancel the command if the pointer
     });
 
   }
