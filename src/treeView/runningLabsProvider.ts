@@ -47,7 +47,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private refreshInterval: number = 10000; // Default to 10 seconds
     private cacheTTL: number = 30000; // Default to 30 seconds, will be overridden
 
-    constructor(private context: vscode.ExtensionContext) {
+    private context: vscode.ExtensionContext;
+
+    constructor(context: vscode.ExtensionContext) {
+        this.context = context;
         // Get the refresh interval from configuration
         const config = vscode.workspace.getConfiguration('containerlab');
         this.refreshInterval = config.get<number>('refreshInterval', 10000);
@@ -105,7 +108,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         const now = Date.now();
 
         // Check for expired caches
-        for (const [key, value] of this.containerInterfacesCache.entries()) {
+        for (const value of this.containerInterfacesCache.values()) {
             if (now - value.timestamp > this.cacheTTL) {
                 return true;
             }
