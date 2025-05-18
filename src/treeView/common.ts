@@ -22,13 +22,6 @@ export enum IntfStateIcons {
     DARK = "icons/ethernet-port-dark.svg",
 }
 
-/**
- * Interface which stores relative and absolute lab path.
- */
-export interface LabPath {
-    absolute: string,
-    relative: string
-}
 
 /**
  * A tree node for labs
