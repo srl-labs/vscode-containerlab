@@ -5,10 +5,13 @@ import * as os from "os";
 import { execSync } from "child_process";
 
 export function stripAnsi(input: string): string {
-  return input
-    // remove ANSI escape sequences
-    .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "")
-    .replace(/\x1B[@-Z\\-_]/g, "");
+  const esc = String.fromCharCode(27);
+  const escapeSeq = new RegExp(
+    esc + String.fromCharCode(91) + "[0-?]*[ -/]*[@-~]",
+    "g",
+  );
+  const controlSeq = new RegExp(`${esc}[@-Z\\-_]`, "g");
+  return input.replace(escapeSeq, "").replace(controlSeq, "");
 }
 
 export function stripFileName(p: string): string {
@@ -42,7 +45,7 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
 
   if (labPath.startsWith('~')) {
     const homedir = os.homedir();
-    const sub = labPath.replace(/^~[\/\\]?/, '');
+    const sub = labPath.replace(/^~[/\\]?/, "");
     labPath = path.normalize(path.join(homedir, sub));
   }
 
@@ -101,11 +104,13 @@ export function isOrbstack(): boolean {
 }
 
 export function getUsername(): string {
-  let username: string = "";
+  let username = "";
   try {
     username = execSync("whoami").toString("utf-8").trim();
-  } catch (err) {
-    throw new Error(`Could not determine user. Failed to execute command: whoami`);
+  } catch {
+    throw new Error(
+      "Could not determine user. Failed to execute command: whoami",
+    );
   }
-  return username
+  return username;
 }
