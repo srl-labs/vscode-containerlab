@@ -72,7 +72,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             this._onDidChangeTreeData.fire();
         } else {
             // Selective refresh - only refresh this element
-            this._onDidChangeTreeData.fire(element); 
+            this._onDidChangeTreeData.fire(element);
         }
     }
 
@@ -87,7 +87,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             this._onDidChangeTreeData.fire();
         } else {
             // Selective refresh - only refresh this element
-            this._onDidChangeTreeData.fire(element); 
+            this._onDidChangeTreeData.fire(element);
         }
     }
 
@@ -133,11 +133,18 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         // Discover labs to populate tree
         if (!element) {
+            let labs = [];
             if (hideNonOwnedLabsState) {
-                return this.treeItems.filter(labNode => labNode.owner == username);
+                labs = this.treeItems.filter(labNode => labNode.owner == username);
             } else {
-                return this.treeItems;
+                labs = this.treeItems.filter(labNode => labNode.owner == username);
             }
+            vscode.commands.executeCommand(
+                'setContext',
+                'runningLabsEmpty',
+                labs.length == 0
+            );
+            return labs;
         }
         // Find containers belonging to a lab
         if (element instanceof c.ClabLabTreeNode) { return element.containers; }

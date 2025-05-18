@@ -27,7 +27,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         // refresh when a subdir is deleted so we can check if any
         // clab.yaml/yml files have been also deleted as a result
         // of the subdir deletion.
-        this.delSubdirWatcher.onDidDelete( () => {this.refresh();} );
+        this.delSubdirWatcher.onDidDelete(() => { this.refresh(); });
     }
 
     refresh(): void {
@@ -40,7 +40,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
     // Populate the tree
     async getChildren(element: any): Promise<any> {
-        if(element) { return undefined; }
+        if (element) { return undefined; }
         return this.discoverLabs();
     }
 
@@ -55,7 +55,19 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         // empty tree if no files were discovered
         if (!length) {
+            vscode.commands.executeCommand(
+                'setContext',
+                'localLabsEmpty',
+                true
+            );
             return undefined;
+        }
+        else {
+            vscode.commands.executeCommand(
+                'setContext',
+                'localLabsEmpty',
+                false
+            );
         }
 
         const labs: Record<string, c.ClabLabTreeNode> = {};

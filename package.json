@@ -371,12 +371,12 @@
         },
         {
           "command": "containerlab.treeView.runningLabs.list.find",
-          "when": "view == runningLabs",
+          "when": "view == runningLabs && runningLabsEmpty == false",
           "group": "navigation@99"
         },
         {
           "command": "containerlab.treeView.localLabs.list.find",
-          "when": "view == localLabs",
+          "when": "view == localLabs && localLabsEmpty == false",
           "group": "navigation@99"
         }
       ],
