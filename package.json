@@ -8,7 +8,7 @@
   "version": "0.13.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
-    "vscode": "^1.99.1"
+    "vscode": "^1.100.0"
   },
   "repository": {
     "type": "git",
@@ -883,8 +883,8 @@
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.15.3",
-    "@types/vscode": "^1.99.1",
+    "@types/node": "^22.15.17",
+    "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
     "eslint": "^9.27.0",

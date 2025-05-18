@@ -112,7 +112,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         for (const value of Object.values(ins.rawInspectData)) {
             if (value instanceof Array) {
-                labPaths.add(value[0]['absLabPath']);
+                labPaths.add(value[0]['Labels']['clab-topo-file']);
             }
         }
 
