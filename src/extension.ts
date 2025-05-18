@@ -191,7 +191,9 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)
+    vscode.commands.registerCommand(
+      'containerlab.lab.graph.topoViewerReload',
+      cmd.graphTopoviewerReload
     )
   );
 
@@ -249,7 +251,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Open the created file in a split editor.
         await editor.openTemplateFile(editor.lastYamlFilePath);
 
-      } catch (err) {
+      } catch {
         // createTemplateFile will have already shown an error
         return;
       }
@@ -260,9 +262,8 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register configuration for file watching
   vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('containerlab.autoSync')) {
-      // Handle configuration change if needed
-      const autoSync = vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
-      // You could pass this to your editor instance if needed
+      // Access the setting to trigger any watchers
+      void vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
     }
   });
 

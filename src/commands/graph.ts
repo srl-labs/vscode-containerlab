@@ -127,8 +127,8 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
       vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
     });
 
-  } catch (err) {
-    // ...
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -136,7 +136,7 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
 /**
  * Graph Lab (TopoViewer Reload) 
  */
-export async function graphTopoviewerReload(context: vscode.ExtensionContext) {
+export async function graphTopoviewerReload() {
   // 1) If there's no panel, show an error
   if (!currentTopoViewerPanel) {
     vscode.window.showErrorMessage("No active TopoViewer panel to reload.");

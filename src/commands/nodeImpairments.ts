@@ -2,11 +2,7 @@ import * as vscode from "vscode";
 import { ClabContainerTreeNode } from "../treeView/common";
 import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
 import { runWithSudo } from "../helpers/containerlabUtils";
-import { exec } from "child_process";
-import { promisify } from "util";
 import { outputChannel } from "../extension";
-
-const execAsync = promisify(exec);
 
 /**
  * Normalizes an interface name by removing any parenthesized content.

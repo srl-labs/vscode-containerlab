@@ -68,7 +68,7 @@ export async function runWithSudo(
   try {
     await execAsync(checkCommand);
     passwordlessAvailable = true;
-  } catch (checkErr) {
+  } catch {
     passwordlessAvailable = false;
   }
 
@@ -141,7 +141,7 @@ export async function ensureClabInstalled(outputChannel: vscode.OutputChannel): 
       return true;
     }
     throw new Error('containerlab not found.');
-  } catch (err) {
+  } catch {
     log(`containerlab is not installed. Prompting user for installation.`, outputChannel);
     const installAction = 'Install containerlab';
     const cancelAction = 'No';
