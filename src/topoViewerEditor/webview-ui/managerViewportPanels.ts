@@ -178,7 +178,7 @@ export class ManagerViewportPanels {
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           const suppressNotification = false;
-          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
+          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
         }, { once: true });
       }
     } catch (error: any) {
@@ -267,7 +267,6 @@ export class ManagerViewportPanels {
               // 6b) Persist changes (with notification)
               await this.viewportButtons.viewportButtonsSaveTopo(
                 this.cy,
-                this.messageSender,
                 /* suppressNotification */ false
               );
 

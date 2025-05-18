@@ -90,7 +90,7 @@ class TopoViewerEditorEngine {
     // Debounced save function
     const autoSave = this.debounce(async () => {
       const suppressNotification = true;
-      await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
+      await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
     // Listen for topology changes

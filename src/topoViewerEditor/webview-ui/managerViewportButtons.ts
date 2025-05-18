@@ -2,10 +2,10 @@
 
 import cytoscape from 'cytoscape';
 import loadCytoStyle from './managerCytoscapeStyle';
-import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
+import { fetchAndLoadData } from './managerCytoscapeFetchAndLoad';
 import { VscodeMessageSender } from './managerVscodeWebview';
 
-import { NodeData, EdgeData } from './topoViewerEditorEngine';
+import { NodeData } from './topoViewerEditorEngine';
 
 // Declare global functions/variables if they are not imported from other modules.
 declare const globalCytoscapeLeafletLeaf: { fit: () => void };
@@ -19,13 +19,14 @@ export let globalLinkEndpointVisibility = true;
  */
 export class ManagerViewportButtons {
   // private messageSender: VscodeMessageSender;
+  private messageSender: VscodeMessageSender;
 
   /**
    * Creates an instance of ManagerViewportButtons.
    */
-  constructor(
-    private messageSender: VscodeMessageSender
-  ) { }
+  constructor(messageSender: VscodeMessageSender) {
+    this.messageSender = messageSender;
+  }
 
   /**
    * Updates node positions and sends the topology data to the backend.
@@ -39,7 +40,10 @@ export class ManagerViewportButtons {
    * @param cy - The Cytoscape instance containing the graph elements.
    * @returns A promise that resolves when the data has been processed and sent.
    */
-  public async viewportButtonsSaveTopo(cy: cytoscape.Core, messageSender: VscodeMessageSender, suppressNotification: boolean): Promise<void> {
+  public async viewportButtonsSaveTopo(
+    cy: cytoscape.Core,
+    suppressNotification = false
+  ): Promise<void> {
     const isVscodeDeployment = true; // adjust this flag as needed
     if (!isVscodeDeployment) return;
 
@@ -192,7 +196,7 @@ export class ManagerViewportButtons {
   /**
    * Reloads the topology viewport in Cytoscape by requesting fresh data from the backend.
    *
-   * This method sends a reload command to the VS Code extension backend, waits briefly
+   * This method sends a reload command to the VS Code extension backend, waits briefly
    * to allow the backend to process the request, and then re-fetches and re-loads
    * the topology data into the provided Cytoscape instance.
    *
