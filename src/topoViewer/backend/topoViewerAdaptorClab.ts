@@ -11,7 +11,7 @@ import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopol
 
 import { version as topoViewerVersion } from '../../../package.json';
 
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from "../../treeView/common";;
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from "../../treeView/common";
 // log.info(ClabTreeDataProvider.)
 
 import {

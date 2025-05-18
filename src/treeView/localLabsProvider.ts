@@ -22,6 +22,9 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         this.watcher.onDidCreate(() => { this.refresh(); });
         this.watcher.onDidDelete(() => { this.refresh(); });
         this.watcher.onDidChange(() => { this.refresh(); });
+
+        // Also refresh when files are deleted via VS Code APIs
+        vscode.workspace.onDidDeleteFiles(() => { this.refresh(); });
     }
 
     refresh(): void {
