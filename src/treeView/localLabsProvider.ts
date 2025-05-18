@@ -110,10 +110,22 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private getLabPaths() {
         const labPaths = new Set<string>();
 
-        for (const value of Object.values(ins.rawInspectData)) {
-            if (value instanceof Array) {
-                labPaths.add(value[0]['Labels']['clab-topo-file']);
-            }
+        const data = ins.rawInspectData;
+
+        if (Array.isArray(data)) {
+            // Old format: flat array of containers
+            data.forEach((container: any) => {
+                const p = container?.Labels?.['clab-topo-file'];
+                if (p) { labPaths.add(p); }
+            });
+        } else if (data && typeof data === 'object') {
+            // Possibly new format: object with lab names as keys
+            Object.values(data).forEach((containers: any) => {
+                if (Array.isArray(containers) && containers.length > 0) {
+                    const p = containers[0]?.Labels?.['clab-topo-file'];
+                    if (p) { labPaths.add(p); }
+                }
+            });
         }
 
         return labPaths;

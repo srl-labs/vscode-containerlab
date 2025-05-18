@@ -208,6 +208,7 @@ export interface ClabDetailedJSON {
     }>;
     Ports: Array<any>;
     Pid?: number;
+    NetworkName?: string; // management network name (>=0.68.0)
 }
 
 /**
@@ -230,4 +231,5 @@ export interface ClabJSON {
     status?: string;      // Also add the optional status field
     node_type?: string;   // Node type (e.g. ixrd3, srlinux, etc.)
     node_group?: string;  // Node group
+    network_name?: string; // Management network name
 }

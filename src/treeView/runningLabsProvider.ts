@@ -235,7 +235,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     state: container.State,
                     status: container.Status,
                     node_type: container.Labels['clab-node-type'] || undefined,
-                    node_group: container.Labels['clab-node-group'] || undefined
+                    node_group: container.Labels['clab-node-group'] || undefined,
+                    network_name: container.NetworkName || undefined
                 };
             });
         }
