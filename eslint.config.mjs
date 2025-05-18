@@ -1,28 +1,38 @@
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
+// eslint.config.mjs  – works with ESLint 9+
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
-export default [{
-    files: ["**/*.ts"],
-}, {
-    plugins: {
-        "@typescript-eslint": typescriptEslint,
-    },
+export default [
+  /* ─── files & globs ESLint must ignore ─────────────────────────── */
+  {
+    ignores: [
+      '**/*.js',          // ← ignore *all* JavaScript bundles
+      'out/**',
+      'dist/**',
+      'node_modules/**',
+      '.vscode-test.mjs'  // VS Code test harness
+    ]
+  },
 
+  /* ---------- every other JS/JSON file ---------- */
+  eslint.configs.recommended,   // same as "eslint:recommended"
+
+  /* ---------- TypeScript (syntax + type-aware) ---------- */
+  {
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
-        parser: tsParser,
-        ecmaVersion: 2022,
-        sourceType: "module",
+      parser: tseslint.parser,
+      parserOptions: {
+        project: './tsconfig.json',  // must include all src TS
+        ecmaVersion: 'latest',
+        sourceType: 'module'
+      }
     },
-
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    // merge the two rule-sets
     rules: {
-        "@typescript-eslint/naming-convention": ["warn", {
-            selector: "import",
-            format: ["camelCase", "PascalCase"],
-        }],
-
-        curly: "warn",
-        eqeqeq: "warn",
-        "no-throw-literal": "warn",
-        semi: "warn",
-    },
-}];
+      ...tseslint.configs.recommended.rules,
+      ...tseslint.configs.recommendedTypeChecked.rules
+    }
+  }
+];
