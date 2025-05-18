@@ -3,48 +3,19 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
-import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
+import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
-import * as http from 'http';
 // import { Server as SocketIOServer } from 'socket.io';
 import {
-  captureInterface,
   getHostname,
-  deploy,
-  deployCleanup,
-  deploySpecificFile,
-  destroy,
-  destroyCleanup,
-  redeploy,
-  redeployCleanup,
-  inspectAllLabs,
-  inspectOneLab,
-  openLabFile,
-  openFolderInNewWindow,
-  startNode,
-  stopNode,
   attachShell,
   sshToNode,
   showLogs,
-  graphNextUI,
-  graphDrawIO,
-  graphDrawIOInteractive,
-  addLabFolderToWorkspace,
-  copyLabPath,
-  copyContainerIPv4Address,
-  copyContainerIPv6Address,
-  copyContainerName,
-  copyContainerID,
-  copyContainerImage,
-  copyContainerKind,
-  graphTopoviewer,
-  graphTopoviewerReload,
   captureInterfaceWithPacketflix,
 } from '../../commands/index';
 
@@ -66,7 +37,7 @@ export class TopoViewer {
   /**
    * Tree data provider to manage Containerlab lab nodes.
    */
-  private clabTreeProviderImported: ClabTreeDataProvider;
+  private clabTreeProviderImported: RunningLabTreeDataProvider;
 
   /**
    * Stores the YAML file path from the last topenViewer call.
@@ -97,7 +68,7 @@ export class TopoViewer {
    */
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
-    this.clabTreeProviderImported = new ClabTreeDataProvider(context);
+    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
 
   /**

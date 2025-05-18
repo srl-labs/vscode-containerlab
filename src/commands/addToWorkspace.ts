@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 
 export async function addLabFolderToWorkspace(node: ClabLabTreeNode) {
   if (!node.labPath.absolute) {

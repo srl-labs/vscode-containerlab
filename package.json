@@ -5,10 +5,10 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.12.2",
+  "version": "0.13.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
-    "vscode": "^1.99.1"
+    "vscode": "^1.100.0"
   },
   "repository": {
     "type": "git",
@@ -48,11 +48,31 @@
     "views": {
       "containerlabViewContainer": [
         {
-          "id": "containerlabExplorer",
-          "name": "Containerlab Explorer"
+          "id": "runningLabs",
+          "name": "Running Labs"
+        },
+        {
+          "id": "localLabs",
+          "name": "Undeployed Local Labs"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "runningLabs",
+        "contents": "No running labs discovered\n[Deploy an existing lab](command:containerlab.lab.deploy.specificFile)"
+      },
+      {
+        "view": "localLabs",
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)",
+        "when": "workbenchState != empty"
+      },
+      {
+        "view": "localLabs",
+        "contents": "No workspace open\n[Open folder](command:vscode.openFolder)",
+        "when": "workbenchState == empty"
+      }
+    ],
     "commands": [
       {
         "command": "containerlab.refresh",
@@ -124,13 +144,13 @@
         "command": "containerlab.inspectAll",
         "title": "Inspect (All Labs)",
         "category": "Containerlab",
-        "icon": "$(search)"
+        "icon": "$(info)"
       },
       {
         "command": "containerlab.inspectOneLab",
         "title": "Inspect",
         "category": "Containerlab",
-        "icon": "$(search)"
+        "icon": "$(info)"
       },
       {
         "command": "containerlab.lab.graph",
@@ -291,6 +311,24 @@
         "title": "Open Port in Browser",
         "icon": "$(globe)",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+        "title": "Hide non-owned"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
+        "title": "Show non-owned"
+      },
+      {
+        "command": "containerlab.treeView.runningLabs.list.find",
+        "title": "Search running labs",
+        "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.list.find",
+        "title": "Search local labs",
+        "icon": "$(search)"
       }
     ],
     "submenus": [
@@ -303,23 +341,43 @@
       "view/title": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabExplorer",
-          "group": "navigation@2"
+          "when": "view == runningLabs",
+          "group": "navigation@8"
         },
         {
           "command": "containerlab.lab.deploy.specificFile",
-          "when": "view == containerlabExplorer",
+          "when": "view == runningLabs",
           "group": "navigation@1"
         },
         {
-          "command": "containerlab.editor.topoViewerEditor",
-          "when": "view == containerlabExplorer",
-          "group": "navigation@3"
+          "command": "containerlab.inspectAll",
+          "when": "view == runningLabs",
+          "group": "navigation@2"
         },
         {
-          "command": "containerlab.inspectAll",
-          "when": "view == containerlabExplorer",
-          "group": "navigation@9"
+          "command": "containerlab.editor.topoViewerEditor",
+          "when": "view == localLabs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+          "when": "view == runningLabs && !containerlab:nonOwnedLabsHidden",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.showNonOwnedLabs",
+          "when": "view == runningLabs && containerlab:nonOwnedLabsHidden",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.list.find",
+          "when": "view == runningLabs && runningLabsEmpty == false",
+          "group": "navigation@99"
+        },
+        {
+          "command": "containerlab.treeView.localLabs.list.find",
+          "when": "view == localLabs && localLabsEmpty == false",
+          "group": "navigation@99"
         }
       ],
       "editor/title": [
@@ -416,7 +474,6 @@
       "view/item/context": [
         {
           "command": "containerlab.refresh",
-          "when": "view == containerlabExplorer",
           "group": "refresh@99"
         },
         {
@@ -817,15 +874,22 @@
     "watch": "tsc -w -p .",
     "build:webview": "webpack --config webpack.config.js",
     "package": "npm run compile && npm run build:webview && vsce package",
-    "package:dev": "npm run watch & webpack --config webpack.config.js --watch"
+    "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
+    "lint": "eslint --ext .ts,.tsx .",
+    "lint:fix": "npm run lint -- --fix"
   },
   "devDependencies": {
+    "@eslint/js": "^9.27.0",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.15.3",
-    "@types/vscode": "^1.99.1",
+    "@types/node": "^22.15.17",
+    "@types/vscode": "^1.100.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.27.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {

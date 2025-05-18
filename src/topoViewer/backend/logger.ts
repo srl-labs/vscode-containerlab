@@ -9,7 +9,7 @@ const outputChannel = vscode.window.createOutputChannel("TopoViewer Logs");
 
 /**
  * Extract file name + line number from the call stack.
- * We'll parse compiled `.js` stack frames, 
+ * We'll parse compiled `.js` stack frames,
  * which may differ slightly from your TypeScript lines.
  */
 function getCallerFileLine(): string {

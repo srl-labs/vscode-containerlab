@@ -1,8 +1,11 @@
-compile:
+build:
 	npx tsc -p .
 	
 packages:
 	npm install
+
+vsix:
+	npx vsce package
 
 download-node:
 	curl -o- https://fnm.vercel.app/install | bash

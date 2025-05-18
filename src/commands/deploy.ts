@@ -1,4 +1,4 @@
-import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
 import * as vscode from "vscode";

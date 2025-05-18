@@ -1,20 +1,28 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
 import * as utils from './utils';
-import { ClabTreeDataProvider, ClabLabTreeNode } from './clabTreeDataProvider';
+import * as ins from "./treeView/inspector"
+import * as c from './treeView/common';
+import * as path from 'path';
+
 import {
   ensureClabInstalled,
   checkAndUpdateClabIfNeeded
 } from './helpers/containerlabUtils';
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
-import * as path from 'path';
 
 
 import { WelcomePage } from './welcomePage';
+import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
+import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
 export let treeView: any;
+export let localTreeView: any;
+export let runningTreeView: any;
+export let username: string;
+export let hideNonOwnedLabsState: boolean = false;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -55,15 +63,26 @@ export async function activate(context: vscode.ExtensionContext) {
   const welcomePage = new WelcomePage(context);
   await welcomePage.show();
 
-  // Tree data provider
-  const provider = new ClabTreeDataProvider(context);
+  // Initial pull of inspect data
+  ins.update();
 
-  // If you have a defined "containerlabExplorer" view in package.json,
-  // you can either do:
-  treeView = vscode.window.createTreeView('containerlabExplorer', {
-    treeDataProvider: provider,
+  // Tree data provider
+  const localLabsProvider = new LocalLabTreeDataProvider();
+  const runningLabsProvider = new RunningLabTreeDataProvider(context);
+
+
+  localTreeView = vscode.window.createTreeView('localLabs', {
+    treeDataProvider: localLabsProvider,
     canSelectMany: true
   });
+
+  runningTreeView = vscode.window.createTreeView('runningLabs', {
+    treeDataProvider: runningLabsProvider,
+    canSelectMany: true
+  });
+
+  // get the username
+  username = utils.getUsername();
 
   // Determine if local capture is allowed.
   const isLocalCaptureAllowed =
@@ -79,7 +98,8 @@ export async function activate(context: vscode.ExtensionContext) {
   // Refresh the tree view
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.refresh', () => {
-      provider.refresh();
+      localLabsProvider.refresh();
+      runningLabsProvider.refresh();
     })
   );
 
@@ -171,16 +191,18 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewerReload', () => cmd.graphTopoviewerReload(context)
+    vscode.commands.registerCommand(
+      'containerlab.lab.graph.topoViewerReload',
+      cmd.graphTopoviewerReload
     )
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'containerlab.editor.topoViewerEditor.open',
-      async (node: ClabLabTreeNode) => {
-        const yamlUri  = vscode.Uri.file(node.labPath.absolute);
-        const labName  = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
+      async (node: c.ClabLabTreeNode) => {
+        const yamlUri = vscode.Uri.file(node.labPath.absolute);
+        const labName = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
 
         const editor = new TopoViewerEditor(context);
 
@@ -221,7 +243,7 @@ export async function activate(context: vscode.ExtensionContext) {
       // Delegate to your template‑writer helper:
       const editor = new TopoViewerEditor(context);
       try {
-        await editor.createTemplateFile(context, uri, labName);
+        await editor.createTemplateFile(context, uri);
 
         // Open the webview panel topoViewerEditor.
         await editor.createWebviewPanel(context, uri, labName)
@@ -229,7 +251,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Open the created file in a split editor.
         await editor.openTemplateFile(editor.lastYamlFilePath);
 
-      } catch (err) {
+      } catch {
         // createTemplateFile will have already shown an error
         return;
       }
@@ -240,9 +262,8 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register configuration for file watching
   vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('containerlab.autoSync')) {
-      // Handle configuration change if needed
-      const autoSync = vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
-      // You could pass this to your editor instance if needed
+      // Access the setting to trigger any watchers
+      void vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
     }
   });
 
@@ -352,18 +373,55 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.set.sessionHostname', cmd.setSessionHostname)
   );
 
+  // Hide/show non-owned labs
+  const hideNonOwnedLabs = (hide: boolean) => {
+    hideNonOwnedLabsState = hide;
+    vscode.commands.executeCommand('setContext', 'containerlab:nonOwnedLabsHidden', hide);
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.hideNonOwnedLabs', () => {
+      runningLabsProvider.refreshWithoutDiscovery();
+      hideNonOwnedLabs(true);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.showNonOwnedLabs', () => {
+      runningLabsProvider.refreshWithoutDiscovery();
+      hideNonOwnedLabs(false);
+    })
+  );
+
+  // Search/filter command handler
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.list.find', () => {
+      vscode.commands.executeCommand("runningLabs.focus")
+      vscode.commands.executeCommand("list.find")
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.localLabs.list.find', () => {
+      vscode.commands.executeCommand("localLabs.focus")
+      vscode.commands.executeCommand("list.find")
+    })
+  );
+
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
-  const intervalId = setInterval(async () => {
-    // Only refresh if there are changes
-    if (await provider.hasChanges()) {
-      provider.refresh();
-    }
-  }, refreshInterval);
 
-  // Clean up the auto-refresh interval when the extension is deactivated
-  context.subscriptions.push({ dispose: () => clearInterval(intervalId) });
+  const refreshTaskID = setInterval(
+    async ()=> {
+      ins.update().then( () => {
+        localLabsProvider.refresh();
+        runningLabsProvider.softRefresh();
+      })
+    }, refreshInterval
+  )
+
+  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID)});
 }
 
 export function deactivate() {
