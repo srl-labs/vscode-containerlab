@@ -7,7 +7,7 @@ import * as yaml from 'js-yaml';
 import { log } from './logger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
-import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
+import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
 
 import { version as topoViewerVersion } from '../../../package.json';
 
@@ -15,37 +15,7 @@ import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from ".
 // log.info(ClabTreeDataProvider.)
 
 import {
-  captureInterface,
   getHostname,
-  deploy,
-  deployCleanup,
-  deploySpecificFile,
-  destroy,
-  destroyCleanup,
-  redeploy,
-  redeployCleanup,
-  inspectAllLabs,
-  inspectOneLab,
-  openLabFile,
-  openFolderInNewWindow,
-  startNode,
-  stopNode,
-  attachShell,
-  sshToNode,
-  showLogs,
-  graphNextUI,
-  graphDrawIO,
-  graphDrawIOInteractive,
-  addLabFolderToWorkspace,
-  copyLabPath,
-  copyContainerIPv4Address,
-  copyContainerIPv6Address,
-  copyContainerName,
-  copyContainerID,
-  copyContainerImage,
-  copyContainerKind,
-  graphTopoviewer,
-  graphTopoviewerReload
 } from '../../commands/index';
 
 log.info(`TopoViewer Version: ${topoViewerVersion}`);
@@ -218,7 +188,7 @@ export class TopoViewerAdaptorClab {
     // We check that both 'topoViewer-presetPosX' and 'topoViewer-presetPosY' exist.
     if (parsed.topology.nodes) {
       this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([nodeName, nodeObj]) =>                         // aarafat-tag: nodeName isn't actively used in the logic—it’s just there as part of the destructuring. 
+        .every(([, nodeObj]) =>
           !!nodeObj.labels?.['graph-posX'] &&
           !!nodeObj.labels?.['graph-posY']
         );
@@ -459,7 +429,7 @@ export class TopoViewerAdaptorClab {
     // We check that both 'topoViewer-presetPosX' and 'topoViewer-presetPosY' exist.
     if (parsed.topology.nodes) {
       this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([nodeName, nodeObj]) =>                         // aarafat-tag: nodeName isn't actively used in the logic—it’s just there as part of the destructuring. 
+        .every(([, nodeObj]) =>
           !!nodeObj.labels?.['graph-posX'] &&
           !!nodeObj.labels?.['graph-posY']
         );
@@ -781,8 +751,7 @@ export class TopoViewerAdaptorClab {
 
     // Now start work with foundContainerData as needed
     // For example, accessing IPv4 and IPv6 addresses:
-    const ipv4 = foundContainerData.IPv4Address;
-    const ipv6 = foundContainerData.IPv6Address;
+    // IPv4/IPv6 addresses are available via foundContainerData if needed
 
     // Perform any additional logic as required
     // ...
