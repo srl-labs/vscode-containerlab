@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import * as path from "path";
 
 /**
  * Build the HTML string for the webview, grouping containers by lab_name or labPath.
