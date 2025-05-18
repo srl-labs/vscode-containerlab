@@ -23,23 +23,23 @@ log.info(`TopoViewer Version: ${topoViewerVersion}`);
 /**
  * TopoViewerAdaptorClab is responsible for adapting Containerlab YAML configurations
  * into a format compatible with TopoViewer's Cytoscape model. This class performs the following tasks:
- * 
+ *
  * 1. **Parsing and Validation**: Converts Containerlab YAML data into internal TypeScript interfaces.
  *    Future enhancements include validating the YAML against a predefined JSON schema.
- * 
+ *
  * 2. **Data Transformation**: Transforms Containerlab node and link definitions into Cytoscape elements,
  *    ensuring proper formatting and linkage to prevent inconsistencies like nonexistent sources.
- * 
+ *
  * 3. **JSON Serialization**: Creates necessary directories and writes the transformed data into JSON files,
  *    including `dataCytoMarshall.json` and `environment.json`, which are utilized by TopoViewer.
- * 
+ *
  * 4. **Static Asset Management**: Generates URIs for static assets (CSS, JS, Images) required by the TopoViewer webview.
- * 
+ *
  * **Key Functionalities:**
  * - Extracts node names and assigns extended fields such as `data.weight` and `data.lat`.
  * - Processes links to associate source and target nodes accurately.
  * - Provides mechanisms to adjust placeholder values with real data as available.
- * 
+ *
  * **Note:** The class is designed to be extensible, allowing future integration of YAML validation based on
  * the Containerlab schema: https://github.com/srl-labs/containerlab/blob/e3a324a45032792258d92b8d3625fd108bdaeb9c/schemas/clab.schema.json
  */
@@ -54,7 +54,7 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Creates the target directory and writes the JSON data files required by TopoViewer.
-   * 
+   *
    * @param context - The VS Code extension context.
    * @param folderName - The name of the folder to create inside 'topoViewerData'.
    * @param cytoTopology - The Cytoscape topology data to write into the JSON files.
@@ -140,7 +140,7 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Generates Webview URIs for CSS, JS, and Images directories required by TopoViewer.
-   * 
+   *
    * @param context - The VS Code extension context.
    * @param webview - The Webview instance where the URIs will be used.
    * @returns An object containing URIs for CSS, JS, and Images assets.
@@ -164,13 +164,13 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Transforms a Containerlab YAML string into Cytoscape elements compatible with TopoViewer.
-   * 
+   *
    * This method performs the following operations:
    * - Parses the YAML content into Containerlab topology interfaces.
    * - Converts each Containerlab node into a Cytoscape node element, extracting and assigning necessary fields.
    * - Processes each Containerlab link into a Cytoscape edge element, ensuring accurate source and target references.
    * - Assigns placeholder values for fields like `weight` and `clabServerUsername` which can be replaced with real data.
-   * 
+   *
    * @param yamlContent - The Containerlab YAML content as a string.
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
@@ -406,13 +406,13 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Transforms a Containerlab YAML string into Cytoscape elements compatible with TopoViewer EDITOR.
-   * 
+   *
    * This method performs the following operations:
    * - Parses the YAML content into Containerlab topology interfaces.
    * - Converts each Containerlab node into a Cytoscape node element, extracting and assigning necessary fields.
    * - Processes each Containerlab link into a Cytoscape edge element, ensuring accurate source and target references.
    * - Assigns placeholder values for fields like `weight` and `clabServerUsername` which can be replaced with real data.
-   * 
+   *
    * @param yamlContent - The Containerlab YAML content as a string.
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
@@ -647,11 +647,11 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Splits an endpoint string into node and interface components.
-   * 
+   *
    * Example:
    * - "Spine-01:e1-1" => { node: "Spine-01", iface: "e1-1" }
    * - "Spine-01" => { node: "Spine-01", iface: "" }
-   * 
+   *
    * @param endpoint - The endpoint string from Containerlab YAML.
    * @returns An object containing the node and interface.
    */
@@ -666,11 +666,11 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Constructs a parent identifier for a node based on its group and label information.
-   * 
+   *
    * Example:
    * - Group: "Leaf", Label: { "topoViewer-groupLevel": "2" } => "Leaf:2"
    * - Missing group or label => ""
-   * 
+   *
    * @param nodeObj - The Containerlab node object.
    * @returns A string representing the parent identifier.
    */
@@ -688,7 +688,7 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Maps the EnvironmentJson object from camelCase to hyphenated keys for JSON serialization.
-   * 
+   *
    * @param envJson - The EnvironmentJson object with camelCase properties.
    * @returns A JSON string with hyphenated property names.
    */
