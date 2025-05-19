@@ -899,6 +899,7 @@
     "esbuild": "^0.25.4",
     "eslint": "^9.27.0",
     "mocha": "^11.3.0",
+    "mochawesome": "^7.1.3",
     "sinon": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
