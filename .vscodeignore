@@ -15,6 +15,7 @@ vsc-extension-quickstart.md
 src/**
 
 # Include static HTML assets needed at runtime
+!src/webview/*.css
 !src/topoViewer/webview-ui/html-static/**
 
 # If you still need specific source files at runtime, selectively include them with:
