@@ -879,7 +879,8 @@
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
     "lint:fix": "npm run lint -- --fix",
-    "test": "TS_NODE_PROJECT=./test/tsconfig.json mocha --require ts-node/register --extension ts \"test/**/*.test.ts\""
+    "test": "npm run test:compile && mocha --extension js \"out/test/**/*.test.js\"",
+    "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
@@ -892,7 +893,7 @@
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
-    "chai": "^5.2.0",
+    "chai": "^4.3.10",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
     "esbuild": "^0.25.4",

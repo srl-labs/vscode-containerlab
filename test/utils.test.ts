@@ -8,7 +8,7 @@ import path from 'path';
 const originalResolve = (Module as any)._resolveFilename;
 (Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
   if (request === 'vscode') {
-    return path.join(__dirname, 'vscode-stub.ts');
+    return path.join(__dirname, 'vscode-stub.js');
   }
   return originalResolve.call(this, request, parent, isMain, options);
 };
