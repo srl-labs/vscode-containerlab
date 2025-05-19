@@ -140,7 +140,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             if (hideNonOwnedLabsState) {
                 labs = this.treeItems.filter(labNode => labNode.owner == username);
             } else {
-                labs = this.treeItems.filter(labNode => labNode.owner == username);
+                labs = this.treeItems;
             }
             vscode.commands.executeCommand(
                 'setContext',
