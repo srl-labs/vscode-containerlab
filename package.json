@@ -917,6 +917,7 @@
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",
     "cytoscape-grid-guide": "^2.3.3",
+    "sinon": "^20.0.0",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
     "yaml": "^2.8.0"
