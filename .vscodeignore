@@ -1,7 +1,5 @@
 # Development infrastructure
 .vscode/**
-.vscode-test/**
-.vscode-test.mjs
 .github/**
 .gitignore
 .eslintrc.json
@@ -15,9 +13,14 @@ vsc-extension-quickstart.md
 
 # Source files - only bundle compiled output
 src/**
+
+# Include static HTML assets needed at runtime
+!src/webview/*.css
+!src/topoViewer/webview-ui/html-static/**
+
 # If you still need specific source files at runtime, selectively include them with:
-# !src/topoViewer/specific-runtime-file.js
-# !src/webview/inspect.css
+node_modules/**
+out/**
 
 # Build artifacts
 **/*.map

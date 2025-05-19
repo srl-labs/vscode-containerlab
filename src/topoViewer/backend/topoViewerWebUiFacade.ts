@@ -178,7 +178,7 @@ export class TopoViewer {
           // Static asset folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
           // Compiled JS directory.
-          vscode.Uri.joinPath(this.context.extensionUri, 'out'),
+          vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
         ],
       }
     );
@@ -202,7 +202,7 @@ export class TopoViewer {
 
     // Compute the URI for the compiled JS directory.
     const jsOutDir = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'out'))
+      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
       .toString();
 
     // Define URIs for the JSON data files.
@@ -755,7 +755,7 @@ export class TopoViewer {
     if (panel) {
       const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
       const jsOutDir = panel.webview
-        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'out'))
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
         .toString();
 
       const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
