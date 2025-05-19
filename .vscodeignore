@@ -1,22 +1,31 @@
-# Development folders
+# Development infrastructure
 .vscode/**
 .vscode-test/**
-
-# Config files
+.vscode-test.mjs
+.github/**
 .gitignore
+.eslintrc.json
+.eslintignore
 .yarnrc
+tsconfig.json
+eslint.config.mjs
+webpack.config.js
+Makefile
 vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
 
-# Source maps and TypeScript files
+# Source files - only bundle compiled output
+src/**
+# If you still need specific source files at runtime, selectively include them with:
+# !src/topoViewer/specific-runtime-file.js
+# !src/webview/inspect.css
+
+# Build artifacts
 **/*.map
 **/*.ts
-
-# Built packages
 *.vsix
 
-# Exclude all src except what we need
-src/*
-!src/topoViewer
-!src/webview/inspect.css
+# Test files
+test.clab.yml
+**/*.test.js
+**/__tests__/**
+**/__mocks__/**
