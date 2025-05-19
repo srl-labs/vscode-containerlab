@@ -119,6 +119,9 @@ When deploying labs, you can monitor the detailed progress in the Output window:
   - Deployed labs appear before undeployed labs
   - Within each group (deployed/undeployed), labs are sorted by their absolute path
 
+## Running Tests
+Run `npm test` after compiling the test sources to execute the unit tests. A detailed HTML report is generated in `mochawesome-report`.
+
 ---
 
 ## Known Issues

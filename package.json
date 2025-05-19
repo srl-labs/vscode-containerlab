@@ -879,7 +879,7 @@
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
     "lint:fix": "npm run lint -- --fix",
-    "test": "npm run test:compile && mocha --extension js \"out/test/**/*.test.js\"",
+    "test": "npm run test:compile && mocha --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
     "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
