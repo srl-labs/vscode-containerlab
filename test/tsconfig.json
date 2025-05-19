@@ -2,7 +2,12 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "rootDir": "..",
-    "outDir": "../out/test"
+    "outDir": "../out/test",
+    "resolveJsonModule": true
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": [
+    "../src/topoViewerEditor/**/*",
+    "../src/topoViewer/**/*"
+  ]
 }
