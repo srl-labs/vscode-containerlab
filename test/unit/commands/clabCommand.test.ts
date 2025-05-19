@@ -1,8 +1,9 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the ClabCommand wrapper.
- * The suite checks command construction and error handling for various scenarios.
+ * Tests covering the `ClabCommand` helper class.
+ * These verify how commands are constructed and how errors are surfaced in
+ * different situations using stubbed dependencies.
  */
 import { expect } from 'chai';
 import sinon from 'sinon';

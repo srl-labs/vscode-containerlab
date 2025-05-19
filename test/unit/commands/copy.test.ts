@@ -1,8 +1,8 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the copy command.
- * Verifies clipboard operations for lab path copying.
+ * Tests for the `copy` command which places a lab's path on the clipboard.
+ * The tests ensure the right text is copied using the stubbed clipboard API.
  */
 import { expect } from 'chai';
 import sinon from 'sinon';

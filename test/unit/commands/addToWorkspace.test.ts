@@ -1,10 +1,11 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the addLabFolderToWorkspace command.
- * Ensures that a selected lab folder is properly added to the VS Code workspace.
+ * Tests for the `addLabFolderToWorkspace` command.
+ * The suite checks that a chosen lab folder is added to the VS Code workspace
+ * using a stubbed `vscode` API from `test/helpers`.
  */
-// Tests the addLabFolderToWorkspace command which adds a lab folder to the current workspace
+// These tests simulate adding a folder to the workspace without launching VS Code
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';

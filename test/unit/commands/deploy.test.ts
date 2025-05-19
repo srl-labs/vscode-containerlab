@@ -1,10 +1,11 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the deploy command.
- * Confirms that ClabCommand is created with the expected arguments.
+ * Tests for the `deploy` command.
+ * The suite verifies that a `ClabCommand` instance receives the expected
+ * arguments when deploying a topology.
  */
-// Tests for the deploy command
+// These tests use stubs to emulate VS Code and containerlab CLI behaviour
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';

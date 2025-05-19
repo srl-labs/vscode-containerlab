@@ -1,7 +1,8 @@
 /* eslint-env mocha */
 /* global describe, it, after, __dirname */
 /**
- * Unit tests verifying that `stripAnsi` removes all ANSI escape sequences.
+ * Tests verifying that `stripAnsi` removes all ANSI escape sequences from a
+ * string. The tests use stubbed VS Code APIs only for compatibility.
  */
 import { expect } from 'chai';
 import Module from 'module';

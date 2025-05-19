@@ -1,10 +1,11 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the openLabFile command.
- * Verifies that the correct file is opened or that proper errors are shown.
+ * Tests for the `openLabFile` command.
+ * The suite ensures that the correct topology file is opened and that useful
+ * errors are displayed when necessary.
  */
-// Tests the openLabFile command which opens the selected lab in VS Code
+// These tests run against a stubbed version of the VS Code API
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';

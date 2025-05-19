@@ -1,11 +1,11 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the attachShell command.
- * These tests verify that shell commands are constructed correctly and
- * errors are reported when required parameters are missing.
+ * Tests for the `attachShell` command.
+ * It validates the command string built for opening a shell inside a container
+ * and ensures helpful errors appear when required parameters are missing.
  */
-// Tests the attachShell command which opens a shell inside a container
+// The command interacts with a mocked terminal via helpers in `test/helpers`
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';

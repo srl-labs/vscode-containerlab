@@ -1,8 +1,9 @@
 /* eslint-env mocha */
 /* global describe, it, after, __dirname */
 /**
- * Unit tests for `normalizeLabPath` covering various path normalization scenarios.
- * Temporary files and directories are created so fs.existsSync and realpathSync work as expected.
+ * Tests for `normalizeLabPath`.
+ * They create temporary files and directories to verify how different paths are
+ * resolved when the helper normalizes lab locations.
  */
 import { expect } from 'chai';
 import Module from 'module';

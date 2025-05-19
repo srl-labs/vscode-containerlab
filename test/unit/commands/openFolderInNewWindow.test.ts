@@ -1,10 +1,11 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Unit tests for the openFolderInNewWindow command.
- * Ensures the command opens the correct folder in a new VS Code window.
+ * Tests for the `openFolderInNewWindow` command.
+ * It checks that the selected lab folder is opened in a fresh VS Code window
+ * using the stubbed `vscode` API.
  */
-// Tests the openFolderInNewWindow command which opens a lab folder in a new VS Code window
+// The command simply invokes `vscode.openFolder` on the chosen folder path
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';

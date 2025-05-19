@@ -120,7 +120,13 @@ When deploying labs, you can monitor the detailed progress in the Output window:
   - Within each group (deployed/undeployed), labs are sorted by their absolute path
 
 ## Running Tests
-Run `npm test` after compiling the test sources to execute the unit tests. A detailed HTML report is generated in `mochawesome-report`.
+The extension includes a suite of unit tests located in the `test` folder. To run them:
+
+1. Install dependencies with `npm install` if you haven't already.
+2. Compile the test TypeScript using `npm run test:compile`.
+3. Execute `npm test` to run Mocha and generate an HTML report in `mochawesome-report`.
+
+See `test/README.md` for a short overview of the test setup and stub utilities.
 
 ---
 
