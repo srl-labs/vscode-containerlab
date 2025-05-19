@@ -15,9 +15,10 @@ vsc-extension-quickstart.md
 
 # Source files - only bundle compiled output
 src/**
+
 # If you still need specific source files at runtime, selectively include them with:
-# !src/topoViewer/specific-runtime-file.js
-# !src/webview/inspect.css
+node_modules/**
+out/**
 
 # Build artifacts
 **/*.map

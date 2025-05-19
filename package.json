@@ -18,7 +18,7 @@
     "hediet.vscode-drawio",
     "redhat.vscode-yaml"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -873,7 +873,9 @@
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "build:webview": "webpack --config webpack.config.js",
-    "package": "npm run compile && npm run build:webview && vsce package",
+    "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
+    "package": "npm run bundle && npm run build:webview && vsce package",
+    "vscode:prepublish": "npm run bundle && npm run build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
     "lint:fix": "npm run lint -- --fix"
@@ -890,7 +892,8 @@
     "eslint": "^9.27.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1",
-    "webpack-cli": "^6.0.1"
+    "webpack-cli": "^6.0.1",
+    "esbuild": "^0.20.2"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
