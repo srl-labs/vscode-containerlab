@@ -1,11 +1,12 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, __dirname */
+/* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Unit tests for the addLabFolderToWorkspace command.
  * Ensures that a selected lab folder is properly added to the VS Code workspace.
  */
 // Tests the addLabFolderToWorkspace command which adds a lab folder to the current workspace
 import { expect } from 'chai';
+import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
@@ -29,6 +30,12 @@ describe('addLabFolderToWorkspace command', () => {
   beforeEach(() => {
     vscodeStub.window.lastInfoMessage = '';
     vscodeStub.workspace.workspaceFolders = [];
+    sinon.spy(vscodeStub.workspace, 'updateWorkspaceFolders');
+    sinon.spy(vscodeStub.window, 'showInformationMessage');
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   it('adds the folder to the workspace', async () => {
@@ -39,16 +46,19 @@ describe('addLabFolderToWorkspace command', () => {
     } as any;
     await addLabFolderToWorkspace(node);
 
-    expect(vscodeStub.workspace.workspaceFolders).to.have.lengthOf(1);
-    expect(vscodeStub.workspace.workspaceFolders[0].uri.fsPath).to.equal('/tmp/path/to');
-    expect(vscodeStub.workspace.workspaceFolders[0].name).to.equal('lab1');
-    expect(vscodeStub.window.lastInfoMessage).to.equal('Added "lab1" to your workspace.');
+    const addSpy = (vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy);
+    const msgSpy = (vscodeStub.window.showInformationMessage as sinon.SinonSpy);
+    expect(addSpy.calledOnce).to.be.true;
+    expect(addSpy.firstCall.args[2].uri.fsPath).to.equal('/tmp/path/to');
+    expect(addSpy.firstCall.args[2].name).to.equal('lab1');
+    expect(msgSpy.calledOnceWith('Added "lab1" to your workspace.')).to.be.true;
   });
 
   it('returns an error when labPath is missing', async () => {
     const result = await addLabFolderToWorkspace({ labPath: { absolute: '' } } as any);
     expect(result).to.be.an('error');
     expect((result as Error).message).to.equal('No lab path found for this lab');
-    expect(vscodeStub.workspace.workspaceFolders).to.have.lengthOf(0);
+    const addSpy = (vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy);
+    expect(addSpy.notCalled).to.be.true;
   });
 });

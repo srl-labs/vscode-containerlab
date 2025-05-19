@@ -1,10 +1,11 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, __dirname */
+/* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Unit tests for the ClabCommand wrapper.
  * The suite checks command construction and error handling for various scenarios.
  */
 import { expect } from 'chai';
+import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
@@ -34,6 +35,8 @@ describe('ClabCommand', () => {
     cmdStub.instances.length = 0;
     vscodeStub.window.lastErrorMessage = '';
     vscodeStub.window.activeTextEditor = undefined;
+    sinon.spy(cmdStub.Command.prototype, 'execute');
+    sinon.spy(vscodeStub.window, 'showErrorMessage');
     vscodeStub.workspace.getConfiguration = () => ({
       get: (key: string, def?: any) => {
         if (key === 'runtime') return 'docker';
@@ -41,6 +44,10 @@ describe('ClabCommand', () => {
         return def;
       }
     });
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   it('constructs and executes command with node and flags', async () => {
@@ -57,7 +64,10 @@ describe('ClabCommand', () => {
     expect(inst.options.command).to.equal('containerlab');
     expect(inst.options.useSpinner).to.be.false;
     expect(inst.options.terminalName).to.equal('term');
-    expect(inst.executedArgs).to.deep.equal([
+
+    const execSpy = cmdStub.Command.prototype.execute as sinon.SinonSpy;
+    expect(execSpy.calledOnce).to.be.true;
+    expect(execSpy.firstCall.args[0]).to.deep.equal([
       'deploy', '-r', 'docker', '--foo', '-t', '/tmp/lab.yml'
     ]);
   });
@@ -66,8 +76,10 @@ describe('ClabCommand', () => {
     const clab = new ClabCommand('deploy', undefined as any);
     await clab.run();
 
-    expect(vscodeStub.window.lastErrorMessage).to.equal('No lab node or topology file selected');
-    expect(cmdStub.instances[0].executedArgs).to.be.undefined;
+    const execSpy = cmdStub.Command.prototype.execute as sinon.SinonSpy;
+    const msgSpy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
+    expect(msgSpy.calledOnceWith('No lab node or topology file selected')).to.be.true;
+    expect(execSpy.notCalled).to.be.true;
   });
 
   it('shows an error when labPath is missing', async () => {
@@ -79,7 +91,9 @@ describe('ClabCommand', () => {
     const clab = new ClabCommand('destroy', node);
     await clab.run();
 
-    expect(vscodeStub.window.lastErrorMessage).to.equal('No labPath found for command "destroy".');
-    expect(cmdStub.instances[0].executedArgs).to.be.undefined;
+    const execSpy = cmdStub.Command.prototype.execute as sinon.SinonSpy;
+    const msgSpy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
+    expect(msgSpy.calledOnceWith('No labPath found for command "destroy".')).to.be.true;
+    expect(execSpy.notCalled).to.be.true;
   });
 });

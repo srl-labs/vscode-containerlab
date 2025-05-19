@@ -1,11 +1,12 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, __dirname */
+/* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Unit tests for the openLabFile command.
  * Verifies that the correct file is opened or that proper errors are shown.
  */
 // Tests the openLabFile command which opens the selected lab in VS Code
 import { expect } from 'chai';
+import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
@@ -29,23 +30,33 @@ describe('openLabFile command', () => {
   beforeEach(() => {
     vscodeStub.window.lastErrorMessage = '';
     vscodeStub.commands.executed = [];
+    sinon.spy(vscodeStub.commands, 'executeCommand');
+    sinon.spy(vscodeStub.window, 'showErrorMessage');
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   it('opens the lab file with vscode.open', () => {
     const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
     openLabFile(node);
 
-    expect(vscodeStub.commands.executed[0].command).to.equal('vscode.open');
-    expect(vscodeStub.commands.executed[0].args[0].fsPath).to.equal('/tmp/lab.yml');
+    const spy = (vscodeStub.commands.executeCommand as sinon.SinonSpy);
+    expect(spy.calledOnce).to.be.true;
+    expect(spy.firstCall.args[0]).to.equal('vscode.open');
+    expect(spy.firstCall.args[1].fsPath).to.equal('/tmp/lab.yml');
   });
 
   it('shows an error when node is undefined', () => {
     openLabFile(undefined as any);
-    expect(vscodeStub.window.lastErrorMessage).to.equal('No lab node selected.');
+    const spy = (vscodeStub.window.showErrorMessage as sinon.SinonSpy);
+    expect(spy.calledOnceWith('No lab node selected.')).to.be.true;
   });
 
   it('shows an error when labPath is missing', () => {
     openLabFile({ labPath: { absolute: '' } } as any);
-    expect(vscodeStub.window.lastErrorMessage).to.equal('No labPath found.');
+    const spy = (vscodeStub.window.showErrorMessage as sinon.SinonSpy);
+    expect(spy.calledOnceWith('No labPath found.')).to.be.true;
   });
 });

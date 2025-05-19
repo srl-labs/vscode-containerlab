@@ -1,11 +1,12 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, __dirname */
+/* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Unit tests for the openFolderInNewWindow command.
  * Ensures the command opens the correct folder in a new VS Code window.
  */
 // Tests the openFolderInNewWindow command which opens a lab folder in a new VS Code window
 import { expect } from 'chai';
+import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
@@ -29,19 +30,28 @@ describe('openFolderInNewWindow command', () => {
   beforeEach(() => {
     vscodeStub.window.lastErrorMessage = '';
     vscodeStub.commands.executed = [];
+    sinon.spy(vscodeStub.commands, 'executeCommand');
+    sinon.spy(vscodeStub.window, 'showErrorMessage');
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   it('opens the folder in a new window', async () => {
     const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
     await openFolderInNewWindow(node);
 
-    expect(vscodeStub.commands.executed[0].command).to.equal('vscode.openFolder');
-    expect(vscodeStub.commands.executed[0].args[0].fsPath).to.equal('/tmp');
-    expect(vscodeStub.commands.executed[0].args[1]).to.deep.equal({ forceNewWindow: true });
+    const spy = (vscodeStub.commands.executeCommand as sinon.SinonSpy);
+    expect(spy.calledOnce).to.be.true;
+    expect(spy.firstCall.args[0]).to.equal('vscode.openFolder');
+    expect(spy.firstCall.args[1].fsPath).to.equal('/tmp');
+    expect(spy.firstCall.args[2]).to.deep.equal({ forceNewWindow: true });
   });
 
   it('shows an error when labPath is missing', async () => {
     await openFolderInNewWindow({ labPath: { absolute: '' } } as any);
-    expect(vscodeStub.window.lastErrorMessage).to.equal('No lab path found for this lab.');
+    const spy = (vscodeStub.window.showErrorMessage as sinon.SinonSpy);
+    expect(spy.calledOnceWith('No lab path found for this lab.')).to.be.true;
   });
 });

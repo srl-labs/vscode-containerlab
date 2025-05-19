@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, __dirname */
+/* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Unit tests for the attachShell command.
  * These tests verify that shell commands are constructed correctly and
@@ -7,6 +7,7 @@
  */
 // Tests the attachShell command which opens a shell inside a container
 import { expect } from 'chai';
+import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
@@ -40,6 +41,8 @@ describe('attachShell command', () => {
   beforeEach(() => {
     commandStub.calls.length = 0;
     vscodeStub.window.lastErrorMessage = '';
+    sinon.spy(commandStub, 'execCommandInTerminal');
+    sinon.spy(vscodeStub.window, 'showErrorMessage');
     // Provide configuration values
     vscodeStub.workspace.getConfiguration = () => ({
       get: (key: string, defaultValue?: any) => {
@@ -51,18 +54,23 @@ describe('attachShell command', () => {
     });
   });
 
+  afterEach(() => {
+    sinon.restore();
+  });
+
   it('attaches to a running shell session', () => {
     const node = { cID: 'abc123', kind: 'nokia_srlinux', label: 'srl1' } as any;
     attachShell(node);
 
-    expect(commandStub.calls).to.have.lengthOf(1);
-    expect(commandStub.calls[0].command).to.equal('docker exec -it abc123 sr_cli');
-    expect(commandStub.calls[0].terminalName).to.equal('Shell - srl1');
+    const spy = commandStub.execCommandInTerminal as sinon.SinonSpy;
+    expect(spy.calledOnceWith('docker exec -it abc123 sr_cli', 'Shell - srl1')).to.be.true;
   });
 
   it('shows an error when containerId is missing', () => {
     attachShell({ cID: '', kind: 'nokia_srlinux' } as any);
-    expect(vscodeStub.window.lastErrorMessage).to.equal('No containerId for shell attach.');
-    expect(commandStub.calls).to.have.lengthOf(0);
+    const msgSpy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
+    const cmdSpy = commandStub.execCommandInTerminal as sinon.SinonSpy;
+    expect(msgSpy.calledOnceWith('No containerId for shell attach.')).to.be.true;
+    expect(cmdSpy.notCalled).to.be.true;
   });
 });
