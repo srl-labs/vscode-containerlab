@@ -397,12 +397,14 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.runningLabs.list.find', () => {
       vscode.commands.executeCommand("runningLabs.focus")
+      vscode.commands.executeCommand("runningLabs.focus")
       vscode.commands.executeCommand("list.find")
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.localLabs.list.find', () => {
+      vscode.commands.executeCommand("localLabs.focus")
       vscode.commands.executeCommand("localLabs.focus")
       vscode.commands.executeCommand("list.find")
     })
@@ -413,15 +415,15 @@ export async function activate(context: vscode.ExtensionContext) {
   const refreshInterval = config.get<number>('refreshInterval', 10000);
 
   const refreshTaskID = setInterval(
-    async ()=> {
-      ins.update().then( () => {
+    async () => {
+      ins.update().then(() => {
         localLabsProvider.refresh();
         runningLabsProvider.softRefresh();
       })
     }, refreshInterval
   )
 
-  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID)});
+  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID) });
 }
 
 export function deactivate() {
