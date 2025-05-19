@@ -882,6 +882,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
+    "@types/chai": "^5.2.2",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
@@ -896,6 +897,7 @@
     "esbuild": "^0.25.4",
     "eslint": "^9.27.0",
     "mocha": "^11.3.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1",
     "webpack-cli": "^6.0.1"
