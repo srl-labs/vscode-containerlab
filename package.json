@@ -878,7 +878,8 @@
     "vscode:prepublish": "npm run bundle && npm run build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
-    "lint:fix": "npm run lint -- --fix"
+    "lint:fix": "npm run lint -- --fix",
+    "test": "TS_NODE_PROJECT=./test/tsconfig.json mocha --require ts-node/register --extension ts \"test/**/*.test.ts\""
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",

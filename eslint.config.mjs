@@ -23,7 +23,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.json',  // must include all src TS
+        project: ['./tsconfig.json', './test/tsconfig.json'],
         ecmaVersion: 'latest',
         sourceType: 'module'
       },
