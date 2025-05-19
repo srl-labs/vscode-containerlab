@@ -908,6 +908,6 @@
     "cytoscape-grid-guide": "^2.3.3",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
-    "yaml": "^2.7.1"
+    "yaml": "^2.8.0"
   }
 }
