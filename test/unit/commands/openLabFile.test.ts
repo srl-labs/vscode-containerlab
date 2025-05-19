@@ -2,8 +2,10 @@
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Tests for the `openLabFile` command.
- * The suite ensures that the correct topology file is opened and that useful
- * errors are displayed when necessary.
+ *
+ * The suite ensures that the correct topology file is opened via the
+ * stubbed `vscode` API and that helpful errors are displayed when
+ * required arguments are missing.
  */
 // These tests run against a stubbed version of the VS Code API
 import { expect } from 'chai';
@@ -39,6 +41,7 @@ describe('openLabFile command', () => {
     sinon.restore();
   });
 
+  // Opens the topology file in the current VS Code window.
   it('opens the lab file with vscode.open', () => {
     const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
     openLabFile(node);
@@ -49,12 +52,14 @@ describe('openLabFile command', () => {
     expect(spy.firstCall.args[1].fsPath).to.equal('/tmp/lab.yml');
   });
 
+  // Should show an error message when no node is provided.
   it('shows an error when node is undefined', () => {
     openLabFile(undefined as any);
     const spy = (vscodeStub.window.showErrorMessage as sinon.SinonSpy);
     expect(spy.calledOnceWith('No lab node selected.')).to.be.true;
   });
 
+  // Should show an error if the selected node has no labPath.
   it('shows an error when labPath is missing', () => {
     openLabFile({ labPath: { absolute: '' } } as any);
     const spy = (vscodeStub.window.showErrorMessage as sinon.SinonSpy);

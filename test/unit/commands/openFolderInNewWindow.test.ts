@@ -2,8 +2,11 @@
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Tests for the `openFolderInNewWindow` command.
- * It checks that the selected lab folder is opened in a fresh VS Code window
- * using the stubbed `vscode` API.
+ *
+ * The suite checks that the selected lab folder is opened in a new
+ * VS Code window using the stubbed `vscode` API.  Additional cases
+ * cover how the command surfaces errors when required arguments are
+ * missing.
  */
 // The command simply invokes `vscode.openFolder` on the chosen folder path
 import { expect } from 'chai';
@@ -39,6 +42,7 @@ describe('openFolderInNewWindow command', () => {
     sinon.restore();
   });
 
+  // Should open the lab folder in a separate VS Code window.
   it('opens the folder in a new window', async () => {
     const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
     await openFolderInNewWindow(node);
@@ -50,6 +54,7 @@ describe('openFolderInNewWindow command', () => {
     expect(spy.firstCall.args[2]).to.deep.equal({ forceNewWindow: true });
   });
 
+  // Should surface an error message when the labPath is not provided.
   it('shows an error when labPath is missing', async () => {
     await openFolderInNewWindow({ labPath: { absolute: '' } } as any);
     const spy = (vscodeStub.window.showErrorMessage as sinon.SinonSpy);

@@ -2,8 +2,11 @@
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Tests for the `addLabFolderToWorkspace` command.
- * The suite checks that a chosen lab folder is added to the VS Code workspace
- * using a stubbed `vscode` API from `test/helpers`.
+ *
+ * The suite checks that a chosen lab folder is added to the VS Code
+ * workspace using a stubbed `vscode` API from `test/helpers`.  It also
+ * verifies that appropriate errors are returned when the path is
+ * missing or invalid.
  */
 // These tests simulate adding a folder to the workspace without launching VS Code
 import { expect } from 'chai';
@@ -39,6 +42,7 @@ describe('addLabFolderToWorkspace command', () => {
     sinon.restore();
   });
 
+  // Adds a new folder entry to the current workspace.
   it('adds the folder to the workspace', async () => {
     const node = {
       labPath: { absolute: '/tmp/path/to/lab.clab.yaml' },
@@ -55,6 +59,7 @@ describe('addLabFolderToWorkspace command', () => {
     expect(msgSpy.calledOnceWith('Added "lab1" to your workspace.')).to.be.true;
   });
 
+  // Should return an error when the labPath field is empty.
   it('returns an error when labPath is missing', async () => {
     const result = await addLabFolderToWorkspace({ labPath: { absolute: '' } } as any);
     expect(result).to.be.an('error');

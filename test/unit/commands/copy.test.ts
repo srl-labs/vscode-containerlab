@@ -1,8 +1,12 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
- * Tests for the `copy` command which places a lab's path on the clipboard.
- * The tests ensure the right text is copied using the stubbed clipboard API.
+ * Tests for the various `copy` commands which place information about a
+ * lab or container on the system clipboard.
+ *
+ * The suite ensures the correct text is copied using the stubbed clipboard
+ * API and verifies that helpful error messages are shown when required
+ * values are missing.
  */
 import { expect } from 'chai';
 import sinon from 'sinon';
@@ -48,6 +52,7 @@ describe('copyLabPath command', () => {
     sinon.restore();
   });
 
+  // Copies the absolute path of the lab file and notifies the user.
   it('copies the lab path to the clipboard and shows info message', async () => {
     const node = { labPath: { absolute: '/tmp/lab.clab.yml' } } as any;
     copyLabPath(node);
@@ -59,12 +64,14 @@ describe('copyLabPath command', () => {
     expect(msgSpy.calledOnceWith('Copied file path of /tmp/lab.clab.yml to clipboard.')).to.be.true;
   });
 
+  // Should error when no node is provided.
   it('shows an error when node is undefined', () => {
     copyLabPath(undefined as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
     expect(spy.calledOnceWith('No lab node selected.')).to.be.true;
   });
 
+  // Should error when the node does not contain a labPath.
   it('shows an error when labPath is missing', () => {
     copyLabPath({ labPath: { absolute: '' } } as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
@@ -72,6 +79,8 @@ describe('copyLabPath command', () => {
   });
 });
 
+// The remaining copy helpers share the same behaviour so we loop through
+// a list of commands and verify each one in turn.
 describe('other copy commands', () => {
   beforeEach(() => {
     vscodeStub.window.lastErrorMessage = '';
@@ -132,6 +141,7 @@ describe('other copy commands', () => {
   ];
 
   containerCmds.forEach(({ fn, field, value, success, error }) => {
+    // Each helper should copy a specific property from the node.
     it(`copies container ${field} to the clipboard`, async () => {
       const node: any = { name: 'node1', [field]: value };
       fn(node);
@@ -143,6 +153,7 @@ describe('other copy commands', () => {
       expect(msgSpy.calledOnceWith(success)).to.be.true;
     });
 
+    // Should emit an error if the property is missing on the node.
     it(`shows an error when ${field} is missing`, () => {
       const node: any = { name: 'node1', [field]: '' };
       fn(node);
@@ -150,6 +161,7 @@ describe('other copy commands', () => {
       expect(spy.calledOnceWith(error)).to.be.true;
     });
 
+    // Should emit an error if no node is provided at all.
     it(`shows an error when node is undefined for ${field}`, () => {
       fn(undefined as any);
       const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
@@ -157,6 +169,7 @@ describe('other copy commands', () => {
     });
   });
 
+  // Copies the MAC address of a network interface node.
   it('copies interface MAC address to the clipboard', async () => {
     const node: any = { name: 'eth0', mac: 'aa:bb:cc:dd:ee:ff' };
     copyMACAddress(node);
@@ -168,12 +181,14 @@ describe('other copy commands', () => {
     expect(msgSpy.calledOnceWith('eth0: Copied MAC address to clipboard succesfully.')).to.be.true;
   });
 
+  // Should show an error when no interface node is provided.
   it('shows an error when interface node is undefined', () => {
     copyMACAddress(undefined as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
     expect(spy.calledOnceWith('No interface node selected.')).to.be.true;
   });
 
+  // Should show an error when the MAC address value is empty.
   it('shows an error when MAC address is missing', () => {
     copyMACAddress({ name: 'eth0', mac: '' } as any);
     const spy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;

@@ -2,8 +2,11 @@
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Tests covering the `ClabCommand` helper class.
- * These verify how commands are constructed and how errors are surfaced in
- * different situations using stubbed dependencies.
+ *
+ * The suite verifies how commands are constructed and how errors are
+ * surfaced in different situations using stubbed dependencies.  The
+ * `vscode` module and the internal `Command` implementation are replaced
+ * so the tests can run outside of the editor environment.
  */
 import { expect } from 'chai';
 import sinon from 'sinon';
@@ -51,6 +54,7 @@ describe('ClabCommand', () => {
     sinon.restore();
   });
 
+  // Executes the command when a node and flags are provided.
   it('constructs and executes command with node and flags', async () => {
     const node = new ClabLabTreeNode(
       'lab',
@@ -73,6 +77,7 @@ describe('ClabCommand', () => {
     ]);
   });
 
+  // Should report an error if neither a node nor an active editor is present.
   it('shows an error when no node or editor provided', async () => {
     const clab = new ClabCommand('deploy', undefined as any);
     await clab.run();
@@ -83,6 +88,7 @@ describe('ClabCommand', () => {
     expect(execSpy.notCalled).to.be.true;
   });
 
+  // Should report an error when the labPath property is empty.
   it('shows an error when labPath is missing', async () => {
     const node = new ClabLabTreeNode(
       'lab',

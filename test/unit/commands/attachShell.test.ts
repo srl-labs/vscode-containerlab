@@ -2,8 +2,11 @@
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Tests for the `attachShell` command.
- * It validates the command string built for opening a shell inside a container
- * and ensures helpful errors appear when required parameters are missing.
+ *
+ * The suite validates the command string built for opening a shell
+ * inside a container and ensures helpful errors appear when required
+ * parameters are missing.  All VS Code and command modules are stubbed
+ * so the tests can run in a plain Node environment.
  */
 // The command interacts with a mocked terminal via helpers in `test/helpers`
 import { expect } from 'chai';
@@ -58,6 +61,7 @@ describe('attachShell command', () => {
     sinon.restore();
   });
 
+  // Runs the docker exec command to attach when all parameters exist.
   it('attaches to a running shell session', () => {
     const node = { cID: 'abc123', kind: 'nokia_srlinux', label: 'srl1' } as any;
     attachShell(node);
@@ -66,6 +70,7 @@ describe('attachShell command', () => {
     expect(spy.calledOnceWith('docker exec -it abc123 sr_cli', 'Shell - srl1')).to.be.true;
   });
 
+  // Should show an error when the container ID is empty.
   it('shows an error when containerId is missing', () => {
     attachShell({ cID: '', kind: 'nokia_srlinux' } as any);
     const msgSpy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;

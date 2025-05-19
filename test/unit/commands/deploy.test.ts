@@ -2,8 +2,11 @@
 /* global describe, it, after, beforeEach, afterEach, __dirname */
 /**
  * Tests for the `deploy` command.
- * The suite verifies that a `ClabCommand` instance receives the expected
- * arguments when deploying a topology.
+ *
+ * The suite verifies that a {@link ClabCommand} instance receives the
+ * correct arguments when deploying a topology. By stubbing the `vscode`
+ * module and the command implementation we can exercise the logic in a
+ * plain Node environment without invoking containerlab.
  */
 // These tests use stubs to emulate VS Code and containerlab CLI behaviour
 import { expect } from 'chai';
@@ -40,6 +43,7 @@ describe('deploy command', () => {
     sinon.restore();
   });
 
+  // Should instantiate ClabCommand with the selected node and execute it.
   it('creates ClabCommand and runs it', () => {
     const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
     deploy(node);

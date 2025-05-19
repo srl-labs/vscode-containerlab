@@ -3,6 +3,9 @@
 /**
  * Tests for `stripFileName` ensuring that only the directory portion of a path
  * remains after processing.
+ *
+ * The `vscode` module is stubbed purely so the helper can run in a plain
+ * Node environment during the test.
  */
 import { expect } from 'chai';
 import Module from 'module';
@@ -24,6 +27,7 @@ describe('stripFileName', () => {
     (Module as any)._resolveFilename = originalResolve;
   });
 
+  // Should drop the trailing file segment and return only the directory.
   it('removes the file name from a path', () => {
     const result = stripFileName('/path/to/file.txt');
     expect(result).to.equal('/path/to');

@@ -3,6 +3,9 @@
 /**
  * Tests for the `titleCase` helper which capitalizes the first character of a
  * string.
+ *
+ * The helper is executed with the `vscode` module stubbed so the test can
+ * run independently of the editor environment.
  */
 import { expect } from 'chai';
 import Module from 'module';
@@ -24,6 +27,7 @@ describe('titleCase', () => {
     (Module as any)._resolveFilename = originalResolve;
   });
 
+  // Should uppercase only the first letter of the string.
   it('capitalizes the first character', () => {
     const result = titleCase('hello');
     expect(result).to.equal('Hello');

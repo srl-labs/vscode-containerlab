@@ -2,8 +2,11 @@
 /* global describe, it, after, __dirname */
 /**
  * Tests for `normalizeLabPath`.
- * They create temporary files and directories to verify how different paths are
- * resolved when the helper normalizes lab locations.
+ *
+ * The suite creates temporary files and directories to verify how different
+ * path inputs are resolved when the helper normalizes lab locations.  The
+ * real filesystem is used along with a stubbed `vscode` module so behaviour
+ * matches that of the extension.
  */
 import { expect } from 'chai';
 import Module from 'module';
