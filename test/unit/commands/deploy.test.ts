@@ -1,5 +1,9 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, __dirname */
+/**
+ * Unit tests for the deploy command.
+ * Confirms that ClabCommand is created with the expected arguments.
+ */
 // Tests for the deploy command
 import { expect } from 'chai';
 import Module from 'module';

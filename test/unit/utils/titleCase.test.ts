@@ -1,6 +1,8 @@
 /* eslint-env mocha */
 /* global describe, it, after, __dirname */
-// Unit test verifying `titleCase` capitalizes the initial character
+/**
+ * Unit tests for `titleCase` ensuring that the initial character is capitalized.
+ */
 import { expect } from 'chai';
 import Module from 'module';
 import path from 'path';

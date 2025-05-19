@@ -1,5 +1,9 @@
 /* eslint-env mocha */
 /* global describe, it, after, beforeEach, __dirname */
+/**
+ * Unit tests for the openLabFile command.
+ * Verifies that the correct file is opened or that proper errors are shown.
+ */
 // Tests the openLabFile command which opens the selected lab in VS Code
 import { expect } from 'chai';
 import Module from 'module';

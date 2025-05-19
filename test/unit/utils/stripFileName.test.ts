@@ -1,6 +1,8 @@
 /* eslint-env mocha */
 /* global describe, it, after, __dirname */
-// Unit test for `stripFileName` ensuring only the directory portion remains
+/**
+ * Unit tests for `stripFileName` ensuring only the directory portion remains.
+ */
 import { expect } from 'chai';
 import Module from 'module';
 import path from 'path';
