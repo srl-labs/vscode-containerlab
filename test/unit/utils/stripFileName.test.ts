@@ -1,5 +1,6 @@
 /* eslint-env mocha */
 /* global describe, it, after, __dirname */
+// Unit test for `stripFileName` ensuring only the directory portion remains
 import { expect } from 'chai';
 import Module from 'module';
 import path from 'path';
@@ -8,21 +9,21 @@ import path from 'path';
 const originalResolve = (Module as any)._resolveFilename;
 (Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
   if (request === 'vscode') {
-    return path.join(__dirname, 'vscode-stub.js');
+    return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
   }
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { stripAnsi } from '../src/utils';
+import { stripFileName } from '../../../src/utils';
 
-describe('stripAnsi', () => {
+describe('stripFileName', () => {
   after(() => {
     (Module as any)._resolveFilename = originalResolve;
   });
 
-  it('removes ANSI escape sequences', () => {
-    const colored = '\u001b[31mError\u001b[0m';
-    const result = stripAnsi(colored);
-    expect(result).to.equal('Error');
+  it('removes the file name from a path', () => {
+    const result = stripFileName('/path/to/file.txt');
+    expect(result).to.equal('/path/to');
   });
 });
+
