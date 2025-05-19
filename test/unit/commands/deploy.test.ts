@@ -11,7 +11,7 @@ const originalResolve = (Module as any)._resolveFilename;
   if (request === 'vscode') {
     return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
   }
-  if (request === '../../../src/commands/clabCommand') {
+  if (request.includes('clabCommand')) {
     return path.join(__dirname, '..', '..', 'helpers', 'clabCommand-stub.js');
   }
   return originalResolve.call(this, request, parent, isMain, options);

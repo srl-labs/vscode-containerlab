@@ -19,6 +19,11 @@ export const commands = {
 
 export const workspace = {
   workspaceFolders: [] as { uri: { fsPath: string }; name?: string }[],
+  getConfiguration() {
+    return {
+      get: <T>(_: string, defaultValue?: T): T | undefined => defaultValue,
+    };
+  },
   updateWorkspaceFolders(
     index: number,
     deleteCount: number | null,
@@ -33,4 +38,24 @@ export const Uri = {
   file(p: string) {
     return { fsPath: p };
   },
+};
+
+export class TreeItem {
+  public iconPath: any;
+  public label?: string;
+  public collapsibleState?: number;
+  constructor(label?: string, collapsibleState?: number) {
+    this.label = label;
+    this.collapsibleState = collapsibleState;
+  }
+}
+
+export const TreeItemCollapsibleState = {
+  None: 0,
+  Collapsed: 1,
+  Expanded: 2,
+} as const;
+
+export const ThemeIcon = {
+  File: 'file',
 };
