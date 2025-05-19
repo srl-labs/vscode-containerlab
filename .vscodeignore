@@ -1,7 +1,5 @@
 # Development infrastructure
 .vscode/**
-.vscode-test/**
-.vscode-test.mjs
 .github/**
 .gitignore
 .eslintrc.json
