@@ -119,7 +119,6 @@ export class Command {
     }
 
     private async execSpinner(cmd: string[]) {
-        console.log(cmd.join(" "));
         try {
             await vscode.window.withProgress(
                 {

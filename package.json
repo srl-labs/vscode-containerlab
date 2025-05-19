@@ -902,7 +902,8 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1",
-    "webpack-cli": "^6.0.1"
+    "webpack-cli": "^6.0.1",
+    "sinon": "^20.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
@@ -917,7 +918,6 @@
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",
     "cytoscape-grid-guide": "^2.3.3",
-    "sinon": "^20.0.0",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
     "yaml": "^2.8.0"

@@ -37,7 +37,6 @@ export class ClabCommand extends cmd.Command {
     public async run(flags?: string[]): Promise<void> {
         // Try node.details -> fallback to active editor
         let labPath: string;
-        console.log(this.node);
         if (!this.node) {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
