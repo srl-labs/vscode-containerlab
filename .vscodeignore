@@ -16,6 +16,9 @@ vsc-extension-quickstart.md
 # Source files - only bundle compiled output
 src/**
 
+# Include static HTML assets needed at runtime
+!src/topoViewer/webview-ui/html-static/**
+
 # If you still need specific source files at runtime, selectively include them with:
 node_modules/**
 out/**

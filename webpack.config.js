@@ -5,7 +5,7 @@ module.exports = {
   target: 'web',
   entry: './src/topoViewerEditor/webview-ui/topoViewerEditorEngine.ts',
   output: {
-    path: path.resolve(__dirname, 'out'),
+    path: path.resolve(__dirname, 'dist'),
     filename: 'topoViewerEditorEngine.js',
     libraryTarget: 'module'
   },
