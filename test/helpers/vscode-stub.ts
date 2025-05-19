@@ -59,3 +59,13 @@ export const TreeItemCollapsibleState = {
 export const ThemeIcon = {
   File: 'file',
 };
+
+export const env = {
+  clipboard: {
+    lastText: '',
+    writeText(text: string) {
+      this.lastText = text;
+      return Promise.resolve();
+    },
+  },
+};
