@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import * as utils from "../utils"
 import * as c from "./common";
 import * as ins from "./inspector";
+import { localTreeView } from "../extension";
 import path = require("path");
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
@@ -33,11 +34,17 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
     setTreeFilter(filterText: string) {
         this.treeFilter = filterText.toLowerCase();
+        if (localTreeView) {
+            localTreeView.message = `Filter: ${filterText}`;
+        }
         this.refresh();
     }
 
     clearTreeFilter() {
         this.treeFilter = '';
+        if (localTreeView) {
+            localTreeView.message = undefined;
+        }
         this.refresh();
     }
 
