@@ -131,9 +131,13 @@ topology:
         const dirUri = finalFileUri.with({ path: path.dirname(finalFileUri.path) });
         await vscode.workspace.fs.createDirectory(dirUri);
 
-        // Write the file using the final URI
+        // Write the file using the final URI and mark as internal to
+        // avoid triggering the file watcher.
         const data = Buffer.from(templateContent, 'utf8');
+        this.isInternalUpdate = true;
         await vscode.workspace.fs.writeFile(finalFileUri, data);
+        await this.sleep(50);
+        this.isInternalUpdate = false;
 
         // Remember the actual path where it was written
         this.lastYamlFilePath = finalFileUri.fsPath;
@@ -147,16 +151,10 @@ topology:
         // This ensures any code that still uses the original URI will now use the correct one
         requestedFileUri = finalFileUri;
 
-        // Convert the YAML file to JSON and write it to the webview.
-        const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
-        log.debug(`YAML content: ${yamlContent}`);
-
-        // Transform YAML into Cytoscape elements.
-        const cytoTopology = this.adaptor.clabYamlToCytoscapeElementsEditor(yamlContent);
-        log.debug(`Cytoscape topology: ${JSON.stringify(cytoTopology, null, 2)}`);
-
-        // Create folder and write JSON files for the webview.
-        await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
+        // No further processing here. The webview panel will handle
+        // reading the YAML and generating the initial JSON data when
+        // it is created. This avoids redundant conversions and file
+        // writes triggered during template creation.
 
     } catch (err) {
         vscode.window.showErrorMessage(`Error creating template: ${err}`);
@@ -642,6 +640,7 @@ topology:
               const updatedYamlString = doc.toString();
               this.isInternalUpdate = true;
               await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+              await this.sleep(50);
               this.isInternalUpdate = false;
 
               const result = `Saved topology with preserved comments!`;
@@ -896,6 +895,7 @@ topology:
               const updatedYamlString = doc.toString();
               this.isInternalUpdate = true;
               await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+              await this.sleep(50);
               this.isInternalUpdate = false;
 
               // const result = `Saved topology with preserved comments aaaa!`;
