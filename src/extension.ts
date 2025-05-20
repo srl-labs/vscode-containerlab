@@ -393,18 +393,34 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Search/filter command handler
+  // Filter commands for running labs
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.runningLabs.list.find', () => {
-      vscode.commands.executeCommand("runningLabs.focus")
-      vscode.commands.executeCommand("list.find")
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.filter', async () => {
+      const val = await vscode.window.showInputBox({ placeHolder: 'Filter running labs' });
+      if (val !== undefined) {
+        runningLabsProvider.setTreeFilter(val);
+      }
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.localLabs.list.find', () => {
-      vscode.commands.executeCommand("localLabs.focus")
-      vscode.commands.executeCommand("list.find")
+    vscode.commands.registerCommand('containerlab.treeView.runningLabs.clearFilter', () => {
+      runningLabsProvider.clearTreeFilter();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.localLabs.filter', async () => {
+      const val = await vscode.window.showInputBox({ placeHolder: 'Filter local labs' });
+      if (val !== undefined) {
+        localLabsProvider.setTreeFilter(val);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', () => {
+      localLabsProvider.clearTreeFilter();
     })
   );
 

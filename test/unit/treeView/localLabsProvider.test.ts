@@ -88,7 +88,7 @@ describe('LocalLabTreeDataProvider', () => {
 
     expect(nodes).to.have.lengthOf(1);
     const node = nodes![0];
-    expect(node.label).to.equal('lab1.clab.yml');
+    expect(node.label).to.equal('a/lab1.clab.yml');
     expect(node.labPath.absolute).to.equal('/workspace/a/lab1.clab.yml');
     expect(node.description).to.equal('a');
     expect(vscodeStub.commands.executed).to.deep.include({

@@ -321,14 +321,24 @@
         "title": "Show non-owned"
       },
       {
-        "command": "containerlab.treeView.runningLabs.list.find",
-        "title": "Search running labs",
+        "command": "containerlab.treeView.runningLabs.filter",
+        "title": "Filter running labs",
         "icon": "$(search)"
       },
       {
-        "command": "containerlab.treeView.localLabs.list.find",
-        "title": "Search local labs",
+        "command": "containerlab.treeView.runningLabs.clearFilter",
+        "title": "Clear running labs filter",
+        "icon": "$(close)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.filter",
+        "title": "Filter local labs",
         "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.clearFilter",
+        "title": "Clear local labs filter",
+        "icon": "$(close)"
       }
     ],
     "submenus": [
@@ -370,13 +380,23 @@
           "group": "navigation@0"
         },
         {
-          "command": "containerlab.treeView.runningLabs.list.find",
+          "command": "containerlab.treeView.runningLabs.filter",
+          "when": "view == runningLabs && runningLabsEmpty == false",
+          "group": "navigation@98"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.clearFilter",
           "when": "view == runningLabs && runningLabsEmpty == false",
           "group": "navigation@99"
         },
         {
-          "command": "containerlab.treeView.localLabs.list.find",
+          "command": "containerlab.treeView.localLabs.filter",
           "when": "view == localLabs && localLabsEmpty == false",
+          "group": "navigation@98"
+        },
+        {
+          "command": "containerlab.treeView.localLabs.clearFilter",
+          "when": "view == localLabs",
           "group": "navigation@99"
         }
       ],
