@@ -157,7 +157,6 @@ topology:
 
         // Create folder and write JSON files for the webview.
         await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
-        this.setupFileWatcher();
 
     } catch (err) {
         vscode.window.showErrorMessage(`Error creating template: ${err}`);
