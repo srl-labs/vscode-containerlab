@@ -212,10 +212,7 @@ export async function activate(context: vscode.ExtensionContext) {
         /* 1. create / show the web-view panel */
         await editor.createWebviewPanel(context, yamlUri, labName);
 
-        /* 2. update it with the YAML we just opened                 */
-        await editor.updatePanelHtml((editor as any).currentPanel);
-
-        /* 3. finally open the YAML itself beside the web-view        */
+        /* 2. open the YAML itself beside the web-view        */
         await editor.openTemplateFile(yamlUri.fsPath);      // ← split-view
       }
     )
