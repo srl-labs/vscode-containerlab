@@ -106,11 +106,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     setTreeFilter(filterText: string) {
         this.treeFilter = filterText.toLowerCase();
+        if (runningTreeView) {
+            runningTreeView.message = `Filter: ${filterText}`;
+        }
         this.refreshWithoutDiscovery();
     }
 
     clearTreeFilter() {
         this.treeFilter = '';
+        if (runningTreeView) {
+            runningTreeView.message = undefined;
+        }
         this.refreshWithoutDiscovery();
     }
 

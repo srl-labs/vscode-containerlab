@@ -381,12 +381,12 @@
         },
         {
           "command": "containerlab.treeView.runningLabs.filter",
-          "when": "view == runningLabs && runningLabsEmpty == false",
+          "when": "view == runningLabs",
           "group": "navigation@98"
         },
         {
           "command": "containerlab.treeView.runningLabs.clearFilter",
-          "when": "view == runningLabs && runningLabsEmpty == false",
+          "when": "view == runningLabs",
           "group": "navigation@99"
         },
         {
