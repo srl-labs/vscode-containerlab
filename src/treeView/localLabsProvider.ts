@@ -77,7 +77,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
             if (!labs[relPath] && !(labPaths?.has(normPath))) {
                 const labNode = new c.ClabLabTreeNode(
-                    path.basename(uri.fsPath),
+                    relPath,
                     vscode.TreeItemCollapsibleState.None,
                     {
                         relative: uri.fsPath,   // this path is actually absolute as well
