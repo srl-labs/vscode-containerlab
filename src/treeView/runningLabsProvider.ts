@@ -31,6 +31,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private treeItems: c.ClabLabTreeNode[] = [];
+    private treeFilter: string = '';
 
 
     private containerInterfacesCache: Map<string, {
@@ -103,6 +104,22 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
     }
 
+    setTreeFilter(filterText: string) {
+        this.treeFilter = filterText.toLowerCase();
+        if (runningTreeView) {
+            runningTreeView.message = `Filter: ${filterText}`;
+        }
+        this.refreshWithoutDiscovery();
+    }
+
+    clearTreeFilter() {
+        this.treeFilter = '';
+        if (runningTreeView) {
+            runningTreeView.message = undefined;
+        }
+        this.refreshWithoutDiscovery();
+    }
+
     // Add to ClabTreeDataProvider class
     hasChanges(): boolean {
         const now = Date.now();
@@ -142,6 +159,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             } else {
                 labs = this.treeItems;
             }
+            if (this.treeFilter) {
+                const filter = this.treeFilter;
+                labs = labs.filter(lab => {
+                    const lbl = String(lab.label).toLowerCase();
+                    if (lbl.includes(filter)) return true;
+                    if (lab.containers) {
+                        return lab.containers.some(cn => String(cn.label).toLowerCase().includes(filter));
+                    }
+                    return false;
+                });
+            }
             vscode.commands.executeCommand(
                 'setContext',
                 'runningLabsEmpty',
@@ -150,12 +178,28 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             return labs;
         }
         // Find containers belonging to a lab
-        if (element instanceof c.ClabLabTreeNode) { return element.containers; }
+        if (element instanceof c.ClabLabTreeNode) {
+            let containers = element.containers || [];
+            if (this.treeFilter) {
+                const labMatch = String(element.label).toLowerCase().includes(this.treeFilter);
+                if (!labMatch) {
+                    containers = containers.filter(cn => String(cn.label).toLowerCase().includes(this.treeFilter));
+                }
+            }
+            return containers;
+        }
         // Find interfaces belonging to a container
         if (element instanceof c.ClabContainerTreeNode) {
             // Ensure interfaces are fetched/updated if needed (or rely on existing cache logic)
             // The existing discoverContainerInterfaces logic with caching should handle this.
-            return element.interfaces;
+            let interfaces = element.interfaces;
+            if (this.treeFilter) {
+                const parentMatch = String(element.label).toLowerCase().includes(this.treeFilter);
+                if (!parentMatch) {
+                    interfaces = interfaces.filter(it => String(it.label).toLowerCase().includes(this.treeFilter));
+                }
+            }
+            return interfaces;
         }
 
         return undefined;

@@ -321,14 +321,24 @@
         "title": "Show non-owned"
       },
       {
-        "command": "containerlab.treeView.runningLabs.list.find",
-        "title": "Search running labs",
+        "command": "containerlab.treeView.runningLabs.filter",
+        "title": "Filter running labs",
         "icon": "$(search)"
       },
       {
-        "command": "containerlab.treeView.localLabs.list.find",
-        "title": "Search local labs",
+        "command": "containerlab.treeView.runningLabs.clearFilter",
+        "title": "Clear running labs filter",
+        "icon": "$(close)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.filter",
+        "title": "Filter local labs",
         "icon": "$(search)"
+      },
+      {
+        "command": "containerlab.treeView.localLabs.clearFilter",
+        "title": "Clear local labs filter",
+        "icon": "$(close)"
       }
     ],
     "submenus": [
@@ -370,13 +380,23 @@
           "group": "navigation@0"
         },
         {
-          "command": "containerlab.treeView.runningLabs.list.find",
-          "when": "view == runningLabs && runningLabsEmpty == false",
+          "command": "containerlab.treeView.runningLabs.filter",
+          "when": "view == runningLabs",
+          "group": "navigation@98"
+        },
+        {
+          "command": "containerlab.treeView.runningLabs.clearFilter",
+          "when": "view == runningLabs",
           "group": "navigation@99"
         },
         {
-          "command": "containerlab.treeView.localLabs.list.find",
+          "command": "containerlab.treeView.localLabs.filter",
           "when": "view == localLabs && localLabsEmpty == false",
+          "group": "navigation@98"
+        },
+        {
+          "command": "containerlab.treeView.localLabs.clearFilter",
+          "when": "view == localLabs",
           "group": "navigation@99"
         }
       ],
@@ -878,22 +898,33 @@
     "vscode:prepublish": "npm run bundle && npm run build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
-    "lint:fix": "npm run lint -- --fix"
+    "lint:fix": "npm run lint -- --fix",
+    "test": "npm run test:compile && mocha --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
+    "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
+    "@types/chai": "^5.2.2",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.15.17",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
+    "chai": "^4.3.10",
+    "chai-as-promised": "^8.0.1",
+    "chai-http": "^5.1.2",
+    "esbuild": "^0.25.4",
     "eslint": "^9.27.0",
+    "mocha": "^11.3.0",
+    "mochawesome": "^7.1.3",
+    "sinon": "^20.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1",
-    "webpack-cli": "^6.0.1",
-    "esbuild": "^0.25.4"
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
@@ -902,6 +933,8 @@
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@types/cytoscape": "^3.21.9",
+    "@types/sinon": "^17.0.4",
+    "@types/sinon-chai": "^4.0.0",
     "@vscode/vsce": "^3.4.1",
     "cytoscape": "^3.32.0",
     "cytoscape-cola": "^2.5.1",

@@ -460,7 +460,7 @@ topology:
                 // Use the stable id from payload as the lookup key.
                 var nodeId: string = element.data.id;
 
-                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as YAML.YAMLMap | undefined;
+                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
                 if (!nodeYaml) {
                   // Create a new mapping if it does not exist.
                   nodeYaml = new YAML.YAMLMap();
@@ -477,7 +477,7 @@ topology:
 
                 // --- Update Labels ---
                 // Ensure labels exist and are a YAML map.
-                let labels = nodeYaml.get('labels', true) as YAML.YAMLMap | undefined;
+                let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
                 if (!labels || !YAML.isMap(labels)) {
                   labels = new YAML.YAMLMap();
                   nodeYaml.set('labels', labels);
@@ -714,7 +714,7 @@ topology:
                 // Use the stable id from payload as the lookup key.
                 var nodeId: string = element.data.id;
 
-                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as YAML.YAMLMap | undefined;
+                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
                 if (!nodeYaml) {
                   // Create a new mapping if it does not exist.
                   nodeYaml = new YAML.YAMLMap();
@@ -731,7 +731,7 @@ topology:
 
                 // --- Update Labels ---
                 // Ensure labels exist and are a YAML map.
-                let labels = nodeYaml.get('labels', true) as YAML.YAMLMap | undefined;
+                let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
                 if (!labels || !YAML.isMap(labels)) {
                   labels = new YAML.YAMLMap();
                   nodeYaml.set('labels', labels);

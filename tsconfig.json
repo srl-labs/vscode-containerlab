@@ -1,19 +1,20 @@
 {
-	"compilerOptions": {
-	  "module": "commonjs",
-	  "esModuleInterop": true,
-	  "target": "ES2020",
-	  "lib": ["ES2020", "dom"], // Includes 'dom' for browser globals
-	  "outDir": "out",
-	  "rootDir": "src",
-	  "strict": true,
-	  "sourceMap": true,
-	  "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"], // Include custom types
-	  "resolveJsonModule": true,                // Allows importing JSON modules
-	},
-	"exclude": [
-	  "node_modules",
-	  ".vscode-test"
-	]
-  }
+        "compilerOptions": {
+          "module": "commonjs",
+          "esModuleInterop": true,
+          "target": "ES2020",
+          "lib": ["ES2020", "dom"], // Includes 'dom' for browser globals
+          "outDir": "out",
+          "rootDir": ".",
+          "strict": true,
+          "sourceMap": true,
+          "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"],
+          "resolveJsonModule": true,
+          "types": ["mocha", "node"]
+        },
+        "exclude": [
+          "node_modules",
+          ".vscode-test"
+        ]
+}
   

@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import * as utils from "../utils"
 import * as c from "./common";
 import * as ins from "./inspector";
+import { localTreeView } from "../extension";
 import path = require("path");
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
@@ -15,6 +16,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private watcher = vscode.workspace.createFileSystemWatcher(WATCHER_GLOB_PATTERN, false, false, false);
     // match on subdirs. deletion events only.
     private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
+    private treeFilter: string = '';
 
     constructor() {
         this.watcher.onDidCreate(() => { this.refresh(); });
@@ -28,6 +30,22 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
+    }
+
+    setTreeFilter(filterText: string) {
+        this.treeFilter = filterText.toLowerCase();
+        if (localTreeView) {
+            localTreeView.message = `Filter: ${filterText}`;
+        }
+        this.refresh();
+    }
+
+    clearTreeFilter() {
+        this.treeFilter = '';
+        if (localTreeView) {
+            localTreeView.message = undefined;
+        }
+        this.refresh();
     }
 
     getTreeItem(element: c.ClabLabTreeNode): vscode.TreeItem {
@@ -51,19 +69,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         // empty tree if no files were discovered
         if (!length) {
-            vscode.commands.executeCommand(
-                'setContext',
-                'localLabsEmpty',
-                true
-            );
+            vscode.commands.executeCommand('setContext', 'localLabsEmpty', true);
             return undefined;
-        }
-        else {
-            vscode.commands.executeCommand(
-                'setContext',
-                'localLabsEmpty',
-                false
-            );
         }
 
         const labs: Record<string, c.ClabLabTreeNode> = {};
@@ -77,7 +84,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
             if (!labs[relPath] && !(labPaths?.has(normPath))) {
                 const labNode = new c.ClabLabTreeNode(
-                    path.basename(uri.fsPath),
+                    relPath,
                     vscode.TreeItemCollapsibleState.None,
                     {
                         relative: uri.fsPath,   // this path is actually absolute as well
@@ -95,13 +102,25 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             }
         });
 
-        // return sorted array of c.ClabLabTreeNode(s)
-        return Object.values(labs).sort(
+        let result = Object.values(labs).sort(
             (a, b) => {
                 // sort based on labPath as it has to be unique
                 return a.labPath.absolute.localeCompare(b.labPath.absolute);
             }
         );
+
+        if (this.treeFilter) {
+            const filter = this.treeFilter;
+            result = result.filter(lab => String(lab.label).toLowerCase().includes(filter));
+        }
+
+        vscode.commands.executeCommand(
+            'setContext',
+            'localLabsEmpty',
+            result.length == 0
+        );
+
+        return result;
 
     }
 
