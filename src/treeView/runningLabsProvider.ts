@@ -165,7 +165,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     const lbl = String(lab.label).toLowerCase();
                     if (lbl.includes(filter)) return true;
                     if (lab.containers) {
-                        return lab.containers.some(cn => String(cn.label).toLowerCase().includes(filter));
+                        return lab.containers.some(cn => {
+                            if (String(cn.label).toLowerCase().includes(filter)) {
+                                return true;
+                            }
+                            return cn.interfaces.some(it => String(it.label).toLowerCase().includes(filter));
+                        });
                     }
                     return false;
                 });
@@ -183,7 +188,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             if (this.treeFilter) {
                 const labMatch = String(element.label).toLowerCase().includes(this.treeFilter);
                 if (!labMatch) {
-                    containers = containers.filter(cn => String(cn.label).toLowerCase().includes(this.treeFilter));
+                    containers = containers.filter(cn => {
+                        if (String(cn.label).toLowerCase().includes(this.treeFilter)) {
+                            return true;
+                        }
+                        return cn.interfaces.some(it => String(it.label).toLowerCase().includes(this.treeFilter));
+                    });
                 }
             }
             return containers;
