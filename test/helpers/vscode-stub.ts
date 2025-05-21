@@ -1,6 +1,12 @@
 export const window = {
   lastErrorMessage: '',
   lastInfoMessage: '',
+  createOutputChannel() {
+    return {
+      appendLine() {},
+      show() {},
+    };
+  },
   showErrorMessage(message: string) {
     this.lastErrorMessage = message;
   },
