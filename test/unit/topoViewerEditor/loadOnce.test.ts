@@ -61,6 +61,7 @@ describe('TopoViewerEditor initial load', () => {
       webview: {
         asWebviewUri: (u: any) => u,
         html: '',
+        onDidReceiveMessage: () => {},
       },
       onDidDispose: () => {},
       reveal: () => {},
@@ -71,13 +72,20 @@ describe('TopoViewerEditor initial load', () => {
     const editor = new TopoViewerEditor(context);
     editor.lastYamlFilePath = '/tmp/test.clab.yml';
 
+    sinon.stub((editor as any).adaptor, 'clabYamlToCytoscapeElements').returns([]);
+    sinon.stub((editor as any).adaptor, 'generateStaticAssetUris').returns({ css: '', js: '', images: '' });
+    sinon.stub((editor as any).adaptor, 'createFolderAndWriteJson').resolves([] as any);
+
     const updateSpy = sinon.spy(editor, 'updatePanelHtml');
 
     await editor.createWebviewPanel(context, vscodeStub.Uri.file('/tmp/test.clab.yml'), 'test');
 
     if (watcherCallback) {
+      (editor as any).isInternalUpdate = true;
       watcherCallback(vscodeStub.Uri.file('/tmp/test.clab.yml'));
       watcherCallback(vscodeStub.Uri.file('/tmp/test.clab.yml'));
+      (editor as any).isInternalUpdate = false;
+      await new Promise(resolve => setTimeout(resolve, 0));
     }
 
     expect(updateSpy.callCount).to.equal(1);
