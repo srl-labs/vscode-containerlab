@@ -225,7 +225,7 @@ export class TopoViewerAdaptorClab {
     // Set: Automatically enforces uniqueness. Adding a duplicate value has no effect.
     // const numberSet: Set<number> = new Set([1, 2, 2, 3]);
     // console.log(numberSet); // Output: Set { 1, 2, 3 }
-    const parentSet = new Set<string>();
+    const parentMap = new Map<string, string | undefined>();
 
     // Convert each Containerlab node into a Cytoscape node element
     let nodeIndex = 0;
@@ -235,10 +235,11 @@ export class TopoViewerAdaptorClab {
 
         // Attempt to build parent ID
         const parentId = this.buildParent(nodeObj);
-
-        // If parentId is non-empty, collect it in our set
+        // If parentId is non-empty, collect it for later group creation
         if (parentId) {
-          parentSet.add(parentId);
+          if (!parentMap.has(parentId)) {
+            parentMap.set(parentId, nodeObj.labels?.["graph-groupLabelPos"]);
+          }
         }
 
         //get node ManagementIP address
@@ -296,44 +297,39 @@ export class TopoViewerAdaptorClab {
         elements.push(nodeEl);
         nodeIndex++;
 
-        // Create a "group node" for each unique, non-empty parent
-        for (const parentId of parentSet) {
-          // Typically parentId is "GroupName:Level"
-          const [groupName, groupLevel] = parentId.split(':');
-
-          // Build the group-node element
-          const groupNodeEl: CyElement = {
-            group: 'nodes',
-            data: {
-              id: parentId,
-              name: groupName || 'UnnamedGroup',
-              topoViewerRole: 'group',  // Indicate it's a group
-              weight: '1000',
-              parent: '', // This group does not have a parent
-              lat: '',    // Not used here, but could be extended
-              lng: '',
-              extraData: { // Usually not needed for a group
-                clabServerUsername: 'asad', // Placeholder
-                weight: '2',  // Placeholder
-                name: '',   // Placeholder
-                topoViewerGroup: groupName ?? '',  // Placeholder
-                topoViewerGroupLevel: groupLevel ?? '',  // Placeholder
-              },
-            },
-            position: { x: 0, y: 0 }, // Typically group nodes don't have a position
-            removed: false,
-            selected: false,
-            selectable: true,
-            locked: false,
-            grabbed: false,
-            grabbable: true,
-            classes: nodeObj.labels?.['graph-groupLabelPos'],
-          };
-
-          elements.push(groupNodeEl);
-        }
 
       }
+    }
+    for (const [parentId, groupLabelPos] of parentMap) {
+      const [groupName, groupLevel] = parentId.split(":" );
+      const groupNodeEl: CyElement = {
+        group: "nodes",
+        data: {
+          id: parentId,
+          name: groupName || "UnnamedGroup",
+          topoViewerRole: "group",
+          weight: "1000",
+          parent: "",
+          lat: "",
+          lng: "",
+          extraData: {
+            clabServerUsername: "asad",
+            weight: "2",
+            name: "",
+            topoViewerGroup: groupName ?? "",
+            topoViewerGroupLevel: groupLevel ?? "",
+          },
+        },
+        position: { x: 0, y: 0 },
+        removed: false,
+        selected: false,
+        selectable: true,
+        locked: false,
+        grabbed: false,
+        grabbable: true,
+        classes: groupLabelPos,
+      };
+      elements.push(groupNodeEl);
     }
 
     // Convert each Containerlab link into a Cytoscape edge element
@@ -466,7 +462,7 @@ export class TopoViewerAdaptorClab {
     // Set: Automatically enforces uniqueness. Adding a duplicate value has no effect.
     // const numberSet: Set<number> = new Set([1, 2, 2, 3]);
     // console.log(numberSet); // Output: Set { 1, 2, 3 }
-    const parentSet = new Set<string>();
+    const parentMap = new Map<string, string | undefined>();
 
     // Convert each Containerlab node into a Cytoscape node element
     let nodeIndex = 0;
@@ -477,9 +473,11 @@ export class TopoViewerAdaptorClab {
         // Attempt to build parent ID
         const parentId = this.buildParent(nodeObj);
 
-        // If parentId is non-empty, collect it in our set
+        // If parentId is non-empty, collect it for later group creation
         if (parentId) {
-          parentSet.add(parentId);
+          if (!parentMap.has(parentId)) {
+            parentMap.set(parentId, nodeObj.labels?.["graph-groupLabelPos"]);
+          }
         }
 
         //get node ManagementIP address
@@ -537,44 +535,39 @@ export class TopoViewerAdaptorClab {
         elements.push(nodeEl);
         nodeIndex++;
 
-        // Create a "group node" for each unique, non-empty parent
-        for (const parentId of parentSet) {
-          // Typically parentId is "GroupName:Level"
-          const [groupName, groupLevel] = parentId.split(':');
-
-          // Build the group-node element
-          const groupNodeEl: CyElement = {
-            group: 'nodes',
-            data: {
-              id: parentId,
-              name: groupName || 'UnnamedGroup',
-              topoViewerRole: 'group',  // Indicate it's a group
-              weight: '1000',
-              parent: '', // This group does not have a parent
-              lat: '',    // Not used here, but could be extended
-              lng: '',
-              extraData: { // Usually not needed for a group
-                clabServerUsername: 'asad', // Placeholder
-                weight: '2',  // Placeholder
-                name: '',   // Placeholder
-                topoViewerGroup: groupName ?? '',  // Placeholder
-                topoViewerGroupLevel: groupLevel ?? '',  // Placeholder
-              },
-            },
-            position: { x: 0, y: 0 }, // Typically group nodes don't have a position
-            removed: false,
-            selected: false,
-            selectable: true,
-            locked: false,
-            grabbed: false,
-            grabbable: true,
-            classes: nodeObj.labels?.['graph-groupLabelPos'],
-          };
-
-          elements.push(groupNodeEl);
-        }
 
       }
+    }
+    for (const [parentId, groupLabelPos] of parentMap) {
+      const [groupName, groupLevel] = parentId.split(":" );
+      const groupNodeEl: CyElement = {
+        group: "nodes",
+        data: {
+          id: parentId,
+          name: groupName || "UnnamedGroup",
+          topoViewerRole: "group",
+          weight: "1000",
+          parent: "",
+          lat: "",
+          lng: "",
+          extraData: {
+            clabServerUsername: "asad",
+            weight: "2",
+            name: "",
+            topoViewerGroup: groupName ?? "",
+            topoViewerGroupLevel: groupLevel ?? "",
+          },
+        },
+        position: { x: 0, y: 0 },
+        removed: false,
+        selected: false,
+        selectable: true,
+        locked: false,
+        grabbed: false,
+        grabbable: true,
+        classes: groupLabelPos,
+      };
+      elements.push(groupNodeEl);
     }
 
     // Convert each Containerlab link into a Cytoscape edge element
