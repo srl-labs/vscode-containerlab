@@ -44,6 +44,9 @@ export const Uri = {
   file(p: string) {
     return { fsPath: p };
   },
+  joinPath(...parts: any[]) {
+    return { fsPath: parts.map(p => (typeof p === 'string' ? p : p.fsPath)).join('/') };
+  },
 };
 
 export class TreeItem {
@@ -64,6 +67,10 @@ export const TreeItemCollapsibleState = {
 
 export const ThemeIcon = {
   File: 'file',
+};
+
+export const ViewColumn = {
+  One: 1,
 };
 
 export const env = {

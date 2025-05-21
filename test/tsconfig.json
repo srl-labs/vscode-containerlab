@@ -6,7 +6,5 @@
     "resolveJsonModule": true
   },
   "include": ["**/*.ts"],
-  "exclude": [
-    "../src/topoViewerEditor/**/*"
-  ]
+  "exclude": []
 }
