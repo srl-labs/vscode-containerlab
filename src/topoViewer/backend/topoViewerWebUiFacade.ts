@@ -59,6 +59,11 @@ export class TopoViewer {
 
   private socketAssignedPort: number | undefined;
 
+  /**
+   * Interval reference used for native VS Code message streaming.
+   */
+  private messageStreamingInterval: ReturnType<typeof setInterval> | undefined;
+
 
 
   /**
@@ -192,6 +197,10 @@ export class TopoViewer {
       () => {
         vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
         log.info(`Context key 'isTopoviewerActive' set to false`);
+        if (this.messageStreamingInterval) {
+          clearInterval(this.messageStreamingInterval);
+          this.messageStreamingInterval = undefined;
+        }
       },
       null,
       this.context.subscriptions
@@ -867,8 +876,13 @@ export class TopoViewer {
   // }
 
   public startMessageStreaming(): void {
+    // Clear any existing interval before starting a new one.
+    if (this.messageStreamingInterval) {
+      clearInterval(this.messageStreamingInterval);
+    }
+
     // Poll for lab data every 5 seconds.
-    setInterval(async () => {
+    this.messageStreamingInterval = setInterval(async () => {
       try {
         const labData = await this.clabTreeProviderImported.discoverInspectLabs();
 
