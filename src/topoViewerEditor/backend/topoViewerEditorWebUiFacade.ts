@@ -28,6 +28,7 @@ export class TopoViewerEditor {
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
+  private isUpdating: boolean = false; // Prevent duplicate updates
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -47,21 +48,27 @@ export class TopoViewerEditor {
       const fileUri = vscode.Uri.file(this.lastYamlFilePath);
       this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
-      this.fileWatcher.onDidChange(async (uri) => {
+      this.fileWatcher.onDidChange((uri) => {
         // Prevent feedback loop
         if (this.isInternalUpdate) {
           return;
         }
 
-        // Delay to ensure file write is complete
-        await this.sleep(100);
-
-        try {
-          await this.updatePanelHtml(this.currentPanel);
-          log.info(`Topology updated from file change: ${uri.fsPath}`);
-        } catch (err) {
-          log.error(`Error updating topology from file change: ${err}`);
+        if (this.isUpdating) {
+          return;
         }
+        this.isUpdating = true;
+
+        this.updatePanelHtml(this.currentPanel)
+          .then(() => {
+            log.info(`Topology updated from file change: ${uri.fsPath}`);
+          })
+          .catch((err) => {
+            log.error(`Error updating topology from file change: ${err}`);
+          })
+          .finally(() => {
+            this.isUpdating = false;
+          });
       });
     }
   }
@@ -231,6 +238,7 @@ topology:
    * @param context The extension context.
    */
   public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): Promise<void> {
+    this.currentLabName = labName;
     if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
         // If we have a lastYamlFilePath and it's different from the fileUri,
         // create a new URI from the lastYamlFilePath
@@ -295,38 +303,9 @@ topology:
       return;
     }
 
-    // Generate URIs for CSS, JavaScript, and image assets.
-    const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
 
-    // Compute the URI for the compiled JS directory.
-    const jsOutDir = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
-      .toString();
 
-    // Define URIs for the JSON data files.
-    const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', labName);
-    const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-    const jsonFileUrlDataCytoMarshall = panel.webview.asWebviewUri(jsonFileUriDataCytoMarshall).toString();
-
-    const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-    const jsonFileUrlDataEnvironment = panel.webview
-      .asWebviewUri(jsonFileUriDataEnvironment)
-      .toString();
-
-    // Inject the asset URIs and JSON data paths into the HTML content.
-    panel.webview.html = this.getWebviewContent(
-      css,
-      js,
-      images,
-      jsonFileUrlDataCytoMarshall,
-      jsonFileUrlDataEnvironment,
-      true,
-      jsOutDir,
-      "orb",
-      false,
-      8080
-    );
-
+    await this.updatePanelHtml(this.currentPanel);
     this.setupFileWatcher();
 
     // Clean up when the panel is disposed.
