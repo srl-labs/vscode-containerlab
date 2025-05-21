@@ -118,7 +118,7 @@ class TopoViewerEditorEngine {
     this.cy = cytoscape({
       container,
       elements: [],
-      wheelSensitivity: 0.2,
+      wheelSensitivity: 2,
     });
 
     this.cy.on('tap', (event) => {
