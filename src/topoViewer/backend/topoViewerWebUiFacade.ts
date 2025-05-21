@@ -98,8 +98,8 @@ export class TopoViewer {
 
     try {
 
-      // Read the YAML content from the file.
-      const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+      // Read the YAML content from the file asynchronously.
+      const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
       // Transform YAML into Cytoscape elements.
       const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);

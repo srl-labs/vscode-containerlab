@@ -182,7 +182,7 @@ topology:
     const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
-    const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+    const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
     const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
@@ -284,7 +284,7 @@ topology:
         }
       }
 
-      const yaml = fs.readFileSync(fileUri.fsPath, 'utf8');
+      const yaml = await fs.promises.readFile(fileUri.fsPath, 'utf8');
       const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, undefined);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
