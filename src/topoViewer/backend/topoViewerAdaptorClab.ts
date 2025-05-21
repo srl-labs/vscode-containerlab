@@ -257,7 +257,7 @@ export class TopoViewerAdaptorClab {
             // sourceEndpoint: '',
             // targetEndpoint: '',
             lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
+            lng: nodeObj.labels?.['graph-geoCoordinateLng'] ?? '',
             extraData: {
               clabServerUsername: 'asad', // Placeholder
               fqdn: `${nodeName}.${clabName}.io`,
@@ -495,7 +495,7 @@ export class TopoViewerAdaptorClab {
             // sourceEndpoint: '',
             // targetEndpoint: '',
             lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
+            lng: nodeObj.labels?.['graph-geoCoordinateLng'] ?? '',
             extraData: {
               clabServerUsername: 'asad', // Placeholder
               fqdn: `${nodeName}.${clabName}.io`,
