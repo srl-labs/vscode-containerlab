@@ -894,7 +894,7 @@
     "watch": "tsc -w -p .",
     "build:webview": "webpack --config webpack.config.js",
     "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
-    "package": "npm run bundle && npm run build:webview && vsce package",
+    "package": "npm run bundle && npm run build:webview && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm run bundle && npm run build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
