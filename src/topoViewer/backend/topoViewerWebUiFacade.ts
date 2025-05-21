@@ -293,16 +293,6 @@ export class TopoViewer {
 
       try {
         switch (endpointName) {
-          case 'backendFuncBB': {
-            // Execute the demonstration backend function BB.
-            result = await backendFuncBB(payload);
-            break;
-          }
-          case 'backendFuncAA': {
-            // Execute the demonstration backend function AA.
-            result = await backendFuncAA(payload);
-            break;
-          }
           case 'reload-viewport': {
             try {
               // Refresh the webview content.
@@ -662,33 +652,6 @@ export class TopoViewer {
       });
     });
 
-    /**
-     * Example backend function for demonstration purposes.
-     *
-     * @param payload - Arbitrary payload from the webview.
-     * @returns A demonstration result object.
-     */
-    async function backendFuncBB(payload: any): Promise<any> {
-      log.info(`backendFuncBB called with payload: ${payload}`);
-      return {
-        success: true,
-        message: `Received: ${JSON.stringify(payload, null, 2)} and returning a demonstration result.`,
-      };
-    }
-
-    /**
-     * Another example backend function for demonstration purposes.
-     *
-     * @param payload - Arbitrary payload from the webview.
-     * @returns A demonstration result object.
-     */
-    async function backendFuncAA(payload: any): Promise<any> {
-      return {
-        success: true,
-        message: `Received: ${JSON.stringify(payload, null, 2)}`,
-      };
-    }
-
     return panel;
   }
 
@@ -900,5 +863,6 @@ export class TopoViewer {
       }
     }, 5000);
   }
+
 
 }
