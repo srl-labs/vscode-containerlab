@@ -149,10 +149,6 @@ topology:
         // Notify the user with the actual path used
         this.createTopoYamlTemplateSuccess = true; // Indicate success
 
-        // Keep a local reference to the file URI in case further actions
-        // in this method require it without altering the caller-provided URI.
-        const usedFileUri = targetFileUri; // eslint-disable-line no-unused-vars
-
         // No further processing here. The webview panel will handle
         // reading the YAML and generating the initial JSON data when
         // it is created. This avoids redundant conversions and file
