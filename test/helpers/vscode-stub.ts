@@ -42,6 +42,9 @@ export const workspace = {
     void cb;
     return { dispose() {} };
   },
+  fs: {
+    readFile: async () => new TextEncoder().encode('{}'),
+  },
 };
 
 export const Uri = {

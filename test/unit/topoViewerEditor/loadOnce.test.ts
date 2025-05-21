@@ -75,6 +75,7 @@ describe('TopoViewerEditor initial load', () => {
     sinon.stub((editor as any).adaptor, 'clabYamlToCytoscapeElements').returns([]);
     sinon.stub((editor as any).adaptor, 'generateStaticAssetUris').returns({ css: '', js: '', images: '' });
     sinon.stub((editor as any).adaptor, 'createFolderAndWriteJson').resolves([] as any);
+    sinon.stub(editor as any, 'validateYaml').resolves(true);
 
     const updateSpy = sinon.spy(editor, 'updatePanelHtml');
 

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 
 import * as fs from 'fs';
+import Ajv from 'ajv';
 
 import { log } from '../../topoViewer/backend/logger';
 
@@ -30,6 +31,7 @@ export class TopoViewerEditor {
   private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
   private isUpdating: boolean = false; // Prevent duplicate updates
+  private skipInitialValidation: boolean = false; // Skip schema check for template
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -38,6 +40,34 @@ export class TopoViewerEditor {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async validateYaml(yamlContent: string): Promise<boolean> {
+    try {
+      const schemaUri = vscode.Uri.joinPath(
+        this.context.extensionUri,
+        'schema',
+        'clab.schema.json'
+      );
+      const schemaBytes = await vscode.workspace.fs.readFile(schemaUri);
+      const schema = JSON.parse(Buffer.from(schemaBytes).toString('utf8'));
+
+      const ajv = new Ajv();
+      const validate = ajv.compile(schema);
+      const yamlObj = YAML.parse(yamlContent);
+      const valid = validate(yamlObj);
+      if (!valid) {
+        const errors = ajv.errorsText(validate.errors);
+        vscode.window.showErrorMessage(`Invalid Containerlab YAML: ${errors}`);
+        log.error(`Invalid Containerlab YAML: ${errors}`);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Error validating YAML: ${err}`);
+      log.error(`Error validating YAML: ${String(err)}`);
+      return false;
+    }
   }
 
   private setupFileWatcher(): void {
@@ -194,6 +224,7 @@ topology:
 
         // Notify the user with the actual path used
         this.createTopoYamlTemplateSuccess = true; // Indicate success
+        this.skipInitialValidation = true; // Skip schema check on first load
 
         // No further processing here. The webview panel will handle
         // reading the YAML and generating the initial JSON data when
@@ -227,6 +258,15 @@ topology:
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
     const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+    if (!this.skipInitialValidation) {
+      const isValid = await this.validateYaml(yamlContent);
+      if (!isValid) {
+        log.error('YAML validation failed. Aborting updatePanelHtml.');
+        return;
+      }
+    } else {
+      this.skipInitialValidation = false;
+    }
 
     const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
@@ -330,6 +370,13 @@ topology:
       }
 
       const yaml = await fs.promises.readFile(fileUri.fsPath, 'utf8');
+      if (!this.skipInitialValidation) {
+        const isValid = await this.validateYaml(yaml);
+        if (!isValid) {
+          log.error('YAML validation failed. Aborting createWebviewPanel.');
+          return;
+        }
+      }
       const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, undefined);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
