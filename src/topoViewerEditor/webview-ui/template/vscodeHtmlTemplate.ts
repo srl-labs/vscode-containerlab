@@ -1868,7 +1868,7 @@ export function getHTMLTemplate(
 
     <script src="${jsUri}/library/highlight-11-9-0.min.js"></script>
     <!-- 3) Quill (v2 beta) -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script> -->
+    <script src="${jsUri}/library/quill-2-0-3.js"></script>
 
     <!-- <script src="${jsUri}/library/lodash.min.js?ver=1"></script> -->
 
@@ -1876,8 +1876,7 @@ export function getHTMLTemplate(
     <script src="${jsUri}/library/popper.min.js?ver=1"></script>
     <script src="${jsUri}/library/tippy.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape.min.js?ver=1"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
-    <!-- 
+    <script src="${jsUri}/library/jquery-3.6.0.min.js"></script>
     <script src="${jsUri}/library/cytoscape-leaflet.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-cola.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-popper.min.js?ver=1"></script>

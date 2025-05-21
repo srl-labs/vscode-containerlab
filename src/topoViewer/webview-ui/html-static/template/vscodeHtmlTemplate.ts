@@ -1623,7 +1623,7 @@ return `
     <script src="${jsUri}/library/popper.min.js?ver=1"></script>
     <script src="${jsUri}/library/tippy.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape.min.js?ver=1"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="${jsUri}/library/jquery-3.6.0.min.js"></script>
 
     <script src="${jsUri}/library/cytoscape-leaflet.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-cola.min.js?ver=1"></script>
