@@ -93,14 +93,16 @@ export class TopoViewerEditor {
     // Enforce the .clab.yml extension
     const finalFileName = baseNameWithoutExt + '.clab.yml';
     const finalPath = path.join(parsedPath.dir, finalFileName);
-    const finalFileUri = vscode.Uri.file(finalPath);
+    // Local reference to the actual file URI that will be used for all
+    // operations within this method.
+    const targetFileUri = vscode.Uri.file(finalPath);
 
     // Use the derived lab name for folder storage
     this.lastFolderName = baseNameWithoutExt;
 
     // Build the template with the actual lab name
     const templateContent = `
-name: ${baseNameWithoutExt} # saved as ${finalFileUri.fsPath}
+name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
 
 topology:
   nodes:
@@ -128,28 +130,28 @@ topology:
 
     try {
         // Ensure the directory exists using the final URI's directory
-        const dirUri = finalFileUri.with({ path: path.dirname(finalFileUri.path) });
+        const dirUri = targetFileUri.with({ path: path.dirname(targetFileUri.path) });
         await vscode.workspace.fs.createDirectory(dirUri);
 
         // Write the file using the final URI and mark as internal to
         // avoid triggering the file watcher.
         const data = Buffer.from(templateContent, 'utf8');
         this.isInternalUpdate = true;
-        await vscode.workspace.fs.writeFile(finalFileUri, data);
+        await vscode.workspace.fs.writeFile(targetFileUri, data);
         await this.sleep(50);
         this.isInternalUpdate = false;
 
         // Remember the actual path where it was written
-        this.lastYamlFilePath = finalFileUri.fsPath;
+        this.lastYamlFilePath = targetFileUri.fsPath;
 
-        log.info(`Template file created at: ${finalFileUri.fsPath}`);
+        log.info(`Template file created at: ${targetFileUri.fsPath}`);
 
         // Notify the user with the actual path used
         this.createTopoYamlTemplateSuccess = true; // Indicate success
 
-        // IMPORTANT: Update the requestedFileUri to match our modified file path
-        // This ensures any code that still uses the original URI will now use the correct one
-        requestedFileUri = finalFileUri;
+        // Keep a local reference to the file URI in case further actions
+        // in this method require it without altering the caller-provided URI.
+        const usedFileUri = targetFileUri; // eslint-disable-line no-unused-vars
 
         // No further processing here. The webview panel will handle
         // reading the YAML and generating the initial JSON data when
