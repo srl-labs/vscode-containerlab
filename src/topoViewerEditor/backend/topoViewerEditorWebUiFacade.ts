@@ -27,6 +27,7 @@ export class TopoViewerEditor {
   private currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
+  private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
   private isUpdating: boolean = false; // Prevent duplicate updates
 
@@ -70,6 +71,44 @@ export class TopoViewerEditor {
             this.isUpdating = false;
           });
       });
+    }
+  }
+
+  private setupSaveListener(): void {
+    if (this.saveListener) {
+      this.saveListener.dispose();
+    }
+
+    if (this.lastYamlFilePath) {
+      this.saveListener = vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.uri.fsPath !== this.lastYamlFilePath) {
+          return;
+        }
+
+        if (this.isInternalUpdate) {
+          return;
+        }
+
+        void this.handleManualSave();
+      });
+    }
+  }
+
+  private async handleManualSave(): Promise<void> {
+    if (this.isUpdating) {
+      return;
+    }
+    this.isUpdating = true;
+
+    try {
+      await this.updatePanelHtml(this.currentPanel);
+      if (this.currentPanel) {
+        this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
+      }
+    } catch (err) {
+      log.error(`Error updating topology from manual save: ${err}`);
+    } finally {
+      this.isUpdating = false;
     }
   }
 
@@ -307,6 +346,7 @@ topology:
 
     await this.updatePanelHtml(this.currentPanel);
     this.setupFileWatcher();
+    this.setupSaveListener();
 
     // Clean up when the panel is disposed.
     panel.onDidDispose(() => {
@@ -314,6 +354,10 @@ topology:
       if (this.fileWatcher) {
         this.fileWatcher.dispose();
         this.fileWatcher = undefined;
+      }
+      if (this.saveListener) {
+        this.saveListener.dispose();
+        this.saveListener = undefined;
       }
     }, null, context.subscriptions);
 

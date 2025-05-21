@@ -38,6 +38,10 @@ export const workspace = {
     const del = deleteCount ?? 0;
     this.workspaceFolders.splice(index, del, ...folders);
   },
+  onDidSaveTextDocument(cb: any) {
+    void cb;
+    return { dispose() {} };
+  },
 };
 
 export const Uri = {

@@ -189,6 +189,13 @@ class TopoViewerEditorEngine {
     this.viewportPanels.registerTogglePanels(containerId);
 
     this.setupAutoSave();
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg && msg.type === 'yaml-saved') {
+        fetchAndLoadData(this.cy, this.messageSender);
+      }
+    });
   }
 
   /**
