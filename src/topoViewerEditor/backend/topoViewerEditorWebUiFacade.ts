@@ -73,12 +73,47 @@ export class TopoViewerEditor {
         log.error(`Invalid Containerlab YAML: ${errors}`);
         return false;
       }
+
+      const linkError = this.checkLinkReferences(yamlObj);
+      if (linkError) {
+        vscode.window.showErrorMessage(`Invalid Containerlab YAML: ${linkError}`);
+        log.error(`Invalid Containerlab YAML: ${linkError}`);
+        return false;
+      }
+
       return true;
     } catch (err) {
       vscode.window.showErrorMessage(`Error validating YAML: ${err}`);
       log.error(`Error validating YAML: ${String(err)}`);
       return false;
     }
+  }
+
+  private checkLinkReferences(yamlObj: any): string | null {
+    const nodes = new Set(Object.keys(yamlObj?.topology?.nodes ?? {}));
+    const invalidNodes = new Set<string>();
+
+    if (Array.isArray(yamlObj?.topology?.links)) {
+      for (const link of yamlObj.topology.links) {
+        if (!Array.isArray(link?.endpoints)) {
+          continue;
+        }
+        for (const ep of link.endpoints) {
+          if (typeof ep !== 'string') {
+            continue;
+          }
+          const nodeName = ep.split(':')[0];
+          if (nodeName && !nodes.has(nodeName)) {
+            invalidNodes.add(nodeName);
+          }
+        }
+      }
+    }
+
+    if (invalidNodes.size > 0) {
+      return `Undefined node reference(s): ${Array.from(invalidNodes).join(', ')}`;
+    }
+    return null;
   }
 
   private setupFileWatcher(): void {
