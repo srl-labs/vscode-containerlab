@@ -32,6 +32,8 @@ export class TopoViewerEditor {
   private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
   private isUpdating: boolean = false; // Prevent duplicate updates
+  private queuedUpdate: boolean = false; // Indicates an update is queued
+  private queuedSaveAck: boolean = false; // If any queued update came from a manual save
   private skipInitialValidation: boolean = false; // Skip schema check for template
 
   constructor(context: vscode.ExtensionContext) {
@@ -125,33 +127,13 @@ export class TopoViewerEditor {
       const fileUri = vscode.Uri.file(this.lastYamlFilePath);
       this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
-      this.fileWatcher.onDidChange((uri) => {
+      this.fileWatcher.onDidChange(() => {
         // Prevent feedback loop
         if (this.isInternalUpdate) {
           return;
         }
 
-        if (this.isUpdating) {
-          return;
-        }
-        this.isUpdating = true;
-
-        this.updatePanelHtml(this.currentPanel)
-          .then((success) => {
-            if (success) {
-              log.info(`Topology updated from file change: ${uri.fsPath}`);
-            } else {
-              vscode.window.showErrorMessage(
-                'Invalid Containerlab YAML: changes not applied'
-              );
-            }
-          })
-          .catch((err) => {
-            log.error(`Error updating topology from file change: ${err}`);
-          })
-          .finally(() => {
-            this.isUpdating = false;
-          });
+        void this.triggerUpdate(false);
       });
     }
   }
@@ -177,24 +159,37 @@ export class TopoViewerEditor {
   }
 
   private async handleManualSave(): Promise<void> {
+    await this.triggerUpdate(true);
+  }
+
+  private async triggerUpdate(sendSaveAck: boolean): Promise<void> {
     if (this.isUpdating) {
+      this.queuedUpdate = true;
+      this.queuedSaveAck = this.queuedSaveAck || sendSaveAck;
       return;
     }
     this.isUpdating = true;
-
     try {
       const success = await this.updatePanelHtml(this.currentPanel);
-      if (success && this.currentPanel) {
-        this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
-      } else if (!success) {
+      if (success) {
+        if ((sendSaveAck || this.queuedSaveAck) && this.currentPanel) {
+          this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
+        }
+      } else {
         vscode.window.showErrorMessage(
           'Invalid Containerlab YAML: changes not applied'
         );
       }
     } catch (err) {
-      log.error(`Error updating topology from manual save: ${err}`);
+      log.error(`Error updating topology: ${err}`);
     } finally {
       this.isUpdating = false;
+      if (this.queuedUpdate) {
+        const nextSaveAck = this.queuedSaveAck;
+        this.queuedUpdate = false;
+        this.queuedSaveAck = false;
+        await this.triggerUpdate(nextSaveAck);
+      }
     }
   }
 
