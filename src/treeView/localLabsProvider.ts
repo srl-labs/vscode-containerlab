@@ -105,7 +105,9 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         let result = Object.values(labs).sort(
             (a, b) => {
                 // sort based on labPath as it has to be unique
-                return a.labPath.absolute.localeCompare(b.labPath.absolute);
+                const aPath = a.labPath?.absolute ?? '';
+                const bPath = b.labPath?.absolute ?? '';
+                return aPath.localeCompare(bPath);
             }
         );
 

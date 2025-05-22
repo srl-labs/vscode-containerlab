@@ -102,8 +102,10 @@ export class TopoViewerEditor {
         this.isUpdating = true;
 
         this.updatePanelHtml(this.currentPanel)
-          .then(() => {
-            log.info(`Topology updated from file change: ${uri.fsPath}`);
+          .then((success) => {
+            if (success) {
+              log.info(`Topology updated from file change: ${uri.fsPath}`);
+            }
           })
           .catch((err) => {
             log.error(`Error updating topology from file change: ${err}`);
@@ -142,8 +144,8 @@ export class TopoViewerEditor {
     this.isUpdating = true;
 
     try {
-      await this.updatePanelHtml(this.currentPanel);
-      if (this.currentPanel) {
+      const success = await this.updatePanelHtml(this.currentPanel);
+      if (success && this.currentPanel) {
         this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
       }
     } catch (err) {
@@ -257,9 +259,9 @@ topology:
    * @param panel - The active WebviewPanel to update.
    * @returns A promise that resolves when the panel has been updated.
    */
-  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<void> {
+  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
     if (!this.currentLabName) {
-      return;
+      return false;
     }
 
     const yamlFilePath = this.lastYamlFilePath;
@@ -268,12 +270,19 @@ topology:
     const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
-    const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+    let yamlContent: string;
+    try {
+      yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+    } catch (err) {
+      log.error(`Failed to read YAML file: ${String(err)}`);
+      vscode.window.showErrorMessage(`Failed to read YAML file: ${err}`);
+      return false;
+    }
     if (!this.skipInitialValidation) {
       const isValid = await this.validateYaml(yamlContent);
       if (!isValid) {
         log.error('YAML validation failed. Aborting updatePanelHtml.');
-        return;
+        return false;
       }
     } else {
       this.skipInitialValidation = false;
@@ -284,7 +293,13 @@ topology:
       updatedClabTreeDataToTopoviewer
     );
 
-    await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    try {
+      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    } catch (err) {
+      log.error(`Failed to write topology files: ${String(err)}`);
+      vscode.window.showErrorMessage(`Failed to write topology files: ${err}`);
+      return false;
+    }
 
     if (panel) {
       const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
@@ -325,7 +340,10 @@ topology:
 
     } else {
       log.error('Panel is undefined');
+      return false;
     }
+
+    return true;
   }
 
   /**
@@ -478,9 +496,13 @@ topology:
           case 'topo-editor-reload-viewport': {
             try {
               // Refresh the webview content.
-              await this.updatePanelHtml(this.currentPanel);
-              result = `Endpoint "${endpointName}" executed successfully.`;
-              log.info(result);
+              const success = await this.updatePanelHtml(this.currentPanel);
+              if (success) {
+                result = `Endpoint "${endpointName}" executed successfully.`;
+                log.info(result);
+              } else {
+                result = `YAML validation failed.`;
+              }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
