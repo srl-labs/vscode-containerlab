@@ -105,6 +105,10 @@ export class TopoViewerEditor {
           .then((success) => {
             if (success) {
               log.info(`Topology updated from file change: ${uri.fsPath}`);
+            } else {
+              vscode.window.showErrorMessage(
+                'Invalid Containerlab YAML: changes not applied'
+              );
             }
           })
           .catch((err) => {
@@ -147,6 +151,10 @@ export class TopoViewerEditor {
       const success = await this.updatePanelHtml(this.currentPanel);
       if (success && this.currentPanel) {
         this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
+      } else if (!success) {
+        vscode.window.showErrorMessage(
+          'Invalid Containerlab YAML: changes not applied'
+        );
       }
     } catch (err) {
       log.error(`Error updating topology from manual save: ${err}`);
@@ -502,6 +510,9 @@ topology:
                 log.info(result);
               } else {
                 result = `YAML validation failed.`;
+                vscode.window.showErrorMessage(
+                  'Invalid Containerlab YAML: changes not applied'
+                );
               }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
