@@ -5,6 +5,7 @@ import { log } from '../../../topoViewer/backend/logger';
 export function getHTMLTemplate(
   cssUri: string,
   jsUri: string,
+  schemaUri: string,
   imagesUri: string,
   jsonFileUrlDataCytoMarshall: string,
   jsonFileUrlDataEnvironment: string,
@@ -1901,6 +1902,8 @@ export function getHTMLTemplate(
 
     <!-- Inject jsUri as a global variable -->
     <script> window.jsUrl = "${jsUri}"; </script>
+    <!-- Inject schemaUri as a global variable -->
+    <script> window.schemaUrl = "${schemaUri}"; </script>
 
     <!-- Inject imagesUri as a global variable -->
     <script> window.imagesUrl = "${imagesUri}"; </script>

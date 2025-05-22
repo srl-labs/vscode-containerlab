@@ -4,6 +4,7 @@ import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 
 import * as fs from 'fs';
 import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 
 import { log } from '../../topoViewer/backend/logger';
 
@@ -52,7 +53,17 @@ export class TopoViewerEditor {
       const schemaBytes = await vscode.workspace.fs.readFile(schemaUri);
       const schema = JSON.parse(Buffer.from(schemaBytes).toString('utf8'));
 
-      const ajv = new Ajv();
+      const ajv = new Ajv({
+        strict: false,
+        allErrors: true,
+        verbose: true,
+      });
+      addFormats(ajv);
+      ajv.addKeyword({
+        keyword: 'markdownDescription',
+        schemaType: 'string',
+        compile: () => () => true,
+      });
       const validate = ajv.compile(schema);
       const yamlObj = YAML.parse(yamlContent);
       const valid = validate(yamlObj);
@@ -294,9 +305,14 @@ topology:
 
       const isVscodeDeployment = true;
 
+      const schemaUri = panel.webview
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
+        .toString();
+
       panel.webview.html = this.getWebviewContent(
         css,
         js,
+        schemaUri,
         images,
         jsonFileUrlDataCytoMarshall,
         jsonFileUrlDataEnvironment,
@@ -1065,6 +1081,7 @@ topology:
   private getWebviewContent(
     cssUri: string,
     jsUri: string,
+    schemaUri: string,
     imagesUri: string,
     jsonFileUrlDataCytoMarshall: string,
     jsonFileUrlDataEnvironment: string,
@@ -1077,6 +1094,7 @@ topology:
     return getHTMLTemplate(
       cssUri,
       jsUri,
+      schemaUri,
       imagesUri,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,

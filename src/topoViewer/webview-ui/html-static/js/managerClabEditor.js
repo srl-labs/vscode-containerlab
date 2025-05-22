@@ -245,7 +245,7 @@ async function showPanelNodeEditor(node) {
 	}
 
 	// Fetch JSON schema from the backend
-	const url = "js/clabJsonSchema-v0.59.0.json";
+        const url = window.schemaUrl || "schema/clab.schema.json";
 	try {
 		const response = await fetch(url);
 		if (!response.ok) {

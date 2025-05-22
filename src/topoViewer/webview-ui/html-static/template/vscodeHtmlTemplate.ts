@@ -3,9 +3,10 @@
 import { log } from '../../../backend/logger';
 
 export function getHTMLTemplate(
-cssUri: string,
-jsUri: string,
-imagesUri: string,
+  cssUri: string,
+  jsUri: string,
+  schemaUri: string,
+  imagesUri: string,
 jsonFileUrlDataCytoMarshall: string,
 jsonFileUrlDataEnvironment: string,
 isVscodeDeployment: boolean,
@@ -1647,6 +1648,8 @@ return `
     <script src="${jsUri}/library/js-yaml.min.js?ver=1"></script>
     <script src="${jsUri}/library/monaco-loader.js?ver=1"></script>
 
+    <!-- Inject schemaUri as a global variable -->
+    <script> window.schemaUrl = "${schemaUri}"; </script>
 
     <!-- Inject imagesUri as a global variable -->
     <script> window.imagesUrl = "${imagesUri}"; </script>

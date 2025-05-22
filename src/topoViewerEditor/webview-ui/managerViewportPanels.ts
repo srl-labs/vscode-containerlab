@@ -140,7 +140,7 @@ export class ManagerViewportPanels {
     }
 
     // Fetch JSON schema.
-    const url = `${(window as any).jsUrl}/clabJsonSchema-v0.59.0.json`;
+    const url = (window as any).schemaUrl;
     try {
       const response = await fetch(url);
       if (!response.ok) {

@@ -224,6 +224,10 @@ export class TopoViewer {
 
     const isVscodeDeployment = true;
 
+    const schemaUri = panel.webview
+      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
+      .toString();
+
     log.info(`Webview JSON => dataCytoMarshall: ${jsonFileUrlDataCytoMarshall}`);
     log.info(`Webview JSON => environment: ${jsonFileUrlDataEnvironment}`);
 
@@ -231,6 +235,7 @@ export class TopoViewer {
     panel.webview.html = this.getWebviewContent(
       css,
       js,
+      schemaUri,
       images,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
@@ -671,6 +676,7 @@ export class TopoViewer {
   private getWebviewContent(
     cssUri: string,
     jsUri: string,
+    schemaUri: string,
     imagesUri: string,
     jsonFileUrlDataCytoMarshall: string,
     jsonFileUrlDataEnvironment: string,
@@ -683,6 +689,7 @@ export class TopoViewer {
     return getHTMLTemplate(
       cssUri,
       jsUri,
+      schemaUri,
       imagesUri,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
@@ -743,9 +750,14 @@ export class TopoViewer {
 
       const isVscodeDeployment = true;
 
+      const schemaUri = panel.webview
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
+        .toString();
+
       panel.webview.html = this.getWebviewContent(
         css,
         js,
+        schemaUri,
         images,
         jsonFileUrlDataCytoMarshall,
         jsonFileUrlDataEnvironment,
