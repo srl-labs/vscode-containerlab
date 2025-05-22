@@ -426,6 +426,8 @@ topology:
           vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
           // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
+          // Schema directory for YAML validation and dropdown data.
+          vscode.Uri.joinPath(this.context.extensionUri, 'schema'),
         ],
       }
     );
