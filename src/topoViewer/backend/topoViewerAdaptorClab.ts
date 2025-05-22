@@ -175,234 +175,10 @@ export class TopoViewerAdaptorClab {
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
   public clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): CyElement[] {
-
-    const parsed = yaml.load(yamlContent) as ClabTopology;
-    const elements: CyElement[] = [];
-
-    if (!parsed.topology) {
-      log.warn("Parsed YAML does not contain 'topology' object.");
-      return elements;
+        const parsed = yaml.load(yamlContent) as ClabTopology;
+      return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer });
     }
 
-    // Determine if all non-group nodes (i.e. nodes from parsed.topology.nodes) have preset positions.
-    // We check that both 'topoViewer-presetPosX' and 'topoViewer-presetPosY' exist.
-    if (parsed.topology.nodes) {
-      this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([, nodeObj]) =>
-          !!nodeObj.labels?.['graph-posX'] &&
-          !!nodeObj.labels?.['graph-posY']
-        );
-    }
-    log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
-
-    // get lab name
-    let clabName = parsed.name
-
-    // get clabName elements of clabTreeDataToTopoviewer
-    //
-    // Step 1: Provide a fallback (empty object) if `data` is null or undefined
-    // Step 2: Convert the object's values into an array
-    // Step 3: Filter the items where `name` equals "demo-asad"
-
-    // let filteredLabData: ClabLabTreeNode[]
-
-    // filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
-    //     (item) => item?.name === clabName
-    // );
-
-    // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
-
-
-    // Prepare parent nods
-    //
-    // Use a Set to collect unique parents
-    // Uniqueness of Elements
-    // Array: Allows duplicate values. You can have multiple identical elements in an array.
-
-    // const numbers: number[] = [1, 2, 2, 3];
-    // console.log(numbers); // Output: [1, 2, 2, 3]
-
-    // Set: Automatically enforces uniqueness. Adding a duplicate value has no effect.
-    // const numberSet: Set<number> = new Set([1, 2, 2, 3]);
-    // console.log(numberSet); // Output: Set { 1, 2, 3 }
-    const parentSet = new Set<string>();
-
-    // Convert each Containerlab node into a Cytoscape node element
-    let nodeIndex = 0;
-
-    if (parsed.topology.nodes) {
-      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
-
-        // Attempt to build parent ID
-        const parentId = this.buildParent(nodeObj);
-
-        // If parentId is non-empty, collect it in our set
-        if (parentId) {
-          parentSet.add(parentId);
-        }
-
-        //get node ManagementIP address
-        log.info(`nodeName: ${nodeName}`)
-        let containerData = this.getClabContainerTreeNode(`clab-${clabName}-${nodeName}`, clabTreeDataToTopoviewer ?? {}, clabName ?? '');
-
-        const nodeEl: CyElement = {
-          group: 'nodes',
-          data: {
-            id: nodeName,
-            weight: '30',   // Placeholder
-            name: nodeName,
-            parent: parentId || undefined, // Only set parent if non-empty
-            topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',  // 'topoViewer-role' take precedence nad router' is default role
-            // sourceEndpoint: '',
-            // targetEndpoint: '',
-            lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            extraData: {
-              clabServerUsername: 'asad', // Placeholder
-              fqdn: `${nodeName}.${clabName}.io`,
-              group: nodeObj.group ?? '',
-              id: nodeName,
-              image: nodeObj.image ?? '',
-              index: nodeIndex.toString(),
-              kind: nodeObj.kind ?? '',
-              labdir: `clab-${clabName}/`, // Placeholder
-              labels: nodeObj.labels ?? {},
-              longname: `clab-${clabName}-${nodeName}`,  // Placeholder
-              macAddress: '',
-              mgmtIntf: '',
-              mgmtIpv4AddressLength: 0,
-              mgmtIpv4Addresss: `${containerData?.IPv4Address}`,
-              mgmtIpv6Address: `${containerData?.IPv6Address}`,
-              mgmtIpv6AddressLength: 0,
-              mgmtNet: '',
-              name: nodeName,
-              shortname: nodeName,
-              state: `${containerData?.state}`,
-              weight: '3', // Placeholder
-            },
-          },
-          position: {
-            x: parseFloat(nodeObj.labels?.['graph-posX'] ?? 0),
-            y: parseFloat(nodeObj.labels?.['graph-posY'] ?? 0)
-          },
-          removed: false,
-          selected: false,
-          selectable: true,
-          locked: false,
-          grabbed: false,
-          grabbable: true,
-          classes: '',
-        };
-        elements.push(nodeEl);
-        nodeIndex++;
-
-        // Create a "group node" for each unique, non-empty parent
-        for (const parentId of parentSet) {
-          // Typically parentId is "GroupName:Level"
-          const [groupName, groupLevel] = parentId.split(':');
-
-          // Build the group-node element
-          const groupNodeEl: CyElement = {
-            group: 'nodes',
-            data: {
-              id: parentId,
-              name: groupName || 'UnnamedGroup',
-              topoViewerRole: 'group',  // Indicate it's a group
-              weight: '1000',
-              parent: '', // This group does not have a parent
-              lat: '',    // Not used here, but could be extended
-              lng: '',
-              extraData: { // Usually not needed for a group
-                clabServerUsername: 'asad', // Placeholder
-                weight: '2',  // Placeholder
-                name: '',   // Placeholder
-                topoViewerGroup: groupName ?? '',  // Placeholder
-                topoViewerGroupLevel: groupLevel ?? '',  // Placeholder
-              },
-            },
-            position: { x: 0, y: 0 }, // Typically group nodes don't have a position
-            removed: false,
-            selected: false,
-            selectable: true,
-            locked: false,
-            grabbed: false,
-            grabbable: true,
-            classes: nodeObj.labels?.['graph-groupLabelPos'],
-          };
-
-          elements.push(groupNodeEl);
-        }
-
-      }
-    }
-
-    // Convert each Containerlab link into a Cytoscape edge element
-    let linkIndex = 0;
-    if (parsed.topology.links) {
-      for (const linkObj of parsed.topology.links) {
-
-        // Defaulting to an empty string ('') when endpoints are absent
-        const endA = linkObj.endpoints?.[0] ?? '';
-        const endB = linkObj.endpoints?.[1] ?? '';
-
-        if (!endA || !endB) {
-          log.warn("Link does not have both endpoints. Skipping.");
-          continue;
-        }
-
-        // Split endpoints to extract node and interface information
-        const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
-        const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
-
-
-        const edgeId = `Clab-Link${linkIndex}`;
-        const edgeEl: CyElement = {
-          group: 'edges',
-          data: {
-            id: edgeId,
-            weight: '3',  // Placeholder
-            name: edgeId,
-            parent: '',    // Edges typically have no parent
-            topoViewerRole: 'link',
-            sourceEndpoint: sourceIface,
-            targetEndpoint: targetIface,
-            lat: '',
-            lng: '',
-            source: sourceNode,
-            target: targetNode,
-            extraData: {
-              clabServerUsername: 'asad', // Placeholder
-              clabSourceLongName: `clab-${clabName}-${sourceNode}`,
-              clabTargetLongName: `clab-${clabName}-${targetNode}`,
-              clabSourcePort: sourceIface,
-              clabTargetPort: targetIface,
-              clabSourceMacAddress: '',
-              clabTargetMacAddress: '',
-
-
-
-
-              // Additional placeholder fields can be added here
-            },
-          },
-          position: { x: 0, y: 0 }, // Placeholder, edges typically do not require positions
-          removed: false,
-          selected: false,
-          selectable: true,
-          locked: false,
-          grabbed: false,
-          grabbable: true,
-          classes: '',
-        };
-
-        elements.push(edgeEl);
-        linkIndex++;
-      }
-    }
-
-    log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
-    return elements;
-  }
 
   /**
    * Transforms a Containerlab YAML string into Cytoscape elements compatible with TopoViewer EDITOR.
@@ -417,233 +193,10 @@ export class TopoViewerAdaptorClab {
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
   public clabYamlToCytoscapeElementsEditor(yamlContent: string): CyElement[] {
-    const parsed = yaml.load(yamlContent) as ClabTopology;
-    const elements: CyElement[] = [];
-
-    if (!parsed.topology) {
-      log.warn("Parsed YAML does not contain 'topology' object.");
-      return elements;
+      const parsed = yaml.load(yamlContent) as ClabTopology;
+      return this.buildCytoscapeElements(parsed, { includeContainerData: false });
     }
 
-    // Determine if all non-group nodes (i.e. nodes from parsed.topology.nodes) have preset positions.
-    // We check that both 'topoViewer-presetPosX' and 'topoViewer-presetPosY' exist.
-    if (parsed.topology.nodes) {
-      this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([, nodeObj]) =>
-          !!nodeObj.labels?.['graph-posX'] &&
-          !!nodeObj.labels?.['graph-posY']
-        );
-    }
-    log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
-
-    // get lab name
-    let clabName = parsed.name
-
-    // get clabName elements of clabTreeDataToTopoviewer
-    //
-    // Step 1: Provide a fallback (empty object) if `data` is null or undefined
-    // Step 2: Convert the object's values into an array
-    // Step 3: Filter the items where `name` equals "demo-asad"
-
-    // let filteredLabData: ClabLabTreeNode[]
-
-    // filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
-    //     (item) => item?.name === clabName
-    // );
-
-    // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`)
-
-
-    // Prepare parent nods
-    //
-    // Use a Set to collect unique parents
-    // Uniqueness of Elements
-    // Array: Allows duplicate values. You can have multiple identical elements in an array.
-
-    // const numbers: number[] = [1, 2, 2, 3];
-    // console.log(numbers); // Output: [1, 2, 2, 3]
-
-    // Set: Automatically enforces uniqueness. Adding a duplicate value has no effect.
-    // const numberSet: Set<number> = new Set([1, 2, 2, 3]);
-    // console.log(numberSet); // Output: Set { 1, 2, 3 }
-    const parentSet = new Set<string>();
-
-    // Convert each Containerlab node into a Cytoscape node element
-    let nodeIndex = 0;
-
-    if (parsed.topology.nodes) {
-      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
-
-        // Attempt to build parent ID
-        const parentId = this.buildParent(nodeObj);
-
-        // If parentId is non-empty, collect it in our set
-        if (parentId) {
-          parentSet.add(parentId);
-        }
-
-        //get node ManagementIP address
-        log.info(`nodeName: ${nodeName}`)
-        // let containerData = this.getClabContainerTreeNode(`clab-${clabName}-${nodeName}`, clabTreeDataToTopoviewer ?? {}, clabName ?? '');
-
-        const nodeEl: CyElement = {
-          group: 'nodes',
-          data: {
-            id: nodeName,
-            weight: '30',   // Placeholder
-            name: nodeName,
-            parent: parentId || undefined, // Only set parent if non-empty
-            topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',  // 'topoViewer-role' take precedence nad router' is default role
-            // sourceEndpoint: '',
-            // targetEndpoint: '',
-            lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            extraData: {
-              clabServerUsername: 'asad', // Placeholder
-              fqdn: `${nodeName}.${clabName}.io`,
-              group: nodeObj.group ?? '',
-              id: nodeName,
-              image: nodeObj.image ?? '',
-              index: nodeIndex.toString(),
-              kind: nodeObj.kind ?? '',
-              labdir: `clab-${clabName}/`, // Placeholder
-              labels: nodeObj.labels ?? {},
-              longname: `clab-${clabName}-${nodeName}`,  // Placeholder
-              macAddress: '',
-              mgmtIntf: '',
-              mgmtIpv4AddressLength: 0,
-              mgmtIpv4Addresss: ``,
-              mgmtIpv6Address: ``,
-              mgmtIpv6AddressLength: 0,
-              mgmtNet: '',
-              name: nodeName,
-              shortname: nodeName,
-              state: ``,
-              weight: '3', // Placeholder
-            },
-          },
-          position: {
-            x: parseFloat(nodeObj.labels?.['graph-posX'] ?? 0),
-            y: parseFloat(nodeObj.labels?.['graph-posY'] ?? 0)
-          },
-          removed: false,
-          selected: false,
-          selectable: true,
-          locked: false,
-          grabbed: false,
-          grabbable: true,
-          classes: '',
-        };
-        elements.push(nodeEl);
-        nodeIndex++;
-
-        // Create a "group node" for each unique, non-empty parent
-        for (const parentId of parentSet) {
-          // Typically parentId is "GroupName:Level"
-          const [groupName, groupLevel] = parentId.split(':');
-
-          // Build the group-node element
-          const groupNodeEl: CyElement = {
-            group: 'nodes',
-            data: {
-              id: parentId,
-              name: groupName || 'UnnamedGroup',
-              topoViewerRole: 'group',  // Indicate it's a group
-              weight: '1000',
-              parent: '', // This group does not have a parent
-              lat: '',    // Not used here, but could be extended
-              lng: '',
-              extraData: { // Usually not needed for a group
-                clabServerUsername: 'asad', // Placeholder
-                weight: '2',  // Placeholder
-                name: '',   // Placeholder
-                topoViewerGroup: groupName ?? '',  // Placeholder
-                topoViewerGroupLevel: groupLevel ?? '',  // Placeholder
-              },
-            },
-            position: { x: 0, y: 0 }, // Typically group nodes don't have a position
-            removed: false,
-            selected: false,
-            selectable: true,
-            locked: false,
-            grabbed: false,
-            grabbable: true,
-            classes: nodeObj.labels?.['graph-groupLabelPos'],
-          };
-
-          elements.push(groupNodeEl);
-        }
-
-      }
-    }
-
-    // Convert each Containerlab link into a Cytoscape edge element
-    let linkIndex = 0;
-    if (parsed.topology.links) {
-      for (const linkObj of parsed.topology.links) {
-
-        // Defaulting to an empty string ('') when endpoints are absent
-        const endA = linkObj.endpoints?.[0] ?? '';
-        const endB = linkObj.endpoints?.[1] ?? '';
-
-        if (!endA || !endB) {
-          log.warn("Link does not have both endpoints. Skipping.");
-          continue;
-        }
-
-        // Split endpoints to extract node and interface information
-        const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
-        const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
-
-
-        const edgeId = `Clab-Link${linkIndex}`;
-        const edgeEl: CyElement = {
-          group: 'edges',
-          data: {
-            id: edgeId,
-            weight: '3',  // Placeholder
-            name: edgeId,
-            parent: '',    // Edges typically have no parent
-            topoViewerRole: 'link',
-            sourceEndpoint: sourceIface,
-            targetEndpoint: targetIface,
-            lat: '',
-            lng: '',
-            source: sourceNode,
-            target: targetNode,
-            extraData: {
-              clabServerUsername: 'asad', // Placeholder
-              clabSourceLongName: `clab-${clabName}-${sourceNode}`,
-              clabTargetLongName: `clab-${clabName}-${targetNode}`,
-              clabSourcePort: sourceIface,
-              clabTargetPort: targetIface,
-              clabSourceMacAddress: '',
-              clabTargetMacAddress: '',
-
-
-
-
-              // Additional placeholder fields can be added here
-            },
-          },
-          position: { x: 0, y: 0 }, // Placeholder, edges typically do not require positions
-          removed: false,
-          selected: false,
-          selectable: true,
-          locked: false,
-          grabbed: false,
-          grabbable: true,
-          classes: '',
-        };
-
-        elements.push(edgeEl);
-        linkIndex++;
-      }
-    }
-
-    log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
-    return elements;
-  }
 
   /**
    * Splits an endpoint string into node and interface components.
@@ -708,6 +261,188 @@ export class TopoViewerAdaptorClab {
     };
 
     return JSON.stringify(hyphenatedJson, null, 2);
+  }
+
+  private buildCytoscapeElements(
+    parsed: ClabTopology,
+    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> }
+  ): CyElement[] {
+    const elements: CyElement[] = [];
+
+    if (!parsed.topology) {
+      log.warn('Parsed YAML does not contain \x27topology\x27 object.');
+      return elements;
+    }
+
+    if (parsed.topology.nodes) {
+      this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
+        .every(([, nodeObj]) =>
+          !!nodeObj.labels?.['graph-posX'] &&
+          !!nodeObj.labels?.['graph-posY']
+        );
+    }
+    log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
+
+    const clabName = parsed.name;
+    const parentMap = new Map<string, string | undefined>();
+    let nodeIndex = 0;
+
+    if (parsed.topology.nodes) {
+      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+        const parentId = this.buildParent(nodeObj);
+        if (parentId) {
+          if (!parentMap.has(parentId)) {
+            parentMap.set(parentId, nodeObj.labels?.['graph-groupLabelPos']);
+          }
+        }
+
+        log.info(`nodeName: ${nodeName}`);
+        let containerData: ClabContainerTreeNode | null = null;
+        if (opts.includeContainerData) {
+          containerData = this.getClabContainerTreeNode(
+            `clab-${clabName}-${nodeName}`,
+            opts.clabTreeData ?? {},
+            clabName ?? ''
+          );
+        }
+
+        const nodeEl: CyElement = {
+          group: 'nodes',
+          data: {
+            id: nodeName,
+            weight: '30',
+            name: nodeName,
+            parent: parentId || undefined,
+            topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',
+            lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
+            lng: nodeObj.labels?.['graph-geoCoordinateLng'] ?? '',
+            extraData: {
+              clabServerUsername: 'asad',
+              fqdn: `${nodeName}.${clabName}.io`,
+              group: nodeObj.group ?? '',
+              id: nodeName,
+              image: nodeObj.image ?? '',
+              index: nodeIndex.toString(),
+              kind: nodeObj.kind ?? '',
+              labdir: `clab-${clabName}/`,
+              labels: nodeObj.labels ?? {},
+              longname: `clab-${clabName}-${nodeName}`,
+              macAddress: '',
+              mgmtIntf: '',
+              mgmtIpv4AddressLength: 0,
+              mgmtIpv4Addresss: opts.includeContainerData ? `${containerData?.IPv4Address}` : '',
+              mgmtIpv6Address: opts.includeContainerData ? `${containerData?.IPv6Address}` : '',
+              mgmtIpv6AddressLength: 0,
+              mgmtNet: '',
+              name: nodeName,
+              shortname: nodeName,
+              state: opts.includeContainerData ? `${containerData?.state}` : '',
+              weight: '3',
+            },
+          },
+          position: {
+            x: parseFloat(nodeObj.labels?.['graph-posX'] ?? 0),
+            y: parseFloat(nodeObj.labels?.['graph-posY'] ?? 0),
+          },
+          removed: false,
+          selected: false,
+          selectable: true,
+          locked: false,
+          grabbed: false,
+          grabbable: true,
+          classes: '',
+        };
+        elements.push(nodeEl);
+        nodeIndex++;
+      }
+    }
+
+    for (const [parentId, groupLabelPos] of parentMap) {
+      const [groupName, groupLevel] = parentId.split(':');
+      const groupNodeEl: CyElement = {
+        group: 'nodes',
+        data: {
+          id: parentId,
+          name: groupName || 'UnnamedGroup',
+          topoViewerRole: 'group',
+          weight: '1000',
+          parent: '',
+          lat: '',
+          lng: '',
+          extraData: {
+            clabServerUsername: 'asad',
+            weight: '2',
+            name: '',
+            topoViewerGroup: groupName ?? '',
+            topoViewerGroupLevel: groupLevel ?? '',
+          },
+        },
+        position: { x: 0, y: 0 },
+        removed: false,
+        selected: false,
+        selectable: true,
+        locked: false,
+        grabbed: false,
+        grabbable: true,
+        classes: groupLabelPos,
+      };
+      elements.push(groupNodeEl);
+    }
+
+    let linkIndex = 0;
+    if (parsed.topology.links) {
+      for (const linkObj of parsed.topology.links) {
+        const endA = linkObj.endpoints?.[0] ?? '';
+        const endB = linkObj.endpoints?.[1] ?? '';
+        if (!endA || !endB) {
+          log.warn('Link does not have both endpoints. Skipping.');
+          continue;
+        }
+
+        const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
+        const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
+
+        const edgeId = `Clab-Link${linkIndex}`;
+        const edgeEl: CyElement = {
+          group: 'edges',
+          data: {
+            id: edgeId,
+            weight: '3',
+            name: edgeId,
+            parent: '',
+            topoViewerRole: 'link',
+            sourceEndpoint: sourceIface,
+            targetEndpoint: targetIface,
+            lat: '',
+            lng: '',
+            source: sourceNode,
+            target: targetNode,
+            extraData: {
+              clabServerUsername: 'asad',
+              clabSourceLongName: `clab-${clabName}-${sourceNode}`,
+              clabTargetLongName: `clab-${clabName}-${targetNode}`,
+              clabSourcePort: sourceIface,
+              clabTargetPort: targetIface,
+              clabSourceMacAddress: '',
+              clabTargetMacAddress: '',
+            },
+          },
+          position: { x: 0, y: 0 },
+          removed: false,
+          selected: false,
+          selectable: true,
+          locked: false,
+          grabbed: false,
+          grabbable: true,
+          classes: '',
+        };
+        elements.push(edgeEl);
+        linkIndex++;
+      }
+    }
+
+    log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
+    return elements;
   }
 
 

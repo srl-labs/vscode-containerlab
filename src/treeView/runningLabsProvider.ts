@@ -238,7 +238,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 return 1; // b (deployed) comes before a (undeployed)
             }
             // If same deployment status, sort by path
-            return a.labPath.absolute.localeCompare(b.labPath.absolute);
+            const aPath = a.labPath?.absolute ?? '';
+            const bPath = b.labPath?.absolute ?? '';
+            return aPath.localeCompare(bPath);
         });
 
         console.log(`[RunningLabTreeDataProvider]:\tDiscovered ${sortedLabs.length} labs.`);
@@ -561,7 +563,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 container.name,
                 container.container_id,
                 container.state // Pass container state for cache validation
-            ).sort((a, b) => a.name.localeCompare(b.name)); // Sort interfaces alphabetically
+            ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); // Sort interfaces alphabetically
 
             // Determine collapsible state based on interfaces
             const collapsible = interfaces.length > 0
@@ -600,7 +602,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         });
 
         // Sort container nodes alphabetically by name
-        return containerNodes.sort((a, b) => a.name.localeCompare(b.name));
+        return containerNodes.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
     }
 
     private discoverContainerInterfaces(

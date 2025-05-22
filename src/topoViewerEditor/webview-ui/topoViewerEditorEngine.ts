@@ -74,10 +74,7 @@ class TopoViewerEditorEngine {
   private viewportPanels: ManagerViewportPanels;
 
 
-  private debounce(
-    func: (...args: any[]) => any, // eslint-disable-line no-unused-vars
-    wait: number
-  ) {
+  private debounce(func: Function, wait: number) {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     return (...args: any[]) => {
       if (timeout) clearTimeout(timeout);
@@ -118,7 +115,7 @@ class TopoViewerEditorEngine {
     this.cy = cytoscape({
       container,
       elements: [],
-      wheelSensitivity: 0.2,
+      wheelSensitivity: 2,
     });
 
     this.cy.on('tap', (event) => {
@@ -192,6 +189,13 @@ class TopoViewerEditorEngine {
     this.viewportPanels.registerTogglePanels(containerId);
 
     this.setupAutoSave();
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg && msg.type === 'yaml-saved') {
+        fetchAndLoadData(this.cy, this.messageSender);
+      }
+    });
   }
 
   /**
@@ -518,11 +522,23 @@ class TopoViewerEditorEngine {
       console.warn("Subtitle element not found");
     }
   }
+
+  /**
+   * Dispose of resources held by the engine.
+   */
+  public dispose(): void {
+    this.messageSender.dispose();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const engine = new TopoViewerEditorEngine('cy');
   // Create and store the instance globally
-  (window as any).topoViewerEditorEngine = new TopoViewerEditorEngine('cy');
+  (window as any).topoViewerEditorEngine = engine;
+
+  window.addEventListener('unload', () => {
+    engine.dispose();
+  });
 });
 
 export default TopoViewerEditorEngine;

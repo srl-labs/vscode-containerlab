@@ -202,13 +202,14 @@ export class ManagerViewportButtons {
    *
    * @async
    * @param cy - The Cytoscape core instance whose viewport will be reloaded.
+   * @param delayMs - Optional delay in milliseconds before reloading the data.
    * @returns A promise that resolves once the reload sequence has been initiated.
    */
-  public async viewportButtonsReloadTopo(cy: cytoscape.Core): Promise<void> {
+  public async viewportButtonsReloadTopo(cy: cytoscape.Core, delayMs = 1000): Promise<void> {
     try {
       const response = await this.messageSender.sendMessageToVscodeEndpointPost("topo-editor-reload-viewport", "Empty Payload");
       console.log("############### response from backend:", response);
-      this.sleep(1000)
+      await this.sleep(delayMs);
       // Re-Init load data.
       fetchAndLoadData(cy, this.messageSender);
 

@@ -67,13 +67,3 @@ window.addEventListener('message', (event) => {
     }
 });
 
-// Example usage of backend call using 'backendFuncBB'.
-
-// async function runMyBackendCall() {
-//     try {
-//         const response = await sendMessageToVscodeEndpointPost("backendFuncBB", { foo: "bar" });
-//         console.log("############### Success from backend:", response);
-//     } catch (err) {
-//         console.error("############### Backend call failed:", err);
-//     }
-// }

@@ -164,9 +164,9 @@ function initializeMonacoEditor() {
 
 // Monaco Editor setup
 require.config({
-	paths: {
-		'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs'
-	}
+        paths: {
+                'vs': './library/monaco-editor/min/vs'
+        }
 });
 
 

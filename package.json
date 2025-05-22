@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.100.0"
@@ -894,7 +894,7 @@
     "watch": "tsc -w -p .",
     "build:webview": "webpack --config webpack.config.js",
     "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
-    "package": "npm run bundle && npm run build:webview && vsce package",
+    "package": "npm run bundle && npm run build:webview && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm run bundle && npm run build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
@@ -936,11 +936,14 @@
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
     "@vscode/vsce": "^3.4.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "cytoscape": "^3.32.0",
     "cytoscape-cola": "^2.5.1",
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",
     "cytoscape-grid-guide": "^2.3.3",
+    "js-yaml": "^4.1.0",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
     "yaml": "^2.8.0"

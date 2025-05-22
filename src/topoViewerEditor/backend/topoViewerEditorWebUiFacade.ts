@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 
 import * as fs from 'fs';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 
 import { log } from '../../topoViewer/backend/logger';
 
@@ -27,7 +29,12 @@ export class TopoViewerEditor {
   private currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
+  private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
+  private isUpdating: boolean = false; // Prevent duplicate updates
+  private queuedUpdate: boolean = false; // Indicates an update is queued
+  private queuedSaveAck: boolean = false; // If any queued update came from a manual save
+  private skipInitialValidation: boolean = false; // Skip schema check for template
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -36,6 +43,79 @@ export class TopoViewerEditor {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async validateYaml(yamlContent: string): Promise<boolean> {
+    try {
+      const schemaUri = vscode.Uri.joinPath(
+        this.context.extensionUri,
+        'schema',
+        'clab.schema.json'
+      );
+      const schemaBytes = await vscode.workspace.fs.readFile(schemaUri);
+      const schema = JSON.parse(Buffer.from(schemaBytes).toString('utf8'));
+
+      const ajv = new Ajv({
+        strict: false,
+        allErrors: true,
+        verbose: true,
+      });
+      addFormats(ajv);
+      ajv.addKeyword({
+        keyword: 'markdownDescription',
+        schemaType: 'string',
+        compile: () => () => true,
+      });
+      const validate = ajv.compile(schema);
+      const yamlObj = YAML.parse(yamlContent);
+      const valid = validate(yamlObj);
+      if (!valid) {
+        const errors = ajv.errorsText(validate.errors);
+        vscode.window.showErrorMessage(`Invalid Containerlab YAML: ${errors}`);
+        log.error(`Invalid Containerlab YAML: ${errors}`);
+        return false;
+      }
+
+      const linkError = this.checkLinkReferences(yamlObj);
+      if (linkError) {
+        vscode.window.showErrorMessage(`Invalid Containerlab YAML: ${linkError}`);
+        log.error(`Invalid Containerlab YAML: ${linkError}`);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Error validating YAML: ${err}`);
+      log.error(`Error validating YAML: ${String(err)}`);
+      return false;
+    }
+  }
+
+  private checkLinkReferences(yamlObj: any): string | null {
+    const nodes = new Set(Object.keys(yamlObj?.topology?.nodes ?? {}));
+    const invalidNodes = new Set<string>();
+
+    if (Array.isArray(yamlObj?.topology?.links)) {
+      for (const link of yamlObj.topology.links) {
+        if (!Array.isArray(link?.endpoints)) {
+          continue;
+        }
+        for (const ep of link.endpoints) {
+          if (typeof ep !== 'string') {
+            continue;
+          }
+          const nodeName = ep.split(':')[0];
+          if (nodeName && !nodes.has(nodeName)) {
+            invalidNodes.add(nodeName);
+          }
+        }
+      }
+    }
+
+    if (invalidNodes.size > 0) {
+      return `Undefined node reference(s): ${Array.from(invalidNodes).join(', ')}`;
+    }
+    return null;
   }
 
   private setupFileWatcher(): void {
@@ -47,22 +127,69 @@ export class TopoViewerEditor {
       const fileUri = vscode.Uri.file(this.lastYamlFilePath);
       this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
-      this.fileWatcher.onDidChange(async (uri) => {
+      this.fileWatcher.onDidChange(() => {
         // Prevent feedback loop
         if (this.isInternalUpdate) {
           return;
         }
 
-        // Delay to ensure file write is complete
-        await this.sleep(100);
-
-        try {
-          await this.updatePanelHtml(this.currentPanel);
-          log.info(`Topology updated from file change: ${uri.fsPath}`);
-        } catch (err) {
-          log.error(`Error updating topology from file change: ${err}`);
-        }
+        void this.triggerUpdate(false);
       });
+    }
+  }
+
+  private setupSaveListener(): void {
+    if (this.saveListener) {
+      this.saveListener.dispose();
+    }
+
+    if (this.lastYamlFilePath) {
+      this.saveListener = vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.uri.fsPath !== this.lastYamlFilePath) {
+          return;
+        }
+
+        if (this.isInternalUpdate) {
+          return;
+        }
+
+        void this.handleManualSave();
+      });
+    }
+  }
+
+  private async handleManualSave(): Promise<void> {
+    await this.triggerUpdate(true);
+  }
+
+  private async triggerUpdate(sendSaveAck: boolean): Promise<void> {
+    if (this.isUpdating) {
+      this.queuedUpdate = true;
+      this.queuedSaveAck = this.queuedSaveAck || sendSaveAck;
+      return;
+    }
+    this.isUpdating = true;
+    try {
+      const success = await this.updatePanelHtml(this.currentPanel);
+      if (success) {
+        if ((sendSaveAck || this.queuedSaveAck) && this.currentPanel) {
+          this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
+        }
+      } else {
+        vscode.window.showErrorMessage(
+          'Invalid Containerlab YAML: changes not applied'
+        );
+      }
+    } catch (err) {
+      log.error(`Error updating topology: ${err}`);
+    } finally {
+      this.isUpdating = false;
+      if (this.queuedUpdate) {
+        const nextSaveAck = this.queuedSaveAck;
+        this.queuedUpdate = false;
+        this.queuedSaveAck = false;
+        await this.triggerUpdate(nextSaveAck);
+      }
     }
   }
 
@@ -93,14 +220,16 @@ export class TopoViewerEditor {
     // Enforce the .clab.yml extension
     const finalFileName = baseNameWithoutExt + '.clab.yml';
     const finalPath = path.join(parsedPath.dir, finalFileName);
-    const finalFileUri = vscode.Uri.file(finalPath);
+    // Local reference to the actual file URI that will be used for all
+    // operations within this method.
+    const targetFileUri = vscode.Uri.file(finalPath);
 
     // Use the derived lab name for folder storage
     this.lastFolderName = baseNameWithoutExt;
 
     // Build the template with the actual lab name
     const templateContent = `
-name: ${baseNameWithoutExt} # saved as ${finalFileUri.fsPath}
+name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
 
 topology:
   nodes:
@@ -128,36 +257,30 @@ topology:
 
     try {
         // Ensure the directory exists using the final URI's directory
-        const dirUri = finalFileUri.with({ path: path.dirname(finalFileUri.path) });
+        const dirUri = targetFileUri.with({ path: path.dirname(targetFileUri.path) });
         await vscode.workspace.fs.createDirectory(dirUri);
 
-        // Write the file using the final URI
+        // Write the file using the final URI and mark as internal to
+        // avoid triggering the file watcher.
         const data = Buffer.from(templateContent, 'utf8');
-        await vscode.workspace.fs.writeFile(finalFileUri, data);
+        this.isInternalUpdate = true;
+        await vscode.workspace.fs.writeFile(targetFileUri, data);
+        await this.sleep(50);
+        this.isInternalUpdate = false;
 
         // Remember the actual path where it was written
-        this.lastYamlFilePath = finalFileUri.fsPath;
+        this.lastYamlFilePath = targetFileUri.fsPath;
 
-        log.info(`Template file created at: ${finalFileUri.fsPath}`);
+        log.info(`Template file created at: ${targetFileUri.fsPath}`);
 
         // Notify the user with the actual path used
         this.createTopoYamlTemplateSuccess = true; // Indicate success
+        this.skipInitialValidation = true; // Skip schema check on first load
 
-        // IMPORTANT: Update the requestedFileUri to match our modified file path
-        // This ensures any code that still uses the original URI will now use the correct one
-        requestedFileUri = finalFileUri;
-
-        // Convert the YAML file to JSON and write it to the webview.
-        const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
-        log.debug(`YAML content: ${yamlContent}`);
-
-        // Transform YAML into Cytoscape elements.
-        const cytoTopology = this.adaptor.clabYamlToCytoscapeElementsEditor(yamlContent);
-        log.debug(`Cytoscape topology: ${JSON.stringify(cytoTopology, null, 2)}`);
-
-        // Create folder and write JSON files for the webview.
-        await this.adaptor.createFolderAndWriteJson(this.context, this.lastFolderName, cytoTopology, yamlContent);
-        this.setupFileWatcher();
+        // No further processing here. The webview panel will handle
+        // reading the YAML and generating the initial JSON data when
+        // it is created. This avoids redundant conversions and file
+        // writes triggered during template creation.
 
     } catch (err) {
         vscode.window.showErrorMessage(`Error creating template: ${err}`);
@@ -174,9 +297,9 @@ topology:
    * @param panel - The active WebviewPanel to update.
    * @returns A promise that resolves when the panel has been updated.
    */
-  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<void> {
+  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
     if (!this.currentLabName) {
-      return;
+      return false;
     }
 
     const yamlFilePath = this.lastYamlFilePath;
@@ -185,14 +308,36 @@ topology:
     const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
-    const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+    let yamlContent: string;
+    try {
+      yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+    } catch (err) {
+      log.error(`Failed to read YAML file: ${String(err)}`);
+      vscode.window.showErrorMessage(`Failed to read YAML file: ${err}`);
+      return false;
+    }
+    if (!this.skipInitialValidation) {
+      const isValid = await this.validateYaml(yamlContent);
+      if (!isValid) {
+        log.error('YAML validation failed. Aborting updatePanelHtml.');
+        return false;
+      }
+    } else {
+      this.skipInitialValidation = false;
+    }
 
     const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
       updatedClabTreeDataToTopoviewer
     );
 
-    await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    try {
+      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    } catch (err) {
+      log.error(`Failed to write topology files: ${String(err)}`);
+      vscode.window.showErrorMessage(`Failed to write topology files: ${err}`);
+      return false;
+    }
 
     if (panel) {
       const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
@@ -213,9 +358,14 @@ topology:
 
       const isVscodeDeployment = true;
 
+      const schemaUri = panel.webview
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
+        .toString();
+
       panel.webview.html = this.getWebviewContent(
         css,
         js,
+        schemaUri,
         images,
         jsonFileUrlDataCytoMarshall,
         jsonFileUrlDataEnvironment,
@@ -228,7 +378,10 @@ topology:
 
     } else {
       log.error('Panel is undefined');
+      return false;
     }
+
+    return true;
   }
 
   /**
@@ -236,6 +389,7 @@ topology:
    * @param context The extension context.
    */
   public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): Promise<void> {
+    this.currentLabName = labName;
     if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
         // If we have a lastYamlFilePath and it's different from the fileUri,
         // create a new URI from the lastYamlFilePath
@@ -267,6 +421,8 @@ topology:
           vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
           // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
+          // Schema directory for YAML validation and dropdown data.
+          vscode.Uri.joinPath(this.context.extensionUri, 'schema'),
         ],
       }
     );
@@ -287,7 +443,14 @@ topology:
         }
       }
 
-      const yaml = fs.readFileSync(fileUri.fsPath, 'utf8');
+      const yaml = await fs.promises.readFile(fileUri.fsPath, 'utf8');
+      if (!this.skipInitialValidation) {
+        const isValid = await this.validateYaml(yaml);
+        if (!isValid) {
+          log.error('YAML validation failed. Aborting createWebviewPanel.');
+          return;
+        }
+      }
       const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, undefined);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
@@ -300,39 +463,11 @@ topology:
       return;
     }
 
-    // Generate URIs for CSS, JavaScript, and image assets.
-    const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
 
-    // Compute the URI for the compiled JS directory.
-    const jsOutDir = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
-      .toString();
 
-    // Define URIs for the JSON data files.
-    const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', labName);
-    const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-    const jsonFileUrlDataCytoMarshall = panel.webview.asWebviewUri(jsonFileUriDataCytoMarshall).toString();
-
-    const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-    const jsonFileUrlDataEnvironment = panel.webview
-      .asWebviewUri(jsonFileUriDataEnvironment)
-      .toString();
-
-    // Inject the asset URIs and JSON data paths into the HTML content.
-    panel.webview.html = this.getWebviewContent(
-      css,
-      js,
-      images,
-      jsonFileUrlDataCytoMarshall,
-      jsonFileUrlDataEnvironment,
-      true,
-      jsOutDir,
-      "orb",
-      false,
-      8080
-    );
-
+    await this.updatePanelHtml(this.currentPanel);
     this.setupFileWatcher();
+    this.setupSaveListener();
 
     // Clean up when the panel is disposed.
     panel.onDidDispose(() => {
@@ -340,6 +475,10 @@ topology:
       if (this.fileWatcher) {
         this.fileWatcher.dispose();
         this.fileWatcher = undefined;
+      }
+      if (this.saveListener) {
+        this.saveListener.dispose();
+        this.saveListener = undefined;
       }
     }, null, context.subscriptions);
 
@@ -397,9 +536,16 @@ topology:
           case 'topo-editor-reload-viewport': {
             try {
               // Refresh the webview content.
-              await this.updatePanelHtml(this.currentPanel);
-              result = `Endpoint "${endpointName}" executed successfully.`;
-              log.info(result);
+              const success = await this.updatePanelHtml(this.currentPanel);
+              if (success) {
+                result = `Endpoint "${endpointName}" executed successfully.`;
+                log.info(result);
+              } else {
+                result = `YAML validation failed.`;
+                vscode.window.showErrorMessage(
+                  'Invalid Containerlab YAML: changes not applied'
+                );
+              }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
@@ -643,6 +789,7 @@ topology:
               const updatedYamlString = doc.toString();
               this.isInternalUpdate = true;
               await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+              await this.sleep(50);
               this.isInternalUpdate = false;
 
               const result = `Saved topology with preserved comments!`;
@@ -897,6 +1044,7 @@ topology:
               const updatedYamlString = doc.toString();
               this.isInternalUpdate = true;
               await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
+              await this.sleep(50);
               this.isInternalUpdate = false;
 
               // const result = `Saved topology with preserved comments aaaa!`;
@@ -998,6 +1146,7 @@ topology:
   private getWebviewContent(
     cssUri: string,
     jsUri: string,
+    schemaUri: string,
     imagesUri: string,
     jsonFileUrlDataCytoMarshall: string,
     jsonFileUrlDataEnvironment: string,
@@ -1010,6 +1159,7 @@ topology:
     return getHTMLTemplate(
       cssUri,
       jsUri,
+      schemaUri,
       imagesUri,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,

@@ -1,6 +1,12 @@
 export const window = {
   lastErrorMessage: '',
   lastInfoMessage: '',
+  createOutputChannel() {
+    return {
+      appendLine() {},
+      show() {},
+    };
+  },
   showErrorMessage(message: string) {
     this.lastErrorMessage = message;
   },
@@ -32,11 +38,21 @@ export const workspace = {
     const del = deleteCount ?? 0;
     this.workspaceFolders.splice(index, del, ...folders);
   },
+  onDidSaveTextDocument(cb: any) {
+    void cb;
+    return { dispose() {} };
+  },
+  fs: {
+    readFile: async () => new TextEncoder().encode('{}'),
+  },
 };
 
 export const Uri = {
   file(p: string) {
     return { fsPath: p };
+  },
+  joinPath(...parts: any[]) {
+    return { fsPath: parts.map(p => (typeof p === 'string' ? p : p.fsPath)).join('/') };
   },
 };
 
@@ -58,6 +74,10 @@ export const TreeItemCollapsibleState = {
 
 export const ThemeIcon = {
   File: 'file',
+};
+
+export const ViewColumn = {
+  One: 1,
 };
 
 export const env = {
