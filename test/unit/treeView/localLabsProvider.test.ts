@@ -96,5 +96,23 @@ describe('LocalLabTreeDataProvider', () => {
       args: ['localLabsEmpty', false],
     });
   });
+
+  it('sorts favorites to the top', async () => {
+    sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
+      vscodeStub.Uri.file('/workspace/b/lab2.clab.yaml'),
+      vscodeStub.Uri.file('/workspace/a/lab1.clab.yml'),
+    ]);
+    (ins as any).rawInspectData = [];
+    const ext = await import('../../../src/extension');
+    ext.favoriteLabs = new Set(['/workspace/b/lab2.clab.yaml']);
+
+    const provider = new LocalLabTreeDataProvider();
+    const nodes = await provider.getChildren(undefined);
+
+    expect(nodes).to.have.lengthOf(2);
+    expect(nodes![0].labPath.absolute).to.equal('/workspace/b/lab2.clab.yaml');
+    expect(nodes![0].favorite).to.be.true;
+    expect(nodes![1].labPath.absolute).to.equal('/workspace/a/lab1.clab.yml');
+  });
 });
 

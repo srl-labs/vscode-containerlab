@@ -31,6 +31,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     public readonly name?: string;
     public readonly owner?: string;
     public readonly containers?: ClabContainerTreeNode[];
+    public readonly favorite: boolean;
 
     constructor(
         public readonly label: string,
@@ -40,6 +41,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         owner?: string,
         containers?: ClabContainerTreeNode[],
         contextValue?: string,
+        favorite: boolean = false,
     ) {
         super(label, collapsibleState);
         this.labPath = labPath;
@@ -47,7 +49,10 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         this.owner = owner;
         this.containers = containers;
         this.contextValue = contextValue;
-        this.iconPath = vscode.ThemeIcon.File;
+        this.favorite = favorite;
+        this.iconPath = favorite
+            ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
+            : vscode.ThemeIcon.File;
     }
 }
 

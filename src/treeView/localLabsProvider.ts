@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import * as utils from "../utils"
 import * as c from "./common";
 import * as ins from "./inspector";
-import { localTreeView } from "../extension";
+import { localTreeView, favoriteLabs } from "../extension";
 import path = require("path");
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
@@ -63,47 +63,50 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         const uris = await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN);
 
-        const length = uris.length;
-
-        console.log(`[LocalTreeDataProvider]:\tDiscovered ${length} labs.`);
-
-        // empty tree if no files were discovered
-        if (!length) {
-            vscode.commands.executeCommand('setContext', 'localLabsEmpty', true);
-            return undefined;
-        }
-
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
         // get a list of running labPaths so we can filter out any running labs.
         const labPaths = this.getLabPaths();
 
-        uris.forEach((uri) => {
-            const normPath = utils.normalizeLabPath(uri.fsPath);
-            const relPath = path.relative(vscode.workspace.workspaceFolders![0].uri.path, uri.fsPath);
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
 
-            if (!labs[relPath] && !(labPaths?.has(normPath))) {
+        const addLab = (filePath: string, isFavorite: boolean) => {
+            const normPath = utils.normalizeLabPath(filePath);
+            if (!labs[normPath] && !labPaths.has(normPath)) {
+                const relPath = path.relative(workspaceRoot, filePath);
                 const labNode = new c.ClabLabTreeNode(
                     relPath,
                     vscode.TreeItemCollapsibleState.None,
                     {
-                        relative: uri.fsPath,   // this path is actually absolute as well
+                        relative: filePath,
                         absolute: normPath
                     },
                     undefined,
                     undefined,
                     undefined,
-                    "containerlabLabUndeployed"
+                    "containerlabLabUndeployed",
+                    isFavorite
                 );
 
                 labNode.description = utils.getRelLabFolderPath(normPath);
-
-                labs[relPath] = labNode;
+                labs[normPath] = labNode;
             }
+        };
+
+        uris.forEach(uri => addLab(uri.fsPath, favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false));
+
+        favoriteLabs?.forEach(p => {
+            if (uris.find(u => utils.normalizeLabPath(u.fsPath) === utils.normalizeLabPath(p))) {
+                return;
+            }
+            addLab(p, true);
         });
 
         let result = Object.values(labs).sort(
             (a, b) => {
+                // favorites first
+                if (a.favorite && !b.favorite) { return -1; }
+                if (!a.favorite && b.favorite) { return 1; }
                 // sort based on labPath as it has to be unique
                 const aPath = a.labPath?.absolute ?? '';
                 const bPath = b.labPath?.absolute ?? '';
@@ -116,13 +119,14 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             result = result.filter(lab => String(lab.label).toLowerCase().includes(filter));
         }
 
+        const isEmpty = result.length === 0;
         vscode.commands.executeCommand(
             'setContext',
             'localLabsEmpty',
-            result.length == 0
+            isEmpty
         );
 
-        return result;
+        return isEmpty ? undefined : result;
 
     }
 
