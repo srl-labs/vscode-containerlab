@@ -3,48 +3,19 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode, ClabTreeDataProvider, ClabInterfaceTreeNode } from '../../clabTreeDataProvider';
-import { ClabNode, ClabLink, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
+import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
-import * as http from 'http';
 // import { Server as SocketIOServer } from 'socket.io';
 import {
-  captureInterface,
   getHostname,
-  deploy,
-  deployCleanup,
-  deploySpecificFile,
-  destroy,
-  destroyCleanup,
-  redeploy,
-  redeployCleanup,
-  inspectAllLabs,
-  inspectOneLab,
-  openLabFile,
-  openFolderInNewWindow,
-  startNode,
-  stopNode,
   attachShell,
   sshToNode,
   showLogs,
-  graphNextUI,
-  graphDrawIO,
-  graphDrawIOInteractive,
-  addLabFolderToWorkspace,
-  copyLabPath,
-  copyContainerIPv4Address,
-  copyContainerIPv6Address,
-  copyContainerName,
-  copyContainerID,
-  copyContainerImage,
-  copyContainerKind,
-  graphTopoviewer,
-  graphTopoviewerReload,
   captureInterfaceWithPacketflix,
 } from '../../commands/index';
 
@@ -66,7 +37,7 @@ export class TopoViewer {
   /**
    * Tree data provider to manage Containerlab lab nodes.
    */
-  private clabTreeProviderImported: ClabTreeDataProvider;
+  private clabTreeProviderImported: RunningLabTreeDataProvider;
 
   /**
    * Stores the YAML file path from the last topenViewer call.
@@ -88,6 +59,11 @@ export class TopoViewer {
 
   private socketAssignedPort: number | undefined;
 
+  /**
+   * Interval reference used for native VS Code message streaming.
+   */
+  private messageStreamingInterval: ReturnType<typeof setInterval> | undefined;
+
 
 
   /**
@@ -97,7 +73,7 @@ export class TopoViewer {
    */
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
-    this.clabTreeProviderImported = new ClabTreeDataProvider(context);
+    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
 
   /**
@@ -127,8 +103,8 @@ export class TopoViewer {
 
     try {
 
-      // Read the YAML content from the file.
-      const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+      // Read the YAML content from the file asynchronously.
+      const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
       // Transform YAML into Cytoscape elements.
       const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
@@ -207,7 +183,7 @@ export class TopoViewer {
           // Static asset folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
           // Compiled JS directory.
-          vscode.Uri.joinPath(this.context.extensionUri, 'out'),
+          vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
         ],
       }
     );
@@ -221,6 +197,10 @@ export class TopoViewer {
       () => {
         vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
         log.info(`Context key 'isTopoviewerActive' set to false`);
+        if (this.messageStreamingInterval) {
+          clearInterval(this.messageStreamingInterval);
+          this.messageStreamingInterval = undefined;
+        }
       },
       null,
       this.context.subscriptions
@@ -231,7 +211,7 @@ export class TopoViewer {
 
     // Compute the URI for the compiled JS directory.
     const jsOutDir = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'out'))
+      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
       .toString();
 
     // Define URIs for the JSON data files.
@@ -244,6 +224,10 @@ export class TopoViewer {
 
     const isVscodeDeployment = true;
 
+    const schemaUri = panel.webview
+      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
+      .toString();
+
     log.info(`Webview JSON => dataCytoMarshall: ${jsonFileUrlDataCytoMarshall}`);
     log.info(`Webview JSON => environment: ${jsonFileUrlDataEnvironment}`);
 
@@ -251,6 +235,7 @@ export class TopoViewer {
     panel.webview.html = this.getWebviewContent(
       css,
       js,
+      schemaUri,
       images,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
@@ -313,16 +298,6 @@ export class TopoViewer {
 
       try {
         switch (endpointName) {
-          case 'backendFuncBB': {
-            // Execute the demonstration backend function BB.
-            result = await backendFuncBB(payload);
-            break;
-          }
-          case 'backendFuncAA': {
-            // Execute the demonstration backend function AA.
-            result = await backendFuncAA(payload);
-            break;
-          }
           case 'reload-viewport': {
             try {
               // Refresh the webview content.
@@ -682,33 +657,6 @@ export class TopoViewer {
       });
     });
 
-    /**
-     * Example backend function for demonstration purposes.
-     *
-     * @param payload - Arbitrary payload from the webview.
-     * @returns A demonstration result object.
-     */
-    async function backendFuncBB(payload: any): Promise<any> {
-      log.info(`backendFuncBB called with payload: ${payload}`);
-      return {
-        success: true,
-        message: `Received: ${JSON.stringify(payload, null, 2)} and returning a demonstration result.`,
-      };
-    }
-
-    /**
-     * Another example backend function for demonstration purposes.
-     *
-     * @param payload - Arbitrary payload from the webview.
-     * @returns A demonstration result object.
-     */
-    async function backendFuncAA(payload: any): Promise<any> {
-      return {
-        success: true,
-        message: `Received: ${JSON.stringify(payload, null, 2)}`,
-      };
-    }
-
     return panel;
   }
 
@@ -728,6 +676,7 @@ export class TopoViewer {
   private getWebviewContent(
     cssUri: string,
     jsUri: string,
+    schemaUri: string,
     imagesUri: string,
     jsonFileUrlDataCytoMarshall: string,
     jsonFileUrlDataEnvironment: string,
@@ -740,6 +689,7 @@ export class TopoViewer {
     return getHTMLTemplate(
       cssUri,
       jsUri,
+      schemaUri,
       imagesUri,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
@@ -784,7 +734,7 @@ export class TopoViewer {
     if (panel) {
       const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
       const jsOutDir = panel.webview
-        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'out'))
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
         .toString();
 
       const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
@@ -800,9 +750,14 @@ export class TopoViewer {
 
       const isVscodeDeployment = true;
 
+      const schemaUri = panel.webview
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
+        .toString();
+
       panel.webview.html = this.getWebviewContent(
         css,
         js,
+        schemaUri,
         images,
         jsonFileUrlDataCytoMarshall,
         jsonFileUrlDataEnvironment,
@@ -896,8 +851,13 @@ export class TopoViewer {
   // }
 
   public startMessageStreaming(): void {
+    // Clear any existing interval before starting a new one.
+    if (this.messageStreamingInterval) {
+      clearInterval(this.messageStreamingInterval);
+    }
+
     // Poll for lab data every 5 seconds.
-    setInterval(async () => {
+    this.messageStreamingInterval = setInterval(async () => {
       try {
         const labData = await this.clabTreeProviderImported.discoverInspectLabs();
 
@@ -915,5 +875,6 @@ export class TopoViewer {
       }
     }, 5000);
   }
+
 
 }

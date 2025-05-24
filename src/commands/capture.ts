@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import { runWithSudo } from "../helpers/containerlabUtils";
 import { outputChannel } from "../extension";
 import * as utils from "../utils";
-import { ClabInterfaceTreeNode } from "../clabTreeDataProvider";
+import { ClabInterfaceTreeNode } from "../treeView/common";
 
 let sessionHostname: string = "";
 
@@ -59,14 +59,14 @@ async function resolveWiresharkCommand(): Promise<string> {
   return "wireshark";
 }
 /**
- * Actually run the pipeline with sudo if needed. No extra 'bash -c' here; 
+ * Actually run the pipeline with sudo if needed. No extra 'bash -c' here;
  * let runWithSudo handle the quoting.
  */
 function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string) {
   outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(command=${pipeCmd})`);
 
   runWithSudo(
-      pipeCmd, 
+      pipeCmd,
       `TCPDump capture on ${parentName}/${ifName}`,
       outputChannel,
       "generic"
@@ -81,7 +81,7 @@ function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string)
 }
 
 /**
- * Start capture on an interface using edgeshark/packetflix. 
+ * Start capture on an interface using edgeshark/packetflix.
  * This method builds a 'packetflix:' URI that calls edgeshark.
  */
 export async function captureInterfaceWithPacketflix(
@@ -93,7 +93,7 @@ export async function captureInterfaceWithPacketflix(
     }
     outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
-    // If user multi‐selected items, we capture them all. 
+    // If user multi‐selected items, we capture them all.
     const selected = allSelectedNodes && allSelectedNodes.length > 0
       ? allSelectedNodes
       : [node];
@@ -278,46 +278,3 @@ export async function getHostname(): Promise<string> {
   return "localhost";
 }
 
-/**
- * Let user persist a hostname in global user settings if possible.
- * If that fails (e.g. permission issues), fallback to sessionHostname.
- */
-async function configureHostname(): Promise<boolean> {
-    outputChannel.appendLine("[DEBUG] configureHostname() called.");
-
-    const opts: vscode.InputBoxOptions = {
-        title: "Configure remote hostname (global user setting)",
-        placeHolder: "IPv4, IPv6 or DNS name of the remote machine running containerlab",
-        validateInput: (input: string) => {
-            if (input.trim().length === 0) {
-                return "Input should not be empty";
-            }
-        }
-    };
-
-    const input = await vscode.window.showInputBox(opts);
-    if (!input) {
-        return false;
-    }
-
-    const val = input.trim();
-    try {
-        outputChannel.appendLine(`[DEBUG] Attempting to store containerlab.remote.hostname=${val}`);
-        await vscode.workspace
-            .getConfiguration("containerlab")
-            .update("remote.hostname", val, vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(
-          `Global setting "containerlab.remote.hostname" updated to "${val}".`
-        );
-        // Also store in session so it’s immediate
-        sessionHostname = val;
-        return true;
-    } catch (err: any) {
-        outputChannel.appendLine(`[ERROR] Could not persist global setting => ${err?.message || err}`);
-        sessionHostname = val;
-        vscode.window.showWarningMessage(
-            `Could not persist global setting. Using sessionHostname="${val}" for now.`
-        );
-    }
-    return true;
-}

@@ -29,7 +29,7 @@ export function execCommandInTerminal(command: string, terminalName: string) {
  * Execute a shell command in the extension's Output channel.
  * We *strip ANSI codes* from both stdout and stderr
  * We trigger a refresh after it finishes.
- * 
+ *
  * @param command Command to execute in output.
  * @param show Whether to focus the output channel or not.
  * @param stdoutCb Optional extra function to run on stdout data event. The process and cleaned stdout data is passed to the func.
@@ -119,7 +119,6 @@ export class Command {
     }
 
     private async execSpinner(cmd: string[]) {
-        console.log(cmd.join(" "));
         try {
             await vscode.window.withProgress(
                 {

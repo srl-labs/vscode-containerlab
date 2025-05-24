@@ -11,9 +11,12 @@ import { VscodeMessageSender } from './managerVscodeWebview';
  * It manages the node editor panel and toggles panels based on user interactions.
  */
 export class ManagerViewportPanels {
-  private isPanel01Cy: boolean = false;
-  private nodeClicked: boolean = false;
-  private edgeClicked: boolean = false;
+  private viewportButtons: ManagerViewportButtons;
+  private cy: cytoscape.Core;
+  private messageSender: VscodeMessageSender;
+  private isPanel01Cy = false;
+  private nodeClicked = false;
+  private edgeClicked = false;
   // Variables to store the current selection for dropdowns.
   private panelNodeEditorKind: string = "nokia_srlinux";
   private panelNodeEditorTopoViewerRole: string = "pe";
@@ -24,10 +27,14 @@ export class ManagerViewportPanels {
    * @param cy - The Cytoscape instance.
    */
   constructor(
-    private viewportButtons: ManagerViewportButtons,
-    private cy: cytoscape.Core,
-    private messageSender: VscodeMessageSender
-  ) { }
+    viewportButtons: ManagerViewportButtons,
+    cy: cytoscape.Core,
+    messageSender: VscodeMessageSender
+  ) {
+    this.viewportButtons = viewportButtons;
+    this.cy = cy;
+    this.messageSender = messageSender;
+  }
 
   /**
    * Registers a click event on the Cytoscape container to toggle UI panels.
@@ -42,7 +49,7 @@ export class ManagerViewportPanels {
       return;
     }
 
-    container.addEventListener("click", async (event: MouseEvent) => {
+    container.addEventListener("click", async () => {
       console.info("cy container clicked init");
       console.info("isPanel01Cy:", this.isPanel01Cy);
       console.info("nodeClicked:", this.nodeClicked);
@@ -133,7 +140,7 @@ export class ManagerViewportPanels {
     }
 
     // Fetch JSON schema.
-    const url = `${(window as any).jsUrl}/clabJsonSchema-v0.59.0.json`;
+    const url = (window as any).schemaUrl;
     try {
       const response = await fetch(url);
       if (!response.ok) {
@@ -146,11 +153,6 @@ export class ManagerViewportPanels {
       console.log('Kind Enum:', kindOptions);
       // Populate the kind dropdown.
       this.panelNodeEditorPopulateKindDropdown(kindOptions);
-
-      // Populate the topoViewerRole dropdown.
-      const topoViewerRoleOptions = [
-        "bridge", "controller", "dcgw", "router", "leaf", "pe", "pon", "rgw", "server", "super-spine", "spine"
-      ];
 
       // Then call the function:
       const nodeIcons = extractNodeIcons();
@@ -178,7 +180,7 @@ export class ManagerViewportPanels {
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           const suppressNotification = false;
-          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
+          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
         }, { once: true });
       }
     } catch (error: any) {
@@ -267,7 +269,6 @@ export class ManagerViewportPanels {
               // 6b) Persist changes (with notification)
               await this.viewportButtons.viewportButtonsSaveTopo(
                 this.cy,
-                this.messageSender,
                 /* suppressNotification */ false
               );
 

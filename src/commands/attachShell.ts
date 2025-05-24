@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as utils from "../utils"
 import { execCommandInTerminal } from "./command";
 import { execCmdMapping } from "../extension";
-import { ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode } from "../treeView/common";
 
 export function attachShell(node: ClabContainerTreeNode) {
   if (!node) {

@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
-import { ClabLabTreeNode, ClabTreeDataProvider } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
+import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
 
 
 /**
@@ -66,7 +67,7 @@ export function graphDrawIOInteractive(node: ClabLabTreeNode) {
 
 
 /**
- * Graph Lab (TopoViewer) 
+ * Graph Lab (TopoViewer)
  */
 
 let currentTopoViewer: TopoViewer | undefined;
@@ -81,7 +82,7 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
   currentTopoViewer = viewer;
 
   // do the same logic as before...
-  const provider = new ClabTreeDataProvider(context);
+  const provider = new RunningLabTreeDataProvider(context);
   const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
 
   let labPath: string;
@@ -126,16 +127,16 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
       vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
     });
 
-  } catch (err) {
-    // ...
+  } catch (error) {
+    console.error(error);
   }
 }
 
 
 /**
- * Graph Lab (TopoViewer Reload) 
+ * Graph Lab (TopoViewer Reload)
  */
-export async function graphTopoviewerReload(context: vscode.ExtensionContext) {
+export async function graphTopoviewerReload() {
   // 1) If there's no panel, show an error
   if (!currentTopoViewerPanel) {
     vscode.window.showErrorMessage("No active TopoViewer panel to reload.");

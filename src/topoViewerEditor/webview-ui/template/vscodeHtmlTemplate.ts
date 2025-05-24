@@ -5,6 +5,7 @@ import { log } from '../../../topoViewer/backend/logger';
 export function getHTMLTemplate(
   cssUri: string,
   jsUri: string,
+  schemaUri: string,
   imagesUri: string,
   jsonFileUrlDataCytoMarshall: string,
   jsonFileUrlDataEnvironment: string,
@@ -31,7 +32,7 @@ export function getHTMLTemplate(
   <!-- CSS Assets -->
   <link rel="stylesheet" href="${cssUri}/style.css?ver=1" />
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="${cssUri}/leaflet.css" />
   <link rel="stylesheet" href="${cssUri}/cytoscape-leaflet.css?ver=1" />
 
   <!-- Quill CSS (Snow theme) -->
@@ -39,7 +40,7 @@ export function getHTMLTemplate(
   <!-- <link rel="stylesheet" href="${cssUri}/quill.css?ver=1" /> -->
 
   <!-- highlight.js style -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="${cssUri}/atom-one-dark.min.css">
 
   <!-- JS Assets -->
   <script src="${jsUri}/library/fontawesome-6-7-2.min.js?ver=1"></script>
@@ -1864,11 +1865,11 @@ export function getHTMLTemplate(
       </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1"></script>
+    <script src="${jsUri}/library/leaflet.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="${jsUri}/library/highlight-11-9-0.min.js"></script>
     <!-- 3) Quill (v2 beta) -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script> -->
+    <script src="${jsUri}/library/quill-2-0-3.js"></script>
 
     <!-- <script src="${jsUri}/library/lodash.min.js?ver=1"></script> -->
 
@@ -1876,8 +1877,7 @@ export function getHTMLTemplate(
     <script src="${jsUri}/library/popper.min.js?ver=1"></script>
     <script src="${jsUri}/library/tippy.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape.min.js?ver=1"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
-    <!-- 
+    <script src="${jsUri}/library/jquery-3.6.0.min.js"></script>
     <script src="${jsUri}/library/cytoscape-leaflet.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-cola.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-popper.min.js?ver=1"></script>
@@ -1885,24 +1885,25 @@ export function getHTMLTemplate(
     <script src="${jsUri}/library/cytoscape-edgehandles.min.js?ver=1"></script>
     <script src="${jsUri}/library/cytoscape-expand-collapse.min.js"></script> -->
     <!-- cytoscape svg-->
-    <script src=https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js></script>
+    <script src="${jsUri}/library/cytoscape-svg.min.js"></script>
 
     <!-- custom textbox with rich text editor -->
 
-    <script src="${jsUri}/library/highlight-11-9-0.min.js"></script>
-    <!-- <script src="${jsUri}/library/quill-2-0-3.min.js"></script> -->
+    <script src="${jsUri}/library/quill-2-0-3.js"></script>
     <script src="${jsUri}/managerCyTextBox.js?ver=1"></script>
 
     <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
 
-    <script src="https://unpkg.com/@floating-ui/core@1.5.0"></script>
-    <script src="https://unpkg.com/@floating-ui/dom@1.5.3"></script>
+    <script src="${jsUri}/library/core@1.5.0.js"></script>
+    <script src="${jsUri}/library/dom@1.5.3.js"></script>
 
     <script src="${jsUri}/library/js-yaml.min.js?ver=1"></script>
     <script src="${jsUri}/library/monaco-loader.js?ver=1"></script>
 
     <!-- Inject jsUri as a global variable -->
     <script> window.jsUrl = "${jsUri}"; </script>
+    <!-- Inject schemaUri as a global variable -->
+    <script> window.schemaUrl = "${schemaUri}"; </script>
 
     <!-- Inject imagesUri as a global variable -->
     <script> window.imagesUrl = "${imagesUri}"; </script>

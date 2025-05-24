@@ -361,7 +361,7 @@ function viewportDrawerLayoutVertical() {
                     return groupLevelA - groupLevelB;
                 }
                 // Secondary sorting by node ID (alphabetically)
-                return a.data('id').localeCompare(b.data('id'));
+                return (a.data('id') || '').localeCompare(b.data('id') || '');
             });
 
         let yPos = 0; // Initial vertical position for parent nodes
@@ -476,7 +476,7 @@ function viewportDrawerLayoutHorizontal() {
                     return groupLevelA - groupLevelB;
                 }
                 // Secondary sorting by node ID (alphabetically)
-                return a.data('id').localeCompare(b.data('id'));
+                return (a.data('id') || '').localeCompare(b.data('id') || '');
             });
 
         let xPos = 0; // Initial horizontal position for parent nodes

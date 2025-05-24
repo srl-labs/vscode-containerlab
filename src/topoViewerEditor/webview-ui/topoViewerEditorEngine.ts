@@ -74,12 +74,9 @@ class TopoViewerEditorEngine {
   private viewportPanels: ManagerViewportPanels;
 
 
-  private debounce<T extends (...args: any[]) => any>(
-    func: T,
-    wait: number
-  ): (...args: Parameters<T>) => void {
+  private debounce(func: Function, wait: number) {
     let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: Parameters<T>) => {
+    return (...args: any[]) => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
@@ -90,7 +87,7 @@ class TopoViewerEditorEngine {
     // Debounced save function
     const autoSave = this.debounce(async () => {
       const suppressNotification = true;
-      await this.viewportButtons.viewportButtonsSaveTopo(this.cy, this.messageSender, suppressNotification);
+      await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
     // Listen for topology changes
@@ -118,7 +115,7 @@ class TopoViewerEditorEngine {
     this.cy = cytoscape({
       container,
       elements: [],
-      wheelSensitivity: 0.2,
+      wheelSensitivity: 2,
     });
 
     this.cy.on('tap', (event) => {
@@ -192,6 +189,13 @@ class TopoViewerEditorEngine {
     this.viewportPanels.registerTogglePanels(containerId);
 
     this.setupAutoSave();
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg && msg.type === 'yaml-saved') {
+        fetchAndLoadData(this.cy, this.messageSender);
+      }
+    });
   }
 
   /**
@@ -270,7 +274,7 @@ class TopoViewerEditorEngine {
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
-      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
       spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
@@ -281,7 +285,7 @@ class TopoViewerEditorEngine {
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer 
+      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer
     });
 
     this.cy.cxtmenu({
@@ -318,7 +322,7 @@ class TopoViewerEditorEngine {
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
-      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size, 
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
       spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
@@ -329,7 +333,7 @@ class TopoViewerEditorEngine {
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: 10 // if set to a number, this will cancel the command if the pointer 
+      outsideMenuCancel: 10 // if set to a number, this will cancel the command if the pointer
     });
 
   }
@@ -518,11 +522,23 @@ class TopoViewerEditorEngine {
       console.warn("Subtitle element not found");
     }
   }
+
+  /**
+   * Dispose of resources held by the engine.
+   */
+  public dispose(): void {
+    this.messageSender.dispose();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const engine = new TopoViewerEditorEngine('cy');
   // Create and store the instance globally
-  (window as any).topoViewerEditorEngine = new TopoViewerEditorEngine('cy');
+  (window as any).topoViewerEditorEngine = engine;
+
+  window.addEventListener('unload', () => {
+    engine.dispose();
+  });
 });
 
 export default TopoViewerEditorEngine;

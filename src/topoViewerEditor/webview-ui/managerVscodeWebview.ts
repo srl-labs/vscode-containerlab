@@ -9,11 +9,9 @@ declare function acquireVsCodeApi(): any;
  */
 export class VscodeMessageSender {
   private vsCode: any;
-  private pendingRequests = new Map<
-    string,
-    { resolve: (value: any) => void; reject: (reason?: any) => void }
-  >();
+  private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
   private requestCounter = 0;
+  private messageHandler: EventListener;
 
   /**
    * Creates an instance of VscodeMessageSender.
@@ -27,7 +25,8 @@ export class VscodeMessageSender {
       throw new Error("VS Code API is not available in this environment.");
     }
     // Initialize the listener for messages from the extension host.
-    window.addEventListener("message", this.handleMessage.bind(this));
+    this.messageHandler = this.handleMessage.bind(this) as EventListener;
+    window.addEventListener("message", this.messageHandler);
   }
 
   /**
@@ -47,10 +46,11 @@ export class VscodeMessageSender {
         return;
       }
       this.pendingRequests.delete(requestId);
+      const { resolve, reject } = pending as { resolve: Function; reject: Function };
       if (error) {
-        pending.reject(new Error(error));
+        reject(new Error(error));
       } else {
-        pending.resolve(result);
+        resolve(result);
       }
     }
   }
@@ -74,5 +74,13 @@ export class VscodeMessageSender {
         payload: JSON.stringify(payload)
       });
     });
+  }
+
+  /**
+   * Cleans up resources by removing the message listener and clearing pending requests.
+   */
+  public dispose(): void {
+    window.removeEventListener("message", this.messageHandler);
+    this.pendingRequests.clear();
   }
 }

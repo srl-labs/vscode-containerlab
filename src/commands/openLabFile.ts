@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode } from "../treeView/common";
 
 export function openLabFile(node: ClabLabTreeNode) {
     if (!node) {
@@ -12,7 +12,7 @@ export function openLabFile(node: ClabLabTreeNode) {
       vscode.window.showErrorMessage('No labPath found.');
       return;
     }
-    
+
     const uri = vscode.Uri.file(labPath);
     vscode.commands.executeCommand('vscode.open', uri);
 }

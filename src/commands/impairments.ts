@@ -1,7 +1,7 @@
 // ./src/commands/impairments.ts
 import * as vscode from "vscode";
 import * as utils from "../utils";
-import { ClabInterfaceTreeNode } from "../clabTreeDataProvider";
+import { ClabInterfaceTreeNode } from "../treeView/common";
 import { execCommandInOutput } from "./command";
 
 /**
@@ -18,7 +18,7 @@ function impairmentsAvailable(): boolean {
 
 /**
  * Base function to apply the impairment to an interface.
- * 
+ *
  * @param node Interface to set the link impairment on
  * @param impairment The impairment flag (ie. 'jitter', 'loss' etc.)
  * @param value The value of the impairment (ie. If impairment is jitter, this could be '50ms').
@@ -32,7 +32,7 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
   if (impairment && !value) { return; }
 
   const cmd = `${utils.getSudo()}containerlab tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`;
-    
+
   const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`;
 
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
@@ -51,7 +51,7 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
 /**
  * Set delay on a link
  * https://containerlab.dev/cmd/tools/netem/set/#delay
- * 
+ *
  * @param node Interface that delay is to be set on.
  */
 export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
@@ -80,7 +80,7 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
 /**
  * Set jitter on a link
  * https://containerlab.dev/cmd/tools/netem/set/#jitter
- * 
+ *
  * @param node Interface that jitter is to be set on.
  */
 export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
@@ -109,7 +109,7 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
 /**
  * Set packet loss on a link
  * https://containerlab.dev/cmd/tools/netem/set/#loss
- * 
+ *
  * @param node Interface that packet loss is to be set on.
  */
 export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
@@ -138,7 +138,7 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
 /**
  * Set egress rate-limit on a link
  * https://containerlab.dev/cmd/tools/netem/set/#rate
- * 
+ *
  * @param node Interface that rate-limiting is to be set on.
  */
 export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
@@ -167,7 +167,7 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
 /**
  * Set corruption on a link
  * https://containerlab.dev/cmd/tools/netem/set/#corruption
- * 
+ *
  * @param node Interface that link corruption is to be set on.
  */
 export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<any> {

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as utils from "../utils";
-import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../clabTreeDataProvider";
+import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
 
 export function copyLabPath(node: ClabLabTreeNode) {
   if (!node) {
@@ -158,6 +158,6 @@ export function copyMACAddress(node: ClabInterfaceTreeNode) {
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${intfName}: Copied MAC address to clipboard succesfully.`);
   });
-  
+
 
 }

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { SpinnerMsg } from "./command";
 import { ClabCommand } from "./clabCommand";
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../clabTreeDataProvider";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
 import * as path from "path";
 
 /**
@@ -41,7 +41,7 @@ export async function saveNode(node: ClabContainerTreeNode) {
     vscode.window.showErrorMessage("No container node selected.");
     return;
   }
-  
+
   if (!node.labPath || !node.labPath.absolute) {
     vscode.window.showErrorMessage("Error: Could not determine lab path for this node.");
     return;

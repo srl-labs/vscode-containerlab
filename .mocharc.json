@@ -1,0 +1,8 @@
+{
+  "reporter": "mochawesome",
+  "reporter-option": [
+    "reportDir=mochawesome-report",
+    "reportFilename=report",
+    "quiet=true"
+  ]
+}
