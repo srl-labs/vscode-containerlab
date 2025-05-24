@@ -174,8 +174,15 @@ function socketDataEncrichmentNode(labData) {
                     const nodeClabName = container.label;
 
                     // Extract node name from container label using lab name as keyword
-                    const getRouterName = (fullString, keyword) =>
-                        fullString.split(keyword)[1].replace(/^-/, '');
+                    const getRouterName = (fullString, keyword) => {
+                        const parts = fullString.split(keyword);
+                        if (parts.length > 1) {
+                            return parts[1].replace(/^-/, '');
+                        } else {
+                            // keyword not found; return original or empty string
+                            return fullString;
+                        }
+                    };
 
                     nodeName = getRouterName(nodeClabName, lab.name);
 
