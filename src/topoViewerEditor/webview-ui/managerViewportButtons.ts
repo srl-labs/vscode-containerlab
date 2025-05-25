@@ -120,15 +120,15 @@ export class ManagerViewportButtons {
         console.log("Not Suppressing notification for save action.");
         // Send the updated topology data to the backend.
         const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-          "topo-editor-viewport-save-suppress-notification", // aarafat-tag: enforce to use suppress-notification
+          "topo-editor-viewport-save",
           updatedElements
         );
         console.log("Response from backend:", response);
       } else {
 
         const endpoint = suppressNotification
-          ? "topo-editor-viewport-save-suppress-notification"
-          : "topo-editor-viewport-save";
+        ? "topo-editor-viewport-save-suppress-notification"
+        : "topo-editor-viewport-save";
 
         console.log("Suppressing notification for save action.");
         // Send the updated topology data to the backend.
@@ -137,7 +137,7 @@ export class ManagerViewportButtons {
           updatedElements
         );
         console.log("Response from backend:", response);
-      }
+       }
 
 
     } catch (err) {
@@ -256,8 +256,8 @@ export class ManagerViewportButtons {
     let position = event.position;
 
     if (!position ||
-      position.x < extent.x1 || position.x > extent.x2 ||
-      position.y < extent.y1 || position.y > extent.y2) {
+        position.x < extent.x1 || position.x > extent.x2 ||
+        position.y < extent.y1 || position.y > extent.y2) {
       // Calculate a position within the current viewport
       const viewportCenterX = (extent.x1 + extent.x2) / 2;
       const viewportCenterY = (extent.y1 + extent.y2) / 2;
@@ -283,245 +283,5 @@ export class ManagerViewportButtons {
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
-  /**
-   * Toggles the visibility of the node editor panel.
-   *
-   * This method checks if the node editor panel is currently visible and toggles its display state.
-   * If the panel is visible, it hides it; if hidden, it shows the panel.
-   *
-   */
-  // aarafat-tag: need to tidy up this method, refactor to moved to viewportPanel.
-  public viewportButtonsAddGroup = {
-    orphaningNode: (cy: cytoscape.Core, node: cytoscape.NodeSingular): void => {
-      const parentCollection = node.parent();
-      const currentParentId = parentCollection.nonempty() ? parentCollection[0].id() : "";
-      const formerParentNode = cy.getElementById(currentParentId);
-      node.move({ parent: null });
-      if (formerParentNode.isChildless()) {
-        console.info("Removing empty parent node");
-        formerParentNode.remove();
-      }
-    },
-
-    createNewParent: (cy: cytoscape.Core, options: { nodeToReparent?: cytoscape.NodeSingular | null; createDummyChild?: boolean } = {}): string => {
-      const { nodeToReparent = null, createDummyChild = false } = options;
-
-      let counter = 1;
-      let newParentId = `groupName${(cy.nodes().length + counter)}:1`;
-      while (cy.getElementById(newParentId).length > 0) {
-        counter++;
-        newParentId = `groupName${(cy.nodes().length + counter)}:1`;
-      }
-
-      const ext = cy.extent();
-      const offsetMin = 10;
-      const offsetMax = 50;
-      const randomOffset = Math.random() * (offsetMax - offsetMin) + offsetMin;
-      const topCenterX = (ext.x1 + ext.x2 + randomOffset) / 2;
-      const topCenterY = ext.y1 + 2 * randomOffset;
-
-      const parentNodeData: cytoscape.ElementDefinition = {
-        group: 'nodes',
-        data: {
-          id: newParentId,
-          name: newParentId.split(":")[0],
-          weight: "1000",
-          topoViewerRole: "group",
-          extraData: {
-            clabServerUsername: "asad",
-            weight: "2",
-            name: "",
-            topoViewerGroup: newParentId.split(":")[0],
-            topoViewerGroupLevel: newParentId.split(":")[1]
-          }
-        },
-        position: { x: topCenterX, y: topCenterY },
-        selectable: true,
-        grabbable: true
-      };
-
-      const nodesToAdd: cytoscape.ElementDefinition[] = [parentNodeData];
-
-      if (createDummyChild) {
-        nodesToAdd.push({
-          group: 'nodes',
-          data: {
-            id: `${newParentId}:dummyChild`,
-            parent: newParentId,
-            topoViewerRole: "dummyChild"
-          },
-          position: { x: topCenterX, y: topCenterY },
-          selectable: false,
-          grabbable: false,
-          classes: 'dummy'
-        });
-      }
-
-      cy.add(nodesToAdd);
-
-      if (nodeToReparent) {
-        nodeToReparent.move({ parent: newParentId });
-        nodeToReparent.data('parent', newParentId);
-      }
-
-      const panel = document.getElementById("panel-node-editor-parent");
-      if (panel) {
-        panel.style.display = "block";
-        const [group, level] = newParentId.split(":");
-        (document.getElementById("panel-node-editor-parent-graph-group-id") as HTMLElement).textContent = newParentId;
-        (document.getElementById("panel-node-editor-parent-graph-group") as HTMLInputElement).value = group;
-        (document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement).value = level;
-      }
-
-      return newParentId;
-    },
-
-    panelNodeEditorParentToggleDropdown: (): void => {
-      const dropdown = document.getElementById('panel-node-editor-parent-label-dropdown');
-      if (!dropdown || dropdown.dataset.listenersAttached) return;
-
-      const items = document.querySelectorAll('#panel-node-editor-parent-label-dropdown-menu .dropdown-item');
-      items.forEach(item => {
-        item.addEventListener('click', function (this: HTMLElement, event) {
-          event.preventDefault();
-
-          const selectedText = this.textContent || "";
-          const targetTextEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
-          if (targetTextEl) targetTextEl.textContent = selectedText;
-
-          dropdown.classList.remove('is-active');
-        });
-      });
-
-      dropdown.dataset.listenersAttached = 'true';
-      dropdown.classList.toggle('is-active');
-    },
-
-
-    nodeParentPropertiesUpdate: async (cy: cytoscape.Core): Promise<void> => {
-      try {
-        const parentIdEl = document.getElementById("panel-node-editor-parent-graph-group-id");
-        const groupInputEl = document.getElementById("panel-node-editor-parent-graph-group") as HTMLInputElement;
-        const levelInputEl = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement;
-        const labelPositionEl = document.getElementById("panel-node-editor-parent-label-dropdown-button-text");
-
-        if (!parentIdEl || !groupInputEl || !levelInputEl || !labelPositionEl) {
-          throw new Error("Missing UI elements.");
-        }
-
-        const parentNodeId = parentIdEl.textContent?.trim();
-        if (!parentNodeId) throw new Error("Empty parent ID.");
-
-        const oldParentNode = cy.getElementById(parentNodeId);
-        if (oldParentNode.empty()) throw new Error(`No parent node with ID "${parentNodeId}"`);
-
-        const graphGroup = groupInputEl.value.trim();
-        const graphLevel = levelInputEl.value.trim();
-        const newParentId = `${graphGroup}:${graphLevel}`;
-        const groupLabelPosition = labelPositionEl.textContent?.trim().toLowerCase();
-
-        const validLabelClasses = [
-          "top-center",
-          "top-left",
-          "top-right",
-          "bottom-center",
-          "bottom-left",
-          "bottom-right"
-        ];
-
-        const updateLabelPositionClass = (node: cytoscape.NodeSingular, pos: string) => {
-          validLabelClasses.forEach(cls => node.removeClass(cls));
-          if (validLabelClasses.includes(pos)) node.addClass(pos);
-        };
-
-        if (parentNodeId === newParentId) {
-          if (groupLabelPosition && groupLabelPosition !== "select position") {
-            updateLabelPositionClass(oldParentNode, groupLabelPosition);
-          }
-          return;
-        }
-
-        if (!cy.getElementById(newParentId).empty()) {
-          throw new Error(`Parent ID "${newParentId}" already exists.`);
-        }
-
-        cy.add({
-          group: 'nodes',
-          data: {
-            id: newParentId,
-            name: graphGroup,
-            topoViewerRole: "group",
-            extraData: {
-              clabServerUsername: "asad",
-              weight: "2",
-              name: "",
-              topoViewerGroup: graphGroup,
-              topoViewerGroupLevel: graphLevel
-            }
-          }
-        });
-
-        const newParentNode = cy.getElementById(newParentId);
-        oldParentNode.children().forEach(child => {
-          child.data('parent', newParentId);
-          child.move({ parent: newParentId });
-        });
-
-        oldParentNode.remove();
-        parentIdEl.textContent = newParentId;
-        if (groupLabelPosition && groupLabelPosition !== "select position") {
-          updateLabelPositionClass(newParentNode, groupLabelPosition);
-        }
-      } catch (error) {
-        console.error("nodeParentPropertiesUpdate error:", error);
-      }
-    },
-
-    nodeParentPropertiesUpdateClose: (): boolean => {
-      try {
-        const panel = document.getElementById("panel-node-editor-parent");
-        if (panel) {
-          panel.style.display = "none";
-          return true;
-        }
-        return false;
-      } catch (e) {
-        console.error("Error closing panel:", e);
-        return false;
-      }
-    },
-
-    nodeParentRemoval: (cy: cytoscape.Core): boolean => {
-      try {
-        const parentIdEl = document.getElementById("panel-node-editor-parent-graph-group-id");
-        const parentNodeId = parentIdEl?.textContent?.trim();
-
-        console.log("Removing parent node with ID:", parentNodeId);
-
-        if (!parentNodeId) throw new Error("Empty parent ID");
-
-        const parentNode = cy.getElementById(parentNodeId);
-        if (parentNode.empty()) throw new Error(`Parent node "${parentNodeId}" not found.`);
-
-        const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
-        const children = parentNode.children();
-
-        children.forEach((child: cytoscape.NodeSingular) => {
-          child.move({ parent: null });
-        });
-        parentNode.remove();
-        dummyChild.remove();
-
-        const panel = document.getElementById("panel-node-editor-parent");
-        if (panel) panel.style.display = "none";
-
-        return true;
-      } catch (err) {
-        console.error("Error in nodeParentRemoval:", err);
-        return false;
-      }
-    }
-  };
-
   // Future methods for additional viewport buttons can be added here.
 }

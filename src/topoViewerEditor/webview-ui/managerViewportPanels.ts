@@ -15,8 +15,8 @@ export class ManagerViewportPanels {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
   private isPanel01Cy = false;
-  public nodeClicked: boolean = false;
-  public edgeClicked: boolean = false;
+  private nodeClicked = false;
+  private edgeClicked = false;
   // Variables to store the current selection for dropdowns.
   private panelNodeEditorKind: string = "nokia_srlinux";
   private panelNodeEditorTopoViewerRole: string = "pe";
@@ -34,16 +34,15 @@ export class ManagerViewportPanels {
     this.viewportButtons = viewportButtons;
     this.cy = cy;
     this.messageSender = messageSender;
-    this.toggleHidePanels ("cy"); // Initialize the toggle for hiding panels.
   }
 
   /**
-   * Toggle to hide UI panels.
+   * Registers a click event on the Cytoscape container to toggle UI panels.
    * If no node or edge was clicked, it hides overlay panels and viewport drawers.
    *
    * @param containerId - The ID of the Cytoscape container (e.g., "cy").
    */
-  public toggleHidePanels(containerId: string): void {
+  public registerTogglePanels(containerId: string): void {
     const container = document.getElementById(containerId);
     if (!container) {
       console.warn("Cytoscape container not found:", containerId);
@@ -536,36 +535,6 @@ export class ManagerViewportPanels {
     }
     return [];
   }
-
-  /**
- * Displays and populates the node's parent group editor panel.
- *
- * @param newParentId - The new parent ID in the format "group:level".
- */
-  public panelGroup(newParentId: string): void {
-    const panel = document.getElementById("panel-node-editor-parent");
-    if (!panel) {
-      console.warn("Parent editor panel not found");
-      return;
-    }
-
-    panel.style.display = "block";
-
-    const [group, level] = newParentId.split(":");
-    const groupIdLabel = document.getElementById("panel-node-editor-parent-graph-group-id");
-    const groupInput = document.getElementById("panel-node-editor-parent-graph") as HTMLInputElement | null;
-    const levelInput = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
-
-    if (groupIdLabel) groupIdLabel.textContent = newParentId;
-    if (groupInput) groupInput.value = group;
-    if (levelInput) levelInput.value = level;
-
-    console.log("asdadas", newParentId, group, level);
-
-    console.log("panel displasd sty, ayed:", panel.style.display);
-
-  }
-
 
   /**
    * Removes a DOM element by its ID.

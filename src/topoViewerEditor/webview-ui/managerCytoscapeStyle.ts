@@ -34,6 +34,7 @@ export const cytoscapeStylesForVscode = [
       "text-background-opacity": 0.7,
       "text-background-shape": "roundrectangle",
       "text-background-padding": "1px",
+      "background-image": generateEncodedSVG("pe", "#005aff"),
       "z-index": "2"
     }
   },
@@ -158,29 +159,6 @@ export const cytoscapeStylesForVscode = [
       "border-color": "#AD0000"
     }
   },
-  {
-    "selector": 'node[topoViewerRole="dummyChild"]',
-    "style": {
-      "width": "14",
-      "height": "14",
-    }
-  },
-  {
-    "selector": 'node[topoViewerRole="group"]',
-    "style": {
-      "shape": "rectangle",
-      "border-width": "0.5px",
-      "border-color": "#DDDDDD",
-      "background-color": "#d9d9d9",
-      "width": "80px",
-      "height": "80px",
-      "background-opacity": "0.2",
-      "color": "#EBECF0",
-      "text-outline-color": "#000000",
-      "font-size": "8px",
-      "z-index": "1"
-    }
-  },
   // Encoded SVG backgrounds for different node roles.
   {
     selector: 'node[topoViewerRole="router"]',
@@ -198,8 +176,7 @@ export const cytoscapeStylesForVscode = [
       "width": "14",
       "height": "14",
       "background-image": generateEncodedSVG("pe", "#005aff"),
-      "background-fit": "cover",
-      "background-clip": "none"
+      "background-fit": "cover"
     }
   },
   {

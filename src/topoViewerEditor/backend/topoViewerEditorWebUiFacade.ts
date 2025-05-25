@@ -240,6 +240,7 @@ topology:
         graph-posX: "65"
         graph-posY: "25"
         graph-icon: router
+        graph-groupLabelPos: bottom-center
     srl2:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux:latest
@@ -247,6 +248,7 @@ topology:
         graph-posX: "165"
         graph-posY: "25"
         graph-icon: router
+        graph-groupLabelPos: bottom-center
 
   links:
     # inter-switch link
@@ -600,9 +602,7 @@ topology:
               const yamlNodes: YAML.YAMLMap = nodesMaybe;
 
               // Iterate through payload nodes to add/update nodes in YAML.
-              payloadParsed
-                .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
-                .forEach(element => {
+              payloadParsed.filter(el => el.group === 'nodes').forEach(element => {
                 // Use the stable id from payload as the lookup key.
                 var nodeId: string = element.data.id;
 
@@ -669,9 +669,7 @@ topology:
 
               // Remove YAML nodes that are not present in the payload.
               const payloadNodeIds = new Set(
-                payloadParsed
-                  .filter(el => el.group === 'nodes')
-                  .map(el => el.data.id)
+                payloadParsed.filter(el => el.group === 'nodes').map(el => el.data.id)
               );
               for (const item of [...yamlNodes.items]) {
                 const keyStr = String(item.key);
@@ -859,9 +857,7 @@ topology:
               const yamlNodes: YAML.YAMLMap = nodesMaybe;
 
               // Iterate through payload nodes to add/update nodes in YAML.
-              payloadParsed
-                .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
-                .forEach(element => {
+              payloadParsed.filter(el => el.group === 'nodes').forEach(element => {
                 // Use the stable id from payload as the lookup key.
                 var nodeId: string = element.data.id;
 
@@ -914,7 +910,7 @@ topology:
                 }
                 // Set the group label position (defaulting to 'bottom-center' if not provided).
                 const groupLabelPos = element.groupLabelPos;
-                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'notprovided'));
+                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
 
                 // --- Update YAML mapping key if the node's display name has changed ---
                 // Here, we want the mapping key to reflect the new node name.
