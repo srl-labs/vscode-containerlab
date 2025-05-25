@@ -61,6 +61,7 @@ export interface EdgeData {
 /**
  * TopoViewerEditorEngine class is responsible for initializing the Cytoscape instance,
  * managing edge creation, node editing and viewport panels/buttons.
+ * entry point for the topology editor webview; methods are called from vscodeHtmlTemplate.ts.
  */
 class TopoViewerEditorEngine {
   private cy: cytoscape.Core;
@@ -72,6 +73,8 @@ class TopoViewerEditorEngine {
   private messageSender: VscodeMessageSender;
   private viewportButtons: ManagerViewportButtons;
   private viewportPanels: ManagerViewportPanels;
+
+
 
 
   private debounce(func: Function, wait: number) {
@@ -186,7 +189,7 @@ class TopoViewerEditorEngine {
     // Initiate viewport buttons and panels
     this.viewportButtons = new ManagerViewportButtons(this.messageSender);
     this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
-    this.viewportPanels.registerTogglePanels(containerId);
+
 
     this.setupAutoSave();
 
@@ -231,7 +234,7 @@ class TopoViewerEditorEngine {
   private initializeContextMenu(): void {
     const self = this;
     this.cy.cxtmenu({
-      selector: 'node',
+      selector: 'node[topoViewerRole != "group"]',
       commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -345,6 +348,7 @@ class TopoViewerEditorEngine {
    * @private
    */
   private async registerEvents(): Promise<void> {
+
     // Canvas click: add node when Shift is held.
     this.cy.on('click', (event) => {
       const mouseEvent = event.originalEvent as MouseEvent;
@@ -356,6 +360,7 @@ class TopoViewerEditorEngine {
 
     // Node click: handle orphaning, edge creation, and deletion.
     this.cy.on('click', 'node', async (event) => {
+      this.viewportPanels.nodeClicked = true; // Set flag to true when a node is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a node is clicked.
       const node = event.target;
       console.info("Node clicked:", node.id());
       const originalEvent = event.originalEvent as MouseEvent;
@@ -379,10 +384,16 @@ class TopoViewerEditorEngine {
           console.info("Alt+click on node: deleting node", extraData?.longname || node.id());
           node.remove();
           break;
-        // Open node editor for a normal click.
-        case !originalEvent.shiftKey:
-          console.info("Opening node editor for node:", extraData?.longname || node.id());
-          // await this.viewportPanels.panelNodeEditor(node);
+
+        case (node.data("topoViewerRole") == "textbox"):
+          break;
+
+        case (node.data("topoViewerRole") == "dummyChild"):
+          break;
+        // If the node is a parent, open the panel for that parent.
+        case node.isParent():
+          console.info("Editing existing parent node: ", node.id());
+          this.viewportPanels.panelGroup(node.id());
           break;
         default:
           break;
@@ -391,6 +402,7 @@ class TopoViewerEditorEngine {
 
     // Edge click: delete edge when Alt is held.
     this.cy.on('click', 'edge', (event) => {
+      this.viewportPanels.edgeClicked = true; // Set flag to true when a edge is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a edge is clicked.
       const edge = event.target;
       const originalEvent = event.originalEvent as MouseEvent;
       if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
@@ -412,6 +424,50 @@ class TopoViewerEditorEngine {
       const targetEndpoint = this.getNextEndpoint(targetNode.id());
       addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
     });
+
+    // Drag-and-drop reparenting logic
+    this.cy.on('dragfree', 'node', (event) => {
+      // aarafat-tag: keep this commented out for now, will be used later to identify if the node is in clab editor mode.
+      // const isViewportDrawerClabEditorCheckboxChecked = this.isViewportDrawerClabEditorChecked;
+      // if (!isViewportDrawerClabEditorCheckboxChecked) return;
+
+      const draggedNode = event.target;
+
+      let assignedParent: cytoscape.NodeSingular | undefined
+      this.cy.nodes(':parent').forEach((el) => {
+        const parent = el as cytoscape.NodeSingular;
+
+        if (this.isNodeInsideParent(draggedNode, parent)) {
+          assignedParent = parent;
+        }
+      });
+
+      if (assignedParent) {
+        draggedNode.move({ parent: assignedParent.id() });
+        console.info(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
+
+        const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
+
+        if (dummyChild.length > 0) {
+          const realChildren = assignedParent.children().not(dummyChild);
+          if (realChildren.length > 0) {
+            dummyChild.remove();
+            console.log("Dummy child removed");
+          } else {
+            console.log("No real children present, dummy child remains");
+          }
+        }
+      }
+
+      // Remove empty group nodes
+      this.cy.nodes('[topoViewerRole = "group"]').forEach((parentNode) => {
+        if (parentNode.children().empty()) {
+          parentNode.remove();
+        }
+      });
+    });
+
+
   }
 
   // /**
@@ -524,12 +580,33 @@ class TopoViewerEditorEngine {
   }
 
   /**
+ * Checks whether a node is inside the bounding box of a parent node.
+ * @param node - The node being moved.
+ * @param parent - The potential parent node.
+ * @returns True if node is visually inside parent.
+ */
+  private isNodeInsideParent(node: cytoscape.NodeSingular, parent: cytoscape.NodeSingular): boolean {
+    const parentBox = parent.boundingBox();
+    const nodePos = node.position();
+
+    return (
+      nodePos.x >= parentBox.x1 &&
+      nodePos.x <= parentBox.x2 &&
+      nodePos.y >= parentBox.y1 &&
+      nodePos.y <= parentBox.y2
+    );
+  }
+
+
+
+  /**
    * Dispose of resources held by the engine.
    */
   public dispose(): void {
     this.messageSender.dispose();
   }
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const engine = new TopoViewerEditorEngine('cy');

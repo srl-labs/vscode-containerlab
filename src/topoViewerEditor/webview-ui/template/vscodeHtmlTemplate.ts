@@ -199,14 +199,15 @@ export function getHTMLTemplate(
                 </p>
         -->
 
-        <!-- <p class="control p-0">
-          <button id="viewport-reload-topo" title="Add Group" onclick="viewportButtonsAddGroup()"
+        <p class="control p-0">
+          <button id="viewport-reload-topo" title="Add Group" 
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddGroup.createNewParent(window.topoViewerEditorEngine.cy, {createDummyChild: true}); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-notes-medical"></i>
             </span>
           </button>
-        </p> -->
+        </p>
 
         <!-- <p class="control p-0">
           <button id="viewport-capture-viewport" title="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
@@ -904,6 +905,7 @@ export function getHTMLTemplate(
 
         <div class="panel-block p-0">
           <div class="column px-0">
+
             <!-- Label Position -->
             <div class="column my-auto is-11">
               <div class="panel-content">
@@ -919,7 +921,7 @@ export function getHTMLTemplate(
                       <div class="dropdown-trigger">
                         <button class="button is-size-7 is-fullwidth" aria-haspopup="true"
                           aria-controls="panel-node-editor-parent-label-dropdown-menu"
-                          onclick="panelNodeEditorParentToggleDropdown()">
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddGroup.panelNodeEditorParentToggleDropdown()">
                           <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
                           <span class="icon is-small">
                             <i class="fas fa-angle-down" aria-hidden="true"></i>
@@ -991,13 +993,13 @@ export function getHTMLTemplate(
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input">
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-delete-button"
-                          onclick="nodeParentRemoval()">Remove
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddGroup.nodeParentRemoval(window.topoViewerEditorEngine.cy)">Remove
                         </button>
                         <!-- <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
-                          onclick="nodeParentPropertiesUpdateClose()">Close
+                          onclick="viewportButtonsAddGroup.nodeParentPropertiesUpdateClose()">Close
                         </button> -->
                         <button class="button is-link is-outlined is-small"
-                          onclick="nodeParentPropertiesUpdate()">Update
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddGroup.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">Update
                         </button>
                       </div>
                     </div>
