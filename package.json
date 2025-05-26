@@ -935,7 +935,7 @@
     "@types/cytoscape": "^3.21.9",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
-    "@vscode/vsce": "^3.4.1",
+    "@vscode/vsce": "^3.4.2",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "cytoscape": "^3.32.0",
