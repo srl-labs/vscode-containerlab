@@ -913,8 +913,8 @@ topology:
                   labels.delete('graph-level');
                 }
                 // Set the group label position (defaulting to 'bottom-center' if not provided).
-                const groupLabelPos = element.groupLabelPos;
-                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'notprovided'));
+                const groupLabelPos = element.data.groupLabelPos;
+                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
 
                 // --- Update YAML mapping key if the node's display name has changed ---
                 // Here, we want the mapping key to reflect the new node name.

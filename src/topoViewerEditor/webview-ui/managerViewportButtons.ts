@@ -7,6 +7,8 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 
 import { NodeData } from './topoViewerEditorEngine';
 
+// import { ManagerViewportPanels } from './managerViewportPanels';
+
 // Declare global functions/variables if they are not imported from other modules.
 declare const globalCytoscapeLeafletLeaf: { fit: () => void };
 export let globalLinkEndpointVisibility = true;
@@ -18,14 +20,19 @@ export let globalLinkEndpointVisibility = true;
  * to the backend.
  */
 export class ManagerViewportButtons {
-  // private messageSender: VscodeMessageSender;
+  // private viewportPanels: ManagerViewportPanels;
   private messageSender: VscodeMessageSender;
 
   /**
    * Creates an instance of ManagerViewportButtons.
    */
-  constructor(messageSender: VscodeMessageSender) {
+  constructor(
+    messageSender: VscodeMessageSender,
+    // viewportPanels: ManagerViewportPanels
+  ) {
     this.messageSender = messageSender;
+    // this.viewportPanels = viewportPanels;
+
   }
 
   /**
@@ -290,8 +297,25 @@ export class ManagerViewportButtons {
    * If the panel is visible, it hides it; if hidden, it shows the panel.
    *
    */
-  // aarafat-tag: need to tidy up this method, refactor to moved to viewportPanel.
-  public viewportButtonsAddGroup = {
+  public viewportButtonsPanelGroupManager = {
+    panelGroupTogle: (newParentId: string): void => {
+      const panel = document.getElementById("panel-node-editor-parent");
+      if (!panel) {
+        console.warn("Parent editor panel not found");
+        return;
+      }
+
+      panel.style.display = "block";
+
+      const [group, level] = newParentId.split(":");
+      const groupIdLabel = document.getElementById("panel-node-editor-parent-graph-group-id");
+      const groupInput = document.getElementById("panel-node-editor-parent-graph") as HTMLInputElement | null;
+      const levelInput = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
+
+      if (groupIdLabel) groupIdLabel.textContent = newParentId;
+      if (groupInput) groupInput.value = group;
+      if (levelInput) levelInput.value = level;
+    },
     orphaningNode: (cy: cytoscape.Core, node: cytoscape.NodeSingular): void => {
       const parentCollection = node.parent();
       const currentParentId = parentCollection.nonempty() ? parentCollection[0].id() : "";
@@ -378,7 +402,8 @@ export class ManagerViewportButtons {
 
     panelNodeEditorParentToggleDropdown: (): void => {
       const dropdown = document.getElementById('panel-node-editor-parent-label-dropdown');
-      if (!dropdown || dropdown.dataset.listenersAttached) return;
+      // if (!dropdown || dropdown.dataset.listenersAttached) return;
+      if (!dropdown) return;
 
       const items = document.querySelectorAll('#panel-node-editor-parent-label-dropdown-menu .dropdown-item');
       items.forEach(item => {

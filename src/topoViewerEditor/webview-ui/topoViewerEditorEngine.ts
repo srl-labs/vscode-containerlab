@@ -393,7 +393,7 @@ class TopoViewerEditorEngine {
         // If the node is a parent, open the panel for that parent.
         case node.isParent():
           console.info("Editing existing parent node: ", node.id());
-          this.viewportPanels.panelGroup(node.id());
+          this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.id());
           break;
         default:
           break;

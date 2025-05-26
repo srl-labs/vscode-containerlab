@@ -34,7 +34,7 @@ export class ManagerViewportPanels {
     this.viewportButtons = viewportButtons;
     this.cy = cy;
     this.messageSender = messageSender;
-    this.toggleHidePanels ("cy"); // Initialize the toggle for hiding panels.
+    this.toggleHidePanels("cy"); // Initialize the toggle for hiding panels.
   }
 
   /**
@@ -537,34 +537,29 @@ export class ManagerViewportPanels {
     return [];
   }
 
-  /**
- * Displays and populates the node's parent group editor panel.
- *
- * @param newParentId - The new parent ID in the format "group:level".
- */
-  public panelGroup(newParentId: string): void {
-    const panel = document.getElementById("panel-node-editor-parent");
-    if (!panel) {
-      console.warn("Parent editor panel not found");
-      return;
-    }
+//   /**
+//  * Displays and populates the node's parent group editor panel.
+//  *
+//  * @param newParentId - The new parent ID in the format "group:level".
+//  */
+//   public panelGroup(newParentId: string): void {
+//     const panel = document.getElementById("panel-node-editor-parent");
+//     if (!panel) {
+//       console.warn("Parent editor panel not found");
+//       return;
+//     }
 
-    panel.style.display = "block";
+//     panel.style.display = "block";
 
-    const [group, level] = newParentId.split(":");
-    const groupIdLabel = document.getElementById("panel-node-editor-parent-graph-group-id");
-    const groupInput = document.getElementById("panel-node-editor-parent-graph") as HTMLInputElement | null;
-    const levelInput = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
+//     const [group, level] = newParentId.split(":");
+//     const groupIdLabel = document.getElementById("panel-node-editor-parent-graph-group-id");
+//     const groupInput = document.getElementById("panel-node-editor-parent-graph") as HTMLInputElement | null;
+//     const levelInput = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
 
-    if (groupIdLabel) groupIdLabel.textContent = newParentId;
-    if (groupInput) groupInput.value = group;
-    if (levelInput) levelInput.value = level;
-
-    console.log("asdadas", newParentId, group, level);
-
-    console.log("panel displasd sty, ayed:", panel.style.display);
-
-  }
+//     if (groupIdLabel) groupIdLabel.textContent = newParentId;
+//     if (groupInput) groupInput.value = group;
+//     if (levelInput) levelInput.value = level;
+//   }
 
 
   /**
