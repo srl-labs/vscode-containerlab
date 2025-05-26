@@ -397,6 +397,8 @@ class TopoViewerEditorEngine {
           break;
 
         case (node.data("topoViewerRole") == "dummyChild"):
+          console.info("Editing parent of dummyChiled: ", node.parent().id());
+          this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.parent().id());
           break;
         // If the node is a parent, open the panel for that parent.
         case node.isParent():
