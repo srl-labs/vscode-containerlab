@@ -200,7 +200,7 @@ export function getHTMLTemplate(
         -->
 
         <p class="control p-0">
-          <button id="viewport-reload-topo" title="Add Group" 
+          <button id="viewport-add-group" title="Add Group" 
             onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.createNewParent(window.topoViewerEditorEngine.cy, {createDummyChild: true}); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
@@ -986,8 +986,14 @@ export function getHTMLTemplate(
           <div class="column px-0">
             <div class="column my-auto is-11">
               <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"></div>
+                <div class="columns is-mobile is-multiline py-auto">
+
+                  <!-- 
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
+                  </div>
+                  
+                  
                   <div class="column is-8 p-1 pl-3">
                     <div class="field is-grouped is-grouped-right">
                       <div class="control">
@@ -995,15 +1001,43 @@ export function getHTMLTemplate(
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-delete-button"
                           onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">Remove
                         </button>
-                        <!-- <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
+                        <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
                           onclick="viewportButtonsAddGroup.nodeParentPropertiesUpdateClose()">Close
-                        </button> -->
+                        </button>
                         <button class="button is-link is-outlined is-small"
                           onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">Update
                         </button>
                       </div>
                     </div>
                   </div>
+                  -->
+
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
+                  </div>
+                  <div class="column is-8 p-1">
+                    <div class="field is-grouped is-grouped-right p-0 pr-5">
+                      <div class="control">
+                        <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
+                      </div>
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">
+                          Save
+                        </button>
+                      </div>
+
+                      
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-remove-button"
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">
+                          Delete
+                        </button>
+                      </div>
+                      
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -1173,20 +1207,18 @@ export function getHTMLTemplate(
                   <div class="column is-full-mobile is-half-tablet is-4 p-1">
                     <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
                   </div>
-                  <div class="column is-8 p-1 pl-3">
-                    <div class="field is-grouped">
+                  <div class="column is-8 p-1">
+                    <div class="field is-grouped is-grouped-right p-0 pr-5">
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-node-editor-save-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-save-button">
                           Save
                         </button>
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-node-editor-close-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-close-button">
                           Close
                         </button>
                       </div>
@@ -1281,20 +1313,18 @@ export function getHTMLTemplate(
                   <div class="column is-full-mobile is-half-tablet is-4 p-1">
                     <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
                   </div>
-                  <div class="column is-8 p-1 pl-3">
-                    <div class="field is-grouped">
+                  <div class="column is-8 p-1">
+                    <div class="field is-grouped is-grouped-right p-0 pr-5">
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-link-editor-save-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-link-editor-save-button">
                           Save
                         </button>
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-link-editor-close-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-link-editor-close-button">
                           Close
                         </button>
                       </div>

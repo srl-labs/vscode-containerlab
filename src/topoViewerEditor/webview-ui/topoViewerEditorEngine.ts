@@ -214,8 +214,15 @@ class TopoViewerEditorEngine {
       snapFrequency: 150,
       noEdgeEventsInDraw: false,
       disableBrowserGestures: false,
-      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean =>
-        !sourceNode.same(targetNode) && !sourceNode.isParent() && !targetNode.isParent(),
+      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean => {
+        const targetRole = targetNode.data('topoViewerRole');
+        return (
+          !sourceNode.same(targetNode) &&
+          !sourceNode.isParent() &&
+          !targetNode.isParent() &&
+          targetRole !== 'dummyChild'
+        );
+      },
       edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => ({
         id: `${sourceNode.id()}-${targetNode.id()}`,
         source: sourceNode.id(),
@@ -228,13 +235,14 @@ class TopoViewerEditorEngine {
     this.isEdgeHandlerActive = false;
   }
 
+
   /**
  * Initializes the circular context menu on nodes.
   */
   private initializeContextMenu(): void {
     const self = this;
     this.cy.cxtmenu({
-      selector: 'node[topoViewerRole != "group"]',
+      selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"]',
       commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">

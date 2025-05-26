@@ -309,8 +309,11 @@ export class ManagerViewportButtons {
 
       const [group, level] = newParentId.split(":");
       const groupIdLabel = document.getElementById("panel-node-editor-parent-graph-group-id");
-      const groupInput = document.getElementById("panel-node-editor-parent-graph") as HTMLInputElement | null;
+      const groupInput = document.getElementById("panel-node-editor-parent-graph-group") as HTMLInputElement | null;
       const levelInput = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
+
+      console.log("Updating groupIdLabel with newParentId:", newParentId);
+      console.log("Updating groupInput with group:", group);
 
       if (groupIdLabel) groupIdLabel.textContent = newParentId;
       if (groupInput) groupInput.value = group;
@@ -343,6 +346,8 @@ export class ManagerViewportButtons {
       const randomOffset = Math.random() * (offsetMax - offsetMin) + offsetMin;
       const topCenterX = (ext.x1 + ext.x2 + randomOffset) / 2;
       const topCenterY = ext.y1 + 2 * randomOffset;
+
+      const [groupName, groupLevel] = newParentId.split(":");
 
       const parentNodeData: cytoscape.ElementDefinition = {
         group: 'nodes',
@@ -388,13 +393,25 @@ export class ManagerViewportButtons {
         nodeToReparent.data('parent', newParentId);
       }
 
+      // Update UI panel
       const panel = document.getElementById("panel-node-editor-parent");
       if (panel) {
         panel.style.display = "block";
-        const [group, level] = newParentId.split(":");
-        (document.getElementById("panel-node-editor-parent-graph-group-id") as HTMLElement).textContent = newParentId;
-        (document.getElementById("panel-node-editor-parent-graph-group") as HTMLInputElement).value = group;
-        (document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement).value = level;
+
+        const groupIdEl = document.getElementById("panel-node-editor-parent-graph-group-id");
+        const groupInputEl = document.getElementById("panel-node-editor-parent-graph-group") as HTMLInputElement | null;
+        const levelInputEl = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
+
+        if (groupIdEl) groupIdEl.textContent = newParentId;
+        if (groupInputEl) {
+          console.log("Updating group input element with new group name:", groupName);
+          // Reset the input value before updating
+          groupInputEl.value = ''; // Ensure reset before update
+          groupInputEl.value = groupName;
+        }
+        if (levelInputEl) levelInputEl.value = groupLevel;
+      } else {
+        console.warn("Panel element not found: 'panel-node-editor-parent'");
       }
 
       return newParentId;
