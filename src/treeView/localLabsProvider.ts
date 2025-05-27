@@ -18,6 +18,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     // match on subdirs. deletion events only.
     private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
     private treeFilter: string = '';
+    private labsCache: c.ClabLabTreeNode[] = [];
+    private refreshing = false;
 
     constructor() {
         this.watcher.onDidCreate(() => { this.refresh(); });
@@ -27,10 +29,21 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         // clab.yaml/yml files have been also deleted as a result
         // of the subdir deletion.
         this.delSubdirWatcher.onDidDelete(() => { this.refresh(); });
+        // Populate cache initially
+        this.refresh();
     }
 
     refresh(): void {
-        this._onDidChangeTreeData.fire();
+        if (this.refreshing) {
+            return;
+        }
+        this.refreshing = true;
+        this.discoverLabs().then(labs => {
+            this.labsCache = labs || [];
+            this._onDidChangeTreeData.fire();
+        }).finally(() => {
+            this.refreshing = false;
+        });
     }
 
     setTreeFilter(filterText: string) {
@@ -56,7 +69,12 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     // Populate the tree
     async getChildren(element: any): Promise<any> {
         if (element) { return undefined; }
-        return this.discoverLabs();
+        if (this.labsCache.length) {
+            return this.labsCache;
+        }
+        const labs = await this.discoverLabs();
+        this.labsCache = labs || [];
+        return this.labsCache.length ? this.labsCache : undefined;
     }
 
     private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
@@ -137,7 +155,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             isEmpty
         );
 
-        return isEmpty ? undefined : result;
+        return result;
 
     }
 

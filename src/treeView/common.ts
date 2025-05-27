@@ -32,6 +32,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     public readonly owner?: string;
     public readonly containers?: ClabContainerTreeNode[];
     public readonly favorite: boolean;
+    public readonly id: string;
 
     constructor(
         public readonly label: string,
@@ -45,6 +46,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     ) {
         super(label, collapsibleState);
         this.labPath = labPath;
+        this.id = labPath.absolute;
         this.name = name;
         this.owner = owner;
         this.containers = containers;
@@ -73,6 +75,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     public readonly nodeType?: string;   // Added node type from clab-node-type
     public readonly nodeGroup?: string;  // Added node group from clab-node-group
     public readonly status?: string;
+    public readonly id: string;
 
     constructor(
         label: string,
@@ -93,6 +96,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
         contextValue?: string,
     ) {
         super(label, collapsibleState);
+        this.id = cID;
         this.name = name;
         this.name_short = name_short;
         this.cID = cID;
@@ -141,6 +145,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     public readonly mtu: number;
     public readonly ifIndex: number;
     public state: string;      // Added state tracking
+    public readonly id: string;
 
     constructor(
         label: string,
@@ -157,6 +162,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         contextValue?: string,
     ) {
         super(label, collapsibleState);
+        this.id = `${cID}-${name}`;
         this.parentName = parentName;
         this.cID = cID;
         this.name = name;
@@ -174,9 +180,6 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
  * Interfaces
  * -------------*/
 
-/**
- * Interface for detailed container info from `containerlab inspect --all --details`
- */
 /**
  * Interface for detailed container info from `containerlab inspect --all --details`
  */

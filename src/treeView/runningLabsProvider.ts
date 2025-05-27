@@ -32,6 +32,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     private treeItems: c.ClabLabTreeNode[] = [];
     private treeFilter: string = '';
+    private labNodesCache: c.ClabLabTreeNode[] = [];
+    private refreshing = false;
 
 
     private containerInterfacesCache: Map<string, {
@@ -66,33 +68,46 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     async refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
-        if (!element) {
-            // Full refresh - clear all caches
-            this.containerInterfacesCache.clear();
-            this.labsCache.inspect = null;
-
-            await ins.update();
-            await this.discoverLabs();
-            this._onDidChangeTreeData.fire();
-        } else {
-            // Selective refresh - only refresh this element
+        if (element) {
             this._onDidChangeTreeData.fire(element);
+            return;
         }
+
+        if (this.refreshing) {
+            return;
+        }
+        this.refreshing = true;
+
+        // Full refresh - clear caches
+        this.containerInterfacesCache.clear();
+        this.labsCache.inspect = null;
+
+        await ins.update();
+        await this.discoverLabs();
+        this.labNodesCache = this.treeItems;
+        this._onDidChangeTreeData.fire();
+        this.refreshing = false;
     }
 
     // a soft refresh will update the treeview without pulling the latest inspect data
     async softRefresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
-        if (!element) {
-            // Full refresh - clear all caches
-            this.containerInterfacesCache.clear();
-            this.labsCache.inspect = null;
-
-            await this.discoverLabs();
-            this._onDidChangeTreeData.fire();
-        } else {
-            // Selective refresh - only refresh this element
+        if (element) {
             this._onDidChangeTreeData.fire(element);
+            return;
         }
+
+        if (this.refreshing) {
+            return;
+        }
+        this.refreshing = true;
+
+        this.containerInterfacesCache.clear();
+        this.labsCache.inspect = null;
+
+        await this.discoverLabs();
+        this.labNodesCache = this.treeItems;
+        this._onDidChangeTreeData.fire();
+        this.refreshing = false;
     }
 
     async refreshWithoutDiscovery(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
@@ -147,17 +162,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * array of containers.
      */
     async getChildren(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode): Promise<any> {
-        if (!this.treeItems.length) {
+        if (!this.labNodesCache.length && !this.refreshing) {
             await this.discoverLabs();
+            this.labNodesCache = this.treeItems;
         }
 
         // Discover labs to populate tree
         if (!element) {
-            let labs = [];
+            let labs: c.ClabLabTreeNode[] = [];
+            const base = this.labNodesCache;
             if (hideNonOwnedLabsState) {
-                labs = this.treeItems.filter(labNode => labNode.owner == username);
+                labs = base.filter(labNode => labNode.owner == username);
             } else {
-                labs = this.treeItems;
+                labs = base;
             }
             if (this.treeFilter) {
                 const filter = this.treeFilter;
@@ -245,6 +262,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         console.log(`[RunningLabTreeDataProvider]:\tDiscovered ${sortedLabs.length} labs.`);
         this.treeItems = sortedLabs;
+        this.labNodesCache = sortedLabs;
     }
 
     /**
