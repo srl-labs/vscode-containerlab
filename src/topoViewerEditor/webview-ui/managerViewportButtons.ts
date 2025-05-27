@@ -98,24 +98,26 @@ export class ManagerViewportButtons {
         return nodeJson;
       });
 
-      // Process each edge: include edge data and optionally update endpoints or other properties.
-      const updatedEdges = cy.edges().map((edge: cytoscape.EdgeSingular) => {
-        // Cast edge.json() to any so we can modify its properties if needed.
+      // Process each edge and only keep ones with valid endpoints
+      const updatedEdges = cy.edges().reduce((acc: any[], edge: cytoscape.EdgeSingular) => {
         const edgeJson: any = edge.json();
 
         if (edgeJson.data) {
           const sourceId = edgeJson.data.source;
           const targetId = edgeJson.data.target;
-          const sourcePort = edgeJson.data.sourcePort || "";
-          const targetPort = edgeJson.data.targetPort || "";
-          edgeJson.data.endpoints = [
-            sourcePort ? `${sourceId}:${sourcePort}` : sourceId,
-            targetPort ? `${targetId}:${targetPort}` : targetId,
-          ];
+          const sourceEp = edgeJson.data.sourceEndpoint;
+          const targetEp = edgeJson.data.targetEndpoint;
+
+          if (typeof sourceEp === 'string' && sourceEp && typeof targetEp === 'string' && targetEp) {
+            edgeJson.data.endpoints = [`${sourceId}:${sourceEp}`, `${targetId}:${targetEp}`];
+            acc.push(edgeJson);
+          } else if (Array.isArray(edgeJson.data.endpoints) && edgeJson.data.endpoints.length === 2 && edgeJson.data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'))) {
+            acc.push(edgeJson);
+          }
         }
 
-        return edgeJson;
-      });
+        return acc;
+      }, [] as any[]);
 
       loadCytoStyle(cy);
 

@@ -89,6 +89,9 @@ class TopoViewerEditorEngine {
   private setupAutoSave(): void {
     // Debounced save function
     const autoSave = this.debounce(async () => {
+      if (this.isEdgeHandlerActive) {
+        return;
+      }
       const suppressNotification = true;
       await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
@@ -277,6 +280,7 @@ class TopoViewerEditorEngine {
                     </div>`,
           select: (ele: cytoscape.Singular) => {
             // initiate edgehandles drawing from this node
+            self.isEdgeHandlerActive = true;
             self.eh.start(ele);
           }
         }
@@ -419,6 +423,19 @@ class TopoViewerEditorEngine {
         console.info("Alt+click on edge: deleting edge", edge.id());
         edge.remove();
       }
+    });
+
+    // Edgehandles lifecycle events.
+    this.cy.on('ehstart', () => {
+      this.isEdgeHandlerActive = true;
+    });
+
+    this.cy.on('ehstop', () => {
+      this.isEdgeHandlerActive = false;
+    });
+
+    this.cy.on('ehcancel', () => {
+      this.isEdgeHandlerActive = false;
     });
 
     // Edge creation completion via edgehandles.
