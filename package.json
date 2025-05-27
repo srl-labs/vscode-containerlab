@@ -886,6 +886,16 @@
           "default": false,
           "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
         },
+        "containerlab.deploy.extraArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Additional command-line options appended to all 'containerlab deploy' and 'containerlab redeploy' commands."
+        },
+        "containerlab.destroy.extraArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Additional command-line options appended to all 'containerlab destroy' commands."
+        },
         "containerlab.showWelcomePage": {
           "type": "boolean",
           "default": true,
