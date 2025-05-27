@@ -59,9 +59,26 @@ export class ClabCommand extends cmd.Command {
         }
 
         // Build the command
-        const cmdArgs = flags
-            ? [this.action, "-r", this.runtime, ...flags, "-t", labPath]
-            : [this.action, "-r", this.runtime, "-t", labPath];
+        const config = vscode.workspace.getConfiguration("containerlab");
+        let extraFlags: string[] = [];
+        if (this.action === "deploy" || this.action === "redeploy") {
+            const extra = config.get<string>("deploy.extraArgs", "");
+            if (extra) {
+                extraFlags = extra.split(/\s+/).filter(f => f);
+            }
+        } else if (this.action === "destroy") {
+            const extra = config.get<string>("destroy.extraArgs", "");
+            if (extra) {
+                extraFlags = extra.split(/\s+/).filter(f => f);
+            }
+        }
+
+        const allFlags = [...extraFlags];
+        if (flags) {
+            allFlags.push(...flags);
+        }
+
+        const cmdArgs = [this.action, "-r", this.runtime, ...allFlags, "-t", labPath];
 
         // Return the promise from .execute() so we can await
         return this.execute(cmdArgs);

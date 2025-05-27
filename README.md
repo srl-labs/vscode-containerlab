@@ -100,9 +100,24 @@ Customize your experience under `containerlab.*` in VS Code Settings:
   The container runtime to use. Options: `docker`, `podman`, `ignite`.  
   _Default: `docker`_
 
-- **`containerlab.skipCleanupWarning`** (boolean)  
-  If enabled, the extension will skip warning popups for cleanup commands (redeploy/destroy with cleanup).  
+- **`containerlab.skipCleanupWarning`** (boolean)
+  If enabled, the extension will skip warning popups for cleanup commands (redeploy/destroy with cleanup).
   _Default: `false`_
+
+- **`containerlab.deploy.extraArgs`** (string)
+  Additional options appended to every `containerlab deploy` or `containerlab redeploy` invocation.
+  _Default: `""`_
+
+- **`containerlab.destroy.extraArgs`** (string)
+  Additional options appended to every `containerlab destroy` invocation.
+  _Default: `""`_
+
+Example configuration:
+
+```json
+"containerlab.deploy.extraArgs": "--timeout 5m --max-workers 88",
+"containerlab.destroy.extraArgs": "--graceful --cleanup"
+```
 
 
 ---
