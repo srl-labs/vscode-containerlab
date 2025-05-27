@@ -23,6 +23,10 @@ export let localTreeView: any;
 export let runningTreeView: any;
 export let username: string;
 export let hideNonOwnedLabsState: boolean = false;
+export let favoriteLabs: Set<string> = new Set();
+export let extensionContext: vscode.ExtensionContext;
+export let localLabsProvider: LocalLabTreeDataProvider;
+export let runningLabsProvider: RunningLabTreeDataProvider;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -67,8 +71,11 @@ export async function activate(context: vscode.ExtensionContext) {
   ins.update();
 
   // Tree data provider
-  const localLabsProvider = new LocalLabTreeDataProvider();
-  const runningLabsProvider = new RunningLabTreeDataProvider(context);
+  extensionContext = context;
+  favoriteLabs = new Set(context.globalState.get<string[]>('favoriteLabs', []));
+
+  localLabsProvider = new LocalLabTreeDataProvider();
+  runningLabsProvider = new RunningLabTreeDataProvider(context);
 
 
   localTreeView = vscode.window.createTreeView('localLabs', {
@@ -115,6 +122,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.copyPath', cmd.copyLabPath)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.toggleFavorite', cmd.toggleFavorite)
   );
 
   context.subscriptions.push(
