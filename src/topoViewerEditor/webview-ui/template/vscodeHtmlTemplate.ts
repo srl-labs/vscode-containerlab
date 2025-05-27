@@ -1021,20 +1021,20 @@ export function getHTMLTemplate(
                         <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-update-button"
                           onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">
                           Save
                         </button>
                       </div>
 
-                      
+                     
                       <div class="control">
                         <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-remove-button"
                           onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">
                           Delete
                         </button>
                       </div>
-                      
+                     
                     </div>
                   </div>
 
@@ -1048,7 +1048,7 @@ export function getHTMLTemplate(
 
 
     <!-- node Properties Editor Panel with Improved Semantic Markup & Responsive Design -->
-    <section class="panel is-link" id="panel-node-editor" aria-labelledby="node-editor-heading" style="display: none;">
+    <section class="panel panel-overlay is-link" id="panel-node-editor" aria-labelledby="node-editor-heading" style="display: none;">
       <header class="panel-heading is-size-7" id="node-editor-heading">
         Node Properties Editor
       </header>
@@ -1217,11 +1217,13 @@ export function getHTMLTemplate(
                           Save
                         </button>
                       </div>
+                      <!--
                       <div class="control">
                         <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-close-button">
                           Close
                         </button>
                       </div>
+                      -->
                     </div>
                   </div>
                 </div>
@@ -1234,7 +1236,7 @@ export function getHTMLTemplate(
     </section>
 
     <!-- link Properties Editor Panel with Improved Semantic Markup & Responsive Design -->
-    <section class="panel is-link" id="panel-link-editor" aria-labelledby="link-editor-heading" style="display: none;">
+    <section class="panel panel-overlay is-link" id="panel-link-editor" aria-labelledby="link-editor-heading" style="display: none;">
       <header class="panel-heading is-size-7" id="link-editor-heading">
         Link Properties Editor
       </header>
@@ -1323,11 +1325,13 @@ export function getHTMLTemplate(
                           Save
                         </button>
                       </div>
+                       <!--
                       <div class="control">
                         <button type="button" class="button is-link is-outlined is-small" id="panel-link-editor-close-button">
                           Close
                         </button>
                       </div>
+                      -->
                     </div>
                   </div>
                 </div>

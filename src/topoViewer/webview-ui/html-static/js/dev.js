@@ -842,8 +842,8 @@ document.addEventListener("DOMContentLoaded", async function () {
           document.getElementById("panel-node-mgmtipv6").textContent = extraData.mgmtIpv6Address;
           document.getElementById("panel-node-fqdn").textContent = extraData.fqdn;
           document.getElementById("panel-node-topoviewerrole").textContent = node.data("topoViewerRole");
-          document.getElementById("panel-node-state").textContent = node.data("state");
-          document.getElementById("panel-node-image").textContent = node.data("image");
+          document.getElementById("panel-node-state").textContent = extraData.state;
+          document.getElementById("panel-node-image").textContent = extraData.image;
 
           globalSelectedNode = extraData.longname;
           console.info("Global selected node:", globalSelectedNode);

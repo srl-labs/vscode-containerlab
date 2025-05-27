@@ -1,5 +1,7 @@
 //// ENRICHER FUNCTION
 
+const { DebugConsoleMode } = require("vscode");
+
 //  +------------------------------------------------------------------+
 //  |  Socket.io/vscode message  Feed: "clab-tree-provider-data"       |
 //  |  (Extension Backend sends lab data via socket.io/vscode message) |
@@ -186,6 +188,7 @@ function socketDataEncrichmentNode(labData) {
 
                     nodeName = getRouterName(nodeClabName, lab.name);
 
+                    const labname = lab.name;
                     const state = container.state;
                     const image = container.image;
                     const longname = container.name;
@@ -193,7 +196,7 @@ function socketDataEncrichmentNode(labData) {
                     const mgmtIpv6Address = container.v6Address;
 
                     const key = longname;  // Use longname as unique identifier
-                    const nodeDataUpdate = { state, image, longname, mgmtIpv4Address, mgmtIpv6Address };
+                    const nodeDataUpdate = { labname, state, image, longname, mgmtIpv4Address, mgmtIpv6Address };
 
                     nodeDataEncrichmentMap[key] = nodeDataUpdate;
                 });
@@ -202,7 +205,7 @@ function socketDataEncrichmentNode(labData) {
             console.error(`socketDataEncrichmentNode - Error processing labPath "${labPath}" in node data enrichment:`, err);
         }
     }
-
+    // aarafat-tag: keep this for debugging
     // console.log("socketDataEncrichmentNode - node-data-update for: ", nodeDataEncrichmentMap);
     // console.log("socketDataEncrichmentNode - globalLabName: ", globalLabName);
 
@@ -211,31 +214,42 @@ function socketDataEncrichmentNode(labData) {
         nodeName = key; // aarafat-tag: key of nodeDataEncrichmentMap a streamed data
         nodeData = nodeDataEncrichmentMap[key];
 
+        console.log("socketDataEncrichmentNode - nodeData: ", nodeData);
+
         cy.nodes().forEach(node => {
             const data = node.data();
 
             // Extract longname suffix from Cytoscape node and enrichment data
-            const lastPartLongnameDataMarshall = (data?.extraData?.longname || "").split("-").pop();
-            const lastPartLongnameStreamedData = (nodeName || "").split("-").pop();
+            const lastPartLongnameDataMarshall = data?.extraData?.shortname
+            const lastPartLongnameStreamedData = nodeName;
+
 
             let updatedLongname;
+            // aarafat-tag: keep this for debugging
+            // console.log("01 nodeName", nodeName);
+            // console.log("02 data?.extraData?.longname", data?.extraData?.longname);
+            // console.log("03 lastPartLongnameDataMarshall", lastPartLongnameDataMarshall);
+            // console.log("04 lastPartLongnameStreamedData", lastPartLongnameStreamedData);
 
             // Determine which longname to assign based on suffix match
             if (nodeName == lastPartLongnameStreamedData) {
+                console.log("found nodeName match with streamed data");
                 updatedLongname = lastPartLongnameStreamedData;
             } else {
                 updatedLongname = nodeName;
             }
-
+            // aarafat-tag: keep this for debugging
+            // console.log("05 updatedLongname:", updatedLongname);
             // Check if the suffixes match to apply updates
             if (lastPartLongnameDataMarshall === lastPartLongnameStreamedData) {
-                node.data('state', nodeData.state);
-                node.data('image', nodeData.image);
 
+                console.log("lastPartLongnameDataMarshall === lastPartLongnameStreamedData", lastPartLongnameDataMarshall, lastPartLongnameStreamedData);
                 // Update the node's extraData.longname field
                 if (node && node.data("extraData")) {
                     const updatedExtraData = {
                         ...node.data("extraData"),
+                        state: nodeData.state,
+                        image: nodeData.image,
                         longname: updatedLongname,
                         mgmtIpv4Address: nodeData.mgmtIpv4Address,
                         mgmtIpv6Address: nodeData.mgmtIpv6Address,

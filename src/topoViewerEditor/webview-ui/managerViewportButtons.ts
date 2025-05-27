@@ -255,7 +255,7 @@ export class ManagerViewportButtons {
       sourceEndpoint: "",
       targetEndpoint: "",
       containerDockerExtraAttribute: { state: "", status: "" },
-      extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Addresss: "" },
+      extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Address: "" },
     };
 
     // Get the current viewport bounds
@@ -516,12 +516,19 @@ export class ManagerViewportButtons {
         if (groupLabelPosition && groupLabelPosition !== "select position") {
           updateLabelPositionClass(newParentNode, groupLabelPosition);
         }
+
+        // const panel = document.getElementById("panel-node-editor-parent");
+        // if (panel) {
+        //   panel.style.display = "none";
+        //   console.log("Parent properties panel closed after update.");
+        // }
+
       } catch (error) {
         console.error("nodeParentPropertiesUpdate error:", error);
       }
     },
 
-    nodeParentPropertiesUpdateClose: (): boolean => {
+    nodeParentPropertiesClose: (): boolean => {
       try {
         const panel = document.getElementById("panel-node-editor-parent");
         if (panel) {

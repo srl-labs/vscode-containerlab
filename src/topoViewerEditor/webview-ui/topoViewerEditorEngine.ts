@@ -42,7 +42,7 @@ export interface NodeData {
     kind?: string;
     longname?: string;
     image?: string;
-    mgmtIpv4Addresss?: string;
+    mgmtIpv4Address?: string;
   };
 }
 
@@ -304,6 +304,58 @@ class TopoViewerEditorEngine {
     });
 
     this.cy.cxtmenu({
+      selector: 'node:parent, node[topoViewerRole = "dummyChild"]',
+      commands: [
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Edit Group</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // inside here TS infers ele is NodeSingular
+            // this.viewportPanels.panelNodeEditor(ele);
+            if (ele.data("topoViewerRole") == "dummyChild") {
+              console.info("Editing parent of dummyChild: ", ele.parent().first().id());
+              this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.parent().first().id());
+            } else if (ele.data("topoViewerRole") == "group") {
+              this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.id());
+            }
+          }
+        },
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Delete Group</span>
+                    </div>`,
+          select: () => {
+            this.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(this.cy);
+          }
+        }
+      ],
+      menuRadius: 110, // the radius of the menu
+      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      activePadding: 5, // additional size in pixels for the active command
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
+      separatorWidth: 3, // the empty spacing in pixels between successive commands
+      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+      adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      openMenuEvents: 'cxttapstart taphold', // space-separated cytoscape events that will open the menu; only `cxttapstart` and/or `taphold` work here
+      itemColor: 'white', // the colour of text in the command's content
+      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      zIndex: 9999, // the z-index of the ui div
+      atMouse: false, // draw menu at mouse position
+      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer
+    });
+
+    this.cy.cxtmenu({
       selector: 'edge',
       commands: [
         {
@@ -400,15 +452,15 @@ class TopoViewerEditorEngine {
         case (node.data("topoViewerRole") == "textbox"):
           break;
 
-        case (node.data("topoViewerRole") == "dummyChild"):
-          console.info("Editing parent of dummyChiled: ", node.parent().id());
-          this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.parent().id());
-          break;
-        // If the node is a parent, open the panel for that parent.
-        case node.isParent():
-          console.info("Editing existing parent node: ", node.id());
-          this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.id());
-          break;
+        // case (node.data("topoViewerRole") == "dummyChild"):
+        //   console.info("Editing parent of dummyChiled: ", node.parent().id());
+        //   this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.parent().id());
+        //   break;
+        // // If the node is a parent, open the panel for that parent.
+        // case node.isParent():
+        //   console.info("Editing existing parent node: ", node.id());
+        //   this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.id());
+        //   break;
         default:
           break;
       }
@@ -454,7 +506,7 @@ class TopoViewerEditorEngine {
 
     // Drag-and-drop reparenting logic
     this.cy.on('dragfree', 'node', (event) => {
-      // aarafat-tag: keep this commented out for now, will be used later to identify if the node is in clab editor mode.
+      // aarafat-tag: keep this commented out for now, will be used later(when TopoViewer and TopoEditor merged) to identify if the node is in clab editor mode.
       // const isViewportDrawerClabEditorCheckboxChecked = this.isViewportDrawerClabEditorChecked;
       // if (!isViewportDrawerClabEditorCheckboxChecked) return;
 

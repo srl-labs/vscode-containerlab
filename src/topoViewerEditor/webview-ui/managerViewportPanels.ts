@@ -210,10 +210,12 @@ export class ManagerViewportPanels {
       const panelLinkEditorIdLabel = document.getElementById("panel-link-editor-id");
       const panelLinkEditorIdLabelSrcInput = document.getElementById("panel-link-editor-source-endpoint") as HTMLInputElement | null;
       const panelLinkEditorIdLabelTgtInput = document.getElementById("panel-link-editor-target-endpoint") as HTMLInputElement | null;
-      const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
+      // const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
       const panelLinkEditorIdLabelSaveBtn = document.getElementById("panel-link-editor-save-button");
 
-      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
+      // if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
+            if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelSaveBtn) {
+
         console.error("panelEdgeEditor: missing required DOM elements");
         return;
       }
@@ -242,9 +244,9 @@ export class ManagerViewportPanels {
       panelLinkEditor.style.display = "block";
 
       // 4) Re-wire Close button (one-shot)
-      const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
-      panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
-      freshClose.addEventListener("click", () => panelLinkEditor.style.display = "none", { once: true });
+      // const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
+      // panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
+      // freshClose.addEventListener("click", () => panelLinkEditor.style.display = "none", { once: true });
 
       // 5) Wire real-time preview (optional but helpful)
       panelLinkEditorIdLabelSrcInput.addEventListener("input", updateLabel);
@@ -537,29 +539,15 @@ export class ManagerViewportPanels {
     return [];
   }
 
-//   /**
-//  * Displays and populates the node's parent group editor panel.
-//  *
-//  * @param newParentId - The new parent ID in the format "group:level".
-//  */
-//   public panelGroup(newParentId: string): void {
-//     const panel = document.getElementById("panel-node-editor-parent");
-//     if (!panel) {
-//       console.warn("Parent editor panel not found");
-//       return;
-//     }
-
-//     panel.style.display = "block";
-
-//     const [group, level] = newParentId.split(":");
-//     const groupIdLabel = document.getElementById("panel-node-editor-parent-graph-group-id");
-//     const groupInput = document.getElementById("panel-node-editor-parent-graph") as HTMLInputElement | null;
-//     const levelInput = document.getElementById("panel-node-editor-parent-graph-level") as HTMLInputElement | null;
-
-//     if (groupIdLabel) groupIdLabel.textContent = newParentId;
-//     if (groupInput) groupInput.value = group;
-//     if (levelInput) levelInput.value = level;
-//   }
+  /**
+   * Displays and populates the node's parent group editor panel.
+   *
+   * @param newParentId - The new parent ID in the format "group:level".
+   *
+   * panelNodeEditorGroupEditor is not implemented here, instead the panel for group editor is directly managed in viewportButtons class
+   * due to the complexity of managing group and the need for a more comprehensive UI handling.
+   *
+   */
 
 
   /**
