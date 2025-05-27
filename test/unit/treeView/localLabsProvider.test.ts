@@ -31,6 +31,7 @@ const originalResolve = (Module as any)._resolveFilename;
 import { LocalLabTreeDataProvider } from '../../../src/treeView/localLabsProvider';
 import * as ins from '../../../src/treeView/inspector';
 const vscodeStub = require('../../helpers/vscode-stub');
+const extension = require('../../../src/extension');
 
 describe('LocalLabTreeDataProvider', () => {
   after(() => {
@@ -53,6 +54,9 @@ describe('LocalLabTreeDataProvider', () => {
     } catch {
       /* ignore cleanup errors */
     }
+    extension.favoriteLabs = new Set();
+    extension.extensionContext = { globalState: { update: sinon.stub().resolves() } } as any;
+    (ins as any).rawInspectData = [];
   });
 
   afterEach(() => {
@@ -94,6 +98,40 @@ describe('LocalLabTreeDataProvider', () => {
     expect(vscodeStub.commands.executed).to.deep.include({
       command: 'setContext',
       args: ['localLabsEmpty', false],
+    });
+  });
+
+  it('places favorite labs first and keeps deploy context', async () => {
+    sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
+      vscodeStub.Uri.file('/workspace/b/lab2.clab.yaml'),
+      vscodeStub.Uri.file('/workspace/a/lab1.clab.yml'),
+    ]);
+
+    extension.favoriteLabs.add('/workspace/b/lab2.clab.yaml');
+
+    const provider = new LocalLabTreeDataProvider();
+    const nodes = await provider.getChildren(undefined);
+
+    expect(nodes).to.have.lengthOf(2);
+    expect(nodes![0].labPath.absolute).to.equal('/workspace/b/lab2.clab.yaml');
+    expect(nodes![0].contextValue).to.equal('containerlabLabUndeployed');
+    expect(nodes![0].favorite).to.be.true;
+  });
+
+  it('removes favorites that no longer exist', async () => {
+    sinon.stub(vscodeStub.workspace, 'findFiles').resolves([]);
+    sinon.stub(require('fs'), 'existsSync').returns(false);
+
+    extension.favoriteLabs.add('/workspace/missing/lab.clab.yml');
+
+    const provider = new LocalLabTreeDataProvider();
+    const nodes = await provider.getChildren(undefined);
+
+    expect(nodes).to.be.undefined;
+    expect(extension.favoriteLabs.size).to.equal(0);
+    expect(vscodeStub.commands.executed).to.deep.include({
+      command: 'setContext',
+      args: ['localLabsEmpty', true],
     });
   });
 });

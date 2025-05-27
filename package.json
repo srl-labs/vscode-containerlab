@@ -94,6 +94,11 @@
         "icon": "$(copy)"
       },
       {
+        "command": "containerlab.lab.toggleFavorite",
+        "title": "Toggle Favorite",
+        "icon": "$(star)"
+      },
+      {
         "command": "containerlab.lab.deploy",
         "title": "Deploy",
         "icon": "$(play)",
@@ -531,6 +536,11 @@
           "command": "containerlab.lab.openFolderInNewWindow",
           "when": "viewItem =~ /containerlabLab/",
           "group": "labFile@4"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "when": "view == localLabs && viewItem =~ /containerlabLab/",
+          "group": "navigation@0"
         },
         {
           "command": "containerlab.lab.deploy",

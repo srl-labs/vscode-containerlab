@@ -20,3 +20,4 @@ export * from "./impairments";
 export * from "./edgeshark";
 export * from "./openBrowser";
 export * from "./telnet";
+export * from "./favorite";
