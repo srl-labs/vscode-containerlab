@@ -20,25 +20,33 @@ body {
   color: var(--vscode-editor-foreground);
 }
 
-.refresh-button {
-  background: var(--vscode-button-background);
+button {
+  background-color: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: none;
-  padding: 6px 12px;
-  cursor: pointer;
   border-radius: 4px;
-  font-size: 14px;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.refresh-button:hover {
-  background: var(--vscode-button-hoverBackground);
+button.secondary {
+  background-color: transparent;
+  border: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-editor-foreground);
 }
 
-.refresh-button:active {
-  transform: scale(0.98);
+button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+button.secondary:hover {
+  background-color: color-mix(in srgb, var(--vscode-editor-background) 90%, var(--vscode-editor-foreground) 10%);
 }
 
 table {

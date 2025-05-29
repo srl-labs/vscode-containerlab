@@ -134,7 +134,9 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
 // showInspectWebview now sets up message handling
 function showInspectWebview(containers: any[], title: string, extensionUri: vscode.Uri) {
   if (currentPanel) {
-    currentPanel.dispose();
+    currentPanel.title = title;
+    currentPanel.webview.html = getInspectHtml(currentPanel.webview, containers, extensionUri);
+    return;
   }
 
   const panel = vscode.window.createWebviewPanel(
@@ -161,12 +163,13 @@ function showInspectWebview(containers: any[], title: string, extensionUri: vsco
           }
           break;
 
-        case 'openPort':
+        case 'openPort': {
           outputChannel.appendLine(`[Inspect Command]: Open port requested - ${message.containerName}:${message.port}`);
           const url = `http://localhost:${message.port}`;
           vscode.env.openExternal(vscode.Uri.parse(url));
           vscode.window.showInformationMessage(`Opening port ${message.port} in browser`);
           break;
+        }
       }
     },
     undefined,
@@ -175,8 +178,10 @@ function showInspectWebview(containers: any[], title: string, extensionUri: vsco
 
   // Clean up when panel is closed
   panel.onDidDispose(() => {
-    currentPanel = undefined;
-    currentContext = undefined;
+    if (currentPanel === panel) {
+      currentPanel = undefined;
+      currentContext = undefined;
+    }
   });
 
   // The getInspectHtml function should work correctly as long as each container object

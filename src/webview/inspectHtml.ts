@@ -148,16 +148,10 @@ export function getInspectHtml(
           margin-bottom: 1em;
           padding: 0.5em 0;
         }
-        .refresh-button {
-          background: var(--vscode-button-background);
-          color: var(--vscode-button-foreground);
-          border: none;
-          padding: 6px 12px;
-          cursor: pointer;
-          border-radius: 2px;
-        }
-        .refresh-button:hover {
-          background: var(--vscode-button-hoverBackground);
+        button.secondary {
+          background-color: transparent;
+          border: 1px solid var(--vscode-panel-border);
+          color: var(--vscode-editor-foreground);
         }
         .port-link {
           color: var(--vscode-textLink-foreground);
@@ -173,10 +167,9 @@ export function getInspectHtml(
     <body>
       <div class="header-controls">
         <h1>Containerlab Inspect</h1>
-        <button class="refresh-button" id="refreshButton">🔄 Refresh</button>
+        <button id="refreshButton" class="secondary"><span class="codicon codicon-refresh"></span> Refresh</button>
       </div>
       ${allTables || "<p>No containers found.</p>"}
-      ${allTables ? '<p style="font-size: 0.9em; color: var(--vscode-descriptionForeground); margin-top: 1em;">Note: Port links open http://localhost:[port] in your browser. Ensure ports are properly mapped to the host.</p>' : ''}
       
       <script>
         const vscode = acquireVsCodeApi();
