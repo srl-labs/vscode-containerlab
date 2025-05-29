@@ -21,6 +21,7 @@ export * from "./edgeshark";
 export * from "./openBrowser";
 export * from "./telnet";
 export * from "./favorite";
+export * from "./deleteLab";
 export * from "./cloneRepo";
 export * from "./deployPopular";
 export * from "./clonePopularRepo";
