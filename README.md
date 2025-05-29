@@ -21,7 +21,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Gray:** Undeployed labs
 
 - **Context Menu Actions:**
-  For labs and containers, quickly deploy, destroy, redeploy (with or without cleanup), save, inspect, or open lab files and workspaces. For containers, additional commands include starting, stopping, attaching a shell, SSH, viewing logs, and copying key properties (name, ID, IP addresses, kind, image).
+  For labs and containers, quickly deploy, destroy, redeploy (with or without cleanup), save, inspect, delete undeployed lab files, or open lab files and workspaces. For containers, additional commands include starting, stopping, attaching a shell, SSH, viewing logs, and copying key properties (name, ID, IP addresses, kind, image).
 
 - **Interface Tools:**
   Capture traffic (via tcpdump/Wireshark or Edgeshark) and set link impairments such as delay, jitter, packet loss, rate-limit, and corruption. You can also copy an interface’s MAC address.
@@ -32,6 +32,12 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Draw.io (Vertical):** Generates a `.drawio` file in a vertical layout. (pos labels will overwrite the layout)
   - **Interactive TopoViewer:** Launches a dynamic, web-based view of your topology.
   - **Interactive TopoEditor:** Let's your create in a graphical way network topologies
+
+- **Clone Labs from Git:**
+  Easily clone labs from any Git repository or choose from a list of popular labs directly within the extension.
+
+- **Help & Feedback View:**
+  Access documentation, community links, and other helpful resources from a dedicated tree view.
 
 - **Inspection:**
   Use webviews to inspect either all labs or a single lab’s deployed containers in a neatly grouped table.
@@ -63,11 +69,9 @@ Note: The extension will automatically prompt to add your user to the `clab_admi
 ## Getting Started
 
 1. **Install** the extension.
-2. **Open** a folder or workspace in VS Code containing `.clab.yml` or `.clab.yaml` files.
+2. **Open** a folder or workspace in VS Code containing `.clab.yml` or `.clab.yaml` files. Or just clone a popular lab.
 3. **Click** on the _Containerlab_ icon in the Activity Bar to view your labs.
 4. **Right-click** on a lab or container to see context menu commands (Deploy, Destroy, Redeploy, etc.).
-
-5. Use the "Deploy an existing lab" command to provide a Git or HTTP URL (e.g., https://github.com/srl-labs/srlinux-vlan-handling-lab/).
 
 ---
 ## Extension Settings
@@ -116,6 +120,18 @@ Customize your experience under `containerlab.*` in VS Code Settings:
   Additional options appended to every `containerlab destroy` invocation.
   _Default: `""`_
 
+- **`containerlab.remote.packetflixPort`** (number)
+  Port to use for the Packetflix endpoint when capturing traffic remotely.
+  _Default: `5001`_
+
+- **`containerlab.showWelcomePage`** (boolean)
+  Show the welcome page when the extension activates.
+  _Default: `true`_
+
+- **`containerlab.node.telnetPort`** (number)
+  Port used when telnetting into a node via `docker exec -it <node> telnet 127.0.0.1 <port>`.
+  _Default: `5000`_
+
 Example configuration:
 
 ```json
@@ -138,6 +154,14 @@ When deploying labs, you can monitor the detailed progress in the Output window:
   - Deployed labs appear before undeployed labs
   - Within each group (deployed/undeployed), labs are sorted by their absolute path
 
+
+---
+
+## Known Issues
+
+### "I do not see any interfaces on my deployed lab"
+Labs deployed with containerlab versions older than `0.64.0` may require a redeploy.
+
 ## Running Tests
 The extension includes a suite of unit tests located in the `test` folder. To run them:
 
@@ -146,13 +170,6 @@ The extension includes a suite of unit tests located in the `test` folder. To ru
 3. Execute `npm test` to run Mocha and generate an HTML report in `mochawesome-report`.
 
 See `test/README.md` for a short overview of the test setup and stub utilities.
-
----
-
-## Known Issues
-
-### "I do not see any interfaces on my deployed lab"
-Labs which are deployed with containerlab < 0.64.0 , needing a redeploy.
 
 ---
 
