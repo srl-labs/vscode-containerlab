@@ -11,9 +11,17 @@ table {
   margin-bottom: 2em;
 }
 
+thead th {
+  background-color: var(--vscode-sideBar-background);
+}
+
 th, td {
   border: 1px solid var(--vscode-editor-foreground);
   padding: 6px 8px;
+}
+
+tbody tr:nth-child(even) {
+  background-color: var(--vscode-editorGroupHeader-tabsBackground);
 }
 
 tr:hover {

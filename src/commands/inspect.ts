@@ -39,7 +39,7 @@ export async function inspectAllLabs(context: vscode.ExtensionContext) {
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
     const sudoPrefix = getSudo();
-    const command = `${sudoPrefix}containerlab inspect -r ${runtime} --all --format json`;
+    const command = `${sudoPrefix}containerlab inspect -r ${runtime} --all --details --format json`;
     outputChannel.appendLine(`[Inspect Command]: Running: ${command}`);
 
     const { stdout, stderr } = await execAsync(command, { timeout: 15000 }); // Added timeout
@@ -80,7 +80,7 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
     const sudoPrefix = getSudo();
     // Ensure lab path is quoted correctly for the shell
     const labPathEscaped = `"${node.labPath.absolute.replace(/"/g, '\\"')}"`;
-    const command = `${sudoPrefix}containerlab inspect -r ${runtime} -t ${labPathEscaped} --format json`;
+    const command = `${sudoPrefix}containerlab inspect -r ${runtime} -t ${labPathEscaped} --details --format json`;
     outputChannel.appendLine(`[Inspect Command]: Running: ${command}`);
 
     const { stdout, stderr } = await execAsync(command, { timeout: 15000 }); // Added timeout

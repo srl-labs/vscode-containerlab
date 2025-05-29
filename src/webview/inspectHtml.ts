@@ -37,33 +37,47 @@ export function getInspectHtml(
   // Build tables
   let allTables = "";
   for (const [labName, arr] of Object.entries(grouped)) {
-    let rows = arr.map((ctr) => {
-      const cls = stateToClass(ctr.state);
-      return `
-        <tr>
-          <td>${ctr.name}</td>
-          <td>${ctr.kind}</td>
-          <td>${ctr.image}</td>
-          <td class="${cls}">${ctr.state}</td>
-          <td>${ctr.ipv4_address}</td>
-          <td>${ctr.ipv6_address}</td>
-        </tr>
-      `;
-    }).join("");
+      let rows = arr.map((ctr) => {
+        const cls = stateToClass(ctr.state);
 
-    allTables += `
-      <h2>${labName}</h2>
-      <table>
-        <thead>
+        const type = ctr.node_type || ctr.Labels?.['clab-node-type'] || '';
+        const pid = ctr.Pid ?? '';
+        const net = ctr.network_name || ctr.NetworkName || '';
+        const status = ctr.status || ctr.Status || '';
+
+        return `
           <tr>
-            <th>Name</th>
-            <th>Kind</th>
-            <th>Image</th>
-            <th>State</th>
-            <th>IPv4</th>
-            <th>IPv6</th>
+            <td>${ctr.name}</td>
+            <td>${ctr.kind}</td>
+            <td>${type}</td>
+            <td>${ctr.image}</td>
+            <td class="${cls}">${ctr.state}</td>
+            <td>${status}</td>
+            <td>${pid}</td>
+            <td>${ctr.ipv4_address}</td>
+            <td>${ctr.ipv6_address}</td>
+            <td>${net}</td>
           </tr>
-        </thead>
+        `;
+      }).join("");
+
+      allTables += `
+        <h2>${labName}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Kind</th>
+              <th>Type</th>
+              <th>Image</th>
+              <th>State</th>
+              <th>Status</th>
+              <th>PID</th>
+              <th>IPv4</th>
+              <th>IPv6</th>
+              <th>Network</th>
+            </tr>
+          </thead>
         <tbody>
           ${rows}
         </tbody>
