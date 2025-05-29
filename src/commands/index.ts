@@ -22,3 +22,5 @@ export * from "./openBrowser";
 export * from "./telnet";
 export * from "./favorite";
 export * from "./cloneRepo";
+export * from "./deployPopular";
+export * from "./clonePopularRepo";

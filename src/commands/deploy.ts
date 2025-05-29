@@ -2,6 +2,7 @@ import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
 import * as vscode from "vscode";
+import { deployPopularLab } from "./deployPopular";
 
 export function deploy(node: ClabLabTreeNode) {
   const spinnerMessages: SpinnerMsg = {
@@ -39,7 +40,7 @@ export async function deployCleanup(node: ClabLabTreeNode) {
 export async function deploySpecificFile() {
   // Offer the user a choice between selecting a local file or providing a URL.
   const mode = await vscode.window.showQuickPick(
-    ["Select local file", "Enter Git/HTTP URL"],
+    ["Select local file", "Enter Git/HTTP URL", "Choose from popular labs"],
     { title: "Deploy from" }
   );
 
@@ -62,7 +63,7 @@ export async function deploySpecificFile() {
       return;
     }
     labRef = uri[0].fsPath;
-  } else {
+  } else if (mode === "Enter Git/HTTP URL") {
     labRef = await vscode.window.showInputBox({
       title: "Git/HTTP URL",
       placeHolder: "https://github.com/user/repo or https://example.com/lab.yml",
@@ -71,6 +72,9 @@ export async function deploySpecificFile() {
     if (!labRef) {
       return;
     }
+  } else {
+    await deployPopularLab();
+    return;
   }
 
   const tempNode = new ClabLabTreeNode(

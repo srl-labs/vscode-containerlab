@@ -6,15 +6,16 @@ import * as os from "os";
 import * as fs from "fs";
 import { outputChannel } from "../extension";
 
-export async function cloneRepo() {
-  const repoUrl = await vscode.window.showInputBox({
-    title: "Git repository URL",
-    placeHolder: "https://github.com/user/repo.git",
-    prompt: "Enter the repository to clone"
-  });
-
+export async function cloneRepo(repoUrl?: string) {
   if (!repoUrl) {
-    return;
+    repoUrl = await vscode.window.showInputBox({
+      title: "Git repository URL",
+      placeHolder: "https://github.com/user/repo.git",
+      prompt: "Enter the repository to clone"
+    });
+    if (!repoUrl) {
+      return;
+    }
   }
 
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;

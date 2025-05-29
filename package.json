@@ -64,7 +64,7 @@
       },
       {
         "view": "localLabs",
-        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)",
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)\n[Clone popular lab](command:containerlab.lab.clonePopularRepo)",
         "when": "workbenchState != empty"
       },
       {
@@ -121,6 +121,12 @@
         "command": "containerlab.lab.deploy.specificFile",
         "title": "Deploy lab file",
         "icon": "$(plus)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.deployPopular",
+        "title": "Deploy popular lab",
+        "icon": "$(star)",
         "category": "Containerlab"
       },
       {
@@ -195,6 +201,12 @@
         "command": "containerlab.lab.cloneRepo",
         "title": "Clone repository from git",
         "icon": "$(repo-clone)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.clonePopularRepo",
+        "title": "Clone popular lab",
+        "icon": "$(star)",
         "category": "Containerlab"
       },
       {
