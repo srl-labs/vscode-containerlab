@@ -1,0 +1,15 @@
+{
+  "iconDefinitions": {
+    "clab": { "iconPath": "./containerlab.svg" }
+  },
+  "fileExtensions": {
+    "clab.yml": "clab",
+    "clab.yaml": "clab"
+  },
+  "fileNames": {
+    ".clab.yml": "clab",
+    ".clab.yaml": "clab"
+  },
+  "folderNames": {},
+  "languageIds": {}
+}

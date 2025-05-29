@@ -38,6 +38,8 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 
 - **Remote Labs:**
   Works perfectly with the: [SSH-Remote extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh) to manage labs on remote servers.
+- **Remote Topology URLs:**
+  Deploy labs directly from GitHub or GitLab by providing a repository or file URL when using the "Deploy an existing lab" command.
 
 ---
 
@@ -64,6 +66,8 @@ Note: The extension will automatically prompt to add your user to the `clab_admi
 2. **Open** a folder or workspace in VS Code containing `.clab.yml` or `.clab.yaml` files.
 3. **Click** on the _Containerlab_ icon in the Activity Bar to view your labs.
 4. **Right-click** on a lab or container to see context menu commands (Deploy, Destroy, Redeploy, etc.).
+
+5. Use the "Deploy an existing lab" command to provide a Git or HTTP URL (e.g., https://github.com/srl-labs/srlinux-vlan-handling-lab/).
 
 ---
 ## Extension Settings

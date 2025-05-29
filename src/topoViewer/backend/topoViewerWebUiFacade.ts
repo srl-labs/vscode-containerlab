@@ -188,6 +188,13 @@ export class TopoViewer {
       }
     );
 
+    const iconUri = vscode.Uri.joinPath(
+      this.context.extensionUri,
+      'resources',
+      'containerlab.png'
+    );
+    panel.iconPath = iconUri;
+
     // Set a context key so that other parts of the extension know TopoViewer is active.
     await vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
     log.info(`Context key 'isTopoviewerActive' set to true`);

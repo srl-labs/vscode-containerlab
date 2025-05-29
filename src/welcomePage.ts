@@ -39,6 +39,11 @@ export class WelcomePage {
       }
     );
 
+    const iconUri = vscode.Uri.file(
+      path.join(this.context.extensionPath, 'resources', 'containerlab.png')
+    );
+    this.panel.iconPath = iconUri;
+
     // Set webview content
     this.panel.webview.html = await this.getWebviewContent();
 
