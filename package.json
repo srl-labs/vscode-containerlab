@@ -54,6 +54,10 @@
         {
           "id": "localLabs",
           "name": "Undeployed Local Labs"
+        },
+        {
+          "id": "helpFeedback",
+          "name": "Help & Feedback"
         }
       ]
     },
@@ -345,6 +349,10 @@
         "title": "Open Port in Browser",
         "icon": "$(globe)",
         "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.openLink",
+        "title": "Open Link"
       },
       {
         "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
