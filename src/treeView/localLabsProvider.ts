@@ -20,13 +20,29 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private treeFilter: string = '';
 
     constructor() {
-        this.watcher.onDidCreate(() => { this.refresh(); });
-        this.watcher.onDidDelete(() => { this.refresh(); });
-        this.watcher.onDidChange(() => { this.refresh(); });
+        this.watcher.onDidCreate(uri => {
+            if (!uri.scheme || uri.scheme === 'file') {
+                this.refresh();
+            }
+        });
+        this.watcher.onDidDelete(uri => {
+            if (!uri.scheme || uri.scheme === 'file') {
+                this.refresh();
+            }
+        });
+        this.watcher.onDidChange(uri => {
+            if (!uri.scheme || uri.scheme === 'file') {
+                this.refresh();
+            }
+        });
         // refresh when a subdir is deleted so we can check if any
         // clab.yaml/yml files have been also deleted as a result
         // of the subdir deletion.
-        this.delSubdirWatcher.onDidDelete(() => { this.refresh(); });
+        this.delSubdirWatcher.onDidDelete(uri => {
+            if (!uri.scheme || uri.scheme === 'file') {
+                this.refresh();
+            }
+        });
     }
 
     refresh(): void {
@@ -62,7 +78,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
         console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
-        const uris = await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN);
+        const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
+            .filter(u => !u.scheme || u.scheme === 'file');
 
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
