@@ -64,7 +64,7 @@
       },
       {
         "view": "localLabs",
-        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)",
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)",
         "when": "workbenchState != empty"
       },
       {
@@ -189,6 +189,12 @@
         "command": "containerlab.editor.topoViewerEditor",
         "title": "New topology file",
         "icon": "$(new-file)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.cloneRepo",
+        "title": "Clone repository from git",
+        "icon": "$(repo-clone)",
         "category": "Containerlab"
       },
       {
@@ -383,6 +389,11 @@
           "command": "containerlab.editor.topoViewerEditor",
           "when": "view == localLabs",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.lab.cloneRepo",
+          "when": "view == localLabs",
+          "group": "navigation@2"
         },
         {
           "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",

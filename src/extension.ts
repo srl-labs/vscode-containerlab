@@ -124,6 +124,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('containerlab.lab.copyPath', cmd.copyLabPath)
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.cloneRepo', cmd.cloneRepo)
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.toggleFavorite', cmd.toggleFavorite)
   );
 
