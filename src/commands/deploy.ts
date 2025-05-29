@@ -36,21 +36,47 @@ export async function deployCleanup(node: ClabLabTreeNode) {
   deployCmd.run(["-c"]);
 }
 
-export function deploySpecificFile() {
+export async function deploySpecificFile() {
+  // Offer the user a choice between selecting a local file or providing a URL.
+  const mode = await vscode.window.showQuickPick(
+    ["Select local file", "Enter Git/HTTP URL"],
+    { title: "Deploy from" }
+  );
 
-  const opts: vscode.OpenDialogOptions = {
-    title: "Select containerlab topology file",
-    filters: {
-      yaml: ["yaml", "yml"]
-    },
-  };
+  if (!mode) {
+    return;
+  }
 
-  vscode.window.showOpenDialog(opts).then(uri => {
+  let labRef: string | undefined;
+
+  if (mode === "Select local file") {
+    const opts: vscode.OpenDialogOptions = {
+      title: "Select containerlab topology file",
+      filters: {
+        yaml: ["yaml", "yml"],
+      },
+    };
+
+    const uri = await vscode.window.showOpenDialog(opts);
     if (!uri || !uri.length) {
       return;
     }
-    const picked = uri[0].fsPath;
-    const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {absolute: picked, relative: ""});
-    deploy(tempNode);
-  });
+    labRef = uri[0].fsPath;
+  } else {
+    labRef = await vscode.window.showInputBox({
+      title: "Git/HTTP URL",
+      placeHolder: "https://github.com/user/repo or https://example.com/lab.yml",
+      prompt: "Provide a repository or file URL",
+    });
+    if (!labRef) {
+      return;
+    }
+  }
+
+  const tempNode = new ClabLabTreeNode(
+    "",
+    vscode.TreeItemCollapsibleState.None,
+    { absolute: labRef, relative: "" }
+  );
+  deploy(tempNode);
 }
