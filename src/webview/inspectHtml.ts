@@ -88,7 +88,7 @@ export function getInspectHtml(
         }
 
         return `
-          <tr>
+          <tr data-node-name="${containerName.toLowerCase()}">
             <td>${containerName}</td>
             <td>${kind}</td>
             <td>${type}</td>
@@ -106,6 +106,7 @@ export function getInspectHtml(
       }).join("");
 
       allTables += `
+        <section class="lab-section" data-lab-name="${labName.toLowerCase()}">
         <h2>${labName}</h2>
         <div class="table-container">
           <table>
@@ -130,6 +131,7 @@ export function getInspectHtml(
             </tbody>
           </table>
         </div>
+        </section>
     `;
   }
 
@@ -167,7 +169,10 @@ export function getInspectHtml(
     <body>
       <div class="header-controls">
         <h1>Containerlab Inspect</h1>
-        <button id="refreshButton" class="secondary"><span class="codicon codicon-refresh"></span> Refresh</button>
+        <div class="header-actions">
+          <input id="searchBox" type="text" placeholder="Search labs or nodes" />
+          <button id="refreshButton" class="secondary"><span class="codicon codicon-refresh"></span> Refresh</button>
+        </div>
       </div>
       ${allTables || "<p>No containers found.</p>"}
       
@@ -196,6 +201,54 @@ export function getInspectHtml(
               protocol: protocol
             });
           }
+        });
+
+        const searchBox = document.getElementById('searchBox');
+        searchBox.addEventListener('input', () => {
+          const query = searchBox.value.toLowerCase();
+          document.querySelectorAll('.lab-section').forEach(section => {
+            const labName = section.getAttribute('data-lab-name') || '';
+            let sectionVisible = false;
+
+            if (query && labName.includes(query)) {
+              section.style.display = '';
+              section.querySelectorAll('tbody tr').forEach(tr => (tr.style.display = ''));
+              return;
+            }
+
+            section.querySelectorAll('tbody tr').forEach(tr => {
+              const node = tr.getAttribute('data-node-name') || '';
+              const rowText = tr.textContent.toLowerCase();
+              const match = node.includes(query) || rowText.includes(query);
+              tr.style.display = !query || match ? '' : 'none';
+              if (match) sectionVisible = true;
+            });
+
+            section.style.display = !query || sectionVisible ? '' : 'none';
+          });
+        });
+
+        document.querySelectorAll('table thead th').forEach((header, idx) => {
+          header.addEventListener('click', () => {
+            const table = header.closest('table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const asc = header.getAttribute('data-sort') !== 'asc';
+
+            rows.sort((a, b) => {
+              const aText = a.children[idx].textContent.trim();
+              const bText = b.children[idx].textContent.trim();
+              const aNum = parseFloat(aText);
+              const bNum = parseFloat(bText);
+              if (!isNaN(aNum) && !isNaN(bNum)) {
+                return asc ? aNum - bNum : bNum - aNum;
+              }
+              return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+            });
+
+            header.setAttribute('data-sort', asc ? 'asc' : 'desc');
+            rows.forEach(r => tbody.appendChild(r));
+          });
         });
       </script>
     </body>
