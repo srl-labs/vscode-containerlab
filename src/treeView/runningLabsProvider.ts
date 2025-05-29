@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 
 import { execSync } from "child_process";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs } from "../extension";
 
 /**
  * Interface corresponding to fields in the
@@ -228,8 +228,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         // 1. Deployed labs first
         // 2. Then by absolute path
         const sortedLabs = Object.values(labs).sort((a, b) => {
-            const isADeployed = a.contextValue === "containerlabLabDeployed";
-            const isBDeployed = b.contextValue === "containerlabLabDeployed";
+            const isADeployed = a.contextValue?.startsWith("containerlabLabDeployed");
+            const isBDeployed = b.contextValue?.startsWith("containerlabLabDeployed");
 
             if (isADeployed && !isBDeployed) {
                 return -1; // a (deployed) comes before b (undeployed)
@@ -403,6 +403,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     icon = c.CtrStateIcons.STOPPED;  // Default if no containers somehow
                 }
 
+                const isFav = favoriteLabs.has(normPath);
+                const contextVal = isFav
+                    ? "containerlabLabDeployedFavorite"
+                    : "containerlabLabDeployed";
                 const labNode = new c.ClabLabTreeNode(
                     label,
                     vscode.TreeItemCollapsibleState.Collapsed, // Always collapsed initially for deployed labs
@@ -410,7 +414,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     container.lab_name,
                     container.owner,
                     discoveredContainers,
-                    "containerlabLabDeployed" // Context value for deployed labs
+                    contextVal,
+                    isFav
                 );
                 labNode.description = labPathObj.relative; // Show relative path
 

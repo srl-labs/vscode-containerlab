@@ -92,6 +92,9 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             const normPath = utils.normalizeLabPath(filePath);
             if (!labs[normPath] && !labPaths.has(normPath)) {
                 const relPath = path.relative(workspaceRoot, filePath);
+                const contextVal = isFavorite
+                    ? "containerlabLabUndeployedFavorite"
+                    : "containerlabLabUndeployed";
                 const labNode = new c.ClabLabTreeNode(
                     relPath,
                     vscode.TreeItemCollapsibleState.None,
@@ -102,7 +105,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
                     undefined,
                     undefined,
                     undefined,
-                    "containerlabLabUndeployed",
+                    contextVal,
                     isFavorite
                 );
 
