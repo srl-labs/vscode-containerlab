@@ -8,6 +8,14 @@ import { outputChannel } from "../extension"; // Import outputChannel for loggin
 
 const execAsync = promisify(exec);
 
+// Store the current panel and context for refresh functionality
+let currentPanel: vscode.WebviewPanel | undefined;
+let currentContext: {
+  type: 'all' | 'single';
+  node?: ClabLabTreeNode;
+  extensionUri: vscode.Uri;
+} | undefined;
+
 // Helper function to normalize inspect data to a flat container list
 function normalizeInspectOutput(parsedData: any): any[] {
     let containers: any[] = [];
@@ -33,7 +41,6 @@ function normalizeInspectOutput(parsedData: any): any[] {
     return containers;
 }
 
-
 export async function inspectAllLabs(context: vscode.ExtensionContext) {
   try {
     const config = vscode.workspace.getConfiguration("containerlab");
@@ -57,6 +64,12 @@ export async function inspectAllLabs(context: vscode.ExtensionContext) {
 
     // Normalize the data (handles both old and new formats)
     const normalizedContainers = normalizeInspectOutput(parsed);
+
+    // Store context for refresh
+    currentContext = {
+      type: 'all',
+      extensionUri: context.extensionUri
+    };
 
     showInspectWebview(normalizedContainers, "Inspect - All Labs", context.extensionUri);
 
@@ -101,6 +114,13 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
     // might be {"lab_name": [...]} or potentially still {"containers": [...]}.
     const normalizedContainers = normalizeInspectOutput(parsed);
 
+    // Store context for refresh
+    currentContext = {
+      type: 'single',
+      node: node,
+      extensionUri: context.extensionUri
+    };
+
     showInspectWebview(normalizedContainers, `Inspect - ${node.label}`, context.extensionUri);
 
   } catch (err: any) {
@@ -111,14 +131,53 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
   }
 }
 
-// showInspectWebview remains unchanged as getInspectHtml already groups by lab_name/labPath
+// showInspectWebview now sets up message handling
 function showInspectWebview(containers: any[], title: string, extensionUri: vscode.Uri) {
+  if (currentPanel) {
+    currentPanel.dispose();
+  }
+
   const panel = vscode.window.createWebviewPanel(
     "clabInspect",
     title,
     vscode.ViewColumn.One,
     { enableScripts: true }
   );
+
+  currentPanel = panel;
+
+  // Handle messages from the webview
+  panel.webview.onDidReceiveMessage(
+    async message => {
+      switch (message.command) {
+        case 'refresh':
+          outputChannel.appendLine('[Inspect Command]: Refresh requested');
+          if (currentContext) {
+            if (currentContext.type === 'all') {
+              await inspectAllLabs({ extensionUri: currentContext.extensionUri } as vscode.ExtensionContext);
+            } else if (currentContext.type === 'single' && currentContext.node) {
+              await inspectOneLab(currentContext.node, { extensionUri: currentContext.extensionUri } as vscode.ExtensionContext);
+            }
+          }
+          break;
+
+        case 'openPort':
+          outputChannel.appendLine(`[Inspect Command]: Open port requested - ${message.containerName}:${message.port}`);
+          const url = `http://localhost:${message.port}`;
+          vscode.env.openExternal(vscode.Uri.parse(url));
+          vscode.window.showInformationMessage(`Opening port ${message.port} in browser`);
+          break;
+      }
+    },
+    undefined,
+    []
+  );
+
+  // Clean up when panel is closed
+  panel.onDidDispose(() => {
+    currentPanel = undefined;
+    currentContext = undefined;
+  });
 
   // The getInspectHtml function should work correctly as long as each container object
   // in the `containers` array has `lab_name` or `labPath`.

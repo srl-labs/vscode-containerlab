@@ -5,19 +5,80 @@ body {
   margin: 1em;
 }
 
+.header-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+  padding: 0.5em 0;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.header-controls h1 {
+  margin: 0;
+  font-size: 1.5em;
+  color: var(--vscode-editor-foreground);
+}
+
+.refresh-button {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.refresh-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.refresh-button:active {
+  transform: scale(0.98);
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
   margin-bottom: 2em;
+  font-size: 13px;
+  table-layout: auto;
 }
 
 thead th {
   background-color: var(--vscode-sideBar-background);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 th, td {
-  border: 1px solid var(--vscode-editor-foreground);
+  border: 1px solid var(--vscode-panel-border);
   padding: 6px 8px;
+  text-align: left;
+}
+
+/* Make some columns narrower to fit everything */
+th:nth-child(3), /* Type */
+td:nth-child(3),
+th:nth-child(7), /* PID */
+td:nth-child(7),
+th:nth-child(11), /* Owner */
+td:nth-child(11),
+th:nth-child(12), /* Ports */
+td:nth-child(12) {
+  white-space: nowrap;
+}
+
+/* Image column can wrap */
+th:nth-child(4), /* Image */
+td:nth-child(4) {
+  word-break: break-word;
+  max-width: 200px;
 }
 
 tbody tr:nth-child(even) {
@@ -28,18 +89,83 @@ tr:hover {
   background-color: var(--vscode-list-hoverBackground);
 }
 
-/* Example state classes */
+/* State classes */
 .state-running {
-  color: limegreen;
+  color: #4caf50;
   font-weight: bold;
 }
 
 .state-exited {
-  color: red;
+  color: #f44336;
   font-weight: bold;
 }
 
 .state-other {
-  color: gold;
+  color: #ff9800;
   font-weight: bold;
+}
+
+/* Port links styling */
+.port-link {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: 0 2px;
+  border-radius: 3px;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+.port-link:hover {
+  text-decoration: underline;
+  background-color: var(--vscode-textLink-activeForeground);
+  opacity: 0.8;
+}
+
+.port-link:active {
+  transform: scale(0.95);
+}
+
+/* Container for scrolling */
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 2em;
+}
+
+h2 {
+  color: var(--vscode-editor-foreground);
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-size: 1.2em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  table {
+    font-size: 12px;
+  }
+  
+  th, td {
+    padding: 4px 6px;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vscode-editor-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
 }
