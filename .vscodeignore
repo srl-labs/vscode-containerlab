@@ -32,3 +32,7 @@ test.clab.yml
 **/*.test.js
 **/__tests__/**
 **/__mocks__/**
+
+#clab files
+clab-*/
+*.clab.yml*
