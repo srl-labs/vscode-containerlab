@@ -15,18 +15,21 @@ import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWeb
 import { WelcomePage } from './welcomePage';
 import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
+import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 
 /** Our global output channel */
 export let outputChannel: vscode.OutputChannel;
 export let treeView: any;
 export let localTreeView: any;
 export let runningTreeView: any;
+export let helpTreeView: any;
 export let username: string;
 export let hideNonOwnedLabsState: boolean = false;
 export let favoriteLabs: Set<string> = new Set();
 export let extensionContext: vscode.ExtensionContext;
 export let localLabsProvider: LocalLabTreeDataProvider;
 export let runningLabsProvider: RunningLabTreeDataProvider;
+export let helpFeedbackProvider: HelpFeedbackProvider;
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -76,6 +79,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   localLabsProvider = new LocalLabTreeDataProvider();
   runningLabsProvider = new RunningLabTreeDataProvider(context);
+  helpFeedbackProvider = new HelpFeedbackProvider();
 
 
   localTreeView = vscode.window.createTreeView('localLabs', {
@@ -86,6 +90,11 @@ export async function activate(context: vscode.ExtensionContext) {
   runningTreeView = vscode.window.createTreeView('runningLabs', {
     treeDataProvider: runningLabsProvider,
     canSelectMany: true
+  });
+
+  helpTreeView = vscode.window.createTreeView('helpFeedback', {
+    treeDataProvider: helpFeedbackProvider,
+    canSelectMany: false
   });
 
   // get the username
@@ -446,6 +455,12 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', () => {
       localLabsProvider.clearTreeFilter();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.openLink', (url: string) => {
+      cmd.openLink(url);
     })
   );
 
