@@ -425,6 +425,13 @@ topology:
       }
     );
 
+    const iconUri = vscode.Uri.joinPath(
+      this.context.extensionUri,
+      'resources',
+      'containerlab.png'
+    );
+    panel.iconPath = iconUri;
+
     this.currentPanel = panel;
 
     try {

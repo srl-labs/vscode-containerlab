@@ -146,6 +146,13 @@ function showInspectWebview(containers: any[], title: string, extensionUri: vsco
     { enableScripts: true }
   );
 
+  const iconUri = vscode.Uri.joinPath(
+    extensionUri,
+    'resources',
+    'containerlab.png'
+  );
+  panel.iconPath = iconUri;
+
   currentPanel = panel;
 
   // Handle messages from the webview
