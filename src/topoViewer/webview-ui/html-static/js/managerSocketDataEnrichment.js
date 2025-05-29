@@ -1,8 +1,49 @@
+//  ./src/topoViewer/webview-ui/html-static/js/managerSocketDataEnrichment.js
+//
+//  +------------------------------------------------------------------+
+//  |  Socket.io/vscode message  Feed: "clab-tree-provider-data"       |
+//  |  (Extension Backend sends lab data via socket.io/vscode message) |
+//  +------------------------------------------------------------------+
+//                                  |
+//                                  v
+//                      +-----------------------+
+//                      |     Lab Data          |
+//                      | (clabTreeProviderData)|
+//                      +-----------------------+
+//                          |                |
+//                          v                v
+// +-------------------------------+   +-------------------------------+
+// |  socketDataEncrichmentLink()  |   | socketDataEncrichmentNode()   |
+// | (Enriches Cytoscape Edges)    |   |  (Enriches Cytoscape Nodes)   |
+// +-------------------------------+   +-------------------------------+
+//                   |                                  |
+//                   | Updates edge data (MAC, MTU,     | Updates node data (state, image, longname)
+//                   | type for source/target)          |
+//                   v                                  v
+//        +-----------------------+         +-----------------------+
+//        |   Cytoscape Edges     |         |    Cytoscape Nodes    |
+//        +-----------------------+         +-----------------------+
+
 'use strict';
 
 /**
- * Enrich Cytoscape edge data with link specific attributes from lab data.
- * @param {Object} labData Raw lab data from the backend.
+ * Enriches Cytoscape edge elements with interface attributes (MAC, MTU, and type) 
+ * from container interface data provided in labData.
+ * 
+ * This function processes backend lab data to extract interface information from 
+ * each container inside a lab whose name matches `globalLabName`. It builds a mapping
+ * from a composite key (`labName::nodeName::interfaceLabel`) to interface details.
+ * 
+ * Then it iterates over all Cytoscape edges and updates each edge's source or target 
+ * data if it matches the composite key's node name and endpoint.
+ * 
+ * Fields added to Cytoscape edge:
+ *  - sourceMac / targetMac
+ *  - sourceMtu / targetMtu
+ *  - sourceType / targetType
+ *
+ * @param {Object} labData - Raw lab data from the backend. Should follow the structure of
+ *                           the "clab-tree-provider-data" feed from the extension backend.
  */
 function socketDataEncrichmentLink(labData) {
   const linkMap = new Map();
@@ -36,8 +77,22 @@ function socketDataEncrichmentLink(labData) {
 }
 
 /**
- * Enrich Cytoscape node data with node attributes from lab data.
- * @param {Object} labData Raw lab data from the backend.
+ * Enriches Cytoscape node elements with container attributes (state, image, longname, and management IPs)
+ * extracted from the lab data.
+ * 
+ * This function processes backend lab data and targets the lab whose name matches `globalLabName`.
+ * It constructs a mapping between each container's longname and its corresponding metadata.
+ * 
+ * Then it iterates over all Cytoscape nodes and, if the node's `extraData.shortname` matches
+ * a container `longname`, it updates the node's `extraData` with:
+ *  - state: container's operational state (e.g. running, exited)
+ *  - image: container image used (e.g. alpine, sros)
+ *  - longname: container's long form name (e.g. clab-demo-r1)
+ *  - mgmtIpv4Address: management IPv4 address
+ *  - mgmtIpv6Address: management IPv6 address
+ *
+ * @param {Object} labData - Raw lab data from the backend. Expected to match
+ *                           the "clab-tree-provider-data" format.
  */
 function socketDataEncrichmentNode(labData) {
   const nodeMap = new Map();
