@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.100.0"
@@ -54,6 +54,10 @@
         {
           "id": "localLabs",
           "name": "Undeployed Local Labs"
+        },
+        {
+          "id": "helpFeedback",
+          "name": "Help & Feedback"
         }
       ]
     },
@@ -64,13 +68,20 @@
       },
       {
         "view": "localLabs",
-        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)",
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)\n[Clone popular lab](command:containerlab.lab.clonePopularRepo)",
         "when": "workbenchState != empty"
       },
       {
         "view": "localLabs",
         "contents": "No workspace open\n[Open folder](command:vscode.openFolder)",
         "when": "workbenchState == empty"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "containerlab-icons",
+        "label": "Containerlab",
+        "path": "./resources/containerlab-icon-theme.json"
       }
     ],
     "commands": [
@@ -94,6 +105,16 @@
         "icon": "$(copy)"
       },
       {
+        "command": "containerlab.lab.toggleFavorite",
+        "title": "Toggle Favorite",
+        "icon": "$(star)"
+      },
+      {
+        "command": "containerlab.lab.delete",
+        "title": "Delete lab file",
+        "icon": "$(trash)"
+      },
+      {
         "command": "containerlab.lab.deploy",
         "title": "Deploy",
         "icon": "$(play)",
@@ -109,6 +130,12 @@
         "command": "containerlab.lab.deploy.specificFile",
         "title": "Deploy lab file",
         "icon": "$(plus)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.deployPopular",
+        "title": "Deploy popular lab",
+        "icon": "$(star)",
         "category": "Containerlab"
       },
       {
@@ -152,22 +179,21 @@
         "category": "Containerlab",
         "icon": "$(info)"
       },
-      {
-        "command": "containerlab.lab.graph",
-        "title": "Graph (Web)",
-        "icon": "$(graph-line)",
-        "category": "Containerlab"
-      },
-      {
-        "command": "containerlab.lab.graph.drawio",
-        "title": "Graph (draw.io)",
-        "category": "Containerlab"
-      },
-      {
-        "command": "containerlab.lab.graph.drawio.interactive",
-        "title": "Graph (draw.io, Interactive)",
-        "category": "Containerlab"
-      },
+        {
+          "command": "containerlab.lab.graph.drawio.horizontal",
+          "title": "Graph (draw.io, Horizontal)",
+          "category": "Containerlab"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.vertical",
+          "title": "Graph (draw.io, Vertical)",
+          "category": "Containerlab"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "title": "Graph (draw.io, Interactive)",
+          "category": "Containerlab"
+        },
       {
         "command": "containerlab.lab.graph.topoViewer",
         "title": "Graph (TopoViewer)",
@@ -178,6 +204,18 @@
         "command": "containerlab.editor.topoViewerEditor",
         "title": "New topology file",
         "icon": "$(new-file)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.cloneRepo",
+        "title": "Clone repository from git",
+        "icon": "$(repo-clone)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.clonePopularRepo",
+        "title": "Clone popular lab",
+        "icon": "$(star)",
         "category": "Containerlab"
       },
       {
@@ -313,6 +351,10 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.openLink",
+        "title": "Open Link"
+      },
+      {
         "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
         "title": "Hide non-owned"
       },
@@ -345,6 +387,10 @@
       {
         "id": "containerlab.submenu.node.copy",
         "label": "Copy"
+      },
+      {
+        "id": "containerlab.submenu.lab.graph.drawio",
+        "label": "Graph (draw.io)"
       }
     ],
     "menus": {
@@ -368,6 +414,11 @@
           "command": "containerlab.editor.topoViewerEditor",
           "when": "view == localLabs",
           "group": "navigation@1"
+        },
+        {
+          "command": "containerlab.lab.cloneRepo",
+          "when": "view == localLabs",
+          "group": "navigation@2"
         },
         {
           "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
@@ -471,24 +522,14 @@
           "group": "clabLabActions@6"
         },
         {
-          "command": "containerlab.lab.graph",
+          "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@0"
         },
         {
-          "command": "containerlab.lab.graph.drawio",
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.interactive",
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@2"
-        },
-        {
           "command": "containerlab.lab.graph.topoViewer",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@3"
+          "group": "graph@1"
         }
       ],
       "view/item/context": [
@@ -513,7 +554,7 @@
         },
         {
           "command": "containerlab.editor.topoViewerEditor.open",
-          "when": "viewItem == containerlabLabUndeployed",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
           "group": "labFile@1",
           "title": "Edit Topology (TopoEditor)"
         },
@@ -533,43 +574,72 @@
           "group": "labFile@4"
         },
         {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Add to Favorites",
+          "when": "view == localLabs && viewItem =~ /containerlabLab(Deployed|Undeployed)$/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Add to Favorites",
+          "when": "view == runningLabs && viewItem =~ /containerlabLab(Deployed|Undeployed)$/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Remove from Favorites",
+          "when": "view == localLabs && viewItem =~ /containerlabLab.*Favorite/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Remove from Favorites",
+          "when": "view == runningLabs && viewItem =~ /containerlabLab.*Favorite/",
+          "group": "navigation@0"
+        },
+        {
           "command": "containerlab.lab.deploy",
-          "when": "viewItem == containerlabLabUndeployed",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
           "group": "navigation@1"
         },
         {
           "command": "containerlab.lab.deploy.cleanup",
-          "when": "viewItem == containerlabLabUndeployed",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
           "group": "navigation@2"
         },
         {
           "command": "containerlab.lab.destroy",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@3"
         },
         {
           "command": "containerlab.lab.destroy.cleanup",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@4"
         },
         {
           "command": "containerlab.lab.redeploy",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@5"
         },
         {
           "command": "containerlab.lab.redeploy.cleanup",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@6"
         },
         {
           "command": "containerlab.lab.save",
-          "when": "viewItem =~ /containerlabLab/",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@7"
         },
         {
+          "command": "containerlab.lab.delete",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
+          "group": "navigation@8"
+        },
+        {
           "command": "containerlab.lab.sshToAllNodes",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "connect@0"
         },
         {
@@ -579,28 +649,18 @@
         },
         {
           "command": "containerlab.inspectOneLab",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@9"
         },
         {
-          "command": "containerlab.lab.graph",
+          "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
           "group": "graph@0"
         },
         {
-          "command": "containerlab.lab.graph.drawio",
-          "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.interactive",
-          "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@2"
-        },
-        {
           "command": "containerlab.lab.graph.topoViewer",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@3"
+          "group": "graph@1"
         },
         {
           "command": "containerlab.node.start",
@@ -734,11 +794,11 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
-          "command": "containerlab.lab.graph",
+          "command": "containerlab.lab.graph.drawio.horizontal",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
-          "command": "containerlab.lab.graph.drawio",
+          "command": "containerlab.lab.graph.drawio.vertical",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
@@ -782,6 +842,20 @@
         {
           "command": "containerlab.node.copyImage",
           "group": "navigation@6"
+        }
+      ],
+      "containerlab.submenu.lab.graph.drawio": [
+        {
+          "command": "containerlab.lab.graph.drawio.horizontal",
+          "group": "graph@0"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.vertical",
+          "group": "graph@0"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "group": "graph@0"
         }
       ]
     },
@@ -876,6 +950,16 @@
           "default": false,
           "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
         },
+        "containerlab.deploy.extraArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Additional command-line options appended to all 'containerlab deploy' and 'containerlab redeploy' commands."
+        },
+        "containerlab.destroy.extraArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Additional command-line options appended to all 'containerlab destroy' commands."
+        },
         "containerlab.showWelcomePage": {
           "type": "boolean",
           "default": true,
@@ -909,16 +993,16 @@
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.15.17",
+    "@types/node": "^22.15.21",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
-    "chai": "^4.3.10",
+    "chai": "^5.2.0",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
     "esbuild": "^0.25.4",
     "eslint": "^9.27.0",
-    "mocha": "^11.3.0",
+    "mocha": "^11.5.0",
     "mochawesome": "^7.1.3",
     "sinon": "^20.0.0",
     "ts-node": "^10.9.2",
@@ -935,7 +1019,7 @@
     "@types/cytoscape": "^3.21.9",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
-    "@vscode/vsce": "^3.4.1",
+    "@vscode/vsce": "^3.4.2",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "cytoscape": "^3.32.0",

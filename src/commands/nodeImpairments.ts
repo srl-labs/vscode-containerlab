@@ -144,6 +144,13 @@ export async function manageNodeImpairments(
     { enableScripts: true }
   );
 
+  const iconUri = vscode.Uri.joinPath(
+    context.extensionUri,
+    'resources',
+    'containerlab.png'
+  );
+  panel.iconPath = iconUri;
+
   panel.webview.html = getNodeImpairmentsHtml(
     panel.webview,
     node.name,

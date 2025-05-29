@@ -38,7 +38,7 @@ describe('buildCytoscapeElements delegation', () => {
     expect(spy.calledTwice).to.be.true;
     const nodeWith = withMgmt.find(e => e.group === 'nodes');
     const nodeWithout = withoutMgmt.find(e => e.group === 'nodes');
-    expect(nodeWith?.data.extraData.mgmtIpv4Addresss).to.equal('10.0.0.1');
-    expect(nodeWithout?.data.extraData.mgmtIpv4Addresss).to.equal('');
+    expect(nodeWith?.data.extraData.mgmtIpv4Address).to.equal('10.0.0.1');
+    expect(nodeWithout?.data.extraData.mgmtIpv4Address).to.equal('');
   });
 });

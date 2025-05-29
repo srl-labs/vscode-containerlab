@@ -1,5 +1,23 @@
 # Change Log
 
+## [0.13.3] - 2025-05-29
+* Deploy labs from Git/HTTP URLs and local files
+* Improved favorite lab handling
+* TopoViewerEditor enhancements:
+  * Queued updates and YAML schema validation
+  * Offline assets and group manager so users can create groups
+* Enhanced Inspect labs webview
+* Draw.io graph generation commands for horizontal and vertical layouts
+* Additional deploy/destroy arguments via settings
+* Tree view now filters container interfaces
+* TreeView overhaul:
+  * Separate views for running and undeployed labs
+  * Show local folder structure for undeployed labs
+  * Button to hide labs not owned by the user
+  * View welcome shown when no labs are discovered
+  * Search button on both views for filtering labs
+* Bundled extension resources resulting in a ~6 MB VSIX
+
 ## [0.12.1] - 2025-05-01
 * TopoEditor: Now supports link editing
 * TopoViewer: Can now be used with undeployed labs
