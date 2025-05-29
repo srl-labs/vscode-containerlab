@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { cloneRepo } from './cloneRepo';
+import { cloneRepoFromUrl } from './cloneRepo';
 import { fetchPopularRepos, fallbackRepos, PopularRepo } from '../helpers/popularLabs';
 
 async function getRepos(): Promise<PopularRepo[]> {
@@ -29,5 +29,5 @@ export async function clonePopularRepo() {
     return;
   }
 
-  await cloneRepo(pick.repo);
+  await cloneRepoFromUrl(pick.repo);
 }

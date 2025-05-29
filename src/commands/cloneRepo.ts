@@ -6,7 +6,7 @@ import * as os from "os";
 import * as fs from "fs";
 import { outputChannel } from "../extension";
 
-export async function cloneRepo(repoUrl?: string) {
+export async function cloneRepoFromUrl(repoUrl?: string) {
   if (!repoUrl) {
     repoUrl = await vscode.window.showInputBox({
       title: "Git repository URL",
@@ -41,4 +41,25 @@ export async function cloneRepo(repoUrl?: string) {
     vscode.window.showInformationMessage(`Repository cloned to ${dest}`);
     vscode.commands.executeCommand('containerlab.refresh');
   });
+}
+
+export async function cloneRepo() {
+  const choice = await vscode.window.showQuickPick(
+    [
+      { label: 'Clone via Git URL', action: 'url' },
+      { label: 'Clone popular lab', action: 'popular' },
+    ],
+    { title: 'Clone repository' }
+  );
+
+  if (!choice) {
+    return;
+  }
+
+  if (choice.action === 'url') {
+    await cloneRepoFromUrl();
+  } else if (choice.action === 'popular') {
+    const mod = await import('./clonePopularRepo');
+    await mod.clonePopularRepo();
+  }
 }
