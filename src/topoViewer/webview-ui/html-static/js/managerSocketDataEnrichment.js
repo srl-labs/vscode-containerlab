@@ -136,6 +136,7 @@ function socketDataEncrichmentNode(labData) {
         };
         node.data('extraData', updatedExtraData);
       }
+
     });
   });
 }
