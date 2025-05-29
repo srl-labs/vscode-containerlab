@@ -48,13 +48,17 @@
 function socketDataEncrichmentLink(labData) {
   const linkMap = new Map();
 
+  // Iterate through all lab entries and gather interface data from matching lab
   Object.values(labData).forEach(lab => {
     if (lab.name !== globalLabName || !Array.isArray(lab.containers)) return;
 
     lab.containers.forEach(container => {
       if (typeof container.label !== 'string' || !Array.isArray(container.interfaces)) return;
 
+      // Derive short node name by stripping lab prefix from the container label
       const nodeName = container.label.split(lab.name)[1]?.replace(/^-/, '') || container.label;
+      
+      // Build key per interface and store MAC/MTU/type
       container.interfaces.forEach(iface => {
         const key = `${lab.name}::${nodeName}::${iface.label}`;
         linkMap.set(key, { mac: iface.mac, mtu: iface.mtu, type: iface.type });
@@ -62,6 +66,7 @@ function socketDataEncrichmentLink(labData) {
     });
   });
 
+  // Match the key parts with Cytoscape edge's source/target endpoint data
   linkMap.forEach((iface, key) => {
     const [, nodeName, endpoint] = key.split('::');
     cy.edges().forEach(edge => {
@@ -96,7 +101,8 @@ function socketDataEncrichmentLink(labData) {
  */
 function socketDataEncrichmentNode(labData) {
   const nodeMap = new Map();
-
+  
+  // Build node mapping from container longname -> metadata
   Object.values(labData).forEach(lab => {
     if (lab.name !== globalLabName || !Array.isArray(lab.containers)) return;
 
@@ -115,6 +121,7 @@ function socketDataEncrichmentNode(labData) {
     });
   });
 
+  // Enrich each Cytoscape node that matches by shortname === longname
   nodeMap.forEach((nodeData, longname) => {
     cy.nodes().forEach(node => {
       const shortname = node.data()?.extraData?.shortname;
