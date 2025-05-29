@@ -15,8 +15,8 @@ export class ManagerViewportPanels {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
   private isPanel01Cy = false;
-  private nodeClicked = false;
-  private edgeClicked = false;
+  public nodeClicked: boolean = false;
+  public edgeClicked: boolean = false;
   // Variables to store the current selection for dropdowns.
   private panelNodeEditorKind: string = "nokia_srlinux";
   private panelNodeEditorTopoViewerRole: string = "pe";
@@ -34,15 +34,16 @@ export class ManagerViewportPanels {
     this.viewportButtons = viewportButtons;
     this.cy = cy;
     this.messageSender = messageSender;
+    this.toggleHidePanels("cy"); // Initialize the toggle for hiding panels.
   }
 
   /**
-   * Registers a click event on the Cytoscape container to toggle UI panels.
+   * Toggle to hide UI panels.
    * If no node or edge was clicked, it hides overlay panels and viewport drawers.
    *
    * @param containerId - The ID of the Cytoscape container (e.g., "cy").
    */
-  public registerTogglePanels(containerId: string): void {
+  public toggleHidePanels(containerId: string): void {
     const container = document.getElementById(containerId);
     if (!container) {
       console.warn("Cytoscape container not found:", containerId);
@@ -209,10 +210,12 @@ export class ManagerViewportPanels {
       const panelLinkEditorIdLabel = document.getElementById("panel-link-editor-id");
       const panelLinkEditorIdLabelSrcInput = document.getElementById("panel-link-editor-source-endpoint") as HTMLInputElement | null;
       const panelLinkEditorIdLabelTgtInput = document.getElementById("panel-link-editor-target-endpoint") as HTMLInputElement | null;
-      const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
+      // const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
       const panelLinkEditorIdLabelSaveBtn = document.getElementById("panel-link-editor-save-button");
 
-      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
+      // if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
+            if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelSaveBtn) {
+
         console.error("panelEdgeEditor: missing required DOM elements");
         return;
       }
@@ -241,9 +244,9 @@ export class ManagerViewportPanels {
       panelLinkEditor.style.display = "block";
 
       // 4) Re-wire Close button (one-shot)
-      const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
-      panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
-      freshClose.addEventListener("click", () => panelLinkEditor.style.display = "none", { once: true });
+      // const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
+      // panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
+      // freshClose.addEventListener("click", () => panelLinkEditor.style.display = "none", { once: true });
 
       // 5) Wire real-time preview (optional but helpful)
       panelLinkEditorIdLabelSrcInput.addEventListener("input", updateLabel);
@@ -535,6 +538,17 @@ export class ManagerViewportPanels {
     }
     return [];
   }
+
+  /**
+   * Displays and populates the node's parent group editor panel.
+   *
+   * @param newParentId - The new parent ID in the format "group:level".
+   *
+   * panelNodeEditorGroupEditor is not implemented here, instead the panel for group editor is directly managed in viewportButtons class
+   * due to the complexity of managing group and the need for a more comprehensive UI handling.
+   *
+   */
+
 
   /**
    * Removes a DOM element by its ID.

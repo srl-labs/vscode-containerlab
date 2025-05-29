@@ -330,7 +330,7 @@ export class TopoViewerAdaptorClab {
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
-              mgmtIpv4Addresss: opts.includeContainerData ? `${containerData?.IPv4Address}` : '',
+              mgmtIpv4Address: opts.includeContainerData ? `${containerData?.IPv4Address}` : '',
               mgmtIpv6Address: opts.includeContainerData ? `${containerData?.IPv6Address}` : '',
               mgmtIpv6AddressLength: 0,
               mgmtNet: '',

@@ -52,51 +52,47 @@ return `
 <body>
 
   <nav class="navbar is-fixed-top has-background-4a px-3 py-1" role="navigation" aria-label="main navigation">
-    <div class="is-flex is-justify-content-flex-start">
+    <!-- left side: logo + title -->
+    <div class="navbar-brand">
       <div class="pt-1 pr-2">
         <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-          <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
+          <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image" />
         </a>
       </div>
-      <div class="p-0 is-flex is-justify-content-space-evenly is-flex-direction-column">
-        <p class="title    m-0 px-1 py-0   is-4 is-unselectable has-text-weight-normal has-text-white"> containerlab</p>
-        <p class="subtitle m-0 px-1 py-0   is-6                 has-text-weight-light  has-text-white" id="ClabSubtitle">
-          Editor ::: Topology name: Königsberger Brücken</p>
+      <div class="p-0 is-flex is-flex-direction-column">
+        <p class="title is-4 m-0 is-unselectable has-text-weight-normal has-text-white">
+          containerlab
+        </p>
+        <p class="subtitle is-6 m-0 has-text-weight-light has-text-white" id="ClabSubtitle">
+          Viewer ::: Topology name: Königsberger Brücken
+        </p>
       </div>
     </div>
-    <!-- 
-    <div class="level-right">
-      <div class="level-item">
-        <div class="dropdown is-hoverable is-right">
-          <div class="dropdown-trigger">
-            <button class="button is-small">
-              <i class="icon fas fa-bars" aria-hidden="true"></i>
+
+    <!-- right side: burger dropdown always on the right edge -->
+    <div class="navbar-end">
+      <div class="dropdown is-hoverable is-right">
+        <div class="dropdown-trigger">
+          <button class="button is-medium navbar-element-4a button-no-outline">
+              <span class="icon">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+              </span>
+          </button>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu" role="menu">
+          <div class="dropdown-content">
+            <button id="about" title="" onclick="showPanelAbout();" class="dropdown-item is-small">
+              About
             </button>
+            <!-- 
+            <hr class="dropdown-divider py-0" />
+            …other items… 
+            -->
           </div>
-          <div class="dropdown-menu" id="dropdown-menu" role="menu">
-            <div class="dropdown-content">
-              <a id="about" href="#" onclick="showPanelAbout(event);"
-                class="dropdown-item label has-text-weight-normal is-small py-0">About TopoViewer</a>
-
-              <hr class="dropdown-divider py-0">
-              <a id="getAllEndpointDetail" href="#" onclick="getActualNodesEndpoints(event);"
-                class="dropdown-item label has-text-weight-normal is-small py-0">Action - Retrieve Actual Endpoint
-                Label</a>
-              <a id="logMessagesDropdownItem" href="#" onclick="showPanelLogMessages(event);"
-                class="dropdown-item label has-text-weight-normal is-small py-0">Action - Log Messages</a>
-              <hr class="dropdown-divider py-0">
-              <a id="clabClientDropdownItem" href="#" onclick="showPanelTopoViewerClient();"
-                class="dropdown-item label has-text-weight-normal is-small py-0">TopoViewer Helper App</a>
-            </div>
-          </div>
-        </div>
-
-        <div id="nokia-logo">
-          <img id="nokia-logo-img" src="${imagesUri}/containerlab.svg" alt="Containerlab Logo" class="logo-image">
         </div>
       </div>
     </div>
-    -->
+
   </nav>
 
   <div id="root-div">
@@ -1135,6 +1131,96 @@ return `
         </div>
       </div>
     </div>
+    <!-- About Panel with Improved Semantic Markup & Responsive Design -->
+    <aside id="panel-topoviewer-about" class="panel panel-overlay is-link" role="complementary" aria-labelledby="about-heading" style="display: none;">
+      <header class="panel-heading is-size-7" id="about-heading">
+        About TopoViewer
+      </header>
+
+      <div class="panel-block py-2">
+        <article class="content is-small px-2" style="max-height: 280px; overflow-y: auto;">
+          <section class="mb-4">
+            <p>
+              TopoViewer is a powerful, interactive network-topology visualization framework that makes it easy to explore
+              your infrastructure.
+              In this vscode-Containerlab extension, it is customized to provide an intuitive view of your Containerlab
+              topologies.
+            </p>
+
+            <p><strong>Author</strong></p>
+            <p>
+              Designed and developed by
+              <strong><a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener">Asad
+                  Arafat</a></strong>
+            </p>
+
+            <p><strong>Key Features</p>
+            <ul>
+              <li>Effortlessly visualize your Containerlab topologies with an intuitive interface.</li>
+              <li>Click on nodes and links to explore detailed attributes on demand.</li>
+              <li>Full GUI to create and edit Containerlab topology files.</li>
+            </ul>
+
+            <p><strong>Getting Started</strong></p>
+            <ul>
+              <li>Click on nodes and links to explore your network.</li>
+              <li>Use the layout feature to fine-tune your topology view.</li>
+              <li>Right click on nodes and links to perform action in editor mode.</li>
+            </ul>
+
+            <p><strong>Viewer Shortcuts</strong></p>
+            <ul>
+              <li><strong>Ctrl + Click:</strong> Connect to node via SSH</li>
+              <li><strong>Shift + Click:</strong> Create/reassign group</li>
+              <li><strong>Alt + Click:</strong> Release node/remove empty group</li>
+              <li><strong>Drag + Drop:</strong> Assign node to group</li>
+            </ul>
+
+            <p><strong>Editor Shortcuts</strong></p>
+            <ul>
+              <li><strong>Shift + Click (canvas):</strong> Add node at pointer</li>
+              <li><strong>Shift + Click (node):</strong> Begin link creation</li>
+              <li><strong>Alt + Click (node):</strong> Delete node</li>
+              <li><strong>Alt + Click (link):</strong> Delete link</li>
+            </ul>
+
+            <p><strong>Repositories</strong></p>
+            <ul>
+              <li>
+                <strong>VSCode Containerlab extension:</strong>
+                <a href="https://github.com/srl-labs/vscode-containerlab/" target="_blank" rel="noopener">
+                  github.com/srl-labs/vscode-containerlab
+                </a>
+              </li>
+              <li>
+                <strong>Original TopoViewer repo:</strong>
+                <a href="https://github.com/asadarafat/topoViewer" target="_blank" rel="noopener">
+                  github.com/asadarafat/topoViewer
+                </a>
+              </li>
+            </ul>
+
+            <p><strong>Special Thanks</strong></p>
+            <ul>
+              <li><strong><a href="https://www.linkedin.com/in/rdodin/" target="_blank" rel="noopener">Roman
+                    Dodin</a></strong> – Early-stage guidance</li>
+              <li><strong><a href="https://www.linkedin.com/in/siva19susi/" target="_blank" rel="noopener">Siva
+                    Sivakumar</a></strong> – Bulma CSS integration</li>
+              <li><strong><a href="https://www.linkedin.com/in/gatot-susilo-b073166/" target="_blank" rel="noopener">Gatot
+                    Susilo</a></strong> – Komodo2 integration</li>
+              <li><strong><a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/" target="_blank"
+                    rel="noopener">Gusman Dharma Putra</a></strong> – Komodo2 contributions</li>
+              <li><strong><a href="https://www.linkedin.com/in/sven-wisotzky-44788333/" target="_blank" rel="noopener">Sven
+                    Wisotzky</a></strong> – Full-stack optimizations</li>
+              <li><strong><a href="https://linkedin.com/in/florian-schwarz-812a34145" target="_blank" rel="noopener">Florian
+                    Schwarz</a></strong> – VSCode plugin integration</li>
+              <li><strong><a href="https://linkedin.com/in/kaelem-chandra" target="_blank" rel="noopener">Kaelem
+                    Chandra</a></strong> – Plugin maintenance & support</li>
+            </ul>
+          </section>
+        </article>
+      </div>
+    </aside>
 
     <!-- Link Properties Panel with Improved Semantic Markup & Responsive Design -->
     <!-- Link Properties Panel with Improved Semantic Markup & Responsive Design -->

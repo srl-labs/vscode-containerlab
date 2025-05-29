@@ -199,14 +199,15 @@ export function getHTMLTemplate(
                 </p>
         -->
 
-        <!-- <p class="control p-0">
-          <button id="viewport-reload-topo" title="Add Group" onclick="viewportButtonsAddGroup()"
+        <p class="control p-0">
+          <button id="viewport-add-group" title="Add Group" 
+            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.createNewParent(window.topoViewerEditorEngine.cy, {createDummyChild: true}); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-notes-medical"></i>
             </span>
           </button>
-        </p> -->
+        </p>
 
         <!-- <p class="control p-0">
           <button id="viewport-capture-viewport" title="Capture Viewport as SVG" onclick="viewportButtonsCaptureViewportAsSvg(cy)"
@@ -904,6 +905,7 @@ export function getHTMLTemplate(
 
         <div class="panel-block p-0">
           <div class="column px-0">
+
             <!-- Label Position -->
             <div class="column my-auto is-11">
               <div class="panel-content">
@@ -919,7 +921,7 @@ export function getHTMLTemplate(
                       <div class="dropdown-trigger">
                         <button class="button is-size-7 is-fullwidth" aria-haspopup="true"
                           aria-controls="panel-node-editor-parent-label-dropdown-menu"
-                          onclick="panelNodeEditorParentToggleDropdown()">
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.panelNodeEditorParentToggleDropdown()">
                           <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
                           <span class="icon is-small">
                             <i class="fas fa-angle-down" aria-hidden="true"></i>
@@ -984,24 +986,58 @@ export function getHTMLTemplate(
           <div class="column px-0">
             <div class="column my-auto is-11">
               <div class="panel-content">
-                <div class="columns py-auto">
-                  <div class="column is-4 p-1"></div>
+                <div class="columns is-mobile is-multiline py-auto">
+
+                  <!-- 
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
+                  </div>
+                  
+                  
                   <div class="column is-8 p-1 pl-3">
                     <div class="field is-grouped is-grouped-right">
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input">
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-delete-button"
-                          onclick="nodeParentRemoval()">Remove
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">Remove
                         </button>
-                        <!-- <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
-                          onclick="nodeParentPropertiesUpdateClose()">Close
-                        </button> -->
+                        <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
+                          onclick="viewportButtonsAddGroup.nodeParentPropertiesUpdateClose()">Close
+                        </button>
                         <button class="button is-link is-outlined is-small"
-                          onclick="nodeParentPropertiesUpdate()">Update
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">Update
                         </button>
                       </div>
                     </div>
                   </div>
+                  -->
+
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
+                  </div>
+                  <div class="column is-8 p-1">
+                    <div class="field is-grouped is-grouped-right p-0 pr-5">
+                      <div class="control">
+                        <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
+                      </div>
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-update-button"
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">
+                          Save
+                        </button>
+                      </div>
+
+                     
+                      <div class="control">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-remove-button"
+                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">
+                          Delete
+                        </button>
+                      </div>
+                     
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -1012,7 +1048,7 @@ export function getHTMLTemplate(
 
 
     <!-- node Properties Editor Panel with Improved Semantic Markup & Responsive Design -->
-    <section class="panel is-link" id="panel-node-editor" aria-labelledby="node-editor-heading" style="display: none;">
+    <section class="panel panel-overlay is-link" id="panel-node-editor" aria-labelledby="node-editor-heading" style="display: none;">
       <header class="panel-heading is-size-7" id="node-editor-heading">
         Node Properties Editor
       </header>
@@ -1171,23 +1207,23 @@ export function getHTMLTemplate(
                   <div class="column is-full-mobile is-half-tablet is-4 p-1">
                     <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
                   </div>
-                  <div class="column is-8 p-1 pl-3">
-                    <div class="field is-grouped">
+                  <div class="column is-8 p-1">
+                    <div class="field is-grouped is-grouped-right p-0 pr-5">
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-node-editor-save-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-save-button">
                           Save
                         </button>
                       </div>
+                      <!--
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-node-editor-close-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-close-button">
                           Close
                         </button>
                       </div>
+                      -->
                     </div>
                   </div>
                 </div>
@@ -1200,7 +1236,7 @@ export function getHTMLTemplate(
     </section>
 
     <!-- link Properties Editor Panel with Improved Semantic Markup & Responsive Design -->
-    <section class="panel is-link" id="panel-link-editor" aria-labelledby="link-editor-heading" style="display: none;">
+    <section class="panel panel-overlay is-link" id="panel-link-editor" aria-labelledby="link-editor-heading" style="display: none;">
       <header class="panel-heading is-size-7" id="link-editor-heading">
         Link Properties Editor
       </header>
@@ -1279,23 +1315,23 @@ export function getHTMLTemplate(
                   <div class="column is-full-mobile is-half-tablet is-4 p-1">
                     <label class="label is-size-7 has-text-right has-text-weight-medium"></label>
                   </div>
-                  <div class="column is-8 p-1 pl-3">
-                    <div class="field is-grouped">
+                  <div class="column is-8 p-1">
+                    <div class="field is-grouped is-grouped-right p-0 pr-5">
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input" aria-label="File input">
                       </div>
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-link-editor-save-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-link-editor-save-button">
                           Save
                         </button>
                       </div>
+                       <!--
                       <div class="control">
-                        <button type="button" class="button is-link is-outlined is-small"
-                          id="panel-link-editor-close-button">
+                        <button type="button" class="button is-link is-outlined is-small" id="panel-link-editor-close-button">
                           Close
                         </button>
                       </div>
+                      -->
                     </div>
                   </div>
                 </div>
