@@ -114,7 +114,7 @@ describe('LocalLabTreeDataProvider', () => {
 
     expect(nodes).to.have.lengthOf(2);
     expect(nodes![0].labPath.absolute).to.equal('/workspace/b/lab2.clab.yaml');
-    expect(nodes![0].contextValue).to.equal('containerlabLabUndeployed');
+    expect(nodes![0].contextValue).to.equal('containerlabLabUndeployedFavorite');
     expect(nodes![0].favorite).to.be.true;
   });
 

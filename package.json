@@ -511,7 +511,7 @@
         },
         {
           "command": "containerlab.editor.topoViewerEditor.open",
-          "when": "viewItem == containerlabLabUndeployed",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
           "group": "labFile@1",
           "title": "Edit Topology (TopoEditor)"
         },
@@ -532,37 +532,56 @@
         },
         {
           "command": "containerlab.lab.toggleFavorite",
-          "when": "view == localLabs && viewItem =~ /containerlabLab/",
+          "title": "Add to Favorites",
+          "when": "view == localLabs && viewItem =~ /containerlabLab(Deployed|Undeployed)$/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Add to Favorites",
+          "when": "view == runningLabs && viewItem =~ /containerlabLab(Deployed|Undeployed)$/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Remove from Favorites",
+          "when": "view == localLabs && viewItem =~ /containerlabLab.*Favorite/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.toggleFavorite",
+          "title": "Remove from Favorites",
+          "when": "view == runningLabs && viewItem =~ /containerlabLab.*Favorite/",
           "group": "navigation@0"
         },
         {
           "command": "containerlab.lab.deploy",
-          "when": "viewItem == containerlabLabUndeployed",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
           "group": "navigation@1"
         },
         {
           "command": "containerlab.lab.deploy.cleanup",
-          "when": "viewItem == containerlabLabUndeployed",
+          "when": "viewItem =~ /containerlabLabUndeployed/",
           "group": "navigation@2"
         },
         {
           "command": "containerlab.lab.destroy",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@3"
         },
         {
           "command": "containerlab.lab.destroy.cleanup",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@4"
         },
         {
           "command": "containerlab.lab.redeploy",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@5"
         },
         {
           "command": "containerlab.lab.redeploy.cleanup",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@6"
         },
         {
@@ -572,7 +591,7 @@
         },
         {
           "command": "containerlab.lab.sshToAllNodes",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "connect@0"
         },
         {
@@ -582,7 +601,7 @@
         },
         {
           "command": "containerlab.inspectOneLab",
-          "when": "viewItem == containerlabLabDeployed",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "navigation@9"
         },
         {
