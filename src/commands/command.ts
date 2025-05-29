@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import * as utils from '../utils';
 import { exec, spawn } from 'child_process';
 import { outputChannel } from '../extension';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 /**
  * Run a shell command in a named VS Code terminal.
@@ -132,8 +135,18 @@ export class Command {
                         message: " [View Logs](command:containerlab.viewLogs)"
                       });
 
+                    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                    const cwd = workspaceFolder ?? path.join(os.homedir(), ".clab");
+                    if (!workspaceFolder) {
+                        try {
+                            fs.mkdirSync(cwd, { recursive: true });
+                        } catch {
+                            // ignore errors creating fallback dir
+                        }
+                    }
+
                     return new Promise<void>((resolve, reject) => {
-                        const child = spawn(cmd[0], cmd.slice(1));
+                        const child = spawn(cmd[0], cmd.slice(1), { cwd });
 
                         // If user clicks Cancel, kill the child process
                         token.onCancellationRequested(() => {

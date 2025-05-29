@@ -42,7 +42,7 @@ export interface NodeData {
     kind?: string;
     longname?: string;
     image?: string;
-    mgmtIpv4Addresss?: string;
+    mgmtIpv4Address?: string;
   };
 }
 
@@ -61,6 +61,7 @@ export interface EdgeData {
 /**
  * TopoViewerEditorEngine class is responsible for initializing the Cytoscape instance,
  * managing edge creation, node editing and viewport panels/buttons.
+ * entry point for the topology editor webview; methods are called from vscodeHtmlTemplate.ts.
  */
 class TopoViewerEditorEngine {
   private cy: cytoscape.Core;
@@ -72,6 +73,8 @@ class TopoViewerEditorEngine {
   private messageSender: VscodeMessageSender;
   private viewportButtons: ManagerViewportButtons;
   private viewportPanels: ManagerViewportPanels;
+
+
 
 
   private debounce(func: Function, wait: number) {
@@ -86,6 +89,9 @@ class TopoViewerEditorEngine {
   private setupAutoSave(): void {
     // Debounced save function
     const autoSave = this.debounce(async () => {
+      if (this.isEdgeHandlerActive) {
+        return;
+      }
       const suppressNotification = true;
       await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
@@ -186,7 +192,7 @@ class TopoViewerEditorEngine {
     // Initiate viewport buttons and panels
     this.viewportButtons = new ManagerViewportButtons(this.messageSender);
     this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
-    this.viewportPanels.registerTogglePanels(containerId);
+
 
     this.setupAutoSave();
 
@@ -211,8 +217,15 @@ class TopoViewerEditorEngine {
       snapFrequency: 150,
       noEdgeEventsInDraw: false,
       disableBrowserGestures: false,
-      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean =>
-        !sourceNode.same(targetNode) && !sourceNode.isParent() && !targetNode.isParent(),
+      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean => {
+        const targetRole = targetNode.data('topoViewerRole');
+        return (
+          !sourceNode.same(targetNode) &&
+          !sourceNode.isParent() &&
+          !targetNode.isParent() &&
+          targetRole !== 'dummyChild'
+        );
+      },
       edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => ({
         id: `${sourceNode.id()}-${targetNode.id()}`,
         source: sourceNode.id(),
@@ -225,13 +238,14 @@ class TopoViewerEditorEngine {
     this.isEdgeHandlerActive = false;
   }
 
+
   /**
  * Initializes the circular context menu on nodes.
   */
   private initializeContextMenu(): void {
     const self = this;
     this.cy.cxtmenu({
-      selector: 'node',
+      selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"]',
       commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -266,7 +280,60 @@ class TopoViewerEditorEngine {
                     </div>`,
           select: (ele: cytoscape.Singular) => {
             // initiate edgehandles drawing from this node
+            self.isEdgeHandlerActive = true;
             self.eh.start(ele);
+          }
+        }
+      ],
+      menuRadius: 110, // the radius of the menu
+      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      activePadding: 5, // additional size in pixels for the active command
+      indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
+      separatorWidth: 3, // the empty spacing in pixels between successive commands
+      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+      adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      openMenuEvents: 'cxttapstart taphold', // space-separated cytoscape events that will open the menu; only `cxttapstart` and/or `taphold` work here
+      itemColor: 'white', // the colour of text in the command's content
+      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      zIndex: 9999, // the z-index of the ui div
+      atMouse: false, // draw menu at mouse position
+      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer
+    });
+
+    this.cy.cxtmenu({
+      selector: 'node:parent, node[topoViewerRole = "dummyChild"]',
+      commands: [
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Edit Group</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // inside here TS infers ele is NodeSingular
+            // this.viewportPanels.panelNodeEditor(ele);
+            if (ele.data("topoViewerRole") == "dummyChild") {
+              console.info("Editing parent of dummyChild: ", ele.parent().first().id());
+              this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.parent().first().id());
+            } else if (ele.data("topoViewerRole") == "group") {
+              this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.id());
+            }
+          }
+        },
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Delete Group</span>
+                    </div>`,
+          select: () => {
+            this.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(this.cy);
           }
         }
       ],
@@ -345,6 +412,7 @@ class TopoViewerEditorEngine {
    * @private
    */
   private async registerEvents(): Promise<void> {
+
     // Canvas click: add node when Shift is held.
     this.cy.on('click', (event) => {
       const mouseEvent = event.originalEvent as MouseEvent;
@@ -356,6 +424,7 @@ class TopoViewerEditorEngine {
 
     // Node click: handle orphaning, edge creation, and deletion.
     this.cy.on('click', 'node', async (event) => {
+      this.viewportPanels.nodeClicked = true; // Set flag to true when a node is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a node is clicked.
       const node = event.target;
       console.info("Node clicked:", node.id());
       const originalEvent = event.originalEvent as MouseEvent;
@@ -379,11 +448,19 @@ class TopoViewerEditorEngine {
           console.info("Alt+click on node: deleting node", extraData?.longname || node.id());
           node.remove();
           break;
-        // Open node editor for a normal click.
-        case !originalEvent.shiftKey:
-          console.info("Opening node editor for node:", extraData?.longname || node.id());
-          // await this.viewportPanels.panelNodeEditor(node);
+
+        case (node.data("topoViewerRole") == "textbox"):
           break;
+
+        // case (node.data("topoViewerRole") == "dummyChild"):
+        //   console.info("Editing parent of dummyChiled: ", node.parent().id());
+        //   this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.parent().id());
+        //   break;
+        // // If the node is a parent, open the panel for that parent.
+        // case node.isParent():
+        //   console.info("Editing existing parent node: ", node.id());
+        //   this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.id());
+        //   break;
         default:
           break;
       }
@@ -391,12 +468,26 @@ class TopoViewerEditorEngine {
 
     // Edge click: delete edge when Alt is held.
     this.cy.on('click', 'edge', (event) => {
+      this.viewportPanels.edgeClicked = true; // Set flag to true when a edge is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a edge is clicked.
       const edge = event.target;
       const originalEvent = event.originalEvent as MouseEvent;
       if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
         console.info("Alt+click on edge: deleting edge", edge.id());
         edge.remove();
       }
+    });
+
+    // Edgehandles lifecycle events.
+    this.cy.on('ehstart', () => {
+      this.isEdgeHandlerActive = true;
+    });
+
+    this.cy.on('ehstop', () => {
+      this.isEdgeHandlerActive = false;
+    });
+
+    this.cy.on('ehcancel', () => {
+      this.isEdgeHandlerActive = false;
     });
 
     // Edge creation completion via edgehandles.
@@ -412,6 +503,50 @@ class TopoViewerEditorEngine {
       const targetEndpoint = this.getNextEndpoint(targetNode.id());
       addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
     });
+
+    // Drag-and-drop reparenting logic
+    this.cy.on('dragfree', 'node', (event) => {
+      // aarafat-tag: keep this commented out for now, will be used later(when TopoViewer and TopoEditor merged) to identify if the node is in clab editor mode.
+      // const isViewportDrawerClabEditorCheckboxChecked = this.isViewportDrawerClabEditorChecked;
+      // if (!isViewportDrawerClabEditorCheckboxChecked) return;
+
+      const draggedNode = event.target;
+
+      let assignedParent: cytoscape.NodeSingular | undefined
+      this.cy.nodes(':parent').forEach((el) => {
+        const parent = el as cytoscape.NodeSingular;
+
+        if (this.isNodeInsideParent(draggedNode, parent)) {
+          assignedParent = parent;
+        }
+      });
+
+      if (assignedParent) {
+        draggedNode.move({ parent: assignedParent.id() });
+        console.info(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
+
+        const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
+
+        if (dummyChild.length > 0) {
+          const realChildren = assignedParent.children().not(dummyChild);
+          if (realChildren.length > 0) {
+            dummyChild.remove();
+            console.log("Dummy child removed");
+          } else {
+            console.log("No real children present, dummy child remains");
+          }
+        }
+      }
+
+      // Remove empty group nodes
+      this.cy.nodes('[topoViewerRole = "group"]').forEach((parentNode) => {
+        if (parentNode.children().empty()) {
+          parentNode.remove();
+        }
+      });
+    });
+
+
   }
 
   // /**
@@ -524,12 +659,33 @@ class TopoViewerEditorEngine {
   }
 
   /**
+ * Checks whether a node is inside the bounding box of a parent node.
+ * @param node - The node being moved.
+ * @param parent - The potential parent node.
+ * @returns True if node is visually inside parent.
+ */
+  private isNodeInsideParent(node: cytoscape.NodeSingular, parent: cytoscape.NodeSingular): boolean {
+    const parentBox = parent.boundingBox();
+    const nodePos = node.position();
+
+    return (
+      nodePos.x >= parentBox.x1 &&
+      nodePos.x <= parentBox.x2 &&
+      nodePos.y >= parentBox.y1 &&
+      nodePos.y <= parentBox.y2
+    );
+  }
+
+
+
+  /**
    * Dispose of resources held by the engine.
    */
   public dispose(): void {
     this.messageSender.dispose();
   }
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const engine = new TopoViewerEditorEngine('cy');

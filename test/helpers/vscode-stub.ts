@@ -72,9 +72,22 @@ export const TreeItemCollapsibleState = {
   Expanded: 2,
 } as const;
 
-export const ThemeIcon = {
-  File: 'file',
-};
+export class ThemeColor {
+  public id: string;
+  constructor(id: string) {
+    this.id = id;
+  }
+}
+
+export class ThemeIcon {
+  static File = 'file';
+  public id: string;
+  public color?: ThemeColor;
+  constructor(id: string, color?: ThemeColor) {
+    this.id = id;
+    this.color = color;
+  }
+}
 
 export const ViewColumn = {
   One: 1,

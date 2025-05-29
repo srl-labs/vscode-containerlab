@@ -240,7 +240,6 @@ topology:
         graph-posX: "65"
         graph-posY: "25"
         graph-icon: router
-        graph-groupLabelPos: bottom-center
     srl2:
       kind: nokia_srlinux
       image: ghcr.io/nokia/srlinux:latest
@@ -248,7 +247,6 @@ topology:
         graph-posX: "165"
         graph-posY: "25"
         graph-icon: router
-        graph-groupLabelPos: bottom-center
 
   links:
     # inter-switch link
@@ -427,6 +425,13 @@ topology:
       }
     );
 
+    const iconUri = vscode.Uri.joinPath(
+      this.context.extensionUri,
+      'resources',
+      'containerlab.png'
+    );
+    panel.iconPath = iconUri;
+
     this.currentPanel = panel;
 
     try {
@@ -563,21 +568,15 @@ topology:
           case 'topo-editor-viewport-save': {
             try {
               // Helper function to compute a consistent endpoints string from edge data.
-              function computeEndpointsStr(data: any): string {
-                let endpoints: string[];
+              function computeEndpointsStr(data: any): string | null {
                 if (data.sourceEndpoint && data.targetEndpoint) {
-                  endpoints = [
-                    `${data.source}:${data.sourceEndpoint}`,
-                    `${data.target}:${data.targetEndpoint}`
-                  ];
-                } else if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length > 0) {
-                  endpoints = data.endpoints.every((ep: string) => ep.includes(':'))
-                    ? data.endpoints
-                    : [data.source, data.target];
-                } else {
-                  endpoints = [data.source, data.target];
+                  return `${data.source}:${data.sourceEndpoint},${data.target}:${data.targetEndpoint}`;
                 }
-                return endpoints.join(',');
+                if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length === 2) {
+                  const valid = data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'));
+                  return valid ? (data.endpoints as string[]).join(',') : null;
+                }
+                return null;
               }
 
               // Parse the JSON payload from the frontend.
@@ -602,7 +601,9 @@ topology:
               const yamlNodes: YAML.YAMLMap = nodesMaybe;
 
               // Iterate through payload nodes to add/update nodes in YAML.
-              payloadParsed.filter(el => el.group === 'nodes').forEach(element => {
+              payloadParsed
+                .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
+                .forEach(element => {
                 // Use the stable id from payload as the lookup key.
                 var nodeId: string = element.data.id;
 
@@ -669,7 +670,9 @@ topology:
 
               // Remove YAML nodes that are not present in the payload.
               const payloadNodeIds = new Set(
-                payloadParsed.filter(el => el.group === 'nodes').map(el => el.data.id)
+                payloadParsed
+                  .filter(el => el.group === 'nodes')
+                  .map(el => el.data.id)
               );
               for (const item of [...yamlNodes.items]) {
                 const keyStr = String(item.key);
@@ -698,6 +701,9 @@ topology:
               payloadParsed.filter(el => el.group === 'edges').forEach(element => {
                 const data = element.data;
                 const endpointsStr = computeEndpointsStr(data);
+                if (!endpointsStr) {
+                  return;
+                }
 
                 // Look for an existing link with these endpoints.
                 let linkFound = false;
@@ -718,22 +724,9 @@ topology:
                 }
                 if (!linkFound) {
                   // Add a new link if not found.
+                  const endpointsArrStr = endpointsStr;
                   const newLink = new YAML.YAMLMap();
-                  // Rebuild endpoints array for setting.
-                  let endpoints: string[];
-                  if (data.sourceEndpoint && data.targetEndpoint) {
-                    endpoints = [
-                      `${data.source}:${data.sourceEndpoint}`,
-                      `${data.target}:${data.targetEndpoint}`
-                    ];
-                  } else if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length > 0) {
-                    endpoints = data.endpoints.every((ep: string) => ep.includes(':'))
-                      ? data.endpoints
-                      : [data.source, data.target];
-                  } else {
-                    endpoints = [data.source, data.target];
-                  }
-                  // Create the endpoints node as a YAML sequence and enforce flow style.
+                  const endpoints = endpointsArrStr.split(',');
                   const endpointsNode = doc.createNode(endpoints) as YAML.YAMLSeq;
                   endpointsNode.flow = true;
                   newLink.set('endpoints', endpointsNode);
@@ -746,6 +739,7 @@ topology:
                 payloadParsed
                   .filter(el => el.group === 'edges')
                   .map(el => computeEndpointsStr(el.data))
+                  .filter((s): s is string => Boolean(s))
               );
               linksNode.items = linksNode.items.filter(linkItem => {
                 if (YAML.isMap(linkItem)) {
@@ -818,21 +812,15 @@ topology:
           case 'topo-editor-viewport-save-suppress-notification': {
             try {
               // Helper function to compute a consistent endpoints string from edge data.
-              function computeEndpointsStr(data: any): string {
-                let endpoints: string[];
+              function computeEndpointsStr(data: any): string | null {
                 if (data.sourceEndpoint && data.targetEndpoint) {
-                  endpoints = [
-                    `${data.source}:${data.sourceEndpoint}`,
-                    `${data.target}:${data.targetEndpoint}`
-                  ];
-                } else if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length > 0) {
-                  endpoints = data.endpoints.every((ep: string) => ep.includes(':'))
-                    ? data.endpoints
-                    : [data.source, data.target];
-                } else {
-                  endpoints = [data.source, data.target];
+                  return `${data.source}:${data.sourceEndpoint},${data.target}:${data.targetEndpoint}`;
                 }
-                return endpoints.join(',');
+                if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length === 2) {
+                  const valid = data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'));
+                  return valid ? (data.endpoints as string[]).join(',') : null;
+                }
+                return null;
               }
 
               // Parse the JSON payload from the frontend.
@@ -857,7 +845,9 @@ topology:
               const yamlNodes: YAML.YAMLMap = nodesMaybe;
 
               // Iterate through payload nodes to add/update nodes in YAML.
-              payloadParsed.filter(el => el.group === 'nodes').forEach(element => {
+              payloadParsed
+                .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
+                .forEach(element => {
                 // Use the stable id from payload as the lookup key.
                 var nodeId: string = element.data.id;
 
@@ -909,7 +899,7 @@ topology:
                   labels.delete('graph-level');
                 }
                 // Set the group label position (defaulting to 'bottom-center' if not provided).
-                const groupLabelPos = element.groupLabelPos;
+                const groupLabelPos = element.data.groupLabelPos;
                 labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
 
                 // --- Update YAML mapping key if the node's display name has changed ---
@@ -953,6 +943,9 @@ topology:
               payloadParsed.filter(el => el.group === 'edges').forEach(element => {
                 const data = element.data;
                 const endpointsStr = computeEndpointsStr(data);
+                if (!endpointsStr) {
+                  return;
+                }
 
                 // Look for an existing link with these endpoints.
                 let linkFound = false;
@@ -973,22 +966,9 @@ topology:
                 }
                 if (!linkFound) {
                   // Add a new link if not found.
+                  const endpointsArrStr = endpointsStr;
                   const newLink = new YAML.YAMLMap();
-                  // Rebuild endpoints array for setting.
-                  let endpoints: string[];
-                  if (data.sourceEndpoint && data.targetEndpoint) {
-                    endpoints = [
-                      `${data.source}:${data.sourceEndpoint}`,
-                      `${data.target}:${data.targetEndpoint}`
-                    ];
-                  } else if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length > 0) {
-                    endpoints = data.endpoints.every((ep: string) => ep.includes(':'))
-                      ? data.endpoints
-                      : [data.source, data.target];
-                  } else {
-                    endpoints = [data.source, data.target];
-                  }
-                  // Create the endpoints node as a YAML sequence and enforce flow style.
+                  const endpoints = endpointsArrStr.split(',');
                   const endpointsNode = doc.createNode(endpoints) as YAML.YAMLSeq;
                   endpointsNode.flow = true;
                   newLink.set('endpoints', endpointsNode);
@@ -1001,6 +981,7 @@ topology:
                 payloadParsed
                   .filter(el => el.group === 'edges')
                   .map(el => computeEndpointsStr(el.data))
+                  .filter((s): s is string => Boolean(s))
               );
               linksNode.items = linksNode.items.filter(linkItem => {
                 if (YAML.isMap(linkItem)) {
