@@ -9,18 +9,9 @@ import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
 
 
 /**
- * Graph Lab (Web) => run in Terminal (no spinner).
+ * Core routine for generating draw.io graphs.
  */
-export function graphNextUI(node: ClabLabTreeNode) {
-  const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - Web");
-
-  graphCmd.run();
-}
-
-/**
- * Graph Lab (draw.io) => use spinner, then open .drawio file in hediet.vscode-drawio
- */
-export async function graphDrawIO(node: ClabLabTreeNode) {
+async function runGraphDrawIO(node: ClabLabTreeNode, layout: "horizontal" | "vertical") {
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Generating DrawIO graph...",
     successMsg: "DrawIO Graph Completed!",
@@ -44,15 +35,25 @@ export async function graphDrawIO(node: ClabLabTreeNode) {
 
   // Wait for containerlab to finish generating the .drawio file,
   // passing the theme argument.
-  await graphCmd.run(["--drawio", "--drawio-args", `--theme ${drawioTheme}`]).then(() => {
-    // Verify the file exists.
-    if (!fs.existsSync(drawioPath)) {
-      return vscode.window.showErrorMessage(
-        `Containerlab failed to generate .drawio file for lab: ${node.name}.`
-      );
-    }
-    vscode.commands.executeCommand("vscode.open", drawioUri);
-  });
+  await graphCmd
+    .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
+    .then(() => {
+      // Verify the file exists.
+      if (!fs.existsSync(drawioPath)) {
+        return vscode.window.showErrorMessage(
+          `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+        );
+      }
+      vscode.commands.executeCommand("vscode.open", drawioUri);
+    });
+}
+
+export async function graphDrawIOHorizontal(node: ClabLabTreeNode) {
+  await runGraphDrawIO(node, "horizontal");
+}
+
+export async function graphDrawIOVertical(node: ClabLabTreeNode) {
+  await runGraphDrawIO(node, "vertical");
 }
 
 /**
