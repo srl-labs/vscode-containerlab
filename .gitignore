@@ -10,3 +10,5 @@ package.json
 **/.DS_Store
 *.vsix
 mochawesome-report/
+clab-*/
+*.clab.yml*
