@@ -157,22 +157,21 @@
         "category": "Containerlab",
         "icon": "$(info)"
       },
-      {
-        "command": "containerlab.lab.graph",
-        "title": "Graph (Web)",
-        "icon": "$(graph-line)",
-        "category": "Containerlab"
-      },
-      {
-        "command": "containerlab.lab.graph.drawio",
-        "title": "Graph (draw.io)",
-        "category": "Containerlab"
-      },
-      {
-        "command": "containerlab.lab.graph.drawio.interactive",
-        "title": "Graph (draw.io, Interactive)",
-        "category": "Containerlab"
-      },
+        {
+          "command": "containerlab.lab.graph.drawio.horizontal",
+          "title": "Graph (draw.io, Horizontal)",
+          "category": "Containerlab"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.vertical",
+          "title": "Graph (draw.io, Vertical)",
+          "category": "Containerlab"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "title": "Graph (draw.io, Interactive)",
+          "category": "Containerlab"
+        },
       {
         "command": "containerlab.lab.graph.topoViewer",
         "title": "Graph (TopoViewer)",
@@ -350,6 +349,10 @@
       {
         "id": "containerlab.submenu.node.copy",
         "label": "Copy"
+      },
+      {
+        "id": "containerlab.submenu.lab.graph.drawio",
+        "label": "Graph (draw.io)"
       }
     ],
     "menus": {
@@ -476,24 +479,14 @@
           "group": "clabLabActions@6"
         },
         {
-          "command": "containerlab.lab.graph",
+          "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@0"
         },
         {
-          "command": "containerlab.lab.graph.drawio",
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.interactive",
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@2"
-        },
-        {
           "command": "containerlab.lab.graph.topoViewer",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@3"
+          "group": "graph@1"
         }
       ],
       "view/item/context": [
@@ -593,24 +586,14 @@
           "group": "navigation@9"
         },
         {
-          "command": "containerlab.lab.graph",
+          "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
           "group": "graph@0"
         },
         {
-          "command": "containerlab.lab.graph.drawio",
-          "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.interactive",
-          "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@2"
-        },
-        {
           "command": "containerlab.lab.graph.topoViewer",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@3"
+          "group": "graph@1"
         },
         {
           "command": "containerlab.node.start",
@@ -744,11 +727,11 @@
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
-          "command": "containerlab.lab.graph",
+          "command": "containerlab.lab.graph.drawio.horizontal",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
-          "command": "containerlab.lab.graph.drawio",
+          "command": "containerlab.lab.graph.drawio.vertical",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/"
         },
         {
@@ -792,6 +775,20 @@
         {
           "command": "containerlab.node.copyImage",
           "group": "navigation@6"
+        }
+      ],
+      "containerlab.submenu.lab.graph.drawio": [
+        {
+          "command": "containerlab.lab.graph.drawio.horizontal",
+          "group": "graph@0"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.vertical",
+          "group": "graph@0"
+        },
+        {
+          "command": "containerlab.lab.graph.drawio.interactive",
+          "group": "graph@0"
         }
       ]
     },

@@ -1,0 +1,24 @@
+name: atest # saved as /home/clab/projects/flosch/vscode-containerlab/atest.clab.yml
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+      labels:
+        graph-posX: "65"
+        graph-posY: "25"
+        graph-icon: router
+        graph-groupLabelPos: bottom-center
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+      labels:
+        graph-posX: "165"
+        graph-posY: "25"
+        graph-icon: router
+        graph-groupLabelPos: bottom-center
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]

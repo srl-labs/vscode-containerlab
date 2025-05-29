@@ -184,10 +184,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Lab graph commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph', cmd.graphNextUI)
+    vscode.commands.registerCommand(
+      'containerlab.lab.graph.drawio.horizontal',
+      cmd.graphDrawIOHorizontal
+    )
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.drawio', cmd.graphDrawIO)
+    vscode.commands.registerCommand(
+      'containerlab.lab.graph.drawio.vertical',
+      cmd.graphDrawIOVertical
+    )
   );
   context.subscriptions.push(
     vscode.commands.registerCommand(
