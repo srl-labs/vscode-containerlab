@@ -156,11 +156,14 @@ export class ManagerGroupManager {
       });
 
       const newNode = cy.getElementById(newId);
+
+      // Move all children of the old node to the newly created node
       oldNode.children().forEach(child => {
-        child.move({
-          parent: null
-        });
+        child.data('parent', newId);
+        child.move({ parent: newId });
       });
+
+      // Remove the old parent group
       oldNode.remove();
 
       document.getElementById("panel-node-editor-parent-graph-group-id")!.textContent = newId;
