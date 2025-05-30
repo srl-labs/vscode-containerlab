@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 
 import { execSync } from "child_process";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions } from "../extension";
 
 /**
  * Interface corresponding to fields in the
@@ -184,7 +184,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
         // Find containers belonging to a lab
         if (element instanceof c.ClabLabTreeNode) {
-            let containers = element.containers || [];
+            let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode)[] = element.containers || [];
+            if (element.sshxNode) {
+                containers = [element.sshxNode, ...containers];
+            }
             if (this.treeFilter) {
                 const labMatch = String(element.label).toLowerCase().includes(this.treeFilter);
                 if (!labMatch) {
@@ -192,7 +195,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                         if (String(cn.label).toLowerCase().includes(this.treeFilter)) {
                             return true;
                         }
-                        return cn.interfaces.some(it => String(it.label).toLowerCase().includes(this.treeFilter));
+                        if ((cn as c.ClabContainerTreeNode).interfaces) {
+                            return (cn as c.ClabContainerTreeNode).interfaces.some(it =>
+                                String(it.label).toLowerCase().includes(this.treeFilter)
+                            );
+                        }
+                        return false;
                     });
                 }
             }
@@ -407,19 +415,39 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 const contextVal = isFav
                     ? "containerlabLabDeployedFavorite"
                     : "containerlabLabDeployed";
+                const sshxLink = sshxSessions.get(container.lab_name);
                 const labNode = new c.ClabLabTreeNode(
                     label,
-                    vscode.TreeItemCollapsibleState.Collapsed, // Always collapsed initially for deployed labs
+                    vscode.TreeItemCollapsibleState.Collapsed,
                     labPathObj,
                     container.lab_name,
                     container.owner,
                     discoveredContainers,
                     contextVal,
-                    isFav
+                    isFav,
+                    sshxLink
                 );
+                if (sshxLink) {
+                    labNode.sshxNode = new c.ClabSshxLinkTreeNode(container.lab_name, sshxLink);
+                }
                 labNode.description = labPathObj.relative; // Show relative path
 
-                const iconUri = this.getResourceUri(icon);
+                let iconName = icon;
+                if (sshxLink) {
+                    if (icon === c.CtrStateIcons.RUNNING) {
+                        iconName = 'icons/running-share.svg';
+                    } else if (icon === c.CtrStateIcons.PARTIAL) {
+                        iconName = 'icons/partial-share.svg';
+                    } else if (icon === c.CtrStateIcons.STOPPED) {
+                        iconName = 'icons/stopped-share.svg';
+                    }
+                    labNode.command = {
+                        command: 'containerlab.lab.sshx.copyLink',
+                        title: 'Copy SSHX link',
+                        arguments: [sshxLink]
+                    };
+                }
+                const iconUri = this.getResourceUri(iconName);
                 labNode.iconPath = { light: iconUri, dark: iconUri };
 
                 labs[normPath] = labNode;

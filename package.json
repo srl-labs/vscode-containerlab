@@ -355,6 +355,25 @@
         "title": "Open Link"
       },
       {
+        "command": "containerlab.lab.sshx.attach",
+        "title": "Share Lab (attach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.sshx.detach",
+        "title": "Share Lab (detach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.sshx.reattach",
+        "title": "Share Lab (reattach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.sshx.copyLink",
+        "title": "Copy SSHX link"
+      },
+      {
         "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
         "title": "Hide non-owned"
       },
@@ -391,6 +410,10 @@
       {
         "id": "containerlab.submenu.lab.graph.drawio",
         "label": "Graph (draw.io)"
+      },
+      {
+        "id": "containerlab.submenu.lab.share",
+        "label": "Share Lab (sshx)"
       }
     ],
     "menus": {
@@ -653,6 +676,11 @@
           "group": "navigation@9"
         },
         {
+          "submenu": "containerlab.submenu.lab.share",
+          "when": "viewItem =~ /containerlabLabDeployed/",
+          "group": "navigation@10"
+        },
+        {
           "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
           "group": "graph@0"
@@ -766,6 +794,11 @@
           "command": "containerlab.interface.copyMACAddress",
           "when": "viewItem == containerlabInterfaceUp",
           "group": "copyContextMenu@0"
+        },
+        {
+          "command": "containerlab.lab.sshx.copyLink",
+          "when": "viewItem == containerlabSSHXLink",
+          "group": "navigation@0"
         }
       ],
       "commandPalette": [
@@ -856,6 +889,20 @@
         {
           "command": "containerlab.lab.graph.drawio.interactive",
           "group": "graph@0"
+        }
+      ],
+      "containerlab.submenu.lab.share": [
+        {
+          "command": "containerlab.lab.sshx.attach",
+          "group": "share@1"
+        },
+        {
+          "command": "containerlab.lab.sshx.detach",
+          "group": "share@2"
+        },
+        {
+          "command": "containerlab.lab.sshx.reattach",
+          "group": "share@3"
         }
       ]
     },

@@ -34,7 +34,8 @@ export async function runWithSudo(
   description: string,
   outputChannel: vscode.OutputChannel,
   checkType: 'generic' | 'containerlab' = 'containerlab',
-  returnOutput: boolean = false
+  returnOutput: boolean = false,
+  includeStderr: boolean = false
 ): Promise<string | void> {
   // Get forced sudo setting from user configuration.
   // If the user has enabled "always use sudo" then utils.getSudo() will return a non-empty string.
@@ -50,7 +51,10 @@ export async function runWithSudo(
         const { stdout: cmdOut, stderr: cmdErr } = await execAsync(command);
         if (cmdOut) outputChannel.appendLine(cmdOut);
         if (cmdErr) outputChannel.appendLine(`[${description} stderr]: ${cmdErr}`);
-        return returnOutput ? cmdOut : undefined;
+        const combined = includeStderr && returnOutput
+          ? [cmdOut, cmdErr].filter(Boolean).join('\n')
+          : cmdOut;
+        return returnOutput ? combined : undefined;
       }
     } catch (err) {
       log(`Failed to check user groups: ${err}`, outputChannel);
@@ -80,7 +84,10 @@ export async function runWithSudo(
       const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmdToRun);
       if (cmdOut) outputChannel.appendLine(cmdOut);
       if (cmdErr) outputChannel.appendLine(`[${description} stderr]: ${cmdErr}`);
-      return returnOutput ? cmdOut : undefined;
+      const combined = includeStderr && returnOutput
+        ? [cmdOut, cmdErr].filter(Boolean).join('\n')
+        : cmdOut;
+      return returnOutput ? combined : undefined;
     } catch (err) {
       throw new Error(`Command failed: ${cmdToRun}\n${(err as Error).message}`);
     }
@@ -113,7 +120,10 @@ export async function runWithSudo(
     const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmdToRun);
     if (cmdOut) outputChannel.appendLine(cmdOut);
     if (cmdErr) outputChannel.appendLine(`[${description} stderr]: ${cmdErr}`);
-    return returnOutput ? cmdOut : undefined;
+    const combined = includeStderr && returnOutput
+      ? [cmdOut, cmdErr].filter(Boolean).join('\n')
+      : cmdOut;
+    return returnOutput ? combined : undefined;
   } catch (err) {
     throw new Error(`Command failed: runWithSudo [non-passwordless]\n${(err as Error).message}`);
   }

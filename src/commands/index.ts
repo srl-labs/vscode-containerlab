@@ -26,3 +26,4 @@ export * from "./cloneRepo";
 export * from "./deployPopular";
 export * from "./clonePopularRepo";
 export * from "./openLink";
+export * from "./sshxShare";
