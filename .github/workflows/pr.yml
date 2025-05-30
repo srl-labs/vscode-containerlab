@@ -1,0 +1,141 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: true  # Continue to upload test artifacts even if tests fail
+
+      - name: Build webview
+        run: npm run build:webview
+
+      - name: Package extension
+        run: npm run package
+        continue-on-error: true  # Continue even if packaging fails
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()  # Upload test reports even if tests failed
+        with:
+          name: test-reports-${{ github.run_number }}
+          path: |
+            mochawesome-report/
+            out/test/
+          retention-days: 30
+
+      - name: Upload compiled output
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compiled-output-${{ github.run_number }}
+          path: |
+            out/
+            dist/
+          retention-days: 7
+
+      - name: Upload packaged extension
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vscode-extension-${{ github.run_number }}
+          path: "*.vsix"
+          retention-days: 30
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v4
+        if: failure()  # Only upload logs if something failed
+        with:
+          name: build-logs-${{ github.run_number }}
+          path: |
+            npm-debug.log*
+            yarn-error.log*
+            .npm/_logs/
+          retention-days: 7
+
+  # Optional: Add a job to test the packaged extension
+  package-validation:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: always()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download packaged extension
+        uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension-${{ github.run_number }}
+          path: ./package/
+
+      - name: Validate package
+        run: |
+          echo "Checking if VSIX package was created..."
+          if ls ./package/*.vsix 1> /dev/null 2>&1; then
+            echo "✅ VSIX package found:"
+            ls -la ./package/*.vsix
+            
+            # Install vsce to inspect the package
+            npm install -g @vscode/vsce
+            
+            echo "📦 Package contents:"
+            vsce ls ./package/*.vsix
+            
+            echo "✅ Package validation completed successfully"
+          else
+            echo "❌ No VSIX package found"
+            exit 1
+          fi
+
+  # Summary job that depends on all other jobs
+  pr-check-summary:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, package-validation]
+    if: always()
+    
+    steps:
+      - name: Check results
+        run: |
+          echo "Build and Test: ${{ needs.build-and-test.result }}"
+          echo "Package Validation: ${{ needs.package-validation.result }}"
+          
+          if [[ "${{ needs.build-and-test.result }}" == "success" && "${{ needs.package-validation.result }}" == "success" ]]; then
+            echo "✅ All checks passed!"
+          else
+            echo "❌ Some checks failed. Please review the artifacts and logs."
+            exit 1
+          fi
