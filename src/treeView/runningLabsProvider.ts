@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 
 import { execSync } from "child_process";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions } from "../extension";
 
 /**
  * Interface corresponding to fields in the
@@ -184,7 +184,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
         // Find containers belonging to a lab
         if (element instanceof c.ClabLabTreeNode) {
-            let containers = element.containers || [];
+            let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode)[] = element.containers || [];
+            if (element.sshxNode) {
+                containers = [element.sshxNode, ...containers];
+            }
             if (this.treeFilter) {
                 const labMatch = String(element.label).toLowerCase().includes(this.treeFilter);
                 if (!labMatch) {
@@ -192,7 +195,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                         if (String(cn.label).toLowerCase().includes(this.treeFilter)) {
                             return true;
                         }
-                        return cn.interfaces.some(it => String(it.label).toLowerCase().includes(this.treeFilter));
+                        if ((cn as c.ClabContainerTreeNode).interfaces) {
+                            return (cn as c.ClabContainerTreeNode).interfaces.some(it =>
+                                String(it.label).toLowerCase().includes(this.treeFilter)
+                            );
+                        }
+                        return false;
                     });
                 }
             }
@@ -350,6 +358,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             return undefined;
         }
 
+        // Refresh SSHX session list if any SSHX container is detected and we don't already have a link
+        const sshxLabs = new Set(
+            allContainers
+                .filter(c => (c.name || '').includes('sshx'))
+                .map(c => c.lab_name)
+        );
+        const missingSessions = Array.from(sshxLabs).filter(lab => !sshxSessions.has(lab));
+        if (missingSessions.length > 0) {
+            await refreshSshxSessions();
+        }
+
         // --- Process the flat allContainers list ---
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
@@ -407,18 +426,41 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 const contextVal = isFav
                     ? "containerlabLabDeployedFavorite"
                     : "containerlabLabDeployed";
+                const sshxLink = sshxSessions.get(container.lab_name);
+
+                // Create label with sharing indicator if SSHX session exists
+                let labLabel = label;
+                if (sshxLink) {
+                    labLabel = `🔗 ${label}`; // Add link emoji to indicate sharing
+                }
+
                 const labNode = new c.ClabLabTreeNode(
-                    label,
-                    vscode.TreeItemCollapsibleState.Collapsed, // Always collapsed initially for deployed labs
+                    labLabel, // Use modified label with sharing indicator
+                    vscode.TreeItemCollapsibleState.Collapsed,
                     labPathObj,
                     container.lab_name,
                     container.owner,
                     discoveredContainers,
                     contextVal,
-                    isFav
+                    isFav,
+                    sshxLink
                 );
-                labNode.description = labPathObj.relative; // Show relative path
 
+                if (sshxLink) {
+                    labNode.sshxNode = new c.ClabSshxLinkTreeNode(container.lab_name, sshxLink);
+                    // Add sharing indicator to description instead of replacing icon
+                    labNode.description = `${labPathObj.relative} (Shared)`;
+                    // Set command for easy access to copy link
+                    labNode.command = {
+                        command: 'containerlab.lab.sshx.copyLink',
+                        title: 'Copy SSHX link',
+                        arguments: [sshxLink]
+                    };
+                } else {
+                    labNode.description = labPathObj.relative; // Show relative path
+                }
+
+                // Keep the original state icon (don't replace with sharing icon)
                 const iconUri = this.getResourceUri(icon);
                 labNode.iconPath = { light: iconUri, dark: iconUri };
 

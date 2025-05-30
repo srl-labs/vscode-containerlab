@@ -32,6 +32,8 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     public readonly owner?: string;
     public readonly containers?: ClabContainerTreeNode[];
     public readonly favorite: boolean;
+    public sshxLink?: string;
+    public sshxNode?: ClabSshxLinkTreeNode;
 
     constructor(
         public readonly label: string,
@@ -42,6 +44,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         containers?: ClabContainerTreeNode[],
         contextValue?: string,
         favorite: boolean = false,
+        sshxLink?: string,
     ) {
         super(label, collapsibleState);
         this.labPath = labPath;
@@ -50,6 +53,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         this.containers = containers;
         this.contextValue = contextValue;
         this.favorite = favorite;
+        this.sshxLink = sshxLink;
         this.iconPath = favorite
             ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
             : vscode.ThemeIcon.File;
@@ -167,6 +171,24 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         this.ifIndex = ifIndex;
         this.state = state;
         this.contextValue = contextValue;
+    }
+}
+
+export class ClabSshxLinkTreeNode extends vscode.TreeItem {
+    public readonly labName: string;
+    public readonly link: string;
+    constructor(labName: string, link: string) {
+        super('Shared Terminal', vscode.TreeItemCollapsibleState.None);
+        this.labName = labName;
+        this.link = link;
+        this.contextValue = 'containerlabSSHXLink';
+        this.tooltip = link;
+        this.iconPath = new vscode.ThemeIcon('link-external');
+        this.command = {
+            command: 'containerlab.lab.sshx.copyLink',
+            title: 'Copy SSHX link',
+            arguments: [link]
+        };
     }
 }
 

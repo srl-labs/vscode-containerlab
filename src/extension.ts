@@ -7,7 +7,8 @@ import * as path from 'path';
 
 import {
   ensureClabInstalled,
-  checkAndUpdateClabIfNeeded
+  checkAndUpdateClabIfNeeded,
+  runWithSudo
 } from './helpers/containerlabUtils';
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
 
@@ -30,6 +31,45 @@ export let extensionContext: vscode.ExtensionContext;
 export let localLabsProvider: LocalLabTreeDataProvider;
 export let runningLabsProvider: RunningLabTreeDataProvider;
 export let helpFeedbackProvider: HelpFeedbackProvider;
+export let sshxSessions: Map<string, string> = new Map();
+
+export async function refreshSshxSessions() {
+  try {
+    const out = await runWithSudo(
+      'containerlab tools sshx list -f json',
+      'List SSHX sessions',
+      outputChannel,
+      'containerlab',
+      true
+    ) as string;
+    sshxSessions.clear();
+    if (out) {
+      const parsed = JSON.parse(out);
+      parsed.forEach((s: any) => {
+        if (!s.link || s.link === 'N/A') {
+          return;
+        }
+        let lab: string | undefined;
+        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
+          lab = s.network.replace(/^clab-/, '');
+        }
+        if (!lab && typeof s.name === 'string') {
+          const name = s.name;
+          if (name.startsWith('sshx-')) {
+            lab = name.replace(/^sshx-/, '');
+          } else if (name.startsWith('clab-') && name.endsWith('-sshx')) {
+            lab = name.slice(5, -5);
+          }
+        }
+        if (lab) {
+          sshxSessions.set(lab, s.link);
+        }
+      });
+    }
+  } catch (err: any) {
+    outputChannel.appendLine(`[ERROR] Failed to refresh SSHX sessions: ${err.message || err}`);
+  }
+}
 
 export const execCmdMapping = require('../resources/exec_cmd.json');
 export const sshUserMapping = require('../resources/ssh_users.json');
@@ -80,6 +120,8 @@ export async function activate(context: vscode.ExtensionContext) {
   localLabsProvider = new LocalLabTreeDataProvider();
   runningLabsProvider = new RunningLabTreeDataProvider(context);
   helpFeedbackProvider = new HelpFeedbackProvider();
+
+  await refreshSshxSessions();
 
 
   localTreeView = vscode.window.createTreeView('localLabs', {
@@ -184,6 +226,18 @@ export async function activate(context: vscode.ExtensionContext) {
   // Lab save command
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshx.attach', cmd.sshxAttach)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshx.detach', cmd.sshxDetach)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshx.reattach', cmd.sshxReattach)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.sshx.copyLink', (link: string) => cmd.sshxCopyLink(link))
   );
 
   // Lab connecto to SSH
