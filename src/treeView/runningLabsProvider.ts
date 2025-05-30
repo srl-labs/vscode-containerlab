@@ -416,8 +416,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     ? "containerlabLabDeployedFavorite"
                     : "containerlabLabDeployed";
                 const sshxLink = sshxSessions.get(container.lab_name);
+
+                // Create label with sharing indicator if SSHX session exists
+                let labLabel = label;
+                if (sshxLink) {
+                    labLabel = `🔗 ${label}`; // Add link emoji to indicate sharing
+                }
+
                 const labNode = new c.ClabLabTreeNode(
-                    label,
+                    labLabel, // Use modified label with sharing indicator
                     vscode.TreeItemCollapsibleState.Collapsed,
                     labPathObj,
                     container.lab_name,
@@ -427,27 +434,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     isFav,
                     sshxLink
                 );
+
                 if (sshxLink) {
                     labNode.sshxNode = new c.ClabSshxLinkTreeNode(container.lab_name, sshxLink);
-                }
-                labNode.description = labPathObj.relative; // Show relative path
-
-                let iconName = icon;
-                if (sshxLink) {
-                    if (icon === c.CtrStateIcons.RUNNING) {
-                        iconName = 'icons/running-share.svg';
-                    } else if (icon === c.CtrStateIcons.PARTIAL) {
-                        iconName = 'icons/partial-share.svg';
-                    } else if (icon === c.CtrStateIcons.STOPPED) {
-                        iconName = 'icons/stopped-share.svg';
-                    }
+                    // Add sharing indicator to description instead of replacing icon
+                    labNode.description = `${labPathObj.relative} (Shared)`;
+                    // Set command for easy access to copy link
                     labNode.command = {
                         command: 'containerlab.lab.sshx.copyLink',
                         title: 'Copy SSHX link',
                         arguments: [sshxLink]
                     };
+                } else {
+                    labNode.description = labPathObj.relative; // Show relative path
                 }
-                const iconUri = this.getResourceUri(iconName);
+
+                // Keep the original state icon (don't replace with sharing icon)
+                const iconUri = this.getResourceUri(icon);
                 labNode.iconPath = { light: iconUri, dark: iconUri };
 
                 labs[normPath] = labNode;

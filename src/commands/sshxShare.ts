@@ -30,6 +30,8 @@ export async function sshxAttach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to attach SSHX: ${err.message || err}`);
   }
   await refreshSshxSessions();
+  // Use refreshWithoutDiscovery to avoid clearing caches and triggering full re-discovery
+  // The SSHX state should persist in the sshxSessions map for the next auto-refresh
   runningLabsProvider.refreshWithoutDiscovery();
 }
 
@@ -46,7 +48,8 @@ export async function sshxDetach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to detach SSHX: ${err.message || err}`);
   }
   await refreshSshxSessions();
-  runningLabsProvider.refreshWithoutDiscovery();
+  // Changed from refreshWithoutDiscovery() to refresh() to update SSHX icons
+  runningLabsProvider.refresh();
 }
 
 export async function sshxReattach(node: ClabLabTreeNode) {
@@ -71,7 +74,8 @@ export async function sshxReattach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to reattach SSHX: ${err.message || err}`);
   }
   await refreshSshxSessions();
-  runningLabsProvider.refreshWithoutDiscovery();
+  // Changed from refreshWithoutDiscovery() to refresh() to update SSHX icons
+  runningLabsProvider.refresh();
 }
 
 export function sshxCopyLink(link: string) {
