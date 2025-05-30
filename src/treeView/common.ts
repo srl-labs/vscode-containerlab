@@ -60,6 +60,16 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     }
 }
 
+export class ClabFolderTreeNode extends vscode.TreeItem {
+    public readonly fullPath: string;
+    constructor(label: string, fullPath: string) {
+        super(label, vscode.TreeItemCollapsibleState.Collapsed);
+        this.fullPath = fullPath;
+        this.contextValue = 'containerlabFolder';
+        this.iconPath = vscode.ThemeIcon.Folder;
+    }
+}
+
 /**
  * Tree node for containers (children of ClabLabTreeNode)
  */

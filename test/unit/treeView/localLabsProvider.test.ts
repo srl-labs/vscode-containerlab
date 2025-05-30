@@ -91,14 +91,32 @@ describe('LocalLabTreeDataProvider', () => {
     const nodes = await provider.getChildren(undefined);
 
     expect(nodes).to.have.lengthOf(1);
-    const node = nodes![0];
-    expect(node.label).to.equal('a/lab1.clab.yml');
+    const folder = nodes![0];
+    expect(folder.label).to.equal('a');
+    const children = await provider.getChildren(folder as any);
+    expect(children).to.have.lengthOf(1);
+    const node = children![0];
+    expect(node.label).to.equal('lab1.clab.yml');
     expect(node.labPath.absolute).to.equal('/workspace/a/lab1.clab.yml');
     expect(node.description).to.equal('a');
     expect(vscodeStub.commands.executed).to.deep.include({
       command: 'setContext',
       args: ['localLabsEmpty', false],
     });
+  });
+
+  it('lists root-level labs before folders', async () => {
+    sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
+      vscodeStub.Uri.file('/workspace/root.clab.yml'),
+      vscodeStub.Uri.file('/workspace/a/lab1.clab.yml'),
+    ]);
+
+    const provider = new LocalLabTreeDataProvider();
+    const nodes = await provider.getChildren(undefined);
+
+    expect(nodes).to.have.lengthOf(2);
+    expect(nodes![0].label).to.equal('root.clab.yml');
+    expect(nodes![1].label).to.equal('a');
   });
 
   it('places favorite labs first and keeps deploy context', async () => {
@@ -113,9 +131,13 @@ describe('LocalLabTreeDataProvider', () => {
     const nodes = await provider.getChildren(undefined);
 
     expect(nodes).to.have.lengthOf(2);
-    expect(nodes![0].labPath.absolute).to.equal('/workspace/b/lab2.clab.yaml');
-    expect(nodes![0].contextValue).to.equal('containerlabLabUndeployedFavorite');
-    expect(nodes![0].favorite).to.be.true;
+    const firstFolder = nodes![0];
+    expect(firstFolder.label).to.equal('a');
+    const secondFolder = nodes![1];
+    expect(secondFolder.label).to.equal('b');
+    const children = await provider.getChildren(secondFolder as any);
+    expect(children![0].contextValue).to.equal('containerlabLabUndeployedFavorite');
+    expect(children![0].favorite).to.be.true;
   });
 
   it('removes favorites that no longer exist', async () => {
