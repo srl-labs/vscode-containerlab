@@ -46,8 +46,22 @@ export async function refreshSshxSessions() {
     if (out) {
       const parsed = JSON.parse(out);
       parsed.forEach((s: any) => {
-        if (s.network && s.network.startsWith('clab-') && s.link) {
-          const lab = s.network.replace(/^clab-/, '');
+        if (!s.link || s.link === 'N/A') {
+          return;
+        }
+        let lab: string | undefined;
+        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
+          lab = s.network.replace(/^clab-/, '');
+        }
+        if (!lab && typeof s.name === 'string') {
+          const name = s.name;
+          if (name.startsWith('sshx-')) {
+            lab = name.replace(/^sshx-/, '');
+          } else if (name.startsWith('clab-') && name.endsWith('-sshx')) {
+            lab = name.slice(5, -5);
+          }
+        }
+        if (lab) {
           sshxSessions.set(lab, s.link);
         }
       });

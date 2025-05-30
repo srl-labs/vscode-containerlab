@@ -30,9 +30,9 @@ export async function sshxAttach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to attach SSHX: ${err.message || err}`);
   }
   await refreshSshxSessions();
-  // Use refreshWithoutDiscovery to avoid clearing caches and triggering full re-discovery
-  // The SSHX state should persist in the sshxSessions map for the next auto-refresh
-  runningLabsProvider.refreshWithoutDiscovery();
+  // Run a soft refresh so tree items are rebuilt while reusing existing inspect data
+  // This ensures the SSHX label updates without forcing a full inspect
+  runningLabsProvider.softRefresh();
 }
 
 export async function sshxDetach(node: ClabLabTreeNode) {

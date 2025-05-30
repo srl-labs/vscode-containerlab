@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 
 import { execSync } from "child_process";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions } from "../extension";
 
 /**
  * Interface corresponding to fields in the
@@ -356,6 +356,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             this.updateBadge(0);
             this.labsCache.inspect = { data: undefined, timestamp: Date.now() }; // Cache empty result
             return undefined;
+        }
+
+        // Refresh SSHX session list if any SSHX container is detected and we don't already have a link
+        const sshxLabs = new Set(
+            allContainers
+                .filter(c => (c.name || '').includes('sshx'))
+                .map(c => c.lab_name)
+        );
+        const missingSessions = Array.from(sshxLabs).filter(lab => !sshxSessions.has(lab));
+        if (missingSessions.length > 0) {
+            await refreshSshxSessions();
         }
 
         // --- Process the flat allContainers list ---
