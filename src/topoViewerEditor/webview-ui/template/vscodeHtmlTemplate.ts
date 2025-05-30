@@ -201,7 +201,7 @@ export function getHTMLTemplate(
 
         <p class="control p-0">
           <button id="viewport-add-group" title="Add Group" 
-            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.createNewParent(window.topoViewerEditorEngine.cy, {createDummyChild: true}); return false;"
+            onclick="window.topoViewerEditorEngine.groupManager.createNewParent(window.topoViewerEditorEngine.cy, {createDummyChild: true}); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-notes-medical"></i>
@@ -921,7 +921,7 @@ export function getHTMLTemplate(
                       <div class="dropdown-trigger">
                         <button class="button is-size-7 is-fullwidth" aria-haspopup="true"
                           aria-controls="panel-node-editor-parent-label-dropdown-menu"
-                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.panelNodeEditorParentToggleDropdown()">
+                          onclick="window.topoViewerEditorEngine.groupManager.panelNodeEditorParentToggleDropdown()"
                           <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
                           <span class="icon is-small">
                             <i class="fas fa-angle-down" aria-hidden="true"></i>
@@ -999,13 +999,13 @@ export function getHTMLTemplate(
                       <div class="control">
                         <input type="file" id="panel-clab-editor-file-input" class="file-input">
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-delete-button"
-                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">Remove
+                          onclick="window.topoViewerEditorEngine.groupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">Remove 
                         </button>
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
                           onclick="viewportButtonsAddGroup.nodeParentPropertiesUpdateClose()">Close
                         </button>
                         <button class="button is-link is-outlined is-small"
-                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">Update
+                          onclick="window.topoViewerEditorEngine.groupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">Update 
                         </button>
                       </div>
                     </div>
@@ -1022,7 +1022,7 @@ export function getHTMLTemplate(
                       </div>
                       <div class="control">
                         <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-update-button"
-                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)">
+                          onclick="window.topoViewerEditorEngine.groupManager.nodeParentPropertiesUpdate(window.topoViewerEditorEngine.cy)"> 
                           Save
                         </button>
                       </div>
@@ -1030,7 +1030,7 @@ export function getHTMLTemplate(
                      
                       <div class="control">
                         <button type="button" class="button is-link is-outlined is-small" id="panel-node-editor-parent-remove-button"
-                          onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">
+                          onclick="window.topoViewerEditorEngine.groupManager.nodeParentRemoval(window.topoViewerEditorEngine.cy)">
                           Delete
                         </button>
                       </div>

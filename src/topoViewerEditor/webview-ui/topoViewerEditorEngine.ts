@@ -13,6 +13,8 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerViewportButtons } from './managerViewportButtons';
 import { ManagerViewportPanels } from './managerViewportPanels';
+import { ManagerGroupManager } from './managerGroupManager';
+
 
 
 
@@ -73,6 +75,7 @@ class TopoViewerEditorEngine {
   private messageSender: VscodeMessageSender;
   private viewportButtons: ManagerViewportButtons;
   private viewportPanels: ManagerViewportPanels;
+  private groupManager: ManagerGroupManager = new ManagerGroupManager();
 
 
 
@@ -192,7 +195,7 @@ class TopoViewerEditorEngine {
     // Initiate viewport buttons and panels
     this.viewportButtons = new ManagerViewportButtons(this.messageSender);
     this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
-
+    this.groupManager = new ManagerGroupManager();
 
     this.setupAutoSave();
 
@@ -320,9 +323,11 @@ class TopoViewerEditorEngine {
             // this.viewportPanels.panelNodeEditor(ele);
             if (ele.data("topoViewerRole") == "dummyChild") {
               console.info("Editing parent of dummyChild: ", ele.parent().first().id());
-              this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.parent().first().id());
+              // this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.parent().first().id());
+              this.groupManager.panelGroupToggle(ele.parent().first().id());
             } else if (ele.data("topoViewerRole") == "group") {
-              this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.id());
+              // this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.id());
+               this.groupManager.panelGroupToggle(ele.id());
             }
           }
         },
@@ -333,7 +338,8 @@ class TopoViewerEditorEngine {
                       <span>Delete Group</span>
                     </div>`,
           select: () => {
-            this.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(this.cy);
+            //this.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(this.cy);
+            this.groupManager.nodeParentRemoval(this.cy);
           }
         }
       ],
