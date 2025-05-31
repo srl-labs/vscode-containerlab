@@ -271,7 +271,15 @@ class TopoViewerEditorEngine {
                       <span>Delete Node</span>
                     </div>`,
           select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            const parent = ele.parent();
             ele.remove();
+            // If parent exists and now has no children, remove the parent
+            if (parent.nonempty() && parent.children().length === 0) {
+              parent.remove();
+            }
           }
         },
 
@@ -327,7 +335,7 @@ class TopoViewerEditorEngine {
               this.groupManager.panelGroupToggle(ele.parent().first().id());
             } else if (ele.data("topoViewerRole") == "group") {
               // this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.id());
-               this.groupManager.panelGroupToggle(ele.id());
+              this.groupManager.panelGroupToggle(ele.id());
             }
           }
         },
