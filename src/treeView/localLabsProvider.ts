@@ -10,8 +10,8 @@ const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
 const IGNORE_GLOB_PATTERN = "**/node_modules/**";
 
-export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabLabTreeNode | undefined> {
-    private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | undefined>();
+export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabLabTreeNode | c.ClabFolderTreeNode | undefined> {
+    private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | c.ClabFolderTreeNode | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private watcher = vscode.workspace.createFileSystemWatcher(WATCHER_GLOB_PATTERN, false, false, false);
@@ -65,17 +65,20 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         this.refresh();
     }
 
-    getTreeItem(element: c.ClabLabTreeNode): vscode.TreeItem {
+    getTreeItem(element: c.ClabLabTreeNode | c.ClabFolderTreeNode): vscode.TreeItem {
         return element;
     }
 
     // Populate the tree
     async getChildren(element: any): Promise<any> {
+        if (element instanceof c.ClabFolderTreeNode) {
+            return this.discoverLabs(element.fullPath);
+        }
         if (element) { return undefined; }
         return this.discoverLabs();
     }
 
-    private async discoverLabs(): Promise<c.ClabLabTreeNode[] | undefined> {
+    private async discoverLabs(dir?: string): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
         console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
         const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
@@ -91,12 +94,11 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         const addLab = (filePath: string, isFavorite: boolean) => {
             const normPath = utils.normalizeLabPath(filePath);
             if (!labs[normPath] && !labPaths.has(normPath)) {
-                const relPath = path.relative(workspaceRoot, filePath);
                 const contextVal = isFavorite
                     ? "containerlabLabUndeployedFavorite"
                     : "containerlabLabUndeployed";
                 const labNode = new c.ClabLabTreeNode(
-                    relPath,
+                    path.basename(filePath),
                     vscode.TreeItemCollapsibleState.None,
                     {
                         relative: filePath,
@@ -131,31 +133,52 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             }
         });
 
-        let result = Object.values(labs).sort(
-            (a, b) => {
-                if (a.favorite && !b.favorite) {
-                    return -1;
-                }
-                if (!a.favorite && b.favorite) {
-                    return 1;
-                }
-                const aPath = a.labPath?.absolute ?? '';
-                const bPath = b.labPath?.absolute ?? '';
-                return aPath.localeCompare(bPath);
-            }
-        );
-
         if (this.treeFilter) {
             const filter = this.treeFilter;
-            result = result.filter(lab => String(lab.label).toLowerCase().includes(filter));
+            for (const [p, node] of Object.entries(labs)) {
+                const rel = path.relative(workspaceRoot, p).toLowerCase();
+                const lbl = String(node.label).toLowerCase();
+                if (!lbl.includes(filter) && !rel.includes(filter)) {
+                    delete labs[p];
+                }
+            }
         }
 
-        const isEmpty = result.length === 0;
-        vscode.commands.executeCommand(
-            'setContext',
-            'localLabsEmpty',
-            isEmpty
-        );
+        const dirPath = dir ?? workspaceRoot;
+
+        const folderSet = new Set<string>();
+        const labNodes: c.ClabLabTreeNode[] = [];
+
+        Object.values(labs).forEach(lab => {
+            const labDir = path.dirname(lab.labPath.absolute);
+            if (labDir === dirPath) {
+                labNodes.push(lab);
+            } else if (labDir.startsWith(dirPath + path.sep) || (dirPath === workspaceRoot && labDir !== workspaceRoot && labDir.startsWith(dirPath))) {
+                const relative = path.relative(dirPath, labDir).split(path.sep)[0];
+                folderSet.add(path.join(dirPath, relative));
+            }
+        });
+
+        const folderNodes = Array.from(folderSet).sort().map(p => new c.ClabFolderTreeNode(path.basename(p), p));
+
+        labNodes.sort((a, b) => {
+            if (a.favorite && !b.favorite) { return -1; }
+            if (!a.favorite && b.favorite) { return 1; }
+            const aPath = a.labPath?.absolute ?? '';
+            const bPath = b.labPath?.absolute ?? '';
+            return aPath.localeCompare(bPath);
+        });
+
+        let result: (c.ClabFolderTreeNode | c.ClabLabTreeNode)[] = [...labNodes, ...folderNodes];
+
+        const isEmpty = result.length === 0 && dirPath === workspaceRoot;
+        if (dirPath === workspaceRoot) {
+            vscode.commands.executeCommand(
+                'setContext',
+                'localLabsEmpty',
+                isEmpty
+            );
+        }
 
         return isEmpty ? undefined : result;
 
