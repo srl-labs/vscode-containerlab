@@ -89,6 +89,12 @@ th, td {
 
 /* Make some columns narrower to fit everything */
 th:nth-child(3), /* Type */
+td:nth-child(3) {
+  text-wrap: break-word;
+  white-space: normal !important;
+  max-width: 200px;
+}
+
 td:nth-child(3),
 th:nth-child(7), /* PID */
 td:nth-child(7),
@@ -102,7 +108,7 @@ td:nth-child(12) {
 /* Image column can wrap */
 th:nth-child(4), /* Image */
 td:nth-child(4) {
-  word-break: break-word;
+  word-wrap: break-word;
   max-width: 200px;
 }
 

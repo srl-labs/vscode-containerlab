@@ -149,7 +149,7 @@ function showInspectWebview(containers: any[], title: string, extensionUri: vsco
   const iconUri = vscode.Uri.joinPath(
     extensionUri,
     'resources',
-    'containerlab.png'
+    'containerlab.svg'
   );
   panel.iconPath = iconUri;
 

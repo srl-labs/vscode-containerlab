@@ -40,7 +40,7 @@ export class WelcomePage {
     );
 
     const iconUri = vscode.Uri.file(
-      path.join(this.context.extensionPath, 'resources', 'containerlab.png')
+      path.join(this.context.extensionPath, 'resources', 'containerlab.svg')
     );
     this.panel.iconPath = iconUri;
 
