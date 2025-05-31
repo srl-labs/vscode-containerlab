@@ -247,6 +247,30 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.fcli', cmd.runFcli)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.bgpPeers', node => cmd.runFcli(node, 'bgp-peers'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.bgpRib', node => cmd.runFcli(node, 'bgp-rib'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.ipv4Rib', node => cmd.runFcli(node, 'ipv4-rib'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.lldp', node => cmd.runFcli(node, 'lldp'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.mac', node => cmd.runFcli(node, 'mac'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.ni', node => cmd.runFcli(node, 'ni'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.subif', node => cmd.runFcli(node, 'subif'))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.sysInfo', node => cmd.runFcli(node, 'sys-info'))
+  );
 
   // Lab inspection commands
   context.subscriptions.push(

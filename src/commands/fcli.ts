@@ -4,7 +4,7 @@ import * as yaml from "js-yaml";
 import { execCommandInTerminal } from "./command";
 import { ClabLabTreeNode } from "../treeView/common";
 
-export async function runFcli(node: ClabLabTreeNode) {
+export async function runFcli(node: ClabLabTreeNode, subcmd?: string) {
     if (!node) {
         vscode.window.showErrorMessage("No lab node selected.");
         return;
@@ -36,7 +36,43 @@ export async function runFcli(node: ClabLabTreeNode) {
     }
 
     const runtime = vscode.workspace.getConfiguration("containerlab").get<string>("runtime", "docker");
-    const cmd = `${runtime} run -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${labPath}":/topo.yml ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml`;
+    let cmd = `${runtime} run -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${labPath}":/topo.yml ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml`;
+
+    if (subcmd) {
+        cmd += ` ${subcmd}`;
+    }
 
     execCommandInTerminal(cmd, `fcli-${network}`);
+}
+
+export function fcliBgpPeers(node: ClabLabTreeNode) {
+    runFcli(node, 'bgp-peers');
+}
+
+export function fcliBgpRib(node: ClabLabTreeNode) {
+    runFcli(node, 'bgp-rib');
+}
+
+export function fcliIpv4Rib(node: ClabLabTreeNode) {
+    runFcli(node, 'ipv4-rib');
+}
+
+export function fcliLldp(node: ClabLabTreeNode) {
+    runFcli(node, 'lldp');
+}
+
+export function fcliMac(node: ClabLabTreeNode) {
+    runFcli(node, 'mac');
+}
+
+export function fcliNi(node: ClabLabTreeNode) {
+    runFcli(node, 'ni');
+}
+
+export function fcliSubif(node: ClabLabTreeNode) {
+    runFcli(node, 'subif');
+}
+
+export function fcliSysInfo(node: ClabLabTreeNode) {
+    runFcli(node, 'sys-info');
 }
