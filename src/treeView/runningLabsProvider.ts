@@ -617,9 +617,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None;
 
+            // if shortname is defined, use it for the label
+            const label = container.name_short || container.name;
+
             // Create the container node with optional fields
             const node = new c.ClabContainerTreeNode(
-                container.name, // Use container name as label
+                label,
                 collapsible,
                 container.name,
                 name_short,
