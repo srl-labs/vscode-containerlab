@@ -147,7 +147,7 @@ export async function manageNodeImpairments(
   const iconUri = vscode.Uri.joinPath(
     context.extensionUri,
     'resources',
-    'containerlab.png'
+    'containerlab.svg'
   );
   panel.iconPath = iconUri;
 
