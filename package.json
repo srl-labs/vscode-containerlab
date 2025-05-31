@@ -234,6 +234,11 @@
         "title": "SSH (All nodes)"
       },
       {
+        "command": "containerlab.lab.fcli",
+        "title": "Open fcli",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.node.start",
         "title": "Start"
       },
@@ -664,6 +669,11 @@
           "command": "containerlab.lab.sshToAllNodes",
           "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "connect@0"
+        },
+        {
+          "command": "containerlab.lab.fcli",
+          "when": "viewItem =~ /containerlabLabDeployed/",
+          "group": "connect@1"
         },
         {
           "command": "containerlab.node.openBrowser",

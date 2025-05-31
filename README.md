@@ -21,7 +21,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
   - **Gray:** Undeployed labs
 
 - **Context Menu Actions:**
-  For labs and containers, quickly deploy, destroy, redeploy (with or without cleanup), save, inspect, delete undeployed lab files, or open lab files and workspaces. For containers, additional commands include starting, stopping, attaching a shell, SSH, viewing logs, and copying key properties (name, ID, IP addresses, kind, image).
+  For labs and containers, quickly deploy, destroy, redeploy (with or without cleanup), save, inspect, delete undeployed lab files, or open lab files and workspaces. For containers, additional commands include starting, stopping, attaching a shell, SSH, viewing logs, and copying key properties (name, ID, IP addresses, kind, image). Labs with **Nokia SR Linux** nodes offer an extra command to launch `fcli` in a terminal for network‑wide show commands.
 
 - **Interface Tools:**
   Capture traffic (via tcpdump/Wireshark or Edgeshark) and set link impairments such as delay, jitter, packet loss, rate-limit, and corruption. You can also copy an interface’s MAC address.
@@ -59,6 +59,9 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
     - **Install Edgeshark**: installs Edgeshark using docker compose
     - **Uninstall Edgeshark**: removes Edgeshark containers
     - **Configure session hostname**: set hostname for remote connections (packet capture)
+
+    ### fcli Integration
+    - **Open fcli**: launches the `nornir-srl` container attached to the lab network using the selected runtime (docker or podman). If the topology does not specify a management network, the default `clab` network is used.
 
   - If you want to live capture traffic using Wireshark, please [download the cshargextcap plugin](https://github.com/siemens/cshargextcap/releases) for the OS/distribution and install it.
 

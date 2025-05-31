@@ -244,6 +244,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.sshToAllNodes', cmd.sshToLab)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli', cmd.runFcli)
+  );
 
   // Lab inspection commands
   context.subscriptions.push(
