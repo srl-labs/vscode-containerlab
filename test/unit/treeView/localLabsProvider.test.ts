@@ -156,5 +156,29 @@ describe('LocalLabTreeDataProvider', () => {
       args: ['localLabsEmpty', true],
     });
   });
+
+  it('filters labs by folder name including nested paths', async () => {
+    sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
+      vscodeStub.Uri.file('/workspace/a/nested/lab1.clab.yml'),
+      vscodeStub.Uri.file('/workspace/b/lab2.clab.yml'),
+    ]);
+
+    const provider = new LocalLabTreeDataProvider();
+    provider.setTreeFilter('nested');
+    const rootNodes = await provider.getChildren(undefined);
+
+    expect(rootNodes).to.have.lengthOf(1);
+    const folderA = rootNodes![0];
+    expect(folderA.label).to.equal('a');
+
+    const nestedNodes = await provider.getChildren(folderA as any);
+    expect(nestedNodes).to.have.lengthOf(1);
+    const nestedFolder = nestedNodes![0];
+    expect(nestedFolder.label).to.equal('nested');
+
+    const labs = await provider.getChildren(nestedFolder as any);
+    expect(labs).to.have.lengthOf(1);
+    expect(labs![0].label).to.equal('lab1.clab.yml');
+  });
 });
 

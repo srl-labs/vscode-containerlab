@@ -133,6 +133,17 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             }
         });
 
+        if (this.treeFilter) {
+            const filter = this.treeFilter;
+            for (const [p, node] of Object.entries(labs)) {
+                const rel = path.relative(workspaceRoot, p).toLowerCase();
+                const lbl = String(node.label).toLowerCase();
+                if (!lbl.includes(filter) && !rel.includes(filter)) {
+                    delete labs[p];
+                }
+            }
+        }
+
         const dirPath = dir ?? workspaceRoot;
 
         const folderSet = new Set<string>();
@@ -159,11 +170,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         });
 
         let result: (c.ClabFolderTreeNode | c.ClabLabTreeNode)[] = [...labNodes, ...folderNodes];
-
-        if (this.treeFilter) {
-            const filter = this.treeFilter;
-            result = result.filter(node => String(node.label).toLowerCase().includes(filter));
-        }
 
         const isEmpty = result.length === 0 && dirPath === workspaceRoot;
         if (dirPath === workspaceRoot) {
