@@ -2380,7 +2380,7 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
         } else if (endpoint === "target") {
           if (isVscodeDeployment) {
             try {
-              const response = await sendMessageToVscodeEndpointPost("link-capture", {
+              const response = await sendMessageToVscodeEndpointPost("clab-link-capture", {
                 nodeName: clabTargetLongName,
                 interfaceName: clabTargetPort
               });
