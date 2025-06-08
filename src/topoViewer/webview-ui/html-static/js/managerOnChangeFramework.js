@@ -134,15 +134,6 @@ function onChangeRuleInterfaceOperState(labData) {
             if (!lab || !Array.isArray(lab.containers)) continue;
             lab.containers.forEach(container => {
                 if (typeof container.label !== "string") return;
-                // Remove lab-specific prefix; adjust the regex as needed.
-                //   const nodeName = container.label.replace(/^clab-.*?-/, '');
-                
-                // const nodeClabName = container.label
-
-                // const getRouterName = (fullString, keyword) =>
-                //     fullString.split(keyword)[1].replace(/^-/, '');
-
-                // nodeName = getRouterName(nodeClabName, lab.name); // Outputs: router1
 
                 nodeClabNameShort = container.name_short
                 nodeName = nodeClabNameShort
@@ -151,14 +142,10 @@ function onChangeRuleInterfaceOperState(labData) {
 
                 if (!Array.isArray(container.interfaces)) return;
                 container.interfaces.forEach(iface => {
-                    // if (!iface || typeof iface.name !== "string") return;
-                    // if (!iface || typeof iface.alias !== "string") return;
                     if (!iface || typeof iface.label !== "string") return; // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
 
                     const description = iface.description || "";
                     const state = description.toUpperCase().includes("UP") ? "Up" : "Down";
-                    // const endpoint = iface.name;
-                    // const endpoint = iface.alias;
                     const endpoint = iface.label;
 
                     const key = `${nodeName}::${endpoint}`;
@@ -206,22 +193,22 @@ function onChangeHandlerInterfaceOperState(updateMessage) {
 
     const { nodeName, monitoredObject, state, removed } = updateMessage;
     const safeNodeName = typeof CSS !== "undefined" ? CSS.escape(nodeName) : nodeName;
-    // const safeEndpoint = typeof CSS !== "undefined" ? CSS.escape(monitoredObject) : monitoredObject;
 
-    const safeEndpoint =
-        typeof CSS !== "undefined"
-            ? CSS.escape(monitoredObject).replace(/\\\//g, "/")
-            : monitoredObject;
+    function customEscape(str) {
+        return str.replace(/["\\[\]]/g, "\\$&");
+    }
 
+    const safeEndpoint = customEscape(monitoredObject);
 
     const edgeSelector = `edge[source="${safeNodeName}"][sourceEndpoint="${safeEndpoint}"]`;
     const edges = cy.$(edgeSelector);
-    console.log(`managerOnChangeFramework | handler | safeNodeName: ${safeNodeName} \n safeEndpoint: ${safeEndpoint} \n edgeSelector: ${edgeSelector} \n selectedEdges: ${edges}`);
+    console.log(`managerOnChangeFramework | handler | safeNodeName: ${safeNodeName} \n safeEndpoint: ${safeEndpoint} \n edgeSelector: ${edgeSelector} \n selectedEdges: ${edges} \n removedStatus: ${removed}`);
     // Example output:
     // managerOnChangeFramework | handler | safeNodeName: router1 
     // safeEndpoint: ethernet-3\/1 
     // edgeSelector: edge[source="router1"][sourceEndpoint="ethernet-3\/1"] 
     // selectedEdges: 
+    // removedStatus:
 
     edgeCollection = edges
     // Check if any matching edge was found and retrieve its id
