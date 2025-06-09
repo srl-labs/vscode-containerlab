@@ -1043,7 +1043,7 @@
     "@types/node": "^22.15.29",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
-    "@typescript-eslint/parser": "^8.32.1",
+    "@typescript-eslint/parser": "^8.33.1",
     "chai": "^5.2.0",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
