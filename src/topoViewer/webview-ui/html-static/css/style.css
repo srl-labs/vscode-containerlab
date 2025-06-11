@@ -537,6 +537,15 @@ body {
   /* Initially hidden */
 }
 
+.select.is-small select {
+  font-size: 0.75rem;
+  padding-top: 0.4em;
+  padding-bottom: 0.4em;
+  line-height: 1.2;
+}
+
+
+
 /* Editor Container
 -------------------------------------------------- */
 #editor-container {

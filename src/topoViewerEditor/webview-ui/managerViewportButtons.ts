@@ -8,8 +8,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { NodeData } from './topoViewerEditorEngine';
 
 
-// Declare global functions/variables if they are not imported from other modules.
-declare const globalCytoscapeLeafletLeaf: { fit: () => void };
+
 export let globalLinkEndpointVisibility = true;
 
 
@@ -56,7 +55,8 @@ export class ManagerViewportButtons {
     try {
       console.log("viewportButtonsSaveTopo triggered");
 
-      // Process each node: update positions and extra label data.
+      // Process each node: update positions, geo coordinates and extra label data.
+      const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
       const updatedNodes = cy.nodes().map((node: cytoscape.NodeSingular) => {
         // Cast node.json() to any so we can modify its properties.
         const nodeJson: any = node.json();
@@ -66,6 +66,20 @@ export class ManagerViewportButtons {
         if (nodeJson.data?.extraData?.labels) {
           nodeJson.data.extraData.labels["graph-posX"] = nodeJson.position.x.toString();
           nodeJson.data.extraData.labels["graph-posY"] = nodeJson.position.y.toString();
+        }
+
+        if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
+          const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({ x: node.position().x, y: node.position().y });
+          nodeJson.data = nodeJson.data || {};
+          nodeJson.data.lat = latlng.lat.toString();
+          nodeJson.data.lng = latlng.lng.toString();
+          nodeJson.data.extraData = nodeJson.data.extraData || {};
+          nodeJson.data.extraData.labels = nodeJson.data.extraData.labels || {};
+          nodeJson.data.extraData.labels["graph-geoCoordinateLat"] = nodeJson.data.lat;
+          nodeJson.data.extraData.labels["graph-geoCoordinateLng"] = nodeJson.data.lng;
+        } else if (nodeJson.data?.lat && nodeJson.data?.lng && nodeJson.data?.extraData?.labels) {
+          nodeJson.data.extraData.labels["graph-geoCoordinateLat"] = nodeJson.data.lat;
+          nodeJson.data.extraData.labels["graph-geoCoordinateLng"] = nodeJson.data.lng;
         }
 
         // Update parent information.
@@ -170,9 +184,9 @@ export class ManagerViewportButtons {
     const currentZoom = cy.zoom();
     console.info(`And now the zoom level is "${currentZoom}".`);
 
-    // If a global Cytoscape Leaflet instance is available, fit its view as well.
-    globalCytoscapeLeafletLeaf.fit();
-    console.log("globalCytoscapeLeafletLeaf.fit()");
+    // If a Leaflet overlay is active, fit its view as well.
+    const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+    layoutMgr?.cytoscapeLeafletLeaf?.fit();
   }
 
   /**
