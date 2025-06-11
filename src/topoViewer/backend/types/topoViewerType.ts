@@ -65,7 +65,6 @@ export interface EnvironmentJson {
     topoviewerVersion: string;
     topviewerPresetLayout: string
     envCyTopoJsonBytes: CytoTopology | '';
-    envCyTopoJsonBytesAddon: CytoTopology | '';
 }
 
 

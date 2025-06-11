@@ -112,8 +112,7 @@ export class TopoViewerAdaptorClab {
         deploymentType: "vs-code",
         topoviewerVersion: `${topoViewerVersion}`,
         topviewerPresetLayout: `${this.currentIsPresetLayout.toString()}`,
-        envCyTopoJsonBytes: cytoTopology,
-        envCyTopoJsonBytesAddon: cytoTopology
+        envCyTopoJsonBytes: cytoTopology
       };
 
       // Serialize EnvironmentJson with hyphenated keys
@@ -256,8 +255,7 @@ export class TopoViewerAdaptorClab {
       "deployment-type": envJson.deploymentType,
       "topoviewer-version": envJson.topoviewerVersion,
       "topoviewer-layout-preset": envJson.topviewerPresetLayout,
-      "EnvCyTopoJsonBytes": envJson.envCyTopoJsonBytes,
-      "EnvCyTopoJsonBytesAddon": envJson.envCyTopoJsonBytesAddon
+      "EnvCyTopoJsonBytes": envJson.envCyTopoJsonBytes
     };
 
     return JSON.stringify(hyphenatedJson, null, 2);
