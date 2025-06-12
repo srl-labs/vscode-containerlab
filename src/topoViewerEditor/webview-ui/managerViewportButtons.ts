@@ -61,18 +61,34 @@ export class ManagerViewportButtons {
         // Cast node.json() to any so we can modify its properties.
         const nodeJson: any = node.json();
 
-        // Update the node's position property.
-        nodeJson.position = node.position();
+        let posX = node.position().x;
+        let posY = node.position().y;
+        if (layoutMgr?.isGeoMapInitialized) {
+          const origX = node.data('_origPosX');
+          const origY = node.data('_origPosY');
+          if (origX !== undefined && origY !== undefined) {
+            posX = origX;
+            posY = origY;
+          }
+        }
+        nodeJson.position = { x: posX, y: posY };
         if (nodeJson.data?.extraData?.labels) {
-          nodeJson.data.extraData.labels["graph-posX"] = nodeJson.position.x.toString();
-          nodeJson.data.extraData.labels["graph-posY"] = nodeJson.position.y.toString();
+          nodeJson.data.extraData.labels["graph-posX"] = posX.toString();
+          nodeJson.data.extraData.labels["graph-posY"] = posY.toString();
         }
 
         if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
-          const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({ x: node.position().x, y: node.position().y });
           nodeJson.data = nodeJson.data || {};
-          nodeJson.data.lat = latlng.lat.toString();
-          nodeJson.data.lng = latlng.lng.toString();
+          const lat = node.data("lat");
+          const lng = node.data("lng");
+          if (lat !== undefined && lng !== undefined) {
+            nodeJson.data.lat = lat.toString();
+            nodeJson.data.lng = lng.toString();
+          } else {
+            const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({ x: node.position().x, y: node.position().y });
+            nodeJson.data.lat = latlng.lat.toString();
+            nodeJson.data.lng = latlng.lng.toString();
+          }
           nodeJson.data.extraData = nodeJson.data.extraData || {};
           nodeJson.data.extraData.labels = nodeJson.data.extraData.labels || {};
           nodeJson.data.extraData.labels["graph-geoCoordinateLat"] = nodeJson.data.lat;
@@ -132,7 +148,15 @@ export class ManagerViewportButtons {
         return acc;
       }, [] as any[]);
 
-      loadCytoStyle(cy);
+      if (!suppressNotification) {
+        loadCytoStyle(cy);
+      } else {
+        const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+        if (layoutMgr?.isGeoMapInitialized) {
+          const factor = layoutMgr.calculateGeoScale();
+          layoutMgr.applyGeoScale(true, factor);
+        }
+      }
 
       // Combine nodes and edges into a single array.
       const updatedElements = [...updatedNodes, ...updatedEdges];
@@ -297,6 +321,24 @@ export class ManagerViewportButtons {
     }
 
     cy.add({ group: 'nodes', data: newNodeData, position });
+
+    // If a Geo map overlay is active, store the geographic coordinates
+    const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+    if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
+      const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
+        x: position.x,
+        y: position.y
+      });
+      const node = cy.getElementById(newNodeId);
+      node.data('lat', latlng.lat.toString());
+      node.data('lng', latlng.lng.toString());
+      const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
+      labels['graph-geoCoordinateLat'] = latlng.lat.toString();
+      labels['graph-geoCoordinateLng'] = latlng.lng.toString();
+      if (node.data('extraData')) {
+        (node.data('extraData') as any).labels = labels;
+      }
+    }
 
     // Note: Removed cy.fit() to keep the current view
   }

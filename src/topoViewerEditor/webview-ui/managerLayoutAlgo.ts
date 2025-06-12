@@ -1,4 +1,5 @@
 import cytoscape from 'cytoscape';
+import loadCytoStyle from './managerCytoscapeStyle';
 
 /**
  * Layout manager handling various Cytoscape layouts.
@@ -16,9 +17,180 @@ export class ManagerLayoutAlgo {
   public cytoscapeLeafletLeaf: any;
   /** Whether the editor is running inside VS Code. */
   public isVscodeDeployment: boolean = (window as any).isVscodeDeployment;
+  /** Force a specific Cytoscape theme (light or dark) while active */
+  public geoTheme: 'light' | 'dark' | null = null;
   /** Helper to get the Cytoscape instance from the engine */
   private getCy(): cytoscape.Core | undefined {
     return (window as any).topoViewerEditorEngine?.cy as cytoscape.Core | undefined;
+  }
+
+  /** Track whether node/edge styles have been scaled for Geo layout */
+  private geoScaleApplied = false;
+  /** Base zoom level when Geo map is initialised */
+  private geoScaleBaseZoom = 1;
+  /** Default scale factor applied at the base zoom level */
+  private geoScaleFactor = 4;
+  /** Last scale factor applied to elements */
+  private lastGeoScale = this.geoScaleFactor;
+  /** Cached zoom handler so it can be removed */
+  private onLeafletZoomBound = () => {
+    if (this.zoomRaf !== null) window.cancelAnimationFrame(this.zoomRaf);
+    this.zoomRaf = window.requestAnimationFrame(() => {
+      const factor = this.calculateGeoScale();
+      this.applyGeoScale(true, factor);
+      console.debug('[GeoScale] zoom factor', factor, 'zoom', this.cytoscapeLeafletMap?.getZoom());
+      this.zoomRaf = null;
+    });
+  };
+
+  /** Zoom end handler to ensure scaling persists once zooming stops */
+  private onLeafletZoomEndBound = () => {
+    if (this.zoomEndTimeout !== null) window.clearTimeout(this.zoomEndTimeout);
+    this.zoomEndTimeout = window.setTimeout(() => {
+      const factor = this.calculateGeoScale();
+      this.applyGeoScale(true, factor);
+      console.debug('[GeoScale] zoomend factor', factor, 'zoom', this.cytoscapeLeafletMap?.getZoom());
+      this.zoomEndTimeout = null;
+    }, 300);
+  };
+
+  /** Handler to ensure scaling persists after Cytoscape renders */
+  private onCyRenderBound = () => {
+    if (!this.isGeoMapInitialized) return;
+    const factor = this.calculateGeoScale();
+    if (Math.abs(factor - this.lastGeoScale) > 0.001) {
+      console.debug('[GeoScale] render factor', factor);
+      this.applyGeoScale(true, factor);
+    }
+  };
+
+  /** Pending animation frame reference for zoom handler */
+  private zoomRaf: number | null = null;
+
+  /** Timeout used for the zoomend handler */
+  private zoomEndTimeout: number | null = null;
+
+  /** Handler that reapplies Geo scaling when new elements are added */
+  private onElementAddedBound = (evt?: any) => {
+    const target = evt?.target;
+    if (target && target.isNode && !target.data('_origPosX')) {
+      target.data('_origPosX', target.position('x'));
+      target.data('_origPosY', target.position('y'));
+    }
+    const factor = this.calculateGeoScale();
+    this.applyGeoScale(true, factor);
+  };
+
+  /**
+   * Increase node, label and edge sizes fourfold when the Geo map is active.
+   * Original styles are restored when the map is disabled.
+   */
+  public applyGeoScale(enable: boolean, factor: number = this.geoScaleFactor): void {
+    const cy = this.getCy();
+    if (!cy) return;
+
+    console.debug('[GeoScale] apply', enable, 'factor', factor);
+
+    if (enable) {
+      cy.nodes().forEach((n) => {
+        let origW = n.data('_origWidth');
+        let origH = n.data('_origHeight');
+        let origFont = n.data('_origFont');
+        let origBorder = n.data('_origBorderWidth');
+        if (origW === undefined) {
+          origW = n.width();
+          n.data('_origWidth', origW);
+        }
+        if (origH === undefined) {
+          origH = n.height();
+          n.data('_origHeight', origH);
+        }
+        if (origFont === undefined) {
+          const fs = parseFloat(n.style('font-size'));
+          origFont = isNaN(fs) ? 0 : fs;
+          n.data('_origFont', origFont);
+        }
+        if (origBorder === undefined && n.data('topoViewerRole') === 'group') {
+          const bw = parseFloat(n.style('border-width'));
+          origBorder = isNaN(bw) ? 0 : bw;
+          n.data('_origBorderWidth', origBorder);
+        }
+        n.style({
+          width: origW * factor,
+          height: origH * factor,
+          'font-size': origFont ? `${origFont * factor}px` : n.style('font-size')
+        });
+        if (n.data('topoViewerRole') === 'group' && origBorder !== undefined) {
+          n.style('border-width', origBorder * factor);
+        }
+      });
+      cy.edges().forEach((e) => {
+        let origWidth = e.data('_origWidth');
+        let origFont = e.data('_origFont');
+        let origArrow = e.data('_origArrow');
+        if (origWidth === undefined) {
+          const width = parseFloat(e.style('width'));
+          origWidth = isNaN(width) ? 0 : width;
+          e.data('_origWidth', origWidth);
+        }
+        if (origFont === undefined) {
+          const fs = parseFloat(e.style('font-size'));
+          origFont = isNaN(fs) ? 0 : fs;
+          e.data('_origFont', origFont);
+        }
+        if (origArrow === undefined) {
+          const arrow = parseFloat(e.style('arrow-scale'));
+          origArrow = isNaN(arrow) ? 0 : arrow;
+          e.data('_origArrow', origArrow);
+        }
+        e.style({
+          width: origWidth ? origWidth * factor : e.style('width'),
+          'font-size': origFont ? `${origFont * factor}px` : e.style('font-size'),
+          'arrow-scale': origArrow ? origArrow * factor : e.style('arrow-scale')
+        });
+      });
+      this.geoScaleApplied = true;
+      this.lastGeoScale = factor;
+    } else if (!enable && this.geoScaleApplied) {
+      cy.nodes().forEach((n) => {
+        const w = n.data('_origWidth');
+        const h = n.data('_origHeight');
+        const fs = n.data('_origFont');
+        const bw = n.data('_origBorderWidth');
+        if (w !== undefined) n.style('width', w);
+        if (h !== undefined) n.style('height', h);
+        if (fs !== undefined && fs !== 0) n.style('font-size', `${fs}px`);
+        if (bw !== undefined && n.data('topoViewerRole') === 'group') {
+          n.style('border-width', bw);
+        }
+        n.removeData('_origWidth');
+        n.removeData('_origHeight');
+        n.removeData('_origFont');
+        n.removeData('_origBorderWidth');
+      });
+      cy.edges().forEach((e) => {
+        const w = e.data('_origWidth');
+        const fs = e.data('_origFont');
+        const ar = e.data('_origArrow');
+        if (w !== undefined) e.style('width', w);
+        if (fs !== undefined && fs !== 0) e.style('font-size', `${fs}px`);
+        if (ar !== undefined) e.style('arrow-scale', ar);
+        e.removeData('_origWidth');
+        e.removeData('_origFont');
+        e.removeData('_origArrow');
+      });
+      this.geoScaleApplied = false;
+      this.lastGeoScale = this.geoScaleFactor;
+    }
+  }
+
+  /** Determine the current scale factor based on Leaflet zoom level */
+  public calculateGeoScale(): number {
+    if (!this.cytoscapeLeafletMap) return this.geoScaleFactor;
+    const currentZoom = this.cytoscapeLeafletMap.getZoom() || this.geoScaleBaseZoom;
+    if (!this.geoScaleBaseZoom) this.geoScaleBaseZoom = currentZoom;
+    const zoomDiff = currentZoom - this.geoScaleBaseZoom;
+    return this.geoScaleFactor * Math.pow(2, zoomDiff);
   }
 
   /** Disable grid guide overlay and snapping */
@@ -44,6 +216,66 @@ export class ManagerLayoutAlgo {
       snapToGridDuringDrag: false,
       snapToAlignmentLocationOnRelease: true,
       snapToAlignmentLocationDuringDrag: false
+    });
+  }
+
+  /**
+   * Assign missing latitude and longitude values to nodes.
+   *
+   * This mirrors the helper used in the JavaScript version and ensures that
+   * all nodes have valid geographic coordinates before Geo positioning is
+   * enabled. Existing values are normalised while missing ones are generated
+   * using the average of known coordinates or fall back defaults.
+   */
+  public assignMissingLatLng(): void {
+    const cy = this.getCy();
+    if (!cy) return;
+
+    const DEFAULT_AVERAGE_LAT = 48.684826888402256;
+    const DEFAULT_AVERAGE_LNG = 9.007895390625677;
+
+    const existingLats: number[] = [];
+    const existingLngs: number[] = [];
+
+    cy.nodes().forEach(node => {
+      const lat = parseFloat(node.data('lat'));
+      if (!isNaN(lat)) existingLats.push(lat);
+
+      const lng = parseFloat(node.data('lng'));
+      if (!isNaN(lng)) existingLngs.push(lng);
+    });
+
+    let averageLat = existingLats.length > 0
+      ? existingLats.reduce((a, b) => a + b, 0) / existingLats.length
+      : DEFAULT_AVERAGE_LAT;
+    let averageLng = existingLngs.length > 0
+      ? existingLngs.reduce((a, b) => a + b, 0) / existingLngs.length
+      : DEFAULT_AVERAGE_LNG;
+
+    const useDefaultLat = existingLats.length === 0;
+    const useDefaultLng = existingLngs.length === 0;
+
+    cy.nodes().forEach(node => {
+      let lat = parseFloat(node.data('lat'));
+      if (!node.data('lat') || isNaN(lat)) {
+        lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat) + Math.random() * 0.9;
+      }
+      let lng = parseFloat(node.data('lng'));
+      if (!node.data('lng') || isNaN(lng)) {
+        lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng) + Math.random() * 0.9;
+      }
+
+      const latStr = lat.toFixed(15);
+      const lngStr = lng.toFixed(15);
+      node.data('lat', latStr);
+      node.data('lng', lngStr);
+
+      const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
+      labels['graph-geoCoordinateLat'] = latStr;
+      labels['graph-geoCoordinateLng'] = lngStr;
+      if (node.data('extraData')) {
+        (node.data('extraData') as any).labels = labels;
+      }
     });
   }
 
@@ -111,12 +343,62 @@ export class ManagerLayoutAlgo {
 
     this.viewportDrawerDisableGeoMap();
 
+    // Store current positions so they can be restored when Geo layout is disabled
+    cy.nodes().forEach((node) => {
+      node.data('_origPosX', node.position('x'));
+      node.data('_origPosY', node.position('y'));
+    });
+
+    // Apply light theme styles when Geo layout is active
+    this.geoTheme = 'light';
+    loadCytoStyle(cy, 'light');
+
     // Disable grid guide interactions when the map overlay is active
     this.disableGridGuide();
 
     if (!this.isGeoMapInitialized) {
-      const leafletContainer = document.getElementById('cy-leaflet');
-      if (leafletContainer) leafletContainer.style.display = 'block';
+      // Pre-compute geographic coordinates for nodes lacking them so the
+      // Cytoscape-Leaflet plugin doesn't fail during initialisation.
+      const cyContainer = cy.container() as HTMLElement;
+      const tempDiv = document.createElement('div');
+      tempDiv.style.width = `${cyContainer.clientWidth}px`;
+      tempDiv.style.height = `${cyContainer.clientHeight}px`;
+      document.body.appendChild(tempDiv);
+      const tempMap = (window as any).L.map(tempDiv, { zoomControl: false, zoomSnap: 0 });
+      tempMap.setView([43.83155486662417, -79.37278747558595], 10);
+      cy.nodes().forEach((node) => {
+        const data = node.data();
+        if (data.lat === undefined || data.lng === undefined) {
+          const latlng = tempMap.containerPointToLatLng({
+            x: node.position().x,
+            y: node.position().y
+          });
+          node.data('lat', latlng.lat.toString());
+          node.data('lng', latlng.lng.toString());
+          const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
+          labels['graph-geoCoordinateLat'] = latlng.lat.toString();
+          labels['graph-geoCoordinateLng'] = latlng.lng.toString();
+          if (node.data('extraData')) {
+            (node.data('extraData') as any).labels = labels;
+          }
+        }
+      });
+      tempMap.remove();
+      tempDiv.remove();
+
+      // Normalise or generate any still-missing coordinates
+      this.assignMissingLatLng();
+
+      let leafletContainer = document.getElementById('cy-leaflet');
+      if (!leafletContainer) {
+        leafletContainer = document.createElement('div');
+        leafletContainer.id = 'cy-leaflet';
+        const rootDiv = document.getElementById('root-div');
+        if (rootDiv) {
+          rootDiv.insertBefore(leafletContainer, rootDiv.firstChild);
+        }
+      }
+      (leafletContainer as HTMLElement).style.display = 'block';
       this.cytoscapeLeafletLeaf = (cy as any).leaflet({ container: leafletContainer });
       this.cytoscapeLeafletLeaf.map.removeLayer(this.cytoscapeLeafletLeaf.defaultTileLayer);
       this.cytoscapeLeafletMap = this.cytoscapeLeafletLeaf.map;
@@ -126,7 +408,27 @@ export class ManagerLayoutAlgo {
         subdomains: 'abcd',
         maxZoom: 19
       }).addTo(this.cytoscapeLeafletMap);
+
+      // Patch getNodeLatLng so nodes missing coordinates return a value derived
+      // from the node's current position. Updating the node data here would
+      // trigger Cytoscape events and can lead to recursion inside the plugin,
+      // so we only compute the coordinates without modifying the node.
+      const origGetNodeLatLng = this.cytoscapeLeafletLeaf.getNodeLatLng;
+      this.cytoscapeLeafletLeaf.getNodeLatLng = (n: any) => {
+        const data = n.data();
+        if (data.lat === undefined || data.lng === undefined) {
+          const pos = n.position();
+          return this.cytoscapeLeafletMap.containerPointToLatLng({
+            x: pos.x,
+            y: pos.y
+          });
+        }
+        return origGetNodeLatLng.call(this.cytoscapeLeafletLeaf, n);
+      };
       this.isGeoMapInitialized = true;
+      this.geoScaleBaseZoom = this.cytoscapeLeafletMap.getZoom() || 1;
+      this.cytoscapeLeafletMap.on('zoom', this.onLeafletZoomBound);
+      this.cytoscapeLeafletMap.on('zoomend', this.onLeafletZoomEndBound);
     }
 
     cy.layout({
@@ -134,6 +436,25 @@ export class ManagerLayoutAlgo {
       fit: false,
       positions: (node: cytoscape.NodeSingular) => {
         const data = node.data();
+        if (data.lat === undefined || data.lng === undefined) {
+          // Convert existing position to geographic coordinates so the node can
+          // be mapped correctly and future layout changes preserve it.
+          const latlng = this.cytoscapeLeafletMap.containerPointToLatLng({
+            x: node.position().x,
+            y: node.position().y
+          });
+          node.data('lat', latlng.lat.toString());
+          node.data('lng', latlng.lng.toString());
+          const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
+          labels['graph-geoCoordinateLat'] = latlng.lat.toString();
+          labels['graph-geoCoordinateLng'] = latlng.lng.toString();
+          if (node.data('extraData')) {
+            (node.data('extraData') as any).labels = labels;
+          }
+          // Use current position as no conversion is needed
+          return { x: node.position().x, y: node.position().y };
+        }
+
         const point = this.cytoscapeLeafletMap.latLngToContainerPoint([
           Number((data as any).lat),
           Number((data as any).lng)
@@ -143,6 +464,10 @@ export class ManagerLayoutAlgo {
     } as any).run();
 
     this.cytoscapeLeafletLeaf.fit();
+    const factor = this.calculateGeoScale();
+    this.applyGeoScale(true, factor);
+    cy.on('add', this.onElementAddedBound);
+    cy.on('render', this.onCyRenderBound);
     const geoMapButtons = document.getElementsByClassName('viewport-geo-map');
     for (let i = 0; i < geoMapButtons.length; i++) {
       geoMapButtons[i].classList.remove('is-hidden');
@@ -156,9 +481,37 @@ export class ManagerLayoutAlgo {
     // Persist node geographic coordinates before destroying the overlay
     this.updateNodeGeoCoordinates();
 
+    // Restore original graph positions captured when Geo layout was activated
+    cy.nodes().forEach((node) => {
+      const x = node.data('_origPosX');
+      const y = node.data('_origPosY');
+      if (x !== undefined && y !== undefined) {
+        node.position({ x, y });
+        node.removeData('_origPosX');
+        node.removeData('_origPosY');
+      }
+    });
+
     const leafletContainer = document.getElementById('cy-leaflet');
-    if (leafletContainer) leafletContainer.style.display = 'none';
+    if (leafletContainer) {
+      leafletContainer.style.display = 'none';
+      // Remove the container entirely to ensure a clean reinitialisation later
+      if (leafletContainer.parentNode) {
+        leafletContainer.parentNode.removeChild(leafletContainer);
+      }
+    }
+    if (this.cytoscapeLeafletMap) {
+      this.cytoscapeLeafletMap.off('zoom', this.onLeafletZoomBound);
+      this.cytoscapeLeafletMap.off('zoomend', this.onLeafletZoomEndBound);
+    }
+    cy.off('add', this.onElementAddedBound);
+    cy.off('render', this.onCyRenderBound);
     this.cytoscapeLeafletLeaf.destroy();
+    this.cytoscapeLeafletLeaf = undefined as any;
+    this.cytoscapeLeafletMap = undefined as any;
+    this.geoScaleBaseZoom = 1;
+
+    this.applyGeoScale(false);
 
     cy.layout({
       name: 'cola',
@@ -178,6 +531,9 @@ export class ManagerLayoutAlgo {
 
     // Re-enable grid guide interactions once the map overlay is removed
     this.enableGridGuide();
+    // Restore theme-based styles when leaving Geo layout
+    this.geoTheme = null;
+    loadCytoStyle(cy);
   }
 
   public viewportDrawerLayoutForceDirected(): void {
@@ -365,16 +721,26 @@ export class ManagerLayoutAlgo {
     if (!cy || !this.cytoscapeLeafletMap) return;
 
     cy.nodes().forEach((node) => {
-      const pos = node.position();
-      const latlng = this.cytoscapeLeafletMap.containerPointToLatLng({
-        x: pos.x,
-        y: pos.y
-      });
-      node.data('lat', latlng.lat.toString());
-      node.data('lng', latlng.lng.toString());
+      let lat = node.data('lat');
+      let lng = node.data('lng');
+
+      // Fallback to computing coordinates from the current position only if
+      // none are stored on the node (e.g. new nodes created during Geo mode).
+      if (lat === undefined || lng === undefined) {
+        const pos = node.position();
+        const latlng = this.cytoscapeLeafletMap.containerPointToLatLng({
+          x: pos.x,
+          y: pos.y
+        });
+        lat = latlng.lat.toString();
+        lng = latlng.lng.toString();
+        node.data('lat', lat);
+        node.data('lng', lng);
+      }
+
       const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
-      labels['graph-geoCoordinateLat'] = latlng.lat.toString();
-      labels['graph-geoCoordinateLng'] = latlng.lng.toString();
+      labels['graph-geoCoordinateLat'] = lat.toString();
+      labels['graph-geoCoordinateLng'] = lng.toString();
       if (node.data('extraData')) {
         (node.data('extraData') as any).labels = labels;
       }

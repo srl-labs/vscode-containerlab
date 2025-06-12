@@ -64,7 +64,8 @@ body {
 #cy {
   width: 100%;
   height: 100%;
-  padding-bottom: 50px;
+  padding-top: 10px;
+  padding-bottom: 0px;
   position: absolute;
   z-index: 1;
   /* Background */
@@ -73,7 +74,8 @@ body {
 #cy-leaflet {
   width: 100%;
   height: 100%;
-  padding-bottom: 50px;
+  padding-top: 10px;
+  padding-bottom: 0px;
   position: absolute;
   z-index: 0;
   /* Background */
@@ -602,12 +604,12 @@ body {
     background-color: rgba(24, 24, 24, 1);
   }
 
-  .panel-block {
+  .panel {
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
     background-color: rgba(40, 40, 40, 1);
   }
 
-  .panel {
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  .panel-block {
     background-color: rgba(40, 40, 40, 1);
   }
 
@@ -679,13 +681,12 @@ body {
     background-color: rgba(70, 86, 246, 1);
   }
 
-  .panel-block {
-    background-color: white;
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
-  }
-
   .panel {
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+    background-color: white;
+  }
+
+  .panel-block {
     background-color: white;
   }
 

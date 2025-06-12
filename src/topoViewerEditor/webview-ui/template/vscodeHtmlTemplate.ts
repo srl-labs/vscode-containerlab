@@ -144,6 +144,7 @@ export function getHTMLTemplate(
           </button>
         </p>
         
+        <!-- 
         <p class="control p-0">
           <button id="viewport-topology-overview" title="Find Node" onclick="viewportButtonsTopologyOverview(event)"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
@@ -152,6 +153,7 @@ export function getHTMLTemplate(
             </span>
           </button>
         </p>
+        -->
        
         
         <p class="control p-0">
@@ -290,8 +292,8 @@ export function getHTMLTemplate(
       </div>
     </div>
     
-    <div id="viewport-drawer-layout" class="panel p-1 is-1 viewport-drawer" style="display: none; height: 286px; ">
-      <div class="panel-block p-0 pb-2">
+    <div id="viewport-drawer-layout" class="panel p-1 is-1 viewport-drawer" style="display: none;">
+      <div class="panel-block p-0 pb-4">
         <div class="column p-0 is-flex-direction-column">
           <div class="column pb-0 is-12">
             <label class="label is-size-7 has-text-weight-semibold px-auto">Layout</label>
@@ -341,10 +343,10 @@ export function getHTMLTemplate(
           </div>
         </div>
       </force-directed-drawer>
-      <force-directed-button class="panel-block layout-algo p-0 pb-2" id="viewport-drawer-force-directed-reset-start"
+      <force-directed-button class="panel-block layout-algo p-0 pb-4" id="viewport-drawer-force-directed-reset-start"
         style="display: none;">
         <div class="column p-0 is-flex-direction-column">
-          <div class="column is-12 is-flex is-justify-content-flex-end">
+          <div class="column p-0 is-12 is-flex is-justify-content-flex-end">
             <div class="buttons">
               <button href="#" onclick="viewportDrawerLayoutForceDirected(event)"
                 class="button is-link is-outlined is-small">Enable</button>
@@ -353,30 +355,30 @@ export function getHTMLTemplate(
         </div>
       </force-directed-button>
 
-      <force-directed-radial-drawer class="panel-block layout-algo p-0" id="viewport-drawer-force-directed-radial" style="display: none;">
+      <force-directed-radial-drawer class="panel-block layout-algo" id="viewport-drawer-force-directed-radial" style="display: none;">
         <div class="panel-content is-flex is-flex-direction-column is-align-items-center is-fullwidth px-3">
-          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth mb-2" style="max-width: 100%;">
-            <div class="column is-4 has-text-right">
+          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth" style="max-width: 100%;">
+            <div class="column is-5 has-text-right">
               <label class="label is-size-7 mb-0">Link Length</label>
             </div>
-            <div class="column is-8">
+            <div class="column is-7">
               <input id="force-directed-radial-slider-link-lenght" class="slider is-fullwidth" step="1" min="1" max="500" type="range">
             </div>
           </div>
-          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth mb-2" style="max-width: 100%;">
-            <div class="column is-4 has-text-right">
+          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth" style="max-width: 100%;">
+            <div class="column is-5 has-text-right">
               <label class="label is-size-7 mb-0">Node Gap</label>
             </div>
-            <div class="column is-8">
-              <input id="force-directed-radial-slider-node-gap" class="slider is-fullwidth" step="1" min="1" max="100" type="range">
+            <div class="column is-7">
+              <input id="force-directed-radial-slider-node-gap" class="slider is-fullwidth" step="1" min="1" max="500" type="range">
             </div>
           </div>
         </div>
       </force-directed-radial-drawer>
 
 
-      <force-directed-radial--button class="panel-block layout-algo p-0 pb-2" id="viewport-drawer-force-directed-radial-reset-start" style="display: none;">
-        <div class="column p-0 is-flex-direction-column">
+      <force-directed-radial-button class="panel-block layout-algo py-0" id="viewport-drawer-force-directed-radial-reset-start" style="display: none;">
+        <div class="panel-content is-flex is-flex-direction-column is-align-items-end is-fullwidth px-3">
           <div class="column is-12 is-flex is-justify-content-flex-end">
             <div class="buttons">
               <button href="#" onclick="viewportDrawerLayoutForceDirectedRadial(event)"
@@ -384,11 +386,11 @@ export function getHTMLTemplate(
             </div>
           </div>
         </div>
-      </force-directed-radial--button>
+      </force-directed-radial-button>
 
-      <dc-vertical-drawer class="panel-block layout-algo p-0" id="viewport-drawer-dc-vertical" style="display: none;">
+      <dc-vertical-drawer class="panel-block layout-algo" id="viewport-drawer-dc-vertical" style="display: none;">
         <div class="panel-content is-flex is-flex-direction-column is-align-items-center is-fullwidth px-3">
-          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth mb-2" style="max-width: 100%;">
+          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth" style="max-width: 100%;">
             <div class="column is-5 has-text-right">
               <label class="label is-size-7 mb-0">Node v-Gap</label>
             </div>
@@ -396,7 +398,7 @@ export function getHTMLTemplate(
               <input id="vertical-layout-slider-node-v-gap" class="slider is-fullwidth" step="1" min="1" max="10" type="range">
             </div>
           </div>
-          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth mb-2" style="max-width: 100%;">
+          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth" style="max-width: 100%;">
             <div class="column is-5 has-text-right">
               <label class="label is-size-7 mb-0">Group v-Gap</label>
             </div>
@@ -406,8 +408,8 @@ export function getHTMLTemplate(
           </div>
         </div>
       </dc-vertical-drawer>
-      <dc-vertical-button class="panel-block layout-algo p-0 pb-2" id="viewport-drawer-dc-vertical-reset-start" style="display: none;">
-        <div class="column p-0 is-flex-direction-column">
+      <dc-vertical-button class="panel-block layout-algo py-0" id="viewport-drawer-dc-vertical-reset-start" style="display: none;">
+        <div class="panel-content is-flex is-flex-direction-column is-align-items-end is-fullwidth px-3">
           <div class="column is-12 is-flex is-justify-content-flex-end">
             <div class="buttons">
               <button href="#" onclick="viewportDrawerLayoutVertical(event)"
@@ -417,9 +419,9 @@ export function getHTMLTemplate(
         </div>
       </dc-vertical-button>
 
-      <dc-horizontal-drawer class="panel-block layout-algo p-0" id="viewport-drawer-dc-horizontal" style="display: none;">
+      <dc-horizontal-drawer class="panel-block layout-algo" id="viewport-drawer-dc-horizontal" style="display: none;">
         <div class="panel-content is-flex is-flex-direction-column is-align-items-center is-fullwidth px-3">
-          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth mb-2" style="max-width: 100%;">
+          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth" style="max-width: 100%;">
             <div class="column is-5 has-text-right">
               <label class="label is-size-7 mb-0">Node h-Gap</label>
             </div>
@@ -427,7 +429,7 @@ export function getHTMLTemplate(
               <input id="horizontal-layout-slider-node-h-gap" class="slider is-fullwidth" step="1" min="1" max="10" type="range">
             </div>
           </div>
-          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth mb-2" style="max-width: 100%;">
+          <div class="columns is-vcentered is-mobile is-multiline is-fullwidth" style="max-width: 100%;">
             <div class="column is-5 has-text-right">
               <label class="label is-size-7 mb-0">Group h-Gap</label>
             </div>
@@ -438,8 +440,8 @@ export function getHTMLTemplate(
         </div>
       </dc-horizontal-drawer>
 
-      <dc-horizontal-button class="panel-block layout-algo p-0 pb-2" id="viewport-drawer-dc-horizontal-reset-start" style="display: none;">
-        <div class="column p-0 is-flex-direction-column">
+      <dc-horizontal-button class="panel-block layout-algo py-0" id="viewport-drawer-dc-horizontal-reset-start" style="display: none;">
+        <div class="panel-content is-flex is-flex-direction-column is-align-items-end is-fullwidth px-3">
           <div class="column is-12 is-flex is-justify-content-flex-end">
             <div class="buttons">
               <button href="#" onclick="viewportDrawerLayoutHorizontal(event)"
@@ -1971,7 +1973,7 @@ export function getHTMLTemplate(
     <script src="${jsUri}/managerLayoutAlgo.js?ver=1"></script>
     <script src="${jsUri}/managerGroupManagement.js?ver=1"></script> -->
 
-    <!-- 
+    <!--
     <script src="${jsUri}/backupRestore.js?ver=1"></script>
     <script src="${jsUri}/managerClabEditor.js?ver=1"></script> -->
 
