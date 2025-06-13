@@ -414,6 +414,11 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.fcli.custom",
+        "title": "custom",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
         "title": "Hide non-owned"
       },
@@ -995,6 +1000,10 @@
         {
           "command": "containerlab.lab.fcli.sysInfo",
           "group": "extras@8"
+        }
+        ,{
+          "command": "containerlab.lab.fcli.custom",
+          "group": "extras@9"
         }
       ]
     },

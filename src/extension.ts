@@ -543,6 +543,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.fcli.sysInfo', cmd.fcliSysInfo)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.custom', cmd.fcliCustom)
+  );
 
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');

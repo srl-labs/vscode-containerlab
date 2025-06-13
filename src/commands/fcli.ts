@@ -49,3 +49,14 @@ export const fcliMac = (node: ClabLabTreeNode) => runFcli(node, "mac");
 export const fcliNi = (node: ClabLabTreeNode) => runFcli(node, "ni");
 export const fcliSubif = (node: ClabLabTreeNode) => runFcli(node, "subif");
 export const fcliSysInfo = (node: ClabLabTreeNode) => runFcli(node, "sys-info");
+
+export async function fcliCustom(node: ClabLabTreeNode) {
+    const val = await vscode.window.showInputBox({
+        title: 'Custom fcli command',
+        placeHolder: 'Enter command, e.g. bgp-peers',
+    });
+    if (!val || val.trim().length === 0) {
+        return;
+    }
+    runFcli(node, val.trim());
+}
