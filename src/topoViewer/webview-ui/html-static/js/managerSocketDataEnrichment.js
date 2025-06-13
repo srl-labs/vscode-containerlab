@@ -57,12 +57,13 @@ function socketDataEncrichmentLink(labData) {
 
       // Derive short node name by stripping lab prefix from the container label
       const nodeName = container.label.split(lab.name)[1]?.replace(/^-/, '') || container.label;
-      
+
       // Build key per interface and store MAC/MTU/type
       container.interfaces.forEach(iface => {
         const key = `${lab.name}::${nodeName}::${iface.label}`;
         linkMap.set(key, { mac: iface.mac, mtu: iface.mtu, type: iface.type });
       });
+      console.log(`Enriched link data for node: ${nodeName} with interfaces:`, container.interfaces);
     });
   });
 
@@ -71,12 +72,22 @@ function socketDataEncrichmentLink(labData) {
     const [, nodeName, endpoint] = key.split('::');
     cy.edges().forEach(edge => {
       const data = edge.data();
+
+      console.log(`Enriching edge: ${data.source} -> ${data.target} with endpoint: ${endpoint}`);
+      const updatedExtraData = {
+        ...edge.data('extraData'),
+        clabSourceLongName: data.source,
+        clabTargetLongName: data.target,
+      };
+      edge.data('extraData', updatedExtraData);
+
       if (data.source === nodeName && data.sourceEndpoint === endpoint) {
         edge.data({ sourceMac: iface.mac, sourceMtu: iface.mtu, sourceType: iface.type });
       }
       if (data.target === nodeName && data.targetEndpoint === endpoint) {
         edge.data({ targetMac: iface.mac, targetMtu: iface.mtu, targetType: iface.type });
       }
+      console.log(`Edge data after enrichment:`, edge.data());
     });
   });
 }
@@ -101,7 +112,7 @@ function socketDataEncrichmentLink(labData) {
  */
 function socketDataEncrichmentNode(labData) {
   const nodeMap = new Map();
-  
+
   // Build node mapping from container longname -> metadata
   Object.values(labData).forEach(lab => {
     if (lab.name !== globalLabName || !Array.isArray(lab.containers)) return;

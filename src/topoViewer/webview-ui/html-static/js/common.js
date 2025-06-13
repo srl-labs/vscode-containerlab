@@ -90,35 +90,66 @@ async function initEnv() {
 // -----------------------------------------------------------
 
 /**
- * Fetches environment configurations.
+ * Fetches environment configuration JSON and updates its topology data
+ * with the current live Cytoscape graph. Persists the updated JSON to disk
+ * using VS Code's postMessage API.
+ *
+ * @returns {Promise<object|null>} Updated environment object or null on failure.
  */
 async function getEnvironments() {
   try {
     let environments;
+
     if (isVscodeDeployment) {
-      // Using a JSON file in the VS Code deployment scenario
       const response = await fetch(window.jsonFileUrlDataEnvironment);
       if (!response.ok) {
-        throw new Error(`Network response not ok: ${response.status}`);
+        throw new Error(`Failed to fetch environment JSON: ${response.statusText}`);
       }
+
       environments = await response.json();
+
+      if (typeof cy !== 'undefined' && typeof cy.elements === 'function') {
+        const liveCyData = cy.elements().jsons();
+        environments.EnvCyTopoJsonBytes = liveCyData;
+
+        console.log("Updated environments with live Cytoscape data:", environments)
+        console.debug("Replaced EnvCyTopoJsonBytes with live Cytoscape data.");
+
+        if (typeof vsCode !== 'undefined' && typeof vsCode.postMessage === 'function') {
+          vsCode.postMessage({
+            type: "POST",
+            requestId: `save-${Date.now()}`,
+            endpointName: "save-environment-json-to-disk",
+            payload: JSON.stringify(environments)
+          });
+          console.log("[VS Code] saveEnvJsonToDisk message sent to extension host.");
+        } else {
+          console.warn("VS Code postMessage API not available — skipping save.");
+        }
+      } else {
+        console.warn("Cytoscape instance is not available. EnvCyTopoJsonBytes not updated.");
+      }
     } else {
-      // Using a dedicated GET endpoint in other scenarios
       environments = await sendRequestToEndpointGetV2("/get-environments");
     }
 
-    if (environments && typeof environments === 'object' && Object.keys(environments).length > 0) {
-      console.log("Fetched Environments:", environments);
+    if (
+      environments &&
+      typeof environments === "object" &&
+      Object.keys(environments).length > 0
+    ) {
+      console.debug("Final environments object:", environments);
       return environments;
     } else {
-      console.log("Empty or invalid JSON response for environments");
+      console.warn("Fetched environment object is empty or invalid.");
       return null;
     }
   } catch (error) {
-    console.error("Error fetching environments:", error);
+    console.error("Error while fetching environments:", error);
     return null;
   }
 }
+
 
 /**
  * Helper function to send a GET request to an endpoint.
@@ -357,7 +388,7 @@ function updateSocketBinding() {
 function updateMessageStreamBinding() {
   // Create the event handler once and store it as a property if it doesn't exist.
   if (!updateMessageStreamBinding.handler) {
-    updateMessageStreamBinding.handler = function(event) {
+    updateMessageStreamBinding.handler = function (event) {
       try {
         const message = event.data;
         if (message && message.type === 'clab-tree-provider-data-native-vscode-message-stream') {

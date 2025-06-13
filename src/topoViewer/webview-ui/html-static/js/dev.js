@@ -2374,8 +2374,9 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
             netNsResponse = await sendRequestToEndpointGetV3("/clab-node-network-namespace", [clabSourceLongName]);
             netNsId = extractNamespaceId(netNsResponse.namespace_id);
             console.info("linkWireshark - netNsSource: ", netNsId);
-
             urlParams = `container={"netns":${netNsId},"network-interfaces":["${clabSourcePort}"],"name":"${clabSourceLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${clabSourcePort}`;
+            const edgeSharkHref = baseUrl + urlParams;
+            console.info("linkWireshark - edgeSharkHref: ", edgeSharkHref);
           }
         } else if (endpoint === "target") {
           if (isVscodeDeployment) {
@@ -2393,10 +2394,11 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
             netNsId = extractNamespaceId(netNsResponse.namespace_id);
             console.info("linkWireshark - netNsTarget: ", netNsId);
             urlParams = `container={"netns":${netNsId},"network-interfaces":["${clabTargetPort}"],"name":"${clabTargetLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${clabTargetPort}`;
+            const edgeSharkHref = baseUrl + urlParams;
+            console.info("linkWireshark - edgeSharkHref: ", edgeSharkHref);
           }
         }
-        const edgeSharkHref = baseUrl + urlParams;
-        console.info("linkWireshark - edgeSharkHref: ", edgeSharkHref);
+
 
         // window.open(edgeSharkHref);
 
