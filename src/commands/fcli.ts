@@ -36,7 +36,7 @@ function runFcli(node: ClabLabTreeNode, cmd: string) {
 
     const network = buildNetworkFromYaml(topo);
 
-    const command = `${getSudo()}${runtime} run -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${topo}":/topo.yml ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml ${cmd}`;
+    const command = `${getSudo()}${runtime} run --pull always -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${topo}":/topo.yml ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml ${cmd}`;
 
     execCommandInTerminal(command, `fcli - ${node.label}`);
 }
