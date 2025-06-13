@@ -374,6 +374,46 @@
         "title": "Copy SSHX link"
       },
       {
+        "command": "containerlab.lab.fcli.bgpPeers",
+        "title": "bgp-peers",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.bgpRib",
+        "title": "bgp-rib",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.ipv4Rib",
+        "title": "ipv4-rib",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.lldp",
+        "title": "lldp",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.mac",
+        "title": "mac",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.ni",
+        "title": "ni",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.subif",
+        "title": "subif",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.sysInfo",
+        "title": "sys-info",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
         "title": "Hide non-owned"
       },
@@ -414,6 +454,13 @@
       {
         "id": "containerlab.submenu.lab.share",
         "label": "Share Lab (sshx)"
+      }
+      ,{
+        "id": "containerlab.submenu.lab.extras",
+        "label": "Extras"
+      },{
+        "id": "containerlab.submenu.lab.fcli",
+        "label": "Run fcli (srlinux)"
       }
     ],
     "menus": {
@@ -681,6 +728,11 @@
           "group": "navigation@10"
         },
         {
+          "submenu": "containerlab.submenu.lab.extras",
+          "when": "viewItem =~ /containerlabLabDeployed/",
+          "group": "pExtras@0"
+        },
+        {
           "submenu": "containerlab.submenu.lab.graph.drawio",
           "when": "viewItem =~ /containerlabLab/",
           "group": "graph@0"
@@ -904,6 +956,46 @@
           "command": "containerlab.lab.sshx.reattach",
           "group": "share@3"
         }
+      ],
+      "containerlab.submenu.lab.extras": [
+        {
+          "submenu": "containerlab.submenu.lab.fcli",
+          "group": "extras@0"
+        }
+      ],
+      "containerlab.submenu.lab.fcli": [
+        {
+          "command": "containerlab.lab.fcli.bgpPeers",
+          "group": "extras@1"
+        },
+        {
+          "command": "containerlab.lab.fcli.bgpRib",
+          "group": "extras@2"
+        },
+        {
+          "command": "containerlab.lab.fcli.ipv4Rib",
+          "group": "extras@3"
+        },
+        {
+          "command": "containerlab.lab.fcli.lldp",
+          "group": "extras@4"
+        },
+        {
+          "command": "containerlab.lab.fcli.mac",
+          "group": "extras@5"
+        },
+        {
+          "command": "containerlab.lab.fcli.ni",
+          "group": "extras@6"
+        },
+        {
+          "command": "containerlab.lab.fcli.subif",
+          "group": "extras@7"
+        },
+        {
+          "command": "containerlab.lab.fcli.sysInfo",
+          "group": "extras@8"
+        }
       ]
     },
     "keybindings": [
@@ -1042,8 +1134,8 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.15.29",
     "@types/vscode": "^1.100.0",
-    "@typescript-eslint/eslint-plugin": "^8.32.1",
-    "@typescript-eslint/parser": "^8.32.1",
+    "@typescript-eslint/eslint-plugin": "^8.34.0",
+    "@typescript-eslint/parser": "^8.34.0",
     "chai": "^5.2.0",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
@@ -1054,7 +1146,7 @@
     "sinon": "^20.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.32.1",
+    "typescript-eslint": "^8.34.0",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
