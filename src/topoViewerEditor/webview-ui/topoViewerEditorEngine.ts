@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import edgehandles from 'cytoscape-edgehandles';
 import cola from 'cytoscape-cola';
 import gridGuide from 'cytoscape-grid-guide';
+import leaflet from 'cytoscape-leaf';
 // Import and register context-menu plugin
 import cxtmenu from 'cytoscape-cxtmenu';
 // import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
@@ -14,6 +15,7 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerViewportButtons } from './managerViewportButtons';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManager } from './managerGroupManager';
+import { ManagerLayoutAlgo } from './managerLayoutAlgo';
 
 
 
@@ -22,6 +24,8 @@ cytoscape.use(edgehandles);
 cytoscape.use(cola);
 cytoscape.use(gridGuide);
 cytoscape.use(cxtmenu);
+cytoscape.use(leaflet);
+
 
 
 /**
@@ -76,7 +80,8 @@ class TopoViewerEditorEngine {
   private viewportButtons: ManagerViewportButtons;
   private viewportPanels: ManagerViewportPanels;
   private groupManager: ManagerGroupManager = new ManagerGroupManager();
-
+  /** Layout manager instance accessible by other components */
+  public layoutAlgoManager: ManagerLayoutAlgo = new ManagerLayoutAlgo();
 
 
 
@@ -196,6 +201,20 @@ class TopoViewerEditorEngine {
     this.viewportButtons = new ManagerViewportButtons(this.messageSender);
     this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
     this.groupManager = new ManagerGroupManager();
+    this.layoutAlgoManager = new ManagerLayoutAlgo();
+
+    // Expose layout functions globally for HTML event handlers
+    (window as any).viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
+    (window as any).layoutAlgoChange = this.layoutAlgoManager.layoutAlgoChange.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerLayoutGeoMap = this.layoutAlgoManager.viewportDrawerLayoutGeoMap.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerDisableGeoMap = this.layoutAlgoManager.viewportDrawerDisableGeoMap.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerLayoutForceDirected = this.layoutAlgoManager.viewportDrawerLayoutForceDirected.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerLayoutForceDirectedRadial = this.layoutAlgoManager.viewportDrawerLayoutForceDirectedRadial.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerLayoutVertical = this.layoutAlgoManager.viewportDrawerLayoutVertical.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerLayoutHorizontal = this.layoutAlgoManager.viewportDrawerLayoutHorizontal.bind(this.layoutAlgoManager);
+    (window as any).viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(this.layoutAlgoManager);
+    (window as any).viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(this.layoutAlgoManager);
+    (window as any).viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
 
     this.setupAutoSave();
 
