@@ -5,7 +5,7 @@ import cytoscape from 'cytoscape';
 /**
  * Cytoscape styles for VS Code deployment.
  */
-export const cytoscapeStylesForVscode = [
+const cytoscapeStylesBase = [
   {
     selector: "core",
     style: {
@@ -436,21 +436,54 @@ export const cytoscapeStylesForVscode = [
 ];
 
 /**
+ * Returns a cloned Cytoscape style array adjusted for the given theme.
+ * When `theme` is "light" group nodes appear darker with higher opacity.
+ */
+export function getCytoscapeStyles(theme: 'light' | 'dark') {
+  return cytoscapeStylesBase.map((def: any) => {
+    const clone: any = { selector: def.selector, style: { ...(def.style || {}) } };
+    if (def.selector === 'node[topoViewerRole="group"]') {
+      if (theme === 'light') {
+        clone.style['background-color'] = '#a6a6a6';
+        clone.style['background-opacity'] = '0.4';
+        clone.style['border-width'] = '0.5px';
+        clone.style['border-color'] = '#aaaaaa';
+      } else {
+        clone.style['background-color'] = '#d9d9d9';
+        clone.style['background-opacity'] = '0.2';
+      }
+    }
+    return clone;
+  });
+}
+
+/**
  * Loads and applies Cytoscape styles to the provided Cytoscape instance.
  *
  * This method removes existing inline styles and applies the predefined VS Code styles.
  *
  * @param cy - The Cytoscape instance to style.
  */
-export default async function loadCytoStyle(cy: cytoscape.Core): Promise<void> {
+export default async function loadCytoStyle(
+  cy: cytoscape.Core,
+  theme?: 'light' | 'dark'
+): Promise<void> {
   try {
     // Remove any existing inline styles.
     cy.nodes().removeStyle();
     cy.edges().removeStyle();
 
-    // Apply the predefined VS Code styles.
-    cy.style().fromJson(cytoscapeStylesForVscode).update();
+    const engine = (window as any).topoViewerEditorEngine;
+    const forced = engine?.layoutAlgoManager?.geoTheme;
+    const selectedTheme = theme || forced || (engine?.detectColorScheme?.() || 'light');
+    const styles = getCytoscapeStyles(selectedTheme === 'light' ? 'light' : 'dark');
+    cy.style().fromJson(styles).update();
     console.info("Cytoscape styles applied successfully.");
+
+    const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+    if (layoutMgr?.isGeoMapInitialized) {
+      layoutMgr.applyGeoScale(true);
+    }
   } catch (error) {
     console.error("Error applying Cytoscape styles:", error);
   }
@@ -469,7 +502,7 @@ export function extractNodeIcons(): string[] {
   const nodeTypes: string[] = [];
   const regex = /node\[topoViewerRole="([^"]+)"\]/;
 
-  for (const styleDef of cytoscapeStylesForVscode) {
+  for (const styleDef of cytoscapeStylesBase) {
     if (typeof styleDef.selector === 'string') {
       const match = styleDef.selector.match(regex);
       if (match && match[1]) {

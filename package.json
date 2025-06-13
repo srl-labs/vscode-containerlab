@@ -179,21 +179,21 @@
         "category": "Containerlab",
         "icon": "$(info)"
       },
-        {
-          "command": "containerlab.lab.graph.drawio.horizontal",
-          "title": "Graph (draw.io, Horizontal)",
-          "category": "Containerlab"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.vertical",
-          "title": "Graph (draw.io, Vertical)",
-          "category": "Containerlab"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.interactive",
-          "title": "Graph (draw.io, Interactive)",
-          "category": "Containerlab"
-        },
+      {
+        "command": "containerlab.lab.graph.drawio.horizontal",
+        "title": "Graph (draw.io, Horizontal)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.vertical",
+        "title": "Graph (draw.io, Vertical)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.interactive",
+        "title": "Graph (draw.io, Interactive)",
+        "category": "Containerlab"
+      },
       {
         "command": "containerlab.lab.graph.topoViewer",
         "title": "Graph (TopoViewer)",
@@ -1145,6 +1145,7 @@
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
+    "@vscode/vsce": "^3.5.0",
     "chai": "^5.2.0",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
@@ -1167,7 +1168,6 @@
     "@types/cytoscape": "^3.21.9",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
-    "@vscode/vsce": "^3.5.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "cytoscape": "^3.32.0",
@@ -1175,6 +1175,7 @@
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",
     "cytoscape-grid-guide": "^2.3.3",
+    "cytoscape-leaf": "^1.2.4",
     "js-yaml": "^4.1.0",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
