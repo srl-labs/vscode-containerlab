@@ -56,6 +56,7 @@ export type CytoTopology = CyElement[];
  */
 export interface EnvironmentJson {
     workingDirectory: string;
+    clabPrefix: string;
     clabName: string;
     clabServerAddress: string;
     clabAllowedHostname: string;

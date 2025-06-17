@@ -13,6 +13,7 @@ var globalNodeContainerStatusVisibility = false;
 var globalShellUrl = "/js/cloudshell";
 let deploymentType;
 var globalLabName;
+var globalPrefixName
 var multiLayerViewPortState = false;
 
 // Cytoscape-Leaflet variables
@@ -69,6 +70,7 @@ async function initEnv() {
 
     // Assign to global variables
     globalLabName = environments["clab-name"];
+    globalPrefixName = environments["clab-prefix"];
     deploymentType = environments["deployment-type"];
     globalIsPresetLayout = environments["topoviewer-layout-preset"] === "true";
     globalAllowedhostname = environments["clab-allowed-hostname"];

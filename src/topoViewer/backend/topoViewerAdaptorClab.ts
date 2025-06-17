@@ -94,7 +94,10 @@ export class TopoViewerAdaptorClab {
 
 
       var clabName = parsed.name
-
+      var clabPrefix = parsed.prefix;
+      // if (clabPrefix == "") {
+      //   clabPrefix = ""
+      // }
 
 
       // Define the EnvironmentJson object
@@ -104,6 +107,7 @@ export class TopoViewerAdaptorClab {
 
       const environmentJson: EnvironmentJson = {
         workingDirectory: ".",
+        clabPrefix: `${clabPrefix}`,
         clabName: `${clabName}`,
         clabServerAddress: "",
         clabAllowedHostname: hostname,
@@ -174,9 +178,9 @@ export class TopoViewerAdaptorClab {
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
   public clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): CyElement[] {
-        const parsed = yaml.load(yamlContent) as ClabTopology;
-      return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer });
-    }
+    const parsed = yaml.load(yamlContent) as ClabTopology;
+    return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer });
+  }
 
 
   /**
@@ -192,9 +196,9 @@ export class TopoViewerAdaptorClab {
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
   public clabYamlToCytoscapeElementsEditor(yamlContent: string): CyElement[] {
-      const parsed = yaml.load(yamlContent) as ClabTopology;
-      return this.buildCytoscapeElements(parsed, { includeContainerData: false });
-    }
+    const parsed = yaml.load(yamlContent) as ClabTopology;
+    return this.buildCytoscapeElements(parsed, { includeContainerData: false });
+  }
 
 
   /**
@@ -247,6 +251,7 @@ export class TopoViewerAdaptorClab {
   private mapEnvironmentJsonToHyphenated(envJson: EnvironmentJson): string {
     const hyphenatedJson = {
       "working-directory": envJson.workingDirectory,
+      "clab-prefix": envJson.clabPrefix,
       "clab-name": envJson.clabName,
       "clab-server-address": envJson.clabServerAddress,
       "clab-allowed-hostname": envJson.clabAllowedHostname,
@@ -282,6 +287,8 @@ export class TopoViewerAdaptorClab {
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
 
     const clabName = parsed.name;
+
+
     const parentMap = new Map<string, string | undefined>();
     let nodeIndex = 0;
 
