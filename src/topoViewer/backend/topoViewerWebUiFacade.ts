@@ -664,7 +664,6 @@ export class TopoViewer {
 
               result = `Environment JSON successfully saved to disk at ${environmentJsonPath.fsPath}`;
               log.info(result);
-              vscode.window.showInformationMessage("Environment saved to disk.");
             } catch (innerError) {
               result = `Error saving environment JSON to disk.`;
               log.error(`Error in 'save-environment-json-to-disk': ${JSON.stringify(innerError, null, 2)}`);
