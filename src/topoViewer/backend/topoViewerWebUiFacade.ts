@@ -642,6 +642,35 @@ export class TopoViewer {
             }
             break;
           }
+
+          case 'save-environment-json-to-disk': {
+            try {
+              const environmentData = JSON.parse(payload as string);
+
+              if (!this.lastFolderName) {
+                throw new Error('No folderName available (this.lastFolderName is undefined).');
+              }
+
+              // Construct full path under `topoViewerData/<folder>/environment.json`
+              const environmentJsonPath = vscode.Uri.joinPath(
+                this.context.extensionUri,
+                'topoViewerData',
+                this.lastFolderName,
+                'environment.json'
+              );
+
+              // Write to disk
+              await fs.promises.writeFile(environmentJsonPath.fsPath, JSON.stringify(environmentData, null, 2), 'utf8');
+
+              result = `Environment JSON successfully saved to disk at ${environmentJsonPath.fsPath}`;
+              log.info(result);
+            } catch (innerError) {
+              result = `Error saving environment JSON to disk.`;
+              log.error(`Error in 'save-environment-json-to-disk': ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           default: {
             error = `Unknown endpoint "${endpointName}".`;
             log.error(error);
