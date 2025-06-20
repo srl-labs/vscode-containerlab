@@ -730,7 +730,7 @@
         {
           "submenu": "containerlab.submenu.lab.share",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@10"
+          "group": "connect@1"
         },
         {
           "submenu": "containerlab.submenu.lab.extras",
