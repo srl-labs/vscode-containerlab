@@ -46,8 +46,9 @@ export interface NodeData {
   };
   extraData?: {
     kind?: string;
-    longname?: string;
     image?: string;
+    type?: string
+    longname?: string;
     mgmtIpv4Address?: string;
   };
 }

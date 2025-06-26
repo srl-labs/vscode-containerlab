@@ -125,6 +125,12 @@ export class ManagerViewportPanels {
       panelNodeEditorImageLabel.value = 'ghcr.io/nokia/srlinux:latest';
     }
 
+    // Set the node type in the editor.
+    const panelNodeEditorTypeLabel = document.getElementById("panel-node-editor-type") as HTMLInputElement;
+    if (panelNodeEditorTypeLabel) {
+      panelNodeEditorTypeLabel.value = 'ixrd1';
+    }
+
     // Set the node group in the editor.
     const panelNodeEditorGroupLabel = document.getElementById("panel-node-editor-group") as HTMLInputElement;
     if (panelNodeEditorGroupLabel) {
@@ -214,7 +220,7 @@ export class ManagerViewportPanels {
       const panelLinkEditorIdLabelSaveBtn = document.getElementById("panel-link-editor-save-button");
 
       // if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
-            if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelSaveBtn) {
+      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelSaveBtn) {
 
         console.error("panelEdgeEditor: missing required DOM elements");
         return;
@@ -314,6 +320,7 @@ export class ManagerViewportPanels {
     // Get the input values.
     const nodeNameInput = document.getElementById("panel-node-editor-name") as HTMLInputElement;
     const nodeImageInput = document.getElementById("panel-node-editor-image") as HTMLInputElement;
+    const nodeTypeInput = document.getElementById("panel-node-editor-type") as HTMLInputElement;
 
     // Retrieve dropdown selections.
     const kindDropdownTrigger = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button span");
@@ -329,6 +336,7 @@ export class ManagerViewportPanels {
       ...currentData.extraData,
       name: nodeNameInput.value,
       image: nodeImageInput.value,
+      type: nodeTypeInput.value,
       kind: kindDropdownTrigger ? kindDropdownTrigger.textContent : 'nokia_srlinux',
     };
 

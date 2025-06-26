@@ -1122,6 +1122,40 @@ export function getHTMLTemplate(
               </div>
             </div>
 
+            <!-- Image -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-editor-image" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Image
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <input type="text" id="panel-node-editor-image"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Type -->
+            <div class="column my-auto is-11">
+              <div class="panel-content">
+                <div class="columns is-mobile is-multiline py-auto">
+                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
+                    <label for="panel-node-editor-type" class="label is-size-7 has-text-right has-text-weight-medium">
+                      Type
+                    </label>
+                  </div>
+                  <div class="column is-8 p-1 pl-3">
+                    <input type="text" id="panel-node-editor-type"
+                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- TopoViewer Role or Icons Dropdown -->
             <div class="column my-auto is-11">
               <div class="panel-content">
@@ -1149,23 +1183,6 @@ export function getHTMLTemplate(
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Image -->
-            <div class="column my-auto is-11">
-              <div class="panel-content">
-                <div class="columns is-mobile is-multiline py-auto">
-                  <div class="column is-full-mobile is-half-tablet is-4 p-1">
-                    <label for="panel-node-editor-image" class="label is-size-7 has-text-right has-text-weight-medium">
-                      Image
-                    </label>
-                  </div>
-                  <div class="column is-8 p-1 pl-3">
-                    <input type="text" id="panel-node-editor-image"
-                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
                   </div>
                 </div>
               </div>

@@ -7,6 +7,7 @@
 export interface ClabNode {
     kind?: string;
     image?: string;
+    type?: string;
     group?: string;
     labels?: Record<string, any>;
 }

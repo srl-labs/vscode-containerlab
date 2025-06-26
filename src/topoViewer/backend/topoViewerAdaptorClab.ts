@@ -329,6 +329,7 @@ export class TopoViewerAdaptorClab {
               image: nodeObj.image ?? '',
               index: nodeIndex.toString(),
               kind: nodeObj.kind ?? '',
+              type: nodeObj.type ?? '',
               labdir: `clab-${clabName}/`,
               labels: nodeObj.labels ?? {},
               longname: `clab-${clabName}-${nodeName}`,
