@@ -618,9 +618,9 @@ topology:
                   const extraData = element.data.extraData || {};
 
                   // Update the node's properties.
-                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
-                  nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                  nodeYaml.set('type', doc.createNode(extraData.type || 'default-type'));
+                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'nokia_srlinux'));
+                  nodeYaml.set('image', doc.createNode(extraData.image || 'ghcr.io/nokia/srlinux:latest'));
+                  nodeYaml.set('type', doc.createNode(extraData.type || 'ixrd1'));
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
 
@@ -864,9 +864,9 @@ topology:
                   const extraData = element.data.extraData || {};
 
                   // Update the node's properties.
-                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
-                  nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                  nodeYaml.set('type', doc.createNode(extraData.type || 'default-type'));
+                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'nokia-srlinux'));
+                  nodeYaml.set('image', doc.createNode(extraData.image || 'ghcr.io/nokia/srlinux:latest'));
+                  nodeYaml.set('type', doc.createNode(extraData.type || 'ixrd1'));
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
 
