@@ -1139,18 +1139,32 @@ export function getHTMLTemplate(
               </div>
             </div>
 
-            <!-- Type -->
+            <!-- Type Dropdown -->
             <div class="column my-auto is-11">
               <div class="panel-content">
                 <div class="columns is-mobile is-multiline py-auto">
                   <div class="column is-full-mobile is-half-tablet is-4 p-1">
-                    <label for="panel-node-editor-type" class="label is-size-7 has-text-right has-text-weight-medium">
+                    <label for="panel-node-type-dropdown" class="label is-size-7 has-text-right has-text-weight-medium">
                       Type
                     </label>
                   </div>
                   <div class="column is-8 p-1 pl-3">
-                    <input type="text" id="panel-node-editor-type"
-                      class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" />
+                    <div class="dropdown is-hoverable" id="panel-node-type-dropdown">
+                      <div class="dropdown-trigger">
+                        <button class="button is-size-7" type="button" aria-haspopup="true" aria-controls="dropdown-menu">
+                          <span>Select Type</span>
+                          <span class="icon is-small">
+                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                          </span>
+                        </button>
+                      </div>
+                      <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                        <div class="dropdown-content" id="panel-node-type-dropdown-content">
+                          <!-- Dropdown items go here -->
+                        </div>
+                      </div>
+                    </div>
+                    <input type="text" id="panel-node-editor-type-input" class="input is-size-7 has-text-left link-impairment-widht has-text-weight-normal" style="display:none;" />
                   </div>
                 </div>
               </div>

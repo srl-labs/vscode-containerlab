@@ -414,6 +414,13 @@ body {
   /* Enables vertical scrolling */
 }
 
+#panel-node-type-dropdown-content {
+  max-height: 80px;
+  /* Adjust height to show about 5 items */
+  overflow-y: auto;
+  /* Enables vertical scrolling */
+}
+
 #panel-node-topoviewerrole-dropdown-content {
   max-height: 100px;
   /* Adjust height to show about 4 items */

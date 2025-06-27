@@ -19,8 +19,10 @@ export class ManagerViewportPanels {
   public edgeClicked: boolean = false;
   // Variables to store the current selection for dropdowns.
   private panelNodeEditorKind: string = "nokia_srlinux";
+  private panelNodeEditorType: string = "";
+  private panelNodeEditorUseDropdownForType: boolean = false;
   private panelNodeEditorTopoViewerRole: string = "pe";
-
+  private nodeSchemaData: any = null;
   /**
    * Creates an instance of ManagerViewportPanels.
    * @param viewportButtons - The ManagerViewportButtons instance.
@@ -126,10 +128,10 @@ export class ManagerViewportPanels {
     }
 
     // Set the node type in the editor.
-    const panelNodeEditorTypeLabel = document.getElementById("panel-node-editor-type") as HTMLInputElement;
-    if (panelNodeEditorTypeLabel) {
-      panelNodeEditorTypeLabel.value = 'ixrd1';
-    }
+    const extraData = node.data('extraData') || {};
+    this.panelNodeEditorKind = extraData.kind || this.panelNodeEditorKind;
+    this.panelNodeEditorType = extraData.type || '';
+    this.panelNodeEditorUseDropdownForType = false;;
 
     // Set the node group in the editor.
     const panelNodeEditorGroupLabel = document.getElementById("panel-node-editor-group") as HTMLInputElement;
@@ -155,11 +157,16 @@ export class ManagerViewportPanels {
       }
       const jsonData = await response.json();
 
+      this.nodeSchemaData = jsonData;
+
       // Get kind enums from the JSON schema.
       const { kindOptions } = this.panelNodeEditorGetKindEnums(jsonData);
       console.log('Kind Enum:', kindOptions);
       // Populate the kind dropdown.
       this.panelNodeEditorPopulateKindDropdown(kindOptions);
+
+      const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(jsonData, `(${this.panelNodeEditorKind})`);
+      this.panelNodeEditorSetupTypeField(typeOptions);
 
       // Then call the function:
       const nodeIcons = extractNodeIcons();
@@ -167,9 +174,7 @@ export class ManagerViewportPanels {
 
       this.panelNodeEditorPopulateTopoViewerRoleDropdown(nodeIcons);
 
-      // List type enums based on a kind pattern.
-      const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(jsonData, '(srl|nokia_srlinux)');
-      console.log('Type Enum for (srl|nokia_srlinux):', typeOptions);
+
 
       // Register the close button event.
       const panelNodeEditorCloseButton = document.getElementById("panel-node-editor-close-button");
@@ -320,7 +325,8 @@ export class ManagerViewportPanels {
     // Get the input values.
     const nodeNameInput = document.getElementById("panel-node-editor-name") as HTMLInputElement;
     const nodeImageInput = document.getElementById("panel-node-editor-image") as HTMLInputElement;
-    const nodeTypeInput = document.getElementById("panel-node-editor-type") as HTMLInputElement;
+    const typeDropdownTrigger = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button span");
+    const typeInput = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
 
     // Retrieve dropdown selections.
     const kindDropdownTrigger = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button span");
@@ -332,13 +338,22 @@ export class ManagerViewportPanels {
     const newName = nodeNameInput.value;                    // the new name
 
     // Build updated extraData, preserving other fields.
+    const typeValue = this.panelNodeEditorUseDropdownForType
+      ? (typeDropdownTrigger ? (typeDropdownTrigger as HTMLElement).textContent || '' : '')
+      : (typeInput ? typeInput.value : '');
+
     const updatedExtraData = {
       ...currentData.extraData,
       name: nodeNameInput.value,
       image: nodeImageInput.value,
-      type: nodeTypeInput.value,
       kind: kindDropdownTrigger ? kindDropdownTrigger.textContent : 'nokia_srlinux',
     };
+
+    if (this.panelNodeEditorUseDropdownForType || typeValue.trim() !== '') {
+      updatedExtraData.type = typeValue;
+    } else if ('type' in updatedExtraData) {
+      delete updatedExtraData.type;
+    }
 
     // Build the updated data object.
     const updatedData = {
@@ -436,7 +451,76 @@ export class ManagerViewportPanels {
         console.log(`${this.panelNodeEditorKind} selected`);
         dropdownTrigger.textContent = this.panelNodeEditorKind;
         dropdownContainer.classList.remove("is-active");
+        const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(this.nodeSchemaData, `(${option})`);
+        // Reset the stored type when kind changes
+        this.panelNodeEditorType = "";
+        this.panelNodeEditorSetupTypeField(typeOptions);
       });
+
+      dropdownContent.appendChild(optionElement);
+    });
+  }
+
+  private panelNodeEditorSetupTypeField(options: string[]): void {
+    const dropdown = document.getElementById("panel-node-type-dropdown");
+    const input = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
+
+    if (!dropdown || !input) {
+      console.error("Type input elements not found in the DOM.");
+      return;
+    }
+
+    if (options.length > 0) {
+      dropdown.style.display = "";
+      input.style.display = "none";
+      this.panelNodeEditorUseDropdownForType = true;
+      // Ensure type matches available options
+      if (!options.includes(this.panelNodeEditorType)) {
+        this.panelNodeEditorType = options[0];
+      }
+      this.panelNodeEditorPopulateTypeDropdown(options);
+    } else {
+      dropdown.style.display = "none";
+      input.style.display = "";
+      this.panelNodeEditorUseDropdownForType = false;
+      this.panelNodeEditorType = "";
+      input.value = "";
+      input.oninput = () => {
+        this.panelNodeEditorType = input.value;
+      };
+    }
+  }
+
+  private panelNodeEditorPopulateTypeDropdown(options: string[]): void {
+    const dropdownTrigger = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button span");
+    const dropdownContent = document.getElementById("panel-node-type-dropdown-content");
+    const dropdownButton = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button");
+    const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
+
+    if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
+      console.error("Dropdown elements not found in the DOM.");
+      return;
+    }
+
+    if (!options.includes(this.panelNodeEditorType)) {
+      this.panelNodeEditorType = options.length > 0 ? options[0] : "";
+    }
+    dropdownTrigger.textContent = this.panelNodeEditorType || "";
+    dropdownContent.innerHTML = "";
+
+    options.forEach(option => {
+      const optionElement = document.createElement("a");
+      optionElement.classList.add("dropdown-item", "label", "has-text-weight-normal", "is-small", "py-0");
+      optionElement.textContent = option;
+      optionElement.href = "#";
+
+      optionElement.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.panelNodeEditorType = option;
+        dropdownTrigger.textContent = this.panelNodeEditorType;
+        dropdownContainer.classList.remove("is-active");
+      });
+
 
       dropdownContent.appendChild(optionElement);
     });
@@ -533,13 +617,18 @@ export class ManagerViewportPanels {
           condition.if.properties.kind &&
           condition.if.properties.kind.pattern === pattern
         ) {
-          if (
-            condition.then &&
-            condition.then.properties &&
-            condition.then.properties.type &&
-            condition.then.properties.type.enum
-          ) {
-            return condition.then.properties.type.enum;
+          if (condition.then && condition.then.properties && condition.then.properties.type) {
+            const typeProp = condition.then.properties.type;
+            if (typeProp.enum) {
+              return typeProp.enum;
+            }
+            if (Array.isArray(typeProp.anyOf)) {
+              for (const sub of typeProp.anyOf) {
+                if (sub.enum) {
+                  return sub.enum;
+                }
+              }
+            }
           }
         }
       }
