@@ -211,7 +211,7 @@ export class TopoViewerEditor {
 
     // Handle case where the name might include ".clab"
     if (baseNameWithoutExt.toLowerCase().endsWith('.clab')) {
-        baseNameWithoutExt = baseNameWithoutExt.substring(0, baseNameWithoutExt.length - 5);
+      baseNameWithoutExt = baseNameWithoutExt.substring(0, baseNameWithoutExt.length - 5);
     }
 
     // Use the basename as the lab name
@@ -235,6 +235,7 @@ topology:
   nodes:
     srl1:
       kind: nokia_srlinux
+      type: ixrd1
       image: ghcr.io/nokia/srlinux:latest
       labels:
         graph-posX: "65"
@@ -242,6 +243,7 @@ topology:
         graph-icon: router
     srl2:
       kind: nokia_srlinux
+      type: ixrd1
       image: ghcr.io/nokia/srlinux:latest
       labels:
         graph-posX: "165"
@@ -254,38 +256,38 @@ topology:
 `;
 
     try {
-        // Ensure the directory exists using the final URI's directory
-        const dirUri = targetFileUri.with({ path: path.dirname(targetFileUri.path) });
-        await vscode.workspace.fs.createDirectory(dirUri);
+      // Ensure the directory exists using the final URI's directory
+      const dirUri = targetFileUri.with({ path: path.dirname(targetFileUri.path) });
+      await vscode.workspace.fs.createDirectory(dirUri);
 
-        // Write the file using the final URI and mark as internal to
-        // avoid triggering the file watcher.
-        const data = Buffer.from(templateContent, 'utf8');
-        this.isInternalUpdate = true;
-        await vscode.workspace.fs.writeFile(targetFileUri, data);
-        await this.sleep(50);
-        this.isInternalUpdate = false;
+      // Write the file using the final URI and mark as internal to
+      // avoid triggering the file watcher.
+      const data = Buffer.from(templateContent, 'utf8');
+      this.isInternalUpdate = true;
+      await vscode.workspace.fs.writeFile(targetFileUri, data);
+      await this.sleep(50);
+      this.isInternalUpdate = false;
 
-        // Remember the actual path where it was written
-        this.lastYamlFilePath = targetFileUri.fsPath;
+      // Remember the actual path where it was written
+      this.lastYamlFilePath = targetFileUri.fsPath;
 
-        log.info(`Template file created at: ${targetFileUri.fsPath}`);
+      log.info(`Template file created at: ${targetFileUri.fsPath}`);
 
-        // Notify the user with the actual path used
-        this.createTopoYamlTemplateSuccess = true; // Indicate success
-        this.skipInitialValidation = true; // Skip schema check on first load
+      // Notify the user with the actual path used
+      this.createTopoYamlTemplateSuccess = true; // Indicate success
+      this.skipInitialValidation = true; // Skip schema check on first load
 
-        // No further processing here. The webview panel will handle
-        // reading the YAML and generating the initial JSON data when
-        // it is created. This avoids redundant conversions and file
-        // writes triggered during template creation.
+      // No further processing here. The webview panel will handle
+      // reading the YAML and generating the initial JSON data when
+      // it is created. This avoids redundant conversions and file
+      // writes triggered during template creation.
 
     } catch (err) {
-        vscode.window.showErrorMessage(`Error creating template: ${err}`);
-        this.createTopoYamlTemplateSuccess = false; // Indicate failure
-        throw err; // Re-throw the error if needed
+      vscode.window.showErrorMessage(`Error creating template: ${err}`);
+      this.createTopoYamlTemplateSuccess = false; // Indicate failure
+      throw err; // Re-throw the error if needed
     }
-}
+  }
   /**
    * Updates the webview panel's HTML with the latest topology data.
    *
@@ -389,10 +391,10 @@ topology:
   public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string): Promise<void> {
     this.currentLabName = labName;
     if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
-        // If we have a lastYamlFilePath and it's different from the fileUri,
-        // create a new URI from the lastYamlFilePath
-        fileUri = vscode.Uri.file(this.lastYamlFilePath);
-        log.info(`Using corrected file path: ${fileUri.fsPath}`);
+      // If we have a lastYamlFilePath and it's different from the fileUri,
+      // create a new URI from the lastYamlFilePath
+      fileUri = vscode.Uri.file(this.lastYamlFilePath);
+      log.info(`Using corrected file path: ${fileUri.fsPath}`);
     }
 
     const column = vscode.window.activeTextEditor
@@ -604,69 +606,74 @@ topology:
               payloadParsed
                 .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
                 .forEach(element => {
-                // Use the stable id from payload as the lookup key.
-                var nodeId: string = element.data.id;
+                  // Use the stable id from payload as the lookup key.
+                  var nodeId: string = element.data.id;
 
-                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
-                if (!nodeYaml) {
-                  // Create a new mapping if it does not exist.
-                  nodeYaml = new YAML.YAMLMap();
-                  yamlNodes.set(nodeId, nodeYaml);
-                }
-
-                // For new nodes, extraData may be missing. Provide fallbacks.
-                const extraData = element.data.extraData || {};
-
-                // Update the node's properties.
-                nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
-                nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
-
-                // --- Update Labels ---
-                // Ensure labels exist and are a YAML map.
-                let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
-                if (!labels || !YAML.isMap(labels)) {
-                  labels = new YAML.YAMLMap();
-                  nodeYaml.set('labels', labels);
-                }
-                // Merge any extra labels from the payload.
-                if (extraData.labels) {
-                  for (const [key, value] of Object.entries(extraData.labels)) {
-                    labels.set(key, doc.createNode(value));
+                  let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
+                  if (!nodeYaml) {
+                    // Create a new mapping if it does not exist.
+                    nodeYaml = new YAML.YAMLMap();
+                    yamlNodes.set(nodeId, nodeYaml);
                   }
-                }
-                // Update the position-related labels (using element.position, with fallback values).
-                const x = element.position?.x || 0;
-                const y = element.position?.y || 0;
-                labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
-                labels.set('graph-posY', doc.createNode(Math.round(y).toString()));
 
-                // Update the node's icon
-                labels.set('graph-icon', doc.createNode(element.data.topoViewerRole || 'pe'));
+                  // For new nodes, extraData may be missing. Provide fallbacks.
+                  const extraData = element.data.extraData || {};
 
-                // Update group-related labels if a parent string is provided.
-                const parent = element.parent;
-                if (parent) {
-                  const parts = parent.split(":");
-                  labels.set('graph-group', doc.createNode(parts[0]));
-                  labels.set('graph-level', doc.createNode(parts[1]));
-                } else {
-                  labels.delete('graph-group');
-                  labels.delete('graph-level');
-                }
-                // Set the group label position (defaulting to 'bottom-center' if not provided).
-                const groupLabelPos = element.groupLabelPos;
-                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
+                  // Update the node's properties.
+                  // if extraData.type exist then add it to yaml.
+                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
+                  nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
+                  if (extraData.type) {
+                    nodeYaml.set('type', doc.createNode(extraData.type));
+                  }
 
-                // --- Update YAML mapping key if the node's display name has changed ---
-                // Here, we want the mapping key to reflect the new node name.
-                const newKey = element.data.name;
-                if (nodeId !== newKey) {
-                  yamlNodes.set(newKey, nodeYaml); // Add node with new key.
-                  yamlNodes.delete(nodeId);        // Remove the old key.
-                  updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
-                }
-              });
+                  // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
+
+                  // --- Update Labels ---
+                  // Ensure labels exist and are a YAML map.
+                  let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
+                  if (!labels || !YAML.isMap(labels)) {
+                    labels = new YAML.YAMLMap();
+                    nodeYaml.set('labels', labels);
+                  }
+                  // Merge any extra labels from the payload.
+                  if (extraData.labels) {
+                    for (const [key, value] of Object.entries(extraData.labels)) {
+                      labels.set(key, doc.createNode(value));
+                    }
+                  }
+                  // Update the position-related labels (using element.position, with fallback values).
+                  const x = element.position?.x || 0;
+                  const y = element.position?.y || 0;
+                  labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
+                  labels.set('graph-posY', doc.createNode(Math.round(y).toString()));
+
+                  // Update the node's icon
+                  labels.set('graph-icon', doc.createNode(element.data.topoViewerRole || 'pe'));
+
+                  // Update group-related labels if a parent string is provided.
+                  const parent = element.parent;
+                  if (parent) {
+                    const parts = parent.split(":");
+                    labels.set('graph-group', doc.createNode(parts[0]));
+                    labels.set('graph-level', doc.createNode(parts[1]));
+                  } else {
+                    labels.delete('graph-group');
+                    labels.delete('graph-level');
+                  }
+                  // Set the group label position (defaulting to 'bottom-center' if not provided).
+                  const groupLabelPos = element.groupLabelPos;
+                  labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
+
+                  // --- Update YAML mapping key if the node's display name has changed ---
+                  // Here, we want the mapping key to reflect the new node name.
+                  const newKey = element.data.name;
+                  if (nodeId !== newKey) {
+                    yamlNodes.set(newKey, nodeYaml); // Add node with new key.
+                    yamlNodes.delete(nodeId);        // Remove the old key.
+                    updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
+                  }
+                });
 
               // Remove YAML nodes that are not present in the payload.
               const payloadNodeIds = new Set(
@@ -848,69 +855,74 @@ topology:
               payloadParsed
                 .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
                 .forEach(element => {
-                // Use the stable id from payload as the lookup key.
-                var nodeId: string = element.data.id;
+                  // Use the stable id from payload as the lookup key.
+                  var nodeId: string = element.data.id;
 
-                let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
-                if (!nodeYaml) {
-                  // Create a new mapping if it does not exist.
-                  nodeYaml = new YAML.YAMLMap();
-                  yamlNodes.set(nodeId, nodeYaml);
-                }
-
-                // For new nodes, extraData may be missing. Provide fallbacks.
-                const extraData = element.data.extraData || {};
-
-                // Update the node's properties.
-                nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
-                nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
-
-                // --- Update Labels ---
-                // Ensure labels exist and are a YAML map.
-                let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
-                if (!labels || !YAML.isMap(labels)) {
-                  labels = new YAML.YAMLMap();
-                  nodeYaml.set('labels', labels);
-                }
-                // Merge any extra labels from the payload.
-                if (extraData.labels) {
-                  for (const [key, value] of Object.entries(extraData.labels)) {
-                    labels.set(key, doc.createNode(value));
+                  let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
+                  if (!nodeYaml) {
+                    // Create a new mapping if it does not exist.
+                    nodeYaml = new YAML.YAMLMap();
+                    yamlNodes.set(nodeId, nodeYaml);
                   }
-                }
-                // Update the position-related labels (using element.position, with fallback values).
-                const x = element.position?.x || 0;
-                const y = element.position?.y || 0;
-                labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
-                labels.set('graph-posY', doc.createNode(Math.round(y).toString()));
 
-                // Update the node's icon
-                labels.set('graph-icon', doc.createNode(element.data.topoViewerRole || 'pe'));
+                  // For new nodes, extraData may be missing. Provide fallbacks.
+                  const extraData = element.data.extraData || {};
 
-                // Update group-related labels if a parent string is provided.
-                const parent = element.parent;
-                if (parent) {
-                  const parts = parent.split(":");
-                  labels.set('graph-group', doc.createNode(parts[0]));
-                  labels.set('graph-level', doc.createNode(parts[1]));
-                } else {
-                  labels.delete('graph-group');
-                  labels.delete('graph-level');
-                }
-                // Set the group label position (defaulting to 'bottom-center' if not provided).
-                const groupLabelPos = element.data.groupLabelPos;
-                labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
+                  // Update the node's properties.
+                  // if extraData.type exist then add it to yaml.
+                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
+                  nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
+                  if (extraData.type) {
+                    nodeYaml.set('type', doc.createNode(extraData.type));
+                  }
 
-                // --- Update YAML mapping key if the node's display name has changed ---
-                // Here, we want the mapping key to reflect the new node name.
-                const newKey = element.data.name;
-                if (nodeId !== newKey) {
-                  yamlNodes.set(newKey, nodeYaml); // Add node with new key.
-                  yamlNodes.delete(nodeId);        // Remove the old key.
-                  updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
-                }
-              });
+                  // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
+
+                  // --- Update Labels ---
+                  // Ensure labels exist and are a YAML map.
+                  let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
+                  if (!labels || !YAML.isMap(labels)) {
+                    labels = new YAML.YAMLMap();
+                    nodeYaml.set('labels', labels);
+                  }
+                  // Merge any extra labels from the payload.
+                  if (extraData.labels) {
+                    for (const [key, value] of Object.entries(extraData.labels)) {
+                      labels.set(key, doc.createNode(value));
+                    }
+                  }
+                  // Update the position-related labels (using element.position, with fallback values).
+                  const x = element.position?.x || 0;
+                  const y = element.position?.y || 0;
+                  labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
+                  labels.set('graph-posY', doc.createNode(Math.round(y).toString()));
+
+                  // Update the node's icon
+                  labels.set('graph-icon', doc.createNode(element.data.topoViewerRole || 'pe'));
+
+                  // Update group-related labels if a parent string is provided.
+                  const parent = element.parent;
+                  if (parent) {
+                    const parts = parent.split(":");
+                    labels.set('graph-group', doc.createNode(parts[0]));
+                    labels.set('graph-level', doc.createNode(parts[1]));
+                  } else {
+                    labels.delete('graph-group');
+                    labels.delete('graph-level');
+                  }
+                  // Set the group label position (defaulting to 'bottom-center' if not provided).
+                  const groupLabelPos = element.data.groupLabelPos;
+                  labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
+
+                  // --- Update YAML mapping key if the node's display name has changed ---
+                  // Here, we want the mapping key to reflect the new node name.
+                  const newKey = element.data.name;
+                  if (nodeId !== newKey) {
+                    yamlNodes.set(newKey, nodeYaml); // Add node with new key.
+                    yamlNodes.delete(nodeId);        // Remove the old key.
+                    updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
+                  }
+                });
 
               // Remove YAML nodes that are not present in the payload.
               const payloadNodeIds = new Set(

@@ -292,7 +292,7 @@ export class ManagerViewportButtons {
       sourceEndpoint: "",
       targetEndpoint: "",
       containerDockerExtraAttribute: { state: "", status: "" },
-      extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Address: "" },
+      extraData: { kind: "nokia_srlinux", longname: "", image: "", type: "", mgmtIpv4Address: "" },
     };
 
     // Get the current viewport bounds
