@@ -492,20 +492,23 @@ export default async function loadCytoStyle(
 /**
  * Extracts node types from an array of Cytoscape style definitions.
  *
- * This function looks for selectors of the form:
+ * This function looks for selectors matching the pattern:
  *   node[topoViewerRole="someType"]
  * and returns an array of node types (e.g., "router", "default", "pe", etc.).
  *
- * @returns An array of extracted node types.
+ * Node types with topoViewerRole set to "dummyChild" or "group" are excluded.
+ *
+ * @returns An array of extracted node types, excluding "dummyChild" and "group".
  */
 export function extractNodeIcons(): string[] {
   const nodeTypes: string[] = [];
   const regex = /node\[topoViewerRole="([^"]+)"\]/;
+  const skipList = ['dummyChild', 'group'];
 
   for (const styleDef of cytoscapeStylesBase) {
     if (typeof styleDef.selector === 'string') {
       const match = styleDef.selector.match(regex);
-      if (match && match[1]) {
+      if (match && match[1] && !skipList.includes(match[1])) {
         nodeTypes.push(match[1]);
       }
     }
@@ -513,6 +516,7 @@ export function extractNodeIcons(): string[] {
 
   return nodeTypes;
 }
+
 
 
 /**

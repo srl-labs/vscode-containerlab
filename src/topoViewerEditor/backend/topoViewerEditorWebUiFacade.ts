@@ -620,9 +620,12 @@ topology:
                   const extraData = element.data.extraData || {};
 
                   // Update the node's properties.
+                  // if extraData.type exist then add it to yaml.
                   nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
                   nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                  nodeYaml.set('type', doc.createNode(extraData.type || 'default-type'));
+                  if (extraData.type) {
+                    nodeYaml.set('type', doc.createNode(extraData.type));
+                  }
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
 
@@ -866,9 +869,12 @@ topology:
                   const extraData = element.data.extraData || {};
 
                   // Update the node's properties.
+                  // if extraData.type exist then add it to yaml.
                   nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
                   nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                  nodeYaml.set('type', doc.createNode(extraData.type || 'default-type'));
+                  if (extraData.type) {
+                    nodeYaml.set('type', doc.createNode(extraData.type));
+                  }
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
 

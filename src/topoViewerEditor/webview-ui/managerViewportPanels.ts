@@ -131,7 +131,7 @@ export class ManagerViewportPanels {
     const extraData = node.data('extraData') || {};
     this.panelNodeEditorKind = extraData.kind || this.panelNodeEditorKind;
     this.panelNodeEditorType = extraData.type || '';
-    this.panelNodeEditorUseDropdownForType = false;;
+    this.panelNodeEditorUseDropdownForType = false;
 
     // Set the node group in the editor.
     const panelNodeEditorGroupLabel = document.getElementById("panel-node-editor-group") as HTMLInputElement;
@@ -457,7 +457,7 @@ export class ManagerViewportPanels {
         this.panelNodeEditorSetupTypeField(typeOptions);
       });
 
-      dropdownContent.appendChild(optionElement);
+    dropdownContent.appendChild(optionElement);
     });
   }
 
@@ -483,8 +483,7 @@ export class ManagerViewportPanels {
       dropdown.style.display = "none";
       input.style.display = "";
       this.panelNodeEditorUseDropdownForType = false;
-      this.panelNodeEditorType = "";
-      input.value = "";
+      input.value = this.panelNodeEditorType || "";
       input.oninput = () => {
         this.panelNodeEditorType = input.value;
       };
@@ -520,7 +519,6 @@ export class ManagerViewportPanels {
         dropdownTrigger.textContent = this.panelNodeEditorType;
         dropdownContainer.classList.remove("is-active");
       });
-
 
       dropdownContent.appendChild(optionElement);
     });
