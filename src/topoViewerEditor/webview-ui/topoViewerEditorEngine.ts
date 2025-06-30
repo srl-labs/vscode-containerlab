@@ -12,7 +12,11 @@ import cxtmenu from 'cytoscape-cxtmenu';
 import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
-import { ManagerViewportButtons } from './managerViewportButtons';
+import { ManagerSaveTopo } from './managerSaveTopo';
+import { ManagerZoomToFit } from './managerZoomToFit';
+import { ManagerLabelEndpoint } from './managerLabelEndpoint';
+import { ManagerReloadTopo } from './managerReloadTopo';
+import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManager } from './managerGroupManager';
 import { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -78,7 +82,11 @@ class TopoViewerEditorEngine {
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
   private messageSender: VscodeMessageSender;
-  private viewportButtons: ManagerViewportButtons;
+  private saveManager: ManagerSaveTopo;
+  private zoomToFitManager: ManagerZoomToFit;
+  private labelEndpointManager: ManagerLabelEndpoint;
+  private reloadTopoManager: ManagerReloadTopo;
+  private addNodeManager: ManagerAddContainerlabNode;
   private viewportPanels: ManagerViewportPanels;
   private groupManager: ManagerGroupManager = new ManagerGroupManager();
   /** Layout manager instance accessible by other components */
@@ -102,7 +110,7 @@ class TopoViewerEditorEngine {
         return;
       }
       const suppressNotification = true;
-      await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
+      await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
     // Listen for topology changes
@@ -198,9 +206,13 @@ class TopoViewerEditorEngine {
     this.initializeEdgehandles();
     this.initializeContextMenu();
 
-    // Initiate viewport buttons and panels
-    this.viewportButtons = new ManagerViewportButtons(this.messageSender);
-    this.viewportPanels = new ManagerViewportPanels(this.viewportButtons, this.cy, this.messageSender);
+    // Initiate managers and panels
+    this.saveManager = new ManagerSaveTopo(this.messageSender);
+    this.zoomToFitManager = new ManagerZoomToFit();
+    this.labelEndpointManager = new ManagerLabelEndpoint();
+    this.reloadTopoManager = new ManagerReloadTopo(this.messageSender);
+    this.addNodeManager = new ManagerAddContainerlabNode();
+    this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy, this.messageSender);
     this.groupManager = new ManagerGroupManager();
     this.layoutAlgoManager = new ManagerLayoutAlgo();
 
@@ -351,10 +363,8 @@ class TopoViewerEditorEngine {
             // this.viewportPanels.panelNodeEditor(ele);
             if (ele.data("topoViewerRole") == "dummyChild") {
               console.info("Editing parent of dummyChild: ", ele.parent().first().id());
-              // this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.parent().first().id());
               this.groupManager.panelGroupToggle(ele.parent().first().id());
             } else if (ele.data("topoViewerRole") == "group") {
-              // this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(ele.id());
               this.groupManager.panelGroupToggle(ele.id());
             }
           }
@@ -366,7 +376,6 @@ class TopoViewerEditorEngine {
                       <span>Delete Group</span>
                     </div>`,
           select: () => {
-            //this.viewportButtons.viewportButtonsPanelGroupManager.nodeParentRemoval(this.cy);
             this.groupManager.nodeParentRemoval(this.cy);
           }
         }
@@ -452,7 +461,7 @@ class TopoViewerEditorEngine {
       const mouseEvent = event.originalEvent as MouseEvent;
       if (event.target === this.cy && mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
         console.log("Canvas clicked with Shift key - adding node.");
-        this.viewportButtons.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
+        this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
       }
     });
 
@@ -487,13 +496,13 @@ class TopoViewerEditorEngine {
           break;
 
         // case (node.data("topoViewerRole") == "dummyChild"):
-        //   console.info("Editing parent of dummyChiled: ", node.parent().id());
-        //   this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.parent().id());
+        //   console.info("Editing parent of dummyChild: ", node.parent().id());
+        //   this.groupManager.panelGroupToggle(node.parent().id());
         //   break;
         // // If the node is a parent, open the panel for that parent.
         // case node.isParent():
         //   console.info("Editing existing parent node: ", node.id());
-        //   this.viewportButtons.viewportButtonsPanelGroupManager.panelGroupTogle(node.id());
+        //   this.groupManager.panelGroupToggle(node.id());
         //   break;
         default:
           break;
