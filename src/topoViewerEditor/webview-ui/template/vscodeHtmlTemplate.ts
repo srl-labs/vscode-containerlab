@@ -116,7 +116,7 @@ export function getHTMLTemplate(
       <div class="is-flex is-flex-direction-column is-justify-content-space-evenly">
         <p class="control p-0">
           <button id="viewport-zoom-to-fit" title="Fit to Viewport"
-            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
+            onclick="window.topoViewerEditorEngine.zoomToFitManager.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-expand"></i>
@@ -126,7 +126,7 @@ export function getHTMLTemplate(
 
         <p class="control p-0">
           <button id="viewport-add-clab-node" title="Add Containerlab Node"
-            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
+            onclick="window.topoViewerEditorEngine.addNodeManager.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-plus"></i>
@@ -158,7 +158,7 @@ export function getHTMLTemplate(
         
         <p class="control p-0">
           <button id="viewport-label-endpoint" title="Toggle Endpoint Label"
-            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
+            onclick="window.topoViewerEditorEngine.labelEndpointManager.viewportButtonsLabelEndpoint(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fas fa-tag"></i>
@@ -222,7 +222,7 @@ export function getHTMLTemplate(
 
         <p class="control p-0">
           <button id="viewport-reload-topo" title="Reload TopoViewer"
-            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
+            onclick="window.topoViewerEditorEngine.reloadTopoManager.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-arrow-rotate-right"></i>
@@ -232,7 +232,7 @@ export function getHTMLTemplate(
 
         <p class="control p-0">
           <button id="viewport-save-topo" title="Save TopoViewer"
-            onclick="window.topoViewerEditorEngine.viewportButtons.viewportButtonsSaveTopo(window.topoViewerEditorEngine.cy); return false;"
+            onclick="window.topoViewerEditorEngine.saveManager.viewportButtonsSaveTopo(window.topoViewerEditorEngine.cy); return false;"
             class="button px-4 py-4 is-smallest-element" style="outline: none;">
             <span class="icon is-small">
               <i class="fa-solid fa-floppy-disk"></i>
