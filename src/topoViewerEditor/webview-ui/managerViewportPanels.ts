@@ -1,7 +1,7 @@
 // file: managerViewportPanels.ts
 
 import cytoscape from 'cytoscape';
-import { ManagerViewportButtons } from './managerViewportButtons';
+import { ManagerSaveTopo } from './managerSaveTopo';
 import { extractNodeIcons } from './managerCytoscapeStyle';
 import { VscodeMessageSender } from './managerVscodeWebview';
 
@@ -11,7 +11,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
  * It manages the node editor panel and toggles panels based on user interactions.
  */
 export class ManagerViewportPanels {
-  private viewportButtons: ManagerViewportButtons;
+  private saveManager: ManagerSaveTopo;
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
   private isPanel01Cy = false;
@@ -25,15 +25,15 @@ export class ManagerViewportPanels {
   private nodeSchemaData: any = null;
   /**
    * Creates an instance of ManagerViewportPanels.
-   * @param viewportButtons - The ManagerViewportButtons instance.
+   * @param saveManager - The ManagerSaveTopo instance.
    * @param cy - The Cytoscape instance.
    */
   constructor(
-    viewportButtons: ManagerViewportButtons,
+    saveManager: ManagerSaveTopo,
     cy: cytoscape.Core,
     messageSender: VscodeMessageSender
   ) {
-    this.viewportButtons = viewportButtons;
+    this.saveManager = saveManager;
     this.cy = cy;
     this.messageSender = messageSender;
     this.toggleHidePanels("cy"); // Initialize the toggle for hiding panels.
@@ -192,7 +192,7 @@ export class ManagerViewportPanels {
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           const suppressNotification = false;
-          await this.viewportButtons.viewportButtonsSaveTopo(this.cy, suppressNotification);
+          await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
         }, { once: true });
       }
     } catch (error: any) {
@@ -281,7 +281,7 @@ export class ManagerViewportPanels {
               });
 
               // 6b) Persist changes (with notification)
-              await this.viewportButtons.viewportButtonsSaveTopo(
+              await this.saveManager.viewportButtonsSaveTopo(
                 this.cy,
                 /* suppressNotification */ false
               );
@@ -639,8 +639,8 @@ export class ManagerViewportPanels {
    *
    * @param newParentId - The new parent ID in the format "group:level".
    *
-   * panelNodeEditorGroupEditor is not implemented here, instead the panel for group editor is directly managed in viewportButtons class
-   * due to the complexity of managing group and the need for a more comprehensive UI handling.
+   * panelNodeEditorGroupEditor is not implemented here due to the complexity
+   * of managing groups and the need for a more comprehensive UI handling.
    *
    */
 
