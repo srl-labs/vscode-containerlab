@@ -15,7 +15,6 @@ import { getSelectedLabNode } from "./utils";
 async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizontal" | "vertical") {
   node = await getSelectedLabNode(node);
   if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 
@@ -69,7 +68,6 @@ export async function graphDrawIOVertical(node?: ClabLabTreeNode) {
 export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
   if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 

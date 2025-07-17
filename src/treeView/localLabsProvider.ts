@@ -21,8 +21,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
 
     // Cache for file discovery results
-    private fileCache: { uris: vscode.Uri[], timestamp: number } | null = null;
-    private cacheTTL: number = 5000; // 5 seconds TTL for file cache
+    private fileCache: vscode.Uri[] | null = null;
 
     constructor() {
         this.watcher.onDidCreate(uri => {
@@ -99,19 +98,18 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private async discoverLabs(dir?: string): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
         console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
-        // Use cached file list if available and not expired
+        // Use cached file list if available
         let uris: vscode.Uri[];
-        const now = Date.now();
 
-        if (this.fileCache && (now - this.fileCache.timestamp < this.cacheTTL)) {
-            uris = this.fileCache.uris;
+        if (this.fileCache) {
+            uris = this.fileCache;
             console.log("[LocalTreeDataProvider]:\tUsing cached file list");
         } else {
             // Perform file discovery and cache the results
             console.log("[LocalTreeDataProvider]:\tPerforming file discovery");
             uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
                 .filter(u => !u.scheme || u.scheme === 'file');
-            this.fileCache = { uris, timestamp: now };
+            this.fileCache = uris;
         }
 
         const labs: Record<string, c.ClabLabTreeNode> = {};

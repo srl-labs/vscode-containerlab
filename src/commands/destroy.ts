@@ -7,7 +7,6 @@ import { getSelectedLabNode } from "./utils";
 export async function destroy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
   if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 
@@ -22,7 +21,6 @@ export async function destroy(node?: ClabLabTreeNode) {
 export async function destroyCleanup(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
   if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 

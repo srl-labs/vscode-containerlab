@@ -7,7 +7,6 @@ import { getSelectedLabNode } from "./utils";
 export async function redeploy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
   if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 
@@ -22,7 +21,6 @@ export async function redeploy(node?: ClabLabTreeNode) {
 export async function redeployCleanup(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
   if (!node) {
-    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 

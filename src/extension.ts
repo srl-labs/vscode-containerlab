@@ -566,7 +566,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const refreshTaskID = setInterval(
     async ()=> {
       ins.update().then( () => {
-        localLabsProvider.refresh();
+        // Only refresh running labs - local labs use file watchers
         runningLabsProvider.softRefresh();
       })
     }, refreshInterval
