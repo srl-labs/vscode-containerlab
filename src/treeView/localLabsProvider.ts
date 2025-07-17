@@ -20,19 +20,28 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private treeFilter: string = '';
     private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
 
+    // Cache for file discovery results
+    private fileCache: { uris: vscode.Uri[], timestamp: number } | null = null;
+    private cacheTTL: number = 5000; // 5 seconds TTL for file cache
+
     constructor() {
         this.watcher.onDidCreate(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Invalidate cache on file creation
+                this.fileCache = null;
                 this.refresh();
             }
         });
         this.watcher.onDidDelete(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Invalidate cache on file deletion
+                this.fileCache = null;
                 this.refresh();
             }
         });
         this.watcher.onDidChange(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Don't invalidate cache on file changes, just refresh
                 this.refresh();
             }
         });
@@ -41,12 +50,20 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         // of the subdir deletion.
         this.delSubdirWatcher.onDidDelete(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Invalidate cache on directory deletion
+                this.fileCache = null;
                 this.refresh();
             }
         });
     }
 
     refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+
+    // Force refresh with cache invalidation
+    forceRefresh(): void {
+        this.fileCache = null;
         this._onDidChangeTreeData.fire();
     }
 
@@ -82,8 +99,20 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private async discoverLabs(dir?: string): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
         console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
-        const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
-            .filter(u => !u.scheme || u.scheme === 'file');
+        // Use cached file list if available and not expired
+        let uris: vscode.Uri[];
+        const now = Date.now();
+
+        if (this.fileCache && (now - this.fileCache.timestamp < this.cacheTTL)) {
+            uris = this.fileCache.uris;
+            console.log("[LocalTreeDataProvider]:\tUsing cached file list");
+        } else {
+            // Perform file discovery and cache the results
+            console.log("[LocalTreeDataProvider]:\tPerforming file discovery");
+            uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
+                .filter(u => !u.scheme || u.scheme === 'file');
+            this.fileCache = { uris, timestamp: now };
+        }
 
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
@@ -105,10 +134,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             let labNode = this.labNodeCache.get(normPath);
 
             if (labNode) {
+                // Update existing node properties without recreating it
                 labNode.contextValue = contextVal;
                 (labNode as any).favorite = isFavorite;
                 labNode.description = utils.getRelLabFolderPath(normPath);
+                // Keep the same object reference for better performance
             } else {
+                // Create new node only if it doesn't exist in cache
                 labNode = new c.ClabLabTreeNode(
                     path.basename(filePath),
                     vscode.TreeItemCollapsibleState.None,
@@ -124,10 +156,11 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
                 );
 
                 labNode.description = utils.getRelLabFolderPath(normPath);
+                // Add to cache only for new nodes
+                this.labNodeCache.set(normPath, labNode);
             }
 
             labs[normPath] = labNode;
-            this.labNodeCache.set(normPath, labNode);
         };
 
         uris.forEach(uri => addLab(uri.fsPath, favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false));

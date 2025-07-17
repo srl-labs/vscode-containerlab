@@ -2,8 +2,15 @@ import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
+import { getSelectedLabNode } from "./utils";
 
-export function destroy(node: ClabLabTreeNode) {
+export async function destroy(node?: ClabLabTreeNode) {
+  node = await getSelectedLabNode(node);
+  if (!node) {
+    vscode.window.showErrorMessage("No lab node selected.");
+    return;
+  }
+
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Destroying Lab... ",
     successMsg: "Lab destroyed successfully!"
@@ -12,7 +19,13 @@ export function destroy(node: ClabLabTreeNode) {
   destroyCmd.run();
 }
 
-export async function destroyCleanup(node: ClabLabTreeNode) {
+export async function destroyCleanup(node?: ClabLabTreeNode) {
+  node = await getSelectedLabNode(node);
+  if (!node) {
+    vscode.window.showErrorMessage("No lab node selected.");
+    return;
+  }
+
   const config = vscode.workspace.getConfiguration("containerlab");
   const skipWarning = config.get<boolean>("skipCleanupWarning", false);
   if (!skipWarning) {

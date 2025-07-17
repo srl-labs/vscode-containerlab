@@ -6,12 +6,19 @@ import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
 import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
+import { getSelectedLabNode } from "./utils";
 
 
 /**
  * Core routine for generating draw.io graphs.
  */
-async function runGraphDrawIO(node: ClabLabTreeNode, layout: "horizontal" | "vertical") {
+async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizontal" | "vertical") {
+  node = await getSelectedLabNode(node);
+  if (!node) {
+    vscode.window.showErrorMessage("No lab node selected.");
+    return;
+  }
+
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Generating DrawIO graph...",
     successMsg: "DrawIO Graph Completed!",
@@ -48,18 +55,24 @@ async function runGraphDrawIO(node: ClabLabTreeNode, layout: "horizontal" | "ver
     });
 }
 
-export async function graphDrawIOHorizontal(node: ClabLabTreeNode) {
+export async function graphDrawIOHorizontal(node?: ClabLabTreeNode) {
   await runGraphDrawIO(node, "horizontal");
 }
 
-export async function graphDrawIOVertical(node: ClabLabTreeNode) {
+export async function graphDrawIOVertical(node?: ClabLabTreeNode) {
   await runGraphDrawIO(node, "vertical");
 }
 
 /**
  * Graph Lab (draw.io, Interactive) => always run in Terminal
  */
-export function graphDrawIOInteractive(node: ClabLabTreeNode) {
+export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
+  node = await getSelectedLabNode(node);
+  if (!node) {
+    vscode.window.showErrorMessage("No lab node selected.");
+    return;
+  }
+
   const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - drawio Interactive");
 
   graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
@@ -75,7 +88,31 @@ let currentTopoViewer: TopoViewer | undefined;
 let currentTopoViewerPanel: vscode.WebviewPanel | undefined;
 
 
-export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.ExtensionContext) {
+export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.ExtensionContext) {
+  // Get node if not provided
+  node = await getSelectedLabNode(node);
+
+  let labPath: string;
+
+  if (!node) {
+    // If still no node, try to get from active editor
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
+      vscode.window.showErrorMessage(
+        'No lab node or topology file selected'
+      );
+      return;
+    }
+    labPath = editor.document.uri.fsPath;
+  } else {
+    labPath = node.labPath.absolute;
+  }
+
+  if (!context) {
+    vscode.window.showErrorMessage('Extension context not available');
+    return;
+  }
+
   // 1) create a new TopoViewer
   const viewer = new TopoViewer(context);
 
@@ -85,26 +122,6 @@ export async function graphTopoviewer(node: ClabLabTreeNode, context: vscode.Ext
   // do the same logic as before...
   const provider = new RunningLabTreeDataProvider(context);
   const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
-
-  let labPath: string;
-
-  if (!(node instanceof ClabLabTreeNode) || !node) {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      vscode.window.showErrorMessage(
-        'No lab node or topology file selected'
-      );
-      return;
-    }
-    labPath = editor.document.uri.fsPath;
-  }
-  else {
-    labPath = node.labPath.absolute;
-    if (!labPath) {
-      vscode.window.showErrorMessage('Lab path not found');
-      return;
-    }
-  }
 
   try {
     // 3) call openViewer, which returns (panel | undefined).
