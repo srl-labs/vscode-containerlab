@@ -1,4 +1,10 @@
 # Change Log
+## [0.13.5] - 2025-06-28
+* fcli ( fabric wide cli for srlinux )
+* TopoViewer/Editor enhancements:
+  * LayoutManager
+  * Node type field
+  * Fixes
 
 ## [0.13.3] - 2025-05-29
 * Deploy labs from Git/HTTP URLs and local files

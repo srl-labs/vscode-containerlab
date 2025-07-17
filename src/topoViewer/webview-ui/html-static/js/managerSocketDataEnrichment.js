@@ -48,35 +48,77 @@
 function socketDataEncrichmentLink(labData) {
   const linkMap = new Map();
 
-  // Iterate through all lab entries and gather interface data from matching lab
+  console.log(`debug labData:`, labData);
+  console.log(`debug labData.name`, labData.name);
+  console.log(`debug globalLabName`, globalLabName);
+
+  // Build interface key mapping for the current lab
   Object.values(labData).forEach(lab => {
     if (lab.name !== globalLabName || !Array.isArray(lab.containers)) return;
 
     lab.containers.forEach(container => {
       if (typeof container.label !== 'string' || !Array.isArray(container.interfaces)) return;
 
-      // Derive short node name by stripping lab prefix from the container label
       const nodeName = container.label.split(lab.name)[1]?.replace(/^-/, '') || container.label;
-      
-      // Build key per interface and store MAC/MTU/type
+
       container.interfaces.forEach(iface => {
         const key = `${lab.name}::${nodeName}::${iface.label}`;
         linkMap.set(key, { mac: iface.mac, mtu: iface.mtu, type: iface.type });
       });
+
+      console.log(`Enriched link data for node: ${nodeName} with interfaces:`, container.interfaces);
+      console.log(`Enriched link map data:`, linkMap);
     });
   });
 
-  // Match the key parts with Cytoscape edge's source/target endpoint data
+  // Compute prefix safely
+  let assignedPrefixLabName;
+
+  switch (true) {
+    case typeof globalPrefixName === "string" && globalPrefixName.trim() === "undefined":
+      assignedPrefixLabName = `clab-${globalLabName}-`;
+      break;
+
+    case typeof globalPrefixName === "string" && globalPrefixName.trim() !== "":
+      assignedPrefixLabName = `${globalPrefixName.trim()}-${globalLabName}-`;
+      break;
+
+    default:
+      assignedPrefixLabName = null;
+      break;
+  }
+
+  // Enrich edges
   linkMap.forEach((iface, key) => {
     const [, nodeName, endpoint] = key.split('::');
     cy.edges().forEach(edge => {
       const data = edge.data();
+
+      // Safely build clabSourceLongName and clabTargetLongName
+      const clabSourceLongName = assignedPrefixLabName
+        ? `${assignedPrefixLabName}${data.source}`
+        : data.source;
+
+      const clabTargetLongName = assignedPrefixLabName
+        ? `${assignedPrefixLabName}${data.target}`
+        : data.target;
+
+      const updatedExtraData = {
+        ...edge.data('extraData'),
+        clabSourceLongName,
+        clabTargetLongName
+      };
+      edge.data('extraData', updatedExtraData);
+
+      // Enrich with interface details if matched
       if (data.source === nodeName && data.sourceEndpoint === endpoint) {
         edge.data({ sourceMac: iface.mac, sourceMtu: iface.mtu, sourceType: iface.type });
       }
       if (data.target === nodeName && data.targetEndpoint === endpoint) {
         edge.data({ targetMac: iface.mac, targetMtu: iface.mtu, targetType: iface.type });
       }
+
+      console.log(`Edge data after enrichment:`, edge.data());
     });
   });
 }
@@ -101,7 +143,7 @@ function socketDataEncrichmentLink(labData) {
  */
 function socketDataEncrichmentNode(labData) {
   const nodeMap = new Map();
-  
+
   // Build node mapping from container longname -> metadata
   Object.values(labData).forEach(lab => {
     if (lab.name !== globalLabName || !Array.isArray(lab.containers)) return;

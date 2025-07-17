@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.13.4",
+  "version": "0.13.6",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.100.0"
@@ -179,21 +179,21 @@
         "category": "Containerlab",
         "icon": "$(info)"
       },
-        {
-          "command": "containerlab.lab.graph.drawio.horizontal",
-          "title": "Graph (draw.io, Horizontal)",
-          "category": "Containerlab"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.vertical",
-          "title": "Graph (draw.io, Vertical)",
-          "category": "Containerlab"
-        },
-        {
-          "command": "containerlab.lab.graph.drawio.interactive",
-          "title": "Graph (draw.io, Interactive)",
-          "category": "Containerlab"
-        },
+      {
+        "command": "containerlab.lab.graph.drawio.horizontal",
+        "title": "Graph (draw.io, Horizontal)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.vertical",
+        "title": "Graph (draw.io, Vertical)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.graph.drawio.interactive",
+        "title": "Graph (draw.io, Interactive)",
+        "category": "Containerlab"
+      },
       {
         "command": "containerlab.lab.graph.topoViewer",
         "title": "Graph (TopoViewer)",
@@ -374,6 +374,51 @@
         "title": "Copy SSHX link"
       },
       {
+        "command": "containerlab.lab.fcli.bgpPeers",
+        "title": "bgp-peers",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.bgpRib",
+        "title": "bgp-rib",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.ipv4Rib",
+        "title": "ipv4-rib",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.lldp",
+        "title": "lldp",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.mac",
+        "title": "mac",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.ni",
+        "title": "ni",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.subif",
+        "title": "subif",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.sysInfo",
+        "title": "sys-info",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.fcli.custom",
+        "title": "custom",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.treeView.runningLabs.hideNonOwnedLabs",
         "title": "Hide non-owned"
       },
@@ -414,6 +459,13 @@
       {
         "id": "containerlab.submenu.lab.share",
         "label": "Share Lab (sshx)"
+      }
+      ,{
+        "id": "containerlab.submenu.lab.extras",
+        "label": "Extras"
+      },{
+        "id": "containerlab.submenu.lab.fcli",
+        "label": "Run fcli (srlinux)"
       }
     ],
     "menus": {
@@ -678,7 +730,12 @@
         {
           "submenu": "containerlab.submenu.lab.share",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@10"
+          "group": "connect@1"
+        },
+        {
+          "submenu": "containerlab.submenu.lab.extras",
+          "when": "viewItem =~ /containerlabLabDeployed/",
+          "group": "pExtras@0"
         },
         {
           "submenu": "containerlab.submenu.lab.graph.drawio",
@@ -904,6 +961,50 @@
           "command": "containerlab.lab.sshx.reattach",
           "group": "share@3"
         }
+      ],
+      "containerlab.submenu.lab.extras": [
+        {
+          "submenu": "containerlab.submenu.lab.fcli",
+          "group": "extras@0"
+        }
+      ],
+      "containerlab.submenu.lab.fcli": [
+        {
+          "command": "containerlab.lab.fcli.bgpPeers",
+          "group": "extras@1"
+        },
+        {
+          "command": "containerlab.lab.fcli.bgpRib",
+          "group": "extras@2"
+        },
+        {
+          "command": "containerlab.lab.fcli.ipv4Rib",
+          "group": "extras@3"
+        },
+        {
+          "command": "containerlab.lab.fcli.lldp",
+          "group": "extras@4"
+        },
+        {
+          "command": "containerlab.lab.fcli.mac",
+          "group": "extras@5"
+        },
+        {
+          "command": "containerlab.lab.fcli.ni",
+          "group": "extras@6"
+        },
+        {
+          "command": "containerlab.lab.fcli.subif",
+          "group": "extras@7"
+        },
+        {
+          "command": "containerlab.lab.fcli.sysInfo",
+          "group": "extras@8"
+        }
+        ,{
+          "command": "containerlab.lab.fcli.custom",
+          "group": "extras@9"
+        }
       ]
     },
     "keybindings": [
@@ -1034,27 +1135,28 @@
     "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
+    "@eslint/js": "^9.31.0",
     "@types/chai": "^5.2.2",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.15.29",
+    "@types/node": "^24.0.13",
     "@types/vscode": "^1.100.0",
-    "@typescript-eslint/eslint-plugin": "^8.32.1",
-    "@typescript-eslint/parser": "^8.32.1",
-    "chai": "^5.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "@vscode/vsce": "^3.5.0",
+    "chai": "^5.2.1",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
     "esbuild": "^0.25.4",
-    "eslint": "^9.28.0",
-    "mocha": "^11.5.0",
+    "eslint": "^9.31.0",
+    "mocha": "^11.7.0",
     "mochawesome": "^7.1.3",
-    "sinon": "^20.0.0",
+    "sinon": "^21.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.32.1",
+    "typescript-eslint": "^8.36.0",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
@@ -1066,14 +1168,14 @@
     "@types/cytoscape": "^3.21.9",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
-    "@vscode/vsce": "^3.5.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "cytoscape": "^3.32.0",
+    "cytoscape": "^3.32.1",
     "cytoscape-cola": "^2.5.1",
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",
     "cytoscape-grid-guide": "^2.3.3",
+    "cytoscape-leaf": "^1.2.4",
     "js-yaml": "^4.1.0",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",

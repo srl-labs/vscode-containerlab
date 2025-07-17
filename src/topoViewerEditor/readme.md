@@ -15,7 +15,11 @@ The project is organized as following key component:
 └── webview-ui
     ├── managerCytoscapeFetchAndLoad.ts
     ├── managerCytoscapeStyle.ts
-    ├── managerViewportButtons.ts
+    ├── managerAddContainerlabNode.ts
+    ├── managerLabelEndpoint.ts
+    ├── managerReloadTopo.ts
+    ├── managerSaveTopo.ts
+    ├── managerZoomToFit.ts
     ├── managerViewportPanels.ts
     ├── managerVscodeWebview.ts
     ├── template
@@ -37,20 +41,24 @@ The Webview UI consists of several key classes that interact with each other to 
 classDiagram
     class TopoViewerEditorEngine {
         -cy: cytoscape.Core
-        -viewportButtons: ManagerViewportButtons
+        -saveManager: ManagerSaveTopo
+        -zoomToFitManager: ManagerZoomToFit
+        -labelEndpointManager: ManagerLabelEndpoint
+        -reloadTopoManager: ManagerReloadTopo
+        -addNodeManager: ManagerAddContainerlabNode
         -viewportPanels: ManagerViewportPanels
         -...
         +..()
         +..()
     }
 
-    class ManagerViewportButtons {
+    class ManagerSaveTopo {
         -messageSender: VscodeMessageSender
         +..()
     }
 
     class ManagerViewportPanels {
-        -viewportButtons: ManagerViewportButtons
+        -viewportButtons: ManagerSaveTopo
         +...()
     }
 
@@ -59,16 +67,24 @@ classDiagram
         +...()
     }
 
-    TopoViewerEditorEngine --> ManagerViewportButtons: Uses
+    TopoViewerEditorEngine --> ManagerSaveTopo: Uses
+    TopoViewerEditorEngine --> ManagerZoomToFit: Uses
+    TopoViewerEditorEngine --> ManagerLabelEndpoint: Uses
+    TopoViewerEditorEngine --> ManagerReloadTopo: Uses
+    TopoViewerEditorEngine --> ManagerAddContainerlabNode: Uses
     TopoViewerEditorEngine --> ManagerViewportPanels: Uses
     TopoViewerEditorEngine --> VscodeMessageSender: Uses
-    ManagerViewportPanels --> ManagerViewportButtons: Uses
+    ManagerViewportPanels --> ManagerSaveTopo: Uses
     ManagerViewportPanels --> VscodeMessageSender: Uses
 ```
 
 - **`managerCytoscapeFetchAndLoad.ts`**: Manages fetching and loading data into the Cytoscape instance. It includes functions to fetch data from JSON files and process it for visualization.
 - **`managerCytoscapeStyle.ts`**: Defines the styles for Cytoscape elements, including nodes and edges. It also includes functions to generate encoded SVG strings for different node types.
-- **`managerViewportButtons.ts`**: Handles the functionality related to viewport button actions, such as saving the current topology, zooming to fit, toggling endpoint labels, reloading the topology, and adding new Containerlab nodes.
+- **`managerSaveTopo.ts`**: Saves the current topology back to the backend.
+- **`managerZoomToFit.ts`**: Fits all nodes within the viewport.
+- **`managerLabelEndpoint.ts`**: Toggles endpoint label visibility.
+- **`managerReloadTopo.ts`**: Reloads topology data from the backend.
+- **`managerAddContainerlabNode.ts`**: Adds new Containerlab nodes to the canvas.
 - **`managerViewportPanels.ts`**: Manages the UI panels associated with the Cytoscape viewport. It includes functionality for displaying node and edge editor panels, updating node properties, and handling panel toggles.
 - **`managerVscodeWebview.ts`**: Manages communication between the webview and the VS Code extension backend. It sends messages to the extension and listens for responses.
 - **`topoViewerEditorEngine.ts`**: The main engine for the topology editor webview. It initializes the Cytoscape instance, manages edge creation, node editing, and viewport panels/buttons.

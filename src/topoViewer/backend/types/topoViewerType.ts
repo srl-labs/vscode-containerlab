@@ -7,6 +7,7 @@
 export interface ClabNode {
     kind?: string;
     image?: string;
+    type?: string;
     group?: string;
     labels?: Record<string, any>;
 }
@@ -56,6 +57,7 @@ export type CytoTopology = CyElement[];
  */
 export interface EnvironmentJson {
     workingDirectory: string;
+    clabPrefix: string;
     clabName: string;
     clabServerAddress: string;
     clabAllowedHostname: string;
@@ -65,7 +67,6 @@ export interface EnvironmentJson {
     topoviewerVersion: string;
     topviewerPresetLayout: string
     envCyTopoJsonBytes: CytoTopology | '';
-    envCyTopoJsonBytesAddon: CytoTopology | '';
 }
 
 

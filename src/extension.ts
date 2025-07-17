@@ -518,6 +518,35 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // fcli commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.bgpPeers', cmd.fcliBgpPeers)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.bgpRib', cmd.fcliBgpRib)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.ipv4Rib', cmd.fcliIpv4Rib)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.lldp', cmd.fcliLldp)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.mac', cmd.fcliMac)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.ni', cmd.fcliNi)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.subif', cmd.fcliSubif)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.sysInfo', cmd.fcliSysInfo)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.fcli.custom', cmd.fcliCustom)
+  );
+
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
