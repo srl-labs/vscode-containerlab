@@ -291,20 +291,32 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'containerlab.editor.topoViewerEditor.open',
-      async (node: c.ClabLabTreeNode) => {
-        const yamlUri = vscode.Uri.file(node.labPath.absolute);
+      async (node?: c.ClabLabTreeNode) => {
+        if (!node) {
+          node = runningTreeView?.selection[0] || localTreeView?.selection[0];
+        }
+
+        let yamlUri: vscode.Uri | undefined;
+        if (node && node.labPath) {
+          yamlUri = vscode.Uri.file(node.labPath.absolute);
+        } else if (vscode.window.activeTextEditor) {
+          yamlUri = vscode.window.activeTextEditor.document.uri;
+        }
+
+        if (!yamlUri) {
+          vscode.window.showErrorMessage('No lab node or topology file selected');
+          return;
+        }
+
         const labName = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
 
         const editor = new TopoViewerEditor(context);
 
-        /* remember where the file lives – needed by helper functions */
         editor.lastYamlFilePath = yamlUri.fsPath;
 
-        /* 1. create / show the web-view panel */
         await editor.createWebviewPanel(context, yamlUri, labName);
 
-        /* 2. open the YAML itself beside the web-view        */
-        await editor.openTemplateFile(yamlUri.fsPath);      // ← split-view
+        await editor.openTemplateFile(yamlUri.fsPath);
       }
     )
   );

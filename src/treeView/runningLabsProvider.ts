@@ -32,6 +32,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     private treeItems: c.ClabLabTreeNode[] = [];
     private treeFilter: string = '';
+    private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
 
 
     private containerInterfacesCache: Map<string, {
@@ -252,7 +253,29 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         });
 
         console.log(`[RunningLabTreeDataProvider]:\tDiscovered ${sortedLabs.length} labs.`);
-        this.treeItems = sortedLabs;
+
+        const newCache: Map<string, c.ClabLabTreeNode> = new Map();
+
+        sortedLabs.forEach(lab => {
+            const key = lab.labPath.absolute;
+            const existing = this.labNodeCache.get(key);
+
+            if (existing) {
+                (existing as any).label = lab.label;
+                existing.description = lab.description;
+                existing.iconPath = lab.iconPath;
+                existing.contextValue = lab.contextValue;
+                (existing as any).containers = lab.containers;
+                existing.sshxLink = lab.sshxLink;
+                existing.sshxNode = lab.sshxNode;
+                newCache.set(key, existing);
+            } else {
+                newCache.set(key, lab);
+            }
+        });
+
+        this.labNodeCache = newCache;
+        this.treeItems = Array.from(newCache.values());
     }
 
     /**

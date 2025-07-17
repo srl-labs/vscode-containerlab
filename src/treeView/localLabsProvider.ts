@@ -18,6 +18,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     // match on subdirs. deletion events only.
     private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
     private treeFilter: string = '';
+    private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
 
     constructor() {
         this.watcher.onDidCreate(uri => {
@@ -93,11 +94,22 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         const addLab = (filePath: string, isFavorite: boolean) => {
             const normPath = utils.normalizeLabPath(filePath);
-            if (!labs[normPath] && !labPaths.has(normPath)) {
-                const contextVal = isFavorite
-                    ? "containerlabLabUndeployedFavorite"
-                    : "containerlabLabUndeployed";
-                const labNode = new c.ClabLabTreeNode(
+            if (labPaths.has(normPath)) {
+                return;
+            }
+
+            const contextVal = isFavorite
+                ? "containerlabLabUndeployedFavorite"
+                : "containerlabLabUndeployed";
+
+            let labNode = this.labNodeCache.get(normPath);
+
+            if (labNode) {
+                labNode.contextValue = contextVal;
+                (labNode as any).favorite = isFavorite;
+                labNode.description = utils.getRelLabFolderPath(normPath);
+            } else {
+                labNode = new c.ClabLabTreeNode(
                     path.basename(filePath),
                     vscode.TreeItemCollapsibleState.None,
                     {
@@ -112,8 +124,10 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
                 );
 
                 labNode.description = utils.getRelLabFolderPath(normPath);
-                labs[normPath] = labNode;
             }
+
+            labs[normPath] = labNode;
+            this.labNodeCache.set(normPath, labNode);
         };
 
         uris.forEach(uri => addLab(uri.fsPath, favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false));
@@ -160,6 +174,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         });
 
         const folderNodes = Array.from(folderSet).sort().map(p => new c.ClabFolderTreeNode(path.basename(p), p));
+
+        // Update cache to remove stale entries
+        for (const key of Array.from(this.labNodeCache.keys())) {
+            if (!labs[key]) {
+                this.labNodeCache.delete(key);
+            }
+        }
 
         labNodes.sort((a, b) => {
             if (a.favorite && !b.favorite) { return -1; }
