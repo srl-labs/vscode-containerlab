@@ -32,6 +32,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     private treeItems: c.ClabLabTreeNode[] = [];
     private treeFilter: string = '';
+    private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
 
 
     private containerInterfacesCache: Map<string, {
@@ -42,7 +43,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     // Cache for labs: both local and inspect (running) labs.
     private labsCache: {
-        inspect: { data: Record<string, c.ClabLabTreeNode> | undefined, timestamp: number } | null,
+        inspect: { data: Record<string, c.ClabLabTreeNode> | undefined, timestamp: number, rawDataHash?: string } | null,
     } = { inspect: null };
 
     private refreshInterval: number = 10000; // Default to 10 seconds
@@ -67,9 +68,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     async refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
         if (!element) {
-            // Full refresh - clear all caches
+            // Full refresh - update inspect data and clear interface cache
             this.containerInterfacesCache.clear();
-            this.labsCache.inspect = null;
+            // Don't clear labs cache - let the hash comparison handle it
 
             await ins.update();
             await this.discoverLabs();
@@ -80,15 +81,29 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
     }
 
-    // a soft refresh will update the treeview without pulling the latest inspect data
+    // a soft refresh will check for changes and only update if needed
     async softRefresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
         if (!element) {
-            // Full refresh - clear all caches
-            this.containerInterfacesCache.clear();
-            this.labsCache.inspect = null;
+            // Check if the inspect data has actually changed
+            const previousLabCount = this.treeItems.length;
+            const previousLabKeys = new Set(this.treeItems.map(lab => lab.labPath.absolute));
 
+            // Discover labs without clearing caches first
             await this.discoverLabs();
-            this._onDidChangeTreeData.fire();
+
+            // Check if anything changed
+            const currentLabCount = this.treeItems.length;
+            const currentLabKeys = new Set(this.treeItems.map(lab => lab.labPath.absolute));
+
+            // Only fire change event if labs were added/removed
+            const labsChanged = previousLabCount !== currentLabCount ||
+                               ![...previousLabKeys].every(key => currentLabKeys.has(key)) ||
+                               ![...currentLabKeys].every(key => previousLabKeys.has(key));
+
+            if (labsChanged) {
+                console.log("[RunningLabTreeDataProvider]:\tLabs changed, refreshing tree view");
+                this._onDidChangeTreeData.fire();
+            }
         } else {
             // Selective refresh - only refresh this element
             this._onDidChangeTreeData.fire(element);
@@ -252,7 +267,29 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         });
 
         console.log(`[RunningLabTreeDataProvider]:\tDiscovered ${sortedLabs.length} labs.`);
-        this.treeItems = sortedLabs;
+
+        const newCache: Map<string, c.ClabLabTreeNode> = new Map();
+
+        sortedLabs.forEach(lab => {
+            const key = lab.labPath.absolute;
+            const existing = this.labNodeCache.get(key);
+
+            if (existing) {
+                (existing as any).label = lab.label;
+                existing.description = lab.description;
+                existing.iconPath = lab.iconPath;
+                existing.contextValue = lab.contextValue;
+                (existing as any).containers = lab.containers;
+                existing.sshxLink = lab.sshxLink;
+                existing.sshxNode = lab.sshxNode;
+                newCache.set(key, existing);
+            } else {
+                newCache.set(key, lab);
+            }
+        });
+
+        this.labNodeCache = newCache;
+        this.treeItems = Array.from(newCache.values());
     }
 
     /**
@@ -308,18 +345,40 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return result;
     }
 
+    private createDataHash(data: any): string {
+        // Create a simple hash based on lab names and container counts
+        if (!data) return 'empty';
+
+        if (Array.isArray(data)) {
+            // Old format: count of containers
+            return `array-${data.length}`;
+        } else if (typeof data === 'object') {
+            // New format: lab names and container counts
+            const labInfo = Object.keys(data).sort().map(labName =>
+                `${labName}:${Array.isArray(data[labName]) ? data[labName].length : 0}`
+            ).join(',');
+            return `object-${labInfo}`;
+        }
+        return 'unknown';
+    }
+
     public async discoverInspectLabs(): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
         console.log("[RunningLabTreeDataProvider]:\tDiscovering labs via inspect...");
 
-        if (this.labsCache.inspect && (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
+        const inspectData = await this.getInspectData(); // This now properly handles both formats
+        const currentDataHash = this.createDataHash(inspectData);
+
+        // Check if we have cached data and if the raw data hasn't changed
+        if (this.labsCache.inspect &&
+            this.labsCache.inspect.rawDataHash === currentDataHash &&
+            (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
+            console.log("[RunningLabTreeDataProvider]:\tUsing cached labs (data unchanged)");
             return this.labsCache.inspect.data;
         }
 
-        const inspectData = await this.getInspectData(); // This now properly handles both formats
-
         if (!inspectData) {
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now() }; // Cache empty result
+            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
             return undefined;
         }
 
@@ -347,14 +406,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             // Handle cases where inspectData is invalid, empty, or not the expected object/array
             console.log("[RunningLabTreeDataProvider]:\tInspect data is empty or in an unexpected format.");
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now() }; // Cache empty result
+            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
             return undefined;
         }
 
         // If after normalization, we have no containers, return undefined
         if (allContainers.length === 0) {
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now() }; // Cache empty result
+            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
             return undefined;
         }
 
@@ -470,7 +529,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         this.updateBadge(Object.keys(labs).length);
 
-        this.labsCache.inspect = { data: labs, timestamp: Date.now() }; // Cache the result
+        this.labsCache.inspect = { data: labs, timestamp: Date.now(), rawDataHash: currentDataHash };
         return labs;
     }
 

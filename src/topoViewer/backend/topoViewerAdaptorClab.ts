@@ -211,13 +211,22 @@ export class TopoViewerAdaptorClab {
    * @param endpoint - The endpoint string from Containerlab YAML.
    * @returns An object containing the node and interface.
    */
-  private splitEndpoint(endpoint: string): { node: string; iface: string } {
-    const parts = endpoint.split(':');
-    if (parts.length === 2) {
-      return { node: parts[0], iface: parts[1] };
-    } else {
+  private splitEndpoint(
+    endpoint: string | { node: string; interface?: string }
+  ): { node: string; iface: string } {
+    if (typeof endpoint === 'string') {
+      const parts = endpoint.split(':');
+      if (parts.length === 2) {
+        return { node: parts[0], iface: parts[1] };
+      }
       return { node: endpoint, iface: '' };
     }
+
+    if (endpoint && typeof endpoint === 'object') {
+      return { node: endpoint.node, iface: endpoint.interface ?? '' };
+    }
+
+    return { node: '', iface: '' };
   }
 
   /**

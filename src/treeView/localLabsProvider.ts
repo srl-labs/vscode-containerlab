@@ -18,20 +18,29 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     // match on subdirs. deletion events only.
     private delSubdirWatcher = vscode.workspace.createFileSystemWatcher("**/", true, true, false);
     private treeFilter: string = '';
+    private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
+
+    // Cache for file discovery results
+    private fileCache: vscode.Uri[] | null = null;
 
     constructor() {
         this.watcher.onDidCreate(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Invalidate cache on file creation
+                this.fileCache = null;
                 this.refresh();
             }
         });
         this.watcher.onDidDelete(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Invalidate cache on file deletion
+                this.fileCache = null;
                 this.refresh();
             }
         });
         this.watcher.onDidChange(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Don't invalidate cache on file changes, just refresh
                 this.refresh();
             }
         });
@@ -40,12 +49,20 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         // of the subdir deletion.
         this.delSubdirWatcher.onDidDelete(uri => {
             if (!uri.scheme || uri.scheme === 'file') {
+                // Invalidate cache on directory deletion
+                this.fileCache = null;
                 this.refresh();
             }
         });
     }
 
     refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+
+    // Force refresh with cache invalidation
+    forceRefresh(): void {
+        this.fileCache = null;
         this._onDidChangeTreeData.fire();
     }
 
@@ -81,8 +98,19 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private async discoverLabs(dir?: string): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
         console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
-        const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
-            .filter(u => !u.scheme || u.scheme === 'file');
+        // Use cached file list if available
+        let uris: vscode.Uri[];
+
+        if (this.fileCache) {
+            uris = this.fileCache;
+            console.log("[LocalTreeDataProvider]:\tUsing cached file list");
+        } else {
+            // Perform file discovery and cache the results
+            console.log("[LocalTreeDataProvider]:\tPerforming file discovery");
+            uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
+                .filter(u => !u.scheme || u.scheme === 'file');
+            this.fileCache = uris;
+        }
 
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
@@ -93,11 +121,25 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         const addLab = (filePath: string, isFavorite: boolean) => {
             const normPath = utils.normalizeLabPath(filePath);
-            if (!labs[normPath] && !labPaths.has(normPath)) {
-                const contextVal = isFavorite
-                    ? "containerlabLabUndeployedFavorite"
-                    : "containerlabLabUndeployed";
-                const labNode = new c.ClabLabTreeNode(
+            if (labPaths.has(normPath)) {
+                return;
+            }
+
+            const contextVal = isFavorite
+                ? "containerlabLabUndeployedFavorite"
+                : "containerlabLabUndeployed";
+
+            let labNode = this.labNodeCache.get(normPath);
+
+            if (labNode) {
+                // Update existing node properties without recreating it
+                labNode.contextValue = contextVal;
+                (labNode as any).favorite = isFavorite;
+                labNode.description = utils.getRelLabFolderPath(normPath);
+                // Keep the same object reference for better performance
+            } else {
+                // Create new node only if it doesn't exist in cache
+                labNode = new c.ClabLabTreeNode(
                     path.basename(filePath),
                     vscode.TreeItemCollapsibleState.None,
                     {
@@ -112,8 +154,11 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
                 );
 
                 labNode.description = utils.getRelLabFolderPath(normPath);
-                labs[normPath] = labNode;
+                // Add to cache only for new nodes
+                this.labNodeCache.set(normPath, labNode);
             }
+
+            labs[normPath] = labNode;
         };
 
         uris.forEach(uri => addLab(uri.fsPath, favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false));
@@ -160,6 +205,13 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         });
 
         const folderNodes = Array.from(folderSet).sort().map(p => new c.ClabFolderTreeNode(path.basename(p), p));
+
+        // Update cache to remove stale entries
+        for (const key of Array.from(this.labNodeCache.keys())) {
+            if (!labs[key]) {
+                this.labNodeCache.delete(key);
+            }
+        }
 
         labNodes.sort((a, b) => {
             if (a.favorite && !b.favorite) { return -1; }

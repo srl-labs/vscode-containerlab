@@ -3,8 +3,14 @@ import { ClabCommand } from "./clabCommand";
 import { SpinnerMsg } from "./command";
 import * as vscode from "vscode";
 import { deployPopularLab } from "./deployPopular";
+import { getSelectedLabNode } from "./utils";
 
-export function deploy(node: ClabLabTreeNode) {
+export async function deploy(node?: ClabLabTreeNode) {
+  node = await getSelectedLabNode(node);
+  if (!node) {
+    return;
+  }
+
   const spinnerMessages: SpinnerMsg = {
     progressMsg: "Deploying Lab... ",
     successMsg: "Lab deployed successfully!"
@@ -13,7 +19,12 @@ export function deploy(node: ClabLabTreeNode) {
   deployCmd.run();
 }
 
-export async function deployCleanup(node: ClabLabTreeNode) {
+export async function deployCleanup(node?: ClabLabTreeNode) {
+  node = await getSelectedLabNode(node);
+  if (!node) {
+    return;
+  }
+
   const config = vscode.workspace.getConfiguration("containerlab");
   const skipWarning = config.get<boolean>("skipCleanupWarning", false);
   if (!skipWarning) {
