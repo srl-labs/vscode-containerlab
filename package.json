@@ -1149,7 +1149,7 @@
     "chai": "^5.2.1",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
-    "esbuild": "^0.25.4",
+    "esbuild": "^0.25.8",
     "eslint": "^9.31.0",
     "mocha": "^11.7.0",
     "mochawesome": "^7.1.3",
