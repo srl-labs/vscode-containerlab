@@ -23,6 +23,9 @@ const originalResolve = (Module as any)._resolveFilename;
   if (request.includes('clabCommand')) {
     return path.join(__dirname, '..', '..', 'helpers', 'clabCommand-stub.js');
   }
+  if (request.includes('utils')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
+  }
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
@@ -44,9 +47,9 @@ describe('deploy command', () => {
   });
 
   // Should instantiate ClabCommand with the selected node and execute it.
-  it('creates ClabCommand and runs it', () => {
+  it('creates ClabCommand and runs it', async () => {
     const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
-    deploy(node);
+    await deploy(node);
 
     expect(clabStub.instances.length).to.equal(1);
     const instance = clabStub.instances[0];

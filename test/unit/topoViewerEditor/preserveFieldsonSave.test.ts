@@ -1,3 +1,4 @@
+/* global describe, it, after, beforeEach, __dirname */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';
