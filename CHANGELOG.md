@@ -1,6 +1,7 @@
 # Change Log
 
-## [0.13.7] - 2025-06-28
+## [0.13.8] - 2025-06-28
+* performance anhancements
 * fixes
 
 ## [0.13.5] - 2025-06-28
