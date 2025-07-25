@@ -459,11 +459,12 @@
       {
         "id": "containerlab.submenu.lab.share",
         "label": "Share Lab (sshx)"
-      }
-      ,{
+      },
+      {
         "id": "containerlab.submenu.lab.extras",
         "label": "Extras"
-      },{
+      },
+      {
         "id": "containerlab.submenu.lab.fcli",
         "label": "Run fcli (srlinux)"
       }
@@ -1000,8 +1001,8 @@
         {
           "command": "containerlab.lab.fcli.sysInfo",
           "group": "extras@8"
-        }
-        ,{
+        },
+        {
           "command": "containerlab.lab.fcli.custom",
           "group": "extras@9"
         }
@@ -1117,6 +1118,11 @@
           "type": "number",
           "default": 5000,
           "description": "Port to connect when telnetting to the node with 'docker exec -it <node> telnet 127.0.0.1 <port>'"
+        },
+        "containerlab.extras.fcli.extraDockerArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Additional docker (or podman) arguments to append to the fcli command"
         }
       }
     }
