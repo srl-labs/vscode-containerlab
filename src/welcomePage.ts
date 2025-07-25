@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
+import { extensionVersion } from './extension';
 
 /**
  * Manages the welcome page webview for the Containerlab extension.
@@ -258,7 +259,7 @@ topology:
                 <h1 class="text-3xl">Welcome to Containerlab</h1>
                 <div class="inline-flex gap-x-2 mt-2">
                   <a href="https://github.com/srl-labs/vscode-containerlab/releases/">
-                      <img src="https://img.shields.io/github/v/release/srl-labs/vscode-containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Latest extension version" />
+                      <img src="https://img.shields.io/badge/version-${extensionVersion}-blue?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Installed Extension Version" />
                   </a>
                   <a href="https://github.com/srl-labs/containerlab/releases/latest">
                       <img src="https://img.shields.io/github/release/srl-labs/containerlab.svg?style=flat-square&color=00c9ff&labelColor=bec8d2" alt="Latest containerlab version" />
