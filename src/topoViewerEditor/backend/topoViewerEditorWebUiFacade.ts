@@ -607,34 +607,47 @@ topology:
                 .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
                 .forEach(element => {
                   // Use the stable id from payload as the lookup key.
-                  var nodeId: string = element.data.id;
+                  const nodeId: string = element.data.id;
 
-                  let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
+                  let nodeYaml = yamlNodes.get(nodeId, true) as YAML.YAMLMap | undefined;
                   if (!nodeYaml) {
-                    // Create a new mapping if it does not exist.
                     nodeYaml = new YAML.YAMLMap();
                     yamlNodes.set(nodeId, nodeYaml);
                   }
+                  const nodeMap = nodeYaml;
 
                   // For new nodes, extraData may be missing. Provide fallbacks.
                   const extraData = element.data.extraData || {};
 
-                  // Update the node's properties.
-                  // if extraData.type exist then add it to yaml.
-                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
-                  nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                  if (extraData.type) {
-                    nodeYaml.set('type', doc.createNode(extraData.type));
+                  // Update the node's core properties while preserving existing values.
+                  const existingKind = (nodeMap.get('kind', true) as any)?.value;
+                  nodeMap.set(
+                    'kind',
+                    doc.createNode(extraData.kind ?? existingKind ?? element.data.topoViewerRole ?? 'default-kind')
+                  );
+
+                  const existingImage = (nodeMap.get('image', true) as any)?.value;
+                  nodeMap.set(
+                    'image',
+                    doc.createNode(extraData.image ?? existingImage ?? 'default-image')
+                  );
+
+                  if (extraData.type || nodeMap.has('type')) {
+                    const existingType = (nodeMap.get('type', true) as any)?.value;
+                    const typeVal = extraData.type ?? existingType;
+                    if (typeVal !== undefined) {
+                      nodeMap.set('type', doc.createNode(typeVal));
+                    }
                   }
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
 
                   // --- Update Labels ---
                   // Ensure labels exist and are a YAML map.
-                  let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
+                  let labels = nodeMap.get('labels', true) as unknown as YAML.YAMLMap | undefined;
                   if (!labels || !YAML.isMap(labels)) {
                     labels = new YAML.YAMLMap();
-                    nodeYaml.set('labels', labels);
+                    nodeMap.set('labels', labels);
                   }
                   // Merge any extra labels from the payload.
                   if (extraData.labels) {
@@ -669,7 +682,7 @@ topology:
                   // Here, we want the mapping key to reflect the new node name.
                   const newKey = element.data.name;
                   if (nodeId !== newKey) {
-                    yamlNodes.set(newKey, nodeYaml); // Add node with new key.
+                    yamlNodes.set(newKey, nodeMap); // Add node with new key.
                     yamlNodes.delete(nodeId);        // Remove the old key.
                     updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
                   }
@@ -856,34 +869,47 @@ topology:
                 .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
                 .forEach(element => {
                   // Use the stable id from payload as the lookup key.
-                  var nodeId: string = element.data.id;
+                  const nodeId: string = element.data.id;
 
-                  let nodeYaml = yamlNodes.get(nodeId.split(':')[1], true) as unknown as YAML.YAMLMap | undefined;
+                  let nodeYaml = yamlNodes.get(nodeId, true) as YAML.YAMLMap | undefined;
                   if (!nodeYaml) {
-                    // Create a new mapping if it does not exist.
                     nodeYaml = new YAML.YAMLMap();
                     yamlNodes.set(nodeId, nodeYaml);
                   }
+                  const nodeMap = nodeYaml;
 
                   // For new nodes, extraData may be missing. Provide fallbacks.
                   const extraData = element.data.extraData || {};
 
-                  // Update the node's properties.
-                  // if extraData.type exist then add it to yaml.
-                  nodeYaml.set('kind', doc.createNode(extraData.kind || element.data.topoViewerRole || 'default-kind'));
-                  nodeYaml.set('image', doc.createNode(extraData.image || 'default-image'));
-                  if (extraData.type) {
-                    nodeYaml.set('type', doc.createNode(extraData.type));
+                  // Update the node's core properties while preserving existing values.
+                  const existingKind = (nodeMap.get('kind', true) as any)?.value;
+                  nodeMap.set(
+                    'kind',
+                    doc.createNode(extraData.kind ?? existingKind ?? element.data.topoViewerRole ?? 'default-kind')
+                  );
+
+                  const existingImage = (nodeMap.get('image', true) as any)?.value;
+                  nodeMap.set(
+                    'image',
+                    doc.createNode(extraData.image ?? existingImage ?? 'default-image')
+                  );
+
+                  if (extraData.type || nodeMap.has('type')) {
+                    const existingType = (nodeMap.get('type', true) as any)?.value;
+                    const typeVal = extraData.type ?? existingType;
+                    if (typeVal !== undefined) {
+                      nodeMap.set('type', doc.createNode(typeVal));
+                    }
                   }
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
 
                   // --- Update Labels ---
                   // Ensure labels exist and are a YAML map.
-                  let labels = nodeYaml.get('labels', true) as unknown as YAML.YAMLMap | undefined;
+                  let labels = nodeMap.get('labels', true) as unknown as YAML.YAMLMap | undefined;
                   if (!labels || !YAML.isMap(labels)) {
                     labels = new YAML.YAMLMap();
-                    nodeYaml.set('labels', labels);
+                    nodeMap.set('labels', labels);
                   }
                   // Merge any extra labels from the payload.
                   if (extraData.labels) {
@@ -918,7 +944,7 @@ topology:
                   // Here, we want the mapping key to reflect the new node name.
                   const newKey = element.data.name;
                   if (nodeId !== newKey) {
-                    yamlNodes.set(newKey, nodeYaml); // Add node with new key.
+                    yamlNodes.set(newKey, nodeMap); // Add node with new key.
                     yamlNodes.delete(nodeId);        // Remove the old key.
                     updatedKeys.set(nodeId, newKey);   // Record the update so that links can be fixed.
                   }

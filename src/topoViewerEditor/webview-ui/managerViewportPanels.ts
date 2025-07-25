@@ -121,14 +121,16 @@ export class ManagerViewportPanels {
       panelNodeEditorNameInput.value = node.data("name");
     }
 
-    // Set the node image in the editor.
-    const panelNodeEditorImageLabel = document.getElementById("panel-node-editor-image") as HTMLInputElement;
+    // Grab extraData from the node for populating fields.
+    const extraData = node.data('extraData') || {};
+
+    // Set the node image in the editor based on YAML data or fallback.
+    const panelNodeEditorImageLabel = document.getElementById('panel-node-editor-image') as HTMLInputElement;
     if (panelNodeEditorImageLabel) {
-      panelNodeEditorImageLabel.value = 'ghcr.io/nokia/srlinux:latest';
+      panelNodeEditorImageLabel.value = extraData.image || 'default-image';
     }
 
     // Set the node type in the editor.
-    const extraData = node.data('extraData') || {};
     this.panelNodeEditorKind = extraData.kind || this.panelNodeEditorKind;
     this.panelNodeEditorType = extraData.type || '';
     this.panelNodeEditorUseDropdownForType = false;
