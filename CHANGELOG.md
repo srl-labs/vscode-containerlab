@@ -1,4 +1,8 @@
 # Change Log
+
+## [0.13.7] - 2025-06-28
+* fixes
+
 ## [0.13.5] - 2025-06-28
 * fcli ( fabric wide cli for srlinux )
 * TopoViewer/Editor enhancements:
