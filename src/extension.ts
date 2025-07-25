@@ -441,6 +441,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'containerlab.interface.captureWithEdgesharkVNC', 
+          (clickedNode, allSelectedNodes) => {
+        cmd.captureEdgesharkVNC(clickedNode, allSelectedNodes);
+      })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.interface.setDelay', cmd.setLinkDelay)
   );
   context.subscriptions.push(
@@ -574,7 +582,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }, refreshInterval
   )
 
-  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID)});
+  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID) });
 }
 
 export function deactivate() {

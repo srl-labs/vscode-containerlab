@@ -306,6 +306,10 @@
         "title": "Capture interface (Edgeshark)"
       },
       {
+        "command": "containerlab.interface.captureWithEdgesharkVNC",
+        "title": "Capture interface (Edgeshark VNC)"
+      },
+      {
         "command": "containerlab.interface.setDelay",
         "title": "Set delay"
       },
@@ -822,6 +826,11 @@
           "command": "containerlab.interface.captureWithEdgeshark",
           "when": "viewItem == containerlabInterfaceUp",
           "group": "captureContextMenu@1"
+        },
+        {
+          "command": "containerlab.interface.captureWithEdgesharkVNC",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "captureContextMenu@2"
         },
         {
           "command": "containerlab.interface.setDelay",
