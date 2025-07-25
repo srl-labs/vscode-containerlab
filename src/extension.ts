@@ -33,6 +33,8 @@ export let runningLabsProvider: RunningLabTreeDataProvider;
 export let helpFeedbackProvider: HelpFeedbackProvider;
 export let sshxSessions: Map<string, string> = new Map();
 
+export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
+
 export async function refreshSshxSessions() {
   try {
     const out = await runWithSudo(

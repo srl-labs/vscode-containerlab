@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.13.6",
+  "version": "0.13.7",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.100.0"
@@ -459,11 +459,12 @@
       {
         "id": "containerlab.submenu.lab.share",
         "label": "Share Lab (sshx)"
-      }
-      ,{
+      },
+      {
         "id": "containerlab.submenu.lab.extras",
         "label": "Extras"
-      },{
+      },
+      {
         "id": "containerlab.submenu.lab.fcli",
         "label": "Run fcli (srlinux)"
       }
@@ -1000,8 +1001,8 @@
         {
           "command": "containerlab.lab.fcli.sysInfo",
           "group": "extras@8"
-        }
-        ,{
+        },
+        {
           "command": "containerlab.lab.fcli.custom",
           "group": "extras@9"
         }
@@ -1117,6 +1118,11 @@
           "type": "number",
           "default": 5000,
           "description": "Port to connect when telnetting to the node with 'docker exec -it <node> telnet 127.0.0.1 <port>'"
+        },
+        "containerlab.extras.fcli.extraDockerArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Additional docker (or podman) arguments to append to the fcli command"
         }
       }
     }
@@ -1141,7 +1147,7 @@
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.0.13",
+    "@types/node": "^24.0.15",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
     "@typescript-eslint/parser": "^8.36.0",
@@ -1149,7 +1155,7 @@
     "chai": "^5.2.1",
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
-    "esbuild": "^0.25.4",
+    "esbuild": "^0.25.8",
     "eslint": "^9.31.0",
     "mocha": "^11.7.0",
     "mochawesome": "^7.1.3",
