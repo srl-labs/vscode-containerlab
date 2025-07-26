@@ -4,8 +4,6 @@ import { runWithSudo } from "../helpers/containerlabUtils";
 import { outputChannel } from "../extension";
 import * as utils from "../utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
-import { DockerCommand } from "./dockerCommand";
-import { SpinnerMsg } from "./command";
 
 let sessionHostname: string = "";
 
@@ -82,12 +80,8 @@ function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string)
     });
 }
 
-/**
- * Start capture on an interface using edgeshark/packetflix.
- * This method builds a 'packetflix:' URI that calls edgeshark.
- */
-export async function captureInterfaceWithPacketflix(
-  node: ClabInterfaceTreeNode,
+// Build the packetflix:ws: URI
+async function genPacketflixURI(node: ClabInterfaceTreeNode,
   allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
 ) {
   if (!node) {
@@ -114,7 +108,7 @@ export async function captureInterfaceWithPacketflix(
     }
 
     // All from same container => build multi-interface edgeshark link
-    return captureMultipleEdgeshark(selected);
+    return await captureMultipleEdgeshark(selected);
   }
 
   // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
@@ -134,15 +128,20 @@ export async function captureInterfaceWithPacketflix(
   const config = vscode.workspace.getConfiguration("containerlab");
   const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
 
-  const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container={"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}&nif=${node.name}`;
-  outputChannel.appendLine(`[DEBUG] single-edgeShark => ${packetflixUri}`);
+  const containerStr = encodeURIComponent(`{"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}`)
+
+  const uri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${node.name}`
 
   vscode.window.showInformationMessage(
     `Starting edgeshark capture on ${node.parentName}/${node.name}...`
   );
-  vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
+
+  outputChannel.appendLine(`[DEBUG] single-edgeShark => ${uri.toString()}`);
+
+  return [uri, bracketed]
 }
 
+// Capture multiple interfaces with Edgeshark
 async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
   const base = nodes[0];
   const ifNames = nodes.map(n => n.name);
@@ -173,7 +172,81 @@ async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
   );
   outputChannel.appendLine(`[DEBUG] multi-edgeShark => ${packetflixUri}`);
 
-  vscode.env.openExternal(vscode.Uri.parse(packetflixUri));
+  return [packetflixUri, bracketed]
+}
+
+/**
+ * Start capture on an interface using edgeshark/packetflix.
+ * This method builds a 'packetflix:' URI that calls edgeshark.
+ */
+export async function captureInterfaceWithPacketflix(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
+) {
+
+  const packetflixUri = await genPacketflixURI(node, allSelectedNodes)
+  if (!packetflixUri) {
+    return
+  }
+
+  vscode.env.openExternal(vscode.Uri.parse(packetflixUri[0]));
+}
+
+// Capture using Edgeshark + Wireshark via VNC in a webview
+export async function captureEdgesharkVNC(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
+) {
+
+  const packetflixUri = await genPacketflixURI(node, allSelectedNodes)
+  if (!packetflixUri) {
+    return
+  }
+
+  execSync(`docker run -d --rm -p 5800:5800 -e PACKETFLIX_LINK="${packetflixUri[0]}" ghcr.io/kaelemc/sharkvnc:latest`)
+
+  const panel = vscode.window.createWebviewPanel(
+    'wireshark-vnc',
+    'Wireshark VNC',
+    vscode.ViewColumn.One,
+    {
+      enableScripts: true,
+    }
+  );
+
+  panel.onDidDispose(() => {
+    execSync(`docker rm -f $(docker ps | grep sharkvnc | awk '{print $1}')`)
+  })
+
+  const iframeUrl = `http://${packetflixUri[1]}:5800`;
+  panel.webview.html = `
+      <!DOCTYPE html>
+      <html>
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          height: 100%;
+          width: 100%;
+        }
+        iframe {
+          border: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          right: 0;
+          width: 100%;
+          height: 100%;
+        }
+      </style>
+        <body>
+          <iframe src="${iframeUrl}" frameborder="0" width="100%" height="100%"></iframe>
+        </body>
+      </html>
+      `;
+
 }
 
 /**
@@ -278,89 +351,4 @@ export async function getHostname(): Promise<string> {
   // 6. Fallback: default to "localhost".
   outputChannel.appendLine("[DEBUG] No suitable hostname found; defaulting to 'localhost'");
   return "localhost";
-}
-
-export async function captureEdgesharkVNC(
-  node: ClabInterfaceTreeNode,
-  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
-) {
-  if (!node) {
-    return vscode.window.showErrorMessage("No interface to capture found.");
-  }
-  outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
-
-  // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
-  outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
-
-  // Make sure we have a valid hostname
-  const hostname = await getHostname();
-  if (!hostname) {
-    return vscode.window.showErrorMessage(
-      "No known hostname/IP address to connect to for packet capture."
-    );
-  }
-
-  // If it's an IPv6 literal, bracket it. e.g. ::1 => [::1]
-  const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-
-  const config = vscode.workspace.getConfiguration("containerlab");
-  const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
-  
-  const contSect = encodeURIComponent(`{"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}`)
-
-  const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${contSect}&nif=${node.name}`;
-  outputChannel.appendLine(`[DEBUG] single-edgeShark => ${packetflixUri}`);
-
-  vscode.window.showInformationMessage(
-    `Starting edgeshark capture on ${node.parentName}/${node.name}...`
-  );
-
-  const pflix = packetflixUri
-  console.error(pflix)
-
-  execSync(`docker run -d --rm -p 5800:5800 -p 5900:5900 -e PACKETFLIX_LINK="${pflix}" ghcr.io/kaelemc/sharkvnc:latest`)
-
-
-  const panel = vscode.window.createWebviewPanel(
-    'wireshark-vnc',
-    'Wireshark VNC',
-    vscode.ViewColumn.One,
-    {
-      enableScripts: true,
-    }
-  );
-
-  panel.onDidDispose(() => {
-    execSync(`docker rm -f $(docker ps | grep sharkvnc | awk '{print $1}')`)
-  })
-
-  const iframeUrl = `http://${hostname}:5800`;
-  panel.webview.html = `
-      <!DOCTYPE html>
-      <html>
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-          height: 100%;
-          width: 100%;
-        }
-        iframe {
-          border: none;
-          position: absolute;
-          top: 0;
-          left: 0;
-          bottom: 0;
-          right: 0;
-          width: 100%;
-          height: 100%;
-        }
-      </style>
-        <body>
-          <iframe src="${iframeUrl}" frameborder="0" width="100%" height="100%"></iframe>
-        </body>
-      </html>
-      `;
-
 }
