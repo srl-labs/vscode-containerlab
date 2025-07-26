@@ -231,32 +231,32 @@ export async function captureEdgesharkVNC(
 
   const iframeUrl = `http://${packetflixUri[1]}:${webviewPort}`;
   panel.webview.html = `
-      <!DOCTYPE html>
-      <html>
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-          height: 100%;
-          width: 100%;
-        }
-        iframe {
-          border: none;
-          position: absolute;
-          top: 0;
-          left: 0;
-          bottom: 0;
-          right: 0;
-          width: 100%;
-          height: 100%;
-        }
-      </style>
-        <body>
-          <iframe src="${iframeUrl}" frameborder="0" width="100%" height="100%"></iframe>
-        </body>
-      </html>
-      `;
+  <!DOCTYPE html>
+  <html>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+      }
+      iframe {
+        border: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+    <body>
+      <iframe src="${iframeUrl}" frameborder="0" width="100%" height="100%"></iframe>
+    </body>
+  </html>`;
+
 }
 
 /**
