@@ -203,7 +203,15 @@ export async function captureEdgesharkVNC(
     return
   }
 
-  execSync(`docker run -d --rm -p 5800:5800 -e PACKETFLIX_LINK="${packetflixUri[0]}" ghcr.io/kaelemc/sharkvnc:latest`)
+  const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" --name clab-vsc-ws-${node.parentName}_${node.name} ghcr.io/kaelemc/sharkvnc:latest`, {
+    encoding: 'utf-8'
+  }).trim();
+
+  const dockerInspectStdout = execSync(`docker inspect ${containerId}`, { encoding: 'utf-8' });
+  const dockerInspectJSON = JSON.parse(dockerInspectStdout);
+
+  const webviewPort = dockerInspectJSON[0].NetworkSettings.Ports['5800/tcp'][0].HostPort;
+
 
   const panel = vscode.window.createWebviewPanel(
     'wireshark-vnc',
@@ -215,7 +223,7 @@ export async function captureEdgesharkVNC(
   );
 
   panel.onDidDispose(() => {
-    execSync(`docker rm -f $(docker ps | grep sharkvnc | awk '{print $1}')`)
+    execSync(`docker rm -f ${containerId}`)
   })
 
   const iframeUrl = `http://${packetflixUri[1]}:5800`;
