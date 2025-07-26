@@ -306,6 +306,10 @@
         "title": "Capture interface (Edgeshark)"
       },
       {
+        "command": "containerlab.interface.captureWithEdgesharkVNC",
+        "title": "Capture interface (Edgeshark VNC)"
+      },
+      {
         "command": "containerlab.interface.setDelay",
         "title": "Set delay"
       },
@@ -824,6 +828,11 @@
           "group": "captureContextMenu@1"
         },
         {
+          "command": "containerlab.interface.captureWithEdgesharkVNC",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "captureContextMenu@2"
+        },
+        {
           "command": "containerlab.interface.setDelay",
           "when": "viewItem == containerlabInterfaceUp",
           "group": "impairmentContextMenu@0"
@@ -1123,6 +1132,25 @@
           "type": "string",
           "default": "",
           "description": "Additional docker (or podman) arguments to append to the fcli command"
+        },
+        "containerlab.capture.preferredAction": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "Edgeshark",
+            "Wireshark VNC"
+          ],
+          "description": "The preferred capture method when using the capture interface quick action on the interface tree item"
+        },
+        "containerlab.capture.wireshark.dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
+          "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"
+        },
+        "containerlab.capture.wireshark.extraDockerArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Extra arguments to pass to the run command for the wireshark VNC container. Useful for things like bind mounts etc."
         }
       }
     }

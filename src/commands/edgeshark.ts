@@ -1,13 +1,17 @@
 import { execCommandInTerminal } from "./command";
 
-export async function installEdgeshark() {
-    execCommandInTerminal("curl -sL \
+export const EDGESHARK_INSTALL_CMD = "curl -sL \
 https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml \
-| DOCKER_DEFAULT_PLATFORM= docker compose -f - up -d", "Edgeshark Installation");
+| DOCKER_DEFAULT_PLATFORM= docker compose -f - up -d"
+
+export const EDGESHARK_UNINSTALL_CMD = "curl -sL \
+https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml \
+| DOCKER_DEFAULT_PLATFORM= docker compose -f - down"
+
+export async function installEdgeshark() {
+    execCommandInTerminal(EDGESHARK_INSTALL_CMD, "Edgeshark Installation");
 }
 
 export async function uninstallEdgeshark() {
-    execCommandInTerminal("curl -sL \
-https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml \
-| DOCKER_DEFAULT_PLATFORM= docker compose -f - down", "Edgeshark Uninstallation");
+    execCommandInTerminal(EDGESHARK_UNINSTALL_CMD, "Edgeshark Uninstallation");
 }

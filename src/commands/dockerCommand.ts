@@ -25,7 +25,6 @@ export class DockerCommand extends cmd.Command {
     public run(containerID: string) {
         // Build the command
         const cmd = [this.action, containerID];
-
         this.execute(cmd);
     }
 }
