@@ -442,7 +442,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'containerlab.interface.captureWithEdgesharkVNC', 
+      'containerlab.interface.captureWithEdgesharkVNC',
           (clickedNode, allSelectedNodes) => {
         cmd.captureEdgesharkVNC(clickedNode, allSelectedNodes);
       })
