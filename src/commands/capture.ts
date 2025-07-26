@@ -203,7 +203,10 @@ export async function captureEdgesharkVNC(
     return
   }
 
-  const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" --name clab-vsc-ws-${node.parentName}_${node.name} ghcr.io/kaelemc/wireshark-vnc-docker:latest`, {
+  const wsConfig = vscode.workspace.getConfiguration("containerlab")
+  const dockerImage = wsConfig.get<string>("containerlab.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
+
+  const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" --name clab-vsc-ws-${node.parentName}_${node.name} ${dockerImage}`, {
     encoding: 'utf-8'
   }).trim();
 
