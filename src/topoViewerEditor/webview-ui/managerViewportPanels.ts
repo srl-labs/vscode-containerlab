@@ -127,7 +127,7 @@ export class ManagerViewportPanels {
     // Set the node image in the editor based on YAML data or fallback.
     const panelNodeEditorImageLabel = document.getElementById('panel-node-editor-image') as HTMLInputElement;
     if (panelNodeEditorImageLabel) {
-      panelNodeEditorImageLabel.value = extraData.image || 'default-image';
+      panelNodeEditorImageLabel.value = extraData.image ?? '';
     }
 
     // Set the node type in the editor.

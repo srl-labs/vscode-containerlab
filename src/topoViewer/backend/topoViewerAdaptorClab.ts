@@ -252,6 +252,36 @@ export class TopoViewerAdaptorClab {
   }
 
   /**
+   * Applies Containerlab inheritance rules to compute the effective
+   * configuration for a node. The precedence order is:
+   * node -> group -> kind -> defaults.
+   */
+  private resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
+    const defaults = parsed.topology?.defaults ?? {};
+    const groups = parsed.topology?.groups ?? {};
+    const kinds = parsed.topology?.kinds ?? {};
+
+    const groupCfg = node.group && groups[node.group] ? groups[node.group] : {};
+    const kindName = node.kind ?? (groupCfg.kind ?? defaults.kind);
+    const kindCfg = kindName && kinds[kindName] ? kinds[kindName] : {};
+
+    const merged: ClabNode = {
+      ...defaults,
+      ...kindCfg,
+      ...groupCfg,
+      ...node,
+    };
+    merged.kind = kindName;
+    merged.labels = {
+      ...(defaults.labels ?? {}),
+      ...(kindCfg.labels ?? {}),
+      ...(groupCfg.labels ?? {}),
+      ...(node.labels ?? {}),
+    };
+    return merged;
+  }
+
+  /**
    * Maps the EnvironmentJson object from camelCase to hyphenated keys for JSON serialization.
    *
    * @param envJson - The EnvironmentJson object with camelCase properties.
@@ -288,10 +318,13 @@ export class TopoViewerAdaptorClab {
 
     if (parsed.topology.nodes) {
       this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([, nodeObj]) =>
-          !!nodeObj.labels?.['graph-posX'] &&
-          !!nodeObj.labels?.['graph-posY']
-        );
+        .every(([, nodeObj]) => {
+          const merged = this.resolveNodeConfig(parsed, nodeObj);
+          return (
+            !!merged.labels?.['graph-posX'] &&
+            !!merged.labels?.['graph-posY']
+          );
+        });
     }
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
 
@@ -303,10 +336,11 @@ export class TopoViewerAdaptorClab {
 
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
-        const parentId = this.buildParent(nodeObj);
+        const mergedNode = this.resolveNodeConfig(parsed, nodeObj);
+        const parentId = this.buildParent(mergedNode);
         if (parentId) {
           if (!parentMap.has(parentId)) {
-            parentMap.set(parentId, nodeObj.labels?.['graph-groupLabelPos']);
+            parentMap.set(parentId, mergedNode.labels?.['graph-groupLabelPos']);
           }
         }
 
@@ -327,20 +361,20 @@ export class TopoViewerAdaptorClab {
             weight: '30',
             name: nodeName,
             parent: parentId || undefined,
-            topoViewerRole: nodeObj.labels?.['topoViewer-role'] || nodeObj.labels?.['graph-icon'] || 'router',
-            lat: nodeObj.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: nodeObj.labels?.['graph-geoCoordinateLng'] ?? '',
+            topoViewerRole: mergedNode.labels?.['topoViewer-role'] || mergedNode.labels?.['graph-icon'] || 'router',
+            lat: mergedNode.labels?.['graph-geoCoordinateLat'] ?? '',
+            lng: mergedNode.labels?.['graph-geoCoordinateLng'] ?? '',
             extraData: {
               clabServerUsername: 'asad',
               fqdn: `${nodeName}.${clabName}.io`,
-              group: nodeObj.group ?? '',
+              group: mergedNode.group ?? '',
               id: nodeName,
-              image: nodeObj.image ?? '',
+              image: mergedNode.image ?? '',
               index: nodeIndex.toString(),
-              kind: nodeObj.kind ?? '',
-              type: nodeObj.type ?? '',
+              kind: mergedNode.kind ?? '',
+              type: mergedNode.type ?? '',
               labdir: `clab-${clabName}/`,
-              labels: nodeObj.labels ?? {},
+              labels: mergedNode.labels ?? {},
               longname: `clab-${clabName}-${nodeName}`,
               macAddress: '',
               mgmtIntf: '',
@@ -356,8 +390,8 @@ export class TopoViewerAdaptorClab {
             },
           },
           position: {
-            x: parseFloat(nodeObj.labels?.['graph-posX'] ?? 0),
-            y: parseFloat(nodeObj.labels?.['graph-posY'] ?? 0),
+            x: parseFloat(mergedNode.labels?.['graph-posX'] ?? 0),
+            y: parseFloat(mergedNode.labels?.['graph-posY'] ?? 0),
           },
           removed: false,
           selected: false,

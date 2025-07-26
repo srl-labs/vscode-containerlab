@@ -26,6 +26,9 @@ export interface ClabTopology {
     name?: string
     prefix?: string;
     topology?: {
+        defaults?: ClabNode;
+        kinds?: Record<string, ClabNode>;
+        groups?: Record<string, ClabNode>;
         nodes?: Record<string, ClabNode>;
         links?: ClabLink[];
     };
