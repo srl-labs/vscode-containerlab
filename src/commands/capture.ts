@@ -4,6 +4,7 @@ import { runWithSudo } from "../helpers/containerlabUtils";
 import { outputChannel } from "../extension";
 import * as utils from "../utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
+import { EDGESHARK_INSTALL_CMD } from "./edgeshark";
 
 let sessionHostname: string = "";
 
@@ -97,6 +98,25 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
     return vscode.window.showErrorMessage("No interface to capture found.");
   }
   outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
+
+  // Check edgeshark is available on the host
+  // - make a simple API call to get version of packetflix
+  let edgesharkOk = false
+  try {
+    const res = await fetch('http://127.0.0.1:5001/version');
+    edgesharkOk = res.ok
+  } catch {
+    // Port is probably closed, edgeshark not running
+  }
+  if(!edgesharkOk) {
+    const selectedOpt = await vscode.window.showInformationMessage("Capture: Edgeshark is not running. Would you like to start it?", { modal: false }, "Yes")
+    if(selectedOpt === "Yes") {
+      execSync(EDGESHARK_INSTALL_CMD)
+    }
+    else {
+      return
+    }
+  }
 
   // If user multi‐selected items, we capture them all.
   const selected = allSelectedNodes && allSelectedNodes.length > 0
@@ -265,7 +285,8 @@ export async function captureEdgesharkVNC(
     <body>
       <iframe src="${iframeUrl}" frameborder="0" width="100%" height="100%"></iframe>
     </body>
-  </html>`;
+  </html>
+`;
 
 }
 
