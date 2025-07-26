@@ -658,7 +658,9 @@ topology:
                   const existingImage = (nodeMap.get('image', true) as any)?.value;
                   const existingType = (nodeMap.get('type', true) as any)?.value;
 
-                  const groupName = extraData.group || (element.parent ? element.parent.split(':')[0] : undefined) || (nodeMap.get('group', true) as any)?.value;
+                  // const groupName = extraData.group || (element.parent ? element.parent.split(':')[0] : undefined) || (nodeMap.get('group', true) as any)?.value;
+                  const groupName = extraData.group ?? (nodeMap.get('group', true) as any)?.value;
+
                   const desiredKind = extraData.kind ?? existingKind ?? element.data.topoViewerRole;
                   const desiredImage = extraData.image ?? existingImage;
                   const desiredType = extraData.type ?? existingType;
@@ -937,7 +939,8 @@ topology:
                   const existingImage = (nodeMap.get('image', true) as any)?.value;
                   const existingType = (nodeMap.get('type', true) as any)?.value;
 
-                  const groupName = extraData.group || (element.parent ? element.parent.split(':')[0] : undefined) || (nodeMap.get('group', true) as any)?.value;
+                  // const groupName = extraData.group || (element.parent ? element.parent.split(':')[0] : undefined) || (nodeMap.get('group', true) as any)?.value;
+                  const groupName = extraData.group ?? (nodeMap.get('group', true) as any)?.value;
                   const desiredKind = extraData.kind ?? existingKind ?? element.data.topoViewerRole;
                   const desiredImage = extraData.image ?? existingImage;
                   const desiredType = extraData.type ?? existingType;
