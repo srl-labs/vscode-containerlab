@@ -214,16 +214,17 @@ export async function captureEdgesharkVNC(
 
   const wsConfig = vscode.workspace.getConfiguration("containerlab")
   const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
+  const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
 
-  const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
+  const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
     encoding: 'utf-8'
   }).trim();
 
   const dockerInspectStdout = execSync(`docker inspect ${containerId}`, { encoding: 'utf-8' });
   const dockerInspectJSON = JSON.parse(dockerInspectStdout);
 
+  // grab the random port that docker opened
   const webviewPort = dockerInspectJSON[0].NetworkSettings.Ports['5800/tcp'][0].HostPort;
-
 
   const panel = vscode.window.createWebviewPanel(
     'clabWiresharkVNC',

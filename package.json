@@ -1146,6 +1146,11 @@
           "type": "string",
           "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
           "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"
+        },
+        "containerlab.capture.wireshark.extraDockerArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Extra arguments to pass to the run command for the wireshark VNC container. Useful for things like bind mounts etc."
         }
       }
     }
