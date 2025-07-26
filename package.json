@@ -1133,7 +1133,16 @@
           "default": "",
           "description": "Additional docker (or podman) arguments to append to the fcli command"
         },
-        "containerlab.wireshark.dockerImage": {
+        "containerlab.capture.preferredAction": {
+          "type": "string",
+          "default": "",
+          "enum": [
+            "Edgeshark",
+            "Wireshark VNC"
+          ],
+          "description": "The preferred capture method when using the capture interface quick action on the interface tree item"
+        },
+        "containerlab.capture.wireshark.dockerImage": {
           "type": "string",
           "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
           "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"

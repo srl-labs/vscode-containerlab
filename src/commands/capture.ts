@@ -21,6 +21,15 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
   outputChannel.appendLine(`[DEBUG] captureInterface() called for node=${node.parentName}, interface=${node.name}`);
   outputChannel.appendLine(`[DEBUG] remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`);
 
+  // Settings override
+  const preferredCaptureMethod = vscode.workspace.getConfiguration("containerlab").get<string>("capture.preferredAction");
+  switch (preferredCaptureMethod) {
+    case "Edgeshark":
+      return captureInterfaceWithPacketflix(node);
+    case "Wireshark VNC":
+      return captureEdgesharkVNC(node);
+  }
+
   // SSH-remote => use edgeshark/packetflix
   if (vscode.env.remoteName === "ssh-remote") {
     outputChannel.appendLine("[DEBUG] In SSH-Remote environment → captureInterfaceWithPacketflix()");
@@ -204,7 +213,7 @@ export async function captureEdgesharkVNC(
   }
 
   const wsConfig = vscode.workspace.getConfiguration("containerlab")
-  const dockerImage = wsConfig.get<string>("containerlab.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
+  const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
 
   const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
     encoding: 'utf-8'
