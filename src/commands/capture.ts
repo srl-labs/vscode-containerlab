@@ -214,8 +214,8 @@ export async function captureEdgesharkVNC(
 
 
   const panel = vscode.window.createWebviewPanel(
-    'wireshark-vnc',
-    'Wireshark VNC',
+    'clabWiresharkVNC',
+    `Wireshark (${node.parentName}:${node.name})`,
     vscode.ViewColumn.One,
     {
       enableScripts: true,
@@ -226,7 +226,7 @@ export async function captureEdgesharkVNC(
     execSync(`docker rm -f ${containerId}`)
   })
 
-  const iframeUrl = `http://${packetflixUri[1]}:5800`;
+  const iframeUrl = `http://${packetflixUri[1]}:${webviewPort}`;
   panel.webview.html = `
       <!DOCTYPE html>
       <html>
