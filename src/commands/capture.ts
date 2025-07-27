@@ -309,13 +309,12 @@ export async function captureEdgesharkVNC(
     }
   }
 
-  const containerId = await utils.execWithProgress(`docker run -d --rm -P ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, "Starting Wireshark")
+  const port = await utils.getFreePort()
+  const containerId = await utils.execWithProgress(`docker run -d --rm -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, "Starting Wireshark")
 
-  const dockerInspectStdout = execSync(`docker inspect ${containerId}`, { encoding: 'utf-8' });
-  const dockerInspectJSON = JSON.parse(dockerInspectStdout);
-
-  // grab the random port that docker opened
-  const webviewPort = dockerInspectJSON[0].NetworkSettings.Ports['5800/tcp'][0].HostPort;
+  // let vscode port forward for us
+  const localUri = vscode.Uri.parse(`http://localhost:${port}`);
+  const externalUri = (await vscode.env.asExternalUri(localUri)).toString();
 
   const panel = vscode.window.createWebviewPanel(
     'clabWiresharkVNC',
@@ -330,7 +329,7 @@ export async function captureEdgesharkVNC(
     execSync(`docker rm -f ${containerId}`)
   })
 
-  const iframeUrl = `http://${packetflixUri[1]}:${webviewPort}`;
+  const iframeUrl = externalUri;
 
   // Show info about where to save pcap files if volume is mounted
   if (volumeMount) {
