@@ -309,9 +309,7 @@ export async function captureEdgesharkVNC(
     }
   }
 
-  const containerId = execSync(`docker run -d --rm -P ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
-    encoding: 'utf-8'
-  }).trim();
+  const containerId = await utils.execWithProgress(`docker run -d --rm -P ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, "Starting Wireshark")
 
   const dockerInspectStdout = execSync(`docker inspect ${containerId}`, { encoding: 'utf-8' });
   const dockerInspectJSON = JSON.parse(dockerInspectStdout);
