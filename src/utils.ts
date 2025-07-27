@@ -116,6 +116,7 @@ export function getUsername(): string {
   return username;
 }
 
+// eslint-disable-next-line no-undef
 export function execWithProgress(command: string, progressMessage: string): Thenable<string> {
   return vscode.window.withProgress(
     {
@@ -138,7 +139,7 @@ export function execWithProgress(command: string, progressMessage: string): Then
       });
     })
   );
-} 
+}
 
 export async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {

@@ -246,7 +246,7 @@ export async function captureEdgesharkVNC(
     case "Light":
       darkModeEnabled = false
       break;
-    default:
+    default: {
       // Follow VS Code system theme
       const vscThemeKind = vscode.window.activeColorTheme.kind
       switch (vscThemeKind) {
@@ -260,6 +260,7 @@ export async function captureEdgesharkVNC(
           darkModeEnabled = false
           break;
       }
+    }
   }
 
   const darkModeSetting = darkModeEnabled ? "-e DARK_MODE=1" : "";
