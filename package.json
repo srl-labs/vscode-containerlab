@@ -1151,6 +1151,16 @@
           "type": "string",
           "default": "",
           "description": "Extra arguments to pass to the run command for the wireshark VNC container. Useful for things like bind mounts etc."
+        },
+        "containerlab.capture.wireshark.theme": {
+          "type": "string",
+          "default": "Follow VS Code theme",
+          "enum": [
+            "Follow VS Code theme",
+            "Dark",
+            "Light"
+          ],
+          "description": "The theme, or colour scheme of the wireshark application."
         }
       }
     }

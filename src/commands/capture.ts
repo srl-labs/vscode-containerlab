@@ -235,6 +235,34 @@ export async function captureEdgesharkVNC(
   const wsConfig = vscode.workspace.getConfiguration("containerlab")
   const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
   const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
+  const wiresharkThemeSetting = wsConfig.get<string>("containerlab.capture.wireshark.theme")
+
+  let darkModeEnabled = false;
+
+  switch (wiresharkThemeSetting) {
+    case "Dark":
+      darkModeEnabled = true
+      break;
+    case "Light":
+      darkModeEnabled = false
+      break;
+    default:
+      // Follow VS Code system theme
+      const vscThemeKind = vscode.window.activeColorTheme.kind
+      switch (vscThemeKind) {
+        case vscode.ColorThemeKind.Dark:
+          darkModeEnabled = true
+          break;
+        case vscode.ColorThemeKind.HighContrast:
+          darkModeEnabled = true
+          break;
+        default:
+          darkModeEnabled = false
+          break;
+      }
+  }
+
+  const darkModeSetting = darkModeEnabled ? "-e DARK_MODE=1" : "";
 
   // Check if Edgeshark is running and get its network
   let edgesharkNetwork = "";
@@ -281,7 +309,7 @@ export async function captureEdgesharkVNC(
     }
   }
 
-  const containerId = execSync(`docker run -d --rm -P ${edgesharkNetwork} ${volumeMount} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
+  const containerId = execSync(`docker run -d --rm -P ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
     encoding: 'utf-8'
   }).trim();
 
