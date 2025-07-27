@@ -344,6 +344,11 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.capture.killAllWiresharkVNC",
+        "title": "Kill all Wireshark VNC containers",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.set.sessionHostname",
         "title": "Configure hostname for this session",
         "category": "Containerlab"

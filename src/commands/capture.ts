@@ -421,6 +421,11 @@ export async function captureEdgesharkVNC(
 
 }
 
+export async function killAllWiresharkVNCCtrs() {
+  const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
+  utils.execWithProgress(`docker rm -f $(docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}")`, "Killing Wireshark container:")
+}
+
 /**
  * If a user calls the "Set session hostname" command, we store it in-memory here,
  * overriding the auto-detected or config-based hostname until the user closes VS Code.

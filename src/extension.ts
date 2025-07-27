@@ -477,6 +477,10 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark)
   );
+  // Kill Wireshark VNC
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.capture.killAllWiresharkVNC', cmd.killAllWiresharkVNCCtrs)
+  );
 
   // Session hostname command
   context.subscriptions.push(
