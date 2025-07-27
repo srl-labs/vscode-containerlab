@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as path from 'path';
 import * as fs from "fs";
 import * as os from "os";
-import { execSync } from "child_process";
+import { exec, execSync } from "child_process";
 
 export function stripAnsi(input: string): string {
   const esc = String.fromCharCode(27);
@@ -114,3 +114,27 @@ export function getUsername(): string {
   }
   return username;
 }
+
+export function execWithProgress(command: string, progressMessage: string): Thenable<string> {
+  return vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: progressMessage,
+      cancellable: false
+    },
+    (progress) => new Promise<string>((resolve, reject) => {
+      const child = exec(command, { encoding: 'utf-8' }, (err, stdout, stderr) => {
+        if (err) {
+          vscode.window.showErrorMessage(`Failed: ${stderr}`);
+          return reject(err);
+        }
+        resolve(stdout.trim());
+      });
+
+      child.stderr?.on('data', (data) => {
+        const line = data.toString().trim();
+        if (line) progress.report({ message: line });
+      });
+    })
+  );
+} 
