@@ -235,7 +235,7 @@ export async function captureEdgesharkVNC(
   const wsConfig = vscode.workspace.getConfiguration("containerlab")
   const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
   const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
-  const wiresharkThemeSetting = wsConfig.get<string>("containerlab.capture.wireshark.theme")
+  const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme")
 
   let darkModeEnabled = false;
 
