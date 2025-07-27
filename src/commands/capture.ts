@@ -249,6 +249,7 @@ export async function captureEdgesharkVNC(
       }
     }
   } catch {
+    // If we can't find the network, continue without it
   }
 
   // Replace localhost with host.docker.internal or the actual host IP
@@ -287,33 +288,77 @@ export async function captureEdgesharkVNC(
   })
 
   const iframeUrl = `http://${packetflixUri[1]}:${webviewPort}`;
-  panel.webview.html = `
-  <!DOCTYPE html>
-  <html>
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        height: 100%;
-        width: 100%;
-      }
-      iframe {
-        border: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        right: 0;
-        width: 100%;
-        height: 100%;
-      }
-    </style>
-    <body>
-      <iframe src="${iframeUrl}" frameborder="0" width="100%" height="100%"></iframe>
-    </body>
-  </html>
-`;
+
+  // Wait a bit for the VNC server to be ready
+  setTimeout(() => {
+    panel.webview.html = `
+    <!DOCTYPE html>
+    <html>
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          height: 100%;
+          width: 100%;
+          background: #1e1e1e;
+        }
+        iframe {
+          border: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          right: 0;
+          width: 100%;
+          height: 100%;
+        }
+        .loading {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: #ccc;
+          font-family: sans-serif;
+        }
+      </style>
+      <body>
+        <div class="loading" id="loading">Loading Wireshark...</div>
+        <iframe id="vnc-frame" frameborder="0" width="100%" height="100%" style="display: none;"></iframe>
+        <script>
+          const iframe = document.getElementById('vnc-frame');
+          const loading = document.getElementById('loading');
+          const url = "${iframeUrl}";
+
+          // Try to load the iframe
+          function loadVNC() {
+            iframe.src = url;
+            iframe.onload = function() {
+              loading.style.display = 'none';
+              iframe.style.display = 'block';
+            };
+            iframe.onerror = function() {
+              // Retry after a delay
+              setTimeout(loadVNC, 1000);
+            };
+          }
+
+          // Initial delay to ensure VNC server is ready
+          setTimeout(loadVNC, 500);
+
+          // Force a reload if the iframe doesn't load within 3 seconds
+          setTimeout(() => {
+            if (iframe.style.display === 'none') {
+              iframe.src = url;
+              loading.style.display = 'none';
+              iframe.style.display = 'block';
+            }
+          }, 3000);
+        </script>
+      </body>
+    </html>
+    `;
+  }, 1000);
 
 }
 
