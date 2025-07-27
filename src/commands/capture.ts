@@ -236,7 +236,34 @@ export async function captureEdgesharkVNC(
   const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
   const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
 
-  const containerId = execSync(`docker run -d --rm -P -e PACKETFLIX_LINK="${packetflixUri[0]}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
+  // Check if Edgeshark is running and get its network
+  let edgesharkNetwork = "";
+  try {
+    const edgesharkInfo = execSync(`docker ps --filter "name=edgeshark" --format "{{.Names}}" | head -1`, { encoding: 'utf-8' }).trim();
+    if (edgesharkInfo) {
+      const networks = execSync(`docker inspect ${edgesharkInfo} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, { encoding: 'utf-8' }).trim();
+      const networkId = networks.split(' ')[0];
+      if (networkId) {
+        const networkName = execSync(`docker network inspect ${networkId} --format '{{.Name}}'`, { encoding: 'utf-8' }).trim();
+        edgesharkNetwork = `--network ${networkName}`;
+      }
+    }
+  } catch {
+  }
+
+  // Replace localhost with host.docker.internal or the actual host IP
+  let modifiedPacketflixUri = packetflixUri[0];
+  if (modifiedPacketflixUri.includes('localhost')) {
+    // When using the edgeshark network, we need to use the edgeshark container name
+    if (edgesharkNetwork) {
+      modifiedPacketflixUri = modifiedPacketflixUri.replace('localhost', 'edgeshark-edgeshark-1');
+    } else {
+      // Otherwise use host.docker.internal which works on Docker Desktop
+      modifiedPacketflixUri = modifiedPacketflixUri.replace('localhost', 'host.docker.internal');
+    }
+  }
+
+  const containerId = execSync(`docker run -d --rm -P ${edgesharkNetwork} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
     encoding: 'utf-8'
   }).trim();
 
