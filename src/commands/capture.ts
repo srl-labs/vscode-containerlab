@@ -252,6 +252,23 @@ export async function captureEdgesharkVNC(
     // If we can't find the network, continue without it
   }
 
+  // Get the lab directory from the container labels to mount for saving pcap files
+  let volumeMount = "";
+  try {
+    const labDir = execSync(`docker inspect ${node.parentName} --format '{{index .Config.Labels "clab-node-lab-dir"}}' 2>/dev/null`, { encoding: 'utf-8' }).trim();
+    if (labDir && labDir !== '<no value>') {
+      // Go up two levels to get the actual lab directory (from node-specific dir to lab root)
+      const pathParts = labDir.split('/');
+      pathParts.pop(); // Remove node name (e.g., "srl1")
+      pathParts.pop(); // Remove lab name (e.g., "clab-vlan")
+      const labRootDir = pathParts.join('/');
+      volumeMount = `-v "${labRootDir}:/pcaps"`;
+      outputChannel.appendLine(`[DEBUG] Mounting lab directory: ${labRootDir} as /pcaps`);
+    }
+  } catch {
+    // If we can't get the lab directory, continue without mounting
+  }
+
   // Replace localhost with host.docker.internal or the actual host IP
   let modifiedPacketflixUri = packetflixUri[0];
   if (modifiedPacketflixUri.includes('localhost')) {
@@ -264,7 +281,7 @@ export async function captureEdgesharkVNC(
     }
   }
 
-  const containerId = execSync(`docker run -d --rm -P ${edgesharkNetwork} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
+  const containerId = execSync(`docker run -d --rm -P ${edgesharkNetwork} ${volumeMount} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, {
     encoding: 'utf-8'
   }).trim();
 
@@ -288,6 +305,13 @@ export async function captureEdgesharkVNC(
   })
 
   const iframeUrl = `http://${packetflixUri[1]}:${webviewPort}`;
+
+  // Show info about where to save pcap files if volume is mounted
+  if (volumeMount) {
+    vscode.window.showInformationMessage(
+      `Wireshark started. Save pcap files to /pcaps to persist them in the lab directory.`
+    );
+  }
 
   // Wait a bit for the VNC server to be ready
   setTimeout(() => {
@@ -320,10 +344,19 @@ export async function captureEdgesharkVNC(
           transform: translate(-50%, -50%);
           color: #ccc;
           font-family: sans-serif;
+          text-align: center;
+        }
+        .info {
+          color: #999;
+          font-size: 0.9em;
+          margin-top: 10px;
         }
       </style>
       <body>
-        <div class="loading" id="loading">Loading Wireshark...</div>
+        <div class="loading" id="loading">
+          Loading Wireshark...
+          ${volumeMount ? '<div class="info">Tip: Save pcap files to /pcaps to persist them in the lab directory</div>' : ''}
+        </div>
         <iframe id="vnc-frame" frameborder="0" width="100%" height="100%" style="display: none;"></iframe>
         <script>
           const iframe = document.getElementById('vnc-frame');
