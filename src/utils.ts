@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from "fs";
 import * as os from "os";
 import { exec, execSync } from "child_process";
+import * as net from 'net';
 
 export function stripAnsi(input: string): string {
   const esc = String.fromCharCode(27);
@@ -138,3 +139,20 @@ export function execWithProgress(command: string, progressMessage: string): Then
     })
   );
 } 
+
+export async function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1');
+    server.on('listening', () => {
+      const address = server.address();
+      server.close();
+      if (typeof address === 'object' && address?.port) {
+        resolve(address.port);
+      } else {
+        reject(new Error('Could not get free port'));
+      }
+    });
+    server.on('error', reject);
+  });
+}
