@@ -1150,7 +1150,7 @@
     "@types/node": "^24.0.15",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
-    "@typescript-eslint/parser": "^8.36.0",
+    "@typescript-eslint/parser": "^8.38.0",
     "@vscode/vsce": "^3.5.0",
     "chai": "^5.2.1",
     "chai-as-promised": "^8.0.1",
