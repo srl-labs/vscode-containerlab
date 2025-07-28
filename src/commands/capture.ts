@@ -300,13 +300,13 @@ export async function captureEdgesharkVNC(
 
   // Replace localhost with host.docker.internal or the actual host IP
   let modifiedPacketflixUri = packetflixUri[0];
-  if (modifiedPacketflixUri.includes('localhost')) {
+  if (modifiedPacketflixUri.includes('localhost') || modifiedPacketflixUri.includes('127.0.0.1')) {
     // When using the edgeshark network, we need to use the edgeshark container name
     if (edgesharkNetwork) {
-      modifiedPacketflixUri = modifiedPacketflixUri.replace('localhost', 'edgeshark-edgeshark-1');
+      modifiedPacketflixUri = modifiedPacketflixUri.replace(/localhost|127\.0\.0\.1/g, 'edgeshark-edgeshark-1');
     } else {
       // Otherwise use host.docker.internal which works on Docker Desktop
-      modifiedPacketflixUri = modifiedPacketflixUri.replace('localhost', 'host.docker.internal');
+      modifiedPacketflixUri = modifiedPacketflixUri.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal');
     }
   }
 
