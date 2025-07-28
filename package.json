@@ -1162,7 +1162,7 @@
     "sinon": "^21.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.36.0",
+    "typescript-eslint": "^8.38.0",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
