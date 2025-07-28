@@ -1170,7 +1170,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
-    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@types/cytoscape": "^3.21.9",
     "@types/sinon": "^17.0.4",
     "@types/sinon-chai": "^4.0.0",
