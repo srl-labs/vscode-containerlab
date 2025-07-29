@@ -234,6 +234,7 @@ export async function captureEdgesharkVNC(
 
   const wsConfig = vscode.workspace.getConfiguration("containerlab")
   const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
+  const dockerPullPolicy = wsConfig.get<string>("capture.wireshark.pullPolicy", "always")
   const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
   const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme")
 
@@ -311,7 +312,7 @@ export async function captureEdgesharkVNC(
   }
 
   const port = await utils.getFreePort()
-  const containerId = await utils.execWithProgress(`docker run -d --rm -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, "Starting Wireshark")
+  const containerId = await utils.execWithProgress(`docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, "Starting Wireshark")
 
   // let vscode port forward for us
   const localUri = vscode.Uri.parse(`http://localhost:${port}`);

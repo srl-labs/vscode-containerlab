@@ -1152,6 +1152,16 @@
           "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
           "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"
         },
+        "containerlab.capture.wireshark.pullPolicy": {
+          "type": "string",
+          "default": "always",
+          "enum": [
+            "always",
+            "missing",
+            "never"
+          ],
+          "description": "The pull policy of the Wireshark docker image"
+        },
         "containerlab.capture.wireshark.extraDockerArgs": {
           "type": "string",
           "default": "",
