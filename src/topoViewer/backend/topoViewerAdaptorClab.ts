@@ -520,40 +520,94 @@ export class TopoViewerAdaptorClab {
    * @param clabName - Optional container name.
    * @returns The matching ClabInterfaceTreeNode, or null if not found.
    */
-  public getClabContainerInterfaceTreeNode(nodeName: string, interfaceName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabInterfaceTreeNode | null {
+  // public getClabContainerInterfaceTreeNode(nodeName: string, interfaceName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabInterfaceTreeNode | null {
 
-    log.info(`clabName: ${clabName}`);
-    log.info(`nodeName: ${nodeName}`);
-    log.info(`interfaceName: ${interfaceName}`);
+  //   log.info(`clabName: ${clabName}`);
+  //   log.info(`nodeName: ${nodeName}`);
+  //   log.info(`interfaceName: ${interfaceName}`);
 
-    // Retrieve the container tree node (assuming this method exists and returns a ClabContainerTreeNode instance)
-    const foundContainerData: ClabContainerTreeNode | null = this.getClabContainerTreeNode(
-      nodeName,
-      clabTreeDataToTopoviewer,
-      clabName
-    );
+  //   // Retrieve the container tree node (assuming this method exists and returns a ClabContainerTreeNode instance)
+  //   const foundContainerData: ClabContainerTreeNode | null = this.getClabContainerTreeNode(
+  //     nodeName,
+  //     clabTreeDataToTopoviewer,
+  //     clabName
+  //   );
 
-    log.info(`ContainerData: ${foundContainerData}`);
+  //   log.info(`ContainerData: ${foundContainerData}`);
 
-    if (!foundContainerData) {
-      log.info(`Container not found for node: ${nodeName}`);
+  //   if (!foundContainerData) {
+  //     log.info(`Container not found for node: ${nodeName}`);
+  //     return null;
+  //   }
+
+  //   // Assuming containerData.interfaces is an array of ClabInterfaceTreeNode instances,
+  //   // use the find method to locate the interface with the matching name.
+  //   const foundInterface = foundContainerData.interfaces.find(
+  //     // (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
+  //     (intf: ClabInterfaceTreeNode) => intf.label === interfaceName // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
+  //   );
+
+  //   if (foundInterface) {
+  //     log.info(`Found interface: ${foundInterface.label}`);
+  //     log.debug(`Output of foundInterfaceData ${JSON.stringify(foundInterface, null, "\t")}`);
+  //     return foundInterface;
+  //   } else {
+  //     log.info(`Interface ${interfaceName} not found in container ${nodeName}`);
+  //     return null;
+  //   }
+  // }
+
+  /**
+  *
+  * @param nodeName - The name of the node (container name).
+  * @param interfaceName - The interface name to match.
+  * @param clabTreeDataToTopoviewer - The tree data record keyed by clab name.
+  * @param clabName - The Containerlab topology name.
+  * @returns The matched ClabInterfaceTreeNode or `null` if not found.
+  */
+  public getClabContainerInterfaceTreeNode(
+    nodeName: string,
+    interfaceName: string,
+    clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>,
+    clabName: string | undefined
+  ): ClabInterfaceTreeNode | null {
+
+    log.info(`Resolving interface in container: node=${nodeName}, interface=${interfaceName}, clab=${clabName}`);
+
+    const container = this.getClabContainerTreeNode(nodeName, clabTreeDataToTopoviewer, clabName);
+    if (!container) {
+      log.warn(`Container "${nodeName}" not found under clab "${clabName}"`);
       return null;
     }
 
-    // Assuming containerData.interfaces is an array of ClabInterfaceTreeNode instances,
-    // use the find method to locate the interface with the matching name.
-    const foundInterface = foundContainerData.interfaces.find(
-      (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
-      // (intf: ClabInterfaceTreeNode) => intf.label === interfaceName // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
-    );
+    if (!Array.isArray(container.interfaces)) {
+      log.warn(`No interfaces defined in container "${nodeName}"`);
+      return null;
+    }
+
+    let matchedBy: string | null = null;
+    const foundInterface = container.interfaces.find((intf) => {
+      if (intf.name === interfaceName) {
+        matchedBy = "label";
+        return true;
+      } else if (intf.label === interfaceName) {
+        matchedBy = "name";
+        return true;
+      } else if (intf.alias && intf.alias === interfaceName) {
+        matchedBy = "alias";
+        return true;
+      }
+      return false;
+    });
 
     if (foundInterface) {
-      log.info(`Found interface: ${foundInterface.label}`);
-      log.debug(`Output of foundInterfaceData ${JSON.stringify(foundInterface, null, "\t")}`);
+      log.info(`✅ Matched interface "${interfaceName}" using "${matchedBy}"`);
+      log.debug(`Found interface: ${JSON.stringify(foundInterface, null, 2)}`);
       return foundInterface;
     } else {
-      log.info(`Interface ${interfaceName} not found in container ${nodeName}`);
+      log.warn(`⚠️ Interface "${interfaceName}" not found in container "${nodeName}"`);
       return null;
     }
   }
+
 }

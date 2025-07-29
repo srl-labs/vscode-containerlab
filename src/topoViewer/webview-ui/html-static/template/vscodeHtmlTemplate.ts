@@ -1302,7 +1302,7 @@ return `
                             id="endpoint-a-vnc-bottom">
                           </a>
 
-                          <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target');"
+                          <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target', null);"
                             class="dropdown-item label has-text-weight-normal is-small py-0"
                             id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
                           </a>
