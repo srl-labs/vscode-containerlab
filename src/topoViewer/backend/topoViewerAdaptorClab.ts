@@ -543,8 +543,8 @@ export class TopoViewerAdaptorClab {
     // Assuming containerData.interfaces is an array of ClabInterfaceTreeNode instances,
     // use the find method to locate the interface with the matching name.
     const foundInterface = foundContainerData.interfaces.find(
-      // (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
-      (intf: ClabInterfaceTreeNode) => intf.label === interfaceName // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
+      (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
+      // (intf: ClabInterfaceTreeNode) => intf.label === interfaceName // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
     );
 
     if (foundInterface) {

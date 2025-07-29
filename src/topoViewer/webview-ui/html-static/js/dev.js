@@ -975,7 +975,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           console.log("########################################################### source subInt")
 
           const nodeName = clickedEdge.data("extraData").clabSourceLongName;
-          
+
           const response = await sendMessageToVscodeEndpointPost("clab-link-subinterfaces", {
             nodeName: nodeName,
             interfaceName: clickedEdge.data("extraData").clabSourcePort
@@ -2309,14 +2309,14 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
       clabSourceLongName = edgeData.data.extraData.clabSourceLongName; // used for edgeshark
       console.log("edgeData.data.extraData.clabSourceLongName: ", clabSourceLongName);
 
-      clabSourcePort = edgeData.data.extraData.clabSourcePort; // used for edgeshark
-      console.log("edgeData.data.extraData.clabSourcePort: ", clabSourcePort);
+      // clabSourcePort = edgeData.data.extraData.clabSourcePort; // used for edgeshark
+      // console.log("edgeData.data.extraData.clabSourcePort: ", clabSourcePort);
 
       clabTargetLongName = edgeData.data.extraData.clabTargetLongName; // used for edgeshark
       console.log("edgeData.data.extraData.clabTargetLongName: ", clabTargetLongName);
 
-      clabTargetPort = edgeData.data.extraData.clabTargetPort; // used for edgeshark
-      console.log("edgeData.data.extraData.clabTargetPort: ", clabTargetPort);
+      // clabTargetPort = edgeData.data.extraData.clabTargetPort; // used for edgeshark
+      // console.log("edgeData.data.extraData.clabTargetPort: ", clabTargetPort);
 
 
     } else {
@@ -2342,15 +2342,15 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
     let wiresharkHref, baseUrl, urlParams, netNsResponse, netNsId, wiresharkSshCommand;
 
     switch (option) {
-      case "app":
-        if (endpoint === "source") {
-          wiresharkHref = `clab-capture://${clabUser}@${clabServerAddress}?${clabSourceLongName}?${clabSourcePort}`;
-        } else if (endpoint === "target") {
-          wiresharkHref = `clab-capture://${clabUser}@${clabServerAddress}?${clabTargetLongName}?${clabTargetPort}`;
-        }
-        console.info("linkWireshark- wiresharkHref: ", wiresharkHref);
-        window.open(wiresharkHref);
-        break;
+      // case "app":
+      //   if (endpoint === "source") {
+      //     wiresharkHref = `clab-capture://${clabUser}@${clabServerAddress}?${clabSourceLongName}?${clabSourcePort}`;
+      //   } else if (endpoint === "target") {
+      //     wiresharkHref = `clab-capture://${clabUser}@${clabServerAddress}?${clabTargetLongName}?${clabTargetPort}`;
+      //   }
+      //   console.info("linkWireshark- wiresharkHref: ", wiresharkHref);
+      //   window.open(wiresharkHref);
+      //   break;
 
       case "edgeSharkInterface": {
         baseUrl = `packetflix:ws://${edgesharkHostUrl}:5001/capture?`;
@@ -2365,13 +2365,6 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
             } catch (error) {
               console.error("Failed to open external URL:", error);
             }
-          } else {
-            netNsResponse = await sendRequestToEndpointGetV3("/clab-node-network-namespace", [clabSourceLongName]);
-            netNsId = extractNamespaceId(netNsResponse.namespace_id);
-            console.info("linkWireshark - netNsSource: ", netNsId);
-            urlParams = `container={"netns":${netNsId},"network-interfaces":["${clabSourcePort}"],"name":"${clabSourceLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${clabSourcePort}`;
-            const edgeSharkHref = baseUrl + urlParams;
-            console.info("linkWireshark - edgeSharkHref: ", edgeSharkHref);
           }
         } else if (endpoint === "target") {
           if (isVscodeDeployment) {
@@ -2384,24 +2377,17 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
             } catch (error) {
               console.error("Failed to open external URL:", error);
             }
-          } else {
-            netNsResponse = await sendRequestToEndpointGetV3("/clab-node-network-namespace", [clabTargetLongName]);
-            netNsId = extractNamespaceId(netNsResponse.namespace_id);
-            console.info("linkWireshark - netNsTarget: ", netNsId);
-            urlParams = `container={"netns":${netNsId},"network-interfaces":["${clabTargetPort}"],"name":"${clabTargetLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${clabTargetPort}`;
-            const edgeSharkHref = baseUrl + urlParams;
-            console.info("linkWireshark - edgeSharkHref: ", edgeSharkHref);
           }
         }
 
         // window.open(edgeSharkHref);
 
-        if (isVscodeDeployment) {
-        } else {
-          window.open(edgeSharkHref);
-        }
+        // if (isVscodeDeployment) {
+        // } else {
+        //   window.open(edgeSharkHref);
+        // }
         break;
-      }     
+      }
 
       case "edgeSharkSubInterface": {
         if (referenceElementAfterId === "endpoint-a-top" || referenceElementAfterId === "endpoint-b-top") {
@@ -2431,21 +2417,6 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
               }
 
             }
-
-          } else {
-            if (referenceElementAfterId === "endpoint-a-edgeshark") {
-              netNsResponse = await sendRequestToEndpointGetV3("/clab-node-network-namespace", [clabSourceLongName]);
-              netNsId = extractNamespaceId(netNsResponse.namespace_id);
-              urlParams = `container={"netns":${netNsId},"network-interfaces":["${endpoint}"],"name":"${clabSourceLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${endpoint}`;
-            } else {
-              console.info("linkWireshark - endpoint-b-edgeshark");
-              netNsResponse = await sendRequestToEndpointGetV3("/clab-node-network-namespace", [clabTargetLongName]);
-              netNsId = extractNamespaceId(netNsResponse.namespace_id);
-              urlParams = `container={"netns":${netNsId},"network-interfaces":["${endpoint}"],"name":"${clabSourceLongName.toLowerCase()}","type":"docker","prefix":""}&nif=${endpoint}`;
-            }
-            const edgeSharkHref = baseUrl + urlParams;
-            console.info("linkWireshark - edgeSharkHref: ", edgeSharkHref);
-            window.open(edgeSharkHref);
           }
 
         } else if (referenceElementAfterId === "endpoint-a-clipboard" || referenceElementAfterId === "endpoint-b-clipboard") {
@@ -2474,7 +2445,7 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
             } catch (error) {
               console.error("Failed to open external URL:", error);
             }
-          } 
+          }
         } else if (endpoint === "target") {
           if (isVscodeDeployment) {
             try {
@@ -2486,21 +2457,57 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
             } catch (error) {
               console.error("Failed to open external URL:", error);
             }
-          } 
+          }
         }
-        break;
-      } 
-
-      case "copy": {
-        if (endpoint === "source") {
-          wiresharkSshCommand = `ssh ${clabUser}@${environments["clab-allowed-hostname"]} "sudo -S /sbin/ip netns exec ${clabSourceLongName} tcpdump -U -nni ${clabSourcePort} -w -" | wireshark -k -i -`;
-        } else if (endpoint === "target") {
-          wiresharkSshCommand = `ssh ${clabUser}@${environments["clab-allowed-hostname"]} "sudo -S /sbin/ip netns exec ${clabTargetLongName} tcpdump -U -nni ${clabTargetPort} -w -" | wireshark -k -i -`;
-        }
-        console.info("linkWireshark- wiresharkSshCommand: ", wiresharkSshCommand);
-        await copyToClipboard(wiresharkSshCommand);
         break;
       }
+
+      case "edgeSharkSubInterfaceVnc": {
+        if (referenceElementAfterId === "endpoint-a-vnc-top" || referenceElementAfterId === "endpoint-b-vnc-top") {
+          baseUrl = `packetflix:ws://${edgesharkHostUrl}:5001/capture?`;
+          if (isVscodeDeployment) {
+            if (referenceElementAfterId === "endpoint-a-vnc-top") {
+              console.info("linkWireshark - endpoint-a-vnc-subInterface");
+              try {
+                console.log("sourceSubInterface", endpoint)
+                const response = await sendMessageToVscodeEndpointPost("clab-link-capture-edgeshark-vnc", {
+                  nodeName: clabSourceLongName,
+                  interfaceName: endpoint
+                  // interfaceName: "ethernet-1/1.1"
+                });
+                console.info("External URL opened successfully:", response);
+              } catch (error) {
+                console.error("Failed to open external URL:", error);
+              }
+            } else if (referenceElementAfterId === "endpoint-b-vnc-top") {
+              console.info("linkWireshark - endpoint-b-vnc-subInterface");
+              try {
+                console.log("targetSubInterface", endpoint)
+                const response = await sendMessageToVscodeEndpointPost("clab-link-capture-edgeshark-vnc", {
+                  nodeName: clabTargetLongName,
+                  interfaceName: endpoint
+                });
+                console.info("External URL opened successfully:", response);
+              } catch (error) {
+                console.error("Failed to open external URL:", error);
+              }
+
+            }
+          }
+        }
+        break;
+      }
+
+      // case "copy": {
+      //   if (endpoint === "source") {
+      //     wiresharkSshCommand = `ssh ${clabUser}@${environments["clab-allowed-hostname"]} "sudo -S /sbin/ip netns exec ${clabSourceLongName} tcpdump -U -nni ${clabSourcePort} -w -" | wireshark -k -i -`;
+      //   } else if (endpoint === "target") {
+      //     wiresharkSshCommand = `ssh ${clabUser}@${environments["clab-allowed-hostname"]} "sudo -S /sbin/ip netns exec ${clabTargetLongName} tcpdump -U -nni ${clabTargetPort} -w -" | wireshark -k -i -`;
+      //   }
+      //   console.info("linkWireshark- wiresharkSshCommand: ", wiresharkSshCommand);
+      //   await copyToClipboard(wiresharkSshCommand);
+      //   break;
+      // }
 
       default:
         console.warn("linkWireshark - Unknown option provided:", option);
@@ -4920,15 +4927,72 @@ async function fetchAndLoadData() {
 
 
 
+// async function renderSubInterfaces(subInterfaces, referenceElementAfterId, referenceElementBeforeId, nodeName) {
+//   console.log("##### renderSubInterfaces is called")
+//   console.log("##### subInterfaces: ", subInterfaces)
+
+//   const containerSelectorId = 'panel-link-action-dropdown-menu-dropdown-content';
+
+//   const onClickHandler = (event, subInterface) => {
+//     console.info(`Clicked on: ${subInterface}`);
+//     linkWireshark(event, "edgeSharkSubInterface", subInterface, referenceElementAfterId);
+//   };
+
+//   // Validate container
+//   const containerElement = document.getElementById(containerSelectorId);
+//   if (!containerElement) {
+//     console.error(`Container element with ID "${containerSelectorId}" not found.`);
+//     return;
+//   }
+
+//   // Validate reference elements
+//   const referenceElementAfter = document.getElementById(referenceElementAfterId);
+//   const referenceElementBefore = document.getElementById(referenceElementBeforeId);
+//   if (!referenceElementAfter || !referenceElementBefore) {
+//     console.error(`Reference elements not found: afterId="${referenceElementAfterId}", beforeId="${referenceElementBeforeId}".`);
+//     return;
+//   }
+
+//   // Remove all elements between referenceElementAfter and referenceElementBefore
+//   let currentNode = referenceElementAfter.nextSibling;
+//   while (currentNode && currentNode !== referenceElementBefore) {
+//     const nextNode = currentNode.nextSibling;
+//     currentNode.remove(); // Remove the current node
+//     currentNode = nextNode;
+//   }
+
+//   // Handle case when subInterfaces is null
+//   if (!subInterfaces) {
+//     console.info("Sub-interfaces is null. Cleared existing items and performed no further actions.");
+//   }
+
+//   // Add new sub-interface items
+//   subInterfaces.forEach(subInterface => {
+//     const a = document.createElement("a");
+//     a.className = "dropdown-item label has-text-weight-normal is-small py-0";
+//     a.style.display = "flex";
+//     a.style.justifyContent = "flex-end";
+//     a.textContent = `└ sub-interface :: ${nodeName} :: ${subInterface}`;
+//     a.onclick = (event) => onClickHandler(event, subInterface);
+
+//     insertAfter(a, referenceElementAfter);
+//   });
+// }
+
 async function renderSubInterfaces(subInterfaces, referenceElementAfterId, referenceElementBeforeId, nodeName) {
   console.log("##### renderSubInterfaces is called")
   console.log("##### subInterfaces: ", subInterfaces)
 
   const containerSelectorId = 'panel-link-action-dropdown-menu-dropdown-content';
 
+  // Determine the capture mode
+  const captureMode = referenceElementAfterId.includes("vnc")
+    ? "edgeSharkSubInterfaceVnc"
+    : "edgeSharkSubInterface";
+
   const onClickHandler = (event, subInterface) => {
     console.info(`Clicked on: ${subInterface}`);
-    linkWireshark(event, "edgeSharkSubInterface", subInterface, referenceElementAfterId);
+    linkWireshark(event, captureMode, subInterface, referenceElementAfterId);
   };
 
   // Validate container
@@ -4950,18 +5014,12 @@ async function renderSubInterfaces(subInterfaces, referenceElementAfterId, refer
   let currentNode = referenceElementAfter.nextSibling;
   while (currentNode && currentNode !== referenceElementBefore) {
     const nextNode = currentNode.nextSibling;
-    currentNode.remove(); // Remove the current node
+    currentNode.remove();
     currentNode = nextNode;
   }
 
-  // Handle case when subInterfaces is null
   if (!subInterfaces) {
     console.info("Sub-interfaces is null. Cleared existing items and performed no further actions.");
-    // Optionally, you could display a placeholder message or take other actions:
-    // const placeholder = document.createElement("div");
-    // placeholder.textContent = "No sub-interfaces available.";
-    // placeholder.style.textAlign = "center";
-    // insertAfter(placeholder, referenceElementAfter);
     return;
   }
 
@@ -4977,7 +5035,6 @@ async function renderSubInterfaces(subInterfaces, referenceElementAfterId, refer
     insertAfter(a, referenceElementAfter);
   });
 }
-
 
 // Helper function to insert an element after a reference element
 function insertAfter(newNode, referenceNode) {
