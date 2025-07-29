@@ -963,7 +963,8 @@ document.addEventListener("DOMContentLoaded", async function () {
       document.getElementById("endpoint-a-edgeshark").textContent = `Edgeshark :: ${clickedEdge.data("source")} :: ${clickedEdge.data("sourceEndpoint")}`
       document.getElementById("endpoint-b-edgeshark").textContent = `Edgeshark :: ${clickedEdge.data("target")} :: ${clickedEdge.data("targetEndpoint")}`
 
-
+      document.getElementById("endpoint-a-edgeshark-vnc").textContent = `Edgeshark VNC :: ${clickedEdge.data("source")} :: ${clickedEdge.data("sourceEndpoint")}`
+      document.getElementById("endpoint-b-edgeshark-vnc").textContent = `Edgeshark VNC :: ${clickedEdge.data("target")} :: ${clickedEdge.data("targetEndpoint")}`
 
 
       //render sourceSubInterfaces
@@ -972,11 +973,18 @@ document.addEventListener("DOMContentLoaded", async function () {
       if (isVscodeDeployment) {
         try {
           console.log("########################################################### source subInt")
+
+          const nodeName = clickedEdge.data("extraData").clabSourceLongName;
+          
           const response = await sendMessageToVscodeEndpointPost("clab-link-subinterfaces", {
-            nodeName: clickedEdge.data("extraData").clabSourceLongName,
+            nodeName: nodeName,
             interfaceName: clickedEdge.data("extraData").clabSourcePort
           });
+
+          console.log("########################################################### source subInt response", response)
+
           clabSourceSubInterfacesClabData = response.map(item => item.name); // Output: ["e1-1-1", "e1-1-2"]
+          console.log("###########################################")
           console.log("Source SubInterface list:", clabSourceSubInterfacesClabData);
 
           if (Array.isArray(clabSourceSubInterfacesClabData) && clabSourceSubInterfacesClabData.length > 0) {
@@ -984,55 +992,36 @@ document.addEventListener("DOMContentLoaded", async function () {
             const sourceSubInterfaces = clabSourceSubInterfacesClabData
             // Render sub-interfaces
             renderSubInterfaces(sourceSubInterfaces, 'endpoint-a-top', 'endpoint-a-bottom', nodeName);
+            renderSubInterfaces(sourceSubInterfaces, 'endpoint-a-vnc-top', 'endpoint-a-vnc-bottom', nodeName);
+
           } else if (Array.isArray(clabSourceSubInterfacesClabData)) {
             console.info("No sub-interfaces found. The input data array is empty.");
             renderSubInterfaces(null, 'endpoint-a-top', 'endpoint-a-bottom', nodeName);
+            renderSubInterfaces(null, 'endpoint-a-vnc-top', 'endpoint-a-vnc-bottom', nodeName);
           } else {
             console.info("No sub-interfaces found. The input data is null, undefined, or not an array.");
             renderSubInterfaces(null, 'endpoint-a-top', 'endpoint-a-bottom', nodeName);
+            renderSubInterfaces(null, 'endpoint-a-vnc-top', 'endpoint-a-vnc-bottom', nodeName);
           }
-
-
-
         } catch (error) {
           console.error("Failed to get SubInterface list:", error);
         }
-      } else {
-        let clabSourceSubInterfacesArgList = [
-          clickedEdge.data("extraData").clabSourceLongName,
-          clickedEdge.data("extraData").clabSourcePort
-        ];
-        clabSourceSubInterfacesClabData = await sendRequestToEndpointGetV3("/clab-link-subinterfaces", clabSourceSubInterfacesArgList);
-        console.info("clabSourceSubInterfacesClabData: ", clabSourceSubInterfacesClabData);
-        if (Array.isArray(clabSourceSubInterfacesClabData) && clabSourceSubInterfacesClabData.length > 0) {
-          // Map sub-interfaces with prefix
-          const sourceSubInterfaces = clabSourceSubInterfacesClabData.map(
-            item => `${item.ifname}`
-          );
-          // Render sub-interfaces
-          renderSubInterfaces(sourceSubInterfaces, 'endpoint-a-edgeshark', 'endpoint-a-clipboard', nodeName);
-          renderSubInterfaces(sourceSubInterfaces, 'endpoint-a-clipboard', 'endpoint-a-bottom', nodeName);
-        } else if (Array.isArray(clabSourceSubInterfacesClabData)) {
-          console.info("No sub-interfaces found. The input data array is empty.");
-          renderSubInterfaces(null, 'endpoint-a-edgeshark', 'endpoint-a-clipboard', nodeName);
-          renderSubInterfaces(null, 'endpoint-a-clipboard', 'endpoint-a-bottom', nodeName);
-        } else {
-          console.info("No sub-interfaces found. The input data is null, undefined, or not an array.");
-          renderSubInterfaces(null, 'endpoint-a-edgeshark', 'endpoint-a-clipboard', nodeName);
-          renderSubInterfaces(null, 'endpoint-a-clipboard', 'endpoint-a-bottom', nodeName);
-        }
       }
-
-
 
       //render targetSubInterfaces
       if (isVscodeDeployment) {
         try {
           console.log("########################################################### target subInt")
+
+          const nodeName = clickedEdge.data("extraData").clabTargetLongName;
+
           const response = await sendMessageToVscodeEndpointPost("clab-link-subinterfaces", {
-            nodeName: clickedEdge.data("extraData").clabTargetLongName,
+            nodeName: nodeName,
             interfaceName: clickedEdge.data("extraData").clabTargetPort
           });
+
+          console.log("########################################################### target subInt response", response)
+
           clabTargetSubInterfacesClabData = response.map(item => item.name); // Output: ["e1-1-1", "e1-1-2"]
           console.log("###########################################")
           console.log("Target SubInterface list:", clabTargetSubInterfacesClabData);
@@ -1042,12 +1031,18 @@ document.addEventListener("DOMContentLoaded", async function () {
             const TargetSubInterfaces = clabTargetSubInterfacesClabData
             // Render sub-interfaces
             renderSubInterfaces(TargetSubInterfaces, 'endpoint-b-top', 'endpoint-b-bottom', nodeName);
+            renderSubInterfaces(TargetSubInterfaces, 'endpoint-b-vnc-top', 'endpoint-b-vnc-bottom', nodeName);
+
           } else if (Array.isArray(clabTargetSubInterfacesClabData)) {
             console.info("No sub-interfaces found. The input data array is empty.");
             renderSubInterfaces(null, 'endpoint-b-top', 'endpoint-b-bottom', nodeName);
+            renderSubInterfaces(null, 'endpoint-b-vnc-top', 'endpoint-b-vnc-bottom', nodeName);
+
           } else {
             console.info("No sub-interfaces found. The input data is null, undefined, or not an array.");
             renderSubInterfaces(null, 'endpoint-b-top', 'endpoint-b-bottom', nodeName);
+            renderSubInterfaces(null, 'endpoint-b-vnc-top', 'endpoint-b-vnc-bottom', nodeName);
+
           }
 
         } catch (error) {
@@ -2399,7 +2394,6 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
           }
         }
 
-
         // window.open(edgeSharkHref);
 
         if (isVscodeDeployment) {
@@ -2407,9 +2401,9 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
           window.open(edgeSharkHref);
         }
         break;
-      }
+      }     
 
-      case "edgeSharkSubInterface":
+      case "edgeSharkSubInterface": {
         if (referenceElementAfterId === "endpoint-a-top" || referenceElementAfterId === "endpoint-b-top") {
           baseUrl = `packetflix:ws://${edgesharkHostUrl}:5001/capture?`;
           if (isVscodeDeployment) {
@@ -2464,8 +2458,40 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
           await copyToClipboard(wiresharkSshCommand);
         }
         break;
+      }
 
-      case "copy":
+      case "edgeSharkInterfaceVnc": {
+        // this feature only maintaned for vscode only 
+        baseUrl = `packetflix:ws://${edgesharkHostUrl}:5001/capture?`;
+        if (endpoint === "source") {
+          if (isVscodeDeployment) {
+            try {
+              const response = await sendMessageToVscodeEndpointPost("clab-link-capture-edgeshark-vnc", {
+                nodeName: clabSourceLongName,
+                interfaceName: clabSourcePort
+              });
+              console.info("External URL opened successfully:", response);
+            } catch (error) {
+              console.error("Failed to open external URL:", error);
+            }
+          } 
+        } else if (endpoint === "target") {
+          if (isVscodeDeployment) {
+            try {
+              const response = await sendMessageToVscodeEndpointPost("clab-link-capture-edgeshark-vnc", {
+                nodeName: clabTargetLongName,
+                interfaceName: clabTargetPort
+              });
+              console.info("External URL opened successfully:", response);
+            } catch (error) {
+              console.error("Failed to open external URL:", error);
+            }
+          } 
+        }
+        break;
+      } 
+
+      case "copy": {
         if (endpoint === "source") {
           wiresharkSshCommand = `ssh ${clabUser}@${environments["clab-allowed-hostname"]} "sudo -S /sbin/ip netns exec ${clabSourceLongName} tcpdump -U -nni ${clabSourcePort} -w -" | wireshark -k -i -`;
         } else if (endpoint === "target") {
@@ -2474,6 +2500,7 @@ async function linkWireshark(event, option, endpoint, referenceElementAfterId) {
         console.info("linkWireshark- wiresharkSshCommand: ", wiresharkSshCommand);
         await copyToClipboard(wiresharkSshCommand);
         break;
+      }
 
       default:
         console.warn("linkWireshark - Unknown option provided:", option);

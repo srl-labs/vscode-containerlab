@@ -1271,29 +1271,47 @@ return `
 
                           <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null);"
                             class="dropdown-item label has-text-weight-normal is-small py-0"
-                            id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)</a>
-
+                            id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)
+                          </a>
                           <a class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-a-top"></a>
-
-                          <!-- aarafat-tag: vscode
-                                  <a onclick="linkWireshark(event, 'copy', 'source');" class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-a-clipboard">Capture E.Point-A Clipboard</a>
-                                  -->
-
+                          <!-- aarafat-tag: vscode sub interfaces placeholer for edgeshark endpoint-a -->
                           <a class="dropdown-item label has-text-weight-normal is-small py-0"
-                            id="endpoint-a-bottom"></a>
-                          <hr class="dropdown-divider" />
+                            id="endpoint-a-bottom">
+                          </a>
+
                           <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target');"
                             class="dropdown-item label has-text-weight-normal is-small py-0"
-                            id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)</a>
-
+                            id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)
+                          </a>
                           <a class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-b-top"></a>
-
-                          <!-- aarafat-tag: vscode
-                                  <a onclick="linkWireshark(event, 'copy', 'target');" class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-b-clipboard">Capture E.Point-B Clipboard</a>
-                                  -->
-
+                          <!-- aarafat-tag: vscode vscode sub interfaces placeholer for edgeshark endpoint-b -->
                           <a class="dropdown-item label has-text-weight-normal is-small py-0"
-                            id="endpoint-b-bottom"></a>
+                            id="endpoint-b-bottom">
+                          </a>
+
+                          <a class="dropdown-item label has-text-weight-normal is-small py-0"</a>
+                          <hr class="dropdown-divider"/>
+
+                          <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'source', null);"
+                            class="dropdown-item label has-text-weight-normal is-small py-0"
+                            id="endpoint-a-edgeshark-vnc">Capture E.Point-A VNC (Edgeshark)
+                          </a>
+                          <a class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-a-vnc-top"></a>
+                          <!-- aarafat-tag: vscode sub interfaces placeholer for edgeshark vnc endpoint-a -->
+                          <a class="dropdown-item label has-text-weight-normal is-small py-0"
+                            id="endpoint-a-vnc-bottom">
+                          </a>
+
+                          <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target');"
+                            class="dropdown-item label has-text-weight-normal is-small py-0"
+                            id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
+                          </a>
+                          <a class="dropdown-item label has-text-weight-normal is-small py-0" id="endpoint-b-vnc-top"></a>
+                          <!-- aarafat-tag: vscode vscode sub interfaces placeholer for edgeshark endpoint-b -->
+                          <a class="dropdown-item label has-text-weight-normal is-small py-0"
+                            id="endpoint-b-vnc-bottom">
+                          </a>
+
                         </div>
                       </div>
                     </div>
