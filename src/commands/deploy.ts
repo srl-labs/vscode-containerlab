@@ -1,6 +1,5 @@
 import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
-import { SpinnerMsg } from "./command";
 import * as vscode from "vscode";
 import { deployPopularLab } from "./deployPopular";
 import { getSelectedLabNode } from "./utils";
@@ -11,11 +10,7 @@ export async function deploy(node?: ClabLabTreeNode) {
     return;
   }
 
-  const spinnerMessages: SpinnerMsg = {
-    progressMsg: "Deploying Lab... ",
-    successMsg: "Lab deployed successfully!"
-  };
-  const deployCmd = new ClabCommand("deploy", node, spinnerMessages);
+  const deployCmd = new ClabCommand("deploy", node);
   deployCmd.run();
 }
 
@@ -40,11 +35,8 @@ export async function deployCleanup(node?: ClabLabTreeNode) {
       await config.update("skipCleanupWarning", true, vscode.ConfigurationTarget.Global);
     }
   }
-  const spinnerMessages: SpinnerMsg = {
-    progressMsg: "Deploying Lab (cleanup)... ",
-    successMsg: "Lab deployed (cleanup) successfully!"
-  };
-  const deployCmd = new ClabCommand("deploy", node, spinnerMessages);
+
+  const deployCmd = new ClabCommand("deploy", node);
   deployCmd.run(["-c"]);
 }
 

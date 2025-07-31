@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import { ClabCommand } from "./clabCommand";
-import { SpinnerMsg } from "./command";
 import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
@@ -18,13 +17,7 @@ async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizo
     return;
   }
 
-  const spinnerMessages: SpinnerMsg = {
-    progressMsg: "Generating DrawIO graph...",
-    successMsg: "DrawIO Graph Completed!",
-    failMsg: "Graph (draw.io) Failed",
-  };
-
-  const graphCmd = new ClabCommand("graph", node, spinnerMessages);
+  const graphCmd = new ClabCommand("graph", node);
 
   // Figure out the .drawio filename
   if (!node.labPath.absolute) {
@@ -71,7 +64,7 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
     return;
   }
 
-  const graphCmd = new ClabCommand("graph", node, undefined, true, "Graph - drawio Interactive");
+  const graphCmd = new ClabCommand("graph", node);
 
   graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
 }

@@ -1,4 +1,4 @@
-import { execCommandInTerminal } from "./command";
+import { execCommandInTerminal } from './command';
 
 export const EDGESHARK_INSTALL_CMD = "curl -sL \
 https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml \
