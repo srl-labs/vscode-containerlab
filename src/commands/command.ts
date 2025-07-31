@@ -41,18 +41,18 @@ export function execCommandInTerminal(command: string, terminalName: string) {
 export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: Function, stderrCb?: Function) {
     let proc = exec(command);
 
-    if(show) { outputChannel.show(); }
+    if (show) { outputChannel.show(); }
 
     proc.stdout?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
         outputChannel.append(cleaned);
-        if(stdoutCb) { stdoutCb(proc, cleaned); }
+        if (stdoutCb) { stdoutCb(proc, cleaned); }
     });
 
     proc.stderr?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
         outputChannel.append(cleaned);
-        if(stderrCb) { stderrCb(proc, cleaned); }
+        if (stderrCb) { stderrCb(proc, cleaned); }
     });
 
     proc.on('close', (code) => {
@@ -62,12 +62,31 @@ export async function execCommandInOutput(command: string, show?: boolean, stdou
     });
 }
 
-export type CmdOptions = {
+export type SpinnerOptions = {
+    useSpinner?: true;
     command: string;
-    useSpinner: boolean;
-    terminalName?: string;
-    spinnerMsg?: SpinnerMsg;
-}
+    spinnerMsg: SpinnerMsg;
+    terminalName?: never;
+    useProgress?: false;
+};
+
+export type TerminalOptions = {
+    useSpinner?: false;
+    command: string;
+    terminalName: string;
+    spinnerMsg?: never;
+    useProgress?: false;
+};
+
+export type DefaultOptions = {
+    command: string;
+    useSpinner?: false;
+    terminalName?: never;
+    spinnerMsg?: never;
+    useProgress?: true;
+};
+
+export type CmdOptions = SpinnerOptions | TerminalOptions | DefaultOptions;
 
 export type SpinnerMsg = {
     progressMsg: string;
@@ -84,36 +103,31 @@ export class Command {
     protected useSudo: boolean;
     protected spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
+    protected useProgress: boolean;
 
     constructor(options: CmdOptions) {
         this.command = options.command;
-        this.useSpinner = options.useSpinner;
-
-        if(this.useSpinner) {
-            if(options.terminalName) {throw new Error("useSpinner is true. terminalName should NOT be defined.");}
-            if(!options.spinnerMsg) {throw new Error("useSpinner is true, but spinnerMsg is undefined.");}
-            this.spinnerMsg = options.spinnerMsg;
-        }
-        else {
-            if(!options.terminalName) {throw new Error("UseSpinner is false. terminalName must be defined.");}
-                this.terminalName = options.terminalName;
-        }
-
-        const config = vscode.workspace.getConfiguration("containerlab");
-        this.useSudo = config.get<boolean>("sudoEnabledByDefault", true);
+        this.useSpinner = options.useSpinner || false;
+        this.spinnerMsg = options.spinnerMsg;
+        this.terminalName = options.terminalName;
+        this.useProgress = options.useProgress || true;
+        this.useSudo = utils.getConfig('sudoEnabledByDefault');
     }
 
     protected execute(args?: string[]): Promise<void> {
         let cmd: string[] = [];
 
-        if(this.useSudo) {cmd.push("sudo");}
+        if (this.useSudo) { cmd.push("sudo"); }
         cmd.push(this.command);
-        if(args) {cmd.push(...args);}
+        if (args) { cmd.push(...args); }
 
         outputChannel.appendLine(`[${this.command}] Running: ${cmd.join(" ")}`);
 
-        if(this.useSpinner) {
+        if (this.useSpinner) {
             return this.execSpinner(cmd);
+        }
+        else if (this.useProgress) {
+            return this.execProgress(cmd);
         }
         else {
             execCommandInTerminal(cmd.join(" "), this.terminalName!);
@@ -133,7 +147,7 @@ export class Command {
 
                     progress.report({
                         message: " [View Logs](command:containerlab.viewLogs)"
-                      });
+                    });
 
                     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
                     const cwd = workspaceFolder ?? path.join(os.homedir(), ".clab");
@@ -205,7 +219,38 @@ export class Command {
             const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
             // If view logs button was clicked.
-            if(viewOutputBtn === "View logs") { outputChannel.show(); }
+            if (viewOutputBtn === "View logs") { outputChannel.show(); }
         }
+    }
+
+    protected async execProgress(cmd: string[]): Promise<void> {
+        const title = utils.titleCase(this.useSudo ? cmd[2] : cmd[1])
+        vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: title,
+                cancellable: false
+            },
+            (progress) => new Promise<string>((resolve, reject) => {
+                const child = exec(cmd.join(" "), { encoding: 'utf-8' }, (err, stdout, stderr) => {
+                    if (err) {
+                        vscode.window.showErrorMessage(`${title} failed: ${stderr}`);
+                        return reject(err);
+                    }
+                    outputChannel.append(stdout);
+                    resolve(stdout.trim());
+                });
+
+                child.stderr?.on('data', (data) => {
+                    const line = data.toString().trim();
+                    if (line) {
+                        progress.report({ message: line });
+                        outputChannel.appendLine(line);
+                    }
+                });
+            })
+        ).then(() => {
+            vscode.window.showInformationMessage(`${title}: Success`);
+        })
     }
 }
