@@ -157,3 +157,8 @@ export async function getFreePort(): Promise<number> {
     server.on('error', reject);
   });
 }
+
+// Get the config, set the default to undefined as all defaults **SHOULD** be set in package.json
+export function getConfig(relCfgPath: string): any {
+  return vscode.workspace.getConfiguration("containerlab").get(relCfgPath, undefined)
+}
