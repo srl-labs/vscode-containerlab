@@ -408,14 +408,14 @@ export async function captureEdgesharkVNC(
           // Initial delay to ensure VNC server is ready
           setTimeout(loadVNC, 500);
 
-          // Force a reload if the iframe doesn't load within 3 seconds
+          // Force a reload if the iframe doesn't load within 10 seconds
           setTimeout(() => {
             if (iframe.style.display === 'none') {
               iframe.src = url;
               loading.style.display = 'none';
               iframe.style.display = 'block';
             }
-          }, 3000);
+          }, 10000);
         </script>
       </body>
     </html>
