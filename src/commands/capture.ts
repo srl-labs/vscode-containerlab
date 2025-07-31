@@ -237,6 +237,7 @@ export async function captureEdgesharkVNC(
   const dockerPullPolicy = wsConfig.get<string>("capture.wireshark.pullPolicy", "always")
   const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
   const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme")
+  const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground")
 
   let darkModeEnabled = false;
 
@@ -324,6 +325,7 @@ export async function captureEdgesharkVNC(
     vscode.ViewColumn.One,
     {
       enableScripts: true,
+      retainContextWhenHidden: keepOpenInBackground
     }
   );
 

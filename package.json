@@ -1176,6 +1176,11 @@
             "Light"
           ],
           "description": "The theme, or colour scheme of the wireshark application."
+        },
+        "containerlab.capture.wireshark.stayOpenInBackground": {
+          "type": "boolean",
+          "default": "true",
+          "description": "Keep Wireshark VNC sessions alive, even when the capture tab is not active. Enabling this will consume more memory on both the client and remote containerlab host system."
         }
       }
     }
