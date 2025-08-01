@@ -1159,7 +1159,7 @@
         },
         "containerlab.capture.wireshark.extraDockerArgs": {
           "type": "string",
-          "default": "",
+          "default": "-e HTTP_PROXY=\"\" -e http_proxy=\"\"",
           "description": "Extra arguments to pass to the run command for the wireshark VNC container. Useful for things like bind mounts etc."
         },
         "containerlab.capture.wireshark.theme": {
@@ -1176,6 +1176,11 @@
           "type": "boolean",
           "default": "true",
           "description": "Keep Wireshark VNC sessions alive, even when the capture tab is not active. Enabling this will consume more memory on both the client and remote containerlab host system."
+        },
+        "containerlab.edgeshark.extraEnvironmentVars": {
+          "type": "string",
+          "default": "HTTP_PROXY=, http_proxy=",
+          "description": "Comma-separated environment variables to inject into edgeshark containers (e.g., 'HTTP_PROXY=, http_proxy=, NO_PROXY=localhost'). Each variable will be added to the environment section of both gostwire and packetflix services."
         }
       }
     }
