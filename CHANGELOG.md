@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.14.0] - 2025-08-01
+* Wireshark capture is now by default via noVNC
+* Wireshark is now fully rely on edgeshark, no local tcpdump anymore
+* TopoViewer supports new Schema with groups
+* QOL featues and fixes
+
 ## [0.13.8] - 2025-06-28
 * performance anhancements
 * fixes
