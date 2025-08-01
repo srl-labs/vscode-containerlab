@@ -306,6 +306,10 @@
         "title": "Capture interface (Edgeshark)"
       },
       {
+        "command": "containerlab.interface.captureWithEdgesharkVNC",
+        "title": "Capture interface (Edgeshark VNC)"
+      },
+      {
         "command": "containerlab.interface.setDelay",
         "title": "Set delay"
       },
@@ -337,6 +341,11 @@
       {
         "command": "containerlab.uninstall.edgeshark",
         "title": "Uninstall Edgeshark",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.capture.killAllWiresharkVNC",
+        "title": "Kill all Wireshark VNC containers",
         "category": "Containerlab"
       },
       {
@@ -824,6 +833,11 @@
           "group": "captureContextMenu@1"
         },
         {
+          "command": "containerlab.interface.captureWithEdgesharkVNC",
+          "when": "viewItem == containerlabInterfaceUp",
+          "group": "captureContextMenu@2"
+        },
+        {
           "command": "containerlab.interface.setDelay",
           "when": "viewItem == containerlabInterfaceUp",
           "group": "impairmentContextMenu@0"
@@ -1059,11 +1073,6 @@
           "default": {},
           "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
         },
-        "containerlab.wsl.wiresharkPath": {
-          "type": "string",
-          "default": "/mnt/c/Program Files/Wireshark/wireshark.exe",
-          "markdownDescription": "The path to the wireshark executable on windows from inside WSL. The default path is `/mnt/c/Program Files/Wireshark/wireshark.exe`."
-        },
         "containerlab.remote.hostname": {
           "type": "string",
           "default": "",
@@ -1123,6 +1132,50 @@
           "type": "string",
           "default": "",
           "description": "Additional docker (or podman) arguments to append to the fcli command"
+        },
+        "containerlab.capture.preferredAction": {
+          "type": "string",
+          "default": "Wireshark VNC",
+          "enum": [
+            "Edgeshark",
+            "Wireshark VNC"
+          ],
+          "description": "The preferred capture method when using the capture interface quick action on the interface tree item"
+        },
+        "containerlab.capture.wireshark.dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
+          "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"
+        },
+        "containerlab.capture.wireshark.pullPolicy": {
+          "type": "string",
+          "default": "always",
+          "enum": [
+            "always",
+            "missing",
+            "never"
+          ],
+          "description": "The pull policy of the Wireshark docker image"
+        },
+        "containerlab.capture.wireshark.extraDockerArgs": {
+          "type": "string",
+          "default": "",
+          "description": "Extra arguments to pass to the run command for the wireshark VNC container. Useful for things like bind mounts etc."
+        },
+        "containerlab.capture.wireshark.theme": {
+          "type": "string",
+          "default": "Follow VS Code theme",
+          "enum": [
+            "Follow VS Code theme",
+            "Dark",
+            "Light"
+          ],
+          "description": "The theme, or colour scheme of the wireshark application."
+        },
+        "containerlab.capture.wireshark.stayOpenInBackground": {
+          "type": "boolean",
+          "default": "true",
+          "description": "Keep Wireshark VNC sessions alive, even when the capture tab is not active. Enabling this will consume more memory on both the client and remote containerlab host system."
         }
       }
     }

@@ -17,6 +17,7 @@ import {
   sshToNode,
   showLogs,
   captureInterfaceWithPacketflix,
+  captureEdgesharkVNC
 } from '../../commands/index';
 
 /**
@@ -504,6 +505,35 @@ export class TopoViewer {
                 );
                 if (containerInterfaceData) {
                   captureInterfaceWithPacketflix(containerInterfaceData);
+                }
+                result = `Endpoint "${endpointName}" executed successfully. Return payload is ${containerInterfaceData}`;
+                log.info(result);
+              }
+            } catch (innerError) {
+              result = `Error executing endpoint "${endpointName}".`;
+              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
+            }
+            break;
+          }
+          case 'clab-link-capture-edgeshark-vnc': {
+            try {
+              interface LinkEndpointInfo {
+                nodeName: string;
+                interfaceName: string;
+              }
+              const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
+              log.info(`clab-link-capture called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
+
+              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
+              if (updatedClabTreeDataToTopoviewer) {
+                const containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
+                  linkInfo.nodeName,
+                  linkInfo.interfaceName,
+                  updatedClabTreeDataToTopoviewer,
+                  this.adaptor.currentClabTopo?.name as string
+                );
+                if (containerInterfaceData) {
+                  captureEdgesharkVNC(containerInterfaceData);
                 }
                 result = `Endpoint "${endpointName}" executed successfully. Return payload is ${containerInterfaceData}`;
                 log.info(result);

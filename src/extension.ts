@@ -441,6 +441,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'containerlab.interface.captureWithEdgesharkVNC',
+      (clickedNode, allSelectedNodes) => {
+        cmd.captureEdgesharkVNC(clickedNode, allSelectedNodes);
+      })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.interface.setDelay', cmd.setLinkDelay)
   );
   context.subscriptions.push(
@@ -468,6 +476,10 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark)
+  );
+  // Kill Wireshark VNC
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.capture.killAllWiresharkVNC', cmd.killAllWiresharkVNCCtrs)
   );
 
   // Session hostname command
@@ -566,15 +578,15 @@ export async function activate(context: vscode.ExtensionContext) {
   const refreshInterval = config.get<number>('refreshInterval', 10000);
 
   const refreshTaskID = setInterval(
-    async ()=> {
-      ins.update().then( () => {
+    async () => {
+      ins.update().then(() => {
         // Only refresh running labs - local labs use file watchers
         runningLabsProvider.softRefresh();
       })
     }, refreshInterval
   )
 
-  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID)});
+  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID) });
 }
 
 export function deactivate() {

@@ -1,6 +1,5 @@
 // src/commands/save.ts
 import * as vscode from "vscode";
-import { SpinnerMsg } from "./command";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
 import * as path from "path";
@@ -20,14 +19,8 @@ export async function saveLab(node: ClabLabTreeNode) {
     return;
   }
 
-  const spinnerMessages: SpinnerMsg = {
-    progressMsg: `Saving lab configuration for ${node.label}...`,
-    successMsg: `Lab configuration for ${node.label} saved successfully!`,
-    failMsg: `Could not save lab configuration for ${node.label}`
-  };
-
   // Create a ClabCommand for "save" using the lab node.
-  const saveCmd = new ClabCommand("save", node, spinnerMessages);
+  const saveCmd = new ClabCommand("save", node);
   // ClabCommand automatically appends "-t <labPath>".
   saveCmd.run();
 }
@@ -50,12 +43,6 @@ export async function saveNode(node: ClabContainerTreeNode) {
   // Extract the short node name by removing the "clab-{labname}-" prefix
   const shortNodeName = node.name.replace(/^clab-[^-]+-/, '');
 
-  const spinnerMessages: SpinnerMsg = {
-    progressMsg: `Saving configuration for node ${shortNodeName}...`,
-    successMsg: `Configuration for node ${shortNodeName} saved successfully!`,
-    failMsg: `Could not save configuration for node ${shortNodeName}`
-  };
-
   const tempLabNode = new ClabLabTreeNode(
     path.basename(node.labPath.absolute),
     vscode.TreeItemCollapsibleState.None,
@@ -66,7 +53,7 @@ export async function saveNode(node: ClabContainerTreeNode) {
     "containerlabLabDeployed"
   );
 
-  const saveCmd = new ClabCommand("save", tempLabNode, spinnerMessages);
+  const saveCmd = new ClabCommand("save", tempLabNode);
   // Use --node-filter instead of -n and use the short name
   saveCmd.run(["--node-filter", shortNodeName]);
 }

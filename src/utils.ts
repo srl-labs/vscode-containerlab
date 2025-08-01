@@ -2,7 +2,8 @@ import * as vscode from "vscode";
 import * as path from 'path';
 import * as fs from "fs";
 import * as os from "os";
-import { execSync } from "child_process";
+import { exec, execSync } from "child_process";
+import * as net from 'net';
 
 export function stripAnsi(input: string): string {
   const esc = String.fromCharCode(27);
@@ -113,4 +114,51 @@ export function getUsername(): string {
     );
   }
   return username;
+}
+
+// eslint-disable-next-line no-undef
+export function execWithProgress(command: string, progressMessage: string): Thenable<string> {
+  return vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: progressMessage,
+      cancellable: false
+    },
+    (progress) => new Promise<string>((resolve, reject) => {
+      const child = exec(command, { encoding: 'utf-8' }, (err, stdout, stderr) => {
+        if (err) {
+          vscode.window.showErrorMessage(`Failed: ${stderr}`);
+          return reject(err);
+        }
+        resolve(stdout.trim());
+      });
+
+      child.stderr?.on('data', (data) => {
+        const line = data.toString().trim();
+        if (line) progress.report({ message: line });
+      });
+    })
+  );
+}
+
+export async function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1');
+    server.on('listening', () => {
+      const address = server.address();
+      server.close();
+      if (typeof address === 'object' && address?.port) {
+        resolve(address.port);
+      } else {
+        reject(new Error('Could not get free port'));
+      }
+    });
+    server.on('error', reject);
+  });
+}
+
+// Get the config, set the default to undefined as all defaults **SHOULD** be set in package.json
+export function getConfig(relCfgPath: string): any {
+  return vscode.workspace.getConfiguration("containerlab").get(relCfgPath, undefined)
 }

@@ -8,15 +8,14 @@ import * as vscode from "vscode";
 export class DockerCommand extends cmd.Command {
     private action: string;
 
-    constructor(action: string, spinnerMsg?: cmd.SpinnerMsg) {
+    constructor(action: string, spinnerMsg: cmd.SpinnerMsg) {
         const config = vscode.workspace.getConfiguration("containerlab");
         const runtime = config.get<string>("runtime", "docker");
 
-        const options: cmd.CmdOptions = {
+        const options: cmd.SpinnerOptions = {
             command: runtime,
-            useSpinner: true,
-            spinnerMsg: spinnerMsg,
-        };
+            spinnerMsg: spinnerMsg
+        }
         super(options);
 
         this.action = action;
@@ -25,7 +24,6 @@ export class DockerCommand extends cmd.Command {
     public run(containerID: string) {
         // Build the command
         const cmd = [this.action, containerID];
-
         this.execute(cmd);
     }
 }

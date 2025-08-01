@@ -90,11 +90,7 @@ Customize your experience under `containerlab.*` in VS Code Settings:
   Map a node’s `kind` to its preferred exec command (e.g. `{ "nokia_srlinux": "sr_cli" }`).
 
 - **`containerlab.node.sshUserMapping`** (object)
-  Map a node’s `kind` to its preferred ssh user (e.g. `{ "nokia_srlinux": "clab" }`).
-
-- **`containerlab.wsl.wiresharkPath`** (string)
-  Path to Wireshark in Windows from inside WSL.
-  _Default: `/mnt/c/Program Files/Wireshark/wireshark.exe`_
+  Map a node's `kind` to its preferred ssh user (e.g. `{ "nokia_srlinux": "clab" }`).
 
 - **`containerlab.remote.hostname`** (string)
   Hostname or IP used for remote connections (affects packet capture).

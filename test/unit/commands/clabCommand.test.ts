@@ -61,7 +61,7 @@ describe('ClabCommand', () => {
       vscodeStub.TreeItemCollapsibleState.None,
       { absolute: '/tmp/lab.yml', relative: 'lab.yml' }
     );
-    const clab = new ClabCommand('deploy', node, undefined, true, 'term');
+    const clab = new ClabCommand('deploy', node);
     await clab.run(['--foo']);
 
     expect(cmdStub.instances).to.have.lengthOf(1);
