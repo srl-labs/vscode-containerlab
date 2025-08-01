@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import { outputChannel } from "../extension";
 import * as utils from "../utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
-import { EDGESHARK_INSTALL_CMD } from "./edgeshark";
+import { getEdgesharkInstallCmd } from "./edgeshark";
 
 let sessionHostname: string = "";
 
@@ -53,7 +53,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   if(!edgesharkOk) {
     const selectedOpt = await vscode.window.showInformationMessage("Capture: Edgeshark is not running. Would you like to start it?", { modal: false }, "Yes")
     if(selectedOpt === "Yes") {
-      execSync(EDGESHARK_INSTALL_CMD)
+      execSync(getEdgesharkInstallCmd())
     }
     else {
       return
