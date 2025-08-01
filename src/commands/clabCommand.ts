@@ -112,6 +112,8 @@ export class ClabCommand extends cmd.Command {
             })
         ).then(() => {
             vscode.window.showInformationMessage(`✔ ${title} success for ${path.basename(this.labPath!)}`);
+            // trigger a refresh after execution
+            vscode.commands.executeCommand('containerlab.refresh');
         })
     }
 }

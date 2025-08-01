@@ -443,7 +443,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'containerlab.interface.captureWithEdgesharkVNC',
-          (clickedNode, allSelectedNodes) => {
+      (clickedNode, allSelectedNodes) => {
         cmd.captureEdgesharkVNC(clickedNode, allSelectedNodes);
       })
   );
@@ -578,8 +578,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const refreshInterval = config.get<number>('refreshInterval', 10000);
 
   const refreshTaskID = setInterval(
-    async ()=> {
-      ins.update().then( () => {
+    async () => {
+      ins.update().then(() => {
         // Only refresh running labs - local labs use file watchers
         runningLabsProvider.softRefresh();
       })
