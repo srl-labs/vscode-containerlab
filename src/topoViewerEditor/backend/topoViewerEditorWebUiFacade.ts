@@ -11,6 +11,7 @@ import { log } from '../../topoViewer/backend/logger';
 import { getHTMLTemplate } from '../webview-ui/template/vscodeHtmlTemplate';
 import { TopoViewerAdaptorClab } from '../../topoViewer/backend/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../treeView/common";
+import { ClabTopology, ClabNode } from '../../topoViewer/backend/types/topoViewerType';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.
@@ -43,6 +44,36 @@ export class TopoViewerEditor {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Applies Containerlab inheritance rules to compute the effective
+   * configuration for a node. The precedence order is:
+   * node -> group -> kind -> defaults.
+   */
+  private resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
+    const defaults = parsed.topology?.defaults ?? {};
+    const groups = parsed.topology?.groups ?? {};
+    const kinds = parsed.topology?.kinds ?? {};
+
+    const groupCfg = node.group && groups[node.group] ? groups[node.group] : {};
+    const kindName = node.kind ?? groupCfg.kind ?? defaults.kind;
+    const kindCfg = kindName && kinds[kindName] ? kinds[kindName] : {};
+
+    const merged: ClabNode = {
+      ...defaults,
+      ...kindCfg,
+      ...groupCfg,
+      ...node,
+    };
+    merged.kind = kindName;
+    merged.labels = {
+      ...(defaults.labels ?? {}),
+      ...(kindCfg.labels ?? {}),
+      ...(groupCfg.labels ?? {}),
+      ...(node.labels ?? {}),
+    };
+    return merged;
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
@@ -602,6 +633,9 @@ topology:
               }
               const yamlNodes: YAML.YAMLMap = nodesMaybe;
 
+              // Parse topology for inheritance calculations
+              const topoObj = doc.toJS() as ClabTopology;
+
               // Iterate through payload nodes to add/update nodes in YAML.
               payloadParsed
                 .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
@@ -621,23 +655,40 @@ topology:
 
                   // Update the node's core properties while preserving existing values.
                   const existingKind = (nodeMap.get('kind', true) as any)?.value;
-                  nodeMap.set(
-                    'kind',
-                    doc.createNode(extraData.kind ?? existingKind ?? element.data.topoViewerRole ?? 'default-kind')
-                  );
-
                   const existingImage = (nodeMap.get('image', true) as any)?.value;
-                  nodeMap.set(
-                    'image',
-                    doc.createNode(extraData.image ?? existingImage ?? 'default-image')
-                  );
+                  const existingType = (nodeMap.get('type', true) as any)?.value;
 
-                  if (extraData.type || nodeMap.has('type')) {
-                    const existingType = (nodeMap.get('type', true) as any)?.value;
-                    const typeVal = extraData.type ?? existingType;
-                    if (typeVal !== undefined) {
-                      nodeMap.set('type', doc.createNode(typeVal));
-                    }
+                  // const groupName = extraData.group || (element.parent ? element.parent.split(':')[0] : undefined) || (nodeMap.get('group', true) as any)?.value;
+                  const groupName = extraData.group ?? (nodeMap.get('group', true) as any)?.value;
+
+                  const desiredKind = extraData.kind ?? existingKind ?? element.data.topoViewerRole;
+                  const desiredImage = extraData.image ?? existingImage;
+                  const desiredType = extraData.type ?? existingType;
+
+                  const inherit = this.resolveNodeConfig(topoObj, { group: groupName });
+
+                  if (groupName) {
+                    nodeMap.set('group', doc.createNode(groupName));
+                  } else {
+                    nodeMap.delete('group');
+                  }
+
+                  if (desiredKind && desiredKind !== inherit.kind) {
+                    nodeMap.set('kind', doc.createNode(desiredKind));
+                  } else {
+                    nodeMap.delete('kind');
+                  }
+
+                  if (desiredImage && desiredImage !== inherit.image) {
+                    nodeMap.set('image', doc.createNode(desiredImage));
+                  } else {
+                    nodeMap.delete('image');
+                  }
+
+                  if (desiredType !== undefined && desiredType !== inherit.type) {
+                    nodeMap.set('type', doc.createNode(desiredType));
+                  } else {
+                    nodeMap.delete('type');
                   }
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
@@ -864,6 +915,8 @@ topology:
               }
               const yamlNodes: YAML.YAMLMap = nodesMaybe;
 
+              const topoObj = doc.toJS() as ClabTopology;
+
               // Iterate through payload nodes to add/update nodes in YAML.
               payloadParsed
                 .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
@@ -883,23 +936,39 @@ topology:
 
                   // Update the node's core properties while preserving existing values.
                   const existingKind = (nodeMap.get('kind', true) as any)?.value;
-                  nodeMap.set(
-                    'kind',
-                    doc.createNode(extraData.kind ?? existingKind ?? element.data.topoViewerRole ?? 'default-kind')
-                  );
-
                   const existingImage = (nodeMap.get('image', true) as any)?.value;
-                  nodeMap.set(
-                    'image',
-                    doc.createNode(extraData.image ?? existingImage ?? 'default-image')
-                  );
+                  const existingType = (nodeMap.get('type', true) as any)?.value;
 
-                  if (extraData.type || nodeMap.has('type')) {
-                    const existingType = (nodeMap.get('type', true) as any)?.value;
-                    const typeVal = extraData.type ?? existingType;
-                    if (typeVal !== undefined) {
-                      nodeMap.set('type', doc.createNode(typeVal));
-                    }
+                  // const groupName = extraData.group || (element.parent ? element.parent.split(':')[0] : undefined) || (nodeMap.get('group', true) as any)?.value;
+                  const groupName = extraData.group ?? (nodeMap.get('group', true) as any)?.value;
+                  const desiredKind = extraData.kind ?? existingKind ?? element.data.topoViewerRole;
+                  const desiredImage = extraData.image ?? existingImage;
+                  const desiredType = extraData.type ?? existingType;
+
+                  const inherit = this.resolveNodeConfig(topoObj, { group: groupName });
+
+                  if (groupName) {
+                    nodeMap.set('group', doc.createNode(groupName));
+                  } else {
+                    nodeMap.delete('group');
+                  }
+
+                  if (desiredKind && desiredKind !== inherit.kind) {
+                    nodeMap.set('kind', doc.createNode(desiredKind));
+                  } else {
+                    nodeMap.delete('kind');
+                  }
+
+                  if (desiredImage && desiredImage !== inherit.image) {
+                    nodeMap.set('image', doc.createNode(desiredImage));
+                  } else {
+                    nodeMap.delete('image');
+                  }
+
+                  if (desiredType !== undefined && desiredType !== inherit.type) {
+                    nodeMap.set('type', doc.createNode(desiredType));
+                  } else {
+                    nodeMap.delete('type');
                   }
 
                   // nodeYaml.set('startup-config', doc.createNode('configs/srl.cfg'));
