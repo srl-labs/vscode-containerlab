@@ -1,6 +1,5 @@
 import * as vscode from "vscode"
 import { execSync } from "child_process";
-import { runWithSudo } from "../helpers/containerlabUtils";
 import { outputChannel } from "../extension";
 import * as utils from "../utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
@@ -10,9 +9,6 @@ let sessionHostname: string = "";
 
 /**
  * Begin packet capture on an interface.
- *   - If remoteName = ssh-remote, we always do edgeshark/packetflix.
- *   - If on OrbStack (Mac), we also do edgeshark because netns approach doesn't work well on macOS.
- *   - Otherwise, we spawn tcpdump + Wireshark locally (or in WSL).
  */
 export async function captureInterface(node: ClabInterfaceTreeNode) {
   if (!node) {
@@ -31,64 +27,10 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
       return captureEdgesharkVNC(node);
   }
 
-  // SSH-remote => use edgeshark/packetflix
-  if (vscode.env.remoteName === "ssh-remote") {
-    outputChannel.appendLine("[DEBUG] In SSH-Remote environment → captureInterfaceWithPacketflix()");
-    return captureInterfaceWithPacketflix(node);
-  }
-
-  // On OrbStack macOS, netns is typically not workable => edgeshark
-  if (utils.isOrbstack()) {
-    outputChannel.appendLine("[DEBUG] Detected OrbStack environment → captureInterfaceWithPacketflix()");
-    return captureInterfaceWithPacketflix(node);
-  }
-
-  // Otherwise, we do local capture with tcpdump|Wireshark
-  const captureCmd = `ip netns exec ${node.parentName} tcpdump -U -nni ${node.name} -w -`;
-  const wifiCmd = await resolveWiresharkCommand();
-  const finalCmd = `${captureCmd} | ${wifiCmd} -k -i -`;
-
-  outputChannel.appendLine(`[DEBUG] Attempting local capture with command:\n    ${finalCmd}`);
-
-  vscode.window.showInformationMessage(`Starting capture on ${node.parentName}/${node.name}... check "Containerlab" output for logs.`);
-
-  runCaptureWithPipe(finalCmd, node.parentName, node.name);
+  // Default to VNC capture
+  return captureEdgesharkVNC(node);
 }
 
-/**
- * Spawn Wireshark or Wireshark.exe in WSL.
- */
-async function resolveWiresharkCommand(): Promise<string> {
-  if (vscode.env.remoteName === "wsl") {
-    const cfgWiresharkPath = vscode.workspace
-      .getConfiguration("containerlab")
-      .get<string>("wsl.wiresharkPath", "/mnt/c/Program Files/Wireshark/wireshark.exe");
-
-    return `"${cfgWiresharkPath}"`;
-  }
-  return "wireshark";
-}
-/**
- * Actually run the pipeline with sudo if needed. No extra 'bash -c' here;
- * let runWithSudo handle the quoting.
- */
-function runCaptureWithPipe(pipeCmd: string, parentName: string, ifName: string) {
-  outputChannel.appendLine(`[DEBUG] runCaptureWithPipe() => runWithSudo(command=${pipeCmd})`);
-
-  runWithSudo(
-    pipeCmd,
-    `TCPDump capture on ${parentName}/${ifName}`,
-    outputChannel,
-    "generic"
-  )
-    .then(() => {
-      outputChannel.appendLine("[DEBUG] Capture process completed or exited");
-    })
-    .catch(err => {
-      vscode.window.showErrorMessage(`Failed to start tcpdump capture:\n${err.message || err}`);
-      outputChannel.appendLine(`[ERROR] runCaptureWithPipe() => ${err.message || err}`);
-    });
-}
 
 // Build the packetflix:ws: URI
 async function genPacketflixURI(node: ClabInterfaceTreeNode,

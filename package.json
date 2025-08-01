@@ -1073,11 +1073,6 @@
           "default": {},
           "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
         },
-        "containerlab.wsl.wiresharkPath": {
-          "type": "string",
-          "default": "/mnt/c/Program Files/Wireshark/wireshark.exe",
-          "markdownDescription": "The path to the wireshark executable on windows from inside WSL. The default path is `/mnt/c/Program Files/Wireshark/wireshark.exe`."
-        },
         "containerlab.remote.hostname": {
           "type": "string",
           "default": "",
@@ -1140,7 +1135,7 @@
         },
         "containerlab.capture.preferredAction": {
           "type": "string",
-          "default": "",
+          "default": "Wireshark VNC",
           "enum": [
             "Edgeshark",
             "Wireshark VNC"
