@@ -457,9 +457,21 @@ export class ManagerViewportPanels {
         // Reset the stored type when kind changes
         this.panelNodeEditorType = "";
         this.panelNodeEditorSetupTypeField(typeOptions);
+        const imageMap = (window as any).imageMapping || {};
+        const imageInput = document.getElementById('panel-node-editor-image') as HTMLInputElement;
+        if (imageInput) {
+          const mappedImage = imageMap[option];
+          if (mappedImage !== undefined) {
+            imageInput.value = mappedImage;
+            imageInput.dispatchEvent(new Event('input'));
+          } else if (mappedImage === undefined) {
+            imageInput.value = '';
+            imageInput.dispatchEvent(new Event('input'));
+          }
+        }
       });
 
-    dropdownContent.appendChild(optionElement);
+      dropdownContent.appendChild(optionElement);
     });
   }
 

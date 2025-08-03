@@ -1120,6 +1120,22 @@
           "default": {},
           "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
         },
+        "containerlab.node.imageMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Default docker image (with tag) for each node kind when creating nodes in the TopoEditor. Example: `{ \"nokia_srlinux\": \"ghcr.io/nokia/srlinux:latest\" }`"
+        },
+        "containerlab.node.interfacePatternMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "Interface name pattern used when creating links in the TopoEditor. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
+        },
         "containerlab.remote.hostname": {
           "type": "string",
           "default": "",

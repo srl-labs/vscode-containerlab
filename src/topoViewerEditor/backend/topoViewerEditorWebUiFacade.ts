@@ -393,6 +393,9 @@ topology:
         .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
         .toString();
 
+      const imageMapping = vscode.workspace.getConfiguration('containerlab.node').get<Record<string, string>>('imageMapping', {});
+      const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.node').get<Record<string, string>>('interfacePatternMapping', {});
+
       panel.webview.html = this.getWebviewContent(
         css,
         js,
@@ -404,7 +407,9 @@ topology:
         jsOutDir,
         this.adaptor.allowedhostname as string,
         vscode.workspace.getConfiguration('containerlab.remote').get<boolean>('topoviewerUseSocket', false),
-        8080
+        8080,
+        imageMapping,
+        ifacePatternMapping
       );
 
     } else {
@@ -1242,8 +1247,9 @@ topology:
     jsOutDir: string,
     allowedhostname: string,
     useSocket: boolean,
-    socketAssignedPort: number
-  ): string {
+    socketAssignedPort: number,
+    imageMapping: Record<string, string>,
+    ifacePatternMapping: Record<string, string>): string {
     return getHTMLTemplate(
       cssUri,
       jsUri,
@@ -1255,7 +1261,9 @@ topology:
       jsOutDir,
       allowedhostname,
       useSocket,
-      socketAssignedPort
+      socketAssignedPort,
+      imageMapping,
+      ifacePatternMapping
     );
   }
 
