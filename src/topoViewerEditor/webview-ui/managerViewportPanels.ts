@@ -23,6 +23,7 @@ export class ManagerViewportPanels {
   private panelNodeEditorUseDropdownForType: boolean = false;
   private panelNodeEditorTopoViewerRole: string = "pe";
   private nodeSchemaData: any = null;
+  private panelNodeEditorNode: cytoscape.NodeSingular | null = null;
   /**
    * Creates an instance of ManagerViewportPanels.
    * @param saveManager - The ManagerSaveTopo instance.
@@ -101,6 +102,7 @@ export class ManagerViewportPanels {
    * @returns A promise that resolves when the panel is configured.
    */
   public async panelNodeEditor(node: cytoscape.NodeSingular): Promise<void> {
+    this.panelNodeEditorNode = node;
     // Remove all overlay panels.
     const panelOverlays = document.getElementsByClassName("panel-overlay");
     Array.from(panelOverlays).forEach((panel) => {
@@ -401,6 +403,48 @@ export class ManagerViewportPanels {
     }
   }
 
+  /**
+   * Updates connected edge endpoints when a node's kind changes.
+   * Only endpoints matching the old kind's pattern are updated.
+   *
+   * @param node - The node whose connected edges should be updated.
+   * @param oldKind - The previous kind of the node.
+   * @param newKind - The new kind of the node.
+   */
+  public updateNodeEndpointsForKindChange(
+    node: cytoscape.NodeSingular,
+    oldKind: string,
+    newKind: string
+  ): void {
+    const ifaceMap = (window as any).ifacePatternMapping || {};
+    const oldPattern = ifaceMap[oldKind] || 'eth{n}';
+    const newPattern = ifaceMap[newKind] || 'eth{n}';
+    const nodeId = node.id();
+
+    const placeholder = '__N__';
+    const escaped = oldPattern
+      .replace('{n}', placeholder)
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexStr = '^' + escaped.replace(placeholder, '(\\d+)') + '$';
+    const patternRegex = new RegExp(regexStr);
+
+    const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
+    edges.forEach(edge => {
+      ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
+        const endpoint = edge.data(key);
+        const isNodeEndpoint =
+          (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
+          (edge.data('target') === nodeId && key === 'targetEndpoint');
+        if (!endpoint || !isNodeEndpoint) return;
+        const match = endpoint.match(patternRegex);
+        if (match) {
+          const newEndpoint = newPattern.replace('{n}', match[1]);
+          edge.data(key, newEndpoint);
+        }
+      });
+    });
+  }
+
   // --- Private helper methods ---
 
   /**
@@ -449,6 +493,7 @@ export class ManagerViewportPanels {
 
       optionElement.addEventListener("click", (event) => {
         event.preventDefault();
+        const previousKind = this.panelNodeEditorKind;
         this.panelNodeEditorKind = option;
         console.log(`${this.panelNodeEditorKind} selected`);
         dropdownTrigger.textContent = this.panelNodeEditorKind;
@@ -457,6 +502,9 @@ export class ManagerViewportPanels {
         // Reset the stored type when kind changes
         this.panelNodeEditorType = "";
         this.panelNodeEditorSetupTypeField(typeOptions);
+        if (this.panelNodeEditorNode) {
+          this.updateNodeEndpointsForKindChange(this.panelNodeEditorNode, previousKind, option);
+        }
         const imageMap = (window as any).imageMapping || {};
         const imageInput = document.getElementById('panel-node-editor-image') as HTMLInputElement;
         if (imageInput) {
