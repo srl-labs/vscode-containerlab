@@ -26,6 +26,10 @@ export class ManagerAddContainerlabNode {
       extraData: { kind: 'nokia_srlinux', longname: '', image: '', type: '', mgmtIpv4Address: '' }
     };
 
+    const imageMap = (window as any).imageMapping || {};
+    const kind = newNodeData.extraData?.kind || 'nokia_srlinux';
+    newNodeData.extraData!.image = imageMap[kind] || '';
+
     const extent = cy.extent();
     let position = event.position;
 
