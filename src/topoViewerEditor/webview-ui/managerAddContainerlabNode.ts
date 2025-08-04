@@ -27,12 +27,12 @@ export class ManagerAddContainerlabNode {
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
-      extraData: { 
-        kind: defaultKind, 
-        longname: '', 
-        image: '', 
+      extraData: {
+        kind: defaultKind,
+        longname: '',
+        image: '',
         ...(shouldIncludeType && { type: (window as any).defaultType || 'ixrd1' }),
-        mgmtIpv4Address: '' 
+        mgmtIpv4Address: ''
       }
     };
 
