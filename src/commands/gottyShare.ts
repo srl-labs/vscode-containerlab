@@ -56,7 +56,7 @@ export async function gottyAttach(node: ClabLabTreeNode) {
     if (link) {
       gottySessions.set(node.name, link);
       await vscode.env.clipboard.writeText(link);
-      const choice = await vscode.window.showInformationMessage('GoTTY link copied to clipboard.', 'Open Link');
+      const choice = await vscode.window.showInformationMessage('GoTTY link copied to clipboard. Default credentials: admin/admin', 'Open Link');
       if (choice === 'Open Link') {
         vscode.env.openExternal(vscode.Uri.parse(link));
       }
@@ -101,7 +101,7 @@ export async function gottyReattach(node: ClabLabTreeNode) {
     if (link) {
       gottySessions.set(node.name, link);
       await vscode.env.clipboard.writeText(link);
-      const choice = await vscode.window.showInformationMessage('GoTTY link copied to clipboard.', 'Open Link');
+      const choice = await vscode.window.showInformationMessage('GoTTY link copied to clipboard. Default credentials: admin/admin', 'Open Link');
       if (choice === 'Open Link') {
         vscode.env.openExternal(vscode.Uri.parse(link));
       }

@@ -384,17 +384,17 @@
       },
       {
         "command": "containerlab.lab.gotty.attach",
-        "title": "Web Terminal (attach)",
+        "title": "Share Lab (attach)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.gotty.detach",
-        "title": "Web Terminal (detach)",
+        "title": "Share Lab (detach)",
         "category": "Containerlab"
       },
       {
         "command": "containerlab.lab.gotty.reattach",
-        "title": "Web Terminal (reattach)",
+        "title": "Share Lab (reattach)",
         "category": "Containerlab"
       },
       {
@@ -490,7 +490,7 @@
       },
       {
         "id": "containerlab.submenu.lab.gotty",
-        "label": "Web Terminal (gotty)"
+        "label": "Share Lab (gotty)"
       },
       {
         "id": "containerlab.submenu.lab.extras",
