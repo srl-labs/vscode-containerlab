@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as utils from "../utils";
+import * as utils from "../helpers/utils";
 import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
 
 export function copyLabPath(node: ClabLabTreeNode) {

@@ -20,7 +20,7 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { stripAnsi } from '../../../src/utils';
+import { stripAnsi } from '../../../src/helpers/utils';
 
 describe('stripAnsi', () => {
   after(() => {

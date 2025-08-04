@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { exec } from "child_process";
-import * as utils from "../utils";
+import * as utils from "../helpers/utils";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";

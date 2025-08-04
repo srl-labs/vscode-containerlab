@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { execSync } from "child_process";
 import { outputChannel } from "../extension";
-import * as utils from "../utils";
+import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
 import { getEdgesharkInstallCmd } from "./edgeshark";
 

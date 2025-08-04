@@ -1,15 +1,10 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
-import * as utils from './utils';
+import * as utils from './helpers/utils';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
 import * as path from 'path';
 
-import {
-  ensureClabInstalled,
-  checkAndUpdateClabIfNeeded,
-  runWithSudo
-} from './helpers/containerlabUtils';
 import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
 
 
@@ -38,7 +33,7 @@ export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-
 
 export async function refreshSshxSessions() {
   try {
-    const out = await runWithSudo(
+    const out = await utils.runWithSudo(
       'containerlab tools sshx list -f json',
       'List SSHX sessions',
       outputChannel,
@@ -76,7 +71,7 @@ export async function refreshSshxSessions() {
 
 export async function refreshGottySessions() {
   try {
-    const out = await runWithSudo(
+    const out = await utils.runWithSudo(
       'containerlab tools gotty list -f json',
       'List GoTTY sessions',
       outputChannel,
@@ -143,14 +138,14 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel.appendLine('[DEBUG] Containerlab extension activated.');
 
   // 1) Ensure containerlab is installed
-  const clabInstalled = await ensureClabInstalled(outputChannel);
+  const clabInstalled = await utils.ensureClabInstalled(outputChannel);
   if (!clabInstalled) {
     // If user declined installation, bail out
     return;
   }
 
   // 2) If installed, check for updates
-  checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
+  utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
     outputChannel.appendLine(`[ERROR] Update check error: ${err.message}`);
   });
 

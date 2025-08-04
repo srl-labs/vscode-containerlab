@@ -5,7 +5,7 @@ import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
 import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
-import { getSelectedLabNode } from "./utils";
+import { getSelectedLabNode } from "../helpers/utils";
 
 
 /**

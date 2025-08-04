@@ -2,7 +2,7 @@ import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
 import * as vscode from "vscode";
 import { deployPopularLab } from "./deployPopular";
-import { getSelectedLabNode } from "./utils";
+import { getSelectedLabNode } from "../helpers/utils";
 
 export async function deploy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);

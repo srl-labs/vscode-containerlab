@@ -1,6 +1,6 @@
 // ./src/commands/impairments.ts
 import * as vscode from "vscode";
-import * as utils from "../utils";
+import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
 import { execCommandInOutput } from "./command";
 

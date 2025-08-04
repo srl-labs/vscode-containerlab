@@ -21,7 +21,7 @@ const originalResolve = (Module as any)._resolveFilename;
   }
   return originalResolve.call(this, request, parent, isMain, options);
 };
-import { normalizeLabPath } from '../../../src/utils';
+import { normalizeLabPath } from '../../../src/helpers/utils';
 // Each test explains which aspect of path normalization is being verified. The
 // actual file system is used where necessary so that calls to fs.existsSync and
 // fs.realpathSync behave the same way they would in the extension.
