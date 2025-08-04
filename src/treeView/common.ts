@@ -34,6 +34,8 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     public readonly favorite: boolean;
     public sshxLink?: string;
     public sshxNode?: ClabSshxLinkTreeNode;
+    public gottyLink?: string;
+    public gottyNode?: ClabGottyLinkTreeNode;
 
     constructor(
         public readonly label: string,
@@ -45,6 +47,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         contextValue?: string,
         favorite: boolean = false,
         sshxLink?: string,
+        gottyLink?: string,
     ) {
         super(label, collapsibleState);
         this.labPath = labPath;
@@ -54,6 +57,7 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         this.contextValue = contextValue;
         this.favorite = favorite;
         this.sshxLink = sshxLink;
+        this.gottyLink = gottyLink;
         this.iconPath = favorite
             ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
             : vscode.ThemeIcon.File;
@@ -197,6 +201,24 @@ export class ClabSshxLinkTreeNode extends vscode.TreeItem {
         this.command = {
             command: 'containerlab.lab.sshx.copyLink',
             title: 'Copy SSHX link',
+            arguments: [link]
+        };
+    }
+}
+
+export class ClabGottyLinkTreeNode extends vscode.TreeItem {
+    public readonly labName: string;
+    public readonly link: string;
+    constructor(labName: string, link: string) {
+        super('Web Terminal', vscode.TreeItemCollapsibleState.None);
+        this.labName = labName;
+        this.link = link;
+        this.contextValue = 'containerlabGottyLink';
+        this.tooltip = link;
+        this.iconPath = new vscode.ThemeIcon('browser');
+        this.command = {
+            command: 'containerlab.lab.gotty.copyLink',
+            title: 'Copy GoTTY link',
             arguments: [link]
         };
     }

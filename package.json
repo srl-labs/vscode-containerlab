@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.100.0"
@@ -383,6 +383,25 @@
         "title": "Copy SSHX link"
       },
       {
+        "command": "containerlab.lab.gotty.attach",
+        "title": "Share Lab (attach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.gotty.detach",
+        "title": "Share Lab (detach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.gotty.reattach",
+        "title": "Share Lab (reattach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.gotty.copyLink",
+        "title": "Copy GoTTY link"
+      },
+      {
         "command": "containerlab.lab.fcli.bgpPeers",
         "title": "bgp-peers",
         "category": "Containerlab"
@@ -468,6 +487,10 @@
       {
         "id": "containerlab.submenu.lab.share",
         "label": "Share Lab (sshx)"
+      },
+      {
+        "id": "containerlab.submenu.lab.gotty",
+        "label": "Share Lab (gotty)"
       },
       {
         "id": "containerlab.submenu.lab.extras",
@@ -743,6 +766,11 @@
           "group": "connect@1"
         },
         {
+          "submenu": "containerlab.submenu.lab.gotty",
+          "when": "viewItem =~ /containerlabLabDeployed/",
+          "group": "connect@2"
+        },
+        {
           "submenu": "containerlab.submenu.lab.extras",
           "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "pExtras@0"
@@ -871,6 +899,11 @@
           "command": "containerlab.lab.sshx.copyLink",
           "when": "viewItem == containerlabSSHXLink",
           "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.gotty.copyLink",
+          "when": "viewItem == containerlabGottyLink",
+          "group": "navigation@0"
         }
       ],
       "commandPalette": [
@@ -975,6 +1008,20 @@
         {
           "command": "containerlab.lab.sshx.reattach",
           "group": "share@3"
+        }
+      ],
+      "containerlab.submenu.lab.gotty": [
+        {
+          "command": "containerlab.lab.gotty.attach",
+          "group": "gotty@1"
+        },
+        {
+          "command": "containerlab.lab.gotty.detach",
+          "group": "gotty@2"
+        },
+        {
+          "command": "containerlab.lab.gotty.reattach",
+          "group": "gotty@3"
         }
       ],
       "containerlab.submenu.lab.extras": [
@@ -1197,6 +1244,41 @@
           "type": "string",
           "default": "HTTP_PROXY=, http_proxy=",
           "description": "Comma-separated environment variables to inject into edgeshark containers (e.g., 'HTTP_PROXY=, http_proxy=, NO_PROXY=localhost'). Each variable will be added to the environment section of both gostwire and packetflix services."
+        },
+        "containerlab.gotty.port": {
+          "type": "number",
+          "default": 8080,
+          "description": "Port for GoTTY web terminal."
+        },
+        "containerlab.editor.defaultKind": {
+          "type": "string",
+          "default": "nokia_srlinux",
+          "markdownDescription": "The default kind of the node when adding a new node in the TopoEditor."
+        },
+        "containerlab.editor.defaultType": {
+          "type": "string",
+          "default": "ixrd1",
+          "markdownDescription": "The default type of the node when adding a new node in the TopoEditor."
+        },
+        "containerlab.editor.imageMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {
+            "nokia_srlinux": "ghcr.io/nokia/srlinux:latest"
+          },
+          "markdownDescription": "Default docker image (with tag) for each node kind when creating nodes in the TopoEditor. Example: `{ \"nokia_srlinux\": \"ghcr.io/nokia/srlinux:latest\" }`"
+        },
+        "containerlab.editor.interfacePatternMapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {
+            "nokia_srlinux": "e1-{n}"
+          },
+          "markdownDescription": "Interface name pattern used when creating links in the TopoEditor. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
         }
       }
     }
@@ -1215,7 +1297,7 @@
     "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
-    "@eslint/js": "^9.31.0",
+    "@eslint/js": "^9.32.0",
     "@types/chai": "^5.2.2",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
@@ -1230,7 +1312,7 @@
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
     "esbuild": "^0.25.8",
-    "eslint": "^9.31.0",
+    "eslint": "^9.32.0",
     "mocha": "^11.7.0",
     "mochawesome": "^7.1.3",
     "sinon": "^21.0.0",
@@ -1250,7 +1332,7 @@
     "@types/sinon-chai": "^4.0.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "cytoscape": "^3.32.1",
+    "cytoscape": "^3.33.0",
     "cytoscape-cola": "^2.5.1",
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",

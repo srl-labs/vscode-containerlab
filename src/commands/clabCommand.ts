@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as cmd from './command';
-import * as utils from '../utils';
+import * as utils from '../helpers/utils';
 import { ClabLabTreeNode } from "../treeView/common";
 import { DefaultOptions } from "./command";
 import { exec } from "child_process";
@@ -90,7 +90,7 @@ export class ClabCommand extends cmd.Command {
             {
                 location: vscode.ProgressLocation.Notification,
                 title: title,
-                cancellable: false
+                cancellable: true
             },
             (progress) => new Promise<string>((resolve, reject) => {
                 const child = exec(cmd.join(" "), { encoding: 'utf-8' }, (err, stdout, stderr) => {

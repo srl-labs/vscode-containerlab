@@ -5,7 +5,7 @@ import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
 import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
-import { getSelectedLabNode } from "./utils";
+import { getSelectedLabNode } from "../helpers/utils";
 
 
 /**
@@ -85,8 +85,10 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
 
   let labPath: string;
 
-  if (!node) {
-    // If still no node, try to get from active editor
+  if (node && node.labPath && node.labPath.absolute) {
+    labPath = node.labPath.absolute;
+  } else {
+    // Try to get from active editor
     const editor = vscode.window.activeTextEditor;
     if (!editor || !editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
       vscode.window.showErrorMessage(
@@ -95,8 +97,6 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
       return;
     }
     labPath = editor.document.uri.fsPath;
-  } else {
-    labPath = node.labPath.absolute;
   }
 
   if (!context) {

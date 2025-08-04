@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
-import { getSelectedLabNode } from "./utils";
+import { getSelectedLabNode } from "../helpers/utils";
 
 export async function destroy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);

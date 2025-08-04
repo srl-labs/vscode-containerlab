@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import * as utils from "../utils"
+import * as utils from "../helpers/utils"
 import * as c from "./common";
 import * as ins from "./inspector";
 import { localTreeView, favoriteLabs, extensionContext } from "../extension";

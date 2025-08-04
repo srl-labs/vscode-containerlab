@@ -393,8 +393,15 @@ topology:
         .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
         .toString();
 
+<<<<<<< HEAD
       const imageMapping = vscode.workspace.getConfiguration('containerlab.node').get<Record<string, string>>('imageMapping', {});
       const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.node').get<Record<string, string>>('interfacePatternMapping', {});
+=======
+      const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
+      const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
+      const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
+      const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
+>>>>>>> bd082d55e98fec2fae25f7b86032e68088f38f73
 
       panel.webview.html = this.getWebviewContent(
         css,
@@ -409,7 +416,13 @@ topology:
         vscode.workspace.getConfiguration('containerlab.remote').get<boolean>('topoviewerUseSocket', false),
         8080,
         imageMapping,
+<<<<<<< HEAD
         ifacePatternMapping
+=======
+        ifacePatternMapping,
+        defaultKind,
+        defaultType
+>>>>>>> bd082d55e98fec2fae25f7b86032e68088f38f73
       );
 
     } else {
@@ -690,7 +703,8 @@ topology:
                     nodeMap.delete('image');
                   }
 
-                  if (desiredType !== undefined && desiredType !== inherit.type) {
+                  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+                  if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== inherit.type) {
                     nodeMap.set('type', doc.createNode(desiredType));
                   } else {
                     nodeMap.delete('type');
@@ -970,7 +984,8 @@ topology:
                     nodeMap.delete('image');
                   }
 
-                  if (desiredType !== undefined && desiredType !== inherit.type) {
+                  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+                  if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== inherit.type) {
                     nodeMap.set('type', doc.createNode(desiredType));
                   } else {
                     nodeMap.delete('type');
@@ -1249,7 +1264,13 @@ topology:
     useSocket: boolean,
     socketAssignedPort: number,
     imageMapping: Record<string, string>,
+<<<<<<< HEAD
     ifacePatternMapping: Record<string, string>): string {
+=======
+    ifacePatternMapping: Record<string, string>,
+    defaultKind: string,
+    defaultType: string): string {
+>>>>>>> bd082d55e98fec2fae25f7b86032e68088f38f73
     return getHTMLTemplate(
       cssUri,
       jsUri,
@@ -1263,7 +1284,13 @@ topology:
       useSocket,
       socketAssignedPort,
       imageMapping,
+<<<<<<< HEAD
       ifacePatternMapping
+=======
+      ifacePatternMapping,
+      defaultKind,
+      defaultType
+>>>>>>> bd082d55e98fec2fae25f7b86032e68088f38f73
     );
   }
 

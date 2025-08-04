@@ -15,7 +15,9 @@ export function getHTMLTemplate(
   useSocket: boolean,
   socketAssignedPort: number,
   imageMapping: Record<string, string>,
-  ifacePatternMapping: Record<string, string>
+  ifacePatternMapping: Record<string, string>,
+  defaultKind: string,
+  defaultType: string
 ): string {
 
   log.info(`allowedHostname in vscodeHtmlTemplate.ts: ${allowedHostname}`);
@@ -1994,6 +1996,8 @@ export function getHTMLTemplate(
     <!-- Inject mapping configuration as global variables -->
     <script> window.imageMapping = ${JSON.stringify(imageMapping)}; </script>
     <script> window.ifacePatternMapping = ${JSON.stringify(ifacePatternMapping)}; </script>
+    <script> window.defaultKind = "${defaultKind}"; </script>
+    <script> window.defaultType = "${defaultType}"; </script>
 
     <script src="${jsOutDir}/topoViewerEditorEngine.js?ver=1"></script>
 
