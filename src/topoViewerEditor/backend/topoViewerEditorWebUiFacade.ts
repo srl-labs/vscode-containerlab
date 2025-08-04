@@ -393,6 +393,11 @@ topology:
         .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
         .toString();
 
+      const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
+      const ifacePatternMapping = this.getInterfacePatternMapping();
+      const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
+      const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
+
       panel.webview.html = this.getWebviewContent(
         css,
         js,
@@ -404,7 +409,11 @@ topology:
         jsOutDir,
         this.adaptor.allowedhostname as string,
         vscode.workspace.getConfiguration('containerlab.remote').get<boolean>('topoviewerUseSocket', false),
-        8080
+        8080,
+        imageMapping,
+        ifacePatternMapping,
+        defaultKind,
+        defaultType
       );
 
     } else {
@@ -413,6 +422,22 @@ topology:
     }
 
     return true;
+  }
+
+  /**
+   * Combines interface pattern mappings from both global node settings and
+   * TopoEditor specific settings. Entries defined in the editor configuration
+   * override those from the general node configuration.
+  */
+  private getInterfacePatternMapping(): Record<string, string> {
+    const nodeMap = vscode.workspace
+      .getConfiguration('containerlab.node')
+      .get<Record<string, string>>('interfacePatternMapping', {});
+    const editorMap = vscode.workspace
+      .getConfiguration('containerlab.editor')
+      .get<Record<string, string>>('interfacePatternMapping', {});
+
+    return { ...nodeMap, ...editorMap };
   }
 
   /**
@@ -685,7 +710,8 @@ topology:
                     nodeMap.delete('image');
                   }
 
-                  if (desiredType !== undefined && desiredType !== inherit.type) {
+                  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+                  if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== inherit.type) {
                     nodeMap.set('type', doc.createNode(desiredType));
                   } else {
                     nodeMap.delete('type');
@@ -965,7 +991,8 @@ topology:
                     nodeMap.delete('image');
                   }
 
-                  if (desiredType !== undefined && desiredType !== inherit.type) {
+                  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+                  if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== inherit.type) {
                     nodeMap.set('type', doc.createNode(desiredType));
                   } else {
                     nodeMap.delete('type');
@@ -1242,8 +1269,11 @@ topology:
     jsOutDir: string,
     allowedhostname: string,
     useSocket: boolean,
-    socketAssignedPort: number
-  ): string {
+    socketAssignedPort: number,
+    imageMapping: Record<string, string>,
+    ifacePatternMapping: Record<string, string>,
+    defaultKind: string,
+    defaultType: string): string {
     return getHTMLTemplate(
       cssUri,
       jsUri,
@@ -1255,7 +1285,11 @@ topology:
       jsOutDir,
       allowedhostname,
       useSocket,
-      socketAssignedPort
+      socketAssignedPort,
+      imageMapping,
+      ifacePatternMapping,
+      defaultKind,
+      defaultType
     );
   }
 

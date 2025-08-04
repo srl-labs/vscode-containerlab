@@ -91,6 +91,7 @@ class TopoViewerEditorEngine {
   private groupManager: ManagerGroupManager = new ManagerGroupManager();
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo = new ManagerLayoutAlgo();
+  private interfaceCounters: Record<string, number> = {};
 
 
 
@@ -261,11 +262,26 @@ class TopoViewerEditorEngine {
           targetRole !== 'dummyChild'
         );
       },
-      edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => ({
-        id: `${sourceNode.id()}-${targetNode.id()}`,
-        source: sourceNode.id(),
-        target: targetNode.id(),
-      }),
+      edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => {
+        const ifaceMap = (window as any).ifacePatternMapping || {};
+        const srcKind = sourceNode.data('extraData')?.kind || 'default';
+        const dstKind = targetNode.data('extraData')?.kind || 'default';
+        const srcPattern: string = ifaceMap[srcKind] || 'eth{n}';
+        const dstPattern: string = ifaceMap[dstKind] || 'eth{n}';
+
+        const srcCount = (this.interfaceCounters[sourceNode.id()] ?? 0) + 1;
+        this.interfaceCounters[sourceNode.id()] = srcCount;
+        const dstCount = (this.interfaceCounters[targetNode.id()] ?? 0) + 1;
+        this.interfaceCounters[targetNode.id()] = dstCount;
+
+        return {
+          id: `${sourceNode.id()}-${targetNode.id()}`,
+          source: sourceNode.id(),
+          target: targetNode.id(),
+          sourceEndpoint: srcPattern.replace('{n}', srcCount.toString()),
+          targetEndpoint: dstPattern.replace('{n}', dstCount.toString()),
+        };
+      },
     };
 
     this.eh = (this.cy as any).edgehandles(edgehandlesOptions);
@@ -624,12 +640,20 @@ class TopoViewerEditorEngine {
    * @private
    */
   private getNextEndpoint(nodeId: string): string {
-    const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-    const e1Pattern = /^e1-(\d+)$/;
-    const ethPattern = /^eth(\d+)$/;
-    const usedNumbers = new Set<number>();
-    let selectedPattern: RegExp | null = null;
+    const ifaceMap = (window as any).ifacePatternMapping || {};
+    const node = this.cy.getElementById(nodeId);
+    const kind = node.data('extraData')?.kind || 'default';
+    const pattern = ifaceMap[kind] || 'eth{n}';
 
+    const placeholder = '__N__';
+    const escaped = pattern
+      .replace('{n}', placeholder)
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexStr = '^' + escaped.replace(placeholder, '(\\d+)') + '$';
+    const patternRegex = new RegExp(regexStr);
+
+    const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
+    const usedNumbers = new Set<number>();
     edges.forEach(edge => {
       ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
         const endpoint = edge.data(key);
@@ -637,30 +661,19 @@ class TopoViewerEditorEngine {
           (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
           (edge.data('target') === nodeId && key === 'targetEndpoint');
         if (!endpoint || !isNodeEndpoint) return;
-        let match = endpoint.match(e1Pattern);
+        const match = endpoint.match(patternRegex);
         if (match) {
           usedNumbers.add(parseInt(match[1], 10));
-          if (!selectedPattern) selectedPattern = e1Pattern;
-        } else {
-          match = endpoint.match(ethPattern);
-          if (match) {
-            usedNumbers.add(parseInt(match[1], 10));
-            if (!selectedPattern) selectedPattern = ethPattern;
-          }
         }
       });
     });
-
-    if (!selectedPattern) {
-      selectedPattern = e1Pattern;
-    }
 
     let endpointNum = 1;
     while (usedNumbers.has(endpointNum)) {
       endpointNum++;
     }
 
-    return selectedPattern === e1Pattern ? `e1-${endpointNum}` : `eth${endpointNum}`;
+    return pattern.replace('{n}', endpointNum.toString());
   }
 
   /**
