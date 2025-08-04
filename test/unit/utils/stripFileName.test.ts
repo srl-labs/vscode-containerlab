@@ -20,7 +20,7 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { stripFileName } from '../../../src/utils';
+import { stripFileName } from '../../../src/helpers/utils';
 
 describe('stripFileName', () => {
   after(() => {

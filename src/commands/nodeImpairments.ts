@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClabContainerTreeNode } from "../treeView/common";
 import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
-import { runWithSudo } from "../helpers/containerlabUtils";
+import { runWithSudo } from "../helpers/utils";
 import { outputChannel } from "../extension";
 
 /**

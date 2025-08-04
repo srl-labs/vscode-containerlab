@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import { getInspectHtml } from "../webview/inspectHtml";
 import { ClabLabTreeNode } from "../treeView/common";
-import { getSudo } from "../utils";
+import { getSudo } from "../helpers/utils";
 import { outputChannel } from "../extension"; // Import outputChannel for logging
 
 const execAsync = promisify(exec);

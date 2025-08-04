@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as cmd from './command';
-import * as utils from '../utils';
+import * as utils from '../helpers/utils';
 import { ClabLabTreeNode } from "../treeView/common";
 import { DefaultOptions } from "./command";
 import { exec } from "child_process";

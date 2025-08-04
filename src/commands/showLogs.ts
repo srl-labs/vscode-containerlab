@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
 import { ClabContainerTreeNode } from "../treeView/common";
-import { getSudo } from "../utils";
+import { getSudo } from "../helpers/utils";
 
 export function showLogs(node: ClabContainerTreeNode) {
     if (!node) {
