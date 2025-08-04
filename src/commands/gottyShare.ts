@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, gottySessions, runningLabsProvider, refreshGottySessions } from "../extension";
-import { runWithSudo } from "../helpers/containerlabUtils";
+import { execWithProgress } from "../utils";
 import { getHostname } from "./capture";
 
 async function parseGottyLink(output: string): Promise<string | undefined> {
@@ -51,7 +51,7 @@ export async function gottyAttach(node: ClabLabTreeNode) {
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await runWithSudo(`containerlab tools gotty attach -l ${node.name} --port ${port}`, 'GoTTY attach', outputChannel, 'containerlab', true, true) as string;
+    const out = await execWithProgress(`containerlab tools gotty attach -l ${node.name} --port ${port}`, 'Starting GoTTY session...', true);
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);
@@ -78,7 +78,7 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     return;
   }
   try {
-    await runWithSudo(`containerlab tools gotty detach -l ${node.name}`, 'GoTTY detach', outputChannel);
+    await execWithProgress(`containerlab tools gotty detach -l ${node.name}`, 'Detaching GoTTY session...');
     gottySessions.delete(node.name);
     vscode.window.showInformationMessage('GoTTY session detached');
   } catch (err: any) {
@@ -96,7 +96,7 @@ export async function gottyReattach(node: ClabLabTreeNode) {
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await runWithSudo(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, 'GoTTY reattach', outputChannel, 'containerlab', true, true) as string;
+    const out = await execWithProgress(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, 'Reattaching GoTTY session...', true);
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);

@@ -117,7 +117,7 @@ export function getUsername(): string {
 }
 
 // eslint-disable-next-line no-undef
-export function execWithProgress(command: string, progressMessage: string): Thenable<string> {
+export function execWithProgress(command: string, progressMessage: string, includeStderr: boolean = false): Thenable<string> {
   return vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -130,7 +130,10 @@ export function execWithProgress(command: string, progressMessage: string): Then
           vscode.window.showErrorMessage(`Failed: ${stderr}`);
           return reject(err);
         }
-        resolve(stdout.trim());
+        const result = includeStderr && stderr 
+          ? [stdout, stderr].filter(Boolean).join('\n').trim()
+          : stdout.trim();
+        resolve(result);
       });
 
       child.stderr?.on('data', (data) => {
