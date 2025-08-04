@@ -20,7 +20,7 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { titleCase } from '../../../src/utils';
+import { titleCase } from '../../../src/helpers/utils';
 
 describe('titleCase', () => {
   after(() => {

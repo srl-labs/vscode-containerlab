@@ -11,15 +11,15 @@ const originalResolve = (Module as any)._resolveFilename;
   if (request === 'vscode') {
     return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
   }
-  if (request.includes('helpers/containerlabUtils')) {
-    return path.join(__dirname, '..', '..', 'helpers', 'containerlabUtils-stub.js');
+  if (request.includes('helpers/utils')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
   }
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
 import * as extension from '../../../src/extension';
 const { refreshSshxSessions, sshxSessions } = extension;
-const utilsStub = require('../../helpers/containerlabUtils-stub.js');
+const utilsStub = require('../../helpers/utils-stub.js');
 const vscodeStub = require('../../helpers/vscode-stub');
 
 describe('refreshSshxSessions', () => {

@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import { outputChannel } from "../extension";
 import { ClabContainerTreeNode } from "../treeView/common";
-import { getSudo } from "../utils";
+import { getSudo } from "../helpers/utils";
 
 const execAsync = promisify(exec);
 

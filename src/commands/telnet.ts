@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as utils from "../utils"
+import * as utils from "../helpers/utils"
 import { execCommandInTerminal } from "./command";
 import { ClabContainerTreeNode } from "../treeView/common";
 
