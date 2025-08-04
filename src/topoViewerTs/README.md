@@ -10,11 +10,13 @@ viewer and editor capabilities into a single, fully typed implementation.
 - Converted initial webview managers to TypeScript:
   - `managerVscodeWebview.ts` handles messaging with the VS Code extension.
   - `managerLayoutAlgo.ts` provides the GeoMap layout logic.
+  - `managerSocketDataEnrichment.ts` enriches nodes and edges with backend lab data.
 
 ## Next Steps
 
-- Port remaining JavaScript managers from `src/topoViewer/webview-ui/html-static/js` to TypeScript.
+- Port remaining JavaScript managers from `src/topoViewer/webview-ui/html-static/js` to TypeScript (e.g. `managerCyTextBox.js`, `managerGroupManagement.js`, `managerSvg.js`).
 - Refactor globals into proper modules with explicit types.
 - Integrate viewer/editor features to automatically show relevant information based on lab deployment state.
 - Remove the old JavaScript-based `topoViewer` once feature parity is achieved.
+- Remove the old topoEditor as finally its one merged thing, written in clean typescript
 
