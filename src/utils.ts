@@ -130,7 +130,7 @@ export function execWithProgress(command: string, progressMessage: string, inclu
           vscode.window.showErrorMessage(`Failed: ${stderr}`);
           return reject(err);
         }
-        const result = includeStderr && stderr 
+        const result = includeStderr && stderr
           ? [stdout, stderr].filter(Boolean).join('\n').trim()
           : stdout.trim();
         resolve(result);
