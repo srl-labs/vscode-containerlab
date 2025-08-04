@@ -394,7 +394,7 @@ topology:
         .toString();
 
       const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
-      const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
+      const ifacePatternMapping = this.getInterfacePatternMapping();
       const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
       const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
 
@@ -422,6 +422,22 @@ topology:
     }
 
     return true;
+  }
+
+  /**
+   * Combines interface pattern mappings from both global node settings and
+   * TopoEditor specific settings. Entries defined in the editor configuration
+   * override those from the general node configuration.
+  */
+  private getInterfacePatternMapping(): Record<string, string> {
+    const nodeMap = vscode.workspace
+      .getConfiguration('containerlab.node')
+      .get<Record<string, string>>('interfacePatternMapping', {});
+    const editorMap = vscode.workspace
+      .getConfiguration('containerlab.editor')
+      .get<Record<string, string>>('interfacePatternMapping', {});
+
+    return { ...nodeMap, ...editorMap };
   }
 
   /**
