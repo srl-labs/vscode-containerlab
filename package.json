@@ -1234,6 +1234,11 @@
           "default": 8080,
           "description": "Port for GoTTY web terminal."
         },
+        "containerlab.editor.defaultKind": {
+          "type": "string",
+          "default": "nokia_srlinux",
+          "markdownDescription": "The default kind of the node when adding a new node in the TopoEditor."
+        },
         "containerlab.editor.imageMapping": {
           "type": "object",
           "additionalProperties": {
