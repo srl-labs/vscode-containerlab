@@ -32,6 +32,7 @@ export let localLabsProvider: LocalLabTreeDataProvider;
 export let runningLabsProvider: RunningLabTreeDataProvider;
 export let helpFeedbackProvider: HelpFeedbackProvider;
 export let sshxSessions: Map<string, string> = new Map();
+export let gottySessions: Map<string, string> = new Map();
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
@@ -70,6 +71,51 @@ export async function refreshSshxSessions() {
     }
   } catch (err: any) {
     outputChannel.appendLine(`[ERROR] Failed to refresh SSHX sessions: ${err.message || err}`);
+  }
+}
+
+export async function refreshGottySessions() {
+  try {
+    const out = await runWithSudo(
+      'containerlab tools gotty list -f json',
+      'List GoTTY sessions',
+      outputChannel,
+      'containerlab',
+      true
+    ) as string;
+    gottySessions.clear();
+    if (out) {
+      const parsed = JSON.parse(out);
+      const { getHostname } = await import('./commands/capture');
+      const hostname = await getHostname();
+
+      parsed.forEach((s: any) => {
+        if (!s.port || !hostname) {
+          return;
+        }
+
+        let lab: string | undefined;
+        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
+          lab = s.network.replace(/^clab-/, '');
+        }
+        if (!lab && typeof s.name === 'string') {
+          const name = s.name;
+          if (name.startsWith('gotty-')) {
+            lab = name.replace(/^gotty-/, '');
+          } else if (name.startsWith('clab-') && name.endsWith('-gotty')) {
+            lab = name.slice(5, -6);
+          }
+        }
+        if (lab) {
+          // Construct the URL using hostname and port
+          const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
+          const url = `http://${bracketed}:${s.port}`;
+          gottySessions.set(lab, url);
+        }
+      });
+    }
+  } catch (err: any) {
+    outputChannel.appendLine(`[ERROR] Failed to refresh GoTTY sessions: ${err.message || err}`);
   }
 }
 
@@ -124,6 +170,7 @@ export async function activate(context: vscode.ExtensionContext) {
   helpFeedbackProvider = new HelpFeedbackProvider();
 
   await refreshSshxSessions();
+  await refreshGottySessions();
 
 
   localTreeView = vscode.window.createTreeView('localLabs', {
@@ -240,6 +287,18 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.lab.sshx.copyLink', (link: string) => cmd.sshxCopyLink(link))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.gotty.attach', cmd.gottyAttach)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.gotty.detach', cmd.gottyDetach)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.gotty.reattach', cmd.gottyReattach)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('containerlab.lab.gotty.copyLink', (link: string) => cmd.gottyCopyLink(link))
   );
 
   // Lab connecto to SSH

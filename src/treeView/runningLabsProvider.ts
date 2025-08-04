@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 
 import { execSync } from "child_process";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
 
 /**
  * Interface corresponding to fields in the
@@ -199,9 +199,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
         // Find containers belonging to a lab
         if (element instanceof c.ClabLabTreeNode) {
-            let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode)[] = element.containers || [];
+            let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode)[] = element.containers || [];
             if (element.sshxNode) {
                 containers = [element.sshxNode, ...containers];
+            }
+            if (element.gottyNode) {
+                containers = [element.gottyNode, ...containers];
             }
             if (this.treeFilter) {
                 const labMatch = String(element.label).toLowerCase().includes(this.treeFilter);
@@ -282,6 +285,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 (existing as any).containers = lab.containers;
                 existing.sshxLink = lab.sshxLink;
                 existing.sshxNode = lab.sshxNode;
+                existing.gottyLink = lab.gottyLink;
+                existing.gottyNode = lab.gottyNode;
                 newCache.set(key, existing);
             } else {
                 newCache.set(key, lab);
@@ -428,6 +433,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             await refreshSshxSessions();
         }
 
+        // Refresh GoTTY session list if any GoTTY container is detected and we don't already have a link
+        const gottyLabs = new Set(
+            allContainers
+                .filter(c => (c.name || '').includes('gotty'))
+                .map(c => c.lab_name)
+        );
+        const missingGottySessions = Array.from(gottyLabs).filter(lab => !gottySessions.has(lab));
+        if (missingGottySessions.length > 0) {
+            await refreshGottySessions();
+        }
+
         // --- Process the flat allContainers list ---
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
@@ -486,10 +502,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     ? "containerlabLabDeployedFavorite"
                     : "containerlabLabDeployed";
                 const sshxLink = sshxSessions.get(container.lab_name);
+                const gottyLink = gottySessions.get(container.lab_name);
 
-                // Create label with sharing indicator if SSHX session exists
+                // Create label with sharing indicator if SSHX or GoTTY session exists
                 let labLabel = label;
-                if (sshxLink) {
+                if (sshxLink || gottyLink) {
                     labLabel = `🔗 ${label}`; // Add link emoji to indicate sharing
                 }
 
@@ -502,7 +519,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     discoveredContainers,
                     contextVal,
                     isFav,
-                    sshxLink
+                    sshxLink,
+                    gottyLink
                 );
 
                 if (sshxLink) {
@@ -514,6 +532,16 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                         command: 'containerlab.lab.sshx.copyLink',
                         title: 'Copy SSHX link',
                         arguments: [sshxLink]
+                    };
+                } else if (gottyLink) {
+                    labNode.gottyNode = new c.ClabGottyLinkTreeNode(container.lab_name, gottyLink);
+                    // Add sharing indicator to description instead of replacing icon
+                    labNode.description = `${labPathObj.relative} (Shared)`;
+                    // Set command for easy access to copy link
+                    labNode.command = {
+                        command: 'containerlab.lab.gotty.copyLink',
+                        title: 'Copy GoTTY link',
+                        arguments: [gottyLink]
                     };
                 } else {
                     labNode.description = labPathObj.relative; // Show relative path

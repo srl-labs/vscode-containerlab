@@ -383,6 +383,25 @@
         "title": "Copy SSHX link"
       },
       {
+        "command": "containerlab.lab.gotty.attach",
+        "title": "Share Lab (attach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.gotty.detach",
+        "title": "Share Lab (detach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.gotty.reattach",
+        "title": "Share Lab (reattach)",
+        "category": "Containerlab"
+      },
+      {
+        "command": "containerlab.lab.gotty.copyLink",
+        "title": "Copy GoTTY link"
+      },
+      {
         "command": "containerlab.lab.fcli.bgpPeers",
         "title": "bgp-peers",
         "category": "Containerlab"
@@ -468,6 +487,10 @@
       {
         "id": "containerlab.submenu.lab.share",
         "label": "Share Lab (sshx)"
+      },
+      {
+        "id": "containerlab.submenu.lab.gotty",
+        "label": "Share Lab (gotty)"
       },
       {
         "id": "containerlab.submenu.lab.extras",
@@ -743,6 +766,11 @@
           "group": "connect@1"
         },
         {
+          "submenu": "containerlab.submenu.lab.gotty",
+          "when": "viewItem =~ /containerlabLabDeployed/",
+          "group": "connect@2"
+        },
+        {
           "submenu": "containerlab.submenu.lab.extras",
           "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "pExtras@0"
@@ -871,6 +899,11 @@
           "command": "containerlab.lab.sshx.copyLink",
           "when": "viewItem == containerlabSSHXLink",
           "group": "navigation@0"
+        },
+        {
+          "command": "containerlab.lab.gotty.copyLink",
+          "when": "viewItem == containerlabGottyLink",
+          "group": "navigation@0"
         }
       ],
       "commandPalette": [
@@ -975,6 +1008,20 @@
         {
           "command": "containerlab.lab.sshx.reattach",
           "group": "share@3"
+        }
+      ],
+      "containerlab.submenu.lab.gotty": [
+        {
+          "command": "containerlab.lab.gotty.attach",
+          "group": "gotty@1"
+        },
+        {
+          "command": "containerlab.lab.gotty.detach",
+          "group": "gotty@2"
+        },
+        {
+          "command": "containerlab.lab.gotty.reattach",
+          "group": "gotty@3"
         }
       ],
       "containerlab.submenu.lab.extras": [
@@ -1181,6 +1228,11 @@
           "type": "string",
           "default": "HTTP_PROXY=, http_proxy=",
           "description": "Comma-separated environment variables to inject into edgeshark containers (e.g., 'HTTP_PROXY=, http_proxy=, NO_PROXY=localhost'). Each variable will be added to the environment section of both gostwire and packetflix services."
+        },
+        "containerlab.gotty.port": {
+          "type": "number",
+          "default": 8080,
+          "description": "Port for GoTTY web terminal."
         }
       }
     }
