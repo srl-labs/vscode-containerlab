@@ -1239,12 +1239,19 @@
           "default": "nokia_srlinux",
           "markdownDescription": "The default kind of the node when adding a new node in the TopoEditor."
         },
+        "containerlab.editor.defaultType": {
+          "type": "string",
+          "default": "ixrd1",
+          "markdownDescription": "The default type of the node when adding a new node in the TopoEditor."
+        },
         "containerlab.editor.imageMapping": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "default": {},
+          "default": {
+            "nokia_srlinux": "ghcr.io/nokia/srlinux:latest"
+          },
           "markdownDescription": "Default docker image (with tag) for each node kind when creating nodes in the TopoEditor. Example: `{ \"nokia_srlinux\": \"ghcr.io/nokia/srlinux:latest\" }`"
         },
         "containerlab.editor.interfacePatternMapping": {
@@ -1252,7 +1259,9 @@
           "additionalProperties": {
             "type": "string"
           },
-          "default": {},
+          "default": {
+            "nokia_srlinux": "e1-{n}"
+          },
           "markdownDescription": "Interface name pattern used when creating links in the TopoEditor. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
         }
       }

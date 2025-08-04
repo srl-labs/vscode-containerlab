@@ -13,6 +13,10 @@ export class ManagerAddContainerlabNode {
   ): void {
     const newNodeId = `nodeId-${cy.nodes().length + 1}`;
 
+    const defaultKind = (window as any).defaultKind || 'nokia_srlinux';
+    const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+    const shouldIncludeType = nokiaKinds.includes(defaultKind);
+
     const newNodeData: NodeData = {
       id: newNodeId,
       editor: 'true',
@@ -23,7 +27,13 @@ export class ManagerAddContainerlabNode {
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
-      extraData: { kind: 'nokia_srlinux', longname: '', image: '', type: '', mgmtIpv4Address: '' }
+      extraData: { 
+        kind: defaultKind, 
+        longname: '', 
+        image: '', 
+        ...(shouldIncludeType && { type: (window as any).defaultType || 'ixrd1' }),
+        mgmtIpv4Address: '' 
+      }
     };
 
     const imageMap = (window as any).imageMapping || {};

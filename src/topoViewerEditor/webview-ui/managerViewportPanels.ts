@@ -664,6 +664,16 @@ export class ManagerViewportPanels {
    * @returns An array of type enum strings.
    */
   private panelNodeEditorGetTypeEnumsByKindPattern(jsonData: any, pattern: string): string[] {
+    // Extract the kind from the pattern (e.g., "(nokia_srlinux)" -> "nokia_srlinux")
+    const kindMatch = pattern.match(/\(([^)]+)\)/);
+    const kind = kindMatch ? kindMatch[1] : '';
+    
+    // Only return type options for Nokia kinds
+    const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+    if (!nokiaKinds.includes(kind)) {
+      return [];
+    }
+
     if (
       jsonData &&
       jsonData.definitions &&
