@@ -10,7 +10,7 @@ viewer and editor capabilities into a single, fully typed implementation.
 
 - ✅ `managerVscodeWebview.ts` - VS Code extension messaging and communication
 - ✅ `managerLayoutAlgo.ts` - GeoMap layout algorithms and positioning logic
-- ✅ `managerSocketDataEnrichment.ts` - Real-time lab data enrichment via sockets
+- ✅ `managerSocketDataEnrichment.ts` - Real-time lab data enrichment via message events
 - ✅ `managerOnChangeFramework.ts` - Dynamic state monitoring and UI updates
 - ✅ `managerGroupManagement.ts` - Node grouping, parent management, and hierarchy
 - ✅ `managerSvg.ts` - Dynamic SVG icon generation for all network node types

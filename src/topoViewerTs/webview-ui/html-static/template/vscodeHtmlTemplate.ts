@@ -7,16 +7,14 @@ export function getHTMLTemplate(
   jsUri: string,
   schemaUri: string,
   imagesUri: string,
-jsonFileUrlDataCytoMarshall: string,
-jsonFileUrlDataEnvironment: string,
-isVscodeDeployment: boolean,
-jsOutDir: string,
-allowedHostname: string,
-useSocket: boolean,
-socketAssignedPort: number,
-deploymentState?: 'deployed' | 'undeployed' | 'unknown',
-viewerMode?: 'viewer' | 'editor' | 'unified',
-topologyName?: string
+  jsonFileUrlDataCytoMarshall: string,
+  jsonFileUrlDataEnvironment: string,
+  isVscodeDeployment: boolean,
+  jsOutDir: string,
+  allowedHostname: string,
+  deploymentState?: 'deployed' | 'undeployed' | 'unknown',
+  viewerMode?: 'viewer' | 'editor' | 'unified',
+  topologyName?: string
 ): string {
 
 log.info(`allowedHostname in vscodeHtmlTemplate.ts: ${allowedHostname}`);
@@ -1631,12 +1629,6 @@ return `
 
     <!-- Inject allowedHostname string as a global variable -->
     <script> window.allowedHostname = "${allowedHostname}"; </script>
-
-    <!-- Inject useSocket boolean as a global variable -->
-    <script> window.useSocket = "${useSocket}"; </script>
-
-    <!-- Inject socketAssignedPort number as a global variable -->
-    <script> window.socketAssignedPort = "${socketAssignedPort}"; </script>
 
     <!-- Load the compiled TypeScript bundle -->
     <script src="${jsOutDir}/topoViewerEngine.js?ver=1"></script>

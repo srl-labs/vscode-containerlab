@@ -16,19 +16,18 @@
 //    - Compares that map to the previously cached state.
 //    - When changes (or removals) are found, calls the corresponding handler.
 //
-// 3. **Socket Event Listener**
-//    - Listens for updates on `"clab-tree-provider-data"`.
+// 3. **Message Listener**
+//    - Listens for `postMessage` events containing lab data.
 //    - Invokes `stateMonitorEngine` with fresh data and the array of use‐case configs.
 //
 // 4. **Global Storage**
 //    - `window.previousStateByUseCase` caches previous states so we can detect changes.
 //    - `window.dynamicCytoStyles` can hold dynamic styles for Cytoscape.
 //
-// In short, the flow is: **socket event** → **stateMonitorEngine** → **mapping** → compare to **previous state** → if changed, **handler** executes.
+// In short, the flow is: **message event** → **stateMonitorEngine** → **mapping** → compare to **previous state** → if changed, **handler** executes.
 
 // Global type declarations for external dependencies
 // cy is accessed via globalThis.cy
-declare const socket: any;
 
 // Import logger for webview
 import { log } from './logger';
@@ -106,9 +105,12 @@ export interface CytoscapeCollection {
 // Interface state types
 export type InterfaceState = 'Up' | 'Down';
 
+// Cache of interface states keyed by "node::endpoint"
+const interfaceStateCache = new Map<string, InterfaceState>();
+
 /**
  * Global toggle for enabling/disabling dynamic style updates.
- * When true, the socket event handler will be bound; when false, it will be unbound.
+ * When true, the message event listener will be bound; when false, it will be unbound.
  */
 export let globalToggleOnChangeCytoStyle: boolean = true;
 
@@ -238,38 +240,34 @@ export function onChangeHandlerInterfaceOperState(updateMessage: UpdateMessage):
     : nodeName;
   const safeEndpoint = customEscape(monitoredObject);
 
-  const edgeSelector = `edge[source="${safeNodeName}"][sourceEndpoint="${safeEndpoint}"]`;
+  const edgeSelector = `edge[source="${safeNodeName}"][sourceEndpoint="${safeEndpoint}"], edge[target="${safeNodeName}"][targetEndpoint="${safeEndpoint}"]`;
 
   if (typeof globalThis.cy === 'undefined') {
     log.warn('Cytoscape (cy) is not available');
     return;
   }
 
+  const key = `${nodeName}::${monitoredObject}`;
+  if (removed) {
+    interfaceStateCache.delete(key);
+  } else {
+    interfaceStateCache.set(key, state === 'Up' ? 'Up' : 'Down');
+  }
+
   const edges: CytoscapeCollection = globalThis.cy.$(edgeSelector);
   log.debug(`Edge selector: ${edgeSelector}, found ${edges.length} edges, removed: ${removed}`);
 
-  // Check if any matching edge was found and retrieve its id
-  if (edges.length > 0) {
-    const edgeId = edges[0].id();
-    log.debug(`Found edge: ${edgeId}`);
-  } else {
-    log.debug(`No edge found with source ${safeNodeName} and sourceEndpoint ${safeEndpoint}`);
-  }
+  edges.forEach((edge: any) => {
+    const sourceKey = `${edge.data('source')}::${edge.data('sourceEndpoint')}`;
+    const targetKey = `${edge.data('target')}::${edge.data('targetEndpoint')}`;
+    const sourceState = interfaceStateCache.get(sourceKey);
+    const targetState = interfaceStateCache.get(targetKey);
+    const newColor = sourceState === 'Up' && targetState === 'Up' ? '#00df2b' : '#df2b00';
+    updateEdgeDynamicStyle(edge.id(), 'line-color', newColor);
+    log.info(`Edge ${edge.id()} colored ${newColor}`);
+  });
 
-  if (edges.length > 0) {
-    if (removed) {
-      edges.forEach((edge: any) => {
-        updateEdgeDynamicStyle(edge.id(), 'line-color', '#969799');
-      });
-      log.info(`Reverted edge styles for removed interfaces: ${edgeSelector}`);
-    } else {
-      const newColor = state === 'Up' ? '#00df2b' : '#df2b00';
-      edges.forEach((edge: any) => {
-        updateEdgeDynamicStyle(edge.id(), 'line-color', newColor);
-      });
-      log.info(`Updated ${edges.length} edge(s) to ${state} state (${newColor})`);
-    }
-  } else {
+  if (edges.length === 0) {
     log.warn(`No edge found matching selector: ${edgeSelector}`);
   }
 }
@@ -365,25 +363,32 @@ export function stateMonitorEngine(labData: LabData, configs: MonitorConfig[]): 
 }
 
 // -----------------------------------------------------------------------------
-// SOCKET.IO EVENT LISTENER SETUP
+// MESSAGE EVENT LISTENER SETUP
 // -----------------------------------------------------------------------------
 
+/* eslint-disable-next-line no-unused-vars */
+let messageEventListener: ((event: MessageEvent) => void) | null = null;
+
 /**
- * Socket event listener setup for monitoring lab data changes.
- * Listens for raw lab data from the backend on the "clab-tree-provider-data" event.
- * When received, the stateMonitorEngine is invoked with the global monitorConfigs.
+ * Sets up a postMessage listener for monitoring lab data changes.
+ * Listens for messages from the extension backend and invokes the
+ * stateMonitorEngine when data is received.
  */
-export function setupSocketEventListener(): void {
-  if (typeof socket === 'undefined') {
-    log.warn('Socket.io is not available - skipping event listener setup');
-    return;
+export function setupMessageEventListener(): void {
+  if (messageEventListener) {
+    window.removeEventListener('message', messageEventListener);
   }
 
-  socket.on('clab-tree-provider-data', (labData: LabData) => {
-    if (globalToggleOnChangeCytoStyle) {
-      stateMonitorEngine(labData, monitorConfigs);
+  messageEventListener = (event: MessageEvent) => {
+    const message = event.data;
+    if (message && message.type === 'clab-tree-provider-data-native-vscode-message-stream') {
+      if (globalToggleOnChangeCytoStyle) {
+        stateMonitorEngine(message.data, monitorConfigs);
+      }
     }
-  });
+  };
+
+  window.addEventListener('message', messageEventListener);
 }
 
 // -----------------------------------------------------------------------------
@@ -395,7 +400,7 @@ export function setupSocketEventListener(): void {
  */
 export function enableOnChangeMonitoring(): void {
   globalToggleOnChangeCytoStyle = true;
-  setupSocketEventListener();
+  setupMessageEventListener();
 }
 
 /**
@@ -403,6 +408,9 @@ export function enableOnChangeMonitoring(): void {
  */
 export function disableOnChangeMonitoring(): void {
   globalToggleOnChangeCytoStyle = false;
+  if (messageEventListener) {
+    window.removeEventListener('message', messageEventListener);
+  }
 }
 
 /**
@@ -447,9 +455,9 @@ export function clearCachedStates(): void {
   }
 }
 
-// Initialize the socket event listener when this module is loaded
+// Initialize the message event listener when this module is loaded
 if (typeof window !== 'undefined') {
-  setupSocketEventListener();
+  setupMessageEventListener();
 }
 
 // Export for backward compatibility and external usage

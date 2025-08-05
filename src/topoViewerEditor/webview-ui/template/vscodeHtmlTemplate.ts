@@ -12,8 +12,6 @@ export function getHTMLTemplate(
   isVscodeDeployment: boolean,
   jsOutDir: string,
   allowedHostname: string,
-  useSocket: boolean,
-  socketAssignedPort: number,
   imageMapping: Record<string, string>,
   ifacePatternMapping: Record<string, string>,
   defaultKind: string,
@@ -1874,12 +1872,6 @@ export function getHTMLTemplate(
     <!-- Inject allowedHostname string as a global variable -->
     <script> window.allowedHostname = "${allowedHostname}"; </script>
 
-    <!-- Inject useSocket boolean as a global variable -->
-    <script> window.useSocket = "${useSocket}"; </script>
-
-    <!-- Inject socketAssignedPort number as a global variable -->
-    <script> window.socketAssignedPort = "${socketAssignedPort}"; </script>
-
     <!-- Inject mapping configuration as global variables -->
     <script> window.imageMapping = ${JSON.stringify(imageMapping)}; </script>
     <script> window.ifacePatternMapping = ${JSON.stringify(ifacePatternMapping)}; </script>
@@ -1888,7 +1880,7 @@ export function getHTMLTemplate(
 
     <script src="${jsOutDir}/topoViewerEditorEngine.js?ver=1"></script>
 
-      <!-- clabTreeProviderData provided to below script using socket.io -->
+      <!-- clabTreeProviderData provided to below script via postMessage -->
     <!-- <script src="${jsUri}/managerOnChangeFramework.js?ver=1"></script>
     <script src="${jsUri}/managerSocketDataEnrichment.js?ver=1"></script> -->
 

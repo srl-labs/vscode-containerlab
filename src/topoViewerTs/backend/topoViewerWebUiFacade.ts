@@ -10,7 +10,6 @@ import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
-// import { Server as SocketIOServer } from 'socket.io';
 import {
   getHostname,
   attachShell,
@@ -60,8 +59,6 @@ export class TopoViewer {
 
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
 
-
-  private socketAssignedPort: number | undefined;
 
   /**
    * Interval reference used for native VS Code message streaming.
@@ -209,22 +206,12 @@ export class TopoViewer {
 
       log.info(`allowedHostname: ${this.adaptor.allowedhostname}`);
 
-      // Decide which method to be use to stream data from backend() to frontend(webview)
-      var socketPort = 0
+      // Start postMessage stream to push lab data to the webview.
+      this.startMessageStreaming();
 
-      const config = vscode.workspace.getConfiguration('containerlab.remote');
-      const useSocketIO = config.get<boolean>('useSocketIO', false);
-      if (useSocketIO) {
-        // Start the Socket.IO server and wait for the port to be assigned.
-        // socketPort = await this.startSocketIOServer();
-      } else {
-        // Start post message stream
-        this.startMessageStreaming()
-      }
-
-      // Create and display the webview panel using the assigned socket port.
+      // Create and display the webview panel.
       log.info(`Creating webview panel for visualization`);
-      const panel = await this.createWebviewPanel(folderName, socketPort);
+      const panel = await this.createWebviewPanel(folderName);
       this.currentTopoViewerPanel = panel;
 
       // Store the clabTreeDataToTopoviewer in cache
@@ -245,10 +232,9 @@ export class TopoViewer {
    * establishes message handlers for communication between the webview and the extension.
    *
    * @param folderName - The subfolder name where JSON data files are stored.
-   * @param socketPort - The assigned socket port from the Socket.IO server.
    * @returns A promise that resolves to the created WebviewPanel.
    */
-  private async createWebviewPanel(folderName: string, socketPort: number): Promise<vscode.WebviewPanel> {
+  private async createWebviewPanel(folderName: string): Promise<vscode.WebviewPanel> {
     interface CytoViewportPositionPreset {
       data: {
         id: string,
@@ -339,12 +325,10 @@ export class TopoViewer {
       jsonFileUrlDataEnvironment,
       isVscodeDeployment,
       jsOutDir,
-      this.adaptor.allowedhostname as string,
-      vscode.workspace.getConfiguration('containerlab.remote').get<boolean>('topoviewerUseSocket', false),
-      socketPort
+      this.adaptor.allowedhostname as string
     );
 
-    log.info(`Webview panel created successfully. Use socket.IO status is ${vscode.workspace.getConfiguration('containerlab.remote').get<boolean>('topoviewerUseSocket', false)} `);
+    log.info('Webview panel created successfully');
 
     /**
      * Interface for messages received from the webview.
@@ -855,7 +839,6 @@ export class TopoViewer {
    * @param jsonFileUrlDataEnvironment - URI for the environment.json file.
    * @param isVscodeDeployment - Indicates whether the extension is running inside VS Code.
    * @param jsOutDir - URI for the compiled JavaScript directory.
-   * @param socketAssignedPort - The assigned Socket.IO port.
    * @returns The complete HTML content as a string.
    */
   private getWebviewContent(
@@ -867,9 +850,7 @@ export class TopoViewer {
     jsonFileUrlDataEnvironment: string,
     isVscodeDeployment: boolean,
     jsOutDir: string,
-    allowedhostname: string,
-    useSocket: boolean,
-    socketAssignedPort: number
+    allowedhostname: string
   ): string {
     return getHTMLTemplate(
       cssUri,
@@ -881,8 +862,6 @@ export class TopoViewer {
       isVscodeDeployment,
       jsOutDir,
       allowedhostname,
-      useSocket,
-      socketAssignedPort,
       this.deploymentState,
       this.viewerMode,
       this.adaptor.currentClabTopo?.name || 'Unknown Topology'
@@ -951,9 +930,7 @@ export class TopoViewer {
         jsonFileUrlDataEnvironment,
         isVscodeDeployment,
         jsOutDir,
-        this.adaptor.allowedhostname as string,
-        vscode.workspace.getConfiguration('containerlab.remote').get<boolean>('topoviewerUseSocket', false),
-        this.socketAssignedPort || 0
+        this.adaptor.allowedhostname as string
       );
 
       vscode.window.showInformationMessage('TopoViewer Webview reloaded!');
@@ -971,72 +948,7 @@ export class TopoViewer {
   //  * - Allow cross-origin requests from any origin.
   //  * - Poll for updated lab data periodically and emit the raw data via the "clab-tree-provider-data" event.
   //  *
-  //  * @returns A Promise that resolves with the assigned port number.
-  //  */
-  // public startSocketIOServer(): Promise<number> {
-  //   return new Promise((resolve, reject) => {
-  //     const server = http.createServer();
-  //     const io = new SocketIOServer(server, {
-  //       cors: {
-  //         origin: "*",
-  //         methods: ["GET", "POST"],
-  //         allowedHeaders: ["Content-Type"],
-  //         credentials: false,
-  //       },
-  //     });
-
-  //     // // Let the OS assign an available port by listening on port 0.
-  //     // server.listen(0, () => {
-  //     //   const address = server.address();
-  //     //   const socketAssignedPortNumber = typeof address === 'string' ? 0 : (address?.port || 0);
-  //     //   this.socketAssignedPort = socketAssignedPortNumber;
-  //     //   log.info(`Socket.IO server listening on port ${this.socketAssignedPort}`);
-  //     //   resolve(this.socketAssignedPort);
-  //     // });
-
-  //     const config = vscode.workspace.getConfiguration('containerlab.remote');
-  //     // This default (0) only applies if the setting is completely undefined.
-  //     // But if package.json defines it as an empty string, you'll get that.
-  //     const configValue = config.get<number | string>('topviewerSocketPort', 0);
-
-  //     // Ensure we use 0 if the returned value is an empty string.
-  //     const portToUse = configValue === '' ? 0 : Number(configValue);
-
-  //     // Now listen on the determined port
-  //     server.listen(portToUse, () => {
-  //       const address = server.address();
-  //       const socketAssignedPortNumber =
-  //         typeof address === 'string' ? 0 : (address?.port || 0);
-  //       this.socketAssignedPort = socketAssignedPortNumber;
-  //       log.info(`Socket.IO server listening on port ${this.socketAssignedPort}`);
-  //       resolve(this.socketAssignedPort);
-  //     });
-
-  //     // Periodically poll for updated lab data and emit it.
-  //     setInterval(async () => {
-  //       try {
-  //         const labData = await this.clabTreeProviderImported.discoverInspectLabs();
-  //         if (labData) {
-  //           io.emit("clab-tree-provider-data", labData);
-  //         }
-  //       } catch (error) {
-  //         log.error(`Error retrieving lab data: ${JSON.stringify(error, null, 2)}`);
-  //       }
-  //     }, 5000);
-
-  //     // Handle Socket.IO connections.
-  //     io.on("connection", (socket) => {
-  //       log.info("A client connected to the Socket.IO server 00022 asad.");
-  //       socket.on("clientMessage", (data) => {
-  //         log.info(`Received client message: ${JSON.stringify(data, null, 2)}`);
-  //         socket.emit("serverMessage", { text: "Hello from the VS Code extension backend!" });
-  //       });
-  //       socket.on("disconnect", () => {
-  //         log.info("A client disconnected from the Socket.IO server.ß");
-  //       });
-  //     });
-  //   });
-  // }
+  // Socket.IO server implementation removed
 
   public startMessageStreaming(): void {
     // Clear any existing interval before starting a new one.
