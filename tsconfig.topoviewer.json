@@ -8,7 +8,7 @@
     "rootDir": "./src/topoViewerTs/webview-ui",
     "strict": false,
     "sourceMap": true,
-    "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"],
+    "typeRoots": ["src/topoViewerTs/backend/types", "./node_modules/@types"],
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noImplicitAny": false,

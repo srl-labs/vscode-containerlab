@@ -13,7 +13,7 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { TopoViewerAdaptorClab } from '../../../src/topoViewer/backend/topoViewerAdaptorClab';
+import { TopoViewerAdaptorClab } from '../../../src/topoViewerTs/backend/topoViewerAdaptorClab';
 
 describe('buildCytoscapeElements delegation', () => {
   after(() => {

@@ -126,14 +126,14 @@ export function viewportButtonsTopologyOverview(): void {
 export function viewportButtonsLabelEndpoint(): void {
   try {
     globalThis.globalLinkEndpointVisibility = !globalThis.globalLinkEndpointVisibility;
-    
+
     if (globalThis.cy) {
       // Trigger style update if loadCytoStyle is available
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
         (globalThis as any).loadCytoStyle(globalThis.cy);
       }
     }
-    
+
     log.info(`Endpoint label visibility toggled to: ${globalThis.globalLinkEndpointVisibility}`);
   } catch (error) {
     log.error(`Error toggling endpoint labels: ${error}`);
@@ -175,7 +175,7 @@ export function viewportNodeFindEvent(): void {
 
       // Fit to show selected nodes
       globalThis.cy.fit(matchingNodes, 50);
-      
+
       log.info(`Found ${matchingNodes.length} nodes matching: ${searchTerm}`);
     } else {
       log.warn(`No nodes found matching: ${searchTerm}`);

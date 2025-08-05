@@ -8,15 +8,17 @@
           "rootDir": ".",
           "strict": true,
           "sourceMap": true,
-          "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"],
+          "typeRoots": ["src/topoViewerTs/backend/types", "./node_modules/@types"],
           "resolveJsonModule": true,
-          "types": ["mocha", "node"]
+          "types": ["mocha", "node"],
+          "skipLibCheck": true
         },
         "exclude": [
           "node_modules",
           ".vscode-test",
           "test/**/*",
-          "legacy-backup/**/*"
+          "legacy-backup/**/*",
+          "src/topoViewerTs/webview-ui/html-static/**/*"
         ]
 }
   

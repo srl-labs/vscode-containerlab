@@ -6,12 +6,12 @@ import * as fs from 'fs';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
-import { log } from '../../topoViewer/backend/logger';
+import { log } from '../../topoViewerTs/backend/logger';
 
 import { getHTMLTemplate } from '../webview-ui/template/vscodeHtmlTemplate';
-import { TopoViewerAdaptorClab } from '../../topoViewer/backend/topoViewerAdaptorClab';
+import { TopoViewerAdaptorClab } from '../../topoViewerTs/backend/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../treeView/common";
-import { ClabTopology, ClabNode } from '../../topoViewer/backend/types/topoViewerType';
+import { ClabTopology, ClabNode } from '../../topoViewerTs/backend/types/topoViewerType';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.
@@ -458,7 +458,7 @@ topology:
           // Dynamic data folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', labName),
           // Static asset folder.
-          vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
+          vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewerTs', 'webview-ui', 'html-static'),
           // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
           // Schema directory for YAML validation and dropdown data.

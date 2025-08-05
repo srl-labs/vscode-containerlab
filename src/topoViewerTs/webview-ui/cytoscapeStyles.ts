@@ -15,7 +15,7 @@ function detectColorScheme(): 'light' | 'dark' {
 /**
  * Apply Cytoscape styles to the graph
  * This function is called to update the visual appearance of nodes and edges
- * 
+ *
  * @param cy - The Cytoscape instance to style
  */
 export function loadCytoStyle(cy: any): void {
