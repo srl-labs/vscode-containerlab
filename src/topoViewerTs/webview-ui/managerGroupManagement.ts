@@ -481,4 +481,10 @@ export function viewportButtonsAddGroup(): void {
 }
 
 // Expose global handlers for HTML usage
+(globalThis as any).orphaningNode = orphaningNode;
+(globalThis as any).createNewParent = createNewParent;
+(globalThis as any).panelNodeEditorParentToggleDropdown = panelNodeEditorParentToggleDropdown;
+(globalThis as any).nodeParentPropertiesUpdate = nodeParentPropertiesUpdate;
+(globalThis as any).nodeParentPropertiesUpdateClose = nodeParentPropertiesUpdateClose;
+(globalThis as any).nodeParentRemoval = nodeParentRemoval;
 (globalThis as any).viewportButtonsAddGroup = viewportButtonsAddGroup;

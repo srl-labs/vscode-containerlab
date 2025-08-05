@@ -991,9 +991,9 @@ return `
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-delete-button"
                           onclick="nodeParentRemoval()">Remove
                         </button>
-                        <!-- <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
+                        <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-close-button"
                           onclick="nodeParentPropertiesUpdateClose()">Close
-                        </button> -->
+                        </button>
                         <button class="button is-link is-outlined is-small"
                           onclick="nodeParentPropertiesUpdate()">Update
                         </button>
