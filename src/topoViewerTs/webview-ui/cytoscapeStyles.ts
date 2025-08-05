@@ -259,6 +259,20 @@ export function loadCytoStyle(cy: any): void {
     // Apply the styles
     cy.style(cytoscapeStyles);
 
+    // Restore dynamically applied styles (e.g., interface states)
+    const dynamicStyles = (window as any).dynamicCytoStyles as Map<string, string | number> | undefined;
+    if (dynamicStyles) {
+      dynamicStyles.forEach((value, key) => {
+        const parts = key.split(':');
+        if (parts.length !== 3) return;
+        const [, id, styleProp] = parts;
+        const el = cy.getElementById(id);
+        if (el && el.length > 0) {
+          el.style(styleProp, value);
+        }
+      });
+    }
+
     log.debug('Cytoscape styles applied successfully');
   } catch (error) {
     log.error(`Error applying cytoscape styles: ${error}`);
