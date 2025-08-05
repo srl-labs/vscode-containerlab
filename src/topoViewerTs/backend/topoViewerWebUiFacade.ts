@@ -21,12 +21,15 @@ import {
 } from '../../commands/index';
 
 /**
- * Class representing the Containerlab Topology Viewer extension in VS Code.
+ * Class representing the Unified Containerlab Topology Viewer/Editor extension in VS Code.
+ * Features smart detection of lab deployment state to provide contextual functionality.
  * It is responsible for:
  * - Parsing Containerlab YAML configurations.
  * - Transforming YAML data into Cytoscape elements.
  * - Managing JSON file creation for topology data.
  * - Initializing and managing the visualization webview.
+ * - Smart viewer/editor mode switching based on deployment state.
+ * - Providing contextual UI based on lab deployment status.
  */
 export class TopoViewer {
   /**
@@ -65,6 +68,16 @@ export class TopoViewer {
    */
   private messageStreamingInterval: ReturnType<typeof setInterval> | undefined;
 
+  /**
+   * Current deployment state of the lab being viewed.
+   */
+  private deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
+
+  /**
+   * Smart viewer/editor mode based on deployment state.
+   */
+  private viewerMode: 'viewer' | 'editor' | 'unified' = 'unified';
+
 
 
   /**
@@ -75,6 +88,67 @@ export class TopoViewer {
   constructor(private context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
     this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
+  }
+
+  /**
+   * Detects the deployment state of the lab by checking if containers are running.
+   * This enables smart viewer/editor functionality.
+   *
+   * @param yamlFilePath - Path to the lab configuration file
+   * @returns Promise resolving to deployment state
+   */
+  private async detectDeploymentState(yamlFilePath: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
+    try {
+      // Parse the YAML to get lab name
+      const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
+      const yamlData = YAML.parse(yamlContent);
+      const labName = yamlData?.name;
+
+      if (!labName) {
+        log.info('Unable to determine lab name from YAML file');
+        return 'unknown';
+      }
+
+      // Check if lab is in running labs tree data
+      const runningLabs = await this.clabTreeProviderImported.discoverInspectLabs();
+      const isDeployed = runningLabs && Object.keys(runningLabs).some(key =>
+        runningLabs[key].name === labName
+      );
+
+      const state = isDeployed ? 'deployed' : 'undeployed';
+      log.info(`Lab "${labName}" deployment state: ${state}`);
+
+      return state;
+    } catch (error) {
+      log.error(`Failed to detect deployment state: ${error}`);
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Updates the viewer mode based on deployment state and user preferences.
+   *
+   * @param deploymentState - Current deployment state
+   */
+  private updateViewerMode(deploymentState: 'deployed' | 'undeployed' | 'unknown'): void {
+    // Smart mode selection based on deployment state
+    switch (deploymentState) {
+      case 'deployed':
+        // Show viewer mode with live data and operational controls
+        this.viewerMode = 'viewer';
+        log.info('Switching to viewer mode - lab is deployed');
+        break;
+      case 'undeployed':
+        // Show editor mode with design and configuration controls
+        this.viewerMode = 'editor';
+        log.info('Switching to editor mode - lab is undeployed');
+        break;
+      default:
+        // Unified mode shows both viewer and editor capabilities
+        this.viewerMode = 'unified';
+        log.info('Using unified mode - deployment state unknown');
+        break;
+    }
   }
 
   /**
@@ -103,6 +177,9 @@ export class TopoViewer {
     this.lastYamlFilePath = yamlFilePath;
 
     try {
+      // Detect deployment state for smart viewer/editor functionality
+      this.deploymentState = await this.detectDeploymentState(yamlFilePath);
+      this.updateViewerMode(this.deploymentState);
 
       // Read the YAML content from the file asynchronously.
       const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
@@ -261,6 +338,7 @@ export class TopoViewer {
      */
     interface WebviewMessage {
       type: string;
+      command?: string;
       requestId?: string;
       endpointName?: string;
       payload?: string;
@@ -268,6 +346,34 @@ export class TopoViewer {
 
     // Listen for incoming messages from the webview.
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
+      // Handle logging messages from webview
+      if (msg.command === 'topoViewerLog') {
+        const logData = msg as unknown as {
+          command: string;
+          level: 'info' | 'debug' | 'warn' | 'error';
+          message: string;
+          fileLine: string;
+          timestamp: string;
+        };
+        // Use the backend logger to output to TopoViewer Logs channel
+        const formattedMessage = `[WebView] ${logData.message} (${logData.fileLine})`;
+        switch (logData.level) {
+          case 'info':
+            log.info(formattedMessage);
+            break;
+          case 'debug':
+            log.debug(formattedMessage);
+            break;
+          case 'warn':
+            log.warn(formattedMessage);
+            break;
+          case 'error':
+            log.error(formattedMessage);
+            break;
+        }
+        return; // Don't process as regular message
+      }
+
       log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
 
       const payloadObj = JSON.parse(msg.payload as string);
@@ -438,7 +544,7 @@ export class TopoViewer {
                   attachShell(containerData);
                 }
               } else {
-                console.error('Updated Clab tree data is undefined.');
+                log.error('Updated Clab tree data is undefined.');
               }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
@@ -467,7 +573,7 @@ export class TopoViewer {
                   showLogs(containerData);
                 }
               } else {
-                console.error('Updated Clab tree data is undefined.');
+                log.error('Updated Clab tree data is undefined.');
               }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
@@ -763,7 +869,10 @@ export class TopoViewer {
       jsOutDir,
       allowedhostname,
       useSocket,
-      socketAssignedPort
+      socketAssignedPort,
+      this.deploymentState,
+      this.viewerMode,
+      this.adaptor.currentClabTopo?.name || 'Unknown Topology'
     );
   }
 

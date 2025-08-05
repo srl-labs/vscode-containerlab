@@ -114,8 +114,11 @@ export async function refreshGottySessions() {
   }
 }
 
-export const execCmdMapping = require('../resources/exec_cmd.json');
-export const sshUserMapping = require('../resources/ssh_users.json');
+import * as execCmdJson from '../resources/exec_cmd.json';
+import * as sshUserJson from '../resources/ssh_users.json';
+
+export const execCmdMapping = execCmdJson;
+export const sshUserMapping = sshUserJson;
 
 /**
  * Called when VSCode activates your extension.

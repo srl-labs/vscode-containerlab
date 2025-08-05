@@ -1,0 +1,828 @@
+/* Base Styles
+-------------------------------------------------- */
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-y: hidden;
+  font: 14px helvetica neue, helvetica, arial, sans-serif;
+
+  /*overflow-y: hidden; /* Prevents vertical scrollbar DISABLE THIS FOR DEBUG */
+}
+
+/* Settings Panel
+-------------------------------------------------- */
+#settings {
+  /*top: 70px;
+ */
+  bottom: 0px;
+  right: 25px;
+  width: 300px;
+  position: absolute;
+}
+
+/* Popup/Popper Component
+-------------------------------------------------- */
+.popper-div {
+  background: rgba(202, 203, 204, 0.7);
+  border: 1px solid #aaa;
+  /* Optional: A border to enhance visibility */
+  border-radius: 10px;
+  /* Adjust for more or less curve */
+  padding: 0.2em;
+  /* Adds space inside the element */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  /* Optional: Subtle shadow for a modern look */
+  z-index: 99999;
+  width: max-content;
+  position: absolute;
+}
+
+.popper-div a {
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+  outline-color: #FFFFFF;
+  z-index: 99999;
+}
+
+.popper-div a:hover {
+  text-decoration: underline;
+}
+
+/* Controls Styling
+-------------------------------------------------- */
+#edgeLength,
+#nodeSpacing #nodeGap {
+  width: 100%;
+}
+
+/* Main Visualization Containers
+-------------------------------------------------- */
+#cy {
+  width: 100%;
+  height: 100%;
+  padding-top: 10px;
+  padding-bottom: 0px;
+  position: absolute;
+  z-index: 1;
+  /* Background */
+}
+
+#cy-leaflet {
+  width: 100%;
+  height: 100%;
+  padding-top: 10px;
+  padding-bottom: 0px;
+  position: absolute;
+  z-index: 0;
+  /* Background */
+  display: none;
+  /* Initially hide the Leaflet map */
+}
+
+/* Horizontal Split Layout (Currently Commented)
+-------------------------------------------------- */
+/* #root-div {
+      width: 100%; 
+      height: 70%;
+      position: relative;
+      z-index: 1; 
+    } */
+
+/* #data-display {
+      width: 100%;
+      height: 30%;
+      position: relative;
+      background: rgba(24,24, 24,  0.95);
+      border-top: 1px solid #ccc;
+      overflow-y: auto;
+      position: relative;
+      z-index: 11;
+      transition: 0.3s ease;
+    } */
+
+/* #data-display.transparent {
+      background:rgba(24,24, 24, 0.90 );
+      z-index: 11;
+    } */
+
+/* #divider {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      cursor: ns-resize;
+      background: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 12;
+    } */
+
+/* #divider button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 14px;
+    } */
+
+/* Vertical Split Layout (Active)
+-------------------------------------------------- */
+#root-div {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  z-index: 1;
+}
+
+/* Data display panel */
+#data-display {
+  position: absolute;
+  top: 55px;
+  /* right: 0; */
+  left: 70%;
+  width: 30%;
+  height: 100%;
+  z-index: 11;
+  background-color: rgba(40, 40, 40, 1);
+  border: none;
+  display: flex;
+  justify-content: flex-start;
+  /* Aligns content at the top */
+  /* overflow-y: auto; */
+  /* transition: 0.3s ease; */
+}
+
+/* Semi-transparency styling */
+#data-display.transparent {
+  background-color: rgba(40, 40, 40, 0.9);
+  z-index: 11;
+}
+
+/* Divider styling */
+#divider {
+  position: absolute;
+  top: 55px;
+  left: 70%;
+  width: 0px;
+  height: 100%;
+  z-index: 12;
+  cursor: ew-resize;
+  background: #ccc;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start;
+  /* Aligns content at the top */
+}
+
+/* Divider button styling */
+#divider button {
+  /* transform: rotate(90deg); */
+  /* background: #007bff; */
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Logo and Viewport Controls
+-------------------------------------------------- */
+#logo {
+  top: 20px;
+  left: 30px;
+  z-index: 9999;
+  position: absolute;
+}
+
+#viewport-buttons {
+  top: 75px;
+  left: 40px;
+  position: fixed;
+  z-index: 9;
+}
+
+/* Navigation Bar Styling
+-------------------------------------------------- */
+/* make the top <nav> a flex container */
+.navbar {
+  display: flex;
+  align-items: center;
+  /* vertical-center brand + end */
+}
+
+/* group logo + title together */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+}
+
+/* push everything after .navbar-brand to the far right */
+.navbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* ensure the dropdown panel itself is right-aligned */
+.dropdown.is-right .dropdown-menu {
+  right: 0;
+  left: auto;
+}
+
+.logo-image {
+  height: 40px;
+  /* Set the desired height */
+  width: auto;
+  /* Automatically adjust the width to maintain aspect ratio */
+  display: block;
+  /* Ensure the image is displayed as a block-level element */
+}
+
+/* Viewport & Drawer Components
+-------------------------------------------------- */
+.viewport-drawer {
+  top: 75px;
+  left: 90px;
+  height: 288px;
+  width: 300px;
+  position: fixed;
+  z-index: 8;
+}
+
+.panel-tabContainer {
+  padding: 0px 0px 0px 0px;
+}
+
+/* Typography Utility Classes
+-------------------------------------------------- */
+.is-smallest {
+  font-size: 10px;
+}
+
+.is-smaller {
+  font-size: 12.5px;
+}
+
+.is-smallish {
+  font-size: 13px;
+}
+
+.is-smallest-element {
+  font-size: 11px;
+  padding: 0px 8px;
+  height: 24px;
+}
+
+.vertical-align-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 0
+}
+
+/* Button & Input Styling
+-------------------------------------------------- */
+.button {
+  height: 24px;
+}
+
+.button-data-display {
+  height: 20px;
+}
+
+.button-modal {
+  height: 30px;
+}
+
+.input {
+  height: 24px;
+}
+
+.button-no-outline {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Utility Classes
+-------------------------------------------------- */
+.link-impairment-widht {
+  width: 190px;
+  white-space: normal;
+}
+
+.drawer-box-input-widht {
+  width: 100px;
+  white-space: nowrap;
+}
+
+.with-outline {
+  position: relative;
+}
+
+.with-outline::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  border-bottom: 2px solid #3498db;
+  pointer-events: none;
+}
+
+/* Hover Text Component
+-------------------------------------------------- */
+.hover-text.is-hidden {
+  display: none;
+}
+
+.hover-text {
+  position: absolute;
+  border: 1px solid #e8a010;
+  padding: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
+  box-shadow: 2px 3px 4px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+}
+
+/* Accessibility & Notification Styling
+-------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {}
+
+.notification {
+  transform: translateY(60px);
+}
+
+.text-right {
+  text-align: right;
+  display: block;
+}
+
+/* Panel & UI Component Styling
+-------------------------------------------------- */
+.data-display-sharp {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Individual Panel Positioning & Styling
+-------------------------------------------------- */
+#panel-data-display-sharp {
+  top: 85px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-node {
+  top: 85px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 991;
+}
+
+#panel-node-editor {
+  bottom: 10px;
+  left: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-node-kind-dropdown-content {
+  max-height: 120px;
+  /* Adjust height to show about 5 items */
+  overflow-y: auto;
+  /* Enables vertical scrolling */
+}
+
+#panel-node-type-dropdown-content {
+  max-height: 80px;
+  /* Adjust height to show about 4 items */
+  overflow-y: auto;
+  /* Enables vertical scrolling */
+}
+
+#panel-node-topoviewerrole-dropdown-content {
+  max-height: 60px;
+  /* Adjust height to show about 4 items */
+  overflow-y: auto;
+  /* Enables vertical scrolling */
+}
+
+#panel-link {
+  top: 85px;
+  right: 40px;
+  width: 340px;
+  max-height: 900px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-link-editor {
+  bottom: 10px;
+  left: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-clab-editor {
+  top: 85px;
+  right: 40px;
+  width: 600px;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-node-editor-parent {
+  bottom: 10px;
+  left: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-introduction {
+  bottom: 10px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-log-messages {
+  bottom: 10px;
+  left: 40px;
+  width: 640px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-topoviewer-helper {
+  bottom: 10px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-topoviewer-about {
+  bottom: 10px;
+  right: 40px;
+  width: 340px;
+  max-height: 700px;
+  overflow-y: auto;
+  position: fixed;
+  z-index: 21;
+}
+
+#panel-topoviewer-about ul li {
+  font-weight: normal !important;
+}
+
+#panel-backup-restore {
+  top: 85px;
+  right: 40px;
+  max-height: 700px;
+  position: fixed;
+  display: block;
+  z-index: 21;
+}
+
+/* Sidebar & Drawer Components
+-------------------------------------------------- */
+#sidebar {
+  height: 100vh;
+  width: 60px;
+  position: fixed;
+  left: 5em;
+}
+
+#sidebar-control {
+  height: 30px;
+}
+
+#drawer {
+  height: 100vh;
+  width: 300px;
+  position: fixed;
+  left: calc(5em + 60px);
+  display: none;
+  /* Initially hidden */
+}
+
+.select.is-small select {
+  font-size: 0.75rem;
+  padding-top: 0.4em;
+  padding-bottom: 0.4em;
+  line-height: 1.2;
+}
+
+
+
+/* Editor Container
+-------------------------------------------------- */
+#editor-container {
+  height: calc(80vh - 80px);
+  /* height: auto; */
+  width: 100%;
+  overflow: hidden;
+}
+
+#original-title,
+#modified-title {
+  width: 50%;
+  text-align: center;
+}
+
+/* Loading & Spinner Components
+-------------------------------------------------- */
+#loading-spinner-global-button {
+  width: 50px;
+  height: 50px;
+}
+
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  transform: translate(-50%, -50%);
+}
+
+/* Monaco Editor Fixes
+-------------------------------------------------- */
+.monaco-editor .inputarea {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+}
+
+/* Theme Styling - Dark Mode
+-------------------------------------------------- */
+[data-theme=dark],
+.theme-dark {
+  .has-background-4a {
+    z-index: 3;
+    background-color: rgba(24, 24, 24, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  .navbar-element-4a {
+    z-index: 3;
+    background-color: rgba(24, 24, 24, 1);
+  }
+
+  .panel {
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+    background-color: rgba(40, 40, 40, 1);
+  }
+
+  .panel-block {
+    background-color: rgba(40, 40, 40, 1);
+  }
+
+  .column {
+    background-color: rgba(40, 40, 40, 1);
+  }
+
+  .box {
+    background-color: rgba(40, 40, 40, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  .panel-tabs {
+    background-color: rgba(40, 40, 40, 1);
+  }
+
+  .panel-tabContainer {
+    background-color: rgba(40, 40, 40, 1);
+    padding: 0px 0px 0px 0px;
+  }
+
+  #sidebar {
+    background-color: rgba(40, 40, 40, 1);
+  }
+
+  #drawer {
+    background-color: rgba(76, 82, 97, 1);
+  }
+
+  .ViewPortDrawer {
+    background-color: rgba(40, 40, 40, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  #viewport-buttons {
+    background-color: rgba(40, 40, 40, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Sidebar-specific styling - to be removed */
+  .button.is-sidebar {
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
+    outline: none;
+    background-color: rgba(54, 58, 69, 1);
+    height: 50px;
+    --sidebar-button-background-color-default: rgba(40, 40, 40, 1);
+    --sidebar-button-background-color-active: rgba(76, 82, 97, 1);
+  }
+
+  .button.is-sidebar:hover {
+    background-color: rgba(40, 40, 40, 1);
+    border: rgba(54, 58, 69, 1);
+  }
+}
+
+/* Theme Styling - Light Mode
+-------------------------------------------------- */
+[data-theme=light],
+.theme-light {
+  .has-background-4a {
+    z-index: 3;
+    background-color: rgba(70, 86, 246, 1);
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-element-4a {
+    z-index: 3;
+    background-color: rgba(70, 86, 246, 1);
+  }
+
+  .panel {
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+    background-color: white;
+  }
+
+  .panel-block {
+    background-color: white;
+  }
+
+  .column {
+    background-color: white;
+  }
+
+  .box {
+    background-color: white;
+  }
+
+  .panel-tabs {
+    background-color: white;
+  }
+
+  .panel-tabContainer {
+    background-color: white;
+    padding: 0px 0px 0px 0px;
+  }
+
+  #sidebar {
+    background-color: white;
+  }
+}
+
+/* HTML Label Overlay & Quill Editor Components
+-------------------------------------------------- */
+.html-label {
+  position: absolute;
+  pointer-events: none;
+  /* let events pass through by default (read-only mode) */
+  background: #3b3d40;
+  width: 550px;
+  /* default overlay width */
+  height: 250px;
+  /* default overlay height */
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #000;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Quill toolbar container, initially hidden */
+[id^="toolbar-container-"] {
+  /* flex: 1; */
+  display: none;
+  margin-bottom: 0.5rem;
+  pointer-events: auto;
+  /* ensure the toolbar can be clicked */
+}
+
+/* Editor area */
+[id^="editor-"] {
+  /* flex: 1; */
+  overflow: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  /* margin-top: 0.5rem; */
+}
+
+/* Quill Editor Styling
+-------------------------------------------------- */
+.ql-editor {
+  color: #000 !important;
+}
+
+.ql-toolbar {
+  color: #000 !important;
+  margin-top: 0.5rem;
+}
+
+.ql-snow .ql-color-picker .ql-picker-label svg .ql-color-label.ql-stroke.ql-transparent {
+  stroke: #000;
+  opacity: 1 !important;
+  /* or a specific hex: #ff0000 !important; */
+}
+
+/* Quill Button & Resize Handler Styling
+-------------------------------------------------- */
+/* Button row styling */
+.button-row {
+  margin-bottom: 0.5rem;
+}
+
+/* Resize handles */
+.resize-handle {
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  pointer-events: auto;
+  /* so we can grab the handle */
+  background: rgba(0, 0, 0, 0);
+  /* transparent, but you could style it differently */
+}
+
+.resize-handle.bottom-right {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+
+.resize-handle.bottom-center {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: s-resize;
+}
+
+.resize-handle.right-center {
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  cursor: e-resize;
+}
+
+/* Utility Classes for Editor Interaction
+-------------------------------------------------- */
+/* Disable text selection while resizing */
+.no-select {
+  user-select: none;
+}
+
+/* Ensure buttons and dropdowns capture events (while editing) */
+.button-quill,
+select {
+  pointer-events: auto;
+}

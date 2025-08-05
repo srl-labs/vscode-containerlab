@@ -13,10 +13,14 @@ isVscodeDeployment: boolean,
 jsOutDir: string,
 allowedHostname: string,
 useSocket: boolean,
-socketAssignedPort: number
+socketAssignedPort: number,
+deploymentState?: 'deployed' | 'undeployed' | 'unknown',
+viewerMode?: 'viewer' | 'editor' | 'unified',
+topologyName?: string
 ): string {
 
 log.info(`allowedHostname in vscodeHtmlTemplate.ts: ${allowedHostname}`);
+log.info(`Smart detection - deploymentState: ${deploymentState}, viewerMode: ${viewerMode}`);
 
 
 return `
@@ -64,7 +68,7 @@ return `
           containerlab
         </p>
         <p class="subtitle is-6 m-0 has-text-weight-light has-text-white" id="ClabSubtitle">
-          Viewer ::: Topology name: Königsberger Brücken
+          Viewer ::: Topology name: ${topologyName || 'Unknown Topology'}
         </p>
       </div>
     </div>
@@ -1742,7 +1746,6 @@ return `
     <!-- custom textbox with rich text editor -->
 
     <script src="${jsUri}/library/quill-2-0-3.js"></script>
-    <script src="${jsUri}/managerCyTextBox.js?ver=1"></script>
 
     <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
 
@@ -1766,6 +1769,10 @@ return `
 
     <!-- Inject isVscodeDeployment boolean as a global variable -->
     <script> window.isVscodeDeployment = "${isVscodeDeployment}"; </script>
+    
+    <!-- Smart Viewer/Editor Detection Variables -->
+    <script> window.deploymentState = "${deploymentState || 'unknown'}"; </script>
+    <script> window.viewerMode = "${viewerMode || 'unified'}"; </script>
 
     <!-- Inject allowedHostname string as a global variable -->
     <script> window.allowedHostname = "${allowedHostname}"; </script>
@@ -1776,26 +1783,23 @@ return `
     <!-- Inject socketAssignedPort number as a global variable -->
     <script> window.socketAssignedPort = "${socketAssignedPort}"; </script>
 
-
-
-
-    <script src="${jsUri}/common.js?ver=1"></script>
-    <script src="${jsUri}/dev.js?ver=1"></script>
-
-    <!-- clabTreeProviderData provided to below script using socket.io -->
-    <script src="${jsUri}/managerOnChangeFramework.js?ver=1"></script>
-    <script src="${jsUri}/managerSocketDataEnrichment.js?ver=1"></script>
-
-
-    <script src="${jsUri}/managerVscodeWebview.js?ver=1"></script>
-    <script src="${jsUri}/managerSvg.js?ver=1"></script>
-    <script src="${jsUri}/managerLayoutAlgo.js?ver=1"></script>
-    <script src="${jsUri}/managerGroupManagement.js?ver=1"></script>
-
-
-
-    <script src="${jsUri}/backupRestore.js?ver=1"></script>
-    <script src="${jsUri}/managerClabEditor.js?ver=1"></script>
+    <!-- Load the compiled TypeScript bundle -->
+    <script src="${jsOutDir}/topoViewerEngine.js?ver=1"></script>
+    
+    <!-- Initialize TopoViewer after bundle loads -->
+    <script>
+      // Wait for TopoViewerEngine to be available and initialize
+      if (typeof TopoViewerEngine !== 'undefined') {
+        if (typeof log !== 'undefined' && log.info) {
+          log.info('TopoViewerEngine loaded successfully');
+        }
+        // The bundle includes DOMContentLoaded handler, so initialization is automatic
+      } else {
+        if (typeof log !== 'undefined' && log.error) {
+          log.error('TopoViewerEngine failed to load');
+        }
+      }
+    </script>
 
 
   </div>

@@ -1,5 +1,7 @@
 // managerSocketDataEnrichment.ts
 
+import { log } from './logger';
+
 // Declarations for globals provided elsewhere in the webview environment
 // These will be replaced with proper imports and types as the migration continues.
 declare const cy: any;
@@ -14,10 +16,11 @@ declare const globalPrefixName: string;
  */
 export function socketDataEncrichmentLink(labData: Record<string, any>): void {
   const linkMap = new Map<string, { mac: string; mtu: number; type: string }>();
+  log.info('Starting socket data enrichment for links');
 
-  console.log("debug labData:", labData);
-  console.log("debug labData.name", (labData as any).name);
-  console.log("debug globalLabName", globalLabName);
+  log.debug(`labData keys: ${Object.keys(labData).join(', ')}`);
+  log.debug(`labData.name: ${(labData as any).name}`);
+  log.debug(`globalLabName: ${globalLabName}`);
 
   // Build interface key mapping for the current lab
   Object.values(labData).forEach((lab: any) => {
@@ -34,11 +37,7 @@ export function socketDataEncrichmentLink(labData: Record<string, any>): void {
         linkMap.set(key, { mac: iface.mac, mtu: iface.mtu, type: iface.type });
       });
 
-      console.log(
-        `Enriched link data for node: ${nodeName} with interfaces:`,
-        container.interfaces
-      );
-      console.log("Enriched link map data:", linkMap);
+      log.debug(`Node ${nodeName} has ${container.interfaces.length} interfaces`);
     });
   });
 
@@ -89,7 +88,10 @@ export function socketDataEncrichmentLink(labData: Record<string, any>): void {
         edge.data({ targetMac: iface.mac, targetMtu: iface.mtu, targetType: iface.type });
       }
 
-      console.log("Edge data after enrichment:", edge.data());
+      // Edge enrichment logged at debug level only when needed
+      if (data.source === nodeName || data.target === nodeName) {
+        log.debug(`Edge ${edge.id()} enriched for node ${nodeName}`);
+      }
     });
   });
 }

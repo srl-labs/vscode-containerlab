@@ -1,0 +1,7 @@
+legacy-backup/
+src/topoViewerTs/webview-ui/initialization.ts
+src/topoViewerTs/webview-ui/uiHandlers.ts
+node_modules/
+dist/
+out/
+.vscode-test/

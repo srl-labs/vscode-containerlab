@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "ES2020",
+    "lib": ["ES2020", "dom"],
+    "outDir": "out/topoViewerTs",
+    "rootDir": "./src/topoViewerTs/webview-ui",
+    "strict": false,
+    "sourceMap": true,
+    "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"],
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
+  },
+  "include": [
+    "src/topoViewerTs/webview-ui/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".vscode-test",
+    "test/**/*",
+    "src/topoViewerTs/backend/**/*"
+  ]
+}

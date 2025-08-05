@@ -1,5 +1,8 @@
 // file: managerVscodeWebview.ts
 
+// Import logger for webview
+import { log } from './logger';
+
 // This function is typically provided by the VS Code environment.
 declare function acquireVsCodeApi(): any;
 
@@ -42,7 +45,7 @@ export class VscodeMessageSender {
       const { requestId, result, error } = msg;
       const pending = this.pendingRequests.get(requestId);
       if (!pending) {
-        console.warn("Received response for unknown requestId:", requestId);
+        log.warn(`Received response for unknown requestId: ${requestId}`);
         return;
       }
       this.pendingRequests.delete(requestId);
