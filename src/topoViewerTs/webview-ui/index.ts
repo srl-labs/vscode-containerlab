@@ -4,6 +4,9 @@ import './initialization';
 // Import UI handlers to make them available globally
 import { initializeGlobalHandlers } from './uiHandlers';
 
+// Import cytoscape styles
+import './cytoscapeStyles';
+
 // Initialize global handlers for HTML onclick functions
 initializeGlobalHandlers();
 

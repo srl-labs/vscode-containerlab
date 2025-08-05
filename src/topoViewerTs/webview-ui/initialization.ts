@@ -68,7 +68,7 @@ function initializeCytoscape(): void {
 
   // Create Cytoscape instance
   globalThis.cy = cytoscape({
-    container: document.getElementById("cy-leaflet"),
+    container: document.getElementById("cy"),
     elements: [],
     style: [{
       selector: "node",
@@ -115,6 +115,11 @@ function initializeCytoscape(): void {
     log.debug(`Remaining selected edges: ${globalThis.cy.$('edge:selected').map((e: any) => e.id()).join(', ')}`);
   });
 
+  // Apply initial styles
+  if (typeof (globalThis as any).loadCytoStyle === 'function') {
+    (globalThis as any).loadCytoStyle(globalThis.cy);
+  }
+
   log.info('Cytoscape instance initialized successfully');
 }
 
@@ -149,6 +154,11 @@ async function loadTopologyData(): Promise<void> {
       // Apply layout
       const layout = globalThis.cy.layout({ name: 'preset' });
       layout.run();
+
+      // Apply styles after loading data
+      if (typeof (globalThis as any).loadCytoStyle === 'function') {
+        (globalThis as any).loadCytoStyle(globalThis.cy);
+      }
 
       if (cytoData.nodes && cytoData.nodes.length > 0) {
         log.info('Topology loaded and rendered successfully');

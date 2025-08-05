@@ -121,6 +121,71 @@ export function viewportButtonsTopologyOverview(): void {
 }
 
 /**
+ * Toggle endpoint label visibility
+ */
+export function viewportButtonsLabelEndpoint(): void {
+  try {
+    globalThis.globalLinkEndpointVisibility = !globalThis.globalLinkEndpointVisibility;
+    
+    if (globalThis.cy) {
+      // Trigger style update if loadCytoStyle is available
+      if (typeof (globalThis as any).loadCytoStyle === 'function') {
+        (globalThis as any).loadCytoStyle(globalThis.cy);
+      }
+    }
+    
+    log.info(`Endpoint label visibility toggled to: ${globalThis.globalLinkEndpointVisibility}`);
+  } catch (error) {
+    log.error(`Error toggling endpoint labels: ${error}`);
+  }
+}
+
+/**
+ * Search for nodes in the topology
+ */
+export function viewportNodeFindEvent(): void {
+  try {
+    const searchInput = document.getElementById('viewport-drawer-topology-overview-content-edit') as HTMLInputElement;
+    if (!searchInput) {
+      log.error('Search input element not found');
+      return;
+    }
+
+    const searchTerm = searchInput.value.trim();
+    if (!searchTerm) {
+      log.warn('No search term entered');
+      return;
+    }
+
+    if (!globalThis.cy) {
+      log.error('Cytoscape instance not available');
+      return;
+    }
+
+    // Search for nodes by label
+    const matchingNodes = globalThis.cy.nodes().filter((node: any) => {
+      const label = node.data('label') || '';
+      return label.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+
+    if (matchingNodes.length > 0) {
+      // Select matching nodes
+      globalThis.cy.elements().unselect();
+      matchingNodes.select();
+
+      // Fit to show selected nodes
+      globalThis.cy.fit(matchingNodes, 50);
+      
+      log.info(`Found ${matchingNodes.length} nodes matching: ${searchTerm}`);
+    } else {
+      log.warn(`No nodes found matching: ${searchTerm}`);
+    }
+  } catch (error) {
+    log.error(`Error in node search: ${error}`);
+  }
+}
+
+/**
  * Initialize global handlers - make functions available globally for onclick handlers
  */
 export function initializeGlobalHandlers(): void {
@@ -129,6 +194,8 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportButtonsZoomToFit = viewportButtonsZoomToFit;
   (globalThis as any).viewportButtonsLayoutAlgo = viewportButtonsLayoutAlgo;
   (globalThis as any).viewportButtonsTopologyOverview = viewportButtonsTopologyOverview;
+  (globalThis as any).viewportButtonsLabelEndpoint = viewportButtonsLabelEndpoint;
+  (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
 
   log.info('Global UI handlers initialized');
 }

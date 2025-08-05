@@ -504,9 +504,10 @@ export class TopoViewerAdaptorClab {
     );
     // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
 
-    log.debug(`clabTreeDataToTopoviewer : ${JSON.stringify(clabTreeDataToTopoviewer, null, 2)}`);
-    log.debug(`filteredLabData : ${JSON.stringify(filteredLabData, null, 2)}`);
-    log.debug(`clabName : ${JSON.stringify(clabName, null, 2)}`);
+    const availableLabs = Object.values(clabTreeDataToTopoviewer ?? {}).map((lab) => lab.name);
+    log.debug(`Available labs: [${availableLabs.join(', ')}]`);
+    log.debug(`Requested clabName: ${clabName}`);
+    log.debug(`Filtered labs count: ${filteredLabData.length}`);
 
 
     // Check if filteredLabData is not empty
@@ -515,6 +516,9 @@ export class TopoViewerAdaptorClab {
       return null;
     }
     const firstLabNode = filteredLabData[0];
+
+    const containerNames = firstLabNode?.containers?.map((c) => c.name) ?? [];
+    log.debug(`Containers in lab "${firstLabNode.name}": [${containerNames.join(', ')}]`);
 
     // Ensure that 'containers' is defined
     if (!firstLabNode.containers || !Array.isArray(firstLabNode.containers)) {
