@@ -94,13 +94,12 @@ export class TopoViewer {
    * Detects the deployment state of the lab by checking if containers are running.
    * This enables smart viewer/editor functionality.
    *
-   * @param yamlFilePath - Path to the lab configuration file
+   * @param yamlContent - The raw YAML content of the lab configuration file
    * @returns Promise resolving to deployment state
    */
-  private async detectDeploymentState(yamlFilePath: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
+  private async detectDeploymentState(yamlContent: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
       // Parse the YAML to get lab name
-      const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
       const yamlData = YAML.parse(yamlContent);
       const labName = yamlData?.name;
 
@@ -177,15 +176,18 @@ export class TopoViewer {
     this.lastYamlFilePath = yamlFilePath;
 
     try {
-      // Detect deployment state for smart viewer/editor functionality
-      this.deploymentState = await this.detectDeploymentState(yamlFilePath);
-      this.updateViewerMode(this.deploymentState);
-
       // Read the YAML content from the file asynchronously.
       const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
-      // Transform YAML into Cytoscape elements.
-      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer);
+      // Detect deployment state and transform YAML concurrently.
+      const [deploymentState, cytoTopology] = await Promise.all([
+        this.detectDeploymentState(yamlContent),
+        Promise.resolve(this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer))
+      ]);
+
+      // Update viewer/editor mode based on deployment state
+      this.deploymentState = deploymentState;
+      this.updateViewerMode(deploymentState);
 
       // Determine folder name based on the YAML file name.
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
