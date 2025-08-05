@@ -97,7 +97,7 @@ export class TopoViewer {
    * @param yamlContent - The raw YAML content of the lab configuration file
    * @returns Promise resolving to deployment state
    */
-  private async detectDeploymentState(yamlContent: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
+  private async detectDeploymentState(yamlContent: string, clabTreeData?: Record<string, ClabLabTreeNode>): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
       // Parse the YAML to get lab name
       const yamlData = YAML.parse(yamlContent);
@@ -108,9 +108,15 @@ export class TopoViewer {
         return 'unknown';
       }
 
-      // Check if lab is in running labs tree data
-      const runningLabs = await this.clabTreeProviderImported.discoverInspectLabs();
-      const isDeployed = runningLabs && Object.keys(runningLabs).some(key =>
+      // Use provided clabTreeData or get from cache if available
+      const runningLabs = clabTreeData || this.cacheClabTreeDataToTopoviewer;
+
+      if (!runningLabs) {
+        log.info('No running labs data available yet');
+        return 'unknown';
+      }
+
+      const isDeployed = Object.keys(runningLabs).some(key =>
         runningLabs[key].name === labName
       );
 
@@ -179,9 +185,14 @@ export class TopoViewer {
       // Read the YAML content from the file asynchronously.
       const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
+      // If clabTreeDataToTopoviewer is not provided, fetch it once
+      if (!clabTreeDataToTopoviewer) {
+        clabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+      }
+
       // Detect deployment state and transform YAML concurrently.
       const [deploymentState, cytoTopology] = await Promise.all([
-        this.detectDeploymentState(yamlContent),
+        this.detectDeploymentState(yamlContent, clabTreeDataToTopoviewer),
         Promise.resolve(this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer))
       ]);
 
@@ -216,8 +227,8 @@ export class TopoViewer {
       const panel = await this.createWebviewPanel(folderName, socketPort);
       this.currentTopoViewerPanel = panel;
 
-      // Initialize updatedClabTreeDataToTopoviewer
-      this.cacheClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+      // Store the clabTreeDataToTopoviewer in cache
+      this.cacheClabTreeDataToTopoviewer = clabTreeDataToTopoviewer;
 
       return panel;
     } catch (err) {

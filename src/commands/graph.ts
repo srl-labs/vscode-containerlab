@@ -4,7 +4,6 @@ import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewerTs/backend/topoViewerWebUiFacade";
-import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
 import { getSelectedLabNode } from "../helpers/utils";
 
 
@@ -110,16 +109,10 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   // 2) store the viewer in the global variable
   currentTopoViewer = viewer;
 
-  // do the same logic as before...
-  const provider = new RunningLabTreeDataProvider(context);
-  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
-
   try {
     // 3) call openViewer, which returns (panel | undefined).
-    currentTopoViewerPanel = await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
-
-    // await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
-    // currentTopoViewerPanel = viewer.currentTopoViewerPanel
+    // Pass undefined for clabTreeDataToTopoviewer - let openViewer handle discovery internally
+    currentTopoViewerPanel = await viewer.openViewer(labPath, undefined);
 
     // 4) If the panel is undefined, do nothing or return
     if (!currentTopoViewerPanel) {
