@@ -3,6 +3,23 @@
 
 // Import logger for webview
 import { log } from './logger';
+import { VscodeMessageSender } from './managerVscodeWebview';
+
+// Global message sender instance
+let messageSender: VscodeMessageSender | null = null;
+
+// Initialize message sender on first use
+function getMessageSender(): VscodeMessageSender {
+  if (!messageSender) {
+    try {
+      messageSender = new VscodeMessageSender();
+    } catch (error) {
+      log.error(`Failed to initialize VscodeMessageSender: ${error}`);
+      throw error;
+    }
+  }
+  return messageSender;
+}
 
 /**
  * Show the About panel
@@ -226,6 +243,84 @@ export function viewportDrawerCaptureFunc(event: Event): void {
 }
 
 /**
+ * Save topology data back to the backend
+ * Updates node positions and group information before saving
+ */
+// eslint-disable-next-line no-unused-vars
+export async function viewportButtonsSaveTopo(_cy: any): Promise<void> {
+  try {
+    log.info('viewportButtonsSaveTopo triggered');
+
+    // Ensure Cytoscape instance is available
+    if (!globalThis.cy) {
+      log.error('Cytoscape instance "cy" is not defined.');
+      return;
+    }
+
+    // Process nodes: update each node's "position" property with the current position
+    const updatedNodes = globalThis.cy.nodes().map((node: any) => {
+      const nodeJson = node.json();
+
+      // Update position property
+      nodeJson.position = node.position();
+
+      // Check if extraData and labels exist before modifying
+      if (nodeJson.data?.extraData?.labels) {
+        nodeJson.data.extraData.labels['graph-posX'] = nodeJson.position.x.toString();
+        nodeJson.data.extraData.labels['graph-posY'] = nodeJson.position.y.toString();
+      }
+
+      // Update parent property
+      const parentId = node.parent().id();
+      if (parentId) {
+        nodeJson.parent = parentId;
+
+        // Check if extraData and labels exist before modifying
+        if (nodeJson.data?.extraData?.labels) {
+          const parentParts = parentId.split(':');
+          if (parentParts.length >= 2) {
+            nodeJson.data.extraData.labels['graph-group'] = parentParts[0];
+            nodeJson.data.extraData.labels['graph-level'] = parentParts[1];
+          }
+
+          // Get label position from parent's classes
+          const validLabelClasses = [
+            'top-center',
+            'top-left',
+            'top-right',
+            'bottom-center',
+            'bottom-left',
+            'bottom-right'
+          ];
+
+          // Get the parent's classes as array
+          const parentElement = globalThis.cy.getElementById(parentId);
+          if (parentElement) {
+            const parentClasses = parentElement.classes();
+
+            // Filter the classes so that only valid entries remain
+            const validParentClasses = parentClasses.filter((cls: string) => validLabelClasses.includes(cls));
+
+            // Assign only the first valid class, or an empty string if none exists
+            nodeJson.data.groupLabelPos = validParentClasses.length > 0 ? validParentClasses[0] : '';
+          }
+        }
+      }
+
+      return nodeJson;
+    });
+
+    // Send updated topology data to backend
+    const sender = getMessageSender();
+    const response = await sender.sendMessageToVscodeEndpointPost('topo-viewport-save', updatedNodes);
+    log.info(`Topology saved successfully: ${JSON.stringify(response)}`);
+
+  } catch (error) {
+    log.error(`Failed to save topology: ${error}`);
+  }
+}
+
+/**
  * Initialize global handlers - make functions available globally for onclick handlers
  */
 export function initializeGlobalHandlers(): void {
@@ -237,6 +332,7 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportButtonsLabelEndpoint = viewportButtonsLabelEndpoint;
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
+  (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
 
   log.info('Global UI handlers initialized');
 }
