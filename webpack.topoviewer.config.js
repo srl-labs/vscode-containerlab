@@ -2,7 +2,7 @@ const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
-  mode: 'development', // or 'development' for debugging
+  mode: 'production', // or 'development' for debugging
   target: 'web',
   entry: './src/topoViewerTs/webview-ui/index.ts',
   output: {
