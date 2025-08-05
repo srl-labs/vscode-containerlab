@@ -1,6 +1,7 @@
 // cytoscapeStyles.ts - Cytoscape styling functions for TopoViewer TypeScript version
 
 import { log } from './logger';
+import { generateEncodedSVG } from './managerSvg';
 
 /**
  * Detect color scheme preference (light/dark mode)
@@ -68,6 +69,134 @@ export function loadCytoStyle(cy: any): void {
           'text-valign': 'top',
           'background-color': '#6C5B7B',
           'background-opacity': 0.3
+        }
+      },
+      // Role-based icons
+      {
+        selector: 'node[topoViewerRole="router"], node[topoViewerRole="default"], node[topoViewerRole="pe"], node[topoViewerRole="p"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('pe', '#005aff'),
+          'background-fit': 'cover',
+          'background-clip': 'none'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="controller"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('controller', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="pon"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('pon', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="dcgw"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('dcgw', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="leaf"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('leaf', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="switch"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('switch', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="rgw"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('rgw', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="super-spine"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('super-spine', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="spine"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('spine', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="server"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('server', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="bridge"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('bridge', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="ue"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('ue', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="cloud"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('cloud', '#005aff'),
+          'background-fit': 'cover'
+        }
+      },
+      {
+        selector: 'node[topoViewerRole="client"]',
+        style: {
+          width: '14',
+          height: '14',
+          'background-image': generateEncodedSVG('client', '#005aff'),
+          'background-fit': 'cover'
         }
       },
       {

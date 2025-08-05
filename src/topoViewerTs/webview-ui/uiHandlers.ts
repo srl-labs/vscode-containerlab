@@ -85,7 +85,7 @@ export function viewportButtonsLayoutAlgo(): void {
     }
 
     // Show the layout drawer
-    const layoutDrawer = document.getElementById("drawer-layout-algo");
+    const layoutDrawer = document.getElementById("viewport-drawer-layout");
     if (layoutDrawer) {
       layoutDrawer.style.display = "block";
     } else {
@@ -109,7 +109,7 @@ export function viewportButtonsTopologyOverview(): void {
     }
 
     // Show the topology overview drawer
-    const overviewDrawer = document.getElementById("drawer-topology-overview");
+    const overviewDrawer = document.getElementById("viewport-drawer-topology-overview");
     if (overviewDrawer) {
       overviewDrawer.style.display = "block";
     } else {

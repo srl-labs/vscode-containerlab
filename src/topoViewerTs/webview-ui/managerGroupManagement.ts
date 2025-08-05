@@ -472,3 +472,13 @@ export function nodeParentRemoval(): boolean {
     return false;
   }
 }
+
+/**
+ * Add a new group to the topology.
+ */
+export function viewportButtonsAddGroup(): void {
+  createNewParent({ createDummyChild: true });
+}
+
+// Expose global handlers for HTML usage
+(globalThis as any).viewportButtonsAddGroup = viewportButtonsAddGroup;

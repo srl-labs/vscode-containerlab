@@ -130,7 +130,6 @@ async function loadTopologyData(): Promise<void> {
   try {
     // Get JSON URLs from window variables
     const cytoscapeUrl = (window as any).jsonFileUrlDataCytoMarshall;
-    const environmentUrl = (window as any).jsonFileUrlDataEnvironment;
 
     if (!cytoscapeUrl) {
       log.error('Cytoscape JSON URL is missing');

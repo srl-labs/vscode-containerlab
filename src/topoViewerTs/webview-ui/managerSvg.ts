@@ -19,7 +19,8 @@ export type NodeType =
   | "rgw"          // Residential Gateway
   | "ue"           // User Equipment
   | "cloud"        // Cloud
-  | "client";      // Client
+  | "client"       // Client
+  | "bridge";      // Bridge
 
 /**
  * Generates an encoded SVG data URI for a given node type and fill color.
@@ -163,6 +164,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                 `;
       break;
 
+    case "bridge": // Bridge uses switch icon
     case "switch":  // Switch
       svgString = `
                     <svg
