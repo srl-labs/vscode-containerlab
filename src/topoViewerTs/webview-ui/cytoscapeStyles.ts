@@ -250,8 +250,8 @@ export function loadCytoStyle(cy: any): void {
       cytoscapeStyles.push({
         selector: 'edge',
         style: {
-          'source-label': 'data(srcEndpoint)',
-          'target-label': 'data(trgEndpoint)'
+          'source-label': 'data(sourceEndpoint)',
+          'target-label': 'data(targetEndpoint)'
         } as any
       });
     }

@@ -77,19 +77,23 @@ export function viewportButtonsZoomToFit(): void {
  */
 export function viewportButtonsLayoutAlgo(): void {
   try {
-    const viewportDrawer = document.getElementsByClassName("viewport-drawer");
-
-    // Hide all viewport drawers first
-    for (let i = 0; i < viewportDrawer.length; i++) {
-      (viewportDrawer[i] as HTMLElement).style.display = "none";
+    const layoutDrawer = document.getElementById("viewport-drawer-layout");
+    if (!layoutDrawer) {
+      log.warn('Layout algorithm drawer not found');
+      return;
     }
 
-    // Show the layout drawer
-    const layoutDrawer = document.getElementById("viewport-drawer-layout");
-    if (layoutDrawer) {
-      layoutDrawer.style.display = "block";
+    // Toggle visibility
+    if (layoutDrawer.style.display === "block") {
+      layoutDrawer.style.display = "none";
     } else {
-      log.warn('Layout algorithm drawer not found');
+      // Hide all viewport drawers first
+      const viewportDrawer = document.getElementsByClassName("viewport-drawer");
+      for (let i = 0; i < viewportDrawer.length; i++) {
+        (viewportDrawer[i] as HTMLElement).style.display = "none";
+      }
+      // Show the layout drawer
+      layoutDrawer.style.display = "block";
     }
   } catch (error) {
     log.error(`Error in layout algorithm button: ${error}`);
@@ -101,19 +105,23 @@ export function viewportButtonsLayoutAlgo(): void {
  */
 export function viewportButtonsTopologyOverview(): void {
   try {
-    const viewportDrawer = document.getElementsByClassName("viewport-drawer");
-
-    // Hide all viewport drawers first
-    for (let i = 0; i < viewportDrawer.length; i++) {
-      (viewportDrawer[i] as HTMLElement).style.display = "none";
+    const overviewDrawer = document.getElementById("viewport-drawer-topology-overview");
+    if (!overviewDrawer) {
+      log.warn('Topology overview drawer not found');
+      return;
     }
 
-    // Show the topology overview drawer
-    const overviewDrawer = document.getElementById("viewport-drawer-topology-overview");
-    if (overviewDrawer) {
-      overviewDrawer.style.display = "block";
+    // Toggle visibility
+    if (overviewDrawer.style.display === "block") {
+      overviewDrawer.style.display = "none";
     } else {
-      log.warn('Topology overview drawer not found');
+      // Hide all viewport drawers first
+      const viewportDrawer = document.getElementsByClassName("viewport-drawer");
+      for (let i = 0; i < viewportDrawer.length; i++) {
+        (viewportDrawer[i] as HTMLElement).style.display = "none";
+      }
+      // Show the topology overview drawer
+      overviewDrawer.style.display = "block";
     }
   } catch (error) {
     log.error(`Error in topology overview button: ${error}`);
@@ -186,6 +194,38 @@ export function viewportNodeFindEvent(): void {
 }
 
 /**
+ * Handle capture/screenshot functionality
+ */
+export function viewportDrawerCaptureFunc(event: Event): void {
+  event.preventDefault();
+  try {
+    if (!globalThis.cy) {
+      log.error('Cytoscape instance not available');
+      return;
+    }
+
+    // Use cytoscape-svg extension if available
+    if (typeof globalThis.cy.svg === 'function') {
+      const svgContent = globalThis.cy.svg({ scale: 1, full: true });
+      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'topology.svg';
+      link.click();
+
+      URL.revokeObjectURL(url);
+      log.info('Topology exported as SVG');
+    } else {
+      log.warn('Cytoscape SVG extension not available');
+    }
+  } catch (error) {
+    log.error(`Error capturing topology: ${error}`);
+  }
+}
+
+/**
  * Initialize global handlers - make functions available globally for onclick handlers
  */
 export function initializeGlobalHandlers(): void {
@@ -196,6 +236,7 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportButtonsTopologyOverview = viewportButtonsTopologyOverview;
   (globalThis as any).viewportButtonsLabelEndpoint = viewportButtonsLabelEndpoint;
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
+  (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
 
   log.info('Global UI handlers initialized');
 }

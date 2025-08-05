@@ -145,8 +145,15 @@ async function loadTopologyData(): Promise<void> {
       globalThis.cy.elements().remove();
       globalThis.cy.add(cytoData);
 
-      // Apply layout
-      const layout = globalThis.cy.layout({ name: 'preset' });
+      // Apply cola layout as the default start layout
+      const layout = globalThis.cy.layout({
+        name: 'cola',
+        nodeSpacing: () => 5,
+        edgeLength: () => 100,
+        animate: true,
+        randomize: false,
+        maxSimulationTime: 1500
+      });
       layout.run();
 
       // Apply styles after loading data
@@ -155,7 +162,7 @@ async function loadTopologyData(): Promise<void> {
       }
 
       if (cytoData.nodes && cytoData.nodes.length > 0) {
-        log.info('Topology loaded and rendered successfully');
+        log.info('Topology loaded and rendered successfully with cola layout');
       } else {
         log.warn('No topology elements found in data');
       }
@@ -253,6 +260,43 @@ async function fetchEnvironmentData(): Promise<void> {
 }
 
 /**
+ * Initialize menu close behavior - close menus when clicking outside
+ */
+function initializeMenuCloseBehavior(): void {
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+
+    // Check if click is outside viewport drawers
+    const viewportDrawers = document.getElementsByClassName('viewport-drawer');
+    const isInsideDrawer = Array.from(viewportDrawers).some(drawer =>
+      drawer.contains(target) || drawer === target
+    );
+
+    // Check if click is on a viewport button
+    const isViewportButton = target.closest('[id^="viewport-"]') &&
+                           (target.tagName === 'BUTTON' || target.closest('button'));
+
+    if (!isInsideDrawer && !isViewportButton) {
+      // Close all viewport drawers
+      for (let i = 0; i < viewportDrawers.length; i++) {
+        (viewportDrawers[i] as HTMLElement).style.display = 'none';
+      }
+    }
+
+    // Close dropdown menus
+    const dropdowns = document.getElementsByClassName('dropdown');
+    for (let i = 0; i < dropdowns.length; i++) {
+      const dropdown = dropdowns[i] as HTMLElement;
+      if (!dropdown.contains(target)) {
+        dropdown.classList.remove('is-active');
+      }
+    }
+  });
+
+  log.info('Menu close behavior initialized');
+}
+
+/**
  * Main initialization function
  */
 export function initializeTopoViewer(): void {
@@ -262,6 +306,7 @@ export function initializeTopoViewer(): void {
   initializeCytoscape();
   loadTopologyData();
   initializeResizeHandling();
+  initializeMenuCloseBehavior();
 
   log.info('TopoViewer initialization complete');
 }
