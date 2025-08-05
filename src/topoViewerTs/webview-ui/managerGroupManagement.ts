@@ -250,6 +250,39 @@ export function initializeGroupManagement(): void {
 }
 
 /**
+ * Display the parent properties panel for a given group node.
+ * @param node - Cytoscape node representing the group
+ */
+export function showPanelGroupEditor(node: any): void {
+  try {
+    const panel = document.getElementById('panel-node-editor-parent');
+    if (!panel) {
+      log.warn('Group editor panel element not found');
+      return;
+    }
+
+    panel.style.display = 'block';
+
+    const currentParentId = node.id();
+    const groupIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
+    const groupEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
+    const levelEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
+
+    if (groupIdEl) {
+      groupIdEl.textContent = currentParentId;
+    }
+    if (groupEl) {
+      groupEl.value = currentParentId.split(':')[0];
+    }
+    if (levelEl) {
+      levelEl.value = currentParentId.split(':')[1];
+    }
+  } catch (error) {
+    log.error(`showPanelGroupEditor failed: ${error}`);
+  }
+}
+
+/**
  * Toggles the panel node editor parent dropdown.
  *
  * This function toggles the dropdown's active state. If the click event listeners
@@ -555,3 +588,4 @@ export function viewportButtonsAddGroup(): void {
 (globalThis as any).nodeParentPropertiesUpdateClose = nodeParentPropertiesUpdateClose;
 (globalThis as any).nodeParentRemoval = nodeParentRemoval;
 (globalThis as any).viewportButtonsAddGroup = viewportButtonsAddGroup;
+(globalThis as any).showPanelGroupEditor = showPanelGroupEditor;

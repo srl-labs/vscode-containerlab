@@ -2,7 +2,8 @@
 // This module replaces the initialization logic that was in dev.js
 
 import { log } from './logger';
-import { initializeGroupManagement, initializeWheelSelection } from './managerGroupManagement';
+import { initializeGroupManagement, initializeWheelSelection, showPanelGroupEditor } from './managerGroupManagement';
+import { showPanelNodeEditor } from './managerClabEditor';
 
 // loadCytoStyle function will be called if available
 
@@ -114,6 +115,30 @@ function initializeCytoscape(): void {
       (globalThis as any).loadCytoStyle(globalThis.cy);
     }
     log.debug(`Remaining selected edges: ${globalThis.cy.$('edge:selected').map((e: any) => e.id()).join(', ')}`);
+  });
+
+  // Handle node clicks to open property panels
+  globalThis.cy.on('click', 'node', async (event: any) => {
+    const node = event.target;
+    if (node.isParent() || node.data('topoViewerRole') === 'group') {
+      showPanelGroupEditor(node);
+    } else {
+      await showPanelNodeEditor(node);
+    }
+  });
+
+  // Close open menus when clicking on empty canvas
+  globalThis.cy.on('click', (event: any) => {
+    if (event.target === globalThis.cy) {
+      const panelOverlays = document.getElementsByClassName('panel-overlay');
+      for (let i = 0; i < panelOverlays.length; i++) {
+        (panelOverlays[i] as HTMLElement).style.display = 'none';
+      }
+      const viewportDrawer = document.getElementsByClassName('viewport-drawer');
+      for (let i = 0; i < viewportDrawer.length; i++) {
+        (viewportDrawer[i] as HTMLElement).style.display = 'none';
+      }
+    }
   });
 
   // Apply initial styles
