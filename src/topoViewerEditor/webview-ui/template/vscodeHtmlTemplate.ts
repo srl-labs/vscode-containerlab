@@ -753,13 +753,7 @@ export function getHTMLTemplate(
                             id="panel-node-action-ssh-web-based">Release From Group
                           </a>
 
-                          <!--   aarafat-tag: vs-code
 
-                                  <a onclick="sshCliCommandCopy(event);" class="dropdown-item label has-text-weight-normal is-small py-0" id="panel-node-action-ssh-copy-cli-command">SSH - Copy to Clipboard</a>
-                                  <hr class="dropdown-divider" />
-                                  <a onclick="backupRestoreNodeConfig(event);" class="dropdown-item label has-text-weight-normal is-small py-0"> Backup-Restore Config </a>
-                                  <a href="#" class="dropdown-item label has-text-weight-normal is-small py-0"> Reboot </a>
-                          -->
                         </div>
                       </div>
                     </div>
@@ -1959,8 +1953,6 @@ export function getHTMLTemplate(
     <script src="${jsUri}/library/quill-2-0-3.js"></script>
     <script src="${jsUri}/managerCyTextBox.js?ver=1"></script>
 
-    <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
-
     <script src="${jsUri}/library/core@1.5.0.js"></script>
     <script src="${jsUri}/library/dom@1.5.3.js"></script>
 
@@ -2001,11 +1993,7 @@ export function getHTMLTemplate(
 
     <script src="${jsOutDir}/topoViewerEditorEngine.js?ver=1"></script>
 
-    <!-- 
-    <script src="${jsUri}/common.js?ver=1"></script>
-    <script src="${jsUri}/dev.js?ver=1"></script> -->
-
-    <!-- clabTreeProviderData provided to below script using socket.io -->
+      <!-- clabTreeProviderData provided to below script using socket.io -->
     <!-- <script src="${jsUri}/managerOnChangeFramework.js?ver=1"></script>
     <script src="${jsUri}/managerSocketDataEnrichment.js?ver=1"></script> -->
 
@@ -2013,10 +2001,6 @@ export function getHTMLTemplate(
     <script src="${jsUri}/managerSvg.js?ver=1"></script>
     <script src="${jsUri}/managerLayoutAlgo.js?ver=1"></script>
     <script src="${jsUri}/managerGroupManagement.js?ver=1"></script> -->
-
-    <!--
-    <script src="${jsUri}/backupRestore.js?ver=1"></script>
-    <script src="${jsUri}/managerClabEditor.js?ver=1"></script> -->
 
   </div>
 </body>

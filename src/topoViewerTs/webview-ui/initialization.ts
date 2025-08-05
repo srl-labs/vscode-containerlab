@@ -2,6 +2,7 @@
 // This module replaces the initialization logic that was in dev.js
 
 import { log } from './logger';
+import { initializeGroupManagement, initializeWheelSelection } from './managerGroupManagement';
 
 // loadCytoStyle function will be called if available
 
@@ -304,6 +305,8 @@ export function initializeTopoViewer(): void {
 
   initializeGlobalVariables();
   initializeCytoscape();
+  initializeWheelSelection();
+  initializeGroupManagement();
   loadTopologyData();
   initializeResizeHandling();
   initializeMenuCloseBehavior();

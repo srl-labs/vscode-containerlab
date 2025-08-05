@@ -183,6 +183,73 @@ export function createNewParent(options: CreateNewParentOptions = {}): string {
 }
 
 /**
+ * Enable box selection and additive selection using the mouse wheel.
+ * This mirrors the behaviour of the legacy implementation where users could
+ * select multiple elements by dragging with the wheel/shift key.
+ */
+export function initializeWheelSelection(): void {
+  try {
+    cy.boxSelectionEnabled(true);
+    cy.selectionType('additive');
+  } catch (error) {
+    log.error(`initializeWheelSelection failed: ${error}`);
+  }
+}
+
+/**
+ * Register handlers related to group management such as dragging nodes into
+ * groups and removing empty groups.
+ */
+export function initializeGroupManagement(): void {
+  try {
+    const isNodeInsideParent = (node: any, parent: any): boolean => {
+      const parentBox = parent.boundingBox();
+      const nodePos = node.position();
+      return (
+        nodePos.x >= parentBox.x1 &&
+        nodePos.x <= parentBox.x2 &&
+        nodePos.y >= parentBox.y1 &&
+        nodePos.y <= parentBox.y2
+      );
+    };
+
+    cy.on('dragfree', 'node', (event: any) => {
+      const draggedNode = event.target;
+
+      let assignedParent: any = null;
+      cy.nodes(':parent').forEach((parent: any) => {
+        if (isNodeInsideParent(draggedNode, parent)) {
+          assignedParent = parent;
+        }
+      });
+
+      if (assignedParent) {
+        draggedNode.move({ parent: assignedParent.id() });
+        log.info(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
+
+        const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
+        if (dummyChild && dummyChild.length > 0) {
+          const realChildren = assignedParent.children().not(dummyChild);
+          if (realChildren.length > 0) {
+            dummyChild.remove();
+            log.debug('Dummy child removed');
+          }
+        }
+      }
+
+      const parentNodes = cy.nodes('[topoViewerRole = "group"]');
+      parentNodes.forEach((parentNode: any) => {
+        if (parentNode.children().empty()) {
+          parentNode.remove();
+        }
+      });
+    });
+  } catch (error) {
+    log.error(`initializeGroupManagement failed: ${error}`);
+  }
+}
+
+/**
  * Toggles the panel node editor parent dropdown.
  *
  * This function toggles the dropdown's active state. If the click event listeners

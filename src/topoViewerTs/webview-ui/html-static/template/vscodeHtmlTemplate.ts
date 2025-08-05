@@ -750,13 +750,7 @@ return `
                             id="panel-node-action-ssh-web-based">Release From Group
                           </a>
 
-                          <!--   aarafat-tag: vs-code
 
-                                  <a onclick="sshCliCommandCopy(event);" class="dropdown-item label has-text-weight-normal is-small py-0" id="panel-node-action-ssh-copy-cli-command">SSH - Copy to Clipboard</a>
-                                  <hr class="dropdown-divider" />
-                                  <a onclick="backupRestoreNodeConfig(event);" class="dropdown-item label has-text-weight-normal is-small py-0"> Backup-Restore Config </a>
-                                  <a href="#" class="dropdown-item label has-text-weight-normal is-small py-0"> Reboot </a>
-                          -->
                         </div>
                       </div>
                     </div>
@@ -1747,10 +1741,8 @@ return `
 
     <script src="${jsUri}/library/quill-2-0-3.js"></script>
 
-    <!-- <script src="${jsUri}/library/socket.io.min.js?ver=1"></script> -->
-
-    <script src="${jsUri}/library/core@1.5.0.js"></script>
-    <script src="${jsUri}/library/dom@1.5.3.js"></script>
+      <script src="${jsUri}/library/core@1.5.0.js"></script>
+      <script src="${jsUri}/library/dom@1.5.3.js"></script>
 
     <script src="${jsUri}/library/js-yaml.min.js?ver=1"></script>
     <script src="${jsUri}/library/monaco-loader.js?ver=1"></script>
