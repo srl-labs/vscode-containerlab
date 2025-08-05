@@ -326,16 +326,30 @@ async function loadTopologyData(): Promise<void> {
       globalThis.cy.elements().remove();
       globalThis.cy.add(cytoData);
 
-      // Apply cola layout as the default start layout
-      const layout = globalThis.cy.layout({
-        name: 'cola',
-        nodeSpacing: () => 5,
-        edgeLength: () => 100,
-        animate: true,
-        randomize: false,
-        maxSimulationTime: 1500
-      });
-      layout.run();
+      let usePreset = false;
+      try {
+        const environments = await (globalThis as any).getEnvironments?.();
+        usePreset = environments?.['topoviewer-layout-preset'] === 'true';
+      } catch (err) {
+        log.warn(`Could not determine preset layout preference: ${err}`);
+      }
+
+      if (usePreset) {
+        log.info('Applying preset layout from labels');
+        globalThis.cy.layout({ name: 'preset' }).run();
+      } else {
+        const layout = globalThis.cy.layout({
+          name: 'cola',
+          nodeSpacing: () => 5,
+          edgeLength: () => 100,
+          animate: true,
+          randomize: false,
+          maxSimulationTime: 1500
+        });
+        layout.run();
+      }
+
+      globalThis.cy.fit();
 
       // Apply styles after loading data
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
@@ -343,7 +357,7 @@ async function loadTopologyData(): Promise<void> {
       }
 
       if (cytoData.nodes && cytoData.nodes.length > 0) {
-        log.info('Topology loaded and rendered successfully with cola layout');
+        log.info(`Topology loaded and rendered successfully with ${usePreset ? 'preset' : 'cola'} layout`);
       } else {
         log.warn('No topology elements found in data');
       }
