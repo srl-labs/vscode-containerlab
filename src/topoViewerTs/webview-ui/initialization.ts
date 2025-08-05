@@ -128,14 +128,9 @@ function initializeCytoscape(): void {
  */
 async function loadTopologyData(): Promise<void> {
   try {
-    const jsonUrlsElement = document.getElementById('json-urls-data');
-    if (!jsonUrlsElement || !jsonUrlsElement.textContent) {
-      log.error('JSON file URLs not found. Check template variable injection.');
-      return;
-    }
-
-    const jsonUrls = JSON.parse(jsonUrlsElement.textContent);
-    const cytoscapeUrl = jsonUrls.cytoscape;
+    // Get JSON URLs from window variables
+    const cytoscapeUrl = (window as any).jsonFileUrlDataCytoMarshall;
+    const environmentUrl = (window as any).jsonFileUrlDataEnvironment;
 
     if (!cytoscapeUrl) {
       log.error('Cytoscape JSON URL is missing');
@@ -223,19 +218,13 @@ function initializeHelperFunctions(): void {
   // Add getEnvironments function for compatibility
   (globalThis as any).getEnvironments = async function() {
     try {
-      const jsonUrlsElement = document.getElementById('json-urls-data');
-      if (!jsonUrlsElement || !jsonUrlsElement.textContent) {
-        log.warn('JSON URLs element not found');
-        return null;
-      }
-
-      const jsonUrls = JSON.parse(jsonUrlsElement.textContent);
-      if (!jsonUrls.environments) {
+      const environmentUrl = (window as any).jsonFileUrlDataEnvironment;
+      if (!environmentUrl) {
         log.warn('Environment JSON URL not available');
         return null;
       }
 
-      const response = await fetch(jsonUrls.environments);
+      const response = await fetch(environmentUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch environment JSON: ${response.status}`);
       }
@@ -253,14 +242,11 @@ function initializeHelperFunctions(): void {
  */
 async function fetchEnvironmentData(): Promise<void> {
   try {
-    const jsonUrlsElement = document.getElementById('json-urls-data');
-    if (jsonUrlsElement && jsonUrlsElement.textContent) {
-      const jsonUrls = JSON.parse(jsonUrlsElement.textContent);
-      if (jsonUrls.environments) {
-        await fetch(jsonUrls.environments);
-      } else {
-        log.warn('Environment JSON URL not available');
-      }
+    const environmentUrl = (window as any).jsonFileUrlDataEnvironment;
+    if (environmentUrl) {
+      await fetch(environmentUrl);
+    } else {
+      log.warn('Environment JSON URL not available');
     }
   } catch (error) {
     log.error(`Error fetching environments: ${error}`);

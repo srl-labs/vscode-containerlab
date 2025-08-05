@@ -31,7 +31,7 @@ return `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TopoViewer</title>
-  <link rel="stylesheet" href="${jsUri}/library/bulma-1-0-2.min.css?ver=1">
+  <link rel="stylesheet" href="${cssUri}/bulma-1-0-2.min.css?ver=1">
 
   <!-- CSS Assets -->
   <link rel="stylesheet" href="${cssUri}/style.css?ver=1" />
