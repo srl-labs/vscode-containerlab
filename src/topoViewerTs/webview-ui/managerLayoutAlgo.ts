@@ -3,7 +3,7 @@
 /* eslint-disable no-unused-vars */
 // Declarations for global variables provided elsewhere in the webview
 // These will be replaced with proper imports and types as the migration progresses.
-declare const cy: any;
+// cy is accessed via globalThis.cy
 declare let globalIsGeoMapInitialized: boolean;
 declare let globalCytoscapeLeafletLeaf: any;
 declare let globalCytoscapeLeafletMap: any;
@@ -29,7 +29,7 @@ export function viewportDrawerLayoutGeoMap(): void {
     }
 
     // Initialize the Cytoscape-Leaflet integration
-    globalCytoscapeLeafletLeaf = cy.leaflet({
+    globalCytoscapeLeafletLeaf = globalThis.cy.leaflet({
       container: leafletContainer,
     });
 
@@ -56,10 +56,10 @@ export function viewportDrawerLayoutGeoMap(): void {
   }
 
   // Reapply the Cytoscape stylesheet
-  loadCytoStyle(cy);
+  loadCytoStyle(globalThis.cy);
 
   // Apply GeoMap layout using a preset layout and custom positions based on geographical coordinates
-  cy.layout({
+  globalThis.cy.layout({
     name: "preset",
     fit: false,
     positions: function (node: any) {
@@ -107,7 +107,7 @@ export function viewportDrawerDisableGeoMap(): void {
   globalCytoscapeLeafletLeaf.destroy();
 
   // Revert to the default Cytoscape layout using the 'cola' layout
-  const layout = cy.layout({
+  const layout = globalThis.cy.layout({
     name: "cola",
     nodeGap: 5,
     edgeLength: 100,
@@ -118,11 +118,11 @@ export function viewportDrawerDisableGeoMap(): void {
   layout.run();
 
   // Remove the node used by the topoViewer if it exists
-  topoViewerNode = cy.filter('node[name = "topoviewer"]');
+  topoViewerNode = globalThis.cy.filter('node[name = "topoviewer"]');
   topoViewerNode.remove();
 
   // Initialize the expandCollapse plugin for potential collapse/expand actions
-  cy.expandCollapse({
+  globalThis.cy.expandCollapse({
     layoutBy: null, // Use existing layout
     undoable: false,
     fisheye: false,
@@ -192,7 +192,7 @@ export function viewportDrawerLayoutForceDirected(): void {
   const edgeLengthValue = edgeLengthSlider ? parseFloat(edgeLengthSlider.value) : 100;
   const nodeGapValue = nodeGapSlider ? parseFloat(nodeGapSlider.value) : 1;
 
-  cy.layout({
+  globalThis.cy.layout({
     name: 'cola',
     nodeSpacing: () => nodeGapValue,
     edgeLength: (edge: any) => (edgeLengthValue * 100) / edge.data('weight'),
@@ -215,16 +215,16 @@ export function viewportDrawerLayoutForceDirectedRadial(): void {
   const nodeGapValue = nodeGapSlider ? parseFloat(nodeGapSlider.value) : 1;
 
   const nodeWeights: Record<string, number> = {};
-  cy.nodes().forEach((node: any) => {
+  globalThis.cy.nodes().forEach((node: any) => {
     const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
     nodeWeights[node.id()] = 1 / level;
   });
 
-  cy.edges().forEach((edge: any) => {
+  globalThis.cy.edges().forEach((edge: any) => {
     edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
   });
 
-  cy.layout({
+  globalThis.cy.layout({
     name: 'cola',
     fit: true,
     nodeSpacing: nodeGapValue,
@@ -254,7 +254,7 @@ export function viewportDrawerLayoutVertical(): void {
   const groupvGapValue = groupvGap ? parseFloat(groupvGap.value) : 100;
 
   setTimeout(() => {
-    cy.nodes().forEach((node: any) => {
+    globalThis.cy.nodes().forEach((node: any) => {
       if (node.isParent()) {
         const children = node.children();
         const cellWidth = node.width() / children.length;
@@ -265,7 +265,7 @@ export function viewportDrawerLayoutVertical(): void {
       }
     });
 
-    const sortedParents = cy.nodes().filter((n: any) => n.isParent()).sort((a: any, b: any) => {
+    const sortedParents = globalThis.cy.nodes().filter((n: any) => n.isParent()).sort((a: any, b: any) => {
       const levelA = parseInt(a.data('extraData')?.topoViewerGroupLevel || '0', 10);
       const levelB = parseInt(b.data('extraData')?.topoViewerGroupLevel || '0', 10);
       if (levelA !== levelB) return levelA - levelB;
@@ -274,7 +274,7 @@ export function viewportDrawerLayoutVertical(): void {
 
     let yPos = 0;
     let maxWidth = 0;
-    cy.nodes().forEach((n: any) => {
+    globalThis.cy.nodes().forEach((n: any) => {
       if (n.isParent()) {
         const w = n.width();
         if (w > maxWidth) maxWidth = w;
@@ -289,7 +289,7 @@ export function viewportDrawerLayoutVertical(): void {
       yPos += groupvGapValue;
     });
 
-    cy.fit();
+    globalThis.cy.fit();
   }, 100);
 }
 
@@ -306,7 +306,7 @@ export function viewportDrawerLayoutHorizontal(): void {
   const grouphGapValue = grouphGap ? parseFloat(grouphGap.value) : 100;
 
   setTimeout(() => {
-    cy.nodes().forEach((node: any) => {
+    globalThis.cy.nodes().forEach((node: any) => {
       if (node.isParent()) {
         const children = node.children();
         const cellHeight = node.height() / children.length;
@@ -317,7 +317,7 @@ export function viewportDrawerLayoutHorizontal(): void {
       }
     });
 
-    const sortedParents = cy.nodes().filter((n: any) => n.isParent()).sort((a: any, b: any) => {
+    const sortedParents = globalThis.cy.nodes().filter((n: any) => n.isParent()).sort((a: any, b: any) => {
       const levelA = parseInt(a.data('extraData')?.topoViewerGroupLevel || '0', 10);
       const levelB = parseInt(b.data('extraData')?.topoViewerGroupLevel || '0', 10);
       if (levelA !== levelB) return levelA - levelB;
@@ -326,7 +326,7 @@ export function viewportDrawerLayoutHorizontal(): void {
 
     let xPos = 0;
     let maxHeight = 0;
-    cy.nodes().forEach((n: any) => {
+    globalThis.cy.nodes().forEach((n: any) => {
       if (n.isParent()) {
         const h = n.height();
         if (h > maxHeight) maxHeight = h;
@@ -341,7 +341,7 @@ export function viewportDrawerLayoutHorizontal(): void {
       xPos += grouphGapValue;
     });
 
-    cy.fit();
+    globalThis.cy.fit();
   }, 100);
 }
 
@@ -350,8 +350,8 @@ export function viewportDrawerLayoutHorizontal(): void {
  */
 export function viewportDrawerPreset(): void {
   viewportDrawerDisableGeoMap();
-  cy.layout({ name: 'preset' }).run();
-  cy.fit();
+  globalThis.cy.layout({ name: 'preset' }).run();
+  globalThis.cy.fit();
 }
 
 // Expose functions globally for HTML event handlers

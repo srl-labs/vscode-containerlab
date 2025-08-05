@@ -1,4 +1,7 @@
-// Import initialization first to set up global variables and cytoscape
+// Import libraries first (must be before any code that uses them)
+import './libraries';
+
+// Import initialization to set up global variables and cytoscape
 import './initialization';
 
 // Import UI handlers to make them available globally

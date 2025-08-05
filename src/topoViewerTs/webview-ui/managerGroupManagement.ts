@@ -5,7 +5,7 @@ import { log } from './logger';
 
 // Declarations for global variables provided elsewhere in the webview
 /* eslint-disable no-unused-vars */
-declare const cy: any;
+// Note: cy is accessed via globalThis.cy
 declare function acquireVsCodeApi(): any;
 declare function sendMessageToVscodeEndpointPost(_endpoint: string, _data: any): Promise<any>;
 /* eslint-enable no-unused-vars */
@@ -56,7 +56,7 @@ interface CreateNewParentOptions {
  */
 export function orphaningNode(node: any): void {
   const currentParentId = node.parent().id();
-  const formerParentNode = cy.getElementById(currentParentId);
+  const formerParentNode = globalThis.cy.getElementById(currentParentId);
 
   node.move({ parent: null }); // Orphan the child node
 
@@ -79,15 +79,15 @@ export function createNewParent(options: CreateNewParentOptions = {}): string {
 
   // Generate a unique parent ID
   let counter = 1;
-  let newParentId = `groupName${(cy.nodes().length + counter)}:1`;
-  while (cy.getElementById(newParentId).length > 0) {
+  let newParentId = `groupName${(globalThis.cy.nodes().length + counter)}:1`;
+  while (globalThis.cy.getElementById(newParentId).length > 0) {
     counter++;
-    newParentId = `groupName${(cy.nodes().length + counter)}:1`;
+    newParentId = `groupName${(globalThis.cy.nodes().length + counter)}:1`;
   }
   log.debug(`Generated unique parent ID: ${newParentId}`);
 
   // Get the current viewport bounds in model coordinates
-  const ext = cy.extent();
+  const ext = globalThis.cy.extent();
 
   // Define boundaries for the random offset
   const offsetMin = 10;  // minimum offset from the top edge
@@ -158,7 +158,7 @@ export function createNewParent(options: CreateNewParentOptions = {}): string {
   }
 
   // Add the nodes to the Cytoscape instance
-  cy.add(nodesToAdd);
+  globalThis.cy.add(nodesToAdd);
 
   // If a node was provided to reparent, move it under the new parent
   if (nodeToReparent) {
@@ -189,8 +189,12 @@ export function createNewParent(options: CreateNewParentOptions = {}): string {
  */
 export function initializeWheelSelection(): void {
   try {
-    cy.boxSelectionEnabled(true);
-    cy.selectionType('additive');
+    if (!globalThis.cy) {
+      log.warn('Cytoscape instance not available for wheel selection');
+      return;
+    }
+    globalThis.cy.boxSelectionEnabled(true);
+    globalThis.cy.selectionType('additive');
   } catch (error) {
     log.error(`initializeWheelSelection failed: ${error}`);
   }
@@ -213,11 +217,11 @@ export function initializeGroupManagement(): void {
       );
     };
 
-    cy.on('dragfree', 'node', (event: any) => {
+    globalThis.cy.on('dragfree', 'node', (event: any) => {
       const draggedNode = event.target;
 
       let assignedParent: any = null;
-      cy.nodes(':parent').forEach((parent: any) => {
+      globalThis.cy.nodes(':parent').forEach((parent: any) => {
         if (isNodeInsideParent(draggedNode, parent)) {
           assignedParent = parent;
         }
@@ -237,7 +241,7 @@ export function initializeGroupManagement(): void {
         }
       }
 
-      const parentNodes = cy.nodes('[topoViewerRole = "group"]');
+      const parentNodes = globalThis.cy.nodes('[topoViewerRole = "group"]');
       parentNodes.forEach((parentNode: any) => {
         if (parentNode.children().empty()) {
           parentNode.remove();
@@ -354,7 +358,7 @@ export async function nodeParentPropertiesUpdate(): Promise<void> {
     }
 
     // Retrieve the current parent node from Cytoscape
-    const oldParentNode = cy.getElementById(parentNodeId);
+    const oldParentNode = globalThis.cy.getElementById(parentNodeId);
     if (oldParentNode.empty()) {
       throw new Error(`Parent node with ID "${parentNodeId}" not found in the Cytoscape instance.`);
     }
@@ -411,7 +415,7 @@ export async function nodeParentPropertiesUpdate(): Promise<void> {
     }
 
     // For a different new parent id, first ensure a node with this id doesn't already exist
-    if (!cy.getElementById(newParentId).empty()) {
+    if (!globalThis.cy.getElementById(newParentId).empty()) {
       throw new Error(`A node with the new parent ID "${newParentId}" already exists.`);
     }
 
@@ -425,7 +429,7 @@ export async function nodeParentPropertiesUpdate(): Promise<void> {
     };
 
     // Create a new parent node with the new custom identifier
-    cy.add({
+    globalThis.cy.add({
       group: 'nodes',
       data: {
         id: newParentId,
@@ -436,7 +440,7 @@ export async function nodeParentPropertiesUpdate(): Promise<void> {
     });
 
     // Retrieve the newly created parent node
-    const newParentNode = cy.getElementById(newParentId);
+    const newParentNode = globalThis.cy.getElementById(newParentId);
     if (newParentNode.empty()) {
       throw new Error(`New parent node with ID "${newParentId}" could not be created.`);
     }
@@ -507,7 +511,7 @@ export function nodeParentPropertiesUpdateClose(): boolean {
  * @returns Returns true if the parent node is successfully removed and false if an error occurs.
  *
  * @throws Throws an error if:
- *  - The Cytoscape instance (`cy`) is not available.
+ *  - The Cytoscape instance (`globalThis.cy`) is not available.
  *  - The parent ID DOM element is not found.
  *  - The parent node ID is empty.
  *  - The parent node is not found in the Cytoscape instance.
@@ -515,7 +519,7 @@ export function nodeParentPropertiesUpdateClose(): boolean {
 export function nodeParentRemoval(): boolean {
   try {
     // Verify that the Cytoscape instance is available
-    if (typeof cy === "undefined" || typeof cy.getElementById !== "function") {
+    if (typeof globalThis.cy === "undefined" || typeof globalThis.cy.getElementById !== "function") {
       throw new Error("Cytoscape instance 'cy' is not available.");
     }
 
@@ -532,7 +536,7 @@ export function nodeParentRemoval(): boolean {
     }
 
     // Retrieve the parent node from Cytoscape
-    const parentNode = cy.getElementById(parentNodeId);
+    const parentNode = globalThis.cy.getElementById(parentNodeId);
     if (!parentNode || parentNode.empty()) {
       throw new Error(`No parent node found with id "${parentNodeId}".`);
     }

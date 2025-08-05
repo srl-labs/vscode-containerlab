@@ -4,7 +4,7 @@ import { log } from './logger';
 
 // Declarations for globals provided elsewhere in the webview environment
 // These will be replaced with proper imports and types as the migration continues.
-declare const cy: any;
+// cy is accessed via globalThis.cy
 declare const globalLabName: string;
 declare const globalPrefixName: string;
 
@@ -61,7 +61,7 @@ export function socketDataEncrichmentLink(labData: Record<string, any>): void {
   // Enrich edges
   linkMap.forEach((iface, key) => {
     const [, nodeName, endpoint] = key.split("::");
-    cy.edges().forEach((edge: any) => {
+    globalThis.cy.edges().forEach((edge: any) => {
       const data = edge.data();
 
       // Safely build clabSourceLongName and clabTargetLongName
@@ -125,7 +125,7 @@ export function socketDataEncrichmentNode(labData: Record<string, any>): void {
 
   // Enrich each Cytoscape node that matches by shortname === longname
   nodeMap.forEach((nodeData, longname) => {
-    cy.nodes().forEach((node: any) => {
+    globalThis.cy.nodes().forEach((node: any) => {
       const shortname = node.data()?.extraData?.shortname;
       if (shortname === longname) {
         const updatedExtraData = {

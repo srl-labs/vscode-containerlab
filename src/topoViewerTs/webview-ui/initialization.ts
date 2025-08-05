@@ -45,43 +45,59 @@ function initializeGlobalVariables(): void {
  */
 function initializeCytoscape(): void {
   // Check if cytoscape is available
+  log.info('Checking for cytoscape availability...');
+  log.info('window.cytoscape type: ' + typeof (window as any).cytoscape);
+
   if (typeof (window as any).cytoscape === 'undefined') {
     log.error('Cytoscape.js is not loaded');
     return;
   }
 
   const cytoscape = (window as any).cytoscape;
+  log.info('Cytoscape loaded successfully');
 
-  // Initialize cytoscape-popper if available
-  if ((window as any).cytoscapePopper && (window as any).Popper) {
-    const popperFactory = (window as any).Popper.createPopper;
-    const cytoscapePopper = (window as any).cytoscapePopper;
-
-    const popperFn = (ref: any, content: any, opts: any) => {
-      const popper = popperFactory(ref, content, opts);
-      return {
-        update: () => popper.update(),
-        destroy: () => popper.destroy()
-      };
-    };
-    cytoscape.use(cytoscapePopper(popperFn));
-  }
+  // Cytoscape-popper is already registered in libraries.ts, no need to register again
 
   // Create Cytoscape instance
-  globalThis.cy = cytoscape({
-    container: document.getElementById("cy"),
-    elements: [],
-    style: [{
-      selector: "node",
-      style: {
-        "background-color": "#3498db",
-        label: "data(label)",
-      },
-    }],
-    boxSelectionEnabled: true,
-    wheelSensitivity: 0.2,
-    selectionType: 'additive'
-  });
+  const container = document.getElementById("cy");
+  log.info('Cytoscape container element: ' + container);
+
+  if (!container) {
+    log.error('Could not find cytoscape container element with id "cy"');
+    return;
+  }
+
+  // Log container dimensions
+  const rect = container.getBoundingClientRect();
+  log.info('Container dimensions: ' + JSON.stringify({
+    width: rect.width,
+    height: rect.height,
+    offsetWidth: container.offsetWidth,
+    offsetHeight: container.offsetHeight
+  }));
+
+  try {
+    globalThis.cy = cytoscape({
+      container: container,
+      elements: [],
+      style: [{
+        selector: "node",
+        style: {
+          "background-color": "#3498db",
+          label: "data(label)",
+        },
+      }],
+      boxSelectionEnabled: true,
+      wheelSensitivity: 0.2,
+      selectionType: 'additive'
+    });
+
+    log.info('Cytoscape instance created successfully');
+    log.info('Cytoscape instance: ' + globalThis.cy);
+  } catch (error) {
+    log.error('Failed to create cytoscape instance: ' + error);
+    throw error;
+  }
 
   // Add selection event listeners
   globalThis.cy.on('select', 'node', () => {
@@ -244,6 +260,7 @@ function initializeResizeHandling(): void {
  * Initialize helper functions that are referenced from common.js
  */
 function initializeHelperFunctions(): void {
+  log.info('Starting initializeHelperFunctions...');
   // Add getEnvironments function for compatibility
   (globalThis as any).getEnvironments = async function() {
     try {
@@ -325,21 +342,46 @@ function initializeMenuCloseBehavior(): void {
 export function initializeTopoViewer(): void {
   log.info('Starting TopoViewer initialization...');
 
-  initializeGlobalVariables();
-  initializeCytoscape();
-  initializeWheelSelection();
-  initializeGroupManagement();
-  loadTopologyData();
-  initializeResizeHandling();
-  initializeMenuCloseBehavior();
+  try {
+    log.info('Calling initializeGlobalVariables...');
+    initializeGlobalVariables();
 
-  log.info('TopoViewer initialization complete');
+    log.info('Calling initializeCytoscape...');
+    initializeCytoscape();
+
+    log.info('Calling initializeWheelSelection...');
+    initializeWheelSelection();
+
+    log.info('Calling initializeGroupManagement...');
+    initializeGroupManagement();
+
+    log.info('Calling loadTopologyData...');
+    loadTopologyData();
+
+    log.info('Calling initializeResizeHandling...');
+    initializeResizeHandling();
+
+    log.info('Calling initializeMenuCloseBehavior...');
+    initializeMenuCloseBehavior();
+
+    log.info('TopoViewer initialization complete');
+  } catch (error) {
+    log.error('Error in initializeTopoViewer: ' + error);
+    throw error;
+  }
 }
 
 // DOM Content Loaded Event Listener
 document.addEventListener('DOMContentLoaded', () => {
-  log.info('DOM ready, initializing TopoViewer...');
-  initializeHelperFunctions();
-  initializeTopoViewer();
-  fetchEnvironmentData();
+  try {
+    log.info('DOM ready, initializing TopoViewer...');
+    initializeHelperFunctions();
+    initializeTopoViewer();
+    fetchEnvironmentData();
+  } catch (error) {
+    console.error('Error during TopoViewer initialization:', error);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
+  }
 });

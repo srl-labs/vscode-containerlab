@@ -27,7 +27,7 @@
 // In short, the flow is: **socket event** → **stateMonitorEngine** → **mapping** → compare to **previous state** → if changed, **handler** executes.
 
 // Global type declarations for external dependencies
-declare const cy: any;
+// cy is accessed via globalThis.cy
 declare const socket: any;
 
 // Import logger for webview
@@ -150,12 +150,12 @@ export function updateEdgeDynamicStyle(
   styleProp: string,
   value: string | number
 ): void {
-  if (typeof cy === 'undefined') {
+  if (typeof globalThis.cy === 'undefined') {
     log.warn('Cytoscape (cy) is not available');
     return;
   }
 
-  const edge = cy.$(`#${edgeId}`);
+  const edge = globalThis.cy.$(`#${edgeId}`);
   if (edge.length > 0) {
     edge.style(styleProp, value);
     const cacheKey = `edge:${edgeId}:${styleProp}`;
@@ -240,12 +240,12 @@ export function onChangeHandlerInterfaceOperState(updateMessage: UpdateMessage):
 
   const edgeSelector = `edge[source="${safeNodeName}"][sourceEndpoint="${safeEndpoint}"]`;
 
-  if (typeof cy === 'undefined') {
+  if (typeof globalThis.cy === 'undefined') {
     log.warn('Cytoscape (cy) is not available');
     return;
   }
 
-  const edges: CytoscapeCollection = cy.$(edgeSelector);
+  const edges: CytoscapeCollection = globalThis.cy.$(edgeSelector);
   log.debug(`Edge selector: ${edgeSelector}, found ${edges.length} edges, removed: ${removed}`);
 
   // Check if any matching edge was found and retrieve its id

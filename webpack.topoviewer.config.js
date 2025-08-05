@@ -2,16 +2,12 @@ const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
-  mode: 'production', // or 'development' for debugging
+  mode: 'development', // or 'development' for debugging
   target: 'web',
   entry: './src/topoViewerTs/webview-ui/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'topoViewerEngine.js',
-    library: {
-      type: 'var',
-      name: 'TopoViewerEngine'
-    }
+    filename: 'topoViewerEngine.js'
   },
   module: {
     rules: [
