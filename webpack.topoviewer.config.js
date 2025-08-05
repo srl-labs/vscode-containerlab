@@ -1,4 +1,5 @@
 const path = require('path');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
   mode: 'production', // or 'development' for debugging
@@ -30,9 +31,18 @@ module.exports = {
           }
         },
         exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader']
       }
     ]
   },
+  plugins: [
+    new MiniCssExtractPlugin({
+      filename: 'topoViewerStyles.css'
+    })
+  ],
   resolve: {
     extensions: ['.ts', '.js'],
     fallback: {

@@ -4,6 +4,9 @@ import './initialization';
 // Import UI handlers to make them available globally
 import { initializeGlobalHandlers } from './uiHandlers';
 
+// Import Bulma CSS framework
+import 'bulma/css/bulma.min.css';
+
 // Import cytoscape styles
 import './cytoscapeStyles';
 

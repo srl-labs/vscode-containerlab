@@ -9,6 +9,9 @@ import leaflet from 'cytoscape-leaf';
 import cxtmenu from 'cytoscape-cxtmenu';
 // import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
 
+// Import Bulma CSS framework
+import 'bulma/css/bulma.min.css';
+
 import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
