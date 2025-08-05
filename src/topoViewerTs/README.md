@@ -9,10 +9,8 @@ viewer and editor capabilities into a single, fully typed implementation.
 ### All JavaScript Managers Successfully Converted:
 
 - ✅ `managerVscodeWebview.ts` - VS Code extension messaging and communication
-- ✅ `managerLayoutAlgo.ts` - GeoMap layout algorithms and positioning logic  
+- ✅ `managerLayoutAlgo.ts` - GeoMap layout algorithms and positioning logic
 - ✅ `managerSocketDataEnrichment.ts` - Real-time lab data enrichment via sockets
-- ✅ `managerCyTextBox.ts` - Rich-text overlays and annotations for Cytoscape nodes
-- ✅ `managerClabEditor.ts` - Containerlab YAML editor with Monaco integration
 - ✅ `managerOnChangeFramework.ts` - Dynamic state monitoring and UI updates
 - ✅ `managerGroupManagement.ts` - Node grouping, parent management, and hierarchy
 - ✅ `managerSvg.ts` - Dynamic SVG icon generation for all network node types

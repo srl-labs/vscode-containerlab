@@ -13,8 +13,6 @@ initializeGlobalHandlers();
 export * from './managerVscodeWebview';
 export * from './managerLayoutAlgo';
 export * from './managerSocketDataEnrichment';
-export * from './managerCyTextBox';
-export * from './managerClabEditor';
 export * from './managerOnChangeFramework';
 export * from './managerGroupManagement';
 export * from './managerSvg';

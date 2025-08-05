@@ -3,7 +3,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { promises as fs } from 'fs';
-import * as yaml from 'js-yaml';
 import { log } from './logger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
@@ -88,7 +87,7 @@ export class TopoViewerAdaptorClab {
       const dataCytoMarshallContent = JSON.stringify(cytoTopology, null, 2);
       await fs.writeFile(dataCytoMarshallPath, dataCytoMarshallContent, 'utf8');
 
-      const parsed = yaml.load(yamlContent) as ClabTopology;
+      const parsed = YAML.parse(yamlContent) as ClabTopology;
       this.currentClabTopo = parsed
       this.currentClabDoc = YAML.parseDocument(yamlContent); // <-- store the raw Document
 
@@ -178,7 +177,7 @@ export class TopoViewerAdaptorClab {
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
   public clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): CyElement[] {
-    const parsed = yaml.load(yamlContent) as ClabTopology;
+    const parsed = YAML.parse(yamlContent) as ClabTopology;
     return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer });
   }
 
@@ -196,7 +195,7 @@ export class TopoViewerAdaptorClab {
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
   public clabYamlToCytoscapeElementsEditor(yamlContent: string): CyElement[] {
-    const parsed = yaml.load(yamlContent) as ClabTopology;
+    const parsed = YAML.parse(yamlContent) as ClabTopology;
     return this.buildCytoscapeElements(parsed, { includeContainerData: false });
   }
 

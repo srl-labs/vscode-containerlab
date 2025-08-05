@@ -3,7 +3,6 @@
 
 import { log } from './logger';
 import { initializeGroupManagement, initializeWheelSelection, showPanelGroupEditor } from './managerGroupManagement';
-import { showPanelNodeEditor } from './managerClabEditor';
 
 // loadCytoStyle function will be called if available
 
@@ -122,8 +121,6 @@ function initializeCytoscape(): void {
     const node = event.target;
     if (node.isParent() || node.data('topoViewerRole') === 'group') {
       showPanelGroupEditor(node);
-    } else {
-      await showPanelNodeEditor(node);
     }
   });
 

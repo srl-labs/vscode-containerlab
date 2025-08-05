@@ -39,11 +39,6 @@ return `
   <link rel="stylesheet" href="${cssUri}/leaflet.css" />
   <link rel="stylesheet" href="${cssUri}/cytoscape-leaflet.css?ver=1" />
 
-  <!-- Quill CSS (Snow theme) -->
-  <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"> -->
-  <link rel="stylesheet" href="${cssUri}/quill.css?ver=1" />
-
-
   <!-- highlight.js style -->
   <link rel="stylesheet" href="${cssUri}/atom-one-dark.min.css">
 
@@ -173,14 +168,6 @@ return `
                   </a>
                 </p>
                
-                <p class="control p-0">
-                  <a  id="viewport-clab-editor" href="#" onclick="viewportButtonsClabEditor(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
-                  <span class="icon is-small">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </span>
-                  </a>
-                </p>
-
                 <p class="control p-0">
                   <a  id="viewport-multi-layer" href="#" onclick="viewportButtonsMultiLayerViewPortToggle(event)" class="button px-4 py-4 is-smallest-element" style="outline: none;">
                     <span class="icon is-small">
@@ -607,86 +594,7 @@ return `
       </div>
     </div>
 
-    <div id="viewport-drawer-clab-editor" class="panel p-1 is-1 viewport-drawer" style="display: none; ">
-      <div class="panel-block p-0 pb-2">
-        <div class="column p-0 is-flex-direction-column">
-          <div class="column pb-0 is-12">
-            <label class="label is-size-7 has-text-weight-semibold px-auto">Containerlab Editor</label>
-          </div>
-          <div class="column pb-0 is-12">
-            <div class="content p-0 mb-2 is-small">
-              <p>
-                This panel allows to enable Containerlab Editor.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="viewport-drawer-clab-editor-content-01" class="panel-block  layout-algo p-0" style="display: none;">
-        <div class="column my-auto is-11">
-          <div class="panel-content">
-            <div class="columns py-auto">
-              <div class="column is-5">
-                <label class="label is-size-7 has-text-right px-auto">Enable</label>
-              </div>
-              <div class="column pb-1 is-5">
-                <label class="checkbox is-size-7">
-                  <input class="checkbox-input" type="checkbox" value="option01">
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="viewport-drawer-clab-editor-content-02" class="panel-block layout-algo p-0" style="display: none;">
-        <div class="column pb-0 is-12">
-          <div class="content p-0 mb-2 is-small">
-            <div class="px-0 py-0" style="max-height: 125px; overflow-y: auto;">
-              <div class="content is-small pb-2">
-                <p>
-                  <strong>Hint:</strong><br>
-                  (Shift + Click) on the viewport to add a node, or on the source-node and then click the target-node to
-                  create a link.
-                </p>
-                <p>
-                  (Alt + Click) on a node to delete the node and its reference edges, or on a link to delete the link.
-                </p>
-                <p>
-                  Drag an orphan node onto a group node to include it as part of the group.
-                </p>
-                <p>
-                  Control + Click on a child node within a group to make it an orphan node.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div class="panel is-link" id="panel-clab-editor" style="display: none;">
-      <p class="panel-heading is-size-7">Containerlab YAML Editor</p>
-      <div class="panel-tabContainer">
-        <div class="panel-block p-0">
-          <div class="column px-0">
-            <div class="column my-auto">
-              <div class="panel-content">
-                <div class="field">
-                  <div class="control">
-                    <input type="file" id="panel-clab-editor-file-input" class="file-input">
-                    <button class="button is-link is-outlined is-small" id="panel-clab-editor-copy-button" ;
-                      onclick="clabEditorCopyYamlContent(event);">Copy to Clipboard</button>
-                    <button class="button is-link is-outlined is-small" id="panel-clab-editor-close-button" ;
-                      onclick="closePanelContainerlabEditor(event)">Close</button>
-                  </div>
-                </div>
-                <div id="panel-clab-editor-text-area" style="width:100%; height:600px;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Node Properties Panel with Improved Semantic Markup & Responsive Design -->
     <section class="panel panel-overlay is-link" id="panel-node" aria-labelledby="node-panel-heading"
@@ -981,7 +889,6 @@ return `
                   <div class="column is-8 p-1 pl-3">
                     <div class="field is-grouped is-grouped-right">
                       <div class="control">
-                        <input type="file" id="panel-clab-editor-file-input" class="file-input">
                         <button class="button is-link is-outlined is-small" id="panel-node-editor-parent-delete-button"
                           onclick="nodeParentRemoval()">Remove
                         </button>
@@ -1114,7 +1021,6 @@ return `
                   <div class="column is-8 p-1 pl-3">
                     <div class="field">
                       <div class="control">
-                        <input type="file" id="panel-clab-editor-file-input" class="file-input">
                         <button class="button is-link is-outlined is-small"
                           onclick="saveNodeToEditorToFile()">Save</button>
                         <button class="button is-link is-outlined is-small"
@@ -1714,8 +1620,6 @@ return `
     <script src="${jsUri}/library/leaflet.js"></script>
 
     <script src="${jsUri}/library/highlight-11-9-0.min.js"></script>
-    <!-- 3) Quill (v2 beta) -->
-    <script src="${jsUri}/library/quill-2-0-3.js"></script>
 
 
 
@@ -1737,15 +1641,8 @@ return `
     <!-- cytoscape svg-->
     <script src="${jsUri}/library/cytoscape-svg.min.js"></script>
 
-    <!-- custom textbox with rich text editor -->
-
-    <script src="${jsUri}/library/quill-2-0-3.js"></script>
-
       <script src="${jsUri}/library/core@1.5.0.js"></script>
       <script src="${jsUri}/library/dom@1.5.3.js"></script>
-
-    <script src="${jsUri}/library/js-yaml.min.js?ver=1"></script>
-    <script src="${jsUri}/library/monaco-loader.js?ver=1"></script>
 
     <!-- Inject schemaUri as a global variable -->
     <script> window.schemaUrl = "${schemaUri}"; </script>

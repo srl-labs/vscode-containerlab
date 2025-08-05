@@ -1286,7 +1286,6 @@
     "@types/chai": "^5.2.2",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
-    "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.0.15",
     "@types/vscode": "^1.100.0",
@@ -1323,7 +1322,6 @@
     "cytoscape-edgehandles": "^4.0.1",
     "cytoscape-grid-guide": "^2.3.3",
     "cytoscape-leaf": "^1.2.4",
-    "js-yaml": "^4.1.0",
     "socket.io": "^4.8.1",
     "ts-loader": "^9.5.2",
     "yaml": "^2.8.0"

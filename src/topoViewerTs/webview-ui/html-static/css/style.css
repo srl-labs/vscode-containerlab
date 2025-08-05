@@ -450,15 +450,6 @@ body {
   z-index: 21;
 }
 
-#panel-clab-editor {
-  top: 85px;
-  right: 40px;
-  width: 600px;
-  overflow-y: hidden;
-  overflow-x: hidden;
-  position: fixed;
-  z-index: 21;
-}
 
 #panel-node-editor-parent {
   bottom: 10px;
@@ -586,16 +577,6 @@ body {
   transform: translate(-50%, -50%);
 }
 
-/* Monaco Editor Fixes
--------------------------------------------------- */
-.monaco-editor .inputarea {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100px;
-  height: 100px;
-}
-
 /* Theme Styling - Dark Mode
 -------------------------------------------------- */
 [data-theme=dark],
@@ -719,110 +700,11 @@ body {
   }
 }
 
-/* HTML Label Overlay & Quill Editor Components
--------------------------------------------------- */
-.html-label {
-  position: absolute;
-  pointer-events: none;
-  /* let events pass through by default (read-only mode) */
-  background: #3b3d40;
-  width: 550px;
-  /* default overlay width */
-  height: 250px;
-  /* default overlay height */
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-  border-radius: 8px;
-  box-shadow: 0 0 10px #000;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Quill toolbar container, initially hidden */
-[id^="toolbar-container-"] {
-  /* flex: 1; */
-  display: none;
-  margin-bottom: 0.5rem;
-  pointer-events: auto;
-  /* ensure the toolbar can be clicked */
-}
-
-/* Editor area */
-[id^="editor-"] {
-  /* flex: 1; */
-  overflow: auto;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  /* margin-top: 0.5rem; */
-}
-
-/* Quill Editor Styling
--------------------------------------------------- */
-.ql-editor {
-  color: #000 !important;
-}
-
-.ql-toolbar {
-  color: #000 !important;
-  margin-top: 0.5rem;
-}
-
-.ql-snow .ql-color-picker .ql-picker-label svg .ql-color-label.ql-stroke.ql-transparent {
-  stroke: #000;
-  opacity: 1 !important;
-  /* or a specific hex: #ff0000 !important; */
-}
-
-/* Quill Button & Resize Handler Styling
--------------------------------------------------- */
-/* Button row styling */
-.button-row {
-  margin-bottom: 0.5rem;
-}
-
-/* Resize handles */
-.resize-handle {
-  width: 20px;
-  height: 20px;
-  position: absolute;
-  pointer-events: auto;
-  /* so we can grab the handle */
-  background: rgba(0, 0, 0, 0);
-  /* transparent, but you could style it differently */
-}
-
-.resize-handle.bottom-right {
-  bottom: 0;
-  right: 0;
-  cursor: nwse-resize;
-}
-
-.resize-handle.bottom-center {
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  cursor: s-resize;
-}
-
-.resize-handle.right-center {
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  cursor: e-resize;
-}
-
-/* Utility Classes for Editor Interaction
--------------------------------------------------- */
-/* Disable text selection while resizing */
 .no-select {
   user-select: none;
 }
 
-/* Ensure buttons and dropdowns capture events (while editing) */
-.button-quill,
+/* Ensure dropdowns capture events (while editing) */
 select {
   pointer-events: auto;
 }
