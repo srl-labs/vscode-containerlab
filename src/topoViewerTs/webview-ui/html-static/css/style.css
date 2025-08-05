@@ -372,6 +372,16 @@ body {
   box-shadow: none !important;
 }
 
+/* Panel Overlay Styling
+-------------------------------------------------- */
+.panel-overlay {
+  background-color: rgb(0, 0, 0) !important;
+  border: 1px solid #dbdbdb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
 /* Individual Panel Positioning & Styling
 -------------------------------------------------- */
 #panel-data-display-sharp {
@@ -393,7 +403,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   position: fixed;
-  z-index: 991;
+  z-index: 9999;
 }
 
 #panel-node-editor {
@@ -436,7 +446,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   position: fixed;
-  z-index: 21;
+  z-index: 9999;
 }
 
 #panel-link-editor {
@@ -459,7 +469,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   position: fixed;
-  z-index: 21;
+  z-index: 9999;
 }
 
 #panel-introduction {
@@ -595,6 +605,12 @@ body {
   .panel {
     box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
     background-color: rgba(40, 40, 40, 1);
+  }
+
+  .panel-overlay {
+    background-color: rgba(40, 40, 40, 1) !important;
+    border: 1px solid #363636 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
   }
 
   .panel-block {
