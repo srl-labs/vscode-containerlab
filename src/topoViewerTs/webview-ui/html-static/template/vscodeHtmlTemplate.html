@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{{cssUri}}/cytoscape-leaflet.css?ver=1" />
 </head>
 
-<body class="h-full w-full m-0 p-0 overflow-hidden font-sans text-sm">
+<body class="h-full w-full m-0 p-2 overflow-hidden font-sans text-sm">
 
   {{NAVBAR}}
 
@@ -22,12 +22,6 @@
     <div id="cy-leaflet" class="absolute inset-0 pt-10 pb-0 z-0 hidden"></div>
 
     <div id="cy" class="absolute inset-0 pt-10 pb-0 z-10"></div>
-
-    <div id="loading-spinner-global" class="loading" style="display: none;">
-      <button id="loading-spinner-global-button" class="w-12 h-12 relative">
-        <span class="loading-spinner"></span>
-      </button>
-    </div>
 
     {{VIEWPORT_DRAWER_LAYOUT}}
     {{VIEWPORT_DRAWER_TOPOLOGY_OVERVIEW}}
