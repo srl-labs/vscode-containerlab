@@ -1,20 +1,17 @@
-<nav class="navbar py-0 h-[2rem]" role="navigation" aria-label="main navigation">
-  <!-- left side: logo + title -->
-  <div class="navbar-brand">
-    <div class="">
-      <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-        <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-6 w-auto block" />
-      </a>
-    </div>
-    <div class="flex flex-row p-0 gap-x-4">
-      <p class="text-lg m-0 font-normal select-none">
-        containerlab
-      </p>
-      <p class="text-md m-0 font-light my-auto" id="ClabSubtitle">
-        Viewer ::: Topology name: {{topologyName}}
+<nav class="navbar py-0 h-[4rem]" role="navigation" aria-label="main navigation">
+  <!-- Left: Logo + Title -->
+  <div class="navbar-brand flex items-center space-x-4 px-2">
+    <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
+      <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-10 w-auto block" />
+    </a>
+    <div class="flex flex-col leading-tight">
+      <p class="text-xl font-semibold select-none">containerlab</p>
+      <p class="text-sm font-light text-gray-500 select-none">
+        <span class="">TopoViewer · {{topologyName}}</span>
       </p>
     </div>
   </div>
+
 
   <div id="viewport-buttons">
     <div class="flex flex-row justify-evenly space-x-1">
