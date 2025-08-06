@@ -1,21 +1,21 @@
     <!-- Node Properties Panel -->
-    <section class="fixed top-[85px] right-10 w-[340px] max-h-[700px] overflow-y-auto overflow-x-hidden z-[9999] bg-gray-800 dark:bg-gray-900 border border-gray-700 rounded-lg shadow-xl" 
+    <section class="panel panel-overlay" 
       id="panel-node" aria-labelledby="node-panel-heading" style="display: none;">
-      <header class="px-4 py-3 bg-gray-900 dark:bg-gray-950 border-b border-gray-700 font-semibold text-xs text-gray-200" id="node-panel-heading">
+      <header class="panel-heading text-xs" id="node-panel-heading">
         Node Properties
       </header>
       <div class="p-0">
-        <div class="border-b border-gray-700 p-0">
+        <div class="panel-block p-0">
           <div class="px-0">
             <!-- Node Name and Actions -->
             <div class="my-auto">
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Node Name</label>
+                    <label class="label text-xs text-right">Node Name</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-name">
+                    <label class="text-xs text-left font-normal break-words" id="panel-node-name">
                       node-name-placeholder
                     </label>
                   </div>
@@ -28,24 +28,24 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300"></label>
+                    <label class="label text-xs text-right"></label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <div class="relative group">
-                      <button class="px-3 py-1 text-xs font-normal bg-gray-700 hover:bg-gray-600 text-gray-200 rounded inline-flex items-center">
+                      <button class="btn btn-small inline-flex items-center">
                         <span>Actions</span>
                         <span class="ml-2 text-xs">
                           <i class="fas fa-angle-down" aria-hidden="true"></i>
                         </span>
                       </button>
-                      <div class="hidden group-hover:block absolute left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg z-50" id="panel-node-action-dropdown-menu">
+                      <div class="dropdown-menu hidden group-hover:block left-0 w-48" id="panel-node-action-dropdown-menu">
                         <div class="py-1">
                           <a onclick="nodeActionConnectToSSH(event);"
-                            class="block px-4 py-1 text-xs font-normal text-gray-200 hover:bg-gray-600 cursor-pointer">
+                            class="dropdown-item text-xs">
                             Connect to SSH
                           </a>
                           <a onclick="nodeActionAttachShell(event);"
-                            class="block px-4 py-1 text-xs font-normal text-gray-200 hover:bg-gray-600 cursor-pointer">
+                            class="dropdown-item text-xs">
                             Attach Shell
                           </a>
                           <a onclick="nodeActionViewLogs(event);"
@@ -67,14 +67,14 @@
         </div>
         
         <!-- Node Properties List -->
-        <div class="border-b border-gray-700 p-0">
+        <div class="panel-block p-0">
           <div class="px-0">
             <!-- Kind -->
             <div class="my-auto">
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Kind</label>
+                    <label class="label text-xs text-right">Kind</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-kind">
@@ -89,7 +89,7 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Image</label>
+                    <label class="label text-xs text-right">Image</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-image">
@@ -104,7 +104,7 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">State</label>
+                    <label class="label text-xs text-right">State</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-state">
@@ -119,7 +119,7 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Management IPv4</label>
+                    <label class="label text-xs text-right">Management IPv4</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-mgmtipv4">
@@ -134,7 +134,7 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Management IPv6</label>
+                    <label class="label text-xs text-right">Management IPv6</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-mgmtipv6">
@@ -149,7 +149,7 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">FQDN</label>
+                    <label class="label text-xs text-right">FQDN</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-fqdn">
@@ -164,7 +164,7 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Icon</label>
+                    <label class="label text-xs text-right">Icon</label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-node-topoviewerrole">

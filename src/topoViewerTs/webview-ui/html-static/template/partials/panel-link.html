@@ -1,18 +1,20 @@
+    <!-- Link Properties Panel -->
+    <section class="panel panel-overlay"
       id="panel-link" style="display: none;">
-      <p class="px-4 py-3 bg-gray-900 dark:bg-gray-950 border-b border-gray-700 font-semibold text-xs text-gray-200">
+      <p class="panel-heading text-xs">
         Link Properties
       </p>
       <div class="p-0">
-        <div class="border-b border-gray-700 p-0">
+        <div class="panel-block p-0">
           <div class="px-0">
             <div class="my-auto">
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Link Name</label>
+                    <label class="label text-xs text-right">Link Name</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-name">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-name">
                       link-name-placeholder
                     </label>
                   </div>
@@ -24,49 +26,49 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300"></label>
+                    <label class="label text-xs text-right"></label>
                   </div>
                   <div class="w-2/3 pl-3">
                     <div class="relative group">
-                      <button class="px-3 py-1 text-xs font-normal bg-gray-700 hover:bg-gray-600 text-gray-200 rounded inline-flex items-center">
+                      <button class="btn btn-small inline-flex items-center">
                         <span>Actions</span>
                         <span class="ml-2 text-xs">
                           <i class="fas fa-angle-down" aria-hidden="true"></i>
                         </span>
                       </button>
-                      <div class="hidden group-hover:block absolute left-0 mt-1 w-56 bg-gray-700 rounded-md shadow-lg z-50" 
+                      <div class="dropdown-menu hidden group-hover:block left-0 w-56" 
                         id="panel-link-action-dropdown-menu">
                         <div class="py-1" id="panel-link-action-dropdown-menu-dropdown-content">
                           <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null);"
-                            class="block px-4 py-1 text-xs font-normal text-gray-200 hover:bg-gray-600 cursor-pointer"
+                            class="dropdown-item text-xs"
                             id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)
                           </a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-a-top"></a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-a-bottom"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-a-top"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-a-bottom"></a>
 
                           <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target');"
-                            class="block px-4 py-1 text-xs font-normal text-gray-200 hover:bg-gray-600 cursor-pointer"
+                            class="dropdown-item text-xs"
                             id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)
                           </a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-b-top"></a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-b-bottom"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-b-top"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-b-bottom"></a>
 
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200"></a>
+                          <a class="dropdown-item text-xs"></a>
                           <hr class="border-t border-gray-600 my-1"/>
 
                           <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'source', null);"
-                            class="block px-4 py-1 text-xs font-normal text-gray-200 hover:bg-gray-600 cursor-pointer"
+                            class="dropdown-item text-xs"
                             id="endpoint-a-edgeshark-vnc">Capture E.Point-A VNC (Edgeshark)
                           </a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-a-vnc-top"></a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-a-vnc-bottom"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-a-vnc-top"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-a-vnc-bottom"></a>
 
                           <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target', null);"
-                            class="block px-4 py-1 text-xs font-normal text-gray-200 hover:bg-gray-600 cursor-pointer"
+                            class="dropdown-item text-xs"
                             id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
                           </a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-b-vnc-top"></a>
-                          <a class="block px-4 py-1 text-xs font-normal text-gray-200" id="endpoint-b-vnc-bottom"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-b-vnc-top"></a>
+                          <a class="dropdown-item text-xs" id="endpoint-b-vnc-bottom"></a>
                         </div>
                       </div>
                     </div>
@@ -78,16 +80,16 @@
         </div>
         
         <!-- Endpoint A Properties -->
-        <div class="border-b border-gray-700 p-0" id="panel-link-endpoint-a">
+        <div class="panel-block p-0" id="panel-link-endpoint-a">
           <div class="px-0">
             <div class="my-auto">
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Endpoint-A</label>
+                    <label class="label text-xs text-right">Endpoint-A</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-a-name">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-name">
                       link-endpoint-a-name-placeholder
                     </label>
                   </div>
@@ -98,10 +100,10 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">MAC address</label>
+                    <label class="label text-xs text-right">MAC address</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-a-mac-address">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-mac-address">
                       link-mac-address
                     </label>
                   </div>
@@ -112,10 +114,10 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">MTU</label>
+                    <label class="label text-xs text-right">MTU</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-a-mtu">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-mtu">
                       getting-link-mtu
                     </label>
                   </div>
@@ -126,10 +128,10 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Type</label>
+                    <label class="label text-xs text-right">Type</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-a-type">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-type">
                       getting-link-type
                     </label>
                   </div>
@@ -140,16 +142,16 @@
         </div>
         
         <!-- Endpoint B Properties -->
-        <div class="border-b border-gray-700 p-0" id="panel-link-endpoint-b">
+        <div class="panel-block p-0" id="panel-link-endpoint-b">
           <div class="px-0">
             <div class="my-auto">
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Endpoint-B</label>
+                    <label class="label text-xs text-right">Endpoint-B</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-b-name">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-name">
                       link-endpoint-b-name-placeholder
                     </label>
                   </div>
@@ -160,10 +162,10 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">MAC address</label>
+                    <label class="label text-xs text-right">MAC address</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-b-mac-address">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-mac-address">
                       getting-link-mac-address
                     </label>
                   </div>
@@ -174,10 +176,10 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">MTU</label>
+                    <label class="label text-xs text-right">MTU</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-b-mtu">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-mtu">
                       getting-link-mtu
                     </label>
                   </div>
@@ -188,10 +190,10 @@
               <div class="p-3">
                 <div class="flex items-center">
                   <div class="w-1/3 pr-1">
-                    <label class="text-xs text-right font-medium text-gray-300">Type</label>
+                    <label class="label text-xs text-right">Type</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <label class="text-xs text-left font-normal text-gray-200 break-words" id="panel-link-endpoint-b-type">
+                    <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-type">
                       getting-link-type
                     </label>
                   </div>
@@ -202,7 +204,3 @@
         </div>
       </div>
     </section>
-
-    <!-- Other panels (backup-restore, log-messages, helper, etc.) would follow the same pattern -->
-    <!-- I'm omitting them for brevity but they would all be converted similarly -->
-

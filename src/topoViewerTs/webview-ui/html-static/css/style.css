@@ -7,9 +7,10 @@ body {
   margin: 0;
   padding: 0;
   overflow-y: hidden;
-  font: 14px helvetica neue, helvetica, arial, sans-serif;
-
-  /*overflow-y: hidden; /* Prevents vertical scrollbar DISABLE THIS FOR DEBUG */
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
 }
 
 /* Settings Panel
@@ -26,15 +27,11 @@ body {
 /* Popup/Popper Component
 -------------------------------------------------- */
 .popper-div {
-  background: rgba(202, 203, 204, 0.7);
-  border: 1px solid #aaa;
-  /* Optional: A border to enhance visibility */
+  background: var(--vscode-editorHoverWidget-background);
+  border: 1px solid var(--vscode-editorHoverWidget-border);
   border-radius: 10px;
-  /* Adjust for more or less curve */
   padding: 0.2em;
-  /* Adds space inside the element */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  /* Optional: Subtle shadow for a modern look */
   z-index: 99999;
   width: max-content;
   position: absolute;
@@ -42,14 +39,15 @@ body {
 
 .popper-div a {
   text-decoration: none;
-  color: black;
+  color: var(--vscode-textLink-foreground);
   font-weight: bold;
-  outline-color: #FFFFFF;
+  outline-color: var(--vscode-focusBorder);
   z-index: 99999;
 }
 
 .popper-div a:hover {
   text-decoration: underline;
+  color: var(--vscode-textLink-activeForeground);
 }
 
 /* Controls Styling
@@ -143,23 +141,20 @@ body {
 #data-display {
   position: absolute;
   top: 55px;
-  /* right: 0; */
   left: 70%;
   width: 30%;
   height: 100%;
   z-index: 11;
-  background-color: rgba(40, 40, 40, 1);
-  border: none;
+  background-color: var(--vscode-panel-background);
+  border-left: 1px solid var(--vscode-panel-border);
   display: flex;
   justify-content: flex-start;
-  /* Aligns content at the top */
-  /* overflow-y: auto; */
-  /* transition: 0.3s ease; */
 }
 
 /* Semi-transparency styling */
 #data-display.transparent {
-  background-color: rgba(40, 40, 40, 0.9);
+  background-color: var(--vscode-panel-background);
+  opacity: 0.9;
   z-index: 11;
 }
 
@@ -168,27 +163,25 @@ body {
   position: absolute;
   top: 55px;
   left: 70%;
-  width: 0px;
+  width: 2px;
   height: 100%;
   z-index: 12;
   cursor: ew-resize;
-  background: #ccc;
+  background: var(--vscode-panel-border);
   display: flex;
   align-items: center;
   flex-direction: column;
   justify-content: flex-start;
-  /* Aligns content at the top */
 }
 
 /* Divider button styling */
 #divider button {
-  /* transform: rotate(90deg); */
-  /* background: #007bff; */
-  color: white;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
   border: none;
   padding: 5px 10px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--vscode-font-size);
 }
 
 /* Logo and Viewport Controls
@@ -344,10 +337,10 @@ body {
 
 .hover-text {
   position: absolute;
-  border: 1px solid #e8a010;
-  padding: 2px;
-  padding-left: 5px;
-  padding-right: 5px;
+  background: var(--vscode-editorHoverWidget-background);
+  border: 1px solid var(--vscode-editorHoverWidget-border);
+  color: var(--vscode-editorHoverWidget-foreground);
+  padding: 2px 5px;
   box-shadow: 2px 3px 4px rgba(0, 0, 0, 0.6);
   z-index: 100;
 }
@@ -375,8 +368,8 @@ body {
 /* Panel Overlay Styling
 -------------------------------------------------- */
 .panel-overlay {
-  background-color: rgb(0, 0, 0) !important;
-  border: 1px solid #dbdbdb;
+  background-color: var(--vscode-editorWidget-background) !important;
+  border: 1px solid var(--vscode-editorWidget-border) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
   z-index: 9999 !important;
   position: fixed !important;
@@ -587,133 +580,86 @@ body {
   transform: translate(-50%, -50%);
 }
 
-/* Theme Styling - Dark Mode
--------------------------------------------------- */
-[data-theme=dark],
-.theme-dark {
-  .has-background-4a {
-    z-index: 3;
-    background-color: rgba(24, 24, 24, 1);
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
-  }
+/* VSCode Theme Variables are now used throughout */
+/* No need for separate dark/light theme styles */
 
-  .navbar-element-4a {
-    z-index: 3;
-    background-color: rgba(24, 24, 24, 1);
-  }
-
-  .panel {
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
-    background-color: rgba(40, 40, 40, 1);
-  }
-
-  .panel-overlay {
-    background-color: rgba(40, 40, 40, 1) !important;
-    border: 1px solid #363636 !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
-  }
-
-  .panel-block {
-    background-color: rgba(40, 40, 40, 1);
-  }
-
-  .column {
-    background-color: rgba(40, 40, 40, 1);
-  }
-
-  .box {
-    background-color: rgba(40, 40, 40, 1);
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
-  }
-
-  .panel-tabs {
-    background-color: rgba(40, 40, 40, 1);
-  }
-
-  .panel-tabContainer {
-    background-color: rgba(40, 40, 40, 1);
-    padding: 0px 0px 0px 0px;
-  }
-
-  #sidebar {
-    background-color: rgba(40, 40, 40, 1);
-  }
-
-  #drawer {
-    background-color: rgba(76, 82, 97, 1);
-  }
-
-  .ViewPortDrawer {
-    background-color: rgba(40, 40, 40, 1);
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
-  }
-
-  #viewport-buttons {
-    background-color: rgba(40, 40, 40, 1);
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Sidebar-specific styling - to be removed */
-  .button.is-sidebar {
-    border-top-right-radius: 2px;
-    border-bottom-right-radius: 2px;
-    outline: none;
-    background-color: rgba(54, 58, 69, 1);
-    height: 50px;
-    --sidebar-button-background-color-default: rgba(40, 40, 40, 1);
-    --sidebar-button-background-color-active: rgba(76, 82, 97, 1);
-  }
-
-  .button.is-sidebar:hover {
-    background-color: rgba(40, 40, 40, 1);
-    border: rgba(54, 58, 69, 1);
-  }
+/* Additional VSCode-themed components */
+.has-background-4a {
+  background-color: var(--vscode-titleBar-activeBackground);
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.2);
 }
 
-/* Theme Styling - Light Mode
--------------------------------------------------- */
-[data-theme=light],
-.theme-light {
-  .has-background-4a {
-    z-index: 3;
-    background-color: rgba(70, 86, 246, 1);
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
-  }
+.navbar-element-4a {
+  background-color: var(--vscode-titleBar-activeBackground);
+}
 
-  .navbar-element-4a {
-    z-index: 3;
-    background-color: rgba(70, 86, 246, 1);
-  }
+.panel {
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+}
 
-  .panel {
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
-    background-color: white;
-  }
+.panel-overlay {
+  background-color: var(--vscode-editorWidget-background) !important;
+  border: 1px solid var(--vscode-editorWidget-border) !important;
+}
 
-  .panel-block {
-    background-color: white;
-  }
+.panel-block {
+  background-color: var(--vscode-panel-background);
+}
 
-  .column {
-    background-color: white;
-  }
+.column {
+  background-color: var(--vscode-panel-background);
+}
 
-  .box {
-    background-color: white;
-  }
+.box {
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+}
 
-  .panel-tabs {
-    background-color: white;
-  }
+.panel-tabs {
+  background-color: var(--vscode-panel-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
 
-  .panel-tabContainer {
-    background-color: white;
-    padding: 0px 0px 0px 0px;
-  }
+.panel-tabContainer {
+  background-color: var(--vscode-panel-background);
+  padding: 0;
+}
 
-  #sidebar {
-    background-color: white;
-  }
+#sidebar {
+  background-color: var(--vscode-sideBar-background);
+  border-right: 1px solid var(--vscode-sideBar-border);
+}
+
+#drawer {
+  background-color: var(--vscode-sideBar-background);
+}
+
+.ViewPortDrawer {
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+#viewport-buttons {
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.button.is-sidebar {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  outline: none;
+  height: 50px;
+  border-radius: 2px;
+}
+
+.button.is-sidebar:hover {
+  background-color: var(--vscode-button-hoverBackground);
 }
 
 .no-select {

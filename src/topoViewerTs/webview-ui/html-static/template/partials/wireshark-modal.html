@@ -1,34 +1,33 @@
     <!-- Wireshark Modal -->
-    <div class="hidden fixed inset-0 z-50" id="wiresharkModal">
-      <div class="fixed inset-0 bg-black bg-opacity-50"></div>
-      <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-lg shadow-xl z-50 max-w-2xl w-full">
+    <div class="modal-backdrop hidden" id="wiresharkModal">
+      <div class="modal-content">
         <div class="p-6">
-          <h2 class="text-xl font-semibold text-gray-200 mb-4">Launch Wireshark</h2>
+          <h2 class="text-xl font-semibold mb-4">Launch Wireshark</h2>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1" for="subInterfaceId">Sub Interface ID:</label>
+              <label class="label block text-sm font-medium mb-1" for="subInterfaceId">Sub Interface ID:</label>
               <input type="text" id="subInterfaceId" placeholder="Enter Sub Interface ID"
-                class="w-full px-3 py-2 text-sm bg-gray-700 text-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="input-field text-sm">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1" for="containerName">Container Name:</label>
+              <label class="label block text-sm font-medium mb-1" for="containerName">Container Name:</label>
               <select id="containerName" 
-                class="w-full px-3 py-2 text-sm bg-gray-700 text-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="input-field text-sm">
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1" for="networkInterface">Network Interface:</label>
+              <label class="label block text-sm font-medium mb-1" for="networkInterface">Network Interface:</label>
               <select id="networkInterface"
-                class="w-full px-3 py-2 text-sm bg-gray-700 text-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="input-field text-sm">
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">URL Preview:</label>
-              <div id="urlPreview" class="p-2 bg-gray-700 rounded text-sm text-gray-300"></div>
+              <label class="label block text-sm font-medium mb-1">URL Preview:</label>
+              <div id="urlPreview" class="panel-block p-2 text-sm"></div>
             </div>
             <div class="flex justify-end space-x-2 pt-4">
-              <button class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded" id="launchButton">Launch</button>
-              <button class="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded" id="customCloseModal">Cancel</button>
+              <button class="btn btn-primary" id="launchButton">Launch</button>
+              <button class="btn btn-outlined" id="customCloseModal">Cancel</button>
             </div>
           </div>
         </div>
