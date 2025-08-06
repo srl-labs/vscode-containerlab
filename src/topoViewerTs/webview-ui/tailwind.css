@@ -51,7 +51,16 @@ body {
   .btn-primary:hover {
     background-color: var(--accent-hover);
   }
-  
+
+  .btn-secondary {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-secondaryBackground));
+  }
+
   .btn-outlined {
     border: 1px solid var(--accent);
     color: var(--accent);
@@ -59,6 +68,16 @@ body {
   }
   
   .btn-outlined:hover {
+    background-color: var(--bg-hover);
+  }
+
+  .btn-danger {
+    border: 1px solid var(--error);
+    color: var(--error);
+    background-color: transparent;
+  }
+
+  .btn-danger:hover {
     background-color: var(--bg-hover);
   }
   

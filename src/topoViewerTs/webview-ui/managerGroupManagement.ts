@@ -307,19 +307,19 @@ export function showPanelGroupEditor(node: any): void {
  * is clicked, its text is used to update the dropdown button and the dropdown is closed.
  */
 export function panelNodeEditorParentToggleDropdown(): void {
-  // Grab the dropdown container
-  const dropdown = document.getElementById('panel-node-editor-parent-label-dropdown') as HTMLElement & { dataset: DOMStringMap };
+  // Grab the dropdown menu element
+  const menu = document.getElementById('panel-node-editor-parent-label-dropdown-menu') as HTMLElement & { dataset: DOMStringMap };
 
-  if (!dropdown) {
-    log.error('Dropdown element not found');
+  if (!menu) {
+    log.error('Dropdown menu element not found');
     return;
   }
 
   // Attach event listeners ONLY once
   // (check a custom data attribute so we don't attach multiple times)
-  if (!dropdown.dataset.listenersAttached) {
+  if (!menu.dataset.listenersAttached) {
     // Find all dropdown items
-    const items = document.querySelectorAll('#panel-node-editor-parent-label-dropdown-menu .dropdown-item');
+    const items = menu.querySelectorAll('.dropdown-item');
     items.forEach(item => {
       item.addEventListener('click', function (this: HTMLElement, event: Event) {
         event.preventDefault();
@@ -333,16 +333,16 @@ export function panelNodeEditorParentToggleDropdown(): void {
         }
 
         // 3. Close the dropdown
-        dropdown.classList.remove('is-active');
+        menu.classList.add('hidden');
       });
     });
 
     // Mark that we've attached listeners so we don't do it again
-    dropdown.dataset.listenersAttached = 'true';
+    menu.dataset.listenersAttached = 'true';
   }
 
   // Finally, toggle the dropdown open/closed
-  dropdown.classList.toggle('is-active');
+  menu.classList.toggle('hidden');
 }
 
 /**
