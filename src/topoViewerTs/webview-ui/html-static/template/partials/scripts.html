@@ -1,0 +1,40 @@
+    <!-- Inject schemaUri as a global variable -->
+    <script> window.schemaUrl = "{{schemaUri}}"; </script>
+
+    <!-- Inject imagesUri as a global variable -->
+    <script> window.imagesUrl = "{{imagesUri}}"; </script>
+
+    <!-- Inject JSON dataCytoMarshall.json as a global variable -->
+    <script> window.jsonFileUrlDataCytoMarshall = "{{jsonFileUrlDataCytoMarshall}}"; </script>
+
+    <!-- Inject JSON environment.json as a global variable -->
+    <script> window.jsonFileUrlDataEnvironment = "{{jsonFileUrlDataEnvironment}}"; </script>
+
+    <!-- Inject isVscodeDeployment boolean as a global variable -->
+    <script> window.isVscodeDeployment = "{{isVscodeDeployment}}"; </script>
+    
+    <!-- Smart Viewer/Editor Detection Variables -->
+    <script> window.deploymentState = "{{deploymentState}}"; </script>
+    <script> window.viewerMode = "{{viewerMode}}"; </script>
+
+    <!-- Inject allowedHostname string as a global variable -->
+    <script> window.allowedHostname = "{{allowedHostname}}"; </script>
+
+    <!-- Load the compiled TypeScript bundle -->
+    <script src="{{jsOutDir}}/topoViewerEngine.js?ver=1"></script>
+    
+    <!-- Initialize TopoViewer after bundle loads -->
+    <script>
+      // Wait for TopoViewerEngine to be available and initialize
+      if (typeof TopoViewerEngine !== 'undefined') {
+        if (typeof log !== 'undefined' && log.info) {
+          log.info('TopoViewerEngine loaded successfully');
+        }
+        // The bundle includes DOMContentLoaded handler, so initialization is automatic
+      } else {
+        if (typeof log !== 'undefined' && log.error) {
+          log.error('TopoViewerEngine failed to load');
+        }
+      }
+    </script>
+
