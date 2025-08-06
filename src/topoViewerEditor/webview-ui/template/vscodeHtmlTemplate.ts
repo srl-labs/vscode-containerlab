@@ -33,11 +33,9 @@ export function getHTMLTemplate(
   <!-- Bundled CSS (includes Bulma) -->
   <link rel="stylesheet" href="${jsOutDir}/topoViewerEditorStyles.css?ver=1" />
 
-  <!-- CSS Assets -->
-  <link rel="stylesheet" href="${cssUri}/style.css?ver=1" />
-
-  <link rel="stylesheet" href="${cssUri}/leaflet.css" />
-  <link rel="stylesheet" href="${cssUri}/cytoscape-leaflet.css?ver=1" />
+    <!-- CSS Assets -->
+    <link rel="stylesheet" href="${cssUri}/leaflet.css" />
+    <link rel="stylesheet" href="${cssUri}/cytoscape-leaflet.css?ver=1" />
 
   <!-- Quill CSS (Snow theme) -->
 

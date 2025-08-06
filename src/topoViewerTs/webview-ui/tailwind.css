@@ -159,6 +159,7 @@ body {
   
   /* Column utilities */
   .column {
+    background-color: var(--vscode-panel-background);
     @apply flex-1;
   }
   
@@ -216,6 +217,38 @@ body {
   .is-align-items-center {
     @apply items-center;
   }
+
+  /* Migrated from style.css */
+  .panel-overlay {
+    background-color: var(--vscode-editorWidget-background) !important;
+    border: 1px solid var(--vscode-editorWidget-border) !important;
+    @apply fixed z-[9999] shadow-xl;
+  }
+
+  .navbar-element-4a {
+    background-color: var(--vscode-titleBar-activeBackground);
+  }
+
+  .ViewPortDrawer {
+    background-color: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-panel-border);
+    @apply shadow-md;
+  }
+
+  .box {
+    background-color: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-panel-border);
+    @apply shadow-md;
+  }
+
+  .panel-tabContainer {
+    background-color: var(--vscode-panel-background);
+    @apply p-0;
+  }
+
+  .loading {
+    @apply absolute top-1/2 left-1/2 w-24 h-24 -translate-x-1/2 -translate-y-1/2;
+  }
 }
 
 /* Custom utility classes */
@@ -260,6 +293,7 @@ body {
   /* Background utilities */
   .has-background-4a {
     background-color: var(--vscode-titleBar-activeBackground);
+    @apply shadow-md;
   }
   
   /* Unselectable text */
