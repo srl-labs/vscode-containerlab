@@ -375,15 +375,16 @@ export async function killAllWiresharkVNCCtrs() {
  * If a user calls the "Set session hostname" command, we store it in-memory here,
  * overriding the auto-detected or config-based hostname until the user closes VS Code.
  */
-export async function setSessionHostname() {
+export async function setSessionHostname(): Promise<boolean> {
   const opts: vscode.InputBoxOptions = {
     title: `Configure hostname for Containerlab remote (this session only)`,
     placeHolder: `IPv4, IPv6 or DNS resolvable hostname of the system where containerlab is running`,
     prompt: "This will persist for only this session of VS Code.",
-    validateInput: (input: string) => {
+    validateInput: (input: string): string | undefined => {
       if (input.trim().length === 0) {
         return "Input should not be empty";
       }
+      return undefined;
     }
   };
 

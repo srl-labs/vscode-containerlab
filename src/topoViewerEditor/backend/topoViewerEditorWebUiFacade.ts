@@ -228,11 +228,9 @@ export class TopoViewerEditor {
    * Creates the directory (if needed) and writes out the YAML template
    * to a file path, ensuring it ends with '.clab.yml'.
    *
-   * @param context - The VS Code extension context.
-   * @param requestedFileUri - The URI suggested by the user (e.g., from a save dialog).
-   * @param labName - Used to seed the template content and derive the folder name.
-   */
-  public async createTemplateFile(context: vscode.ExtensionContext, requestedFileUri: vscode.Uri): Promise<void> {
+    * @param requestedFileUri - The URI suggested by the user (e.g., from a save dialog).
+    */
+  public async createTemplateFile(requestedFileUri: vscode.Uri): Promise<void> {
     // Parse the requested file path
     const requestedPath = requestedFileUri.fsPath;
     const parsedPath = path.parse(requestedPath);

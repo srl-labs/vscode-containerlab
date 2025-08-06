@@ -21,7 +21,7 @@ describe('updateNodeEndpointsForKindChange', () => {
     cy.add({ group: 'edges', data: { id: 'e1', source: 'node1', target: 'node2', sourceEndpoint: 'e2-1', targetEndpoint: 'e2-1' } });
     cy.add({ group: 'edges', data: { id: 'e2', source: 'node2', target: 'node1', sourceEndpoint: 'e2-2', targetEndpoint: 'e2-2' } });
 
-    const manager = new ManagerViewportPanels({} as any, cy, {} as any);
+      const manager = new ManagerViewportPanels({} as any, cy);
     manager.updateNodeEndpointsForKindChange(node1, 'nokia_srlinux', 'nokia_srsim');
 
     const edge1 = cy.getElementById('e1');

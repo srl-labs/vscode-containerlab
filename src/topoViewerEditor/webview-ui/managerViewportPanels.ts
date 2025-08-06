@@ -3,7 +3,6 @@
 import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { extractNodeIcons } from './managerCytoscapeStyle';
-import { VscodeMessageSender } from './managerVscodeWebview';
 
 
 /**
@@ -13,7 +12,6 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 export class ManagerViewportPanels {
   private saveManager: ManagerSaveTopo;
   private cy: cytoscape.Core;
-  private messageSender: VscodeMessageSender;
   private isPanel01Cy = false;
   public nodeClicked: boolean = false;
   public edgeClicked: boolean = false;
@@ -29,16 +27,14 @@ export class ManagerViewportPanels {
    * @param saveManager - The ManagerSaveTopo instance.
    * @param cy - The Cytoscape instance.
    */
-  constructor(
-    saveManager: ManagerSaveTopo,
-    cy: cytoscape.Core,
-    messageSender: VscodeMessageSender
-  ) {
-    this.saveManager = saveManager;
-    this.cy = cy;
-    this.messageSender = messageSender;
-    this.toggleHidePanels("cy"); // Initialize the toggle for hiding panels.
-  }
+    constructor(
+      saveManager: ManagerSaveTopo,
+      cy: cytoscape.Core
+    ) {
+      this.saveManager = saveManager;
+      this.cy = cy;
+      this.toggleHidePanels("cy"); // Initialize the toggle for hiding panels.
+    }
 
   /**
    * Toggle to hide UI panels.

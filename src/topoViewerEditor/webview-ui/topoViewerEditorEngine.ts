@@ -17,9 +17,6 @@ import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerSaveTopo } from './managerSaveTopo';
-import { ManagerZoomToFit } from './managerZoomToFit';
-import { ManagerLabelEndpoint } from './managerLabelEndpoint';
-import { ManagerReloadTopo } from './managerReloadTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManager } from './managerGroupManager';
@@ -86,12 +83,9 @@ class TopoViewerEditorEngine {
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
   private messageSender: VscodeMessageSender;
-  private saveManager: ManagerSaveTopo;
-  private zoomToFitManager: ManagerZoomToFit;
-  private labelEndpointManager: ManagerLabelEndpoint;
-  private reloadTopoManager: ManagerReloadTopo;
-  private addNodeManager: ManagerAddContainerlabNode;
-  private viewportPanels: ManagerViewportPanels;
+    private saveManager: ManagerSaveTopo;
+    private addNodeManager: ManagerAddContainerlabNode;
+    private viewportPanels: ManagerViewportPanels;
   private groupManager: ManagerGroupManager = new ManagerGroupManager();
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo = new ManagerLayoutAlgo();
@@ -212,12 +206,9 @@ class TopoViewerEditorEngine {
     this.initializeContextMenu();
 
     // Initiate managers and panels
-    this.saveManager = new ManagerSaveTopo(this.messageSender);
-    this.zoomToFitManager = new ManagerZoomToFit();
-    this.labelEndpointManager = new ManagerLabelEndpoint();
-    this.reloadTopoManager = new ManagerReloadTopo(this.messageSender);
-    this.addNodeManager = new ManagerAddContainerlabNode();
-    this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy, this.messageSender);
+      this.saveManager = new ManagerSaveTopo(this.messageSender);
+      this.addNodeManager = new ManagerAddContainerlabNode();
+      this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
     this.groupManager = new ManagerGroupManager();
     this.layoutAlgoManager = new ManagerLayoutAlgo();
 
@@ -554,7 +545,7 @@ class TopoViewerEditorEngine {
     });
 
     // Edge creation completion via edgehandles.
-    this.cy.on('ehcomplete', (event, sourceNode, targetNode, addedEdge) => {
+      this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) => {
       console.info(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
       console.info("Added edge:", addedEdge);
 

@@ -33,17 +33,18 @@ async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizo
 
   // Wait for containerlab to finish generating the .drawio file,
   // passing the theme argument.
-  await graphCmd
-    .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
-    .then(() => {
-      // Verify the file exists.
-      if (!fs.existsSync(drawioPath)) {
-        return vscode.window.showErrorMessage(
-          `Containerlab failed to generate .drawio file for lab: ${node.name}.`
-        );
-      }
-      vscode.commands.executeCommand("vscode.open", drawioUri);
-    });
+    await graphCmd
+      .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
+      .then(() => {
+        // Verify the file exists.
+        if (!fs.existsSync(drawioPath)) {
+          vscode.window.showErrorMessage(
+            `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+          );
+          return;
+        }
+        vscode.commands.executeCommand("vscode.open", drawioUri);
+      });
 }
 
 export async function graphDrawIOHorizontal(node?: ClabLabTreeNode) {

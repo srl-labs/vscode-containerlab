@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { ClabLabTreeNode } from "../treeView/common";
 
-export async function addLabFolderToWorkspace(node: ClabLabTreeNode) {
+export async function addLabFolderToWorkspace(node: ClabLabTreeNode): Promise<void> {
   if (!node.labPath.absolute) {
-    return new Error("No lab path found for this lab")
+    vscode.window.showErrorMessage("No lab path found for this lab");
+    return;
   }
 
   // Get the folder that contains the .clab.yaml
