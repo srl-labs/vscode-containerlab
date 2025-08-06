@@ -193,13 +193,6 @@ body {
   position: absolute;
 }
 
-#viewport-buttons {
-  top: 75px;
-  left: 40px;
-  position: fixed;
-  z-index: 9;
-}
-
 /* Navigation Bar Styling
 -------------------------------------------------- */
 /* make the top <nav> a flex container */
@@ -638,12 +631,6 @@ body {
 }
 
 .ViewPortDrawer {
-  background-color: var(--vscode-panel-background);
-  border: 1px solid var(--vscode-panel-border);
-  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
-}
-
-#viewport-buttons {
   background-color: var(--vscode-panel-background);
   border: 1px solid var(--vscode-panel-border);
   box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);

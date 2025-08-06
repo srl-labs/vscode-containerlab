@@ -1,23 +1,121 @@
-  <nav class="navbar" role="navigation" aria-label="main navigation">
-    <!-- left side: logo + title -->
-    <div class="navbar-brand">
-      <div class="pt-1 pr-2">
-        <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-          <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-10 w-auto block" />
-        </a>
-      </div>
-      <div class="flex flex-col p-0">
-        <p class="text-lg m-0 font-normal select-none">
-          containerlab
-        </p>
-        <p class="text-xs m-0 font-light" id="ClabSubtitle">
-          Viewer ::: Topology name: {{topologyName}}
-        </p>
-      </div>
+<nav class="navbar py-0" role="navigation" aria-label="main navigation">
+  <!-- left side: logo + title -->
+  <div class="navbar-brand">
+    <div class="">
+      <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
+        <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-6 w-auto block" />
+      </a>
     </div>
+    <div class="flex flex-row p-0 gap-x-4">
+      <p class="text-lg m-0 font-normal select-none">
+        containerlab
+      </p>
+      <p class="text-md m-0 font-light my-auto" id="ClabSubtitle">
+        Viewer ::: Topology name: {{topologyName}}
+      </p>
+    </div>
+  </div>
 
-    <!-- right side: burger dropdown always on the right edge -->
-    <div class="navbar-end">
+  <div id="viewport-buttons">
+    <div class="flex flex-row justify-evenly space-x-1">
+
+      <p class="m-0 p-0">
+        <button id="viewport-zoom-to-fit" title="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fas fa-expand"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-layout" title="Layout Manager" onclick="viewportButtonsLayoutAlgo(event)"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fas fa-circle-nodes"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-topology-overview" title="Find Node" onclick="viewportButtonsTopologyOverview(event)"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-binoculars"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-label-endpoint" title="Toggle Endpoint Label" onclick="viewportButtonsLabelEndpoint()"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fas fa-tag"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-reload-topo" title="Add Group" onclick="viewportButtonsAddGroup()"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-notes-medical"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-capture-viewport" title="Capture Viewport as SVG"
+          onclick="viewportButtonsCaptureViewportAsSvg(cy)" class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-camera"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-reload-topo" title="Reload TopoViewer" onclick="viewportButtonsReloadTopo()"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-arrow-rotate-right"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-save-topo" title="Save TopoViewer" onclick="viewportButtonsSaveTopo(cy)"
+          class="btn btn-icon focus:outline-none">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-floppy-disk"></i>
+          </span>
+        </button>
+      </p>
+
+      <hr id="viewport-geo-map-divider" class="my-1 viewport-geo-map hidden border-t border-gray-600">
+
+      <p class="m-0 p-0">
+        <button id="viewport-geo-map-pan" title="#" onclick="viewportButtonsGeoMapPan(event)"
+          class="px-3 py-3 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded focus:outline-none viewport-geo-map hidden">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-hand"></i>
+          </span>
+        </button>
+      </p>
+
+      <p class="m-0 p-0">
+        <button id="viewport-geo-map-edit" title="#" onclick="viewportButtonsGeoMapEdit(event)"
+          class="px-3 py-3 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded focus:outline-none viewport-geo-map hidden">
+          <span class="inline-block text-sm">
+            <i class="fa-solid fa-arrow-pointer"></i>
+          </span>
+        </button>
+      </p>
+    </div>
+  </div>
+</div>
+
+  <!-- right side: burger dropdown always on the right edge -->
+  <!-- <div class="navbar-end">
       <div class="relative group">
         <div>
           <button class="btn btn-icon focus:outline-none">
@@ -34,5 +132,5 @@
           </div>
         </div>
       </div>
-    </div>
-  </nav>
+    </div> -->
+</nav>
