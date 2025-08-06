@@ -36,16 +36,21 @@ export function getHTMLTemplate(
   allowedHostname: string,
   deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown',
   viewerMode: 'viewer' | 'editor' | 'unified' = 'unified',
-  topologyName = 'Unknown Topology'
+  topologyName = 'Unknown Topology',
+  isDarkTheme = true
 ): string {
   log.info(`allowedHostname in vscodeHtmlTemplate.ts: ${allowedHostname}`);
   log.info(`Smart detection - deploymentState: ${deploymentState}, viewerMode: ${viewerMode}`);
+  log.info(`Theme detection - isDarkTheme: ${isDarkTheme}`);
 
   let template = fs.readFileSync(templatePath, 'utf8');
   const partials = loadPartials();
   for (const [key, value] of Object.entries(partials)) {
     template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
   }
+
+  // Select logo based on theme
+  const logoFile = isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
 
   const replacements: Record<string, string> = {
     cssUri,
@@ -60,6 +65,7 @@ export function getHTMLTemplate(
     deploymentState,
     viewerMode,
     topologyName,
+    logoFile,
   };
 
   for (const [key, value] of Object.entries(replacements)) {

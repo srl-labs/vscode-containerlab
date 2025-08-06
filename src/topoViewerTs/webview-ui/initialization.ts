@@ -534,6 +534,22 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeHelperFunctions();
     initializeTopoViewer();
     fetchEnvironmentData();
+
+    // Add listener for theme changes from VS Code
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (message && message.type === 'theme-changed') {
+        log.info(`Theme changed - updating logo to: ${message.logoFile}`);
+        const logoImg = document.getElementById('nokia-logo-img') as HTMLImageElement;
+        if (logoImg) {
+          // Get the base images URI from the current src
+          const currentSrc = logoImg.src;
+          const baseUri = currentSrc.substring(0, currentSrc.lastIndexOf('/') + 1);
+          logoImg.src = baseUri + message.logoFile;
+          log.info(`Logo updated to: ${logoImg.src}`);
+        }
+      }
+    });
   } catch (error) {
     console.error('Error during TopoViewer initialization:', error);
     if (error instanceof Error) {

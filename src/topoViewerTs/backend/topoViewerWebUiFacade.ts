@@ -276,6 +276,21 @@ export class TopoViewer {
     await vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
     log.info(`Context key 'isTopoviewerActive' set to true`);
 
+    // Listen for theme changes and notify the webview
+    const themeChangeListener = vscode.window.onDidChangeActiveColorTheme(() => {
+      const isDarkTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
+                         vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
+      const logoFile = isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
+
+      panel.webview.postMessage({
+        type: 'theme-changed',
+        isDarkTheme: isDarkTheme,
+        logoFile: logoFile
+      });
+
+      log.info(`Theme changed - isDarkTheme: ${isDarkTheme}, logoFile: ${logoFile}`);
+    });
+
     // When the panel is closed, reset the context key.
     panel.onDidDispose(
       () => {
@@ -285,6 +300,7 @@ export class TopoViewer {
           clearInterval(this.messageStreamingInterval);
           this.messageStreamingInterval = undefined;
         }
+        themeChangeListener.dispose();
       },
       null,
       this.context.subscriptions
@@ -852,6 +868,10 @@ export class TopoViewer {
     jsOutDir: string,
     allowedhostname: string
   ): string {
+    // Detect VS Code theme for logo selection
+    const isDarkTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
+                       vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
+
     return getHTMLTemplate(
       cssUri,
       jsUri,
@@ -864,7 +884,8 @@ export class TopoViewer {
       allowedhostname,
       this.deploymentState,
       this.viewerMode,
-      this.adaptor.currentClabTopo?.name || 'Unknown Topology'
+      this.adaptor.currentClabTopo?.name || 'Unknown Topology',
+      isDarkTheme
     );
   }
 
