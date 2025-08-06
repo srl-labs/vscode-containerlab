@@ -271,6 +271,7 @@ export function showPanelGroupEditor(node: any): void {
     const groupIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
     const groupEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
     const levelEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
+    const labelButtonEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
 
     if (groupIdEl) {
       groupIdEl.textContent = currentParentId;
@@ -280,6 +281,18 @@ export function showPanelGroupEditor(node: any): void {
     }
     if (levelEl) {
       levelEl.value = currentParentId.split(':')[1];
+    }
+    if (labelButtonEl) {
+      const labelClasses = [
+        'top-center',
+        'top-left',
+        'top-right',
+        'bottom-center',
+        'bottom-left',
+        'bottom-right'
+      ];
+      const currentClass = labelClasses.find(cls => node.hasClass(cls));
+      labelButtonEl.textContent = currentClass || 'Select Position';
     }
   } catch (error) {
     log.error(`showPanelGroupEditor failed: ${error}`);
@@ -541,25 +554,25 @@ export function nodeParentRemoval(): boolean {
       throw new Error(`No parent node found with id "${parentNodeId}".`);
     }
 
-    const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
-    if (!dummyChild || dummyChild.empty()) {
-      throw new Error(`No dummyChild node found with id "${dummyChild}".`);
-    }
-
     // Get all child nodes of the parent
     const children = parentNode.children();
     if (!children) {
       log.warn(`Parent node with id "${parentNodeId}" has no children collection`);
     }
 
-    // Reparent each child node by setting its parent to null
+    // Reparent each child node by setting its parent to null, skipping any dummy child
     children.forEach((child: any) => {
-      child.move({ parent: null });
+      if (child.data('topoViewerRole') !== 'dummyChild') {
+        child.move({ parent: null });
+      }
     });
 
-    // Remove the parent node and its dummy child
+    // Remove the parent node and its dummy child if it exists
+    const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
     parentNode.remove();
-    dummyChild.remove();
+    if (dummyChild && !dummyChild.empty()) {
+      dummyChild.remove();
+    }
     log.info(`Parent node '${parentNodeId}' removed successfully along with reparenting its children`);
 
     // Hide the node editor parent panel if it exists

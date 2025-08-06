@@ -242,6 +242,58 @@ export function loadCytoStyle(cy: any): void {
           'background-color': '#7C90DB',
           'background-opacity': 0.3
         }
+      },
+      {
+        selector: 'node:parent.top-center',
+        style: {
+          'text-halign': 'center',
+          'text-valign': 'top',
+          'text-margin-y': -2
+        }
+      },
+      {
+        selector: 'node:parent.top-left',
+        style: {
+          'text-halign': 'left',
+          'text-valign': 'top',
+          'text-margin-x': -2,
+          'text-margin-y': -2
+        }
+      },
+      {
+        selector: 'node:parent.top-right',
+        style: {
+          'text-halign': 'right',
+          'text-valign': 'top',
+          'text-margin-x': -2,
+          'text-margin-y': -2
+        }
+      },
+      {
+        selector: 'node:parent.bottom-center',
+        style: {
+          'text-halign': 'center',
+          'text-valign': 'bottom',
+          'text-margin-y': 2
+        }
+      },
+      {
+        selector: 'node:parent.bottom-left',
+        style: {
+          'text-halign': 'left',
+          'text-valign': 'bottom',
+          'text-margin-x': 2,
+          'text-margin-y': 2
+        }
+      },
+      {
+        selector: 'node:parent.bottom-right',
+        style: {
+          'text-halign': 'right',
+          'text-valign': 'bottom',
+          'text-margin-x': 2,
+          'text-margin-y': 2
+        }
       }
     ];
 
