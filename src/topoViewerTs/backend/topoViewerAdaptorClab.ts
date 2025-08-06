@@ -545,56 +545,11 @@ export class TopoViewerAdaptorClab {
 
 
   /**
-   * Retrieves a specific container interface tree node.
-   *
-   * @param nodeName - The name of the container/node.
-   * @param interfaceName - The name of the interface to find.
-   * @param clabTreeDataToTopoviewer - A record mapping container names to tree nodes.
-   * @param clabName - Optional container name.
-   * @returns The matching ClabInterfaceTreeNode, or null if not found.
-   */
-  // public getClabContainerInterfaceTreeNode(nodeName: string, interfaceName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabInterfaceTreeNode | null {
-
-  //   log.info(`clabName: ${clabName}`);
-  //   log.info(`nodeName: ${nodeName}`);
-  //   log.info(`interfaceName: ${interfaceName}`);
-
-  //   // Retrieve the container tree node (assuming this method exists and returns a ClabContainerTreeNode instance)
-  //   const foundContainerData: ClabContainerTreeNode | null = this.getClabContainerTreeNode(
-  //     nodeName,
-  //     clabTreeDataToTopoviewer,
-  //     clabName
-  //   );
-
-  //   log.info(`ContainerData: ${foundContainerData}`);
-
-  //   if (!foundContainerData) {
-  //     log.info(`Container not found for node: ${nodeName}`);
-  //     return null;
-  //   }
-
-  //   // Assuming containerData.interfaces is an array of ClabInterfaceTreeNode instances,
-  //   // use the find method to locate the interface with the matching name.
-  //   const foundInterface = foundContainerData.interfaces.find(
-  //     // (intf: ClabInterfaceTreeNode) => intf.name === interfaceName
-  //     (intf: ClabInterfaceTreeNode) => intf.label === interfaceName // aarafat-tag: intf.name is replaced with intf.label; why not intf.alias? intf.alias not available when default for interfaceName is used.
-  //   );
-
-  //   if (foundInterface) {
-  //     log.info(`Found interface: ${foundInterface.label}`);
-  //     log.debug(`Output of foundInterfaceData ${JSON.stringify(foundInterface, null, "\t")}`);
-  //     return foundInterface;
-  //   } else {
-  //     log.info(`Interface ${interfaceName} not found in container ${nodeName}`);
-  //     return null;
-  //   }
-  // }
-
   /**
-  *
-  * @param nodeName - The name of the node (container name).
-  * @param interfaceName - The interface name to match.
-  * @param clabTreeDataToTopoviewer - The tree data record keyed by clab name.
+   *
+   * @param nodeName - The name of the node (container name).
+   * @param interfaceName - The interface name to match.
+   * @param clabTreeDataToTopoviewer - The tree data record keyed by clab name.
   * @param clabName - The Containerlab topology name.
   * @returns The matched ClabInterfaceTreeNode or `null` if not found.
   */

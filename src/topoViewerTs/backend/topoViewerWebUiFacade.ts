@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { ClabLabTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
@@ -687,25 +687,6 @@ export class TopoViewer {
 
                 log.info(`subInterfaces: ${JSON.stringify(subInterfaces, null, 2)}`);
 
-                if (subInterfaces) {
-                  subInterfaces.map(
-                    (intf) =>
-                      new ClabInterfaceTreeNode(
-                        intf.label as string,
-                        intf.collapsibleState as vscode.TreeItemCollapsibleState,
-                        intf.parentName,
-                        intf.cID,
-                        intf.name,
-                        intf.type,
-                        intf.alias,
-                        intf.mac,
-                        intf.mtu,
-                        intf.ifIndex,
-                        intf.state,
-                        intf.contextValue
-                      )
-                  );
-                }
                 result = subInterfaces;
                 log.info(`Endpoint "${endpointName}" executed successfully. Return payload is ${JSON.stringify(subInterfaces, null, 2)}`);
               }
