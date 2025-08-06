@@ -88,12 +88,13 @@ function initializeCytoscape(): void {
         },
       }],
       boxSelectionEnabled: true,
-      wheelSensitivity: 0.2,
+      wheelSensitivity: 0,
       selectionType: 'additive'
     });
 
     log.info('Cytoscape instance created successfully');
     log.info('Cytoscape instance: ' + globalThis.cy);
+    registerCustomZoom();
   } catch (error) {
     log.error('Failed to create cytoscape instance: ' + error);
     throw error;
@@ -302,6 +303,34 @@ function initializeCytoscape(): void {
   }
 
   log.info('Cytoscape instance initialized successfully');
+}
+
+function registerCustomZoom(): void {
+  if (!globalThis.cy) return;
+  globalThis.cy.userZoomingEnabled(false);
+  const container = globalThis.cy.container();
+  if (container) {
+    container.addEventListener('wheel', handleCustomWheel, { passive: false });
+  }
+}
+
+function handleCustomWheel(event: WheelEvent): void {
+  if (!globalThis.cy) return;
+  event.preventDefault();
+  let step = event.deltaY;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+    step *= 100;
+  } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+    step *= window.innerHeight;
+  }
+  const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
+  const sensitivity = isTrackpad ? 0.002 : 0.0002;
+  const factor = Math.pow(10, -step * sensitivity);
+  const newZoom = globalThis.cy.zoom() * factor;
+  globalThis.cy.zoom({
+    level: newZoom,
+    renderedPosition: { x: event.offsetX, y: event.offsetY }
+  });
 }
 
 /**
