@@ -104,7 +104,7 @@ function initializeCytoscape(): void {
   globalThis.cy.on('select', 'node', () => {
     const selectedNodes = globalThis.cy.$('node:selected');
     selectedNodes.style({
-      'border-width': 2,
+      'border-width': 1,
       'border-color': '#ff0000'
     });
     log.debug(`Selected nodes: ${selectedNodes.map((n: any) => n.id()).join(', ')}`);
@@ -121,7 +121,7 @@ function initializeCytoscape(): void {
     const selectedEdges = globalThis.cy.$('edge:selected');
     selectedEdges.style({
       'line-color': '#ff0000',
-      'width': 3
+      'width': 1.5
     });
     log.debug(`Selected edges: ${selectedEdges.map((e: any) => e.id()).join(', ')}`);
   });
