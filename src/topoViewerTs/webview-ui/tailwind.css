@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom component classes using Tailwind */
+@layer components {
+  /* Button styles */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+  
+  .btn-outlined {
+    @apply border border-blue-600 text-blue-600 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20;
+  }
+  
+  .btn-small {
+    @apply px-3 py-1 text-xs;
+  }
+  
+  .btn-icon {
+    @apply p-2;
+  }
+  
+  /* Panel styles */
+  .panel {
+    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md;
+  }
+  
+  .panel-heading {
+    @apply px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 font-semibold text-sm;
+  }
+  
+  .panel-block {
+    @apply px-4 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0;
+  }
+  
+  /* Dropdown styles */
+  .dropdown-menu {
+    @apply absolute z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg;
+  }
+  
+  .dropdown-item {
+    @apply block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer;
+  }
+  
+  /* Input styles */
+  .input-field {
+    @apply w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+  
+  /* Label styles */
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-200;
+  }
+  
+  /* Modal styles */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-50;
+  }
+  
+  .modal-content {
+    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50 max-w-2xl w-full max-h-[90vh] overflow-auto;
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+    @apply inline-block w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin;
+  }
+  
+  /* Navbar styles */
+  .navbar {
+    @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 bg-gray-900 dark:bg-gray-950 shadow-md;
+  }
+  
+  .navbar-brand {
+    @apply flex items-center space-x-3;
+  }
+  
+  .navbar-end {
+    @apply ml-auto flex items-center;
+  }
+  
+  /* Column utilities */
+  .column {
+    @apply flex-1;
+  }
+  
+  .columns {
+    @apply flex flex-wrap -mx-2;
+  }
+  
+  .columns > * {
+    @apply px-2;
+  }
+  
+  /* Size utilities matching Bulma */
+  .is-size-7 {
+    @apply text-xs;
+  }
+  
+  .is-size-6 {
+    @apply text-sm;
+  }
+  
+  .is-size-5 {
+    @apply text-base;
+  }
+  
+  .is-size-4 {
+    @apply text-lg;
+  }
+  
+  /* Visibility utilities */
+  .is-hidden {
+    @apply hidden;
+  }
+  
+  /* Flex utilities matching Bulma */
+  .is-flex {
+    @apply flex;
+  }
+  
+  .is-flex-direction-column {
+    @apply flex-col;
+  }
+  
+  .is-justify-content-space-between {
+    @apply justify-between;
+  }
+  
+  .is-justify-content-center {
+    @apply justify-center;
+  }
+  
+  .is-justify-content-flex-end {
+    @apply justify-end;
+  }
+  
+  .is-align-items-center {
+    @apply items-center;
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  /* Text utilities */
+  .has-text-weight-normal {
+    @apply font-normal;
+  }
+  
+  .has-text-weight-medium {
+    @apply font-medium;
+  }
+  
+  .has-text-weight-semibold {
+    @apply font-semibold;
+  }
+  
+  .has-text-weight-bold {
+    @apply font-bold;
+  }
+  
+  .has-text-weight-light {
+    @apply font-light;
+  }
+  
+  .has-text-white {
+    @apply text-white;
+  }
+  
+  .has-text-left {
+    @apply text-left;
+  }
+  
+  .has-text-right {
+    @apply text-right;
+  }
+  
+  .has-text-center {
+    @apply text-center;
+  }
+  
+  /* Background utilities */
+  .has-background-4a {
+    @apply bg-gray-900 dark:bg-gray-950;
+  }
+  
+  /* Unselectable text */
+  .is-unselectable {
+    @apply select-none;
+  }
+  
+  /* Field utilities */
+  .field {
+    @apply mb-4;
+  }
+  
+  .control {
+    @apply relative;
+  }
+  
+  .has-icons-left .icon {
+    @apply absolute left-3 top-1/2 transform -translate-y-1/2;
+  }
+  
+  .has-icons-left .input-field {
+    @apply pl-10;
+  }
+}

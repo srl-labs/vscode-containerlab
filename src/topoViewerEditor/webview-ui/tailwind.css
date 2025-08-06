@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for TopoViewer Editor */
+@layer base {
+  html, body {
+    @apply h-full w-full m-0 p-0 overflow-hidden;
+  }
+}
+
+@layer components {
+  /* Button styles */
+  .btn {
+    @apply px-4 py-2 rounded font-medium transition-colors;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-600 text-white hover:bg-gray-700;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+  
+  /* Panel styles */
+  .panel {
+    @apply bg-gray-800 dark:bg-gray-900 border border-gray-700 rounded-lg shadow-lg;
+  }
+  
+  .panel-header {
+    @apply px-4 py-3 bg-gray-900 dark:bg-gray-950 border-b border-gray-700 font-semibold text-sm text-gray-200;
+  }
+  
+  /* Input styles */
+  .input-field {
+    @apply w-full px-3 py-2 text-sm bg-gray-700 text-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+  
+  /* Dropdown styles */
+  .dropdown-button {
+    @apply px-3 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded inline-flex items-center;
+  }
+  
+  .dropdown-menu {
+    @apply hidden absolute left-0 mt-1 bg-gray-700 rounded-md shadow-lg z-50;
+  }
+  
+  .dropdown-item {
+    @apply block px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 cursor-pointer;
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-white;
+  }
+}
+
+/* Override cytoscape default styles for dark theme */
+#cy {
+  background-color: rgb(30, 30, 30);
+}
+
+/* Cytoscape context menu styling */
+.cxtmenu {
+  @apply bg-gray-800 border border-gray-700;
+}
+
+.cxtmenu-item {
+  @apply text-gray-200 hover:bg-gray-700;
+}
+
+/* VSCode theme integration */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --vscode-editor-background: #1e1e1e;
+    --vscode-editor-foreground: #cccccc;
+    --vscode-panel-background: #252526;
+    --vscode-panel-foreground: #cccccc;
+    --vscode-button-background: #0e639c;
+    --vscode-button-foreground: #ffffff;
+    --vscode-input-background: #3c3c3c;
+    --vscode-input-foreground: #cccccc;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --vscode-editor-background: #ffffff;
+    --vscode-editor-foreground: #000000;
+    --vscode-panel-background: #f3f3f3;
+    --vscode-panel-foreground: #000000;
+    --vscode-button-background: #007acc;
+    --vscode-button-foreground: #ffffff;
+    --vscode-input-background: #ffffff;
+    --vscode-input-foreground: #000000;
+  }
+}

@@ -9,8 +9,8 @@ import leaflet from 'cytoscape-leaf';
 import cxtmenu from 'cytoscape-cxtmenu';
 // import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
 
-// Import Bulma CSS framework
-import 'bulma/css/bulma.min.css';
+// Import Tailwind CSS and Font Awesome
+import './tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 import loadCytoStyle from './managerCytoscapeStyle';
