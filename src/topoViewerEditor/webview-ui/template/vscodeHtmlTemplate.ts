@@ -45,7 +45,6 @@ export function getHTMLTemplate(
   <link rel="stylesheet" href="${cssUri}/atom-one-dark.min.css">
 
   <!-- JS Assets -->
-  <script src="${jsUri}/library/fontawesome-6-7-2.min.js?ver=1"></script>
 </head>
 
 <body>

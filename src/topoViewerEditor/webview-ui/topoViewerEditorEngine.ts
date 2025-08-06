@@ -11,6 +11,7 @@ import cxtmenu from 'cytoscape-cxtmenu';
 
 // Import Bulma CSS framework
 import 'bulma/css/bulma.min.css';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from './managerVscodeWebview';

@@ -23,6 +23,13 @@ module.exports = {
       {
         test: /\.css$/,
         use: [MiniCssExtractPlugin.loader, 'css-loader']
+      },
+      {
+        test: /\.(woff2?|eot|ttf|otf|svg)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'webfonts/[name][ext][query]'
+        }
       }
     ]
   },
