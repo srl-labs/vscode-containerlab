@@ -233,8 +233,8 @@ body {
 /* Viewport & Drawer Components
 -------------------------------------------------- */
 .viewport-drawer {
-  top: 75px;
-  left: 90px;
+  top: 0px;
+  right: 90px;
   height: 288px;
   width: 300px;
   position: fixed;
