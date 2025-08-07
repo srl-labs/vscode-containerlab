@@ -8,7 +8,6 @@ import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
-import { handleWebviewMessage, WebviewMessage } from './webviewMessageHandler';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
 
@@ -245,18 +244,10 @@ export class TopoViewer {
     log.info(`Context key 'isTopoviewerActive' set to true`);
 
     const themeChangeListener = vscode.window.onDidChangeActiveColorTheme(() => {
-      const isDarkTheme =
-        vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
-        vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
-      const logoFile = isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
-
-      panel.webview.postMessage({
-        type: 'theme-changed',
-        isDarkTheme: isDarkTheme,
-        logoFile: logoFile,
-      });
-
-      log.info(`Theme changed - isDarkTheme: ${isDarkTheme}, logoFile: ${logoFile}`);
+      log.info('Theme change detected, refreshing TopoViewer');
+      this.updatePanelHtml(panel).catch(err =>
+        log.error(`Failed to refresh panel on theme change: ${err}`)
+      );
     });
 
     panel.onDidDispose(
@@ -303,10 +294,6 @@ export class TopoViewer {
     );
 
     log.info('Webview panel created successfully');
-
-    panel.webview.onDidReceiveMessage((msg: WebviewMessage) =>
-      handleWebviewMessage.call(this, msg, panel)
-    );
 
     return panel;
   }
@@ -371,43 +358,12 @@ export class TopoViewer {
 
       log.info('Tree data cache updated successfully');
 
-      // If there's an active panel, send updated data without reloading
+      // If there's an active panel, refresh it with the new data
       if (this.currentTopoViewerPanel && this.lastYamlFilePath) {
-        await this.sendUpdatedDataToWebview();
+        await this.updatePanelHtml(this.currentTopoViewerPanel);
       }
     } catch (error) {
       log.error(`Failed to update tree data: ${error}`);
-    }
-  }
-
-  /**
-   * Sends updated topology data to the webview without reloading.
-   * This allows for real-time updates of link states.
-   */
-  private async sendUpdatedDataToWebview(): Promise<void> {
-    if (!this.currentTopoViewerPanel || !this.lastYamlFilePath) {
-      return;
-    }
-
-    try {
-      // Read the YAML content
-      const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
-
-      // Generate fresh cytoscape elements with updated tree data
-      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
-        yamlContent,
-        this.cacheClabTreeDataToTopoviewer
-      );
-
-      // Send the updated data to the webview
-      this.currentTopoViewerPanel.webview.postMessage({
-        type: 'updateTopology',
-        data: cytoTopology
-      });
-
-      log.info('Sent updated topology data to webview');
-    } catch (error) {
-      log.error(`Failed to send updated data to webview: ${error}`);
     }
   }
 
