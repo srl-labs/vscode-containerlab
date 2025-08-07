@@ -358,9 +358,28 @@ export class TopoViewer {
 
       log.info('Tree data cache updated successfully');
 
-      // If there's an active panel, refresh it with the new data
+      // If there's an active panel, update it with the new data without reloading
       if (this.currentTopoViewerPanel && this.lastYamlFilePath) {
-        await this.updatePanelHtml(this.currentTopoViewerPanel);
+        const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
+        const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+          yamlContent,
+          freshTreeData
+        );
+
+        // Update JSON data on disk for future reloads
+        if (this.lastFolderName) {
+          this.adaptor.createFolderAndWriteJson(
+            this.context,
+            this.lastFolderName,
+            cytoTopology,
+            yamlContent
+          );
+        }
+
+        await this.currentTopoViewerPanel.webview.postMessage({
+          type: 'updateTopology',
+          data: cytoTopology,
+        });
       }
     } catch (error) {
       log.error(`Failed to update tree data: ${error}`);
