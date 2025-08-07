@@ -166,6 +166,19 @@ export function viewportButtonsLabelEndpoint(): void {
 }
 
 /**
+ * Reload the topology by requesting fresh data from the VS Code extension backend.
+ */
+export async function viewportButtonsReloadTopo(): Promise<void> {
+  try {
+    const sender = getMessageSender();
+    await sender.sendMessageToVscodeEndpointPost('reload-viewport', 'Empty Payload');
+    log.info('Reload viewport request sent');
+  } catch (error) {
+    log.error(`Error reloading topology: ${error}`);
+  }
+}
+
+/**
  * Search for nodes in the topology
  */
 export function viewportNodeFindEvent(): void {
@@ -187,10 +200,13 @@ export function viewportNodeFindEvent(): void {
       return;
     }
 
-    // Search for nodes by label
+    // Search for nodes by name or longname
     const matchingNodes = globalThis.cy.nodes().filter((node: any) => {
-      const label = node.data('label') || '';
-      return label.toLowerCase().includes(searchTerm.toLowerCase());
+      const data = node.data();
+      const shortName = data.name || '';
+      const longName = data.extraData?.longname || '';
+      const combined = `${shortName} ${longName}`.toLowerCase();
+      return combined.includes(searchTerm.toLowerCase());
     });
 
     if (matchingNodes.length > 0) {
@@ -494,6 +510,7 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportButtonsLayoutAlgo = viewportButtonsLayoutAlgo;
   (globalThis as any).viewportButtonsTopologyOverview = viewportButtonsTopologyOverview;
   (globalThis as any).viewportButtonsLabelEndpoint = viewportButtonsLabelEndpoint;
+  (globalThis as any).viewportButtonsReloadTopo = viewportButtonsReloadTopo;
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
   (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
