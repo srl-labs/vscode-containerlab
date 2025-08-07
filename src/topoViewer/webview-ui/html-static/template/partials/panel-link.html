@@ -29,22 +29,23 @@
                 <label class="label text-xs text-right"></label>
               </div>
               <div class="w-2/3 pl-3">
-                <div class="relative group">
-                  <button class="btn btn-small inline-flex items-center">
+                <div class="relative">
+                  <input type="checkbox" id="panel-link-action-dropdown-toggle" class="hidden peer">
+                  <label for="panel-link-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer">
                     <span>Actions</span>
                     <span class="ml-2 text-xs">
                       <i class="fas fa-angle-down" aria-hidden="true"></i>
                     </span>
-                  </button>
-                  <div class="dropdown-menu hidden group-hover:block left-0 w-full" id="panel-link-action-dropdown-menu">
+                  </label>
+                  <div class="dropdown-menu hidden peer-checked:block left-0 w-full" id="panel-link-action-dropdown-menu">
                     <div class="py-1" id="panel-link-action-dropdown-menu-dropdown-content">
-                      <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null);"
+                      <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs" id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)
                       </a>
                       <a id="endpoint-a-top"></a>
                       <a id="endpoint-a-bottom"></a>
 
-                      <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target');" 
+                      <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target'); document.getElementById('panel-link-action-dropdown-toggle').checked = false;" 
                         class="py-1 dropdown-item text-xs"
                         id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)
                       </a>
@@ -53,13 +54,13 @@
 
                       <hr class="border-t border-default my-1" />
 
-                      <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'source', null);"
+                      <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'source', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs" id="endpoint-a-edgeshark-vnc">Capture E.Point-A VNC (Edgeshark)
                       </a>
                       <a id="endpoint-a-vnc-top"></a>
                       <a id="endpoint-a-vnc-bottom"></a>
 
-                      <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target', null);"
+                      <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs" id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
                       </a>
                       <a id="endpoint-b-vnc-top"></a>

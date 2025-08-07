@@ -31,22 +31,23 @@
                 <label class="label text-xs text-right"></label>
               </div>
               <div class="w-2/3 pl-2">
-                <div class="relative group">
-                  <button class="btn btn-small inline-flex items-center">
+                <div class="relative">
+                  <input type="checkbox" id="panel-node-action-dropdown-toggle" class="hidden peer">
+                  <label for="panel-node-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer">
                     <span>Actions</span>
                     <span class="ml-2 text-xs">
                       <i class="fas fa-angle-down" aria-hidden="true"></i>
                     </span>
-                  </button>
-                  <div class="dropdown-menu hidden group-hover:block left-0 w-full" id="panel-node-action-dropdown-menu">
+                  </label>
+                  <div class="dropdown-menu hidden peer-checked:block left-0 w-full" id="panel-node-action-dropdown-menu">
                     <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
-                      <a onclick="nodeActionConnectToSSH(event);"
+                      <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs">Connect to SSH</a>
-                      <a onclick="nodeActionAttachShell(event);"
+                      <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs">Attach Shell</a>
-                      <a onclick="nodeActionViewLogs(event);"
+                      <a onclick="nodeActionViewLogs(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs">View Logs</a>
-                      <a onclick="nodeActionRemoveFromParent(event);"
+                      <a onclick="nodeActionRemoveFromParent(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item text-xs">Release From Group</a>
                     </div>
                   </div>
