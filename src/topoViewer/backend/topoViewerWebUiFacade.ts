@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode } from '../../treeView/common';
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
@@ -293,9 +293,113 @@ export class TopoViewer {
       this.adaptor.allowedhostname as string
     );
 
+    panel.webview.onDidReceiveMessage(async msg => {
+      if (!msg || typeof msg !== 'object' || msg.type !== 'POST') {
+        return;
+      }
+
+      const { requestId, endpointName, payload } = msg;
+      let result: unknown = null;
+      let error: string | undefined;
+
+      try {
+        const payloadObj = payload ? JSON.parse(payload as string) : undefined;
+        switch (endpointName) {
+          case 'clab-node-connect-ssh': {
+            const nodeName = payloadObj as string;
+            const node = this.findContainerNode(nodeName);
+            if (!node) {
+              throw new Error(`Node ${nodeName} not found`);
+            }
+            await vscode.commands.executeCommand('containerlab.node.ssh', node);
+            result = `SSH executed for ${nodeName}`;
+            break;
+          }
+          case 'clab-node-attach-shell': {
+            const nodeName = payloadObj as string;
+            const node = this.findContainerNode(nodeName);
+            if (!node) {
+              throw new Error(`Node ${nodeName} not found`);
+            }
+            await vscode.commands.executeCommand('containerlab.node.attachShell', node);
+            result = `Attach shell executed for ${nodeName}`;
+            break;
+          }
+          case 'clab-node-view-logs': {
+            const nodeName = payloadObj as string;
+            const node = this.findContainerNode(nodeName);
+            if (!node) {
+              throw new Error(`Node ${nodeName} not found`);
+            }
+            await vscode.commands.executeCommand('containerlab.node.showLogs', node);
+            result = `Show logs executed for ${nodeName}`;
+            break;
+          }
+          case 'clab-link-capture': {
+            const { nodeName, interfaceName } = payloadObj as { nodeName: string; interfaceName: string };
+            const iface = this.findInterfaceNode(nodeName, interfaceName);
+            if (!iface) {
+              throw new Error(`Interface ${nodeName}/${interfaceName} not found`);
+            }
+            await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
+            result = `Capture executed for ${nodeName}/${interfaceName}`;
+            break;
+          }
+          case 'clab-link-capture-edgeshark-vnc': {
+            const { nodeName, interfaceName } = payloadObj as { nodeName: string; interfaceName: string };
+            const iface = this.findInterfaceNode(nodeName, interfaceName);
+            if (!iface) {
+              throw new Error(`Interface ${nodeName}/${interfaceName} not found`);
+            }
+            await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
+            result = `VNC capture executed for ${nodeName}/${interfaceName}`;
+            break;
+          }
+          default:
+            error = `Unknown endpoint: ${endpointName}`;
+            break;
+        }
+      } catch (err: any) {
+        error = err.message ?? String(err);
+      }
+
+      panel.webview.postMessage({
+        type: 'POST_RESPONSE',
+        requestId,
+        result,
+        error,
+      });
+    });
+
     log.info('Webview panel created successfully');
 
     return panel;
+  }
+
+  private findContainerNode(name: string): ClabContainerTreeNode | undefined {
+    const labs = this.cacheClabTreeDataToTopoviewer;
+    if (!labs) {
+      return undefined;
+    }
+    for (const lab of Object.values(labs)) {
+      const container = lab.containers?.find(
+        c => c.name === name || c.name_short === name || c.label === name
+      );
+      if (container) {
+        return container;
+      }
+    }
+    return undefined;
+  }
+
+  private findInterfaceNode(nodeName: string, intf: string): ClabInterfaceTreeNode | undefined {
+    const container = this.findContainerNode(nodeName);
+    if (!container) {
+      return undefined;
+    }
+    return container.interfaces.find(
+      i => i.name === intf || i.alias === intf || i.label === intf
+    );
   }
 
   /**
