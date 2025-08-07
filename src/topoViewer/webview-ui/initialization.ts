@@ -227,24 +227,60 @@ function initializeCytoscape(): void {
     if (panelLink) {
       panelLink.style.display = "block";
 
+      // Get extraData for interface information
+      const extraData = edge.data("extraData") || {};
+
       // Update panel content
       const linkNameEl = document.getElementById("panel-link-name");
       if (linkNameEl) {
         linkNameEl.innerHTML = `┌ ${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}<br>└ ${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
       }
 
+      // Update Endpoint A (source) properties
       const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
       if (endpointANameEl) {
         endpointANameEl.textContent = `${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}`;
       }
 
+      const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
+      if (endpointAMacEl) {
+        endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
+      }
+
+      const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
+      if (endpointAMtuEl) {
+        endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
+      }
+
+      const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
+      if (endpointATypeEl) {
+        endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
+      }
+
+      // Update Endpoint B (target) properties
       const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
       if (endpointBNameEl) {
         endpointBNameEl.textContent = `${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
       }
 
+      const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
+      if (endpointBMacEl) {
+        endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
+      }
+
+      const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
+      if (endpointBMtuEl) {
+        endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
+      }
+
+      const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
+      if (endpointBTypeEl) {
+        endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
+      }
+
       globalThis.globalSelectedEdge = edge.data("id");
       log.info(`Global selected edge: ${globalThis.globalSelectedEdge}`);
+      log.debug(`Edge extraData: ${JSON.stringify(extraData)}`);
     }
   });
 
