@@ -8,16 +8,9 @@ import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
+import { handleWebviewMessage, WebviewMessage } from './webviewMessageHandler';
 
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
-import {
-  getHostname,
-  attachShell,
-  sshToNode,
-  showLogs,
-  captureInterfaceWithPacketflix,
-  captureEdgesharkVNC
-} from '../../commands/index';
 
 /**
  * Class representing the Unified Containerlab Topology Viewer/Editor extension in VS Code.
@@ -35,7 +28,7 @@ export class TopoViewer {
    * Adaptor instance responsible for converting Containerlab YAML to Cytoscape elements
    * and creating the required JSON files.
    */
-  private adaptor: TopoViewerAdaptorClab;
+  public adaptor: TopoViewerAdaptorClab;
 
   /**
    * Tree data provider to manage Containerlab lab nodes.
@@ -45,19 +38,19 @@ export class TopoViewer {
   /**
    * Stores the YAML file path from the last topenViewer call.
    */
-  private lastYamlFilePath: string = '';
+  public lastYamlFilePath: string = '';
 
   /**
    * Stores the folder name (derived from the YAML file name) where JSON data files are stored.
    */
-  private lastFolderName: string | undefined;
+  public lastFolderName: string | undefined;
 
   /**
    * The currently active TopoViewer webview panel.
    */
   public currentTopoViewerPanel: vscode.WebviewPanel | undefined;
 
-  private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+  public cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
 
 
   /**
@@ -77,7 +70,7 @@ export class TopoViewer {
    *
    * @param context - The VS Code extension context.
    */
-  constructor(private context: vscode.ExtensionContext) {
+  constructor(public context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
     this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
@@ -227,19 +220,6 @@ export class TopoViewer {
    * @returns A promise that resolves to the created WebviewPanel.
    */
   private async createWebviewPanel(folderName: string): Promise<vscode.WebviewPanel> {
-    interface CytoViewportPositionPreset {
-      data: {
-        id: string,
-        parent: string,
-        groupLabelPos: string
-      };
-      position:
-      {
-        x: number;
-        y: number
-      };
-    }
-
     const panel = vscode.window.createWebviewPanel(
       'topoViewer',
       `Containerlab Topology: ${folderName}`,
@@ -247,11 +227,8 @@ export class TopoViewer {
       {
         enableScripts: true,
         localResourceRoots: [
-          // Dynamic data folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName),
-          // Static asset folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
-          // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
         ],
       }
@@ -264,26 +241,24 @@ export class TopoViewer {
     );
     panel.iconPath = iconUri;
 
-    // Set a context key so that other parts of the extension know TopoViewer is active.
     await vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
     log.info(`Context key 'isTopoviewerActive' set to true`);
 
-    // Listen for theme changes and notify the webview
     const themeChangeListener = vscode.window.onDidChangeActiveColorTheme(() => {
-      const isDarkTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
-                         vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
+      const isDarkTheme =
+        vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
+        vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
       const logoFile = isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
 
       panel.webview.postMessage({
         type: 'theme-changed',
         isDarkTheme: isDarkTheme,
-        logoFile: logoFile
+        logoFile: logoFile,
       });
 
       log.info(`Theme changed - isDarkTheme: ${isDarkTheme}, logoFile: ${logoFile}`);
     });
 
-    // When the panel is closed, reset the context key.
     panel.onDidDispose(
       () => {
         vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
@@ -294,32 +269,27 @@ export class TopoViewer {
       this.context.subscriptions
     );
 
-    // Generate URIs for CSS, JavaScript, and image assets.
     const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
 
-    // Compute the URI for the compiled JS directory.
     const jsOutDir = panel.webview
       .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
       .toString();
 
-    // Define URIs for the JSON data files.
     const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
     const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-    const jsonFileUrlDataCytoMarshall = panel.webview.asWebviewUri(jsonFileUriDataCytoMarshall).toString();
+    const jsonFileUrlDataCytoMarshall = panel.webview
+      .asWebviewUri(jsonFileUriDataCytoMarshall)
+      .toString();
 
     const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-    const jsonFileUrlDataEnvironment = panel.webview.asWebviewUri(jsonFileUriDataEnvironment).toString();
-
-    const isVscodeDeployment = true;
+    const jsonFileUrlDataEnvironment = panel.webview
+      .asWebviewUri(jsonFileUriDataEnvironment)
+      .toString();
 
     const schemaUri = panel.webview
       .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
       .toString();
 
-    log.info(`Webview JSON => dataCytoMarshall: ${jsonFileUrlDataCytoMarshall}`);
-    log.info(`Webview JSON => environment: ${jsonFileUrlDataEnvironment}`);
-
-    // Inject the asset URIs and JSON data paths into the HTML content.
     panel.webview.html = this.getWebviewContent(
       css,
       js,
@@ -327,489 +297,16 @@ export class TopoViewer {
       images,
       jsonFileUrlDataCytoMarshall,
       jsonFileUrlDataEnvironment,
-      isVscodeDeployment,
+      true,
       jsOutDir,
       this.adaptor.allowedhostname as string
     );
 
     log.info('Webview panel created successfully');
 
-    /**
-     * Interface for messages received from the webview.
-     */
-    interface WebviewMessage {
-      type: string;
-      command?: string;
-      requestId?: string;
-      endpointName?: string;
-      payload?: string;
-    }
-
-    // Listen for incoming messages from the webview.
-    panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
-      // Handle logging messages from webview
-      if (msg.command === 'topoViewerLog') {
-        const logData = msg as unknown as {
-          command: string;
-          level: 'info' | 'debug' | 'warn' | 'error';
-          message: string;
-          fileLine: string;
-          timestamp: string;
-        };
-        // Use the backend logger to output to TopoViewer Logs channel
-        const formattedMessage = `[WebView] ${logData.message} (${logData.fileLine})`;
-        switch (logData.level) {
-          case 'info':
-            log.info(formattedMessage);
-            break;
-          case 'debug':
-            log.debug(formattedMessage);
-            break;
-          case 'warn':
-            log.warn(formattedMessage);
-            break;
-          case 'error':
-            log.error(formattedMessage);
-            break;
-        }
-        return; // Don't process as regular message
-      }
-
-      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
-
-      const payloadObj = JSON.parse(msg.payload as string);
-      log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
-
-      // Validate that the message is an object.
-      if (!msg || typeof msg !== 'object') {
-        log.error('Invalid message received.');
-        return;
-      }
-
-      // Process only messages of type 'POST'.
-      if (msg.type !== 'POST') {
-        log.warn(`Unrecognized message type: ${msg.type}`);
-        return;
-      }
-
-      const { requestId, endpointName, payload } = msg;
-      if (!requestId || !endpointName) {
-        const missingFields = [];
-        if (!requestId) missingFields.push('requestId');
-        if (!endpointName) missingFields.push('endpointName');
-        const errorMessage = `Missing required field(s): ${missingFields.join(', ')}`;
-        log.error(errorMessage);
-        panel.webview.postMessage({
-          type: 'POST_RESPONSE',
-          requestId: requestId ?? null,
-          result: null,
-          error: errorMessage,
-        });
-        return;
-      }
-
-      let result: unknown = null;
-      let error: string | null = null;
-
-      try {
-        switch (endpointName) {
-          case 'reload-viewport': {
-            try {
-              // Refresh the webview content.
-              await this.updatePanelHtml(this.currentTopoViewerPanel);
-              result = `Endpoint "${endpointName}" executed successfully.`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'topo-viewport-save': {
-            try {
-              // Parse the payload to update node positions.
-              const payloadParsed = JSON.parse(payload as string) as CytoViewportPositionPreset[];
-
-              // Retrieve the parsed YAML document (with comments) from the adaptor.
-              const doc: YAML.Document.Parsed | undefined = this.adaptor.currentClabDoc;
-              if (!doc) {
-                throw new Error('No parsed Document found (this.adaptor.currentClabDoc is undefined).');
-              }
-
-              // Update each node’s position in the AST.
-
-              // data: { id: string; parent: string; name: string; };
-              // position: { x: number; y: number };
-
-              for (const { data: { id, parent, groupLabelPos }, position: { x, y } } of payloadParsed) {
-                if (!id) continue;  // Skip if invalid
-                const nodeMap = doc.getIn(['topology', 'nodes', id], true);
-                if (YAML.isMap(nodeMap)) {
-                  nodeMap.setIn(['labels', 'graph-posX'], Math.round(x).toString());
-                  nodeMap.setIn(['labels', 'graph-posY'], Math.round(y).toString());
-
-                  if (parent) {
-                    nodeMap.setIn(['labels', 'graph-group'], parent.split(":")[0]);
-                    nodeMap.setIn(['labels', 'graph-level'], parent.split(":")[1]);
-                  } else {
-                    // If no parent exists, remove these keys.
-                    nodeMap.deleteIn(['labels', 'graph-group']);
-                    nodeMap.deleteIn(['labels', 'graph-level']);
-                  }
-                  if (groupLabelPos) {
-                    nodeMap.setIn(['labels', 'graph-groupLabelPos'], groupLabelPos);
-                  } else {
-                    // If no groupLabelPos exists, defaulting to bottom-center.
-                    nodeMap.setIn(['labels', 'graph-groupLabelPos'], "bottom-center");
-                  }
-                }
-              }
-
-              // Optionally convert links.endpoints arrays to "flow" style.
-              const linksNode = doc.getIn(['topology', 'links']);
-              if (YAML.isSeq(linksNode)) {
-                for (const linkItem of linksNode.items) {
-                  if (YAML.isMap(linkItem)) {
-                    const endpointsNode = linkItem.get('endpoints', true);
-                    if (YAML.isSeq(endpointsNode)) {
-                      endpointsNode.flow = true;
-                    }
-                  }
-                }
-              }
-
-              // Serialize back to YAML preserving original comments.
-              const updatedYamlString = doc.toString();
-
-              // Write the updated YAML to disk.
-              await fs.promises.writeFile(this.lastYamlFilePath, updatedYamlString, 'utf8');
-
-              result = `Saved topology with preserved comments!`;
-              log.info(result);
-              vscode.window.showInformationMessage(result as string);
-
-            } catch (error) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(error, null, 2)}`);
-            }
-            break;
-          }
-          case 'clab-node-connect-ssh': {
-            try {
-              log.info(`clab-node-connect-ssh called with payload: ${payload}`);
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
-                  ? (payload as string).slice(1, -1)
-                  : (payload as string);
-                log.info(`clab-node-connect-ssh backend endpoint is called`);
-                log.info(`lab name: ${this.adaptor.currentClabTopo?.name}`);
-                log.info(`node name: ${nodeName}`);
-
-                const containerData = this.adaptor.getClabContainerTreeNode(
-                  nodeName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name
-                );
-                if (containerData) {
-                  sshToNode(containerData);
-                }
-              } else {
-                log.error(`Updated Clab tree data is undefined`);
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'clab-node-attach-shell': {
-            try {
-              log.info(`clab-node-attach-shell called with payload: ${payload}`);
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
-                  ? (payload as string).slice(1, -1)
-                  : (payload as string);
-                log.info(`clab-node-attach-shell backend endpoint is called`);
-                log.info(`lab name: ${this.adaptor.currentClabTopo?.name}`);
-                log.info(`node name: ${nodeName}`);
-
-                const containerData = this.adaptor.getClabContainerTreeNode(
-                  nodeName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name
-                );
-                log.info(`containerData : ${JSON.stringify(containerData, null, 2)}`);
-                if (containerData) {
-                  attachShell(containerData);
-                }
-              } else {
-                log.error('Updated Clab tree data is undefined.');
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'clab-node-view-logs': {
-            try {
-              log.info(`clab-node-view-logs called with payload: ${payload}`);
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const nodeName = (payload as string).startsWith('"') && (payload as string).endsWith('"')
-                  ? (payload as string).slice(1, -1)
-                  : (payload as string);
-                log.info(`clab-node-view-logs backend endpoint is called`);
-                log.info(`lab name: ${this.adaptor.currentClabTopo?.name}`);
-                log.info(`node name: ${nodeName}`);
-
-                const containerData = this.adaptor.getClabContainerTreeNode(
-                  nodeName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name
-                );
-                if (containerData) {
-                  showLogs(containerData);
-                }
-              } else {
-                log.error('Updated Clab tree data is undefined.');
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'clab-host-get-hostname': {
-            try {
-              const hostname = await getHostname();
-              result = `Endpoint "${endpointName}" executed successfully. Return payload is ${hostname}`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
-            }
-            break;
-          }
-          case 'clab-link-capture': {
-            try {
-              interface LinkEndpointInfo {
-                nodeName: string;
-                interfaceName: string;
-              }
-              const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
-              log.info(`clab-link-capture called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
-
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
-                  linkInfo.nodeName,
-                  linkInfo.interfaceName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name as string
-                );
-                if (containerInterfaceData) {
-                  captureInterfaceWithPacketflix(containerInterfaceData);
-                }
-                result = `Endpoint "${endpointName}" executed successfully. Return payload is ${containerInterfaceData}`;
-                log.info(result);
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
-            }
-            break;
-          }
-          case 'clab-link-capture-edgeshark-vnc': {
-            try {
-              interface LinkEndpointInfo {
-                nodeName: string;
-                interfaceName: string;
-              }
-              const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
-              log.info(`clab-link-capture called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
-
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
-                  linkInfo.nodeName,
-                  linkInfo.interfaceName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name as string
-                );
-                if (containerInterfaceData) {
-                  captureEdgesharkVNC(containerInterfaceData);
-                }
-                result = `Endpoint "${endpointName}" executed successfully. Return payload is ${containerInterfaceData}`;
-                log.info(result);
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError)}`);
-            }
-            break;
-          }
-          case 'clab-link-subinterfaces': {
-            try {
-              interface LinkEndpointInfo {
-                nodeName: string;
-                interfaceName: string;
-              }
-              const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
-              log.info(`clab-link-subinterfaces called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
-
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const containerData = this.adaptor.getClabContainerTreeNode(
-                  linkInfo.nodeName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name as string
-                );
-                const parentInterfaceName = linkInfo.interfaceName;
-
-                const subInterfaces = containerData?.interfaces.filter((intf) =>
-                  intf.name.startsWith(`${parentInterfaceName}-`)
-                );
-
-                log.info(`subInterfaces: ${JSON.stringify(subInterfaces, null, 2)}`);
-
-                result = subInterfaces;
-                log.info(`Endpoint "${endpointName}" executed successfully. Return payload is ${JSON.stringify(subInterfaces, null, 2)}`);
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'clab-link-mac-address': {
-            try {
-              interface LinkEndpointInfo {
-                nodeName: string;
-                interfaceName: string;
-              }
-              const linkInfo: LinkEndpointInfo = JSON.parse(payload as string);
-              log.info(`clab-link-mac-address called with payload: ${JSON.stringify(linkInfo, null, 2)}`);
-
-              const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
-              if (updatedClabTreeDataToTopoviewer) {
-                const containerInterfaceData = this.adaptor.getClabContainerInterfaceTreeNode(
-                  linkInfo.nodeName,
-                  linkInfo.interfaceName,
-                  updatedClabTreeDataToTopoviewer,
-                  this.adaptor.currentClabTopo?.name as string
-                );
-                log.info(`macAddress: ${JSON.stringify(containerInterfaceData?.mac, null, 2)}`);
-                result = containerInterfaceData?.mac;
-                log.info(`Endpoint "${endpointName}" executed successfully. Return payload is ${result}`);
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'clab-show-vscode-message': {
-            try {
-              // Parse the payload from the webview
-              const data = JSON.parse(payload as string) as {
-                type: 'info' | 'warning' | 'error';
-                message: string;
-              };
-
-              // Display the message based on its type
-              switch (data.type) {
-                case 'info':
-                  await vscode.window.showInformationMessage(data.message);
-                  break;
-                case 'warning':
-                  await vscode.window.showWarningMessage(data.message);
-                  break;
-                case 'error':
-                  await vscode.window.showErrorMessage(data.message);
-                  break;
-                default:
-                  // throw new Error(`Unsupported message type: ${data.type}`);
-
-                  log.error(
-                    `Unsupported message type: ${JSON.stringify(data.type, null, 2)}`
-                  );
-              }
-              result = `Displayed ${data.type} message: ${data.message}`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error executing endpoint "clab-show-vscode-message".`;
-              log.error(
-                `Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(innerError, null, 2)}`
-              );
-            }
-            break;
-          }
-
-          case 'open-external': {
-            try {
-              const url: string = JSON.parse(payload as string);
-              await vscode.env.openExternal(vscode.Uri.parse(url));
-              result = `Opened external URL: ${url}`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error executing endpoint "open-external".`;
-              log.error(`Error executing endpoint "open-external": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'save-environment-json-to-disk': {
-            try {
-              const environmentData = JSON.parse(payload as string);
-
-              if (!this.lastFolderName) {
-                throw new Error('No folderName available (this.lastFolderName is undefined).');
-              }
-
-              // Construct full path under `topoViewerData/<folder>/environment.json`
-              const environmentJsonPath = vscode.Uri.joinPath(
-                this.context.extensionUri,
-                'topoViewerData',
-                this.lastFolderName,
-                'environment.json'
-              );
-
-              // Write to disk
-              await fs.promises.writeFile(environmentJsonPath.fsPath, JSON.stringify(environmentData, null, 2), 'utf8');
-
-              result = `Environment JSON successfully saved to disk at ${environmentJsonPath.fsPath}`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error saving environment JSON to disk.`;
-              log.error(`Error in 'save-environment-json-to-disk': ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          default: {
-            error = `Unknown endpoint "${endpointName}".`;
-            log.error(error);
-          }
-        }
-      } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
-        log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err, null, 2)}`);
-      }
-
-      log.info("########################################################### RESULT in RESPONSE");
-      log.info(`${JSON.stringify(result, null, 2)}`);
-
-      // Send the response back to the webview.
-      panel.webview.postMessage({
-        type: 'POST_RESPONSE',
-        requestId,
-        result,
-        error,
-      });
-    });
+    panel.webview.onDidReceiveMessage((msg: WebviewMessage) =>
+      handleWebviewMessage.call(this, msg, panel)
+    );
 
     return panel;
   }
