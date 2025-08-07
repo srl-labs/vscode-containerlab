@@ -155,3 +155,10 @@ export async function graphTopoviewerReload() {
   // 3) Now call updatePanelHtml on the existing panel
   currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
 }
+
+/**
+ * Get the current TopoViewer instance
+ */
+export function getCurrentTopoViewer(): TopoViewer | undefined {
+  return currentTopoViewer;
+}

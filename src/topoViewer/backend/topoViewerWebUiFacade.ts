@@ -61,11 +61,6 @@ export class TopoViewer {
 
 
   /**
-   * Interval reference used for native VS Code message streaming.
-   */
-  private messageStreamingInterval: ReturnType<typeof setInterval> | undefined;
-
-  /**
    * Current deployment state of the lab being viewed.
    */
   private deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
@@ -206,9 +201,6 @@ export class TopoViewer {
 
       log.info(`allowedHostname: ${this.adaptor.allowedhostname}`);
 
-      // Start postMessage stream to push lab data to the webview.
-      this.startMessageStreaming();
-
       // Create and display the webview panel.
       log.info(`Creating webview panel for visualization`);
       const panel = await this.createWebviewPanel(folderName);
@@ -296,10 +288,6 @@ export class TopoViewer {
       () => {
         vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
         log.info(`Context key 'isTopoviewerActive' set to false`);
-        if (this.messageStreamingInterval) {
-          clearInterval(this.messageStreamingInterval);
-          this.messageStreamingInterval = undefined;
-        }
         themeChangeListener.dispose();
       },
       null,
@@ -871,6 +859,62 @@ export class TopoViewer {
   }
 
   /**
+   * Updates the cached tree data with fresh data from the tree provider.
+   * This should be called when the tree data changes (e.g., interface state changes).
+   *
+   * @returns A promise that resolves when the tree data has been updated.
+   */
+  public async updateTreeData(): Promise<void> {
+    try {
+      // Fetch fresh tree data from the provider
+      const freshTreeData = await this.clabTreeProviderImported.discoverInspectLabs();
+
+      // Update the cache
+      this.cacheClabTreeDataToTopoviewer = freshTreeData;
+
+      log.info('Tree data cache updated successfully');
+
+      // If there's an active panel, send updated data without reloading
+      if (this.currentTopoViewerPanel && this.lastYamlFilePath) {
+        await this.sendUpdatedDataToWebview();
+      }
+    } catch (error) {
+      log.error(`Failed to update tree data: ${error}`);
+    }
+  }
+
+  /**
+   * Sends updated topology data to the webview without reloading.
+   * This allows for real-time updates of link states.
+   */
+  private async sendUpdatedDataToWebview(): Promise<void> {
+    if (!this.currentTopoViewerPanel || !this.lastYamlFilePath) {
+      return;
+    }
+
+    try {
+      // Read the YAML content
+      const yamlContent = fs.readFileSync(this.lastYamlFilePath, 'utf8');
+
+      // Generate fresh cytoscape elements with updated tree data
+      const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+        yamlContent,
+        this.cacheClabTreeDataToTopoviewer
+      );
+
+      // Send the updated data to the webview
+      this.currentTopoViewerPanel.webview.postMessage({
+        type: 'updateTopology',
+        data: cytoTopology
+      });
+
+      log.info('Sent updated topology data to webview');
+    } catch (error) {
+      log.error(`Failed to send updated data to webview: ${error}`);
+    }
+  }
+
+  /**
    * Updates the webview panel's HTML with the latest topology data.
    *
    * This method reads the YAML file, regenerates Cytoscape elements, updates JSON files,
@@ -887,8 +931,12 @@ export class TopoViewer {
     const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.lastFolderName;
 
+    // Always fetch fresh tree data before updating
+    const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
 
-    const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
+    // Update the cache with fresh data
+    this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
+
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
     const yamlContent = fs.readFileSync(yamlFilePath, 'utf8');
@@ -935,48 +983,11 @@ export class TopoViewer {
         this.adaptor.allowedhostname as string
       );
 
+      // Only show message for manual reload, not for automatic updates
       vscode.window.showInformationMessage('TopoViewer Webview reloaded!');
     } else {
       log.error('Panel is undefined');
     }
   }
-
-  // /**
-  //  * Initializes the Socket.IO server to periodically emit lab data to connected clients.
-  //  * Keep this method commented out for now.
-  //  *
-  //  * The server is configured to:
-  //  * - Listen on a dynamically assigned port.
-  //  * - Allow cross-origin requests from any origin.
-  //  * - Poll for updated lab data periodically and emit the raw data via the "clab-tree-provider-data" event.
-  //  *
-  // Socket.IO server implementation removed
-
-  public startMessageStreaming(): void {
-    // Clear any existing interval before starting a new one.
-    if (this.messageStreamingInterval) {
-      clearInterval(this.messageStreamingInterval);
-    }
-
-    // Poll for lab data every 5 seconds.
-    this.messageStreamingInterval = setInterval(async () => {
-      try {
-        const labData = await this.clabTreeProviderImported.discoverInspectLabs();
-
-        // log.info(`labData: ${JSON.stringify(labData, null, 2)}`);
-
-        if (labData && this.currentTopoViewerPanel) {
-          // Send the lab data to the webview.
-          this.currentTopoViewerPanel.webview.postMessage({
-            type: 'clab-tree-provider-data-native-vscode-message-stream',
-            data: labData,
-          });
-        }
-      } catch (error) {
-        log.error(`Error retrieving lab data: ${JSON.stringify(error, null, 2)}`);
-      }
-    }, 5000);
-  }
-
 
 }

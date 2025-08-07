@@ -6,6 +6,7 @@ import * as ins from "./inspector"
 import { execSync } from "child_process";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
+import { getCurrentTopoViewer } from "../commands/graph";
 
 /**
  * Interface corresponding to fields in the
@@ -75,9 +76,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             await ins.update();
             await this.discoverLabs();
             this._onDidChangeTreeData.fire();
+
+            // Also refresh the topology viewer if it's open
+            await this.refreshTopoViewerIfOpen();
         } else {
             // Selective refresh - only refresh this element
             this._onDidChangeTreeData.fire(element);
+
+            // Also refresh the topology viewer if it's open
+            await this.refreshTopoViewerIfOpen();
         }
     }
 
@@ -104,9 +111,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 console.log("[RunningLabTreeDataProvider]:\tLabs changed, refreshing tree view");
                 this._onDidChangeTreeData.fire();
             }
+
+            // Always refresh the topology viewer to catch interface state changes
+            await this.refreshTopoViewerIfOpen();
         } else {
             // Selective refresh - only refresh this element
             this._onDidChangeTreeData.fire(element);
+
+            // Also refresh the topology viewer if it's open
+            await this.refreshTopoViewerIfOpen();
         }
     }
 
@@ -133,6 +146,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             runningTreeView.message = undefined;
         }
         this.refreshWithoutDiscovery();
+    }
+
+    /**
+     * Refresh the topology viewer if it's currently open.
+     * This ensures the viewer stays in sync with tree data changes.
+     */
+    private async refreshTopoViewerIfOpen(): Promise<void> {
+        try {
+            const topoViewer = getCurrentTopoViewer();
+            if (topoViewer && topoViewer.currentTopoViewerPanel) {
+                // Update the tree data in the topology viewer
+                await topoViewer.updateTreeData();
+                console.log("[RunningLabTreeDataProvider]:\tRefreshed topology viewer with updated tree data");
+            }
+        } catch (error) {
+            console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer:", error);
+        }
     }
 
     // Add to ClabTreeDataProvider class

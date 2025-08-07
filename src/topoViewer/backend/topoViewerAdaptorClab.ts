@@ -48,6 +48,7 @@ export class TopoViewerAdaptorClab {
   public currentClabDoc: YAML.Document.Parsed | undefined;
   public currentIsPresetLayout: boolean = false;
   public currentClabName: string | undefined;
+  public currentClabPrefix: string | undefined;
   public allowedhostname: string | undefined;
 
 
@@ -88,12 +89,13 @@ export class TopoViewerAdaptorClab {
       await fs.writeFile(dataCytoMarshallPath, dataCytoMarshallContent, 'utf8');
 
       const parsed = YAML.parse(yamlContent) as ClabTopology;
-      this.currentClabTopo = parsed
+      this.currentClabTopo = parsed;
       this.currentClabDoc = YAML.parseDocument(yamlContent); // <-- store the raw Document
 
-
-      var clabName = parsed.name
+      var clabName = parsed.name;
       var clabPrefix = parsed.prefix;
+      this.currentClabName = clabName;
+      this.currentClabPrefix = clabPrefix;
       // if (clabPrefix == "") {
       //   clabPrefix = ""
       // }
@@ -328,7 +330,8 @@ export class TopoViewerAdaptorClab {
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
 
     const clabName = parsed.name;
-
+    const prefixName = parsed.prefix && parsed.prefix.trim() !== '' ? parsed.prefix.trim() : 'clab';
+    const labPrefix = `${prefixName}-${clabName}`;
 
     const parentMap = new Map<string, string | undefined>();
     let nodeIndex = 0;
@@ -346,8 +349,9 @@ export class TopoViewerAdaptorClab {
         log.info(`nodeName: ${nodeName}`);
         let containerData: ClabContainerTreeNode | null = null;
         if (opts.includeContainerData) {
+          const containerName = `${labPrefix}-${nodeName}`;
           containerData = this.getClabContainerTreeNode(
-            `clab-${clabName}-${nodeName}`,
+            containerName,
             opts.clabTreeData ?? {},
             clabName ?? ''
           );
@@ -372,9 +376,9 @@ export class TopoViewerAdaptorClab {
               index: nodeIndex.toString(),
               kind: mergedNode.kind ?? '',
               type: mergedNode.type ?? '',
-              labdir: `clab-${clabName}/`,
+              labdir: `${labPrefix}/`,
               labels: mergedNode.labels ?? {},
-              longname: `clab-${clabName}-${nodeName}`,
+              longname: containerData?.name ?? `${labPrefix}-${nodeName}`,
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
@@ -450,7 +454,25 @@ export class TopoViewerAdaptorClab {
         const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
         const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
 
+        const sourceContainerName = `${labPrefix}-${sourceNode}`;
+        const targetContainerName = `${labPrefix}-${targetNode}`;
+        const sourceIfaceData = this.getClabContainerInterfaceTreeNode(
+          sourceContainerName,
+          sourceIface,
+          opts.clabTreeData ?? {},
+          clabName
+        );
+        const targetIfaceData = this.getClabContainerInterfaceTreeNode(
+          targetContainerName,
+          targetIface,
+          opts.clabTreeData ?? {},
+          clabName
+        );
         const edgeId = `Clab-Link${linkIndex}`;
+        const edgeClass =
+          sourceIfaceData?.state === 'up' && targetIfaceData?.state === 'up'
+            ? 'link-up'
+            : 'link-down';
         const edgeEl: CyElement = {
           group: 'edges',
           data: {
@@ -467,12 +489,14 @@ export class TopoViewerAdaptorClab {
             target: targetNode,
             extraData: {
               clabServerUsername: 'asad',
-              clabSourceLongName: `clab-${clabName}-${sourceNode}`,
-              clabTargetLongName: `clab-${clabName}-${targetNode}`,
+              clabSourceLongName: sourceContainerName,
+              clabTargetLongName: targetContainerName,
               clabSourcePort: sourceIface,
               clabTargetPort: targetIface,
-              clabSourceMacAddress: '',
-              clabTargetMacAddress: '',
+              clabSourceMacAddress: sourceIfaceData?.mac ?? '',
+              clabTargetMacAddress: targetIfaceData?.mac ?? '',
+              clabSourceInterfaceState: sourceIfaceData?.state ?? '',
+              clabTargetInterfaceState: targetIfaceData?.state ?? '',
             },
           },
           position: { x: 0, y: 0 },
@@ -482,7 +506,7 @@ export class TopoViewerAdaptorClab {
           locked: false,
           grabbed: false,
           grabbable: true,
-          classes: '',
+          classes: edgeClass,
         };
         elements.push(edgeEl);
         linkIndex++;

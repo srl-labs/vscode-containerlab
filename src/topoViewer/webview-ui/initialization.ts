@@ -397,6 +397,63 @@ async function loadTopologyData(): Promise<void> {
 }
 
 /**
+ * Update topology data without reloading the page
+ * This preserves the current layout and only updates element properties
+ */
+function updateTopologyData(cytoData: any): void {
+  try {
+    if (!globalThis.cy) {
+      log.error('Cytoscape instance not available');
+      return;
+    }
+
+    log.debug(`Updating topology with ${cytoData.length || 0} elements`);
+
+    // Store current positions to preserve layout
+    const positions = new Map();
+    globalThis.cy.nodes().forEach((node: any) => {
+      positions.set(node.id(), node.position());
+    });
+
+    // Update edges - this is where link states change
+    cytoData.forEach((element: any) => {
+      if (element.group === 'edges') {
+        const edge = globalThis.cy.getElementById(element.data.id);
+        if (edge.length > 0) {
+          // Update edge classes (link-up or link-down)
+          edge.classes(element.classes || '');
+          // Update edge data (includes interface states)
+          edge.data(element.data);
+        }
+      } else if (element.group === 'nodes') {
+        const node = globalThis.cy.getElementById(element.data.id);
+        if (node.length > 0) {
+          // Update node data while preserving position
+          node.data(element.data);
+        }
+      }
+    });
+
+    // Restore positions to prevent layout shift
+    positions.forEach((pos, id) => {
+      const node = globalThis.cy.getElementById(id);
+      if (node.length > 0) {
+        node.position(pos);
+      }
+    });
+
+    // Re-apply styles to ensure colors are updated
+    if (typeof (globalThis as any).loadCytoStyle === 'function') {
+      (globalThis as any).loadCytoStyle(globalThis.cy);
+    }
+
+    log.info('Topology updated successfully without layout change');
+  } catch (error) {
+    log.error(`Error updating topology data: ${error}`);
+  }
+}
+
+/**
  * Initialize resize handling
  */
 function initializeResizeHandling(): void {
@@ -564,9 +621,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTopoViewer();
     fetchEnvironmentData();
 
-    // Add listener for theme changes from VS Code
+    // Add listener for messages from VS Code
     window.addEventListener('message', (event) => {
       const message = event.data;
+
       if (message && message.type === 'theme-changed') {
         log.info(`Theme changed - updating logo to: ${message.logoFile}`);
         const logoImg = document.getElementById('nokia-logo-img') as HTMLImageElement;
@@ -577,6 +635,9 @@ document.addEventListener('DOMContentLoaded', () => {
           logoImg.src = baseUri + message.logoFile;
           log.info(`Logo updated to: ${logoImg.src}`);
         }
+      } else if (message && message.type === 'updateTopology') {
+        log.info('Received topology update from VS Code');
+        updateTopologyData(message.data);
       }
     });
   } catch (error) {
