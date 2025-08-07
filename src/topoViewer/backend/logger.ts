@@ -1,4 +1,4 @@
-// file: src/topoViewerTs/backend/logger.ts
+// file: src/topoViewer/backend/logger.ts
 
 import * as vscode from 'vscode';
 

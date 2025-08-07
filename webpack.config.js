@@ -56,7 +56,7 @@ const editorConfig = {
 const topoViewerConfig = {
   mode: 'production', // or 'development' for debugging
   target: 'web',
-  entry: './src/topoViewerTs/webview-ui/index.ts',
+  entry: './src/topoViewer/webview-ui/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'topoViewerEngine.js'

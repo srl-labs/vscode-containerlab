@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./src/topoViewerTs/**/*.{ts,tsx,html}",
+    "./src/topoViewer/**/*.{ts,tsx,html}",
     "./src/topoViewerEditor/**/*.{ts,tsx,html}"
   ],
   theme: {

@@ -1,4 +1,4 @@
-// file: src/topoViewerAdaptorClab.ts
+// file: src/topoViewer/backend/topoViewerAdaptorClab.ts
 
 import * as vscode from 'vscode';
 import * as path from 'path';
@@ -151,9 +151,9 @@ export class TopoViewerAdaptorClab {
     context: vscode.ExtensionContext,
     webview: vscode.Webview
   ): { css: string; js: string; images: string } {
-    const cssPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewerTs', 'webview-ui', 'html-static', 'css');
-    const jsPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewerTs', 'webview-ui', 'html-static', 'js');
-    const imagesPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewerTs', 'webview-ui', 'html-static', 'images');
+    const cssPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'css');
+    const jsPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'js');
+    const imagesPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'images');
 
     const cssUri = webview.asWebviewUri(cssPath).toString();
     const jsUri = webview.asWebviewUri(jsPath).toString();

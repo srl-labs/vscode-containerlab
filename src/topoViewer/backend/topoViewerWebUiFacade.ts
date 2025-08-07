@@ -1,4 +1,4 @@
-// file: src/topoViewerWebUiFacade.ts
+// file: src/topoViewer/backend/topoViewerWebUiFacade.ts
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
@@ -258,7 +258,7 @@ export class TopoViewer {
           // Dynamic data folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName),
           // Static asset folder.
-          vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewerTs', 'webview-ui', 'html-static'),
+          vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
           // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
         ],

@@ -10,7 +10,7 @@ The project is organized as following key component:
 .
 ├── backend
 │   └── topoViewerEditorWebUiFacade.ts
-│   └── ../src/topoViewerTs/topoViewerAdaptorClab.ts ## reusing TopoViewer class
+│   └── ../src/topoViewer/backend/topoViewerAdaptorClab.ts ## reusing TopoViewer class
 ├── file_list_with_content.txt
 └── webview-ui
     ├── managerCytoscapeFetchAndLoad.ts

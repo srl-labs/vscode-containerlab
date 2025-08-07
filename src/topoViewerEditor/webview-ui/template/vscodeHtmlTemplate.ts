@@ -1,6 +1,6 @@
 // vscodeHtmlTemplate.ts
 
-import { log } from '../../../topoViewerTs/backend/logger';
+import { log } from '../../../topoViewer/backend/logger';
 
 export function getHTMLTemplate(
   cssUri: string,
