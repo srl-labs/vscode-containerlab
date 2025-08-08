@@ -39,7 +39,6 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
       enableScripts: true,
       localResourceRoots: [
         vscode.Uri.joinPath(context.extensionUri, 'topoViewerData', folderName),
-        vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
         vscode.Uri.joinPath(context.extensionUri, 'dist'),
       ],
     }

@@ -10,6 +10,9 @@ import { initializeGlobalHandlers } from './uiHandlers';
 // Import Tailwind CSS framework
 import './tailwind.css';
 
+// Import cytoscape-leaflet CSS
+import './cytoscape-leaflet.css';
+
 // Import cytoscape styles
 import './cytoscapeStyles';
 

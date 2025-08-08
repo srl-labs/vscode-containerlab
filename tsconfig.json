@@ -29,7 +29,6 @@
     "node_modules",
     ".vscode-test",
     "test/**/*",
-    "legacy-backup/**/*",
-      "src/topoViewer/view/webview-ui/html-static/**/*"
+    "legacy-backup/**/*"
   ]
 }

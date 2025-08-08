@@ -16,7 +16,7 @@ src/**
 
 # Include static HTML assets needed at runtime
 !src/webview/*.css
-!src/topoViewer/webview-ui/html-static/**
+!src/topoViewer/view/webview-ui/html-static/template/**
 
 # If you still need specific source files at runtime, selectively include them with:
 node_modules/**

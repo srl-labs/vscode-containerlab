@@ -63,23 +63,8 @@ async function build() {
     console.log('Common images copied to dist/images');
   }
 
-  // Copy CSS files
-  const cssDir = path.join(__dirname, 'src/topoViewer/view/webview-ui/html-static/css');
-  const cssDestDir = path.join(__dirname, 'dist/css');
-  
-  if (fs.existsSync(cssDir)) {
-    await fs.copy(cssDir, cssDestDir);
-    console.log('CSS files copied to dist/css');
-  }
-
-  // Copy JS files
-  const jsDir = path.join(__dirname, 'src/topoViewer/view/webview-ui/html-static/js');
-  const jsDestDir = path.join(__dirname, 'dist/js');
-  
-  if (fs.existsSync(jsDir)) {
-    await fs.copy(jsDir, jsDestDir);
-    console.log('JS files copied to dist/js');
-  }
+  // Note: CSS and JS files are now bundled by webpack
+  // No need to copy them separately from html-static
 
   // Build the extension
   await esbuild.build({
