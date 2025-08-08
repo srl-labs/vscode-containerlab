@@ -20,7 +20,7 @@ import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManager } from './managerGroupManager';
-import { ManagerLayoutAlgo } from './managerLayoutAlgo';
+import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 
 
 

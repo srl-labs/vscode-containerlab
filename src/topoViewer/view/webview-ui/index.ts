@@ -17,7 +17,7 @@ import './cytoscapeStyles';
 initializeGlobalHandlers();
 
 export * from '../../common/webview-ui/managerVscodeWebview';
-export * from './managerLayoutAlgo';
+export { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 export * from './managerGroupManagement';
 export * from './managerSvg';
 export * from './uiHandlers';

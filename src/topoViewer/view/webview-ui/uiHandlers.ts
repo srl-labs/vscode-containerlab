@@ -89,33 +89,6 @@ export function viewportButtonsZoomToFit(): void {
   }
 }
 
-/**
- * Show/hide layout algorithm panel
- */
-export function viewportButtonsLayoutAlgo(): void {
-  try {
-    const layoutDrawer = document.getElementById("viewport-drawer-layout");
-    if (!layoutDrawer) {
-      log.warn('Layout algorithm drawer not found');
-      return;
-    }
-
-    // Toggle visibility
-    if (layoutDrawer.style.display === "block") {
-      layoutDrawer.style.display = "none";
-    } else {
-      // Hide all viewport drawers first
-      const viewportDrawer = document.getElementsByClassName("viewport-drawer");
-      for (let i = 0; i < viewportDrawer.length; i++) {
-        (viewportDrawer[i] as HTMLElement).style.display = "none";
-      }
-      // Show the layout drawer
-      layoutDrawer.style.display = "block";
-    }
-  } catch (error) {
-    log.error(`Error in layout algorithm button: ${error}`);
-  }
-}
 
 /**
  * Show/hide topology overview panel
@@ -507,7 +480,6 @@ export function initializeGlobalHandlers(): void {
   // Make functions available globally for HTML onclick handlers
   (globalThis as any).showPanelAbout = showPanelAbout;
   (globalThis as any).viewportButtonsZoomToFit = viewportButtonsZoomToFit;
-  (globalThis as any).viewportButtonsLayoutAlgo = viewportButtonsLayoutAlgo;
   (globalThis as any).viewportButtonsTopologyOverview = viewportButtonsTopologyOverview;
   (globalThis as any).viewportButtonsLabelEndpoint = viewportButtonsLabelEndpoint;
   (globalThis as any).viewportButtonsReloadTopo = viewportButtonsReloadTopo;

@@ -1,5 +1,12 @@
 import cytoscape from 'cytoscape';
-import loadCytoStyle from './managerCytoscapeStyle';
+
+// Use globally registered style loader to avoid duplicating implementations
+function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
+  const fn = (window as any).loadCytoStyle;
+  if (typeof fn === 'function') {
+    fn(cy, theme);
+  }
+}
 
 /**
  * Layout manager handling various Cytoscape layouts.
@@ -19,9 +26,12 @@ export class ManagerLayoutAlgo {
   public isVscodeDeployment: boolean = (window as any).isVscodeDeployment;
   /** Force a specific Cytoscape theme (light or dark) while active */
   public geoTheme: 'light' | 'dark' | null = null;
-  /** Helper to get the Cytoscape instance from the engine */
+  /** Helper to get the Cytoscape instance from the engine or global scope */
   private getCy(): cytoscape.Core | undefined {
-    return (window as any).topoViewerEditorEngine?.cy as cytoscape.Core | undefined;
+    return (
+      ((window as any).topoViewerEditorEngine?.cy as cytoscape.Core | undefined) ||
+      ((window as any).cy as cytoscape.Core | undefined)
+    );
   }
 
   /** Track whether node/edge styles have been scaled for Geo layout */

@@ -3,6 +3,7 @@
 
 import { log } from './logger';
 import { initializeGroupManagement, initializeWheelSelection, showPanelGroupEditor } from './managerGroupManagement';
+import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 
 // loadCytoStyle function will be called if available
 
@@ -626,6 +627,19 @@ export function initializeTopoViewer(): void {
 
     log.info('Calling initializeCytoscape...');
     initializeCytoscape();
+
+    log.info('Initializing layout manager...');
+    const layoutManager = new ManagerLayoutAlgo();
+    (window as any).layoutAlgoChange = layoutManager.layoutAlgoChange.bind(layoutManager);
+    (window as any).viewportButtonsLayoutAlgo = layoutManager.viewportButtonsLayoutAlgo.bind(layoutManager);
+    (window as any).viewportDrawerLayoutGeoMap = layoutManager.viewportDrawerLayoutGeoMap.bind(layoutManager);
+    (window as any).viewportDrawerLayoutForceDirected = layoutManager.viewportDrawerLayoutForceDirected.bind(layoutManager);
+    (window as any).viewportDrawerLayoutForceDirectedRadial = layoutManager.viewportDrawerLayoutForceDirectedRadial.bind(layoutManager);
+    (window as any).viewportDrawerLayoutVertical = layoutManager.viewportDrawerLayoutVertical.bind(layoutManager);
+    (window as any).viewportDrawerLayoutHorizontal = layoutManager.viewportDrawerLayoutHorizontal.bind(layoutManager);
+    (window as any).viewportDrawerPreset = layoutManager.viewportDrawerPreset.bind(layoutManager);
+    (window as any).viewportButtonsGeoMapPan = layoutManager.viewportButtonsGeoMapPan.bind(layoutManager);
+    (window as any).viewportButtonsGeoMapEdit = layoutManager.viewportButtonsGeoMapEdit.bind(layoutManager);
 
     log.info('Calling initializeWheelSelection...');
     initializeWheelSelection();
