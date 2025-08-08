@@ -3,13 +3,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as YAML from 'yaml'; // https://github.com/eemeli/yaml
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { ClabLabTreeNode } from '../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
-
-import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
+import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from './deploymentUtils';
+import { createTopoViewerPanel, getWebviewContent } from './topoViewerPanel';
+import { findContainerNode, findInterfaceNode } from './treeUtils';
 
 /**
  * Class representing the Unified Containerlab Topology Viewer/Editor extension in VS Code.
@@ -55,12 +55,12 @@ export class TopoViewer {
   /**
    * Current deployment state of the lab being viewed.
    */
-  private deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
+  private deploymentState: DeploymentState = 'unknown';
 
   /**
    * Smart viewer/editor mode based on deployment state.
    */
-  private viewerMode: 'viewer' | 'editor' | 'unified' = 'unified';
+  private viewerMode: ViewerMode = 'unified';
 
 
 
@@ -72,72 +72,6 @@ export class TopoViewer {
   constructor(public context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
     this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
-  }
-
-  /**
-   * Detects the deployment state of the lab by checking if containers are running.
-   * This enables smart viewer/editor functionality.
-   *
-   * @param yamlContent - The raw YAML content of the lab configuration file
-   * @returns Promise resolving to deployment state
-   */
-  private async detectDeploymentState(yamlContent: string, clabTreeData?: Record<string, ClabLabTreeNode>): Promise<'deployed' | 'undeployed' | 'unknown'> {
-    try {
-      // Parse the YAML to get lab name
-      const yamlData = YAML.parse(yamlContent);
-      const labName = yamlData?.name;
-
-      if (!labName) {
-        log.info('Unable to determine lab name from YAML file');
-        return 'unknown';
-      }
-
-      // Use provided clabTreeData or get from cache if available
-      const runningLabs = clabTreeData || this.cacheClabTreeDataToTopoviewer;
-
-      if (!runningLabs) {
-        log.info('No running labs data available yet');
-        return 'unknown';
-      }
-
-      const isDeployed = Object.keys(runningLabs).some(key =>
-        runningLabs[key].name === labName
-      );
-
-      const state = isDeployed ? 'deployed' : 'undeployed';
-      log.info(`Lab "${labName}" deployment state: ${state}`);
-
-      return state;
-    } catch (error) {
-      log.error(`Failed to detect deployment state: ${error}`);
-      return 'unknown';
-    }
-  }
-
-  /**
-   * Updates the viewer mode based on deployment state and user preferences.
-   *
-   * @param deploymentState - Current deployment state
-   */
-  private updateViewerMode(deploymentState: 'deployed' | 'undeployed' | 'unknown'): void {
-    // Smart mode selection based on deployment state
-    switch (deploymentState) {
-      case 'deployed':
-        // Show viewer mode with live data and operational controls
-        this.viewerMode = 'viewer';
-        log.info('Switching to viewer mode - lab is deployed');
-        break;
-      case 'undeployed':
-        // Show editor mode with design and configuration controls
-        this.viewerMode = 'editor';
-        log.info('Switching to editor mode - lab is undeployed');
-        break;
-      default:
-        // Unified mode shows both viewer and editor capabilities
-        this.viewerMode = 'unified';
-        log.info('Using unified mode - deployment state unknown');
-        break;
-    }
   }
 
   /**
@@ -166,39 +100,54 @@ export class TopoViewer {
     this.lastYamlFilePath = yamlFilePath;
 
     try {
-      // Read the YAML content from the file asynchronously.
       const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
-      // If clabTreeDataToTopoviewer is not provided, fetch it once
       if (!clabTreeDataToTopoviewer) {
         clabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
       }
 
-      // Detect deployment state and transform YAML concurrently.
       const [deploymentState, cytoTopology] = await Promise.all([
-        this.detectDeploymentState(yamlContent, clabTreeDataToTopoviewer),
-        Promise.resolve(this.adaptor.clabYamlToCytoscapeElements(yamlContent, clabTreeDataToTopoviewer))
+        detectDeploymentState(yamlContent, clabTreeDataToTopoviewer),
+        Promise.resolve(
+          this.adaptor.clabYamlToCytoscapeElements(
+            yamlContent,
+            clabTreeDataToTopoviewer
+          )
+        ),
       ]);
 
-      // Update viewer/editor mode based on deployment state
       this.deploymentState = deploymentState;
-      this.updateViewerMode(deploymentState);
+      this.viewerMode = getViewerMode(deploymentState);
 
-      // Determine folder name based on the YAML file name.
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
       this.lastFolderName = folderName;
 
-      // Create folder and write Cyto Data JSON files for the webview.
-      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+      await this.adaptor.createFolderAndWriteJson(
+        this.context,
+        folderName,
+        cytoTopology,
+        yamlContent
+      );
 
       log.info(`allowedHostname: ${this.adaptor.allowedhostname}`);
 
-      // Create and display the webview panel.
-      log.info(`Creating webview panel for visualization`);
-      const panel = await this.createWebviewPanel(folderName);
+      const panel = await createTopoViewerPanel({
+        context: this.context,
+        adaptor: this.adaptor,
+        folderName,
+        deploymentState: this.deploymentState,
+        viewerMode: this.viewerMode,
+        allowedHostname: this.adaptor.allowedhostname as string,
+        findContainerNode: name =>
+          findContainerNode(this.cacheClabTreeDataToTopoviewer, name),
+        findInterfaceNode: (nodeName, intf) =>
+          findInterfaceNode(this.cacheClabTreeDataToTopoviewer, nodeName, intf),
+        onUpdatePanelHtml: async () => {
+          await this.updatePanelHtml(this.currentTopoViewerPanel);
+        },
+      });
       this.currentTopoViewerPanel = panel;
 
-      // Store the clabTreeDataToTopoviewer in cache
       this.cacheClabTreeDataToTopoviewer = clabTreeDataToTopoviewer;
 
       return panel;
@@ -209,242 +158,6 @@ export class TopoViewer {
     }
   }
 
-  /**
-   * Creates and configures a new WebviewPanel for displaying the network topology.
-   *
-   * This method sets up resource roots, injects asset URIs into the HTML, and
-   * establishes message handlers for communication between the webview and the extension.
-   *
-   * @param folderName - The subfolder name where JSON data files are stored.
-   * @returns A promise that resolves to the created WebviewPanel.
-   */
-  private async createWebviewPanel(folderName: string): Promise<vscode.WebviewPanel> {
-    const panel = vscode.window.createWebviewPanel(
-      'topoViewer',
-      `Containerlab Topology: ${folderName}`,
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName),
-          vscode.Uri.joinPath(this.context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static'),
-          vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-        ],
-      }
-    );
-
-    const iconUri = vscode.Uri.joinPath(
-      this.context.extensionUri,
-      'resources',
-      'containerlab.png'
-    );
-    panel.iconPath = iconUri;
-
-    await vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
-    log.info(`Context key 'isTopoviewerActive' set to true`);
-
-    const themeChangeListener = vscode.window.onDidChangeActiveColorTheme(() => {
-      log.info('Theme change detected, refreshing TopoViewer');
-      this.updatePanelHtml(panel).catch(err =>
-        log.error(`Failed to refresh panel on theme change: ${err}`)
-      );
-    });
-
-    panel.onDidDispose(
-      () => {
-        vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
-        log.info(`Context key 'isTopoviewerActive' set to false`);
-        themeChangeListener.dispose();
-      },
-      null,
-      this.context.subscriptions
-    );
-
-    const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
-
-    const jsOutDir = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
-      .toString();
-
-    const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
-    const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-    const jsonFileUrlDataCytoMarshall = panel.webview
-      .asWebviewUri(jsonFileUriDataCytoMarshall)
-      .toString();
-
-    const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-    const jsonFileUrlDataEnvironment = panel.webview
-      .asWebviewUri(jsonFileUriDataEnvironment)
-      .toString();
-
-    const schemaUri = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
-      .toString();
-
-    panel.webview.html = this.getWebviewContent(
-      css,
-      js,
-      schemaUri,
-      images,
-      jsonFileUrlDataCytoMarshall,
-      jsonFileUrlDataEnvironment,
-      true,
-      jsOutDir,
-      this.adaptor.allowedhostname as string
-    );
-
-    panel.webview.onDidReceiveMessage(async msg => {
-      if (!msg || typeof msg !== 'object' || msg.type !== 'POST') {
-        return;
-      }
-
-      const { requestId, endpointName, payload } = msg;
-      let result: unknown = null;
-      let error: string | undefined;
-
-      try {
-        const payloadObj = payload ? JSON.parse(payload as string) : undefined;
-        switch (endpointName) {
-          case 'clab-node-connect-ssh': {
-            const nodeName = payloadObj as string;
-            const node = this.findContainerNode(nodeName);
-            if (!node) {
-              throw new Error(`Node ${nodeName} not found`);
-            }
-            await vscode.commands.executeCommand('containerlab.node.ssh', node);
-            result = `SSH executed for ${nodeName}`;
-            break;
-          }
-          case 'clab-node-attach-shell': {
-            const nodeName = payloadObj as string;
-            const node = this.findContainerNode(nodeName);
-            if (!node) {
-              throw new Error(`Node ${nodeName} not found`);
-            }
-            await vscode.commands.executeCommand('containerlab.node.attachShell', node);
-            result = `Attach shell executed for ${nodeName}`;
-            break;
-          }
-          case 'clab-node-view-logs': {
-            const nodeName = payloadObj as string;
-            const node = this.findContainerNode(nodeName);
-            if (!node) {
-              throw new Error(`Node ${nodeName} not found`);
-            }
-            await vscode.commands.executeCommand('containerlab.node.showLogs', node);
-            result = `Show logs executed for ${nodeName}`;
-            break;
-          }
-          case 'clab-link-capture': {
-            const { nodeName, interfaceName } = payloadObj as { nodeName: string; interfaceName: string };
-            const iface = this.findInterfaceNode(nodeName, interfaceName);
-            if (!iface) {
-              throw new Error(`Interface ${nodeName}/${interfaceName} not found`);
-            }
-            await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
-            result = `Capture executed for ${nodeName}/${interfaceName}`;
-            break;
-          }
-          case 'clab-link-capture-edgeshark-vnc': {
-            const { nodeName, interfaceName } = payloadObj as { nodeName: string; interfaceName: string };
-            const iface = this.findInterfaceNode(nodeName, interfaceName);
-            if (!iface) {
-              throw new Error(`Interface ${nodeName}/${interfaceName} not found`);
-            }
-            await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
-            result = `VNC capture executed for ${nodeName}/${interfaceName}`;
-            break;
-          }
-          default:
-            error = `Unknown endpoint: ${endpointName}`;
-            break;
-        }
-      } catch (err: any) {
-        error = err.message ?? String(err);
-      }
-
-      panel.webview.postMessage({
-        type: 'POST_RESPONSE',
-        requestId,
-        result,
-        error,
-      });
-    });
-
-    log.info('Webview panel created successfully');
-
-    return panel;
-  }
-
-  private findContainerNode(name: string): ClabContainerTreeNode | undefined {
-    const labs = this.cacheClabTreeDataToTopoviewer;
-    if (!labs) {
-      return undefined;
-    }
-    for (const lab of Object.values(labs)) {
-      const container = lab.containers?.find(
-        c => c.name === name || c.name_short === name || c.label === name
-      );
-      if (container) {
-        return container;
-      }
-    }
-    return undefined;
-  }
-
-  private findInterfaceNode(nodeName: string, intf: string): ClabInterfaceTreeNode | undefined {
-    const container = this.findContainerNode(nodeName);
-    if (!container) {
-      return undefined;
-    }
-    return container.interfaces.find(
-      i => i.name === intf || i.alias === intf || i.label === intf
-    );
-  }
-
-  /**
-   * Generates the HTML content for the webview by injecting asset URIs.
-   *
-   * @param cssUri - URI for the CSS assets.
-   * @param jsUri - URI for the JavaScript assets.
-   * @param imagesUri - URI for the image assets.
-   * @param jsonFileUrlDataCytoMarshall - URI for the dataCytoMarshall.json file.
-   * @param jsonFileUrlDataEnvironment - URI for the environment.json file.
-   * @param isVscodeDeployment - Indicates whether the extension is running inside VS Code.
-   * @param jsOutDir - URI for the compiled JavaScript directory.
-   * @returns The complete HTML content as a string.
-   */
-  private getWebviewContent(
-    cssUri: string,
-    jsUri: string,
-    schemaUri: string,
-    imagesUri: string,
-    jsonFileUrlDataCytoMarshall: string,
-    jsonFileUrlDataEnvironment: string,
-    isVscodeDeployment: boolean,
-    jsOutDir: string,
-    allowedhostname: string
-  ): string {
-    // Detect VS Code theme for logo selection
-    const isDarkTheme = vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
-                       vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
-
-    return getHTMLTemplate(
-      cssUri,
-      jsUri,
-      schemaUri,
-      imagesUri,
-      jsonFileUrlDataCytoMarshall,
-      jsonFileUrlDataEnvironment,
-      isVscodeDeployment,
-      jsOutDir,
-      allowedhostname,
-      this.deploymentState,
-      this.viewerMode,
-      this.adaptor.currentClabTopo?.name || 'Unknown Topology',
-      isDarkTheme
-    );
-  }
 
   /**
    * Updates the cached tree data with fresh data from the tree provider.
@@ -547,7 +260,7 @@ export class TopoViewer {
         .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
         .toString();
 
-      panel.webview.html = this.getWebviewContent(
+      panel.webview.html = getWebviewContent(
         css,
         js,
         schemaUri,
@@ -556,7 +269,10 @@ export class TopoViewer {
         jsonFileUrlDataEnvironment,
         isVscodeDeployment,
         jsOutDir,
-        this.adaptor.allowedhostname as string
+        this.adaptor.allowedhostname as string,
+        this.deploymentState,
+        this.viewerMode,
+        this.adaptor.currentClabTopo?.name || 'Unknown Topology'
       );
 
       // Only show message for manual reload, not for automatic updates
