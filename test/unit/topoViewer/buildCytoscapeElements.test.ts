@@ -14,6 +14,7 @@ const originalResolve = (Module as any)._resolveFilename;
 };
 
 import { TopoViewerAdaptorClab } from '../../../src/topoViewer/backend/topoViewerAdaptorClab';
+import * as treeUtils from '../../../src/topoViewer/backend/treeUtils';
 
 describe('buildCytoscapeElements delegation', () => {
   after(() => {
@@ -23,12 +24,12 @@ describe('buildCytoscapeElements delegation', () => {
   it('delegates for both converter methods', () => {
     const adaptor = new TopoViewerAdaptorClab();
     const spy = sinon.spy(adaptor as any, 'buildCytoscapeElements');
-    sinon.stub(adaptor as any, 'getClabContainerTreeNode').returns({
+    sinon.stub(treeUtils, 'findContainerNode').returns({
       IPv4Address: '10.0.0.1',
       IPv6Address: '::1',
       state: 'running',
       interfaces: []
-    });
+    } as any);
 
     const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1:\n      labels:\n        graph-posX: '1'\n        graph-posY: '2'\n  links:\n    - endpoints: ['node1:eth0','node1:eth1']\n`;
 

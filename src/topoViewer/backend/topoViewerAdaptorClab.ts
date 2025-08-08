@@ -10,7 +10,8 @@ import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from
 
 import { version as topoViewerVersion } from '../../../package.json';
 
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from "../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
+import { findContainerNode, findInterfaceNode } from './treeUtils';
 // log.info(ClabTreeDataProvider.)
 
 import {
@@ -350,11 +351,11 @@ export class TopoViewerAdaptorClab {
         let containerData: ClabContainerTreeNode | null = null;
         if (opts.includeContainerData) {
           const containerName = `${labPrefix}-${nodeName}`;
-          containerData = this.getClabContainerTreeNode(
-            containerName,
+          containerData = findContainerNode(
             opts.clabTreeData ?? {},
-            clabName ?? ''
-          );
+            containerName,
+            clabName
+          ) ?? null;
         }
 
         const nodeEl: CyElement = {
@@ -456,16 +457,16 @@ export class TopoViewerAdaptorClab {
 
         const sourceContainerName = `${labPrefix}-${sourceNode}`;
         const targetContainerName = `${labPrefix}-${targetNode}`;
-        const sourceIfaceData = this.getClabContainerInterfaceTreeNode(
+        const sourceIfaceData = findInterfaceNode(
+          opts.clabTreeData ?? {},
           sourceContainerName,
           sourceIface,
-          opts.clabTreeData ?? {},
           clabName
         );
-        const targetIfaceData = this.getClabContainerInterfaceTreeNode(
+        const targetIfaceData = findInterfaceNode(
+          opts.clabTreeData ?? {},
           targetContainerName,
           targetIface,
-          opts.clabTreeData ?? {},
           clabName
         );
         const edgeId = `Clab-Link${linkIndex}`;
@@ -519,111 +520,6 @@ export class TopoViewerAdaptorClab {
 
     log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
     return elements;
-  }
-
-
-
-  // Define the method within your class
-  public getClabContainerTreeNode(nodeName: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>, clabName: string | undefined): ClabContainerTreeNode | null {
-    let filteredLabData: ClabLabTreeNode[]
-    filteredLabData = Object.values(clabTreeDataToTopoviewer ?? {}).filter(
-      (item) => item?.name === clabName
-    );
-    // log.info(`output of filteredLabData ${JSON.stringify(filteredLabData, null, "\t")}`);
-
-    // Check if filteredLabData is not empty
-    if (filteredLabData.length === 0) {
-      // Only log debug info if no labs are found
-      const availableLabs = Object.values(clabTreeDataToTopoviewer ?? {}).map((lab) => lab.name);
-      log.debug(`Available labs: [${availableLabs.join(', ')}]`);
-      log.debug(`Requested clabName: ${clabName}`);
-      log.debug(`Filtered labs count: ${filteredLabData.length}`);
-      log.warn('No lab data available.');
-      return null;
-    }
-    const firstLabNode = filteredLabData[0];
-
-    // Ensure that 'containers' is defined
-    if (!firstLabNode.containers || !Array.isArray(firstLabNode.containers)) {
-      log.warn('No containers found in the first lab node.');
-      return null;
-    }
-
-    // Find the specific container by name
-    const nodeContainer = firstLabNode.containers.find((container: ClabContainerTreeNode) => container.name === nodeName);
-
-    if (!nodeContainer) {
-      log.warn(`Container with name ${nodeName} not found.`);
-      return null;
-    }
-
-    // Assign the found container to foundContainerData
-    const foundContainerData: ClabContainerTreeNode = nodeContainer;
-
-    // Now start work with foundContainerData as needed
-    // For example, accessing IPv4 and IPv6 addresses:
-    // IPv4/IPv6 addresses are available via foundContainerData if needed
-
-    // Perform any additional logic as required
-    // ...
-
-    // log.debug(`output of containerData ${JSON.stringify(foundContainerData, null, "\t")}`);
-    return foundContainerData;
-  }
-
-
-  /**
-  /**
-   *
-   * @param nodeName - The name of the node (container name).
-   * @param interfaceName - The interface name to match.
-   * @param clabTreeDataToTopoviewer - The tree data record keyed by clab name.
-  * @param clabName - The Containerlab topology name.
-  * @returns The matched ClabInterfaceTreeNode or `null` if not found.
-  */
-  public getClabContainerInterfaceTreeNode(
-    nodeName: string,
-    interfaceName: string,
-    clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode>,
-    clabName: string | undefined
-  ): ClabInterfaceTreeNode | null {
-
-    log.info(`Resolving interface in container: node=${nodeName}, interface=${interfaceName}, clab=${clabName}`);
-
-    const container = this.getClabContainerTreeNode(nodeName, clabTreeDataToTopoviewer, clabName);
-    if (!container) {
-      log.warn(`Container "${nodeName}" not found under clab "${clabName}"`);
-      return null;
-    }
-
-    if (!Array.isArray(container.interfaces)) {
-      log.warn(`No interfaces defined in container "${nodeName}"`);
-      return null;
-    }
-
-    let matchedBy: string | null = null;
-    const foundInterface = container.interfaces.find((intf) => {
-      if (intf.name === interfaceName) {
-        matchedBy = "label";
-        return true;
-      } else if (intf.label === interfaceName) {
-        matchedBy = "name";
-        return true;
-      } else if (intf.alias && intf.alias === interfaceName) {
-        matchedBy = "alias";
-        return true;
-      }
-      return false;
-    });
-
-    if (foundInterface) {
-      log.info(`✅ Matched interface "${interfaceName}" using "${matchedBy}"`);
-      log.debug(`Found interface: ${JSON.stringify(foundInterface, null, 2)}`);
-      return foundInterface;
-    } else {
-      log.warn(`⚠️ Interface "${interfaceName}" not found in container "${nodeName}"`);
-      return null;
-    }
   }
 
 }
