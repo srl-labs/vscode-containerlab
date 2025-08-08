@@ -8,7 +8,7 @@ import './initialization';
 import { initializeGlobalHandlers } from './uiHandlers';
 
 // Import Tailwind CSS framework
-import './tailwind.css';
+import '../../common/webview-ui/tailwind.css';
 
 // Import cytoscape-leaflet CSS
 import './cytoscape-leaflet.css';

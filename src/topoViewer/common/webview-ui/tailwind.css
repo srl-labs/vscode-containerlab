@@ -25,15 +25,14 @@
   --diff-line-number: var(--vscode-editorLineNumber-foreground);
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-  height: 100vh;
-  overflow: hidden;
+@layer base {
+  html, body {
+    @apply h-full w-full m-0 p-0 overflow-hidden;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
 }
 
 /* Custom component classes using Tailwind */
@@ -96,7 +95,7 @@ body {
     @apply rounded-lg shadow-md;
   }
   
-  .panel-heading {
+  .panel-heading, .panel-header {
     background-color: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--border);
     @apply px-4 py-3 font-semibold text-sm;
@@ -112,6 +111,16 @@ body {
     background-color: var(--vscode-dropdown-background);
     border: 1px solid var(--vscode-dropdown-border);
     @apply absolute z-50 mt-1 rounded-md shadow-lg;
+  }
+  
+  .dropdown-button {
+    @apply px-3 py-2 text-sm rounded inline-flex items-center;
+    background-color: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+  }
+  
+  .dropdown-button:hover {
+    background-color: var(--vscode-list-hoverBackground);
   }
   
   .dropdown-item {
@@ -268,6 +277,20 @@ body {
   .loading {
     @apply absolute top-1/2 left-1/2 w-24 h-24 -translate-x-1/2 -translate-y-1/2;
   }
+
+  /* Cytoscape context menu styling */
+  .cxtmenu {
+    background-color: var(--vscode-dropdown-background);
+    border: 1px solid var(--vscode-dropdown-border);
+  }
+
+  .cxtmenu-item {
+    color: var(--vscode-dropdown-foreground);
+  }
+
+  .cxtmenu-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
 }
 
 /* Custom utility classes */
@@ -336,9 +359,8 @@ body {
   .has-icons-left .input-field {
     @apply pl-10;
   }
-}
 
-@layer utilities {
+  /* Link utilities */
   .link {
     color: var(--vscode-textLink-foreground);
   }
@@ -354,4 +376,9 @@ body {
   .border-default {
     border-color: var(--border);
   }
+}
+
+/* Override cytoscape default styles for VSCode theme */
+#cy {
+  background-color: var(--vscode-editor-background);
 }

@@ -10,7 +10,7 @@ import cxtmenu from 'cytoscape-cxtmenu';
 // import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
 
 // Import Tailwind CSS and Font Awesome
-import './tailwind.css';
+import '../../common/webview-ui/tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 import loadCytoStyle from './managerCytoscapeStyle';
