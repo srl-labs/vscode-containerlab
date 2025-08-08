@@ -6,17 +6,17 @@ import { promises as fs } from 'fs';
 import { log } from './logger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
-import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from './types/topoViewerType';
+import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../../common/types/topoViewerType';
 
-import { version as topoViewerVersion } from '../../../package.json';
+import { version as topoViewerVersion } from '../../../../package.json';
 
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../../../treeView/common";
 import { findContainerNode, findInterfaceNode } from './treeUtils';
 // log.info(ClabTreeDataProvider.)
 
 import {
   getHostname,
-} from '../../commands/index';
+} from '../../../commands/index';
 
 log.info(`TopoViewer Version: ${topoViewerVersion}`);
 
@@ -154,9 +154,9 @@ export class TopoViewerAdaptorClab {
     context: vscode.ExtensionContext,
     webview: vscode.Webview
   ): { css: string; js: string; images: string } {
-    const cssPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'css');
-    const jsPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'js');
-    const imagesPath = vscode.Uri.joinPath(context.extensionUri, 'src', 'topoViewer', 'webview-ui', 'html-static', 'images');
+    const cssPath = vscode.Uri.joinPath(context.extensionUri, 'dist', 'css');
+    const jsPath = vscode.Uri.joinPath(context.extensionUri, 'dist', 'js');
+    const imagesPath = vscode.Uri.joinPath(context.extensionUri, 'dist', 'images');
 
     const cssUri = webview.asWebviewUri(cssPath).toString();
     const jsUri = webview.asWebviewUri(jsPath).toString();

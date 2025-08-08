@@ -3,7 +3,7 @@ import * as YAML from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
-import { log } from '../../topoViewer/backend/logger';
+import { log } from '../../view/backend/logger';
 
 export async function validateYamlContent(context: vscode.ExtensionContext, yamlContent: string): Promise<boolean> {
   try {

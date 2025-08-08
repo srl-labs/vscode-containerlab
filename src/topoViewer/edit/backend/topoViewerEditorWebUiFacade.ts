@@ -3,11 +3,11 @@ import * as path from 'path';
 
 import * as fs from 'fs';
 
-import { log } from '../../topoViewer/backend/logger';
+import { log } from '../../view/backend/logger';
 
 import { getHTMLTemplate } from '../webview-ui/template/vscodeHtmlTemplate';
-import { TopoViewerAdaptorClab } from '../../topoViewer/backend/topoViewerAdaptorClab';
-import { ClabLabTreeNode } from "../../treeView/common";
+import { TopoViewerAdaptorClab } from '../../view/backend/topoViewerAdaptorClab';
+import { ClabLabTreeNode } from "../../../treeView/common";
 
 import { validateYamlContent } from './yamlValidator';
 import { saveViewport } from './saveViewport';

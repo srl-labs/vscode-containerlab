@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 
-import { log } from '../../topoViewer/backend/logger';
-import { TopoViewerAdaptorClab } from '../../topoViewer/backend/topoViewerAdaptorClab';
-import { ClabTopology, ClabNode } from '../../topoViewer/backend/types/topoViewerType';
+import { log } from '../../view/backend/logger';
+import { TopoViewerAdaptorClab } from '../../view/backend/topoViewerAdaptorClab';
+import { ClabTopology, ClabNode } from '../../common/types/topoViewerType';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));

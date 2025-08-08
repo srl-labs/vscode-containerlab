@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
 import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
-import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from './deploymentUtils';
 
 /* eslint-disable no-unused-vars */

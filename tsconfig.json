@@ -20,7 +20,7 @@
     "strictNullChecks": true,
     "target": "ES2024",
     "typeRoots": [
-        "src/topoViewer/backend/types",
+        "src/topoViewer/common/types",
       "./node_modules/@types"
     ],
     "types": ["mocha", "node"]
@@ -30,6 +30,6 @@
     ".vscode-test",
     "test/**/*",
     "legacy-backup/**/*",
-      "src/topoViewer/webview-ui/html-static/**/*"
+      "src/topoViewer/view/webview-ui/html-static/**/*"
   ]
 }

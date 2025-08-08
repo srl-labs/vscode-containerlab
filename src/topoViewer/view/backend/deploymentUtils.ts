@@ -1,6 +1,6 @@
 import * as YAML from 'yaml';
 import { log } from './logger';
-import { ClabLabTreeNode } from '../../treeView/common';
+import { ClabLabTreeNode } from '../../../treeView/common';
 
 export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
 export type ViewerMode = 'viewer' | 'editor' | 'unified';

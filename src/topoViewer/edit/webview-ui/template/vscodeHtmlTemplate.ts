@@ -1,7 +1,7 @@
 /* eslint-env node */
 // vscodeHtmlTemplate.ts - Tailwind CSS version
 
-import { log } from '../../../topoViewer/backend/logger';
+import { log } from '../../../view/backend/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 declare const __dirname: string;
