@@ -21,6 +21,6 @@ initializeGlobalHandlers();
 
 export * from '../../common/webview-ui/managerVscodeWebview';
 export { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
-export * from './managerGroupManagement';
+export { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagemetn';
 export * from './managerSvg';
 export * from './uiHandlers';

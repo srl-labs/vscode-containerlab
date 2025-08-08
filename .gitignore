@@ -43,3 +43,4 @@ hive-mind-prompt-*.txt
 memory/**
 .claude/**
 .claude-flow/**
+patch.sh

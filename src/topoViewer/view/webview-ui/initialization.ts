@@ -2,10 +2,12 @@
 // This module replaces the initialization logic that was in dev.js
 
 import { log } from '../../common/logger';
-import { initializeGroupManagement, initializeWheelSelection, showPanelGroupEditor } from './managerGroupManagement';
+import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagemetn';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 
 // loadCytoStyle function will be called if available
+
+let groupManager: ManagerGroupManagemetn;
 
 // Global Variables (previously in common.js)
 /* eslint-disable no-unused-vars */
@@ -146,7 +148,7 @@ function initializeCytoscape(): void {
 
     // Handle parent/group nodes
     if (node.isParent() || node.data('topoViewerRole') === 'group') {
-      showPanelGroupEditor(node);
+      groupManager.showGroupEditor(node);
       return;
     }
 
@@ -641,11 +643,18 @@ export function initializeTopoViewer(): void {
     (window as any).viewportButtonsGeoMapPan = layoutManager.viewportButtonsGeoMapPan.bind(layoutManager);
     (window as any).viewportButtonsGeoMapEdit = layoutManager.viewportButtonsGeoMapEdit.bind(layoutManager);
 
-    log.info('Calling initializeWheelSelection...');
-    initializeWheelSelection();
+    groupManager = new ManagerGroupManagemetn(globalThis.cy, 'view');
+    groupManager.initializeWheelSelection();
+    groupManager.initializeGroupManagement();
 
-    log.info('Calling initializeGroupManagement...');
-    initializeGroupManagement();
+    (window as any).orphaningNode = groupManager.orphaningNode.bind(groupManager);
+    (window as any).createNewParent = groupManager.createNewParent.bind(groupManager);
+    (window as any).panelNodeEditorParentToggleDropdown = groupManager.panelNodeEditorParentToggleDropdown.bind(groupManager);
+    (window as any).nodeParentPropertiesUpdate = groupManager.nodeParentPropertiesUpdate.bind(groupManager);
+    (window as any).nodeParentPropertiesUpdateClose = groupManager.nodeParentPropertiesUpdateClose.bind(groupManager);
+    (window as any).nodeParentRemoval = groupManager.nodeParentRemoval.bind(groupManager);
+    (window as any).viewportButtonsAddGroup = groupManager.viewportButtonsAddGroup.bind(groupManager);
+    (window as any).showPanelGroupEditor = groupManager.showGroupEditor.bind(groupManager);
 
     log.info('Calling loadTopologyData...');
     loadTopologyData();

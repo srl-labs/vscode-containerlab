@@ -19,7 +19,7 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerGroupManager } from './managerGroupManager';
+import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagemetn';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import { log } from '../../common/logger';
 
@@ -87,7 +87,7 @@ class TopoViewerEditorEngine {
     private saveManager: ManagerSaveTopo;
     private addNodeManager: ManagerAddContainerlabNode;
     private viewportPanels: ManagerViewportPanels;
-  private groupManager: ManagerGroupManager = new ManagerGroupManager();
+  public groupManager: ManagerGroupManagemetn;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo = new ManagerLayoutAlgo();
   private interfaceCounters: Record<string, number> = {};
@@ -210,7 +210,9 @@ class TopoViewerEditorEngine {
       this.saveManager = new ManagerSaveTopo(this.messageSender);
       this.addNodeManager = new ManagerAddContainerlabNode();
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
-    this.groupManager = new ManagerGroupManager();
+    this.groupManager = new ManagerGroupManagemetn(this.cy, 'edit');
+    this.groupManager.initializeWheelSelection();
+    this.groupManager.initializeGroupManagement();
     this.layoutAlgoManager = new ManagerLayoutAlgo();
 
     // Expose layout functions globally for HTML event handlers
@@ -375,9 +377,9 @@ class TopoViewerEditorEngine {
             // this.viewportPanels.panelNodeEditor(ele);
             if (ele.data("topoViewerRole") == "dummyChild") {
               log.debug(`Editing parent of dummyChild: ${ele.parent().first().id()}`);
-              this.groupManager.panelGroupToggle(ele.parent().first().id());
+              this.groupManager.showGroupEditor(ele.parent().first().id());
             } else if (ele.data("topoViewerRole") == "group") {
-              this.groupManager.panelGroupToggle(ele.id());
+              this.groupManager.showGroupEditor(ele.id());
             }
           }
         },
@@ -388,7 +390,7 @@ class TopoViewerEditorEngine {
                       <span>Delete Group</span>
                     </div>`,
           select: () => {
-            this.groupManager.nodeParentRemoval(this.cy);
+            this.groupManager.nodeParentRemoval();
           }
         }
       ],
@@ -743,6 +745,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const engine = new TopoViewerEditorEngine('cy');
   // Create and store the instance globally
   (window as any).topoViewerEditorEngine = engine;
+
+  const gm = engine.groupManager;
+  (window as any).orphaningNode = gm.orphaningNode.bind(gm);
+  (window as any).createNewParent = gm.createNewParent.bind(gm);
+  (window as any).panelNodeEditorParentToggleDropdown = gm.panelNodeEditorParentToggleDropdown.bind(gm);
+  (window as any).nodeParentPropertiesUpdate = gm.nodeParentPropertiesUpdate.bind(gm);
+  (window as any).nodeParentPropertiesUpdateClose = gm.nodeParentPropertiesUpdateClose.bind(gm);
+  (window as any).nodeParentRemoval = gm.nodeParentRemoval.bind(gm);
+  (window as any).viewportButtonsAddGroup = gm.viewportButtonsAddGroup.bind(gm);
+  (window as any).showPanelGroupEditor = gm.showGroupEditor.bind(gm);
 
   window.addEventListener('unload', () => {
     engine.dispose();
