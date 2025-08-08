@@ -5,7 +5,7 @@ import * as fs from 'fs';
 
 import { log } from '../../view/backend/logger';
 
-import { getHTMLTemplate } from '../webview-ui/template/vscodeHtmlTemplate';
+import { generateWebviewHtml, EditorTemplateParams } from '../../common/htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../../view/backend/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../../treeView/common";
 
@@ -269,47 +269,25 @@ topology:
     }
 
     if (panel) {
-      const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
-      const jsOutDir = panel.webview
-        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
-        .toString();
-
-      const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
-      const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-      const jsonFileUrlDataCytoMarshall = panel.webview
-        .asWebviewUri(jsonFileUriDataCytoMarshall)
-        .toString();
-
-      const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-      const jsonFileUrlDataEnvironment = panel.webview
-        .asWebviewUri(jsonFileUriDataEnvironment)
-        .toString();
-
-      const isVscodeDeployment = true;
-
-      const schemaUri = panel.webview
-        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
-        .toString();
-
       const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
       const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
       const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
       const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
 
-      panel.webview.html = this.getWebviewContent(
-        css,
-        js,
-        schemaUri,
-        images,
-        jsonFileUrlDataCytoMarshall,
-        jsonFileUrlDataEnvironment,
-        isVscodeDeployment,
-        jsOutDir,
-        this.adaptor.allowedhostname as string,
+      const editorParams: Partial<EditorTemplateParams> = {
         imageMapping,
         ifacePatternMapping,
         defaultKind,
-        defaultType
+        defaultType,
+      };
+
+      panel.webview.html = generateWebviewHtml(
+        this.context,
+        panel,
+        'editor',
+        folderName,
+        this.adaptor,
+        editorParams
       );
 
     } else {
@@ -609,41 +587,6 @@ topology:
   }
 
 
-  /**
-   * Generates the HTML content for the webview by injecting asset URIs.
-   *
-   * @param jsUri - URI for the JavaScript assets.
-   */
-  private getWebviewContent(
-    cssUri: string,
-    jsUri: string,
-    schemaUri: string,
-    imagesUri: string,
-    jsonFileUrlDataCytoMarshall: string,
-    jsonFileUrlDataEnvironment: string,
-    isVscodeDeployment: boolean,
-    jsOutDir: string,
-    allowedhostname: string,
-    imageMapping: Record<string, string>,
-    ifacePatternMapping: Record<string, string>,
-    defaultKind: string,
-    defaultType: string): string {
-    return getHTMLTemplate(
-      cssUri,
-      jsUri,
-      schemaUri,
-      imagesUri,
-      jsonFileUrlDataCytoMarshall,
-      jsonFileUrlDataEnvironment,
-      isVscodeDeployment,
-      jsOutDir,
-      allowedhostname,
-      imageMapping,
-      ifacePatternMapping,
-      defaultKind,
-      defaultType
-    );
-  }
 
 
   /**

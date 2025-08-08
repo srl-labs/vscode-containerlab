@@ -13,11 +13,29 @@ async function build() {
     path.join(templateDestDir, 'vscodeHtmlTemplate.html')
   );
   
-  // Copy partials directory
+  // Copy viewer-specific partials directory
   await fs.copy(
     path.join(templateSrcDir, 'partials'),
     path.join(templateDestDir, 'partials')
   );
+
+  // Copy shared partials
+  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/common/template/partials');
+  if (fs.existsSync(sharedPartialsDir)) {
+    // Copy to viewer partials
+    await fs.copy(
+      sharedPartialsDir,
+      path.join(templateDestDir, 'partials'),
+      { overwrite: false } // Don't overwrite viewer-specific files
+    );
+    // Copy to editor partials
+    await fs.copy(
+      sharedPartialsDir,
+      path.join(templateDestDir, 'editor-partials'),
+      { overwrite: false } // Don't overwrite editor-specific files
+    );
+    console.log('Shared partials copied to dist/');
+  }
 
   // Copy editor template files
   const editorTemplateSrcDir = path.join(__dirname, 'src/topoViewer/edit/webview-ui/template');

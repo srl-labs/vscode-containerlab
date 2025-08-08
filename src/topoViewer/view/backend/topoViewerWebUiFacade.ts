@@ -8,7 +8,8 @@ import { log } from './logger';
 import { ClabLabTreeNode } from '../../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../../treeView/runningLabsProvider';
 import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from './deploymentUtils';
-import { createTopoViewerPanel, getWebviewContent } from './topoViewerPanel';
+import { createTopoViewerPanel } from './topoViewerPanel';
+import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
 import { findContainerNode, findInterfaceNode } from './treeUtils';
 
 /**
@@ -238,41 +239,18 @@ export class TopoViewer {
     this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
 
     if (panel) {
-      const { css, js, images } = this.adaptor.generateStaticAssetUris(this.context, panel.webview);
-      const jsOutDir = panel.webview
-        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist'))
-        .toString();
+      const viewerParams: Partial<ViewerTemplateParams> = {
+        deploymentState: this.deploymentState,
+        viewerMode: this.viewerMode,
+      };
 
-      const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', folderName);
-      const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-      const jsonFileUrlDataCytoMarshall = panel.webview
-        .asWebviewUri(jsonFileUriDataCytoMarshall)
-        .toString();
-
-      const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-      const jsonFileUrlDataEnvironment = panel.webview
-        .asWebviewUri(jsonFileUriDataEnvironment)
-        .toString();
-
-      const isVscodeDeployment = true;
-
-      const schemaUri = panel.webview
-        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'schema', 'clab.schema.json'))
-        .toString();
-
-      panel.webview.html = getWebviewContent(
-        css,
-        js,
-        schemaUri,
-        images,
-        jsonFileUrlDataCytoMarshall,
-        jsonFileUrlDataEnvironment,
-        isVscodeDeployment,
-        jsOutDir,
-        this.adaptor.allowedhostname as string,
-        this.deploymentState,
-        this.viewerMode,
-        this.adaptor.currentClabTopo?.name || 'Unknown Topology'
+      panel.webview.html = generateWebviewHtml(
+        this.context,
+        panel,
+        'viewer',
+        folderName,
+        this.adaptor,
+        viewerParams
       );
 
       // Only show message for manual reload, not for automatic updates

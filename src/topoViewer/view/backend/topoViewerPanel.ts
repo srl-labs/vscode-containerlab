@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
 import { log } from './logger';
-import { getHTMLTemplate } from '../webview-ui/html-static/template/vscodeHtmlTemplate';
+import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from './deploymentUtils';
 
@@ -26,7 +26,6 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
     folderName,
     deploymentState,
     viewerMode,
-    allowedHostname,
     findContainerNode,
     findInterfaceNode,
     onUpdatePanelHtml,
@@ -69,40 +68,18 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
     context.subscriptions
   );
 
-  const { css, js, images } = adaptor.generateStaticAssetUris(context, panel.webview);
-
-  const jsOutDir = panel.webview
-    .asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist'))
-    .toString();
-
-  const mediaPath = vscode.Uri.joinPath(context.extensionUri, 'topoViewerData', folderName);
-  const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-  const jsonFileUrlDataCytoMarshall = panel.webview
-    .asWebviewUri(jsonFileUriDataCytoMarshall)
-    .toString();
-
-  const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-  const jsonFileUrlDataEnvironment = panel.webview
-    .asWebviewUri(jsonFileUriDataEnvironment)
-    .toString();
-
-  const schemaUri = panel.webview
-    .asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'schema', 'clab.schema.json'))
-    .toString();
-
-  panel.webview.html = getWebviewContent(
-    css,
-    js,
-    schemaUri,
-    images,
-    jsonFileUrlDataCytoMarshall,
-    jsonFileUrlDataEnvironment,
-    true,
-    jsOutDir,
-    allowedHostname,
+  const viewerParams: Partial<ViewerTemplateParams> = {
     deploymentState,
     viewerMode,
-    adaptor.currentClabTopo?.name || 'Unknown Topology'
+  };
+
+  panel.webview.html = generateWebviewHtml(
+    context,
+    panel,
+    'viewer',
+    folderName,
+    adaptor,
+    viewerParams
   );
 
   panel.webview.onDidReceiveMessage(async msg => {
@@ -193,37 +170,3 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
   return panel;
 }
 
-export function getWebviewContent(
-  cssUri: string,
-  jsUri: string,
-  schemaUri: string,
-  imagesUri: string,
-  jsonFileUrlDataCytoMarshall: string,
-  jsonFileUrlDataEnvironment: string,
-  isVscodeDeployment: boolean,
-  jsOutDir: string,
-  allowedhostname: string,
-  deploymentState: DeploymentState,
-  viewerMode: ViewerMode,
-  topologyName: string
-): string {
-  const isDarkTheme =
-    vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
-    vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
-
-  return getHTMLTemplate(
-    cssUri,
-    jsUri,
-    schemaUri,
-    imagesUri,
-    jsonFileUrlDataCytoMarshall,
-    jsonFileUrlDataEnvironment,
-    isVscodeDeployment,
-    jsOutDir,
-    allowedhostname,
-    deploymentState,
-    viewerMode,
-    topologyName,
-    isDarkTheme
-  );
-}
