@@ -43,5 +43,3 @@ hive-mind-prompt-*.txt
 memory/**
 .claude/**
 .claude-flow/**
-.roo/**
-.roomodes

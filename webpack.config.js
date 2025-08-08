@@ -4,10 +4,10 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const editorConfig = {
   mode: 'production', // or 'development' for debugging
   target: 'web',
-  entry: './src/topoViewer/webview-ui/topoViewerUnifiedEngine.ts',
+  entry: './src/topoViewerEditor/webview-ui/topoViewerEditorEngine.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'topoViewerUnifiedEngine.js',
+    filename: 'topoViewerEditorEngine.js',
     libraryTarget: 'module'
   },
   experiments: {
@@ -39,7 +39,7 @@ const editorConfig = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-      filename: 'topoViewerUnifiedStyles.css'
+      filename: 'topoViewerEditorStyles.css'
     })
   ],
   resolve: {

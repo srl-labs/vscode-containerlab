@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 
-import { log } from '../logger';
-import { ClabTopology, ClabNode } from '../types/topoViewerType';
+import { log } from '../../topoViewer/backend/logger';
+import { TopoViewerAdaptorClab } from '../../topoViewer/backend/topoViewerAdaptorClab';
+import { ClabTopology, ClabNode } from '../../topoViewer/backend/types/topoViewerType';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -45,17 +46,15 @@ function computeEndpointsStr(data: any): string | null {
 }
 
 export async function saveViewport(
+  adaptor: TopoViewerAdaptorClab,
   lastYamlFilePath: string,
   payload: string,
-  sendNotification?: boolean
-): Promise<boolean> {
+  setInternalUpdate: (_arg: boolean) => void // eslint-disable-line no-unused-vars
+): Promise<void> {
   const payloadParsed: any[] = JSON.parse(payload);
-  
-  // Read and parse the YAML file
-  const yamlContent = await fs.promises.readFile(lastYamlFilePath, 'utf8');
-  const doc = YAML.parseDocument(yamlContent);
+  const doc: YAML.Document.Parsed | undefined = adaptor.currentClabDoc;
   if (!doc) {
-    throw new Error('Failed to parse YAML document.');
+    throw new Error('No parsed Document found (adaptor.currentClabDoc is undefined).');
   }
 
   const updatedKeys = new Map<string, string>();
@@ -242,13 +241,13 @@ export async function saveViewport(
   }
 
   const updatedYamlString = doc.toString();
+  setInternalUpdate(true);
   await fs.promises.writeFile(lastYamlFilePath, updatedYamlString, 'utf8');
   await sleep(50);
+  setInternalUpdate(false);
 
-  if (sendNotification) {
-    log.info('Saved topology with preserved comments!');
-  }
-  
-  return true;
+  log.info('Saved topology with preserved comments!');
+  log.info(doc);
+  log.info(lastYamlFilePath);
 }
 
