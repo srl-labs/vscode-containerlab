@@ -1,7 +1,7 @@
 // cytoscapeStyles.ts - Cytoscape styling functions for TopoViewer TypeScript version
 
 import { log } from '../../common/logger';
-import { generateEncodedSVG } from './managerSvg';
+import { generateEncodedSVG } from '../../common/webview-ui/managerSvgGenerator';
 
 /**
  * Detect color scheme preference (light/dark mode)
