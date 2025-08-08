@@ -1,21 +1,3 @@
-<nav class="navbar py-0 h-[4rem]" role="navigation" aria-label="main navigation">
-  <!-- Left: Logo + Title -->
-  <div class="navbar-brand flex items-center space-x-4 px-2">
-    <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-      <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-10 w-auto block" />
-    </a>
-    <div class="flex flex-col leading-tight">
-      <p class="text-xl font-semibold select-none">containerlab</p>
-      <p class="text-sm font-light text-gray-500 select-none">
-        <span class="">TopoViewer · {{topologyName}}</span>
-      </p>
-    </div>
-  </div>
-
-
-  <div id="viewport-buttons">
-    <div class="flex flex-row justify-evenly space-x-1">
-
       <p class="m-0 p-0">
         <button id="viewport-zoom-to-fit" title="Fit to Viewport" onclick="viewportButtonsZoomToFit(event)"
           class="btn btn-icon focus:outline-none">
@@ -107,27 +89,3 @@
           </span>
         </button>
       </p>
-    </div>
-  </div>
-</div>
-
-  <!-- right side: burger dropdown always on the right edge -->
-  <!-- <div class="navbar-end">
-      <div class="relative group">
-        <div>
-          <button class="btn btn-icon focus:outline-none">
-            <span class="inline-block">
-              <i class="fas fa-bars" aria-hidden="true"></i>
-            </span>
-          </button>
-        </div>
-        <div class="dropdown-menu hidden group-hover:block right-0 w-48">
-          <div class="py-1">
-            <button id="about" title="" onclick="showPanelAbout();" class="dropdown-item w-full text-left">
-              About
-            </button>
-          </div>
-        </div>
-      </div>
-    </div> -->
-</nav>

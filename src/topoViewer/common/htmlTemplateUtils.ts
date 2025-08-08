@@ -60,6 +60,16 @@ function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<s
   return partials;
 }
 
+function resolvePartials(content: string, partials: Record<string, string>): string {
+  return content.replace(/{{([A-Z0-9_]+)}}/g, (_, key) => {
+    const replacement = partials[key];
+    if (replacement !== undefined) {
+      return resolvePartials(replacement, partials);
+    }
+    return '';
+  });
+}
+
 function resolveTemplatePaths(mode: TemplateMode): { templatePath: string; partialsDir: string; sharedPartialsDir?: string } {
   // Try multiple possible locations for the template files
   const possiblePaths = [];
@@ -124,10 +134,7 @@ export function generateHtmlTemplate(
   if (mode === 'editor' && !partials.WIRESHARK_MODAL) {
     partials.WIRESHARK_MODAL = '';
   }
-
-  for (const [key, value] of Object.entries(partials)) {
-    template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
-  }
+  template = resolvePartials(template, partials);
 
   const logoFile = params.isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
 
@@ -143,6 +150,7 @@ export function generateHtmlTemplate(
     allowedHostname: params.allowedHostname,
     topologyName: params.topologyName || 'Unknown Topology',
     logoFile,
+    navSubtitle: mode === 'viewer' ? 'TopoViewer' : 'TopoEditor',
   };
 
   let replacements: Record<string, string>;

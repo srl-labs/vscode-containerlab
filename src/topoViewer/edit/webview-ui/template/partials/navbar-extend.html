@@ -1,20 +1,3 @@
-<nav class="navbar py-0 h-[4rem]" role="navigation" aria-label="main navigation">
-  <!-- Left: Logo + Title -->
-  <div class="navbar-brand flex items-center space-x-4 px-2">
-    <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
-      <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-10 w-auto block" />
-    </a>
-    <div class="flex flex-col leading-tight">
-      <p class="text-xl font-semibold select-none">containerlab</p>
-      <p class="text-sm font-light text-gray-500 select-none">
-        <span>TopoEditor · {{topologyName}}</span>
-      </p>
-    </div>
-  </div>
-
-  <div id="viewport-buttons">
-    <div class="flex flex-row justify-evenly space-x-1">
-
       <p class="m-0 p-0">
         <button id="viewport-zoom-to-fit" title="Fit to Viewport"
           onclick="window.topoViewerEditorEngine.zoomToFitManager.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
@@ -85,7 +68,7 @@
 
       <p class="m-0 p-0">
         <button id="viewport-reload-topo" title="Reload TopoViewer"
-          onclick="window.topoViewerEditorEngine.reloadTopoManager.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy); return false;"
+          onclick="window.topoViewerEditorEngine.reloadTopoManager.viewportButtonsReloadTopo(window.topoViewerEditorEngine.cy);return false;"
           class="btn btn-icon focus:outline-none">
           <span class="inline-block text-sm">
             <i class="fa-solid fa-arrow-rotate-right"></i>
@@ -122,6 +105,3 @@
           </span>
         </button>
       </p>
-    </div>
-  </div>
-</nav>
