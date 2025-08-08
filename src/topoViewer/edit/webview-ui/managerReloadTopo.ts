@@ -3,7 +3,7 @@
 import cytoscape from 'cytoscape';
 import { fetchAndLoadData } from './managerCytoscapeFetchAndLoad';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { log } from '../../view/webview-ui/logger';
+import { log } from '../../common/logger';
 
 /**
  * Handles reloading the topology data from the backend.

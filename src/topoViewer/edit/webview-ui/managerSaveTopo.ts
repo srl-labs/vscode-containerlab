@@ -3,7 +3,7 @@
 import cytoscape from 'cytoscape';
 import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { log } from '../../view/webview-ui/logger';
+import { log } from '../../common/logger';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.

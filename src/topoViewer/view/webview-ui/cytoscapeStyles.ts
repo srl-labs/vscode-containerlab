@@ -1,6 +1,6 @@
 // cytoscapeStyles.ts - Cytoscape styling functions for TopoViewer TypeScript version
 
-import { log } from './logger';
+import { log } from '../../common/logger';
 import { generateEncodedSVG } from './managerSvg';
 
 /**

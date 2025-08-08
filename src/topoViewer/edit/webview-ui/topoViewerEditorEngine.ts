@@ -21,7 +21,7 @@ import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManager } from './managerGroupManager';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
-import { log } from '../../view/webview-ui/logger';
+import { log } from '../../common/logger';
 
 
 

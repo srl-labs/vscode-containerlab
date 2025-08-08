@@ -1,7 +1,7 @@
 // file: managerCytoscapeStyle.ts
 
 import cytoscape from 'cytoscape';
-import { log } from '../../view/webview-ui/logger';
+import { log } from '../../common/logger';
 
 /**
  * Cytoscape styles for VS Code deployment.

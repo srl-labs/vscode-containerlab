@@ -3,7 +3,7 @@
 import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { extractNodeIcons } from './managerCytoscapeStyle';
-import { log } from '../../view/webview-ui/logger';
+import { log } from '../../common/logger';
 
 
 /**

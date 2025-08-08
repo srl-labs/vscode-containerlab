@@ -1,7 +1,7 @@
 // file: managerGroupManagement.ts
 
 // Import logger for webview
-import { log } from './logger';
+import { log } from '../../common/logger';
 
 // Declarations for global variables provided elsewhere in the webview
 /* eslint-disable no-unused-vars */

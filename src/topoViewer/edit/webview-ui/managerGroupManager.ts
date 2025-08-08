@@ -1,6 +1,6 @@
 // file: managerGroupManager.ts
 import cytoscape from 'cytoscape';
-import { log } from '../../view/webview-ui/logger';
+import { log } from '../../common/logger';
 
 /**
  * Toggles the visibility of the node editor panel.
