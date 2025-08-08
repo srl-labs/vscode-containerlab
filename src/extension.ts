@@ -4,8 +4,8 @@ import * as utils from './helpers/utils';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
 import * as path from 'path';
-
-import { TopoViewerEditor } from './topoViewerEditor/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
+import * as fs from 'fs';
+import { TopoViewer } from './topoViewer/backend/topoViewerWebUiFacade';
 
 
 import { WelcomePage } from './welcomePage';
@@ -367,15 +367,9 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const labName = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
-
-        const editor = new TopoViewerEditor(context);
-
-        editor.lastYamlFilePath = yamlUri.fsPath;
-
-        await editor.createWebviewPanel(context, yamlUri, labName);
-
-        await editor.openTemplateFile(yamlUri.fsPath);
+        // Create a new TopoViewer instance for editing
+        const topoViewer = new TopoViewer(context);
+        await topoViewer.openEditor(yamlUri.fsPath);
       }
     )
   );
@@ -399,16 +393,17 @@ export async function activate(context: vscode.ExtensionContext) {
       // Derive the labName (without extension) from what they typed:
       const labName = path.basename(uri.fsPath, path.extname(uri.fsPath));
 
-      // Delegate to your template‑writer helper:
-        const editor = new TopoViewerEditor(context);
-        try {
-          await editor.createTemplateFile(uri);
+      // Use unified TopoViewer in editor mode
+      try {
+        // Create template file first
+        await fs.promises.writeFile(uri.fsPath, '# Containerlab topology template\nname: ' + labName + '\n', 'utf8');
 
-        // Open the webview panel topoViewerEditor.
-        await editor.createWebviewPanel(context, uri, labName)
+        // Create a new TopoViewer instance and open in editor mode
+        const topoViewer = new TopoViewer(context);
+        await topoViewer.openEditor(uri.fsPath);
 
-        // Open the created file in a split editor.
-        await editor.openTemplateFile(editor.lastYamlFilePath);
+        // Open the created file in a text editor
+        await vscode.window.showTextDocument(vscode.Uri.file(uri.fsPath));
 
       } catch {
         // createTemplateFile will have already shown an error

@@ -10,6 +10,7 @@ import { RunningLabTreeDataProvider } from '../../treeView/runningLabsProvider';
 import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from './deploymentUtils';
 import { createTopoViewerPanel, getWebviewContent } from './topoViewerPanel';
 import { findContainerNode, findInterfaceNode } from './treeUtils';
+import { saveViewport } from './editor/saveViewport';
 
 /**
  * Class representing the Unified Containerlab Topology Viewer/Editor extension in VS Code.
@@ -51,6 +52,16 @@ export class TopoViewer {
 
   public cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
 
+  // Editor-specific properties
+  private fileWatcher: vscode.FileSystemWatcher | undefined;
+  private saveListener: vscode.Disposable | undefined;
+  private isInternalUpdate: boolean = false;
+  private isUpdating: boolean = false;
+  private queuedUpdate: boolean = false;
+  private queuedSaveAck: boolean = false;
+  public targetDirPath: string | undefined;
+  public createTopoYamlTemplateSuccess: boolean = false;
+
 
   /**
    * Current deployment state of the lab being viewed.
@@ -62,6 +73,11 @@ export class TopoViewer {
    */
   private viewerMode: ViewerMode = 'unified';
 
+  /**
+   * Editor mode flag - when true, enables full editing capabilities
+   */
+  private isEditorMode: boolean = false;
+
 
 
   /**
@@ -72,6 +88,166 @@ export class TopoViewer {
   constructor(public context: vscode.ExtensionContext) {
     this.adaptor = new TopoViewerAdaptorClab();
     this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
+  }
+
+  /**
+   * Opens the TopoViewer in editor mode for creating/editing topologies.
+   */
+  public async openEditor(
+    yamlFilePath: string,
+    clabTreeDataToTopoviewer?: Record<string, ClabLabTreeNode>
+  ): Promise<vscode.WebviewPanel | undefined> {
+    this.isEditorMode = true;
+    this.lastYamlFilePath = yamlFilePath;
+
+    try {
+      // Setup file watching and save listeners for editor mode
+      this.setupFileWatcher();
+      this.setupSaveListener();
+
+      // Open viewer with editor capabilities
+      const panel = await this.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
+
+      if (panel) {
+        // Setup editor-specific message handlers
+        this.setupEditorMessageHandlers(panel);
+      }
+
+      return panel;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Error in openEditor: ${err}`);
+      log.error(`openEditor: ${err}`);
+      return undefined;
+    }
+  }
+
+  private setupFileWatcher(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.dispose();
+    }
+
+    if (this.lastYamlFilePath && this.isEditorMode) {
+      const fileUri = vscode.Uri.file(this.lastYamlFilePath);
+      this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
+
+      this.fileWatcher.onDidChange(() => {
+        if (this.isInternalUpdate) {
+          return;
+        }
+        void this.triggerUpdate(false);
+      });
+    }
+  }
+
+  private setupSaveListener(): void {
+    if (this.saveListener) {
+      this.saveListener.dispose();
+    }
+
+    if (this.lastYamlFilePath && this.isEditorMode) {
+      this.saveListener = vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.uri.fsPath !== this.lastYamlFilePath) {
+          return;
+        }
+
+        if (this.isInternalUpdate) {
+          return;
+        }
+
+        void this.handleManualSave();
+      });
+    }
+  }
+
+  private async handleManualSave(): Promise<void> {
+    await this.triggerUpdate(true);
+  }
+
+  private async triggerUpdate(sendSaveAck: boolean): Promise<void> {
+    if (this.isUpdating) {
+      this.queuedUpdate = true;
+      this.queuedSaveAck = this.queuedSaveAck || sendSaveAck;
+      return;
+    }
+
+    this.isUpdating = true;
+
+    try {
+      await this.updatePanelHtml(this.currentTopoViewerPanel);
+
+      if (sendSaveAck && this.currentTopoViewerPanel) {
+        await this.currentTopoViewerPanel.webview.postMessage({
+          command: 'saved',
+          text: 'ack',
+        });
+      }
+    } finally {
+      this.isUpdating = false;
+
+      if (this.queuedUpdate) {
+        const ackToSend = this.queuedSaveAck;
+        this.queuedUpdate = false;
+        this.queuedSaveAck = false;
+        await this.triggerUpdate(ackToSend);
+      }
+    }
+  }
+
+
+  private setupEditorMessageHandlers(panel: vscode.WebviewPanel): void {
+    panel.webview.onDidReceiveMessage(
+      async (message) => {
+        if (!this.isEditorMode) {
+          return;
+        }
+
+        switch (message.command) {
+          case 'save':
+            await this.handleSaveFromWebview(message);
+            break;
+          case 'reload':
+            await this.triggerUpdate(false);
+            break;
+          case 'openExternal':
+            if (message.url) {
+              await vscode.env.openExternal(vscode.Uri.parse(message.url));
+            }
+            break;
+          default:
+            break;
+        }
+      },
+      undefined,
+      this.context.subscriptions
+    );
+  }
+
+  private async handleSaveFromWebview(message: any): Promise<void> {
+    if (!this.isEditorMode || !message.viewport) {
+      return;
+    }
+
+    try {
+      this.isInternalUpdate = true;
+
+      const success = await saveViewport(
+        this.lastYamlFilePath,
+        message.viewport,
+        message.sendNotification
+      );
+
+      if (success && !message.sendNotification) {
+        await this.currentTopoViewerPanel?.webview.postMessage({
+          command: 'saved',
+          text: 'ack',
+        });
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to save topology: ${error}`);
+      log.error(`Save error: ${error}`);
+    } finally {
+      this.isInternalUpdate = false;
+    }
   }
 
   /**
