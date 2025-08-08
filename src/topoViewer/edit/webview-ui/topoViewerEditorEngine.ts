@@ -21,6 +21,7 @@ import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManager } from './managerGroupManager';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
+import { log } from '../../view/webview-ui/logger';
 
 
 
@@ -142,7 +143,7 @@ class TopoViewerEditorEngine {
 
     this.cy.on('tap', (event) => {
       this.cyEvent = event as cytoscape.EventObject;
-      console.log("Cytoscape event:", event);
+      log.debug(`Cytoscape event: ${event.type}`);
     });
 
     // Enable grid guide extension (casting cy as any to satisfy TypeScript)
@@ -197,7 +198,7 @@ class TopoViewerEditorEngine {
         const result = await fetchAndLoadDataEnvironment(["clab-name"]);
         this.updateSubtitle(result["clab-name"] || "Unknown");
       } catch (error) {
-        console.error("Error loading lab name:", error);
+        log.error(`Error loading lab name: ${error instanceof Error ? error.message : String(error)}`);
       }
     })();
 
@@ -373,7 +374,7 @@ class TopoViewerEditorEngine {
             // inside here TS infers ele is NodeSingular
             // this.viewportPanels.panelNodeEditor(ele);
             if (ele.data("topoViewerRole") == "dummyChild") {
-              console.info("Editing parent of dummyChild: ", ele.parent().first().id());
+              log.debug(`Editing parent of dummyChild: ${ele.parent().first().id()}`);
               this.groupManager.panelGroupToggle(ele.parent().first().id());
             } else if (ele.data("topoViewerRole") == "group") {
               this.groupManager.panelGroupToggle(ele.id());
@@ -471,7 +472,7 @@ class TopoViewerEditorEngine {
     this.cy.on('click', (event) => {
       const mouseEvent = event.originalEvent as MouseEvent;
       if (event.target === this.cy && mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
-        console.log("Canvas clicked with Shift key - adding node.");
+        log.debug('Canvas clicked with Shift key - adding node.');
         this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
       }
     });
@@ -480,7 +481,7 @@ class TopoViewerEditorEngine {
     this.cy.on('click', 'node', async (event) => {
       this.viewportPanels.nodeClicked = true; // Set flag to true when a node is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a node is clicked.
       const node = event.target;
-      console.info("Node clicked:", node.id());
+      log.debug(`Node clicked: ${node.id()}`);
       const originalEvent = event.originalEvent as MouseEvent;
       const extraData = node.data("extraData");
       const isNodeInEditMode = node.data("editor") === "true";
@@ -488,18 +489,18 @@ class TopoViewerEditorEngine {
       switch (true) {
         // Remove node from parent if Ctrl is pressed and node is a child.
         case originalEvent.ctrlKey && node.isChild():
-          console.info(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
+          log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
           node.move({ parent: null });
           break;
         // Start edge creation if Shift is pressed.
         case originalEvent.shiftKey:
-          console.info("Shift+click on node: starting edge creation from node:", extraData?.longname || node.id());
+          log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
           this.isEdgeHandlerActive = true;
           this.eh.start(node);
           break;
         // Delete node if Alt is pressed and node is in edit mode.
         case originalEvent.altKey && isNodeInEditMode:
-          console.info("Alt+click on node: deleting node", extraData?.longname || node.id());
+          log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
           node.remove();
           break;
 
@@ -526,7 +527,7 @@ class TopoViewerEditorEngine {
       const edge = event.target;
       const originalEvent = event.originalEvent as MouseEvent;
       if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
-        console.info("Alt+click on edge: deleting edge", edge.id());
+        log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
         edge.remove();
       }
     });
@@ -546,8 +547,8 @@ class TopoViewerEditorEngine {
 
     // Edge creation completion via edgehandles.
       this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) => {
-      console.info(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
-      console.info("Added edge:", addedEdge);
+      log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
+      log.debug(`Added edge: ${JSON.stringify(addedEdge)}`);
 
       setTimeout(() => {
         this.isEdgeHandlerActive = false;
@@ -577,7 +578,7 @@ class TopoViewerEditorEngine {
 
       if (assignedParent) {
         draggedNode.move({ parent: assignedParent.id() });
-        console.info(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
+        log.debug(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
 
         const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
 
@@ -585,9 +586,9 @@ class TopoViewerEditorEngine {
           const realChildren = assignedParent.children().not(dummyChild);
           if (realChildren.length > 0) {
             dummyChild.remove();
-            console.log("Dummy child removed");
+            log.debug('Dummy child removed');
           } else {
-            console.log("No real children present, dummy child remains");
+            log.debug('No real children present, dummy child remains');
           }
         }
       }
@@ -690,9 +691,9 @@ class TopoViewerEditorEngine {
     const rootElement = document.getElementById('root');
     if (rootElement) {
       rootElement.setAttribute('data-theme', theme);
-      console.log("Applied Theme:", theme);
+      log.debug(`Applied Theme: ${theme}`);
     } else {
-      console.warn("'root' element not found; cannot apply theme:", theme);
+      log.warn(`'root' element not found; cannot apply theme: ${theme}`);
     }
   }
 
@@ -705,7 +706,7 @@ class TopoViewerEditorEngine {
     if (subtitleElement) {
       subtitleElement.textContent = `Topology Editor ::: ${newText}`;
     } else {
-      console.warn("Subtitle element not found");
+      log.warn('Subtitle element not found');
     }
   }
 

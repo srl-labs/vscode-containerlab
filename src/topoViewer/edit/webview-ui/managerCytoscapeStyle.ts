@@ -1,6 +1,7 @@
 // file: managerCytoscapeStyle.ts
 
 import cytoscape from 'cytoscape';
+import { log } from '../../view/webview-ui/logger';
 
 /**
  * Cytoscape styles for VS Code deployment.
@@ -478,14 +479,14 @@ export default async function loadCytoStyle(
     const selectedTheme = theme || forced || (engine?.detectColorScheme?.() || 'light');
     const styles = getCytoscapeStyles(selectedTheme === 'light' ? 'light' : 'dark');
     cy.style().fromJson(styles).update();
-    console.info("Cytoscape styles applied successfully.");
+    log.info('Cytoscape styles applied successfully.');
 
     const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
     if (layoutMgr?.isGeoMapInitialized) {
       layoutMgr.applyGeoScale(true);
     }
   } catch (error) {
-    console.error("Error applying Cytoscape styles:", error);
+    log.error(`Error applying Cytoscape styles: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -1031,7 +1032,7 @@ function generateEncodedSVG(nodeType: string, fillColor: string): string {
       break;
 
     default:
-      console.warn(`Unknown nodeType: ${nodeType}, using default PE SVG.`);
+      log.warn(`Unknown nodeType: ${nodeType}, using default PE SVG.`);
       svgString = `
                 <svg
                         xmlns:xlink="http://www.w3.org/1999/xlink"

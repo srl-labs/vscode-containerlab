@@ -1,5 +1,6 @@
 // file: managerGroupManager.ts
 import cytoscape from 'cytoscape';
+import { log } from '../../view/webview-ui/logger';
 
 /**
  * Toggles the visibility of the node editor panel.
@@ -170,7 +171,7 @@ export class ManagerGroupManager {
       if (pos && valid.includes(pos)) valid.forEach(cls => newNode.removeClass(cls)), newNode.addClass(pos);
 
     } catch (error) {
-      console.error("Update failed:", error);
+      log.error(`Update failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -188,7 +189,7 @@ export class ManagerGroupManager {
       const parentIdEl = document.getElementById("panel-node-editor-parent-graph-group-id");
       const parentNodeId = parentIdEl?.textContent?.trim();
 
-      console.log("Removing parent node with ID:", parentNodeId);
+      log.info(`Removing parent node with ID: ${parentNodeId}`);
 
       if (!parentNodeId) throw new Error("Empty parent ID");
 
@@ -209,7 +210,7 @@ export class ManagerGroupManager {
 
       return true;
     } catch (err) {
-      console.error("Error in nodeParentRemoval:", err);
+      log.error(`Error in nodeParentRemoval: ${err instanceof Error ? err.message : String(err)}`);
       return false;
     }
   }

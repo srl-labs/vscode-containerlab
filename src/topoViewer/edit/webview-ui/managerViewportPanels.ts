@@ -3,6 +3,7 @@
 import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { extractNodeIcons } from './managerCytoscapeStyle';
+import { log } from '../../view/webview-ui/logger';
 
 
 /**
@@ -45,42 +46,36 @@ export class ManagerViewportPanels {
   public toggleHidePanels(containerId: string): void {
     const container = document.getElementById(containerId);
     if (!container) {
-      console.warn("Cytoscape container not found:", containerId);
+      log.warn(`Cytoscape container not found: ${containerId}`);
       return;
     }
 
-    container.addEventListener("click", async () => {
-      console.info("cy container clicked init");
-      console.info("isPanel01Cy:", this.isPanel01Cy);
-      console.info("nodeClicked:", this.nodeClicked);
-      console.info("edgeClicked:", this.edgeClicked);
+    container.addEventListener('click', async () => {
+      log.debug('cy container clicked');
 
       // Execute toggle logic only when no node or edge was clicked.
       if (!this.nodeClicked && !this.edgeClicked) {
-        console.info("!nodeClicked  -- !edgeClicked");
         if (!this.isPanel01Cy) {
-          console.info("!isPanel01Cy:");
           // Remove all overlay panels.
-          const panelOverlays = document.getElementsByClassName("panel-overlay");
-          console.info("panelOverlays:", panelOverlays);
+          const panelOverlays = document.getElementsByClassName('panel-overlay');
           for (let i = 0; i < panelOverlays.length; i++) {
-            (panelOverlays[i] as HTMLElement).style.display = "none";
+            (panelOverlays[i] as HTMLElement).style.display = 'none';
           }
 
           // Hide viewport drawers.
-          const viewportDrawers = document.getElementsByClassName("viewport-drawer");
+          const viewportDrawers = document.getElementsByClassName('viewport-drawer');
           for (let i = 0; i < viewportDrawers.length; i++) {
-            (viewportDrawers[i] as HTMLElement).style.display = "none";
+            (viewportDrawers[i] as HTMLElement).style.display = 'none';
           }
 
           // Hide any elements with the class "ViewPortDrawer".
-          const viewPortDrawerElements = document.getElementsByClassName("ViewPortDrawer");
+          const viewPortDrawerElements = document.getElementsByClassName('ViewPortDrawer');
           Array.from(viewPortDrawerElements).forEach((element) => {
-            (element as HTMLElement).style.display = "none";
+            (element as HTMLElement).style.display = 'none';
           });
         } else {
-          this.removeElementById("Panel-01");
-          this.appendMessage("try to remove panel01-Cy");
+          this.removeElementById('Panel-01');
+          this.appendMessage('try to remove panel01-Cy');
         }
       }
       // Reset the click flags.
@@ -105,7 +100,7 @@ export class ManagerViewportPanels {
       (panel as HTMLElement).style.display = "none";
     });
 
-    console.log("panelNodeEditor - node ID:", node.data("id"));
+    log.debug(`panelNodeEditor - node ID: ${node.data('id')}`);
 
     // Set the node ID in the editor.
     const panelNodeEditorIdLabel = document.getElementById("panel-node-editor-id");
@@ -138,7 +133,7 @@ export class ManagerViewportPanels {
     if (panelNodeEditorGroupLabel) {
       const parentNode = node.parent();
       const parentLabel = parentNode.data('name');
-      console.log('Parent Node Label:', parentLabel);
+      log.debug(`Parent Node Label: ${parentLabel}`);
       panelNodeEditorGroupLabel.value = parentLabel;
     }
 
@@ -161,7 +156,7 @@ export class ManagerViewportPanels {
 
       // Get kind enums from the JSON schema.
       const { kindOptions } = this.panelNodeEditorGetKindEnums(jsonData);
-      console.log('Kind Enum:', kindOptions);
+      log.debug(`Kind Enum: ${JSON.stringify(kindOptions)}`);
       // Populate the kind dropdown.
       this.panelNodeEditorPopulateKindDropdown(kindOptions);
 
@@ -170,7 +165,7 @@ export class ManagerViewportPanels {
 
       // Then call the function:
       const nodeIcons = extractNodeIcons();
-      console.log("Extracted node icons:", nodeIcons);
+      log.debug(`Extracted node icons: ${JSON.stringify(nodeIcons)}`);
 
       this.panelNodeEditorPopulateTopoViewerRoleDropdown(nodeIcons);
 
@@ -196,7 +191,7 @@ export class ManagerViewportPanels {
         }, { once: true });
       }
     } catch (error: any) {
-      console.error("Error fetching or processing JSON data:", error.message);
+      log.error(`Error fetching or processing JSON data: ${error.message}`);
       throw error;
     }
   }
@@ -227,7 +222,7 @@ export class ManagerViewportPanels {
       // if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
       if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelSaveBtn) {
 
-        console.error("panelEdgeEditor: missing required DOM elements");
+        log.error('panelEdgeEditor: missing required DOM elements');
         return;
       }
       const source = edge.data("source") as string;
@@ -296,7 +291,7 @@ export class ManagerViewportPanels {
               // 6d) Hide the panel
               panelLinkEditor.style.display = "none";
             } catch (saveErr) {
-              console.error("panelEdgeEditor: error during save", saveErr);
+              log.error(`panelEdgeEditor: error during save: ${saveErr instanceof Error ? saveErr.message : String(saveErr)}`);
               // TODO: show user-facing notification if needed
             }
           },
@@ -305,7 +300,7 @@ export class ManagerViewportPanels {
       }
 
     } catch (err) {
-      console.error("panelEdgeEditor: unexpected error", err);
+      log.error(`panelEdgeEditor: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
       // TODO: show user-facing notification if needed
     }
   }
@@ -365,7 +360,7 @@ export class ManagerViewportPanels {
 
     // Update the Cytoscape node data.
     targetNode.data(updatedData);
-    console.log("Cytoscape node updated with new data_::", updatedData);
+    log.debug(`Cytoscape node updated with new data: ${JSON.stringify(updatedData)}`);
 
     // If the node’s name actually changed, update connected edges.
     if (oldName !== newName) {
@@ -387,7 +382,7 @@ export class ManagerViewportPanels {
         }
         if (modified) {
           edge.data(updatedEdgeData);
-          console.log(`Edge ${edge.id()} updated to reflect node rename:`, updatedEdgeData);
+          log.debug(`Edge ${edge.id()} updated to reflect node rename: ${JSON.stringify(updatedEdgeData)}`);
         }
       });
     }
@@ -472,7 +467,7 @@ export class ManagerViewportPanels {
     const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
 
     if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
-      console.error("Dropdown elements not found in the DOM.");
+      log.error('Dropdown elements not found in the DOM.');
       return;
     }
 
@@ -491,7 +486,7 @@ export class ManagerViewportPanels {
         event.preventDefault();
         const previousKind = this.panelNodeEditorKind;
         this.panelNodeEditorKind = option;
-        console.log(`${this.panelNodeEditorKind} selected`);
+        log.debug(`${this.panelNodeEditorKind} selected`);
         dropdownTrigger.textContent = this.panelNodeEditorKind;
         dropdownContainer.classList.remove("is-active");
         const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(this.nodeSchemaData, `(${option})`);
@@ -524,7 +519,7 @@ export class ManagerViewportPanels {
     const input = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
 
     if (!dropdown || !input) {
-      console.error("Type input elements not found in the DOM.");
+      log.error('Type input elements not found in the DOM.');
       return;
     }
 
@@ -555,7 +550,7 @@ export class ManagerViewportPanels {
     const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
 
     if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
-      console.error("Dropdown elements not found in the DOM.");
+      log.error('Dropdown elements not found in the DOM.');
       return;
     }
 
@@ -594,7 +589,7 @@ export class ManagerViewportPanels {
     const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
 
     if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
-      console.error("Dropdown elements not found in the DOM.");
+      log.error('Dropdown elements not found in the DOM.');
       return;
     }
 
@@ -612,7 +607,7 @@ export class ManagerViewportPanels {
       optionElement.addEventListener("click", (event) => {
         event.preventDefault();
         this.panelNodeEditorTopoViewerRole = option;
-        console.log(`${this.panelNodeEditorTopoViewerRole} selected`);
+        log.debug(`${this.panelNodeEditorTopoViewerRole} selected`);
         dropdownTrigger.textContent = this.panelNodeEditorTopoViewerRole;
         dropdownContainer.classList.remove("is-active");
       });
@@ -637,7 +632,7 @@ export class ManagerViewportPanels {
       const panelTopoviewerAbout = document.getElementById("panel-topoviewer-about");
 
       if (!panelTopoviewerAbout) {
-        console.error("panelTopoviewerAbout: missing required DOM elements");
+        log.error('panelTopoviewerAbout: missing required DOM elements');
         return;
       }
 
@@ -646,7 +641,7 @@ export class ManagerViewportPanels {
 
     }
     catch (err) {
-      console.error("panelEdgeEditor: unexpected error", err);
+      log.error(`panelEdgeEditor: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
       // TODO: surface user-facing notification
     }
   }
@@ -731,7 +726,7 @@ export class ManagerViewportPanels {
    * @param message - The message to display.
    */
   private appendMessage(message: string): void {
-    console.log(message);
+    log.debug(message);
     // Optionally, integrate with a VS Code message sender here if needed.
   }
 

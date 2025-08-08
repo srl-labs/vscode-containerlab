@@ -3,6 +3,7 @@
 import cytoscape from 'cytoscape';
 import { fetchAndLoadData } from './managerCytoscapeFetchAndLoad';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
+import { log } from '../../view/webview-ui/logger';
 
 /**
  * Handles reloading the topology data from the backend.
@@ -23,11 +24,11 @@ export class ManagerReloadTopo {
         'topo-editor-reload-viewport',
         'Empty Payload'
       );
-      console.log('############### response from backend:', response);
+      log.debug(`Response from backend: ${JSON.stringify(response)}`);
       await this.sleep(delayMs);
       fetchAndLoadData(cy, this.messageSender);
     } catch (err) {
-      console.error('############### Backend call failed:', err);
+      log.error(`Backend call failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

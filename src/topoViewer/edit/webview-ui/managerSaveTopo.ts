@@ -3,6 +3,7 @@
 import cytoscape from 'cytoscape';
 import loadCytoStyle from './managerCytoscapeStyle';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
+import { log } from '../../view/webview-ui/logger';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.
@@ -25,7 +26,7 @@ export class ManagerSaveTopo {
     if (!isVscodeDeployment) return;
 
     try {
-      console.log('viewportButtonsSaveTopo triggered');
+      log.debug('viewportButtonsSaveTopo triggered');
 
       const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
       const updatedNodes = cy.nodes().map((node: cytoscape.NodeSingular) => {
@@ -136,29 +137,27 @@ export class ManagerSaveTopo {
       }
 
       const updatedElements = [...updatedNodes, ...updatedEdges];
-      console.log('Updated Topology Data:', JSON.stringify(updatedElements, null, 2));
+      log.debug(`Updated Topology Data: ${JSON.stringify(updatedElements, null, 2)}`);
 
       if (!suppressNotification) {
-        console.log('Not Suppressing notification for save action.');
         const response = await this.messageSender.sendMessageToVscodeEndpointPost(
           'topo-editor-viewport-save-suppress-notification',
           updatedElements
         );
-        console.log('Response from backend:', response);
+        log.debug(`Response from backend: ${JSON.stringify(response)}`);
       } else {
         const endpoint = suppressNotification
           ? 'topo-editor-viewport-save-suppress-notification'
           : 'topo-editor-viewport-save';
 
-        console.log('Suppressing notification for save action.');
         const response = await this.messageSender.sendMessageToVscodeEndpointPost(
           endpoint,
           updatedElements
         );
-        console.log('Response from backend:', response);
+        log.debug(`Response from backend: ${JSON.stringify(response)}`);
       }
     } catch (err) {
-      console.error('Backend call failed:', err);
+      log.error(`Backend call failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }

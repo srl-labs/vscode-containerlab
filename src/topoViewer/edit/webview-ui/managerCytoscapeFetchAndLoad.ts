@@ -1,6 +1,7 @@
 // file: managerCytoscapeFetchAndLoad.ts
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
+import { log } from '../../view/webview-ui/logger';
 
 
 /**
@@ -40,7 +41,7 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     const jsonFileUrlDataCytoMarshall: string = isVscodeDeployment
       ? (window as any).jsonFileUrlDataCytoMarshall : "dataCytoMarshall.json";
 
-    console.log(`fetchAndLoadData called. JSON URL: ${jsonFileUrlDataCytoMarshall}`);
+    log.debug(`fetchAndLoadData called. JSON URL: ${jsonFileUrlDataCytoMarshall}`);
 
     // Append a timestamp to bypass caching.
     // const fetchUrl = jsonFileUrlDataCytoMarshall + '?t=' + new Date().getTime();
@@ -55,7 +56,7 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     // Process the data.
     const updatedElements = assignMissingLatLng(elements);
-    console.log("Updated Elements:", updatedElements);
+    log.debug(`Updated Elements: ${JSON.stringify(updatedElements)}`);
 
     cy.json({ elements: [] });
 
@@ -101,11 +102,11 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     // Fit the viewport to show all nodes after layout is complete
     layout.promiseOn('layoutstop').then(() => {
       cy.fit(cy.nodes(), 120); // Add padding of 50px
-      console.log('Viewport fitted to show all nodes');
+      log.info('Viewport fitted to show all nodes');
     });
 
   } catch (error) {
-    console.error("Error loading graph data from topology yaml:", error);
+    log.error(`Error loading graph data from topology yaml: ${error instanceof Error ? error.message : String(error)}`);
     if (messageSender) {
       messageSender.sendMessageToVscodeEndpointPost('topo-editor-show-vscode-message', {
         type: 'warning',
@@ -156,7 +157,7 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
   const useDefaultLat = existingLats.length === 0;
   const useDefaultLng = existingLngs.length === 0;
   if (useDefaultLat || useDefaultLng) {
-    console.warn("Missing latitude or longitude values. Using default averages.");
+    log.warn('Missing latitude or longitude values. Using default averages.');
     averageLat = useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat;
     averageLng = useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng;
   }
@@ -170,7 +171,7 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
     if (!data.lat || data.lat.trim() === "") {
       const randomOffset = Math.random() * 0.9;
       data.lat = (averageLat + randomOffset).toFixed(15);
-      console.log(`Assigned new lat for ID ${id}: ${data.lat}`);
+      log.debug(`Assigned new lat for ID ${id}: ${data.lat}`);
     } else {
       const normalizedLat = parseFloat(data.lat);
       if (!isNaN(normalizedLat)) {
@@ -178,7 +179,7 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
       } else {
         const randomOffset = Math.random() * 0.9;
         data.lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat + randomOffset).toFixed(15);
-        console.warn(`Invalid lat for ID ${id}. Assigned new lat: ${data.lat}`);
+        log.warn(`Invalid lat for ID ${id}. Assigned new lat: ${data.lat}`);
       }
     }
 
@@ -186,7 +187,7 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
     if (!data.lng || data.lng.trim() === "") {
       const randomOffset = Math.random() * 0.9;
       data.lng = (averageLng + randomOffset).toFixed(15);
-      console.log(`Assigned new lng for ID ${id}: ${data.lng}`);
+      log.debug(`Assigned new lng for ID ${id}: ${data.lng}`);
     } else {
       const normalizedLng = parseFloat(data.lng);
       if (!isNaN(normalizedLng)) {
@@ -194,12 +195,12 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
       } else {
         const randomOffset = Math.random() * 0.9;
         data.lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng + randomOffset).toFixed(15);
-        console.warn(`Invalid lng for ID ${id}. Assigned new lng: ${data.lng}`);
+        log.warn(`Invalid lng for ID ${id}. Assigned new lng: ${data.lng}`);
       }
     }
   });
 
-  console.log("Updated dataArray:", dataArray);
+  log.debug(`Updated dataArray: ${JSON.stringify(dataArray)}`);
   return dataArray;
 
 }
@@ -227,7 +228,7 @@ export async function fetchAndLoadDataEnvironment(keys: EnvironmentKeys[]): Prom
     const url = (window as { jsonFileUrlDataEnvironment?: string }).jsonFileUrlDataEnvironment;
     if (!url) throw new Error("JSON file URL is undefined.");
 
-    console.log(`Fetching environment data from: ${url}`);
+    log.debug(`Fetching environment data from: ${url}`);
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
 
@@ -240,10 +241,10 @@ export async function fetchAndLoadDataEnvironment(keys: EnvironmentKeys[]): Prom
       return acc;
     }, {} as Partial<Record<EnvironmentKeys, string>>);
 
-    console.log("Filtered environment data:", filteredData);
+    log.debug(`Filtered environment data: ${JSON.stringify(filteredData)}`);
     return filteredData;
   } catch (error) {
-    console.error("Error fetching environment data:", error instanceof Error ? error.message : error);
+    log.error(`Error fetching environment data: ${error instanceof Error ? error.message : String(error)}`);
     throw error;
   }
 }
