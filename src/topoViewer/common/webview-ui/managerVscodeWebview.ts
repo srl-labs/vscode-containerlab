@@ -1,10 +1,12 @@
 // file: managerVscodeWebview.ts
 
-// Import logger for webview
-import { log } from './logger';
-
 // This function is typically provided by the VS Code environment.
 declare function acquireVsCodeApi(): any;
+
+/* eslint-disable no-unused-vars */
+export interface LoggerLike {
+  warn: (...args: any[]) => void;
+}
 
 /**
  * VscodeMessageSender handles communication between the webview and the VS Code extension backend.
@@ -15,13 +17,16 @@ export class VscodeMessageSender {
   private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
   private requestCounter = 0;
   private messageHandler: EventListener;
+  private logger: LoggerLike;
 
   /**
    * Creates an instance of VscodeMessageSender.
    * Initializes the VS Code API and sets up a listener for messages from the extension host.
+   * @param logger - Optional logger implementing a warn method. Defaults to console.
    * @throws Will throw an error if the VS Code API is not available in this environment.
    */
-  constructor() {
+  constructor(logger: LoggerLike = console) {
+    this.logger = logger;
     if (typeof acquireVsCodeApi === "function") {
       this.vsCode = acquireVsCodeApi();
     } else {
@@ -45,7 +50,7 @@ export class VscodeMessageSender {
       const { requestId, result, error } = msg;
       const pending = this.pendingRequests.get(requestId);
       if (!pending) {
-        log.warn(`Received response for unknown requestId: ${requestId}`);
+        this.logger.warn(`Received response for unknown requestId: ${requestId}`);
         return;
       }
       this.pendingRequests.delete(requestId);
@@ -87,3 +92,5 @@ export class VscodeMessageSender {
     this.pendingRequests.clear();
   }
 }
+
+export default VscodeMessageSender;

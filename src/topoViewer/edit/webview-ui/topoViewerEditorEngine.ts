@@ -14,7 +14,7 @@ import './tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 import loadCytoStyle from './managerCytoscapeStyle';
-import { VscodeMessageSender } from './managerVscodeWebview';
+import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';

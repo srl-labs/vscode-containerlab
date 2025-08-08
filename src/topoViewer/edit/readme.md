@@ -21,7 +21,6 @@ The project is organized as following key component:
     ├── managerSaveTopo.ts
     ├── managerZoomToFit.ts
     ├── managerViewportPanels.ts
-    ├── managerVscodeWebview.ts
     ├── template
     │   └── vscodeHtmlTemplate.ts
     └── topoViewerEditorEngine.ts
@@ -86,7 +85,7 @@ classDiagram
 - **`managerReloadTopo.ts`**: Reloads topology data from the backend.
 - **`managerAddContainerlabNode.ts`**: Adds new Containerlab nodes to the canvas.
 - **`managerViewportPanels.ts`**: Manages the UI panels associated with the Cytoscape viewport. It includes functionality for displaying node and edge editor panels, updating node properties, and handling panel toggles.
-- **`managerVscodeWebview.ts`**: Manages communication between the webview and the VS Code extension backend. It sends messages to the extension and listens for responses.
+- **`managerVscodeWebview.ts`** (shared in `common/webview-ui`): Manages communication between the webview and the VS Code extension backend. It sends messages to the extension and listens for responses.
 - **`topoViewerEditorEngine.ts`**: The main engine for the topology editor webview. It initializes the Cytoscape instance, manages edge creation, node editing, and viewport panels/buttons.
 - **`template/vscodeHtmlTemplate.ts`**: Contains the HTML template for the webview, which includes the structure and layout of the webview UI.
 

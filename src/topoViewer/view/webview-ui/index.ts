@@ -16,7 +16,7 @@ import './cytoscapeStyles';
 // Initialize global handlers for HTML onclick functions
 initializeGlobalHandlers();
 
-export * from './managerVscodeWebview';
+export * from '../../common/webview-ui/managerVscodeWebview';
 export * from './managerLayoutAlgo';
 export * from './managerGroupManagement';
 export * from './managerSvg';

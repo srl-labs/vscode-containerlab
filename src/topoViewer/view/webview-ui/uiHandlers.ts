@@ -3,7 +3,7 @@
 
 // Import logger for webview
 import { log } from './logger';
-import { VscodeMessageSender } from './managerVscodeWebview';
+import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -12,7 +12,7 @@ let messageSender: VscodeMessageSender | null = null;
 function getMessageSender(): VscodeMessageSender {
   if (!messageSender) {
     try {
-      messageSender = new VscodeMessageSender();
+      messageSender = new VscodeMessageSender(log);
     } catch (error) {
       log.error(`Failed to initialize VscodeMessageSender: ${error}`);
       throw error;
