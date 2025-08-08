@@ -1,0 +1,202 @@
+<!-- Link Properties Panel -->
+<section class="panel panel-overlay bottom-10 left-10 w-[380px] max-h-[700px] overflow-y-auto overflow-x-hidden"
+  id="panel-link" style="display: none;">
+  <p class="panel-heading text-xs">
+    Link Properties
+  </p>
+  <div class="p-0 pl-4 pb-2">
+    <div class="panel-block p-0">
+      <div class="px-0">
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Link Name</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-name">
+                  link-name-placeholder
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right"></label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <div class="relative">
+                  <input type="checkbox" id="panel-link-action-dropdown-toggle" class="hidden peer">
+                  <label for="panel-link-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer">
+                    <span>Actions</span>
+                    <span class="ml-2 text-xs">
+                      <i class="fas fa-angle-down" aria-hidden="true"></i>
+                    </span>
+                  </label>
+                  <div class="dropdown-menu hidden peer-checked:block left-0 w-full" id="panel-link-action-dropdown-menu">
+                    <div class="py-1" id="panel-link-action-dropdown-menu-dropdown-content">
+                      <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
+                        class="py-1 dropdown-item text-xs" id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)
+                      </a>
+                      <a id="endpoint-a-top"></a>
+                      <a id="endpoint-a-bottom"></a>
+
+                      <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target'); document.getElementById('panel-link-action-dropdown-toggle').checked = false;" 
+                        class="py-1 dropdown-item text-xs"
+                        id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)
+                      </a>
+                      <a id="endpoint-b-top"></a>
+                      <a id="endpoint-b-bottom"></a>
+
+                      <hr class="border-t border-default my-1" />
+
+                      <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'source', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
+                        class="py-1 dropdown-item text-xs" id="endpoint-a-edgeshark-vnc">Capture E.Point-A VNC (Edgeshark)
+                      </a>
+                      <a id="endpoint-a-vnc-top"></a>
+                      <a id="endpoint-a-vnc-bottom"></a>
+
+                      <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
+                        class="py-1 dropdown-item text-xs" id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
+                      </a>
+                      <a id="endpoint-b-vnc-top"></a>
+                      <a id="endpoint-b-vnc-bottom"></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoint A Properties -->
+    <div class="panel-block p-0" id="panel-link-endpoint-a">
+      <div class="px-0">
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Endpoint-A</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-name">
+                  link-endpoint-a-name-placeholder
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">MAC address</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-mac-address">
+                  N/A
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">MTU</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-mtu">
+                  N/A
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Type</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-type">
+                  N/A
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoint B Properties -->
+    <div class="panel-block p-0" id="panel-link-endpoint-b">
+      <div class="px-0">
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Endpoint-B</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-name">
+                  link-endpoint-b-name-placeholder
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">MAC address</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-mac-address">
+                  N/A
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">MTU</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-mtu">
+                  N/A
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Type</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-type">
+                  N/A
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -10,9 +10,28 @@
 }
 
 @layer components {
+  /* Navbar styles */
+  .navbar {
+    background-color: var(--vscode-titleBar-activeBackground, #252526);
+    border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+    @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 shadow-md;
+  }
+  
+  .navbar-brand {
+    @apply flex items-center space-x-3;
+  }
+  
+  .navbar-end {
+    @apply ml-auto flex items-center;
+  }
+  
   /* Button styles */
   .btn {
     @apply px-4 py-2 rounded font-medium transition-colors;
+  }
+  
+  .btn-icon {
+    @apply p-2;
   }
   
   .btn-primary {
@@ -80,11 +99,13 @@
     --vscode-editor-background: #1e1e1e;
     --vscode-editor-foreground: #cccccc;
     --vscode-panel-background: #252526;
+    --vscode-panel-border: #3c3c3c;
     --vscode-panel-foreground: #cccccc;
     --vscode-button-background: #0e639c;
     --vscode-button-foreground: #ffffff;
     --vscode-input-background: #3c3c3c;
     --vscode-input-foreground: #cccccc;
+    --vscode-titleBar-activeBackground: #3c3c3c;
   }
 }
 
@@ -93,10 +114,18 @@
     --vscode-editor-background: #ffffff;
     --vscode-editor-foreground: #000000;
     --vscode-panel-background: #f3f3f3;
+    --vscode-panel-border: #e5e5e5;
     --vscode-panel-foreground: #000000;
     --vscode-button-background: #007acc;
     --vscode-button-foreground: #ffffff;
     --vscode-input-background: #ffffff;
     --vscode-input-foreground: #000000;
+    --vscode-titleBar-activeBackground: #dddddd;
+  }
+}
+
+@layer utilities {
+  .border-default {
+    border-color: var(--vscode-panel-border, #3c3c3c);
   }
 }

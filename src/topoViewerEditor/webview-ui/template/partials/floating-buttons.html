@@ -1,0 +1,53 @@
+<!-- Floating Action Buttons -->
+<div id="floating-buttons" class="fixed bottom-6 right-6 flex flex-col space-y-3 z-50">
+  
+  <!-- Add Node Button -->
+  <button
+    id="fab-add-node"
+    title="Add Containerlab Node (or Shift+Click)"
+    onclick="window.topoViewerEditorEngine.addNodeManager.viewportButtonsAddContainerlabNode(window.topoViewerEditorEngine.cy, event); return false;"
+    class="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+  >
+    <i class="fa-solid fa-plus text-xl"></i>
+  </button>
+
+  <!-- Add Group Button -->
+  <button
+    id="fab-add-group"
+    title="Add Group"
+    onclick="window.topoViewerEditorEngine.groupManager.createNewParent(window.topoViewerEditorEngine.cy, {createDummyChild: true}); return false;"
+    class="w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+  >
+    <i class="fa-solid fa-layer-group text-xl"></i>
+  </button>
+
+  <!-- Save Button -->
+  <button
+    id="fab-save"
+    title="Save Topology"
+    onclick="window.topoViewerEditorEngine.saveManager.viewportButtonsSaveTopo(window.topoViewerEditorEngine.cy); return false;"
+    class="w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+  >
+    <i class="fa-solid fa-floppy-disk text-xl"></i>
+  </button>
+
+  <!-- Layout Button -->
+  <button
+    id="fab-layout"
+    title="Layout Manager"
+    onclick="viewportButtonsLayoutAlgo(event)"
+    class="w-12 h-12 bg-gray-600 hover:bg-gray-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+  >
+    <i class="fas fa-circle-nodes text-lg"></i>
+  </button>
+
+  <!-- Zoom to Fit Button -->
+  <button
+    id="fab-zoom-fit"
+    title="Fit to Viewport"
+    onclick="window.topoViewerEditorEngine.zoomToFitManager.viewportButtonsZoomToFit(window.topoViewerEditorEngine.cy); return false;"
+    class="w-12 h-12 bg-gray-600 hover:bg-gray-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+  >
+    <i class="fas fa-expand text-lg"></i>
+  </button>
+</div>

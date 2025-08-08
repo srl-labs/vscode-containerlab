@@ -1,0 +1,39 @@
+    <!-- Inject schemaUri as a global variable -->
+    <script> window.schemaUrl = "{{schemaUri}}"; </script>
+
+    <!-- Inject imagesUri as a global variable -->
+    <script> window.imagesUrl = "{{imagesUri}}"; </script>
+
+    <!-- Inject JSON dataCytoMarshall.json as a global variable -->
+    <script> window.jsonFileUrlDataCytoMarshall = "{{jsonFileUrlDataCytoMarshall}}"; </script>
+
+    <!-- Inject JSON environment.json as a global variable -->
+    <script> window.jsonFileUrlDataEnvironment = "{{jsonFileUrlDataEnvironment}}"; </script>
+
+    <!-- Inject isVscodeDeployment boolean as a global variable -->
+    <script> window.isVscodeDeployment = "{{isVscodeDeployment}}"; </script>
+
+    <!-- Inject allowedHostname string as a global variable -->
+    <script> window.allowedHostname = "{{allowedHostname}}"; </script>
+
+    <!-- Inject mappings and defaults -->
+    <script> window.imageMapping = {{imageMapping}}; </script>
+    <script> window.ifacePatternMapping = {{ifacePatternMapping}}; </script>
+    <script> window.defaultKind = "{{defaultKind}}"; </script>
+    <script> window.defaultType = "{{defaultType}}"; </script>
+
+    <!-- Load the compiled TypeScript bundle -->
+    <script src="{{jsOutDir}}/topoViewerEditorEngine.js?ver=1"></script>
+
+    <!-- Initialize TopoViewerEditor after bundle loads -->
+    <script>
+      if (typeof topoViewerEditorEngine !== 'undefined') {
+        if (typeof log !== 'undefined' && log.info) {
+          log.info('TopoViewerEditorEngine loaded successfully');
+        }
+      } else {
+        if (typeof log !== 'undefined' && log.error) {
+          log.error('TopoViewerEditorEngine failed to load');
+        }
+      }
+    </script>
