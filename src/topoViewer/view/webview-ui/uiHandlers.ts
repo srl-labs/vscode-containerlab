@@ -235,8 +235,7 @@ export function viewportDrawerCaptureFunc(event: Event): void {
  * Save topology data back to the backend
  * Updates node positions and group information before saving
  */
-// eslint-disable-next-line no-unused-vars
-export async function viewportButtonsSaveTopo(_cy: any): Promise<void> {
+export async function viewportButtonsSaveTopo(): Promise<void> {
   try {
     log.info('viewportButtonsSaveTopo triggered');
 

@@ -4,12 +4,14 @@ import { log } from './logger';
 import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from './deploymentUtils';
+import { saveViewportPositions } from './saveViewportPositions';
 
 /* eslint-disable no-unused-vars */
 export interface PanelOptions {
   context: vscode.ExtensionContext;
   adaptor: TopoViewerAdaptorClab;
   folderName: string;
+  yamlFilePath: string;
   deploymentState: DeploymentState;
   viewerMode: ViewerMode;
   allowedHostname: string;
@@ -24,6 +26,7 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
     context,
     adaptor,
     folderName,
+    yamlFilePath,
     deploymentState,
     viewerMode,
     findContainerNode,
@@ -147,6 +150,33 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
           }
           await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
           result = `VNC capture executed for ${nodeName}/${interfaceName}`;
+          break;
+        }
+        case 'topo-viewport-save': {
+          try {
+            await saveViewportPositions(
+              yamlFilePath,
+              payload as string
+            );
+            result = `Saved positions and groups successfully!`;
+            log.info('Viewport positions saved successfully');
+            // Show success message
+            vscode.window.showInformationMessage('Positions and groups saved successfully!');
+          } catch (saveError: any) {
+            error = `Failed to save topology: ${saveError.message ?? String(saveError)}`;
+            log.error(`Error saving topology: ${saveError}`);
+            vscode.window.showErrorMessage(`Failed to save topology: ${saveError.message}`);
+          }
+          break;
+        }
+        case 'reload-viewport': {
+          try {
+            await onUpdatePanelHtml();
+            result = 'Viewport reloaded successfully';
+          } catch (reloadError: any) {
+            error = `Failed to reload viewport: ${reloadError.message ?? String(reloadError)}`;
+            log.error(`Error reloading viewport: ${reloadError}`);
+          }
           break;
         }
         default:

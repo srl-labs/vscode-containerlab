@@ -136,6 +136,7 @@ export class TopoViewer {
         context: this.context,
         adaptor: this.adaptor,
         folderName,
+        yamlFilePath,
         deploymentState: this.deploymentState,
         viewerMode: this.viewerMode,
         allowedHostname: this.adaptor.allowedhostname as string,

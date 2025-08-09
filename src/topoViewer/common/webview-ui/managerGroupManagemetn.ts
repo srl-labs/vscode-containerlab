@@ -173,15 +173,15 @@ export class ManagerGroupManagemetn {
 
       this.cy.on('dragfree', 'node', (event: cytoscape.EventObject) => {
         const draggedNode = event.target as cytoscape.NodeSingular;
-        
+
         // Don't process group nodes or dummy children being dragged
-        if (draggedNode.data('topoViewerRole') === 'group' || 
+        if (draggedNode.data('topoViewerRole') === 'group' ||
             draggedNode.data('topoViewerRole') === 'dummyChild') {
           return;
         }
-        
+
         let assignedParent: cytoscape.NodeSingular | null = null;
-        
+
         // Look for group nodes instead of just parent nodes
         // This ensures we find groups even if they only have dummy children
         this.cy.nodes('[topoViewerRole = "group"]').forEach(parent => {
@@ -194,7 +194,7 @@ export class ManagerGroupManagemetn {
           const parentNode = assignedParent as cytoscape.NodeSingular;
           draggedNode.move({ parent: parentNode.id() });
           log.info(`${draggedNode.id()} became a child of ${parentNode.id()}`);
-          
+
           // Remove dummy child if there are now real children
           const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
           if (dummyChild.length > 0) {
