@@ -1,0 +1,82 @@
+<!-- Link Editor Panel -->
+<div class="panel panel-overlay fixed bottom-10 left-10 w-[340px] max-h-[400px] overflow-y-hidden overflow-x-hidden z-[21]"
+  id="panel-link-editor" style="display: none;">
+  <p class="panel-heading text-xs">
+    Link Editor
+  </p>
+  <div class="p-0">
+    <div class="panel-block p-0">
+      <div class="px-0">
+        <!-- Link ID Display -->
+        <div class="my-auto">
+          <div class="p-3">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Link</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <div id="panel-link-editor-id" class="text-xs text-left font-normal break-words">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Source Endpoint -->
+        <div class="my-auto">
+          <div class="p-3">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Source Endpoint</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <input type="text" 
+                       id="panel-link-editor-source-endpoint" 
+                       class="input-field text-xs"
+                       placeholder="e.g., eth1, e1-1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Endpoint -->
+        <div class="my-auto">
+          <div class="p-3">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1">
+                <label class="label text-xs text-right">Target Endpoint</label>
+              </div>
+              <div class="w-2/3 pl-3">
+                <input type="text" 
+                       id="panel-link-editor-target-endpoint" 
+                       class="input-field text-xs"
+                       placeholder="e.g., eth1, e1-1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="my-auto">
+          <div class="p-3">
+            <div class="flex items-center">
+              <div class="w-1/3 pr-1"></div>
+              <div class="w-2/3 pl-3">
+                <div class="space-x-2">
+                  <button id="panel-link-editor-save-button"
+                          class="btn btn-primary btn-small">Save</button>
+                  <button id="panel-link-editor-close-button" 
+                          class="btn btn-outlined btn-small"
+                          onclick="document.getElementById('panel-link-editor').style.display='none';">
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

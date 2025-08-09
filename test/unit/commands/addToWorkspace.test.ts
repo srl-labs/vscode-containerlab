@@ -34,8 +34,9 @@ describe('addLabFolderToWorkspace command', () => {
   beforeEach(() => {
     vscodeStub.window.lastInfoMessage = '';
     vscodeStub.workspace.workspaceFolders = [];
-    sinon.spy(vscodeStub.workspace, 'updateWorkspaceFolders');
-    sinon.spy(vscodeStub.window, 'showInformationMessage');
+      sinon.spy(vscodeStub.workspace, 'updateWorkspaceFolders');
+      sinon.spy(vscodeStub.window, 'showInformationMessage');
+      sinon.spy(vscodeStub.window, 'showErrorMessage');
   });
 
   afterEach(() => {
@@ -60,11 +61,12 @@ describe('addLabFolderToWorkspace command', () => {
   });
 
   // Should return an error when the labPath field is empty.
-  it('returns an error when labPath is missing', async () => {
-    const result = await addLabFolderToWorkspace({ labPath: { absolute: '' } } as any);
-    expect(result).to.be.an('error');
-    expect((result as Error).message).to.equal('No lab path found for this lab');
-    const addSpy = (vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy);
-    expect(addSpy.notCalled).to.be.true;
-  });
+    it('shows an error when labPath is missing', async () => {
+      const result = await addLabFolderToWorkspace({ labPath: { absolute: '' } } as any);
+      expect(result).to.be.undefined;
+      const errSpy = vscodeStub.window.showErrorMessage as sinon.SinonSpy;
+      expect(errSpy.calledOnceWith('No lab path found for this lab')).to.be.true;
+      const addSpy = vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy;
+      expect(addSpy.notCalled).to.be.true;
+    });
 });

@@ -1,0 +1,384 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* VSCode Theme Variables */
+:root {
+  --bg-primary: var(--vscode-editor-background);
+  --bg-secondary: var(--vscode-panel-background);
+  --bg-hover: var(--vscode-list-hoverBackground);
+  --text-primary: var(--vscode-editor-foreground);
+  --text-secondary: var(--vscode-descriptionForeground);
+  --border: var(--vscode-panel-border);
+  --accent: var(--vscode-button-background);
+  --accent-hover: var(--vscode-button-hoverBackground);
+  --success: var(--vscode-charts-green);
+  --warning: var(--vscode-charts-yellow);
+  --error: var(--vscode-charts-red);
+  --info: var(--vscode-charts-blue);
+  --diff-add: var(--vscode-diffEditor-insertedTextBorder, var(--vscode-charts-green));
+  --diff-add-bg: var(--vscode-diffEditor-insertedTextBackground);
+  --diff-add-line-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground));
+  --diff-remove: var(--vscode-diffEditor-removedTextBorder, var(--vscode-charts-red));
+  --diff-remove-bg: var(--vscode-diffEditor-removedTextBackground);
+  --diff-remove-line-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground));
+  --diff-line-number: var(--vscode-editorLineNumber-foreground);
+}
+
+@layer base {
+  html, body {
+    @apply h-full w-full m-0 p-0 overflow-hidden;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+}
+
+/* Custom component classes using Tailwind */
+@layer components {
+  /* Button styles */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    background-color: var(--accent);
+    color: var(--vscode-button-foreground);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-secondaryBackground));
+  }
+
+  .btn-outlined {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background-color: transparent;
+  }
+  
+  .btn-outlined:hover {
+    background-color: var(--bg-hover);
+  }
+
+  .btn-danger {
+    border: 1px solid var(--error);
+    color: var(--error);
+    background-color: transparent;
+  }
+
+  .btn-danger:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  .btn-small {
+    @apply px-3 py-1 text-xs;
+  }
+  
+  .btn-icon {
+    @apply p-2;
+  }
+  
+  /* Panel styles */
+  .panel {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    @apply rounded-lg shadow-md;
+  }
+  
+  .panel-heading, .panel-header {
+    background-color: var(--vscode-sideBar-background);
+    border-bottom: 1px solid var(--border);
+    @apply px-4 py-3 font-semibold text-sm;
+  }
+  
+  .panel-block {
+    border-bottom: 1px solid var(--border);
+    @apply px-4 py-3 last:border-b-0;
+  }
+  
+  /* Dropdown styles */
+  .dropdown-menu {
+    background-color: var(--vscode-dropdown-background);
+    border: 1px solid var(--vscode-dropdown-border);
+    @apply absolute z-50 mt-1 rounded-md shadow-lg;
+  }
+  
+  .dropdown-button {
+    @apply px-3 py-2 text-sm rounded inline-flex items-center;
+    background-color: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+  }
+  
+  .dropdown-button:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+  
+  .dropdown-item {
+    color: var(--vscode-dropdown-foreground);
+    @apply block px-4 py-2 text-sm cursor-pointer;
+  }
+  
+  .dropdown-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+  
+  /* Input styles */
+  .input-field {
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    @apply w-full px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:border-transparent;
+  }
+  
+  .input-field:focus {
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+  }
+  
+  /* Label styles */
+  .label {
+    color: var(--text-primary);
+    @apply block text-sm font-medium;
+  }
+  
+  /* Modal styles */
+  .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    @apply fixed inset-0 z-50;
+  }
+  
+  .modal-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-xl z-50 max-w-2xl w-full max-h-[90vh] overflow-auto;
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+    border-color: var(--vscode-progressBar-background);
+    border-top-color: var(--accent);
+    @apply inline-block w-8 h-8 border-4 rounded-full animate-spin;
+  }
+  
+  /* Navbar styles */
+  .navbar {
+    background-color: var(--vscode-titleBar-activeBackground);
+    border-bottom: 1px solid var(--border);
+    @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 shadow-md;
+  }
+  
+  .navbar-brand {
+    @apply flex items-center space-x-3;
+  }
+  
+  .navbar-end {
+    @apply ml-auto flex items-center;
+  }
+  
+  /* Column utilities */
+  .column {
+    background-color: var(--vscode-panel-background);
+    @apply flex-1;
+  }
+  
+  .columns {
+    @apply flex flex-wrap -mx-2;
+  }
+  
+  .columns > * {
+    @apply px-2;
+  }
+  
+  /* Size utilities matching Bulma */
+  .is-size-7 {
+    @apply text-xs;
+  }
+  
+  .is-size-6 {
+    @apply text-sm;
+  }
+  
+  .is-size-5 {
+    @apply text-base;
+  }
+  
+  .is-size-4 {
+    @apply text-lg;
+  }
+  
+  /* Visibility utilities */
+  .is-hidden {
+    @apply hidden;
+  }
+  
+  /* Flex utilities matching Bulma */
+  .is-flex {
+    @apply flex;
+  }
+  
+  .is-flex-direction-column {
+    @apply flex-col;
+  }
+  
+  .is-justify-content-space-between {
+    @apply justify-between;
+  }
+  
+  .is-justify-content-center {
+    @apply justify-center;
+  }
+  
+  .is-justify-content-flex-end {
+    @apply justify-end;
+  }
+  
+  .is-align-items-center {
+    @apply items-center;
+  }
+
+  /* Migrated from style.css */
+  .panel-overlay {
+    background-color: var(--vscode-editorWidget-background) !important;
+    border: 1px solid var(--vscode-editorWidget-border) !important;
+    @apply fixed z-[9999] shadow-xl;
+  }
+
+  .navbar-element-4a {
+    background-color: var(--vscode-titleBar-activeBackground);
+  }
+
+  .ViewPortDrawer {
+    background-color: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-panel-border);
+    @apply shadow-md;
+  }
+
+  .box {
+    background-color: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-panel-border);
+    @apply shadow-md;
+  }
+
+  .panel-tabContainer {
+    background-color: var(--vscode-panel-background);
+    @apply p-0;
+  }
+
+  .loading {
+    @apply absolute top-1/2 left-1/2 w-24 h-24 -translate-x-1/2 -translate-y-1/2;
+  }
+
+  /* Cytoscape context menu styling */
+  .cxtmenu {
+    background-color: var(--vscode-dropdown-background);
+    border: 1px solid var(--vscode-dropdown-border);
+  }
+
+  .cxtmenu-item {
+    color: var(--vscode-dropdown-foreground);
+  }
+
+  .cxtmenu-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  /* Text utilities */
+  .has-text-weight-normal {
+    @apply font-normal;
+  }
+  
+  .has-text-weight-medium {
+    @apply font-medium;
+  }
+  
+  .has-text-weight-semibold {
+    @apply font-semibold;
+  }
+  
+  .has-text-weight-bold {
+    @apply font-bold;
+  }
+  
+  .has-text-weight-light {
+    @apply font-light;
+  }
+  
+  .has-text-white {
+    @apply text-white;
+  }
+  
+  .has-text-left {
+    @apply text-left;
+  }
+  
+  .has-text-right {
+    @apply text-right;
+  }
+  
+  .has-text-center {
+    @apply text-center;
+  }
+  
+  /* Background utilities */
+  .has-background-4a {
+    background-color: var(--vscode-titleBar-activeBackground);
+    @apply shadow-md;
+  }
+  
+  /* Unselectable text */
+  .is-unselectable {
+    @apply select-none;
+  }
+  
+  /* Field utilities */
+  .field {
+    @apply mb-4;
+  }
+  
+  .control {
+    @apply relative;
+  }
+  
+  .has-icons-left .icon {
+    @apply absolute left-3 top-1/2 transform -translate-y-1/2;
+  }
+  
+  .has-icons-left .input-field {
+    @apply pl-10;
+  }
+
+  /* Link utilities */
+  .link {
+    color: var(--vscode-textLink-foreground);
+  }
+
+  .link:hover {
+    color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .border-default {
+    border-color: var(--border);
+  }
+}
+
+/* Override cytoscape default styles for VSCode theme */
+#cy {
+  background-color: var(--vscode-editor-background);
+}

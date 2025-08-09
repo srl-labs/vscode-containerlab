@@ -23,7 +23,7 @@ function impairmentsAvailable(): boolean {
  * @param impairment The impairment flag (ie. 'jitter', 'loss' etc.)
  * @param value The value of the impairment (ie. If impairment is jitter, this could be '50ms').
  */
-async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, value?: string): Promise<any> {
+async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, value?: string): Promise<void> {
   if (!impairmentsAvailable()) {
     return;
   }
@@ -38,14 +38,14 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
 
   // Begin executing the command.
-  execCommandInOutput(cmd, false,
-    () => {
-      vscode.window.showInformationMessage(`Successfully ${msg}`);
-    },
-    (proc: unknown, stderr: string) => {
-      vscode.window.showErrorMessage(`Failed to ${msg}\n\n${stderr}.`);
-    }
-  );
+    execCommandInOutput(cmd, false,
+      () => {
+        vscode.window.showInformationMessage(`Successfully ${msg}`);
+      },
+      (_proc: unknown, stderr: string): void => {
+        vscode.window.showErrorMessage(`Failed to ${msg}\n\n${stderr}.`);
+      }
+    );
 }
 
 /**
@@ -54,7 +54,7 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
  *
  * @param node Interface that delay is to be set on.
  */
-export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
+export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {
   if (!node || !(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage("No interface selected to set delay for.");
     return;
@@ -64,14 +64,15 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
     return;
   }
 
-  const opts: vscode.InputBoxOptions = {
-    title: `Set link delay for ${node.name} on ${node.parentName}`,
-    placeHolder: `Link delay with time unit. ie: 50ms, 1s, 30s`,
-    validateInput: (input: string) => {
-      if (input.length === 0) { return "Input should not be empty"; }
-      if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
-    }
-  };
+    const opts: vscode.InputBoxOptions = {
+      title: `Set link delay for ${node.name} on ${node.parentName}`,
+      placeHolder: `Link delay with time unit. ie: 50ms, 1s, 30s`,
+      validateInput: (input: string): string | undefined => {
+        if (input.length === 0) { return "Input should not be empty"; }
+        if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
+        return undefined;
+      }
+    };
 
   const val = await vscode.window.showInputBox(opts);
   setImpairment(node, "delay", val);
@@ -83,7 +84,7 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<any> {
  *
  * @param node Interface that jitter is to be set on.
  */
-export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
+export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<void> {
   if (!node || !(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage("No interface selected to set jitter for.");
     return;
@@ -93,14 +94,15 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
     return;
   }
 
-  const opts: vscode.InputBoxOptions = {
-    title: `Set link jitter for ${node.name} on ${node.parentName}`,
-    placeHolder: `Jitter with time unit. ie: 50ms, 1s, 30s`,
-    validateInput: (input: string) => {
-      if (input.length === 0) { return "Input should not be empty"; }
-      if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
-    }
-  };
+    const opts: vscode.InputBoxOptions = {
+      title: `Set link jitter for ${node.name} on ${node.parentName}`,
+      placeHolder: `Jitter with time unit. ie: 50ms, 1s, 30s`,
+      validateInput: (input: string): string | undefined => {
+        if (input.length === 0) { return "Input should not be empty"; }
+        if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
+        return undefined;
+      }
+    };
 
   const val = await vscode.window.showInputBox(opts);
   setImpairment(node, "jitter", val);
@@ -112,7 +114,7 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<any> {
  *
  * @param node Interface that packet loss is to be set on.
  */
-export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
+export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<void> {
   if (!node || !(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage("No interface selected to set loss for.");
     return;
@@ -122,14 +124,15 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
     return;
   }
 
-  const opts: vscode.InputBoxOptions = {
-    title: `Set packet loss for ${node.name} on ${node.parentName}`,
-    placeHolder: `Packet loss as a percentage. ie 50 means 50% packet loss`,
-    validateInput: (input: string) => {
-      if (input.length === 0) { return "Input should not be empty"; }
-      if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100."; }
-    }
-  };
+    const opts: vscode.InputBoxOptions = {
+      title: `Set packet loss for ${node.name} on ${node.parentName}`,
+      placeHolder: `Packet loss as a percentage. ie 50 means 50% packet loss`,
+      validateInput: (input: string): string | undefined => {
+        if (input.length === 0) { return "Input should not be empty"; }
+        if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100."; }
+        return undefined;
+      }
+    };
 
   const val = await vscode.window.showInputBox(opts);
   setImpairment(node, "loss", val);
@@ -141,7 +144,7 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<any> {
  *
  * @param node Interface that rate-limiting is to be set on.
  */
-export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
+export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<void> {
   if (!node || !(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage("No interface selected to set a rate-limit for.");
     return;
@@ -151,14 +154,15 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
     return;
   }
 
-  const opts: vscode.InputBoxOptions = {
-    title: `Set egress rate-limit for ${node.name} on ${node.parentName}`,
-    placeHolder: `Rate-limit in kbps. ie 100 means 100kbit/s`,
-    validateInput: (input: string) => {
-      if (input.length === 0) { return "Input should not be empty"; }
-      if (!(input.match("[0-9]+"))) { return "Input should be a number"; }
-    }
-  };
+    const opts: vscode.InputBoxOptions = {
+      title: `Set egress rate-limit for ${node.name} on ${node.parentName}`,
+      placeHolder: `Rate-limit in kbps. ie 100 means 100kbit/s`,
+      validateInput: (input: string): string | undefined => {
+        if (input.length === 0) { return "Input should not be empty"; }
+        if (!(input.match("[0-9]+"))) { return "Input should be a number"; }
+        return undefined;
+      }
+    };
 
   const val = await vscode.window.showInputBox(opts);
   setImpairment(node, "rate", val);
@@ -170,7 +174,7 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<any> {
  *
  * @param node Interface that link corruption is to be set on.
  */
-export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<any> {
+export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<void> {
   if (!node || !(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage("No interface selected to set packet corruption for.");
     return;
@@ -180,14 +184,15 @@ export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<an
     return;
   }
 
-  const opts: vscode.InputBoxOptions = {
-    title: `Set packet corruption for ${node.name} on ${node.parentName}`,
-    placeHolder: `Packet corruption as a percentage. ie 50 means 50% probability of packet corruption.`,
-    validateInput: (input: string) => {
-      if (input.length === 0) { return "Input should not be empty"; }
-      if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100."; }
-    }
-  };
+    const opts: vscode.InputBoxOptions = {
+      title: `Set packet corruption for ${node.name} on ${node.parentName}`,
+      placeHolder: `Packet corruption as a percentage. ie 50 means 50% probability of packet corruption.`,
+      validateInput: (input: string): string | undefined => {
+        if (input.length === 0) { return "Input should not be empty"; }
+        if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100."; }
+        return undefined;
+      }
+    };
 
   const val = await vscode.window.showInputBox(opts);
   setImpairment(node, "corruption", val);
