@@ -182,14 +182,18 @@ export class ManagerViewportPanels {
       // Register the save button event.
       const panelNodeEditorSaveButton = document.getElementById("panel-node-editor-save-button");
       if (panelNodeEditorSaveButton) {
+        // Clone to remove any existing event listeners
         const newSaveButton = panelNodeEditorSaveButton.cloneNode(true) as HTMLElement;
         panelNodeEditorSaveButton.parentNode?.replaceChild(newSaveButton, panelNodeEditorSaveButton);
         newSaveButton.addEventListener("click", async () => {
           await this.updateNodeFromEditor(node);
           const suppressNotification = false;
           await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
-        }, { once: true });
+        });
       }
+
+      // Add global click handler to close dropdowns when clicking outside
+      this.setupDropdownCloseHandler();
     } catch (error: any) {
       log.error(`Error fetching or processing JSON data: ${error.message}`);
       throw error;
@@ -463,7 +467,7 @@ export class ManagerViewportPanels {
   private panelNodeEditorPopulateKindDropdown(options: string[]): void {
     const dropdownTrigger = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button span");
     const dropdownContent = document.getElementById("panel-node-kind-dropdown-content");
-    const dropdownButton = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button");
+    const dropdownButton = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button") as HTMLButtonElement;
     const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
 
     if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
@@ -475,6 +479,13 @@ export class ManagerViewportPanels {
     dropdownTrigger.textContent = this.panelNodeEditorKind;
     // Clear any existing content.
     dropdownContent.innerHTML = "";
+
+    // Add click handler to toggle dropdown
+    dropdownButton.onclick = (e) => {
+      e.preventDefault();
+      dropdownContainer.classList.toggle("is-active");
+      dropdownContent.classList.toggle("hidden");
+    };
 
     options.forEach(option => {
       const optionElement = document.createElement("a");
@@ -489,6 +500,7 @@ export class ManagerViewportPanels {
         log.debug(`${this.panelNodeEditorKind} selected`);
         dropdownTrigger.textContent = this.panelNodeEditorKind;
         dropdownContainer.classList.remove("is-active");
+        dropdownContent.classList.add("hidden");
         const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(this.nodeSchemaData, `(${option})`);
         // Reset the stored type when kind changes
         this.panelNodeEditorType = "";
@@ -546,7 +558,7 @@ export class ManagerViewportPanels {
   private panelNodeEditorPopulateTypeDropdown(options: string[]): void {
     const dropdownTrigger = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button span");
     const dropdownContent = document.getElementById("panel-node-type-dropdown-content");
-    const dropdownButton = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button");
+    const dropdownButton = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button") as HTMLButtonElement;
     const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
 
     if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
@@ -560,6 +572,13 @@ export class ManagerViewportPanels {
     dropdownTrigger.textContent = this.panelNodeEditorType || "";
     dropdownContent.innerHTML = "";
 
+    // Add click handler to toggle dropdown
+    dropdownButton.onclick = (e) => {
+      e.preventDefault();
+      dropdownContainer.classList.toggle("is-active");
+      dropdownContent.classList.toggle("hidden");
+    };
+
     options.forEach(option => {
       const optionElement = document.createElement("a");
       optionElement.classList.add("dropdown-item", "label", "has-text-weight-normal", "is-small", "py-0");
@@ -571,6 +590,7 @@ export class ManagerViewportPanels {
         this.panelNodeEditorType = option;
         dropdownTrigger.textContent = this.panelNodeEditorType;
         dropdownContainer.classList.remove("is-active");
+        dropdownContent.classList.add("hidden");
       });
 
       dropdownContent.appendChild(optionElement);
@@ -585,7 +605,7 @@ export class ManagerViewportPanels {
   private panelNodeEditorPopulateTopoViewerRoleDropdown(options: string[]): void {
     const dropdownTrigger = document.querySelector("#panel-node-topoviewerrole-dropdown .dropdown-trigger button span");
     const dropdownContent = document.getElementById("panel-node-topoviewerrole-dropdown-content");
-    const dropdownButton = document.querySelector("#panel-node-topoviewerrole-dropdown .dropdown-trigger button");
+    const dropdownButton = document.querySelector("#panel-node-topoviewerrole-dropdown .dropdown-trigger button") as HTMLButtonElement;
     const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
 
     if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
@@ -597,6 +617,13 @@ export class ManagerViewportPanels {
     dropdownTrigger.textContent = this.panelNodeEditorTopoViewerRole;
     // Clear any existing content.
     dropdownContent.innerHTML = "";
+
+    // Add click handler to toggle dropdown
+    dropdownButton.onclick = (e) => {
+      e.preventDefault();
+      dropdownContainer.classList.toggle("is-active");
+      dropdownContent.classList.toggle("hidden");
+    };
 
     options.forEach(option => {
       const optionElement = document.createElement("a");
@@ -610,6 +637,7 @@ export class ManagerViewportPanels {
         log.debug(`${this.panelNodeEditorTopoViewerRole} selected`);
         dropdownTrigger.textContent = this.panelNodeEditorTopoViewerRole;
         dropdownContainer.classList.remove("is-active");
+        dropdownContent.classList.add("hidden");
       });
 
       dropdownContent.appendChild(optionElement);
@@ -755,5 +783,28 @@ export class ManagerViewportPanels {
    */
   public setPanel01Cy(flag: boolean): void {
     this.isPanel01Cy = flag;
+  }
+
+  /**
+   * Sets up a global click handler to close dropdowns when clicking outside.
+   */
+  private setupDropdownCloseHandler(): void {
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+
+      // Check if click is outside all dropdowns
+      const dropdowns = ['panel-node-kind-dropdown', 'panel-node-topoviewerrole-dropdown', 'panel-node-type-dropdown'];
+
+      dropdowns.forEach(dropdownId => {
+        const dropdown = document.getElementById(dropdownId);
+        if (dropdown && !dropdown.contains(target)) {
+          dropdown.classList.remove('is-active');
+          const content = dropdown.querySelector('.dropdown-menu');
+          if (content) {
+            content.classList.add('hidden');
+          }
+        }
+      });
+    });
   }
 }

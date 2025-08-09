@@ -34,15 +34,17 @@
                     <label class="label text-xs text-right">Kind</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <div class="relative" id="panel-node-kind-dropdown">
-                      <button class="btn btn-small w-full flex justify-between items-center">
-                        <span>Select Kind</span>
-                        <span class="text-xs">
-                          <i class="fas fa-angle-down" aria-hidden="true"></i>
-                        </span>
-                      </button>
+                    <div class="dropdown relative" id="panel-node-kind-dropdown">
+                      <div class="dropdown-trigger">
+                        <button class="btn btn-small w-full flex justify-between items-center" aria-haspopup="true" aria-controls="panel-node-kind-dropdown-content">
+                          <span>Select Kind</span>
+                          <span class="text-xs">
+                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                          </span>
+                        </button>
+                      </div>
                       <div class="dropdown-menu hidden left-0 w-full max-h-30 overflow-y-auto" 
-                        id="panel-node-kind-dropdown-content">
+                        id="panel-node-kind-dropdown-content" role="menu">
                       </div>
                     </div>
                   </div>
@@ -58,15 +60,17 @@
                     <label class="label text-xs text-right">TopoViewer Role</label>
                   </div>
                   <div class="w-2/3 pl-3">
-                    <div class="relative" id="panel-node-topoviewerrole-dropdown">
-                      <button class="btn btn-small w-full flex justify-between items-center">
-                        <span>Select TopoViewerRole</span>
-                        <span class="text-xs">
-                          <i class="fas fa-angle-down" aria-hidden="true"></i>
-                        </span>
-                      </button>
+                    <div class="dropdown relative" id="panel-node-topoviewerrole-dropdown">
+                      <div class="dropdown-trigger">
+                        <button class="btn btn-small w-full flex justify-between items-center" aria-haspopup="true" aria-controls="panel-node-topoviewerrole-dropdown-content">
+                          <span>Select TopoViewerRole</span>
+                          <span class="text-xs">
+                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                          </span>
+                        </button>
+                      </div>
                       <div class="dropdown-menu hidden left-0 w-full max-h-15 overflow-y-auto" 
-                        id="panel-node-topoviewerrole-dropdown-content">
+                        id="panel-node-topoviewerrole-dropdown-content" role="menu">
                       </div>
                     </div>
                   </div>
@@ -125,7 +129,7 @@
                   <div class="w-2/3 pl-3">
                     <div class="space-x-2">
                       <button class="btn btn-primary btn-small"
-                        onclick="saveNodeToEditorToFile()">Save</button>
+                        id="panel-node-editor-save-button">Save</button>
                       <button class="btn btn-outlined btn-small"
                         id="panel-node-editor-close-button">Close</button>
                     </div>
