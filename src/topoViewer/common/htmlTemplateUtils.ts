@@ -28,6 +28,7 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   ifacePatternMapping: Record<string, string>;
   defaultKind: string;
   defaultType: string;
+  updateLinkEndpointsOnKindChange: boolean;
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -156,6 +157,7 @@ export function generateHtmlTemplate(
       ifacePatternMapping: JSON.stringify(editorParams.ifacePatternMapping),
       defaultKind: editorParams.defaultKind,
       defaultType: editorParams.defaultType,
+      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
     };
   }
 

@@ -273,12 +273,14 @@ topology:
       const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
       const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
       const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
+      const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
 
       const editorParams: Partial<EditorTemplateParams> = {
         imageMapping,
         ifacePatternMapping,
         defaultKind,
         defaultType,
+        updateLinkEndpointsOnKindChange,
       };
 
       const mode: TemplateMode = 'editor';

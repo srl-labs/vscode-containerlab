@@ -507,7 +507,7 @@ export class ManagerViewportPanels {
         // Reset the stored type when kind changes
         this.panelNodeEditorType = "";
         this.panelNodeEditorSetupTypeField(typeOptions);
-        if (this.panelNodeEditorNode) {
+        if (this.panelNodeEditorNode && (window as any).updateLinkEndpointsOnKindChange) {
           this.updateNodeEndpointsForKindChange(this.panelNodeEditorNode, previousKind, option);
         }
         const imageMap = (window as any).imageMapping || {};

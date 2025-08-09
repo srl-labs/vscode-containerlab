@@ -1263,6 +1263,11 @@
             "nokia_srlinux": "e1-{n}"
           },
           "markdownDescription": "Interface name pattern used when creating links in the TopoEditor. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
+        },
+        "containerlab.editor.updateLinkEndpointsOnKindChange": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When enabled, changing a node's kind updates connected link endpoints to match the new kind's interface pattern."
         }
       }
     }

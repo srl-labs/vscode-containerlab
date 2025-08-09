@@ -92,11 +92,14 @@ Customize your experience under `containerlab.*` in VS Code Settings:
 - **`containerlab.node.sshUserMapping`** (object)
   Map a node's `kind` to its preferred ssh user (e.g. `{ "nokia_srlinux": "clab" }`).
 
-- **`containerlab.node.imageMapping`** (object)
+- **`containerlab.editor.imageMapping`** (object)
   Default docker image (with tag) for each node kind when adding nodes in the TopoEditor (e.g. `{ "nokia_srlinux": "ghcr.io/nokia/srlinux:latest" }`).
 
-- **`containerlab.node.interfacePatternMapping`** (object)
+- **`containerlab.editor.interfacePatternMapping`** (object)
   Interface name pattern for automatic link creation in the TopoEditor. Use `{n}` as the counter (e.g. `{ "nokia_srlinux": "e2np-{n}" }`).
+
+- **`containerlab.editor.updateLinkEndpointsOnKindChange`** (boolean)
+  Automatically update connected link endpoints to match the interface pattern when a node's kind changes.
 
 - **`containerlab.remote.hostname`** (string)
   Hostname or IP used for remote connections (affects packet capture).
