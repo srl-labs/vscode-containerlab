@@ -8,6 +8,7 @@ import leaflet from 'cytoscape-leaf';
 // Import and register context-menu plugin
 import cxtmenu from 'cytoscape-cxtmenu';
 // import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
+import cytoscapeSvg from 'cytoscape-svg';
 
 // Import Tailwind CSS and Font Awesome
 import '../../common/webview-ui/tailwind.css';
@@ -23,6 +24,9 @@ import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
+import { ManagerZoomToFit } from './managerZoomToFit';
+import { ManagerLabelEndpoint } from './managerLabelEndpoint';
+import { ManagerReloadTopo } from './managerReloadTopo';
 import { log } from '../../common/logger';
 
 
@@ -33,6 +37,7 @@ cytoscape.use(cola);
 cytoscape.use(gridGuide);
 cytoscape.use(cxtmenu);
 cytoscape.use(leaflet);
+cytoscape.use(cytoscapeSvg);
 
 
 
@@ -86,12 +91,17 @@ class TopoViewerEditorEngine {
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
   private messageSender: VscodeMessageSender;
-    private saveManager: ManagerSaveTopo;
-    private addNodeManager: ManagerAddContainerlabNode;
-    private viewportPanels: ManagerViewportPanels;
+  public saveManager: ManagerSaveTopo;
+  public addNodeManager: ManagerAddContainerlabNode;
+  private viewportPanels: ManagerViewportPanels;
   public groupManager: ManagerGroupManagemetn;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo = new ManagerLayoutAlgo();
+  public zoomToFitManager: ManagerZoomToFit;
+  public labelEndpointManager: ManagerLabelEndpoint;
+  public reloadTopoManager: ManagerReloadTopo;
+  // eslint-disable-next-line no-unused-vars
+  public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => void };
   private interfaceCounters: Record<string, number> = {};
 
 
@@ -209,13 +219,43 @@ class TopoViewerEditorEngine {
     this.initializeContextMenu();
 
     // Initiate managers and panels
-      this.saveManager = new ManagerSaveTopo(this.messageSender);
-      this.addNodeManager = new ManagerAddContainerlabNode();
-      this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+    this.saveManager = new ManagerSaveTopo(this.messageSender);
+    this.addNodeManager = new ManagerAddContainerlabNode();
+    this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
     this.groupManager = new ManagerGroupManagemetn(this.cy, 'edit');
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
     this.layoutAlgoManager = new ManagerLayoutAlgo();
+    this.zoomToFitManager = new ManagerZoomToFit();
+    this.labelEndpointManager = new ManagerLabelEndpoint();
+    this.reloadTopoManager = new ManagerReloadTopo(this.messageSender);
+
+    // Create capture viewport manager with the required method
+    this.captureViewportManager = {
+      viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => {
+        try {
+          // Cast to any to access svg method added by extension
+          const cyWithSvg = cy as any;
+          if (typeof cyWithSvg.svg === 'function') {
+            const svgContent = cyWithSvg.svg({ scale: 1, full: true });
+            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'topology.svg';
+            link.click();
+
+            URL.revokeObjectURL(url);
+            log.info('Topology exported as SVG');
+          } else {
+            log.error('SVG export not available - cytoscape-svg extension may not be loaded');
+          }
+        } catch (error) {
+          log.error(`Error capturing viewport: ${error}`);
+        }
+      }
+    };
 
     // Expose layout functions globally for HTML event handlers
     (window as any).viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
@@ -229,6 +269,9 @@ class TopoViewerEditorEngine {
     (window as any).viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(this.layoutAlgoManager);
     (window as any).viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(this.layoutAlgoManager);
     (window as any).viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
+
+    // Expose topology overview function
+    (window as any).viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
 
     this.setupAutoSave();
 
@@ -676,6 +719,34 @@ class TopoViewerEditorEngine {
 
 
 
+
+  /**
+   * Show/hide topology overview panel
+   */
+  public viewportButtonsTopologyOverview(): void {
+    try {
+      const overviewDrawer = document.getElementById("viewport-drawer-topology-overview");
+      if (!overviewDrawer) {
+        log.warn('Topology overview drawer not found');
+        return;
+      }
+
+      // Toggle visibility
+      if (overviewDrawer.style.display === "block") {
+        overviewDrawer.style.display = "none";
+      } else {
+        // Hide all viewport drawers first
+        const viewportDrawer = document.getElementsByClassName("viewport-drawer");
+        for (let i = 0; i < viewportDrawer.length; i++) {
+          (viewportDrawer[i] as HTMLElement).style.display = "none";
+        }
+        // Show the topology overview drawer
+        overviewDrawer.style.display = "block";
+      }
+    } catch (error) {
+      log.error(`Error in topology overview button: ${error}`);
+    }
+  }
 
   /**
    * Dispose of resources held by the engine.
