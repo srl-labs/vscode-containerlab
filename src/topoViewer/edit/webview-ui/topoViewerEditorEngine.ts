@@ -12,6 +12,8 @@ import cxtmenu from 'cytoscape-cxtmenu';
 // Import Tailwind CSS and Font Awesome
 import '../../common/webview-ui/tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+// Import cytoscape-leaflet CSS for geo-positioning
+import '../../view/webview-ui/cytoscape-leaflet.css';
 
 import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
