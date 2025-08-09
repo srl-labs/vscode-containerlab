@@ -550,7 +550,7 @@ class TopoViewerEditorEngine {
     // Edge creation completion via edgehandles.
       this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) => {
       log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
-      log.debug(`Added edge: ${JSON.stringify(addedEdge)}`);
+      log.debug(`Added edge: ${addedEdge.id()}`);
 
       setTimeout(() => {
         this.isEdgeHandlerActive = false;
