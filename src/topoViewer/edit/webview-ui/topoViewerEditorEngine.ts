@@ -24,11 +24,12 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
-import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
-import { ManagerZoomToFit } from './managerZoomToFit';
-import { ManagerLabelEndpoint } from './managerLabelEndpoint';
-import { ManagerReloadTopo } from './managerReloadTopo';
+import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
+import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
+import type { ManagerZoomToFit } from './managerZoomToFit';
+import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
+import type { ManagerReloadTopo } from './managerReloadTopo';
+import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../../common/core/managerRegistry';
 import { log } from '../../common/logger';
 
 
@@ -98,7 +99,7 @@ class TopoViewerEditorEngine {
   private viewportPanels: ManagerViewportPanels;
   public groupManager: ManagerGroupManagemetn;
   /** Layout manager instance accessible by other components */
-  public layoutAlgoManager: ManagerLayoutAlgo = new ManagerLayoutAlgo();
+  public layoutAlgoManager: ManagerLayoutAlgo;
   public zoomToFitManager: ManagerZoomToFit;
   public labelEndpointManager: ManagerLabelEndpoint;
   public reloadTopoManager: ManagerReloadTopo;
@@ -224,13 +225,13 @@ class TopoViewerEditorEngine {
     this.saveManager = new ManagerSaveTopo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
     this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
-    this.groupManager = new ManagerGroupManagemetn(this.cy, 'edit');
+    this.groupManager = getGroupManager(this.cy, 'edit');
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
-    this.layoutAlgoManager = new ManagerLayoutAlgo();
-    this.zoomToFitManager = new ManagerZoomToFit();
-    this.labelEndpointManager = new ManagerLabelEndpoint();
-    this.reloadTopoManager = new ManagerReloadTopo(this.messageSender);
+    this.layoutAlgoManager = layoutAlgoManagerSingleton;
+    this.zoomToFitManager = zoomToFitManagerSingleton;
+    this.labelEndpointManager = labelEndpointManagerSingleton;
+    this.reloadTopoManager = getReloadTopoManager(this.messageSender);
 
     // Create capture viewport manager with the required method
     this.captureViewportManager = {

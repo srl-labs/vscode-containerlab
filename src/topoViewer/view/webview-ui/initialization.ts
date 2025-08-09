@@ -2,8 +2,9 @@
 // This module replaces the initialization logic that was in dev.js
 
 import { log } from '../../common/logger';
-import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
-import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
+import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
+import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
+import { layoutAlgoManager, getGroupManager } from '../../common/core/managerRegistry';
 
 // loadCytoStyle function will be called if available
 
@@ -677,7 +678,7 @@ export function initializeTopoViewer(): void {
     initializeCytoscape();
 
     log.info('Initializing layout manager...');
-    const layoutManager = new ManagerLayoutAlgo();
+    const layoutManager: ManagerLayoutAlgo = layoutAlgoManager;
     // Make layoutManager globally accessible for update handling
     (window as any).layoutManager = layoutManager;
     (window as any).layoutAlgoChange = layoutManager.layoutAlgoChange.bind(layoutManager);
@@ -691,7 +692,7 @@ export function initializeTopoViewer(): void {
     (window as any).viewportButtonsGeoMapPan = layoutManager.viewportButtonsGeoMapPan.bind(layoutManager);
     (window as any).viewportButtonsGeoMapEdit = layoutManager.viewportButtonsGeoMapEdit.bind(layoutManager);
 
-    groupManager = new ManagerGroupManagemetn(globalThis.cy, 'view');
+    groupManager = getGroupManager(globalThis.cy, 'view');
     groupManager.initializeWheelSelection();
     groupManager.initializeGroupManagement();
 
