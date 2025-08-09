@@ -44,11 +44,12 @@ interface CreateNewParentOptions {
 
 export class ManagerGroupManagemetn {
   private cy: cytoscape.Core;
-  private mode: 'edit' | 'view';
 
-  constructor(cy: cytoscape.Core, mode: 'edit' | 'view' = 'view') {
+  /* eslint-disable no-unused-vars */
+  constructor(cy: cytoscape.Core, _mode: 'edit' | 'view' = 'view') {
+  /* eslint-enable no-unused-vars */
     this.cy = cy;
-    this.mode = mode;
+    // Mode parameter kept for backwards compatibility but not used currently
   }
 
   public orphaningNode(node: cytoscape.NodeSingular): void {
@@ -155,9 +156,6 @@ export class ManagerGroupManagemetn {
   }
 
   public initializeGroupManagement(): void {
-    if (this.mode !== 'edit') {
-      return;
-    }
     try {
       const isNodeInsideParent = (
         node: cytoscape.NodeSingular,
@@ -175,8 +173,18 @@ export class ManagerGroupManagemetn {
 
       this.cy.on('dragfree', 'node', (event: cytoscape.EventObject) => {
         const draggedNode = event.target as cytoscape.NodeSingular;
+        
+        // Don't process group nodes or dummy children being dragged
+        if (draggedNode.data('topoViewerRole') === 'group' || 
+            draggedNode.data('topoViewerRole') === 'dummyChild') {
+          return;
+        }
+        
         let assignedParent: cytoscape.NodeSingular | null = null;
-        this.cy.nodes(':parent').forEach(parent => {
+        
+        // Look for group nodes instead of just parent nodes
+        // This ensures we find groups even if they only have dummy children
+        this.cy.nodes('[topoViewerRole = "group"]').forEach(parent => {
           if (isNodeInsideParent(draggedNode, parent)) {
             assignedParent = parent;
           }
@@ -186,6 +194,8 @@ export class ManagerGroupManagemetn {
           const parentNode = assignedParent as cytoscape.NodeSingular;
           draggedNode.move({ parent: parentNode.id() });
           log.info(`${draggedNode.id()} became a child of ${parentNode.id()}`);
+          
+          // Remove dummy child if there are now real children
           const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
           if (dummyChild.length > 0) {
             const realChildren = parentNode.children().not(dummyChild);
@@ -196,10 +206,12 @@ export class ManagerGroupManagemetn {
           }
         }
 
+        // Clean up empty group nodes (those without any children including dummy children)
         const parentNodes = this.cy.nodes('[topoViewerRole = "group"]');
         parentNodes.forEach(parentNode => {
           if (parentNode.children().empty()) {
             parentNode.remove();
+            log.debug(`Removed empty group: ${parentNode.id()}`);
           }
         });
       });

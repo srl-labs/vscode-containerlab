@@ -561,47 +561,7 @@ class TopoViewerEditorEngine {
       addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
     });
 
-    // Drag-and-drop reparenting logic
-    this.cy.on('dragfree', 'node', (event) => {
-      // aarafat-tag: keep this commented out for now, will be used later(when TopoViewer and TopoEditor merged) to identify if the node is in clab editor mode.
-      // const isViewportDrawerClabEditorCheckboxChecked = this.isViewportDrawerClabEditorChecked;
-      // if (!isViewportDrawerClabEditorCheckboxChecked) return;
-
-      const draggedNode = event.target;
-
-      let assignedParent: cytoscape.NodeSingular | undefined
-      this.cy.nodes(':parent').forEach((el) => {
-        const parent = el as cytoscape.NodeSingular;
-
-        if (this.isNodeInsideParent(draggedNode, parent)) {
-          assignedParent = parent;
-        }
-      });
-
-      if (assignedParent) {
-        draggedNode.move({ parent: assignedParent.id() });
-        log.debug(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
-
-        const dummyChild = assignedParent.children('[topoViewerRole = "dummyChild"]');
-
-        if (dummyChild.length > 0) {
-          const realChildren = assignedParent.children().not(dummyChild);
-          if (realChildren.length > 0) {
-            dummyChild.remove();
-            log.debug('Dummy child removed');
-          } else {
-            log.debug('No real children present, dummy child remains');
-          }
-        }
-      }
-
-      // Remove empty group nodes
-      this.cy.nodes('[topoViewerRole = "group"]').forEach((parentNode) => {
-        if (parentNode.children().empty()) {
-          parentNode.remove();
-        }
-      });
-    });
+    // Drag-and-drop reparenting logic is now handled by groupManager.initializeGroupManagement()
 
 
   }
@@ -712,23 +672,6 @@ class TopoViewerEditorEngine {
     }
   }
 
-  /**
- * Checks whether a node is inside the bounding box of a parent node.
- * @param node - The node being moved.
- * @param parent - The potential parent node.
- * @returns True if node is visually inside parent.
- */
-  private isNodeInsideParent(node: cytoscape.NodeSingular, parent: cytoscape.NodeSingular): boolean {
-    const parentBox = parent.boundingBox();
-    const nodePos = node.position();
-
-    return (
-      nodePos.x >= parentBox.x1 &&
-      nodePos.x <= parentBox.x2 &&
-      nodePos.y >= parentBox.y1 &&
-      nodePos.y <= parentBox.y2
-    );
-  }
 
 
 
