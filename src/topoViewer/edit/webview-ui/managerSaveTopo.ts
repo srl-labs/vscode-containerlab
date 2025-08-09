@@ -1,7 +1,7 @@
 // file: managerSaveTopo.ts
 
 import cytoscape from 'cytoscape';
-import loadCytoStyle from './managerCytoscapeStyle';
+import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { log } from '../../common/logger';
 

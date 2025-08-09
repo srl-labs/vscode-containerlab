@@ -14,7 +14,7 @@ import '../../common/webview-ui/tailwind.css';
 import './cytoscape-leaflet.css';
 
 // Import cytoscape styles
-import './cytoscapeStyles';
+import '../../common/webview-ui/managerCytoscapeBaseStyles';
 
 // Initialize global handlers for HTML onclick functions
 initializeGlobalHandlers();

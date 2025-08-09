@@ -14,7 +14,6 @@ The project is organized as following key component:
 ├── file_list_with_content.txt
 └── webview-ui
     ├── managerCytoscapeFetchAndLoad.ts
-    ├── managerCytoscapeStyle.ts
     ├── managerAddContainerlabNode.ts
     ├── managerLabelEndpoint.ts
     ├── managerReloadTopo.ts
@@ -78,7 +77,7 @@ classDiagram
 ```
 
 - **`managerCytoscapeFetchAndLoad.ts`**: Manages fetching and loading data into the Cytoscape instance. It includes functions to fetch data from JSON files and process it for visualization.
-- **`managerCytoscapeStyle.ts`**: Defines the styles for Cytoscape elements, including nodes and edges. It also includes functions to generate encoded SVG strings for different node types.
+- **`managerCytoscapeBaseStyles.ts`** (in `common/webview-ui`): Defines the shared styles for Cytoscape elements, including nodes and edges. It also includes functions to generate encoded SVG strings for different node types.
 - **`managerSaveTopo.ts`**: Saves the current topology back to the backend.
 - **`managerZoomToFit.ts`**: Fits all nodes within the viewport.
 - **`managerLabelEndpoint.ts`**: Toggles endpoint label visibility.

@@ -13,7 +13,7 @@ import cxtmenu from 'cytoscape-cxtmenu';
 import '../../common/webview-ui/tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
-import loadCytoStyle from './managerCytoscapeStyle';
+import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerSaveTopo } from './managerSaveTopo';
