@@ -93,6 +93,8 @@ export class ManagerViewportPanels {
    * @returns A promise that resolves when the panel is configured.
    */
   public async panelNodeEditor(node: cytoscape.NodeSingular): Promise<void> {
+    // mark that a node interaction occurred so global click handler doesn't immediately hide the panel
+    this.nodeClicked = true;
     this.panelNodeEditorNode = node;
     // Remove all overlay panels.
     const panelOverlays = document.getElementsByClassName("panel-overlay");
@@ -132,7 +134,7 @@ export class ManagerViewportPanels {
     const panelNodeEditorGroupLabel = document.getElementById("panel-node-editor-group") as HTMLInputElement;
     if (panelNodeEditorGroupLabel) {
       const parentNode = node.parent();
-      const parentLabel = parentNode.data('name');
+      const parentLabel = parentNode.nonempty() ? (parentNode.data('name') as string) : '';
       log.debug(`Parent Node Label: ${parentLabel}`);
       panelNodeEditorGroupLabel.value = parentLabel;
     }
