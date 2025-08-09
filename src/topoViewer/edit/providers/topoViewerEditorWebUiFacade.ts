@@ -3,14 +3,14 @@ import * as path from 'path';
 
 import * as fs from 'fs';
 
-import { log } from '../../common/backend/logger';
+import { log } from '../../common/core/logger';
 
 import { generateWebviewHtml, EditorTemplateParams } from '../../common/htmlTemplateUtils';
-import { TopoViewerAdaptorClab } from '../../common/backend/topoViewerAdaptorClab';
+import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../../treeView/common";
 
-import { validateYamlContent } from './yamlValidator';
-import { saveViewport } from './saveViewport';
+import { validateYamlContent } from '../utilities/yamlValidator';
+import { saveViewport } from '../utilities/saveViewport';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.

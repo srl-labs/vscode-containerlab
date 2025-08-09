@@ -5,7 +5,7 @@ import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
 import * as path from 'path';
 
-import { TopoViewerEditor } from './topoViewer/edit/backend/topoViewerEditorWebUiFacade'; // adjust the import path as needed
+import { TopoViewerEditor } from './topoViewer/edit/providers/topoViewerEditorWebUiFacade';
 
 
 import { WelcomePage } from './welcomePage';

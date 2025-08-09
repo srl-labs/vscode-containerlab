@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
-import { TopoViewer } from "../topoViewer/view/backend/topoViewerWebUiFacade";
+import { TopoViewer } from "../topoViewer/view/providers/topoViewerWebUiFacade";
 import { getSelectedLabNode } from "../helpers/utils";
 
 

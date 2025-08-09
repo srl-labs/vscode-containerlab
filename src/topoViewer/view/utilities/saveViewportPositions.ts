@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as YAML from 'yaml';
-import { log } from '../../common/backend/logger';
+import { log } from '../../common/core/logger';
 
 /**
  * Save only the viewport positions and group information to the YAML file.

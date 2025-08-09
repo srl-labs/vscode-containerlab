@@ -3,14 +3,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { TopoViewerAdaptorClab } from '../../common/backend/topoViewerAdaptorClab';
-import { log } from '../../common/backend/logger';
+import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
+import { log } from '../../common/core/logger';
 import { ClabLabTreeNode } from '../../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../../treeView/runningLabsProvider';
-import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from './deploymentUtils';
+import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from '../utilities/deploymentUtils';
 import { createTopoViewerPanel } from './topoViewerPanel';
 import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
-import { findContainerNode, findInterfaceNode } from './treeUtils';
+import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 
 /**
  * Class representing the Unified Containerlab Topology Viewer/Editor extension in VS Code.

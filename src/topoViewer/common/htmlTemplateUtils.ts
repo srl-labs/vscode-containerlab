@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { log } from './backend/logger';
+import { log } from './core/logger';
 declare const __dirname: string;
 
 export interface BaseTemplateParams {
@@ -83,9 +83,9 @@ function resolveTemplatePaths(mode: TemplateMode): { templatePath: string; parti
     });
     // In development (source folder)
     possiblePaths.push({
-      templatePath: path.resolve(__dirname, '../view/webview-ui/template/vscodeHtmlTemplate.html'),
-      partialsDir: path.resolve(__dirname, '../view/webview-ui/template/partials'),
-      sharedPartialsDir: path.resolve(__dirname, '../common/template/partials')
+      templatePath: path.resolve(__dirname, '../view/templates/vscodeHtmlTemplate.html'),
+      partialsDir: path.resolve(__dirname, '../view/templates/partials'),
+      sharedPartialsDir: path.resolve(__dirname, '../common/templates/partials')
     });
   } else {
     // Editor mode
@@ -97,9 +97,9 @@ function resolveTemplatePaths(mode: TemplateMode): { templatePath: string; parti
     });
     // In development (source folder)
     possiblePaths.push({
-      templatePath: path.resolve(__dirname, '../edit/webview-ui/template/vscodeHtmlTemplate.html'),
-      partialsDir: path.resolve(__dirname, '../edit/webview-ui/template/partials'),
-      sharedPartialsDir: path.resolve(__dirname, '../common/template/partials')
+      templatePath: path.resolve(__dirname, '../edit/templates/vscodeHtmlTemplate.html'),
+      partialsDir: path.resolve(__dirname, '../edit/templates/partials'),
+      sharedPartialsDir: path.resolve(__dirname, '../common/templates/partials')
     });
   }
 

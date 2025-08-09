@@ -4,7 +4,7 @@ const path = require('path');
 
 async function build() {
   // Copy HTML template files to dist
-  const templateSrcDir = path.join(__dirname, 'src/topoViewer/view/webview-ui/template');
+  const templateSrcDir = path.join(__dirname, 'src/topoViewer/view/templates');
   const templateDestDir = path.join(__dirname, 'dist');
   
   // Copy main template
@@ -20,7 +20,7 @@ async function build() {
   );
 
   // Copy shared partials
-  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/common/template/partials');
+  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/common/templates/partials');
   if (fs.existsSync(sharedPartialsDir)) {
     // Copy to viewer partials
     await fs.copy(
@@ -38,7 +38,7 @@ async function build() {
   }
 
   // Copy editor template files
-  const editorTemplateSrcDir = path.join(__dirname, 'src/topoViewer/edit/webview-ui/template');
+  const editorTemplateSrcDir = path.join(__dirname, 'src/topoViewer/edit/templates');
   
   if (fs.existsSync(path.join(editorTemplateSrcDir, 'vscodeHtmlTemplate.html'))) {
     await fs.copy(

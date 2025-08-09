@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { TopoViewerAdaptorClab } from '../../common/backend/topoViewerAdaptorClab';
-import { log } from '../../common/backend/logger';
+import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
+import { log } from '../../common/core/logger';
 import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
-import { DeploymentState, ViewerMode } from './deploymentUtils';
-import { saveViewportPositions } from './saveViewportPositions';
+import { DeploymentState, ViewerMode } from '../utilities/deploymentUtils';
+import { saveViewportPositions } from '../utilities/saveViewportPositions';
 
 /* eslint-disable no-unused-vars */
 export interface PanelOptions {

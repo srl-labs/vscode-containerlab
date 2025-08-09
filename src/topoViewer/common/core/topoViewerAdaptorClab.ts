@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { promises as fs } from 'fs';
-import { log } from '../backend/logger';
+import { log } from './logger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
 import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../types/topoViewerType';
@@ -11,7 +11,7 @@ import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from
 import { version as topoViewerVersion } from '../../../../package.json';
 
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../../treeView/common";
-import { findContainerNode, findInterfaceNode } from '../../view/backend/treeUtils';
+import { findContainerNode, findInterfaceNode } from '../../view/utilities/treeUtils';
 // log.info(ClabTreeDataProvider.)
 
 import {

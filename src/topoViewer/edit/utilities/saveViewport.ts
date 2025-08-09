@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 
-import { log } from '../../common/backend/logger';
-import { TopoViewerAdaptorClab } from '../../common/backend/topoViewerAdaptorClab';
+import { log } from '../../common/core/logger';
+import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { ClabTopology, ClabNode } from '../../common/types/topoViewerType';
 
 function sleep(ms: number): Promise<void> {
