@@ -51,8 +51,22 @@ export async function saveViewportPositions(
       }
 
       // Update only graph-related labels
-      const x = element.position?.x || 0;
-      const y = element.position?.y || 0;
+      // Use the position from extraData.labels if available (which may contain original positions)
+      let x = element.position?.x || 0;
+      let y = element.position?.y || 0;
+
+      // If extraData.labels has graph-posX/Y, use those instead
+      // This is important when in geo map mode to preserve original positions
+      if (element.data?.extraData?.labels) {
+        const labelPosX = element.data.extraData.labels['graph-posX'];
+        const labelPosY = element.data.extraData.labels['graph-posY'];
+        if (labelPosX !== undefined && labelPosX !== null) {
+          x = parseFloat(labelPosX) || x;
+        }
+        if (labelPosY !== undefined && labelPosY !== null) {
+          y = parseFloat(labelPosY) || y;
+        }
+      }
 
       // Update position
       labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
@@ -81,6 +95,19 @@ export async function saveViewportPositions(
       const groupLabelPos = element.data.groupLabelPos;
       if (groupLabelPos) {
         labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos));
+      }
+
+      // Update geo coordinates if available in extraData.labels
+      if (element.data?.extraData?.labels) {
+        const geoLat = element.data.extraData.labels['graph-geoCoordinateLat'];
+        const geoLng = element.data.extraData.labels['graph-geoCoordinateLng'];
+
+        if (geoLat !== undefined && geoLat !== null && geoLat !== '') {
+          labels.set('graph-geoCoordinateLat', doc.createNode(geoLat));
+        }
+        if (geoLng !== undefined && geoLng !== null && geoLng !== '') {
+          labels.set('graph-geoCoordinateLng', doc.createNode(geoLng));
+        }
       }
     });
 

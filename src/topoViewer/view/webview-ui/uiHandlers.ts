@@ -267,8 +267,21 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
 
       // Check if extraData and labels exist before modifying
       if (nodeJson.data?.extraData?.labels) {
-        nodeJson.data.extraData.labels['graph-posX'] = nodeJson.position.x.toString();
-        nodeJson.data.extraData.labels['graph-posY'] = nodeJson.position.y.toString();
+        // If in geo map mode, use original positions for graph-posX/Y
+        let posX = nodeJson.position.x;
+        let posY = nodeJson.position.y;
+
+        if (isGeoActive) {
+          const origX = node.data('_origPosX');
+          const origY = node.data('_origPosY');
+          if (origX !== undefined && origY !== undefined) {
+            posX = origX;
+            posY = origY;
+          }
+        }
+
+        nodeJson.data.extraData.labels['graph-posX'] = posX.toString();
+        nodeJson.data.extraData.labels['graph-posY'] = posY.toString();
 
         // Save geo coordinates if available
         const lat = node.data('lat');

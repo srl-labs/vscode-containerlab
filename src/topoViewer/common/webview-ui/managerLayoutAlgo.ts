@@ -422,7 +422,7 @@ export class ManagerLayoutAlgo {
       tempMap.setView([48.684826888402256, 9.007895390625677], 10);
       cy.nodes().forEach((node) => {
         const data = node.data();
-        if (data.lat === undefined || data.lng === undefined) {
+        if (data.lat === undefined || data.lng === undefined || data.lat === '' || data.lng === '') {
           const latlng = tempMap.containerPointToLatLng({
             x: node.position().x,
             y: node.position().y
@@ -883,7 +883,7 @@ export class ManagerLayoutAlgo {
 
       // Fallback to computing coordinates from the current position only if
       // none are stored on the node (e.g. new nodes created during Geo mode).
-      if (lat === undefined || lng === undefined) {
+      if (lat === undefined || lng === undefined || lat === '' || lng === '') {
         const pos = node.position();
         const latlng = this.cytoscapeLeafletMap.containerPointToLatLng({
           x: pos.x,

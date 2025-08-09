@@ -118,7 +118,9 @@ export async function saveViewport(
       }
       if (extraData.labels) {
         for (const [key, value] of Object.entries(extraData.labels)) {
-          labels.set(key, doc.createNode(value));
+          if (value !== undefined && value !== null && value !== '') {
+            labels.set(key, doc.createNode(value));
+          }
         }
       }
       const x = element.position?.x || 0;
