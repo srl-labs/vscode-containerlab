@@ -2,7 +2,7 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerGroupManagemetn } from '../../../src/topoViewer/common/webview-ui/managerGroupManagemetn';
+import { ManagerGroupManagemetn } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
 
 // ensure window is available for global assignments
 (globalThis as any).window = globalThis;

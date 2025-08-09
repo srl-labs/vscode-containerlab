@@ -304,23 +304,36 @@ export class ManagerLayoutAlgo {
     });
   }
 
-  /** Shows only the given element id among all viewport drawers */
-  private showDrawer(id: string): void {
-    const drawers = document.getElementsByClassName('viewport-drawer');
-    for (let i = 0; i < drawers.length; i++) {
-      (drawers[i] as HTMLElement).style.display = 'none';
+  public viewportButtonsLayoutAlgo(event?: Event): void {
+    // Prevent event from bubbling up
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
-    const el = document.getElementById(id);
-    if (el) {
-      (el as HTMLElement).style.display = 'block';
+
+    const layoutDrawer = document.getElementById('viewport-drawer-layout');
+    if (layoutDrawer) {
+      // Toggle the drawer visibility
+      if (layoutDrawer.style.display === 'block') {
+        layoutDrawer.style.display = 'none';
+      } else {
+        // Hide all other drawers first
+        const drawers = document.getElementsByClassName('viewport-drawer');
+        for (let i = 0; i < drawers.length; i++) {
+          (drawers[i] as HTMLElement).style.display = 'none';
+        }
+        // Show the layout drawer
+        layoutDrawer.style.display = 'block';
+      }
     }
   }
 
-  public viewportButtonsLayoutAlgo(): void {
-    this.showDrawer('viewport-drawer-layout');
-  }
+  public layoutAlgoChange(event?: Event): void {
+    // Prevent event from bubbling up
+    if (event) {
+      event.stopPropagation();
+    }
 
-  public layoutAlgoChange(): void {
     const select = document.getElementById('select-layout-algo') as HTMLSelectElement | null;
     if (!select) return;
     const val = select.value;

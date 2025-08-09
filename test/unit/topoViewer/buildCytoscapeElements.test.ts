@@ -13,8 +13,8 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { TopoViewerAdaptorClab } from '../../../src/topoViewer/view/backend/topoViewerAdaptorClab';
-import * as treeUtils from '../../../src/topoViewer/view/backend/treeUtils';
+import { TopoViewerAdaptorClab } from '../../../src/topoViewer/common/core/topoViewerAdaptorClab';
+import * as treeUtils from '../../../src/topoViewer/view/utilities/treeUtils';
 
 describe('buildCytoscapeElements delegation', () => {
   after(() => {
@@ -37,8 +37,8 @@ describe('buildCytoscapeElements delegation', () => {
     const withoutMgmt = adaptor.clabYamlToCytoscapeElementsEditor(yaml);
 
     expect(spy.calledTwice).to.be.true;
-    const nodeWith = withMgmt.find(e => e.group === 'nodes');
-    const nodeWithout = withoutMgmt.find(e => e.group === 'nodes');
+    const nodeWith = withMgmt.find((e: any) => e.group === 'nodes');
+    const nodeWithout = withoutMgmt.find((e: any) => e.group === 'nodes');
     expect(nodeWith?.data.extraData.mgmtIpv4Address).to.equal('10.0.0.1');
     expect(nodeWithout?.data.extraData.mgmtIpv4Address).to.equal('');
   });
