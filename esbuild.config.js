@@ -4,7 +4,7 @@ const path = require('path');
 
 async function build() {
   // Copy HTML template files to dist
-  const templateSrcDir = path.join(__dirname, 'src/topoViewer/view/webview-ui/html-static/template');
+  const templateSrcDir = path.join(__dirname, 'src/topoViewer/view/webview-ui/template');
   const templateDestDir = path.join(__dirname, 'dist');
   
   // Copy main template

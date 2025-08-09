@@ -2,7 +2,7 @@
 // This module replaces the initialization logic that was in dev.js
 
 import { log } from '../../common/logger';
-import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagemetn';
+import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 
 // loadCytoStyle function will be called if available

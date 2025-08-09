@@ -19,7 +19,7 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagemetn';
+import { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import { log } from '../../common/logger';
 

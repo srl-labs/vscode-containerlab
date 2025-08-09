@@ -83,8 +83,8 @@ function resolveTemplatePaths(mode: TemplateMode): { templatePath: string; parti
     });
     // In development (source folder)
     possiblePaths.push({
-      templatePath: path.resolve(__dirname, '../view/webview-ui/html-static/template/vscodeHtmlTemplate.html'),
-      partialsDir: path.resolve(__dirname, '../view/webview-ui/html-static/template/partials'),
+      templatePath: path.resolve(__dirname, '../view/webview-ui/template/vscodeHtmlTemplate.html'),
+      partialsDir: path.resolve(__dirname, '../view/webview-ui/template/partials'),
       sharedPartialsDir: path.resolve(__dirname, '../common/template/partials')
     });
   } else {
