@@ -369,6 +369,18 @@ const cytoscapeStylesBase = [
       'overlay-padding': '2px'
     }
   },
+  {
+    selector: 'edge.link-up',
+    style: {
+      'line-color': '#00df2b'
+    }
+  },
+  {
+    selector: 'edge.link-down',
+    style: {
+      'line-color': '#df2b00'
+    }
+  },
   { selector: 'node.unhighlighted', style: { opacity: '0.2' } },
   { selector: 'edge.unhighlighted', style: { opacity: '0.05' } },
   { selector: '.highlighted', style: { 'z-index': '3' } },
