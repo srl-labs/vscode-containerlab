@@ -399,12 +399,12 @@ class TopoViewerEditorEngine {
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
       minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      openMenuEvents: 'cxttapstart taphold', // space-separated cytoscape events that will open the menu; only `cxttapstart` and/or `taphold` work here
+      openMenuEvents: 'cxttap', // single right-click to open menu
       itemColor: 'white', // the colour of text in the command's content
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer
+      outsideMenuCancel: 10 // cancel menu when clicking outside
     });
 
     this.cy.cxtmenu({
@@ -451,12 +451,12 @@ class TopoViewerEditorEngine {
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
       minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      openMenuEvents: 'cxttapstart taphold', // space-separated cytoscape events that will open the menu; only `cxttapstart` and/or `taphold` work here
+      openMenuEvents: 'cxttap', // single right-click to open menu
       itemColor: 'white', // the colour of text in the command's content
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: false // if set to a number, this will cancel the command if the pointer
+      outsideMenuCancel: 10 // cancel menu when clicking outside
     });
 
     this.cy.cxtmenu({
@@ -499,12 +499,12 @@ class TopoViewerEditorEngine {
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
       minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      openMenuEvents: 'cxttapstart taphold', // space-separated cytoscape events that will open the menu; only `cxttapstart` and/or `taphold` work here
+      openMenuEvents: 'cxttap', // single right-click to open menu
       itemColor: 'white', // the colour of text in the command's content
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
-      outsideMenuCancel: 10 // if set to a number, this will cancel the command if the pointer
+      outsideMenuCancel: 10 // cancel menu when clicking outside
     });
 
   }
