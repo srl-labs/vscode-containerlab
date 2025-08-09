@@ -87,4 +87,31 @@
   
   #cy-leaflet .leaflet-tile {
     opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Fix for tile loading issues */
+  #cy-leaflet .leaflet-tile-container {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure proper z-index layering */
+  #cy-leaflet .leaflet-pane {
+    z-index: auto !important;
+  }
+
+  /* Force tiles to load properly */
+  #cy-leaflet .leaflet-tile-loaded {
+    visibility: visible !important;
+  }
+
+  /* Fix potential tile gaps */
+  #cy-leaflet .leaflet-layer {
+    pointer-events: none;
+  }
+
+  #cy-leaflet .leaflet-tile-container img {
+    max-width: none !important;
+    max-height: none !important;
   }
