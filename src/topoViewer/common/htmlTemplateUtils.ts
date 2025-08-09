@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { log } from '../view/backend/logger';
+import { log } from './backend/logger';
 declare const __dirname: string;
 
 export interface BaseTemplateParams {

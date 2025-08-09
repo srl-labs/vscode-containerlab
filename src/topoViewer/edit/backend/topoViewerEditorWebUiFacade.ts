@@ -3,7 +3,7 @@ import * as path from 'path';
 
 import * as fs from 'fs';
 
-import { log } from '../../view/backend/logger';
+import { log } from '../../common/backend/logger';
 
 import { generateWebviewHtml, EditorTemplateParams } from '../../common/htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../../view/backend/topoViewerAdaptorClab';

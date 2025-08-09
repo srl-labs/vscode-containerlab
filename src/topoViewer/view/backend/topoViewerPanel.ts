@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
-import { log } from './logger';
+import { log } from '../../common/backend/logger';
 import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from './deploymentUtils';

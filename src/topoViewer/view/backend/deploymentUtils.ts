@@ -1,5 +1,5 @@
 import * as YAML from 'yaml';
-import { log } from './logger';
+import { log } from '../../common/backend/logger';
 import { ClabLabTreeNode } from '../../../treeView/common';
 
 export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
