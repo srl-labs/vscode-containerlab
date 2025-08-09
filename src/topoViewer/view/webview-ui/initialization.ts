@@ -448,6 +448,14 @@ function updateTopologyData(cytoData: any): void {
 
     log.debug(`Updating topology with ${cytoData.length || 0} elements`);
 
+    // Check if geo-map is active
+    const geoLayoutManager = (window as any).layoutManager;
+    const isGeoActive = geoLayoutManager?.isGeoMapInitialized || false;
+    
+    if (isGeoActive) {
+      log.debug('Geo-map is active, preserving geo positions during update');
+    }
+
     // Store current positions to preserve layout
     const positions = new Map();
     globalThis.cy.nodes().forEach((node: any) => {
@@ -482,8 +490,18 @@ function updateTopologyData(cytoData: any): void {
     });
 
     // Re-apply styles to ensure colors are updated
-    if (typeof (globalThis as any).loadCytoStyle === 'function') {
+    // But only if geo-map is not active (geo-map uses light theme)
+    const currentLayoutManager = (window as any).layoutManager;
+    const geoMapActive = currentLayoutManager?.isGeoMapInitialized || false;
+    
+    if (!geoMapActive && typeof (globalThis as any).loadCytoStyle === 'function') {
       (globalThis as any).loadCytoStyle(globalThis.cy);
+    } else if (geoMapActive) {
+      // If geo-map is active, reapply the scale to ensure nodes remain visible
+      if (currentLayoutManager && typeof currentLayoutManager.applyGeoScale === 'function') {
+        const factor = currentLayoutManager.calculateGeoScale();
+        currentLayoutManager.applyGeoScale(true, factor);
+      }
     }
 
     log.info('Topology updated successfully without layout change');
@@ -632,6 +650,8 @@ export function initializeTopoViewer(): void {
 
     log.info('Initializing layout manager...');
     const layoutManager = new ManagerLayoutAlgo();
+    // Make layoutManager globally accessible for update handling
+    (window as any).layoutManager = layoutManager;
     (window as any).layoutAlgoChange = layoutManager.layoutAlgoChange.bind(layoutManager);
     (window as any).viewportButtonsLayoutAlgo = layoutManager.viewportButtonsLayoutAlgo.bind(layoutManager);
     (window as any).viewportDrawerLayoutGeoMap = layoutManager.viewportDrawerLayoutGeoMap.bind(layoutManager);
