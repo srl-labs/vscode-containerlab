@@ -9,7 +9,7 @@ import { ClabLabTreeNode } from '../../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../../treeView/runningLabsProvider';
 import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from '../utilities/deploymentUtils';
 import { createTopoViewerPanel } from './topoViewerPanel';
-import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
+import { generateWebviewHtml, ViewerTemplateParams, TemplateMode } from '../../common/htmlTemplateUtils';
 import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 
 /**
@@ -245,10 +245,11 @@ export class TopoViewer {
         viewerMode: this.viewerMode,
       };
 
+      const mode: TemplateMode = 'viewer';
       panel.webview.html = generateWebviewHtml(
         this.context,
         panel,
-        'viewer',
+        mode,
         folderName,
         this.adaptor,
         viewerParams

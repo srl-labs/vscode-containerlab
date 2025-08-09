@@ -4,10 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TopoViewer</title>
+  <title>{{pageTitle}}</title>
 
-  <!-- Bundled CSS (includes Tailwind and cytoscape-leaflet) -->
-  <link rel="stylesheet" href="{{jsOutDir}}/topoViewerStyles.css?ver=1" />
+  <!-- Bundled CSS (includes Tailwind) -->
+  <link rel="stylesheet" href="{{jsOutDir}}/{{cssBundle}}?ver=1" />
+
+  {{CSS_EXTEND}}
 </head>
 
 <body class="h-full w-full m-0 p-2 overflow-hidden font-sans text-sm">
@@ -28,6 +30,7 @@
     {{PANEL_NODE_EDITOR}}
     {{PANEL_TOPOVIEWER_ABOUT}}
     {{PANEL_LINK}}
+    {{PANEL_LINK_EDITOR}}
     {{WIRESHARK_MODAL}}
     {{SCRIPTS}}
   </div>

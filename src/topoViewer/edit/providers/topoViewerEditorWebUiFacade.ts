@@ -5,7 +5,7 @@ import * as fs from 'fs';
 
 import { log } from '../../common/core/logger';
 
-import { generateWebviewHtml, EditorTemplateParams } from '../../common/htmlTemplateUtils';
+import { generateWebviewHtml, EditorTemplateParams, TemplateMode } from '../../common/htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../../treeView/common";
 
@@ -281,10 +281,11 @@ topology:
         defaultType,
       };
 
+      const mode: TemplateMode = 'editor';
       panel.webview.html = generateWebviewHtml(
         this.context,
         panel,
-        'editor',
+        mode,
         folderName,
         this.adaptor,
         editorParams

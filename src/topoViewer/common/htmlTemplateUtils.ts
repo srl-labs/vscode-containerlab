@@ -72,36 +72,20 @@ function resolvePartials(content: string, partials: Record<string, string>): str
 
 function resolveTemplatePaths(mode: TemplateMode): { templatePath: string; partialsDir: string; sharedPartialsDir?: string } {
   // Try multiple possible locations for the template files
-  const possiblePaths = [];
-
-  if (mode === 'viewer') {
-    // In production (dist folder)
-    possiblePaths.push({
-      templatePath: path.join(__dirname, 'vscodeHtmlTemplate.html'),
-      partialsDir: path.join(__dirname, 'partials'),
-      sharedPartialsDir: path.join(__dirname, 'partials') // Shared partials are already merged in dist
-    });
-    // In development (source folder)
-    possiblePaths.push({
-      templatePath: path.resolve(__dirname, '../view/templates/vscodeHtmlTemplate.html'),
-      partialsDir: path.resolve(__dirname, '../view/templates/partials'),
+  const possiblePaths = [
+    {
+      // Production (dist) paths
+      templatePath: path.join(__dirname, 'main.html'),
+      partialsDir: path.join(__dirname, `${mode}-partials`),
+      sharedPartialsDir: path.join(__dirname, 'partials') // Shared partials already merged in dist
+    },
+    {
+      // Development (source) paths
+      templatePath: path.resolve(__dirname, '../common/templates/main.html'),
+      partialsDir: path.resolve(__dirname, `../${mode}/templates/partials`),
       sharedPartialsDir: path.resolve(__dirname, '../common/templates/partials')
-    });
-  } else {
-    // Editor mode
-    // In production (dist folder)
-    possiblePaths.push({
-      templatePath: path.join(__dirname, 'editorHtmlTemplate.html'),
-      partialsDir: path.join(__dirname, 'editor-partials'),
-      sharedPartialsDir: path.join(__dirname, 'editor-partials') // Shared partials are already merged in dist
-    });
-    // In development (source folder)
-    possiblePaths.push({
-      templatePath: path.resolve(__dirname, '../edit/templates/vscodeHtmlTemplate.html'),
-      partialsDir: path.resolve(__dirname, '../edit/templates/partials'),
-      sharedPartialsDir: path.resolve(__dirname, '../common/templates/partials')
-    });
-  }
+    }
+  ];
 
   // Find the first existing path
   for (const paths of possiblePaths) {
@@ -151,6 +135,8 @@ export function generateHtmlTemplate(
     topologyName: params.topologyName || 'Unknown Topology',
     logoFile,
     navSubtitle: mode === 'viewer' ? 'TopoViewer' : 'TopoEditor',
+    pageTitle: mode === 'viewer' ? 'TopoViewer' : 'TopoViewer Editor',
+    cssBundle: mode === 'viewer' ? 'topoViewerStyles.css' : 'topoViewerEditorStyles.css',
   };
 
   let replacements: Record<string, string>;

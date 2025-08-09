@@ -4,54 +4,30 @@ const path = require('path');
 
 async function build() {
   // Copy HTML template files to dist
-  const templateSrcDir = path.join(__dirname, 'src/topoViewer/view/templates');
   const templateDestDir = path.join(__dirname, 'dist');
-  
+
   // Copy main template
   await fs.copy(
-    path.join(templateSrcDir, 'vscodeHtmlTemplate.html'),
-    path.join(templateDestDir, 'vscodeHtmlTemplate.html')
-  );
-  
-  // Copy viewer-specific partials directory
-  await fs.copy(
-    path.join(templateSrcDir, 'partials'),
-    path.join(templateDestDir, 'partials')
+    path.join(__dirname, 'src/topoViewer/common/templates/main.html'),
+    path.join(templateDestDir, 'main.html')
   );
 
   // Copy shared partials
   const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/common/templates/partials');
   if (fs.existsSync(sharedPartialsDir)) {
-    // Copy to viewer partials
-    await fs.copy(
-      sharedPartialsDir,
-      path.join(templateDestDir, 'partials'),
-      { overwrite: false } // Don't overwrite viewer-specific files
-    );
-    // Copy to editor partials
-    await fs.copy(
-      sharedPartialsDir,
-      path.join(templateDestDir, 'editor-partials'),
-      { overwrite: false } // Don't overwrite editor-specific files
-    );
-    console.log('Shared partials copied to dist/');
+    await fs.copy(sharedPartialsDir, path.join(templateDestDir, 'partials'));
   }
 
-  // Copy editor template files
-  const editorTemplateSrcDir = path.join(__dirname, 'src/topoViewer/edit/templates');
-  
-  if (fs.existsSync(path.join(editorTemplateSrcDir, 'vscodeHtmlTemplate.html'))) {
-    await fs.copy(
-      path.join(editorTemplateSrcDir, 'vscodeHtmlTemplate.html'),
-      path.join(templateDestDir, 'editorHtmlTemplate.html')
-    );
+  // Copy viewer-specific partials directory
+  const viewerPartialsSrcDir = path.join(__dirname, 'src/topoViewer/view/templates/partials');
+  if (fs.existsSync(viewerPartialsSrcDir)) {
+    await fs.copy(viewerPartialsSrcDir, path.join(templateDestDir, 'viewer-partials'));
   }
-  
-  if (fs.existsSync(path.join(editorTemplateSrcDir, 'partials'))) {
-    await fs.copy(
-      path.join(editorTemplateSrcDir, 'partials'),
-      path.join(templateDestDir, 'editor-partials')
-    );
+
+  // Copy editor-specific partials directory
+  const editorPartialsSrcDir = path.join(__dirname, 'src/topoViewer/edit/templates/partials');
+  if (fs.existsSync(editorPartialsSrcDir)) {
+    await fs.copy(editorPartialsSrcDir, path.join(templateDestDir, 'editor-partials'));
   }
 
   // Copy common images

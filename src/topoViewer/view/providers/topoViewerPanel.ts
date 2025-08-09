@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { log } from '../../common/core/logger';
-import { generateWebviewHtml, ViewerTemplateParams } from '../../common/htmlTemplateUtils';
+import { generateWebviewHtml, ViewerTemplateParams, TemplateMode } from '../../common/htmlTemplateUtils';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from '../utilities/deploymentUtils';
 import { saveViewportPositions } from '../utilities/saveViewportPositions';
@@ -75,10 +75,11 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
     viewerMode,
   };
 
+  const mode: TemplateMode = 'viewer';
   panel.webview.html = generateWebviewHtml(
     context,
     panel,
-    'viewer',
+    mode,
     folderName,
     adaptor,
     viewerParams
