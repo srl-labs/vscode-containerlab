@@ -470,10 +470,13 @@ export class TopoViewerAdaptorClab {
           clabName
         );
         const edgeId = `Clab-Link${linkIndex}`;
-        const edgeClass =
-          sourceIfaceData?.state === 'up' && targetIfaceData?.state === 'up'
-            ? 'link-up'
-            : 'link-down';
+        let edgeClass = '';
+        if (sourceIfaceData?.state && targetIfaceData?.state) {
+          edgeClass =
+            sourceIfaceData.state === 'up' && targetIfaceData.state === 'up'
+              ? 'link-up'
+              : 'link-down';
+        }
         const edgeEl: CyElement = {
           group: 'edges',
           data: {
