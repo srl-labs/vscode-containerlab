@@ -70,12 +70,12 @@ export class ManagerLayoutAlgo {
   private renderDebounceTimer: number | null = null;
   private onCyRenderBound = () => {
     if (!this.isGeoMapInitialized) return;
-    
+
     // Debounce render events to avoid excessive reapplication
     if (this.renderDebounceTimer !== null) {
       window.clearTimeout(this.renderDebounceTimer);
     }
-    
+
     this.renderDebounceTimer = window.setTimeout(() => {
       const factor = this.calculateGeoScale();
       if (Math.abs(factor - this.lastGeoScale) > 0.001) {
@@ -368,7 +368,7 @@ export class ManagerLayoutAlgo {
       console.error('[GeoMap] No cytoscape instance found');
       return;
     }
-    
+
     // If already initialized, just ensure it's visible
     if (this.isGeoMapInitialized) {
       console.log('[GeoMap] Geo-map already initialized, ensuring visibility');
@@ -384,7 +384,7 @@ export class ManagerLayoutAlgo {
       }
       return;
     }
-    
+
     console.log('[GeoMap] Initializing geo-positioning layout');
 
     this.viewportDrawerDisableGeoMap();
@@ -398,7 +398,7 @@ export class ManagerLayoutAlgo {
     // Apply light theme styles when Geo layout is active
     this.geoTheme = 'light';
     loadCytoStyle(cy, 'light');
-    
+
     // Add class to cy container to indicate leaflet is active
     cy.container()?.classList.add('leaflet-active');
     // Make cytoscape container transparent
@@ -456,7 +456,7 @@ export class ManagerLayoutAlgo {
       // Remove hidden class and ensure it's visible
       leafletContainer.classList.remove('hidden');
       (leafletContainer as HTMLElement).style.display = 'block';
-      
+
       // Ensure the container has proper dimensions
       const containerRect = leafletContainer.getBoundingClientRect();
       console.log('[GeoMap] Leaflet container created/shown', {
@@ -473,12 +473,12 @@ export class ManagerLayoutAlgo {
           width: cyRect?.width,
           height: cyRect?.height
         });
-        
-        this.cytoscapeLeafletLeaf = (cy as any).leaflet({ 
+
+        this.cytoscapeLeafletLeaf = (cy as any).leaflet({
           container: leafletContainer,
           cyContainer: cy.container()
         });
-        
+
         if (this.cytoscapeLeafletLeaf.defaultTileLayer) {
           this.cytoscapeLeafletLeaf.map.removeLayer(this.cytoscapeLeafletLeaf.defaultTileLayer);
         }
@@ -523,13 +523,13 @@ export class ManagerLayoutAlgo {
       this.geoScaleBaseZoom = this.cytoscapeLeafletMap.getZoom() || 1;
       this.cytoscapeLeafletMap.on('zoom', this.onLeafletZoomBound);
       this.cytoscapeLeafletMap.on('zoomend', this.onLeafletZoomEndBound);
-      
+
       // Let cytoscape-leaflet handle position synchronization
       // We only need to handle scaling
     }
 
     console.log('[GeoMap] Applying preset layout with geo positions');
-    
+
     // First, ensure all nodes have valid lat/lng before applying layout
     cy.nodes().forEach((node) => {
       const data = node.data();
@@ -542,7 +542,7 @@ export class ManagerLayoutAlgo {
         console.log(`[GeoMap] Node ${node.id()} has coordinates: lat=${lat}, lng=${lng}`);
       }
     });
-    
+
     cy.layout({
       name: 'preset',
       fit: false,
@@ -551,13 +551,13 @@ export class ManagerLayoutAlgo {
         const data = node.data();
         const lat = parseFloat(data.lat);
         const lng = parseFloat(data.lng);
-        
+
         // If we have valid coordinates, use them
         if (!isNaN(lat) && !isNaN(lng)) {
           const point = this.cytoscapeLeafletMap.latLngToContainerPoint([lat, lng]);
           return { x: point.x, y: point.y };
         }
-        
+
         // This should not happen as assignMissingLatLng was called earlier
         console.error(`[GeoMap] Node ${node.id()} still missing geo coordinates during layout`);
         // Keep current position to avoid jumping to ocean
@@ -566,35 +566,35 @@ export class ManagerLayoutAlgo {
     } as any).run();
 
     console.log('[GeoMap] Layout applied, fitting map');
-    
+
     // Give the map time to render before fitting
     setTimeout(() => {
       if (this.cytoscapeLeafletLeaf && this.cytoscapeLeafletLeaf.fit) {
         this.cytoscapeLeafletLeaf.fit();
         console.log('[GeoMap] Map fitted to nodes');
       }
-      
+
       const factor = this.calculateGeoScale();
       this.applyGeoScale(true, factor);
       console.log('[GeoMap] Scale applied with factor:', factor);
     }, 100);
-    
+
     cy.on('add', this.onElementAddedBound);
     cy.on('render', this.onCyRenderBound);
     const geoMapButtons = document.getElementsByClassName('viewport-geo-map');
     for (let i = 0; i < geoMapButtons.length; i++) {
       geoMapButtons[i].classList.remove('hidden');
     }
-    
+
     console.log('[GeoMap] Geo-positioning layout initialization complete');
   }
 
   public viewportDrawerDisableGeoMap(): void {
     const cy = this.getCy();
     if (!cy || !this.isGeoMapInitialized) return;
-    
+
     console.log('[GeoMap] Disabling geo-positioning layout');
-    
+
     // Remove the leaflet-active class and restore background
     cy.container()?.classList.remove('leaflet-active');
     if (cy.container()) {
@@ -630,7 +630,7 @@ export class ManagerLayoutAlgo {
     }
     cy.off('add', this.onElementAddedBound);
     cy.off('render', this.onCyRenderBound);
-    
+
     // Clear any pending render debounce timer
     if (this.renderDebounceTimer !== null) {
       window.clearTimeout(this.renderDebounceTimer);
@@ -836,10 +836,10 @@ export class ManagerLayoutAlgo {
     if (container) {
       container.style.pointerEvents = 'none';
     }
-    
+
     // Don't lock nodes - let the plugin update their positions based on lat/lng
     // The plugin needs to update positions as the map pans
-    
+
     this.cytoscapeLeafletLeaf.setZoomControlOpacity('');
     this.cytoscapeLeafletLeaf.map.dragging.enable();
     console.log('[GeoMap] Pan mode enabled');
@@ -861,9 +861,9 @@ export class ManagerLayoutAlgo {
     if (container) {
       container.style.pointerEvents = '';
     }
-    
+
     // In edit mode, nodes can be moved and their geo-position will update
-    
+
     this.cytoscapeLeafletLeaf.setZoomControlOpacity(0.5);
     this.cytoscapeLeafletLeaf.map.dragging.disable();
     console.log('[GeoMap] Edit mode enabled');

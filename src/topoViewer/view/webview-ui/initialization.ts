@@ -417,7 +417,12 @@ async function loadTopologyData(): Promise<void> {
         layout.run();
       }
 
-      globalThis.cy.fit();
+      const layoutManager = (window as any).layoutManager;
+      if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
+        layoutManager.cytoscapeLeafletLeaf.fit();
+      } else {
+        globalThis.cy.fit();
+      }
 
       // Apply styles after loading data
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
@@ -451,16 +456,18 @@ function updateTopologyData(cytoData: any): void {
     // Check if geo-map is active
     const geoLayoutManager = (window as any).layoutManager;
     const isGeoActive = geoLayoutManager?.isGeoMapInitialized || false;
-    
+
     if (isGeoActive) {
       log.debug('Geo-map is active, preserving geo positions during update');
     }
 
-    // Store current positions to preserve layout
+    // Store current positions to preserve layout (only for non-geo mode)
     const positions = new Map();
-    globalThis.cy.nodes().forEach((node: any) => {
-      positions.set(node.id(), node.position());
-    });
+    if (!isGeoActive) {
+      globalThis.cy.nodes().forEach((node: any) => {
+        positions.set(node.id(), node.position());
+      });
+    }
 
     // Update edges - this is where link states change
     cytoData.forEach((element: any) => {
@@ -475,25 +482,41 @@ function updateTopologyData(cytoData: any): void {
       } else if (element.group === 'nodes') {
         const node = globalThis.cy.getElementById(element.data.id);
         if (node.length > 0) {
+          // Preserve lat/lng coordinates if geo-map is active
+          const currentLat = node.data('lat');
+          const currentLng = node.data('lng');
+
           // Update node data while preserving position
           node.data(element.data);
+
+          // Restore lat/lng if geo-map is active and they were present
+          if (isGeoActive && currentLat !== undefined && currentLng !== undefined) {
+            node.data('lat', currentLat);
+            node.data('lng', currentLng);
+          }
         }
       }
     });
 
-    // Restore positions to prevent layout shift
-    positions.forEach((pos, id) => {
-      const node = globalThis.cy.getElementById(id);
-      if (node.length > 0) {
-        node.position(pos);
-      }
-    });
+    // Restore positions to prevent layout shift (only for non-geo mode)
+    if (!isGeoActive) {
+      positions.forEach((pos, id) => {
+        const node = globalThis.cy.getElementById(id);
+        if (node.length > 0) {
+          node.position(pos);
+        }
+      });
+    } else {
+      // In geo mode, let cytoscape-leaflet maintain positions based on lat/lng
+      // The plugin will automatically sync positions with the geographic coordinates
+      log.debug('Geo-map active: positions maintained by cytoscape-leaflet plugin');
+    }
 
     // Re-apply styles to ensure colors are updated
     // But only if geo-map is not active (geo-map uses light theme)
     const currentLayoutManager = (window as any).layoutManager;
     const geoMapActive = currentLayoutManager?.isGeoMapInitialized || false;
-    
+
     if (!geoMapActive && typeof (globalThis as any).loadCytoStyle === 'function') {
       (globalThis as any).loadCytoStyle(globalThis.cy);
     } else if (geoMapActive) {
@@ -540,7 +563,12 @@ function initializeResizeHandling(): void {
         if (globalThis.cy) {
           globalThis.cy.resize();
           log.debug('Fitting Cytoscape to new size with animation');
-          globalThis.cy.fit(undefined, 50);
+          const layoutManager = (window as any).layoutManager;
+          if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
+            layoutManager.cytoscapeLeafletLeaf.fit();
+          } else {
+            globalThis.cy.fit(undefined, 50);
+          }
         }
       }
     }

@@ -73,16 +73,16 @@ export function viewportButtonsZoomToFit(): void {
     const initialZoom = globalThis.cy.zoom();
     log.debug(`Initial zoom level: ${initialZoom}`);
 
-    // Fit all nodes with padding
-    globalThis.cy.fit();
-
-    const currentZoom = globalThis.cy.zoom();
-    log.debug(`New zoom level: ${currentZoom}`);
-
-    // If cytoscape-leaflet is available, fit it too
-    if (globalThis.globalCytoscapeLeafletLeaf && typeof globalThis.globalCytoscapeLeafletLeaf.fit === 'function') {
-      globalThis.globalCytoscapeLeafletLeaf.fit();
+    const layoutManager = (window as any).layoutManager;
+    const geoActive = layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf;
+    if (geoActive) {
+      layoutManager.cytoscapeLeafletLeaf.fit();
       log.info('Fitted cytoscape-leaflet map');
+    } else {
+      // Fit all nodes with padding
+      globalThis.cy.fit();
+      const currentZoom = globalThis.cy.zoom();
+      log.debug(`New zoom level: ${currentZoom}`);
     }
   } catch (error) {
     log.error(`Error in zoom to fit: ${error}`);
@@ -187,8 +187,13 @@ export function viewportNodeFindEvent(): void {
       globalThis.cy.elements().unselect();
       matchingNodes.select();
 
-      // Fit to show selected nodes
-      globalThis.cy.fit(matchingNodes, 50);
+      // Fit to show selected nodes (or entire map if Geo layout active)
+      const layoutManager = (window as any).layoutManager;
+      if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
+        layoutManager.cytoscapeLeafletLeaf.fit();
+      } else {
+        globalThis.cy.fit(matchingNodes, 50);
+      }
 
       log.info(`Found ${matchingNodes.length} nodes matching: ${searchTerm}`);
     } else {
@@ -245,6 +250,14 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
       return;
     }
 
+    // Check if geo-map is active and update geo coordinates
+    const layoutManager = (window as any).layoutManager;
+    const isGeoActive = layoutManager?.isGeoMapInitialized || false;
+
+    if (isGeoActive && layoutManager && typeof layoutManager.updateNodeGeoCoordinates === 'function') {
+      layoutManager.updateNodeGeoCoordinates();
+    }
+
     // Process nodes: update each node's "position" property with the current position
     const updatedNodes = globalThis.cy.nodes().map((node: any) => {
       const nodeJson = node.json();
@@ -256,6 +269,14 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
       if (nodeJson.data?.extraData?.labels) {
         nodeJson.data.extraData.labels['graph-posX'] = nodeJson.position.x.toString();
         nodeJson.data.extraData.labels['graph-posY'] = nodeJson.position.y.toString();
+
+        // Save geo coordinates if available
+        const lat = node.data('lat');
+        const lng = node.data('lng');
+        if (lat !== undefined && lng !== undefined) {
+          nodeJson.data.extraData.labels['graph-geoCoordinateLat'] = lat.toString();
+          nodeJson.data.extraData.labels['graph-geoCoordinateLng'] = lng.toString();
+        }
       }
 
       // Update parent property
