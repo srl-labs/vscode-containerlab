@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { log } from '../../common/backend/logger';
 
 import { generateWebviewHtml, EditorTemplateParams } from '../../common/htmlTemplateUtils';
-import { TopoViewerAdaptorClab } from '../../view/backend/topoViewerAdaptorClab';
+import { TopoViewerAdaptorClab } from '../../common/backend/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../../treeView/common";
 
 import { validateYamlContent } from './yamlValidator';

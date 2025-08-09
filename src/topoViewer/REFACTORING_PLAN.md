@@ -37,9 +37,9 @@ Create a unified logging strategy that works for both contexts or document why b
 
 ---
 
-## Phase 2: Move TopoViewerAdaptorClab to Common
+## Phase 2: Move TopoViewerAdaptorClab to Common ✅ COMPLETED
 
-### Step 2.1: Create Common Backend Directory
+### Step 2.1: Create Common Backend Directory ✅
 **Prompt:**
 ```
 Create a new directory structure:
@@ -48,7 +48,7 @@ src/topoViewer/common/backend/
 This will house shared backend utilities used by both view and edit modes.
 ```
 
-### Step 2.2: Move TopoViewerAdaptorClab
+### Step 2.2: Move TopoViewerAdaptorClab ✅
 **Prompt:**
 ```
 Move src/topoViewer/view/backend/topoViewerAdaptorClab.ts to src/topoViewer/common/backend/topoViewerAdaptorClab.ts
@@ -69,11 +69,11 @@ Update all imports in these files:
 Also update any imports within topoViewerAdaptorClab.ts itself to reflect its new location.
 ```
 
-### Step 2.3: Verify and Test
+### Step 2.3: Verify and Test ✅
 **Prompt:**
 ```
 After moving TopoViewerAdaptorClab:
-1. Run npm run compile to ensure no TypeScript errors
+1. Run npm run package to ensure no TypeScript errors
 2. Test both view and edit modes to ensure they still work
 3. Verify that YAML parsing and Cytoscape element generation work in both modes
 ```

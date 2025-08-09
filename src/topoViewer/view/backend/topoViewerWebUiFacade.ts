@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { TopoViewerAdaptorClab } from './topoViewerAdaptorClab';
+import { TopoViewerAdaptorClab } from '../../common/backend/topoViewerAdaptorClab';
 import { log } from '../../common/backend/logger';
 import { ClabLabTreeNode } from '../../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../../treeView/runningLabsProvider';
