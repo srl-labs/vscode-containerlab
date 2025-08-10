@@ -7,6 +7,7 @@ import { log } from '../logging/extensionLogger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
 import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../types/topoViewerType';
+import { resolveNodeConfig } from './nodeConfig';
 
 import { version as topoViewerVersion } from '../../../../package.json';
 
@@ -253,35 +254,6 @@ export class TopoViewerAdaptorClab {
     return '';
   }
 
-  /**
-   * Applies Containerlab inheritance rules to compute the effective
-   * configuration for a node. The precedence order is:
-   * node -> group -> kind -> defaults.
-   */
-  private resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
-    const defaults = parsed.topology?.defaults ?? {};
-    const groups = parsed.topology?.groups ?? {};
-    const kinds = parsed.topology?.kinds ?? {};
-
-    const groupCfg = node.group && groups[node.group] ? groups[node.group] : {};
-    const kindName = node.kind ?? (groupCfg.kind ?? defaults.kind);
-    const kindCfg = kindName && kinds[kindName] ? kinds[kindName] : {};
-
-    const merged: ClabNode = {
-      ...defaults,
-      ...kindCfg,
-      ...groupCfg,
-      ...node,
-    };
-    merged.kind = kindName;
-    merged.labels = {
-      ...(defaults.labels ?? {}),
-      ...(kindCfg.labels ?? {}),
-      ...(groupCfg.labels ?? {}),
-      ...(node.labels ?? {}),
-    };
-    return merged;
-  }
 
   /**
    * Maps the EnvironmentJson object from camelCase to hyphenated keys for JSON serialization.
@@ -321,7 +293,7 @@ export class TopoViewerAdaptorClab {
     if (parsed.topology.nodes) {
       this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
         .every(([, nodeObj]) => {
-          const merged = this.resolveNodeConfig(parsed, nodeObj);
+          const merged = resolveNodeConfig(parsed, nodeObj);
           return (
             !!merged.labels?.['graph-posX'] &&
             !!merged.labels?.['graph-posY']
@@ -339,7 +311,7 @@ export class TopoViewerAdaptorClab {
 
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
-        const mergedNode = this.resolveNodeConfig(parsed, nodeObj);
+        const mergedNode = resolveNodeConfig(parsed, nodeObj);
         const parentId = this.buildParent(mergedNode);
         if (parentId) {
           if (!parentMap.has(parentId)) {

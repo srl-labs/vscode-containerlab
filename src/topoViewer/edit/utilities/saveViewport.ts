@@ -3,35 +3,11 @@ import * as YAML from 'yaml';
 
 import { log } from '../../common/logging/extensionLogger';
 import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
-import { ClabTopology, ClabNode } from '../../common/types/topoViewerType';
+import { resolveNodeConfig } from '../../common/core/nodeConfig';
+import { ClabTopology } from '../../common/types/topoViewerType';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
-  const defaults = parsed.topology?.defaults ?? {};
-  const groups = parsed.topology?.groups ?? {};
-  const kinds = parsed.topology?.kinds ?? {};
-
-  const groupCfg = node.group && groups[node.group] ? groups[node.group] : {};
-  const kindName = node.kind ?? groupCfg.kind ?? defaults.kind;
-  const kindCfg = kindName && kinds[kindName] ? kinds[kindName] : {};
-
-  const merged: ClabNode = {
-    ...defaults,
-    ...kindCfg,
-    ...groupCfg,
-    ...node,
-  };
-  merged.kind = kindName;
-  merged.labels = {
-    ...(defaults.labels ?? {}),
-    ...(kindCfg.labels ?? {}),
-    ...(groupCfg.labels ?? {}),
-    ...(node.labels ?? {}),
-  };
-  return merged;
 }
 
 function computeEndpointsStr(data: any): string | null {
