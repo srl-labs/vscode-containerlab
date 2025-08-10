@@ -147,7 +147,7 @@ class TopoViewerEditorEngine {
       parentPadding: false,
       drawGrid: true,
 
-      gridSpacing: 10,
+      gridSpacing: 14,
       snapToGridCenter: true,
 
       zoomDash: true,
