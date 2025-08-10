@@ -7,6 +7,7 @@ import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlg
 import { layoutAlgoManager, getGroupManager } from '../../common/core/managerRegistry';
 import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
 import topoViewerState, { resetState } from '../../common/webview-ui/state';
+import { createCytoscapeInstance } from '../../common/topoViewerEngineFactory';
 
 // loadCytoStyle function will be called if available
 
@@ -21,21 +22,6 @@ function initializeState(): void {
  * Initialize Cytoscape instance and load topology data
  */
 function initializeCytoscape(): void {
-  // Check if cytoscape is available
-  log.info('Checking for cytoscape availability...');
-  log.info('window.cytoscape type: ' + typeof window.cytoscape);
-
-  if (typeof window.cytoscape === 'undefined') {
-    log.error('Cytoscape.js is not loaded');
-    return;
-  }
-
-  const cytoscape = window.cytoscape;
-  log.info('Cytoscape loaded successfully');
-
-  // Cytoscape-popper is already registered in libraries.ts, no need to register again
-
-  // Create Cytoscape instance
   const container = document.getElementById("cy");
   log.info('Cytoscape container element: ' + container);
 
@@ -44,31 +30,8 @@ function initializeCytoscape(): void {
     return;
   }
 
-  // Log container dimensions
-  const rect = container.getBoundingClientRect();
-  log.info('Container dimensions: ' + JSON.stringify({
-    width: rect.width,
-    height: rect.height,
-    offsetWidth: container.offsetWidth,
-    offsetHeight: container.offsetHeight
-  }));
-
   try {
-    topoViewerState.cy = cytoscape({
-      container: container,
-      elements: [],
-      style: [{
-        selector: "node",
-        style: {
-          "background-color": "#3498db",
-          label: "data(label)",
-        },
-      }],
-      boxSelectionEnabled: true,
-      wheelSensitivity: 0,
-      selectionType: 'additive'
-    });
-
+    topoViewerState.cy = createCytoscapeInstance(container);
     const cy = topoViewerState.cy!;
 
     log.info('Cytoscape instance created successfully');

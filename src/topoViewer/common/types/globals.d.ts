@@ -1,7 +1,7 @@
 /* eslint-disable */
 import type { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
 import type { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
-import type { TopoViewerEditorEngine } from '../../edit/webview-ui/topoViewerEditorEngine';
+import type { TopoViewerEditorEngine } from '../../edit/webview-ui/initialization';
 
 declare global {
   interface LayoutManager extends ManagerLayoutAlgo {}

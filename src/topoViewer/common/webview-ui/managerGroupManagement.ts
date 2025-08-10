@@ -425,7 +425,7 @@ export class ManagerGroupManagement {
         log.error(`No group node found with id "${groupId}".`);
         return false;
       }
-      
+
       // Unparent all children except dummy children
       const children = parentNode.children();
       children.forEach(child => {
@@ -433,16 +433,16 @@ export class ManagerGroupManagement {
           child.move({ parent: null });
         }
       });
-      
+
       // Remove dummy children
       const dummyChildren = parentNode.children('[topoViewerRole = "dummyChild"]');
       dummyChildren.forEach(dummyChild => {
         dummyChild.remove();
       });
-      
+
       // Remove the parent node itself
       parentNode.remove();
-      
+
       // Close the panel if it's showing this group
       const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
       if (parentIdEl && parentIdEl.textContent?.trim() === groupId) {
@@ -451,7 +451,7 @@ export class ManagerGroupManagement {
           nodeEditorParentPanel.style.display = 'none';
         }
       }
-      
+
       log.info(`Group '${groupId}' removed successfully`);
       return true;
     } catch (error) {

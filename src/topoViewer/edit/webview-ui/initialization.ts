@@ -1,14 +1,7 @@
-// file: topoViewerEditorEngine.ts
+// file: initialization.ts
 
-import cytoscape from 'cytoscape';
-import edgehandles from 'cytoscape-edgehandles';
-import cola from 'cytoscape-cola';
-import gridGuide from 'cytoscape-grid-guide';
-import leaflet from 'cytoscape-leaf';
-// Import and register context-menu plugin
-import cxtmenu from 'cytoscape-cxtmenu';
-// import 'cytoscape-cxtmenu/cytoscape-cxtmenu.css';
-import cytoscapeSvg from 'cytoscape-svg';
+import type cytoscape from 'cytoscape';
+import { createCytoscapeInstance } from '../../common/topoViewerEngineFactory';
 
 // Import Tailwind CSS and Font Awesome
 import '../../common/webview-ui/tailwind.css';
@@ -37,16 +30,6 @@ import { log } from '../../common/logging/webviewLogger';
 import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
 import topoViewerState from '../../common/webview-ui/state';
 import type { EdgeData } from '../../common/types/topoViewerGraph';
-
-
-
-
-cytoscape.use(edgehandles);
-cytoscape.use(cola);
-cytoscape.use(gridGuide);
-cytoscape.use(cxtmenu);
-cytoscape.use(leaflet);
-cytoscape.use(cytoscapeSvg);
 
 
 
@@ -122,11 +105,7 @@ class TopoViewerEditorEngine {
     this.detectColorScheme();
 
     // Initialize Cytoscape instance
-    this.cy = cytoscape({
-      container,
-      elements: [],
-      wheelSensitivity: 2,
-    });
+    this.cy = createCytoscapeInstance(container, { wheelSensitivity: 2 });
 
     this.cy.on('tap', (event) => {
       this.cyEvent = event as cytoscape.EventObject;

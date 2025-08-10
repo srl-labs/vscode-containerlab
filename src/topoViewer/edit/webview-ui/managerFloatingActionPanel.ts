@@ -29,7 +29,7 @@ export class ManagerFloatingActionPanel {
     // Get DOM elements
     this.fabMain = document.getElementById('fab-main');
     this.radialMenu = document.getElementById('radial-menu');
-    
+
     if (!this.fabMain || !this.radialMenu) {
       log.error('Floating action panel elements not found');
       return;
@@ -70,7 +70,7 @@ export class ManagerFloatingActionPanel {
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
-      if (this.isMenuOpen && !this.fabMain?.contains(e.target as Node) && 
+      if (this.isMenuOpen && !this.fabMain?.contains(e.target as Node) &&
           !this.radialMenu?.contains(e.target as Node)) {
         this.closeMenu();
       }
@@ -100,17 +100,17 @@ export class ManagerFloatingActionPanel {
    */
   private openMenu(): void {
     if (!this.fabMain || !this.radialMenu) return;
-    
+
     this.isMenuOpen = true;
     this.fabMain.classList.add('active');
     this.radialMenu.classList.add('active');
-    
+
     // Rotate the plus icon to X
     const icon = this.fabMain.querySelector('i');
     if (icon) {
       icon.style.transform = 'rotate(45deg)';
     }
-    
+
     log.debug('Floating action menu opened');
   }
 
@@ -119,17 +119,17 @@ export class ManagerFloatingActionPanel {
    */
   private closeMenu(): void {
     if (!this.fabMain || !this.radialMenu) return;
-    
+
     this.isMenuOpen = false;
     this.fabMain.classList.remove('active');
     this.radialMenu.classList.remove('active');
-    
+
     // Rotate icon back to plus
     const icon = this.fabMain.querySelector('i');
     if (icon) {
       icon.style.transform = 'rotate(0deg)';
     }
-    
+
     log.debug('Floating action menu closed');
   }
 
@@ -138,12 +138,12 @@ export class ManagerFloatingActionPanel {
    */
   private handleAddNode(): void {
     log.debug('Adding new node via floating action panel');
-    
+
     // Get viewport center for positioning
     const extent = this.cy.extent();
     const viewportCenterX = (extent.x1 + extent.x2) / 2;
     const viewportCenterY = (extent.y1 + extent.y2) / 2;
-    
+
     // Create a synthetic event object for the add node manager
     const syntheticEvent: cytoscape.EventObject = {
       type: 'click',
@@ -161,13 +161,13 @@ export class ManagerFloatingActionPanel {
       },
       originalEvent: new MouseEvent('click')
     } as cytoscape.EventObject;
-    
+
     // Add the node
     this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, syntheticEvent);
-    
+
     // Close the menu after adding
     this.closeMenu();
-    
+
     // Optionally, open the node editor for the newly added node
     const newNode = this.cy.nodes().last();
     // Access viewportPanels through topoViewerState
@@ -184,7 +184,7 @@ export class ManagerFloatingActionPanel {
    */
   private handleAddGroup(): void {
     log.debug('Adding new group via floating action panel');
-    
+
     const groupManager = getGroupManager(this.cy, 'edit');
     if (!groupManager) {
       log.error('Group manager not available');
@@ -193,10 +193,10 @@ export class ManagerFloatingActionPanel {
 
     // Use the same method as the navbar button
     groupManager.viewportButtonsAddGroup();
-    
+
     // Close the menu after adding
     this.closeMenu();
-    
+
     log.info('Added new group via floating action panel');
   }
 

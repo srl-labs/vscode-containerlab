@@ -216,7 +216,7 @@ export class ManagerViewportPanels {
     try {
       // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
       this.edgeClicked = true;
-      
+
       // 1) Hide other overlays
       const overlays = document.getElementsByClassName("panel-overlay");
       Array.from(overlays).forEach(el => (el as HTMLElement).style.display = "none");

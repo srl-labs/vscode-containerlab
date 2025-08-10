@@ -520,15 +520,15 @@ topology:
             try {
               // Get the document for the YAML file
               const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
-              
+
               // Store the currently active editor to restore focus later
               const currentActiveEditor = vscode.window.activeTextEditor;
-              
+
               // Find if there's already an editor with this document open
               const existingEditor = vscode.window.visibleTextEditors.find(
                 editor => editor.document.uri.fsPath === document.uri.fsPath
               );
-              
+
               if (existingEditor) {
                 // Make the existing editor active temporarily
                 await vscode.window.showTextDocument(document, {
@@ -545,16 +545,16 @@ topology:
                   preserveFocus: false
                 });
               }
-              
+
               // Small delay to ensure the editor is fully active
               await this.sleep(50);
-              
+
               // Execute undo command on the now-active editor
               await vscode.commands.executeCommand('undo');
-              
+
               // Save the document to trigger file watcher update
               await document.save();
-              
+
               // Restore focus to the previously active editor (usually the webview)
               if (currentActiveEditor && !existingEditor) {
                 await vscode.window.showTextDocument(currentActiveEditor.document, {
@@ -563,7 +563,7 @@ topology:
                   preserveFocus: false
                 });
               }
-              
+
               result = 'Undo operation completed successfully';
               log.info('Undo operation executed on YAML file');
             } catch (error) {

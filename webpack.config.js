@@ -4,7 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const editorConfig = {
   mode: 'production', // or 'development' for debugging
   target: 'web',
-  entry: './src/topoViewer/edit/webview-ui/topoViewerEditorEngine.ts',
+  entry: './src/topoViewer/edit/webview-ui/initialization.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'topoViewerEditorEngine.js',
