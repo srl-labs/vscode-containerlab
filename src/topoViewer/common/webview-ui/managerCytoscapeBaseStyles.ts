@@ -2,7 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import { log } from '../logging/webviewLogger';
-import { generateEncodedSVG } from './managerSvgGenerator';
+import { generateEncodedSVG, NodeType } from './managerSvgGenerator';
 import topoViewerState from './state';
 
 /**
@@ -10,7 +10,7 @@ import topoViewerState from './state';
  * Additional styles specific to the editor (edge handles, status nodes, etc.)
  * are included as they are harmless for the read-only view.
  */
-const cytoscapeStylesBase = [
+const cytoscapeStylesBase: any[] = [
   {
     selector: 'core',
     style: {
@@ -187,162 +187,7 @@ const cytoscapeStylesBase = [
       'z-index': '1'
     }
   },
-  // Encoded SVG backgrounds for different node roles.
-  {
-    selector: 'node[topoViewerRole="router"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('pe', '#005aff'),
-      'background-fit': 'cover',
-      'background-clip': 'none'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="default"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('pe', '#005aff'),
-      'background-fit': 'cover',
-      'background-clip': 'none'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="pe"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('pe', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="p"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('pe', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="controller"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('controller', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="pon"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('pon', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="dcgw"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('dcgw', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="leaf"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('leaf', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="switch"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('switch', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="rgw"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('rgw', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="super-spine"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('super-spine', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="spine"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('spine', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="server"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('server', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="bridge"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('bridge', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="ue"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('ue', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="cloud"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('cloud', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="client"]',
-    style: {
-      width: '14',
-      height: '14',
-      'background-image': generateEncodedSVG('client', '#005aff'),
-      'background-fit': 'cover'
-    }
-  },
+  // Encoded SVG backgrounds for different node roles are added programmatically below.
   {
     selector: 'edge',
     style: {
@@ -453,6 +298,50 @@ const cytoscapeStylesBase = [
     }
   }
 ];
+
+// Encoded SVG backgrounds for different node roles.
+const commonRoleStyle: cytoscape.Css.Node = {
+  width: '14',
+  height: '14',
+  'background-fit': 'cover'
+};
+
+const roleSvgMap: Record<string, NodeType> = {
+  router: 'pe',
+  default: 'pe',
+  pe: 'pe',
+  p: 'pe',
+  controller: 'controller',
+  pon: 'pon',
+  dcgw: 'dcgw',
+  leaf: 'leaf',
+  switch: 'switch',
+  rgw: 'rgw',
+  'super-spine': 'super-spine',
+  spine: 'spine',
+  server: 'server',
+  bridge: 'bridge',
+  ue: 'ue',
+  cloud: 'cloud',
+  client: 'client'
+};
+
+const roleStyleOverrides: Record<string, cytoscape.Css.Node> = {
+  router: { 'background-clip': 'none' },
+  default: { 'background-clip': 'none' }
+};
+
+const roleStyles: any[] = Object.entries(roleSvgMap).map(([role, svgId]) => ({
+  selector: `node[topoViewerRole="${role}"]`,
+  style: {
+    ...commonRoleStyle,
+    'background-image': generateEncodedSVG(svgId, '#005aff'),
+    ...(roleStyleOverrides[role] || {})
+  }
+}));
+
+const insertIndex = cytoscapeStylesBase.findIndex((s: any) => s.selector === 'edge');
+cytoscapeStylesBase.splice(insertIndex, 0, ...roleStyles);
 
 /**
  * Returns a cloned Cytoscape style array adjusted for the given theme.
