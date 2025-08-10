@@ -6,43 +6,15 @@ import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGrou
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import { layoutAlgoManager, getGroupManager } from '../../common/core/managerRegistry';
 import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
+import topoViewerState, { resetState } from '../../common/webview-ui/state';
 
 // loadCytoStyle function will be called if available
 
 let groupManager: ManagerGroupManagemetn;
 
-// Global Variables (previously in common.js)
-/* eslint-disable no-unused-vars */
-declare global {
-  var cy: any;
-  var globalSelectedNode: any;
-  var globalSelectedEdge: any;
-  var globalLinkEndpointVisibility: boolean;
-  var globalNodeContainerStatusVisibility: boolean;
-  var globalLabName: string;
-  var globalPrefixName: string;
-  var multiLayerViewPortState: boolean;
-  var globalIsGeoMapInitialized: boolean;
-  var isPanel01Cy: boolean;
-  var nodeClicked: boolean;
-  var edgeClicked: boolean;
-  var deploymentType: string;
-  var globalCytoscapeLeafletMap: any;
-  var globalCytoscapeLeafletLeaf: any;
-}
-/* eslint-enable no-unused-vars */
-
-// Initialize global variables - moved inside DOMContentLoaded to avoid immediate execution
-function initializeGlobalVariables(): void {
-  globalThis.isPanel01Cy = false;
-  globalThis.nodeClicked = false;
-  globalThis.edgeClicked = false;
-  globalThis.globalSelectedNode = null;
-  globalThis.globalSelectedEdge = null;
-  globalThis.globalLinkEndpointVisibility = true;
-  globalThis.globalNodeContainerStatusVisibility = false;
-  globalThis.multiLayerViewPortState = false;
-  globalThis.globalIsGeoMapInitialized = false;
+// Reset shared state - moved inside DOMContentLoaded to avoid immediate execution
+function initializeState(): void {
+  resetState();
 }
 
 /**
@@ -82,7 +54,7 @@ function initializeCytoscape(): void {
   }));
 
   try {
-    globalThis.cy = cytoscape({
+    topoViewerState.cy = cytoscape({
       container: container,
       elements: [],
       style: [{
@@ -97,8 +69,10 @@ function initializeCytoscape(): void {
       selectionType: 'additive'
     });
 
+    const cy = topoViewerState.cy!;
+
     log.info('Cytoscape instance created successfully');
-    log.info('Cytoscape instance: ' + globalThis.cy);
+    log.info('Cytoscape instance: ' + cy);
     registerCustomZoom();
   } catch (error) {
     log.error('Failed to create cytoscape instance: ' + error);
@@ -106,8 +80,9 @@ function initializeCytoscape(): void {
   }
 
   // Add selection event listeners
-  globalThis.cy.on('select', 'node', () => {
-    const selectedNodes = globalThis.cy.$('node:selected');
+  const cy = topoViewerState.cy!;
+  cy.on('select', 'node', () => {
+    const selectedNodes = cy.$('node:selected');
     selectedNodes.style({
       'border-width': 1,
       'border-color': '#ff0000'
@@ -115,15 +90,15 @@ function initializeCytoscape(): void {
     log.debug(`Selected nodes: ${selectedNodes.map((n: any) => n.id()).join(', ')}`);
   });
 
-  globalThis.cy.on('unselect', 'node', () => {
+  cy.on('unselect', 'node', () => {
     if (typeof (globalThis as any).loadCytoStyle === 'function') {
-      (globalThis as any).loadCytoStyle(globalThis.cy);
+      (globalThis as any).loadCytoStyle(cy);
     }
-    log.debug(`Remaining selected nodes: ${globalThis.cy.$('node:selected').map((n: any) => n.id()).join(', ')}`);
+    log.debug(`Remaining selected nodes: ${cy.$('node:selected').map((n: any) => n.id()).join(', ')}`);
   });
 
-  globalThis.cy.on('select', 'edge', () => {
-    const selectedEdges = globalThis.cy.$('edge:selected');
+  cy.on('select', 'edge', () => {
+    const selectedEdges = cy.$('edge:selected');
     selectedEdges.style({
       'line-color': '#ff0000',
       'width': 1.5
@@ -131,18 +106,18 @@ function initializeCytoscape(): void {
     log.debug(`Selected edges: ${selectedEdges.map((e: any) => e.id()).join(', ')}`);
   });
 
-  globalThis.cy.on('unselect', 'edge', () => {
+  cy.on('unselect', 'edge', () => {
     if (typeof (globalThis as any).loadCytoStyle === 'function') {
-      (globalThis as any).loadCytoStyle(globalThis.cy);
+      (globalThis as any).loadCytoStyle(cy);
     }
-    log.debug(`Remaining selected edges: ${globalThis.cy.$('edge:selected').map((e: any) => e.id()).join(', ')}`);
+    log.debug(`Remaining selected edges: ${cy.$('edge:selected').map((e: any) => e.id()).join(', ')}`);
   });
 
     registerCyEventHandlers({
-      cy: globalThis.cy,
+      cy,
       onNodeClick: async (event: any) => {
         const node = event.target;
-        globalThis.nodeClicked = true;
+        topoViewerState.nodeClicked = true;
         log.info(`Node clicked: ${node.id()}`);
         const extraData = node.data("extraData") || {};
         const originalEvent = event.originalEvent as MouseEvent;
@@ -175,14 +150,14 @@ function initializeCytoscape(): void {
             if (stateEl) stateEl.textContent = extraData.state || "";
             const imageEl = document.getElementById("panel-node-image");
             if (imageEl) imageEl.textContent = extraData.image || "";
-            globalThis.globalSelectedNode = extraData.longname || node.id();
-            log.info(`Global selected node: ${globalThis.globalSelectedNode}`);
+            topoViewerState.selectedNode = extraData.longname || node.id();
+            log.info(`Global selected node: ${topoViewerState.selectedNode}`);
           }
         }
       },
       onEdgeClick: async (event: any) => {
         const edge = event.target;
-        globalThis.edgeClicked = true;
+        topoViewerState.edgeClicked = true;
         log.info(`Edge clicked: ${edge.id()}`);
         const panelOverlays = document.getElementsByClassName("panel-overlay");
         Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
@@ -192,7 +167,7 @@ function initializeCytoscape(): void {
         } else {
           edge.style("line-color", "#0043BF");
         }
-        globalThis.cy.edges().forEach((e: any) => {
+        cy.edges().forEach((e: any) => {
           if (e !== edge) {
             e.style("line-color", defaultEdgeColor);
           }
@@ -237,13 +212,13 @@ function initializeCytoscape(): void {
           if (endpointBTypeEl) {
             endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
           }
-          globalThis.globalSelectedEdge = edge.data("id");
-          log.info(`Global selected edge: ${globalThis.globalSelectedEdge}`);
+          topoViewerState.selectedEdge = edge.data("id");
+          log.info(`Global selected edge: ${topoViewerState.selectedEdge}`);
           log.debug(`Edge extraData: ${JSON.stringify(extraData)}`);
         }
       },
       onCanvasClick: () => {
-        if (!globalThis.nodeClicked && !globalThis.edgeClicked) {
+        if (!topoViewerState.nodeClicked && !topoViewerState.edgeClicked) {
           const panelOverlays = document.getElementsByClassName('panel-overlay');
           for (let i = 0; i < panelOverlays.length; i++) {
             (panelOverlays[i] as HTMLElement).style.display = 'none';
@@ -253,14 +228,14 @@ function initializeCytoscape(): void {
             (viewportDrawer[i] as HTMLElement).style.display = 'none';
           }
         }
-        globalThis.nodeClicked = false;
-        globalThis.edgeClicked = false;
+        topoViewerState.nodeClicked = false;
+        topoViewerState.edgeClicked = false;
       }
     });
 
   // Apply initial styles
   if (typeof (globalThis as any).loadCytoStyle === 'function') {
-    (globalThis as any).loadCytoStyle(globalThis.cy);
+    (globalThis as any).loadCytoStyle(cy);
   }
 
   // Add container click handler to manage panel visibility
@@ -268,11 +243,11 @@ function initializeCytoscape(): void {
   if (cyContainer) {
     cyContainer.addEventListener("click", () => {
       log.debug("cy container clicked");
-      log.debug(`nodeClicked: ${globalThis.nodeClicked}`);
-      log.debug(`edgeClicked: ${globalThis.edgeClicked}`);
+      log.debug(`nodeClicked: ${topoViewerState.nodeClicked}`);
+      log.debug(`edgeClicked: ${topoViewerState.edgeClicked}`);
 
       // Execute toggle logic only when no node or edge was clicked
-      if (!globalThis.nodeClicked && !globalThis.edgeClicked) {
+      if (!topoViewerState.nodeClicked && !topoViewerState.edgeClicked) {
         // Remove all overlay panels
         const panelOverlays = document.getElementsByClassName("panel-overlay");
         for (let i = 0; i < panelOverlays.length; i++) {
@@ -287,8 +262,8 @@ function initializeCytoscape(): void {
       }
 
       // Reset the click flags
-      globalThis.nodeClicked = false;
-      globalThis.edgeClicked = false;
+      topoViewerState.nodeClicked = false;
+      topoViewerState.edgeClicked = false;
     });
   }
 
@@ -296,16 +271,18 @@ function initializeCytoscape(): void {
 }
 
 function registerCustomZoom(): void {
-  if (!globalThis.cy) return;
-  globalThis.cy.userZoomingEnabled(false);
-  const container = globalThis.cy.container();
+  const cy = topoViewerState.cy;
+  if (!cy) return;
+  cy.userZoomingEnabled(false);
+  const container = cy.container();
   if (container) {
     container.addEventListener('wheel', handleCustomWheel, { passive: false });
   }
 }
 
 function handleCustomWheel(event: WheelEvent): void {
-  if (!globalThis.cy) return;
+  const cy = topoViewerState.cy;
+  if (!cy) return;
   event.preventDefault();
   let step = event.deltaY;
   if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
@@ -316,8 +293,8 @@ function handleCustomWheel(event: WheelEvent): void {
   const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
   const sensitivity = isTrackpad ? 0.002 : 0.0002;
   const factor = Math.pow(10, -step * sensitivity);
-  const newZoom = globalThis.cy.zoom() * factor;
-  globalThis.cy.zoom({
+  const newZoom = cy.zoom() * factor;
+  cy.zoom({
     level: newZoom,
     renderedPosition: { x: event.offsetX, y: event.offsetY }
   });
@@ -341,9 +318,10 @@ async function loadTopologyData(): Promise<void> {
     log.debug(`Loaded cytoscape data with ${cytoData.nodes?.length || 0} nodes and ${cytoData.edges?.length || 0} edges`);
 
     // Load topology into cytoscape
-    if (globalThis.cy) {
-      globalThis.cy.elements().remove();
-      globalThis.cy.add(cytoData);
+    if (topoViewerState.cy) {
+      const cy = topoViewerState.cy;
+      cy.elements().remove();
+      cy.add(cytoData);
 
       let usePreset = false;
       try {
@@ -355,16 +333,16 @@ async function loadTopologyData(): Promise<void> {
 
       if (usePreset) {
         log.info('Applying preset layout from labels');
-        globalThis.cy.layout({ name: 'preset' }).run();
+        cy.layout({ name: 'preset' }).run();
       } else {
-        const layout = globalThis.cy.layout({
+        const layout = cy.layout({
           name: 'cola',
           nodeSpacing: () => 5,
           edgeLength: () => 100,
           animate: true,
           randomize: false,
           maxSimulationTime: 1500
-        });
+        } as any);
         layout.run();
       }
 
@@ -372,12 +350,12 @@ async function loadTopologyData(): Promise<void> {
       if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
         layoutManager.cytoscapeLeafletLeaf.fit();
       } else {
-        globalThis.cy.fit();
+        cy.fit();
       }
 
       // Apply styles after loading data
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
-        (globalThis as any).loadCytoStyle(globalThis.cy);
+        (globalThis as any).loadCytoStyle(cy);
       }
 
       if (cytoData.nodes && cytoData.nodes.length > 0) {
@@ -397,7 +375,8 @@ async function loadTopologyData(): Promise<void> {
  */
 function updateTopologyData(cytoData: any): void {
   try {
-    if (!globalThis.cy) {
+    const cy = topoViewerState.cy;
+    if (!cy) {
       log.error('Cytoscape instance not available');
       return;
     }
@@ -415,7 +394,7 @@ function updateTopologyData(cytoData: any): void {
     // Store current positions to preserve layout (only for non-geo mode)
     const positions = new Map();
     if (!isGeoActive) {
-      globalThis.cy.nodes().forEach((node: any) => {
+      cy.nodes().forEach((node: any) => {
         positions.set(node.id(), node.position());
       });
     }
@@ -423,7 +402,7 @@ function updateTopologyData(cytoData: any): void {
     // Update edges - this is where link states change
     cytoData.forEach((element: any) => {
       if (element.group === 'edges') {
-        const edge = globalThis.cy.getElementById(element.data.id);
+        const edge = cy.getElementById(element.data.id);
         if (edge.length > 0) {
           // Update edge classes (link-up or link-down)
           edge.classes(element.classes || '');
@@ -431,7 +410,7 @@ function updateTopologyData(cytoData: any): void {
           edge.data(element.data);
         }
       } else if (element.group === 'nodes') {
-        const node = globalThis.cy.getElementById(element.data.id);
+        const node = cy.getElementById(element.data.id);
         if (node.length > 0) {
           // Preserve lat/lng coordinates if geo-map is active
           const currentLat = node.data('lat');
@@ -452,7 +431,7 @@ function updateTopologyData(cytoData: any): void {
     // Restore positions to prevent layout shift (only for non-geo mode)
     if (!isGeoActive) {
       positions.forEach((pos, id) => {
-        const node = globalThis.cy.getElementById(id);
+        const node = cy.getElementById(id);
         if (node.length > 0) {
           node.position(pos);
         }
@@ -469,7 +448,7 @@ function updateTopologyData(cytoData: any): void {
     const geoMapActive = currentLayoutManager?.isGeoMapInitialized || false;
 
     if (!geoMapActive && typeof (globalThis as any).loadCytoStyle === 'function') {
-      (globalThis as any).loadCytoStyle(globalThis.cy);
+      (globalThis as any).loadCytoStyle(cy);
     } else if (geoMapActive) {
       // If geo-map is active, reapply the scale to ensure nodes remain visible
       if (currentLayoutManager && typeof currentLayoutManager.applyGeoScale === 'function') {
@@ -511,14 +490,15 @@ function initializeResizeHandling(): void {
         viewport.style.height = `${availableHeight}px`;
 
         // Resize cytoscape if available
-        if (globalThis.cy) {
-          globalThis.cy.resize();
+        const cy = topoViewerState.cy;
+        if (cy) {
+          cy.resize();
           log.debug('Fitting Cytoscape to new size with animation');
           const layoutManager = (window as any).layoutManager;
           if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
             layoutManager.cytoscapeLeafletLeaf.fit();
           } else {
-            globalThis.cy.fit(undefined, 50);
+            cy.fit(undefined, 50);
           }
         }
       }
@@ -621,8 +601,8 @@ export function initializeTopoViewer(): void {
   log.info('Starting TopoViewer initialization...');
 
   try {
-    log.info('Calling initializeGlobalVariables...');
-    initializeGlobalVariables();
+    log.info('Calling initializeState...');
+    initializeState();
 
     log.info('Calling initializeCytoscape...');
     initializeCytoscape();
@@ -642,7 +622,7 @@ export function initializeTopoViewer(): void {
     (window as any).viewportButtonsGeoMapPan = layoutManager.viewportButtonsGeoMapPan.bind(layoutManager);
     (window as any).viewportButtonsGeoMapEdit = layoutManager.viewportButtonsGeoMapEdit.bind(layoutManager);
 
-    groupManager = getGroupManager(globalThis.cy, 'view');
+    groupManager = getGroupManager(topoViewerState.cy!, 'view');
     groupManager.initializeWheelSelection();
     groupManager.initializeGroupManagement();
 

@@ -33,6 +33,7 @@ import type { ManagerReloadTopo } from './managerReloadTopo';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../../common/core/managerRegistry';
 import { log } from '../../common/logging/webviewLogger';
 import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
+import topoViewerState from '../../common/webview-ui/state';
 
 
 
@@ -89,7 +90,7 @@ export interface EdgeData {
  * entry point for the topology editor webview; methods are called from vscodeHtmlTemplate.ts.
  */
 class TopoViewerEditorEngine {
-  private cy: cytoscape.Core;
+  public cy: cytoscape.Core;
   private cyEvent: cytoscape.EventObject | undefined;
   private eh: any;
   private isEdgeHandlerActive: boolean = false;
@@ -739,7 +740,10 @@ class TopoViewerEditorEngine {
 
 document.addEventListener('DOMContentLoaded', () => {
   const engine = new TopoViewerEditorEngine('cy');
-  // Create and store the instance globally
+  // Store the instance for other modules
+  topoViewerState.editorEngine = engine;
+  topoViewerState.cy = engine.cy;
+  // Expose for existing HTML bindings
   (window as any).topoViewerEditorEngine = engine;
 
   const gm = engine.groupManager;

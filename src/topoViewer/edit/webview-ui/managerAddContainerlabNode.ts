@@ -2,6 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import { NodeData } from './topoViewerEditorEngine';
+import topoViewerState from '../../common/webview-ui/state';
 
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.
@@ -66,7 +67,7 @@ export class ManagerAddContainerlabNode {
 
     cy.add({ group: 'nodes', data: newNodeData, position });
 
-    const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+    const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
     if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
       const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
         x: position.x,

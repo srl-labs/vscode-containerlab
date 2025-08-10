@@ -3,6 +3,7 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/webviewLogger';
 import { generateEncodedSVG } from './managerSvgGenerator';
+import topoViewerState from './state';
 
 /**
  * Cytoscape styles shared between view and edit webviews.
@@ -474,7 +475,7 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
     return clone;
   });
 
-  const vis = (globalThis as any).globalLinkEndpointVisibility;
+  const vis = topoViewerState.linkEndpointVisibility;
   if (typeof vis === 'boolean' && !vis) {
     const edgeStyle = styles.find((s: any) => s.selector === 'edge');
     if (edgeStyle) {
@@ -500,7 +501,7 @@ export default async function loadCytoStyle(
     cy.nodes().removeStyle();
     cy.edges().removeStyle();
 
-    const engine = (window as any).topoViewerEditorEngine;
+    const engine = topoViewerState.editorEngine;
     const forced = engine?.layoutAlgoManager?.geoTheme;
     const detect = () => {
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -513,7 +514,7 @@ export default async function loadCytoStyle(
     cy.style().fromJson(styles).update();
     log.info('Cytoscape styles applied successfully.');
 
-    const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+    const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
     if (layoutMgr?.isGeoMapInitialized) {
       layoutMgr.applyGeoScale(true);
     }

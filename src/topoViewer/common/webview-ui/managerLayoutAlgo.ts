@@ -1,4 +1,5 @@
 import cytoscape from 'cytoscape';
+import topoViewerState from './state';
 
 // Use globally registered style loader to avoid duplicating implementations
 function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
@@ -29,8 +30,8 @@ export class ManagerLayoutAlgo {
   /** Helper to get the Cytoscape instance from the engine or global scope */
   private getCy(): cytoscape.Core | undefined {
     return (
-      ((window as any).topoViewerEditorEngine?.cy as cytoscape.Core | undefined) ||
-      ((window as any).cy as cytoscape.Core | undefined)
+      (topoViewerState.editorEngine?.cy as cytoscape.Core | undefined) ||
+      (topoViewerState.cy as cytoscape.Core | undefined)
     );
   }
 

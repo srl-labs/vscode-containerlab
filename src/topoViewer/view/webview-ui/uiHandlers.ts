@@ -5,6 +5,7 @@
 import { log } from '../../common/logging/webviewLogger';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { exportViewportAsSvg } from '../../common/webview-ui/utils';
+import topoViewerState from '../../common/webview-ui/state';
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -66,12 +67,13 @@ export async function showPanelAbout(): Promise<void> {
  */
 export function viewportButtonsZoomToFit(): void {
   try {
-    if (!globalThis.cy) {
+    if (!topoViewerState.cy) {
       log.error('Cytoscape instance not available');
       return;
     }
 
-    const initialZoom = globalThis.cy.zoom();
+    const cy = topoViewerState.cy;
+    const initialZoom = cy.zoom();
     log.debug(`Initial zoom level: ${initialZoom}`);
 
     const layoutManager = (window as any).layoutManager;
@@ -81,8 +83,8 @@ export function viewportButtonsZoomToFit(): void {
       log.info('Fitted cytoscape-leaflet map');
     } else {
       // Fit all nodes with padding
-      globalThis.cy.fit();
-      const currentZoom = globalThis.cy.zoom();
+      cy.fit();
+      const currentZoom = cy.zoom();
       log.debug(`New zoom level: ${currentZoom}`);
     }
   } catch (error) {
@@ -124,16 +126,17 @@ export function viewportButtonsTopologyOverview(): void {
  */
 export function viewportButtonsLabelEndpoint(): void {
   try {
-    globalThis.globalLinkEndpointVisibility = !globalThis.globalLinkEndpointVisibility;
+    topoViewerState.linkEndpointVisibility = !topoViewerState.linkEndpointVisibility;
 
-    if (globalThis.cy) {
+    const cy = topoViewerState.cy;
+    if (cy) {
       // Trigger style update if loadCytoStyle is available
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
-        (globalThis as any).loadCytoStyle(globalThis.cy);
+        (globalThis as any).loadCytoStyle(cy);
       }
     }
 
-    log.info(`Endpoint label visibility toggled to: ${globalThis.globalLinkEndpointVisibility}`);
+    log.info(`Endpoint label visibility toggled to: ${topoViewerState.linkEndpointVisibility}`);
   } catch (error) {
     log.error(`Error toggling endpoint labels: ${error}`);
   }
@@ -169,13 +172,14 @@ export function viewportNodeFindEvent(): void {
       return;
     }
 
-    if (!globalThis.cy) {
+    if (!topoViewerState.cy) {
       log.error('Cytoscape instance not available');
       return;
     }
+    const cy = topoViewerState.cy;
 
     // Search for nodes by name or longname
-    const matchingNodes = globalThis.cy.nodes().filter((node: any) => {
+    const matchingNodes = cy.nodes().filter((node: any) => {
       const data = node.data();
       const shortName = data.name || '';
       const longName = data.extraData?.longname || '';
@@ -185,7 +189,7 @@ export function viewportNodeFindEvent(): void {
 
     if (matchingNodes.length > 0) {
       // Select matching nodes
-      globalThis.cy.elements().unselect();
+      cy.elements().unselect();
       matchingNodes.select();
 
       // Fit to show selected nodes (or entire map if Geo layout active)
@@ -193,7 +197,7 @@ export function viewportNodeFindEvent(): void {
       if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
         layoutManager.cytoscapeLeafletLeaf.fit();
       } else {
-        globalThis.cy.fit(matchingNodes, 50);
+        cy.fit(matchingNodes, 50);
       }
 
       log.info(`Found ${matchingNodes.length} nodes matching: ${searchTerm}`);
@@ -211,11 +215,12 @@ export function viewportNodeFindEvent(): void {
 export function viewportDrawerCaptureFunc(event: Event): void {
   event.preventDefault();
   try {
-    if (!globalThis.cy) {
+    if (!topoViewerState.cy) {
       log.error('Cytoscape instance not available');
       return;
     }
-    exportViewportAsSvg(globalThis.cy);
+    const cy = topoViewerState.cy;
+    exportViewportAsSvg(cy);
   } catch (error) {
     log.error(`Error capturing topology: ${error}`);
   }
@@ -226,11 +231,12 @@ export function viewportDrawerCaptureFunc(event: Event): void {
  */
 export function viewportButtonsCaptureViewportAsSvg(): void {
   try {
-    if (!globalThis.cy) {
+    if (!topoViewerState.cy) {
       log.error('Cytoscape instance not available for SVG capture');
       return;
     }
-    exportViewportAsSvg(globalThis.cy);
+    const cy = topoViewerState.cy;
+    exportViewportAsSvg(cy);
     log.info('Viewport captured as SVG');
   } catch (error) {
     log.error(`Error capturing viewport as SVG: ${error}`);
@@ -246,10 +252,11 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
     log.info('viewportButtonsSaveTopo triggered');
 
     // Ensure Cytoscape instance is available
-    if (!globalThis.cy) {
+    if (!topoViewerState.cy) {
       log.error('Cytoscape instance "cy" is not defined.');
       return;
     }
+    const cy = topoViewerState.cy;
 
     // Check if geo-map is active and update geo coordinates
     const layoutManager = (window as any).layoutManager;
@@ -260,7 +267,7 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
     }
 
     // Process nodes: update each node's "position" property with the current position
-    const updatedNodes = globalThis.cy.nodes().map((node: any) => {
+    const updatedNodes = cy.nodes().map((node: any) => {
       const nodeJson = node.json();
 
       // Update position property
@@ -317,7 +324,7 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
           ];
 
           // Get the parent's classes as array
-          const parentElement = globalThis.cy.getElementById(parentId);
+          const parentElement = cy.getElementById(parentId);
           if (parentElement) {
             const parentClasses = parentElement.classes();
 
@@ -348,7 +355,7 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
  */
 export async function nodeActionConnectToSSH(): Promise<void> {
   try {
-    const nodeName = globalThis.globalSelectedNode;
+    const nodeName = topoViewerState.selectedNode;
     if (!nodeName) {
       log.warn('No node selected for SSH connection');
       return;
@@ -366,7 +373,7 @@ export async function nodeActionConnectToSSH(): Promise<void> {
  */
 export async function nodeActionAttachShell(): Promise<void> {
   try {
-    const nodeName = globalThis.globalSelectedNode;
+    const nodeName = topoViewerState.selectedNode;
     if (!nodeName) {
       log.warn('No node selected to attach shell');
       return;
@@ -384,7 +391,7 @@ export async function nodeActionAttachShell(): Promise<void> {
  */
 export async function nodeActionViewLogs(): Promise<void> {
   try {
-    const nodeName = globalThis.globalSelectedNode;
+    const nodeName = topoViewerState.selectedNode;
     if (!nodeName) {
       log.warn('No node selected to view logs');
       return;
@@ -402,20 +409,21 @@ export async function nodeActionViewLogs(): Promise<void> {
  */
 export function nodeActionRemoveFromParent(): void {
   try {
-    if (!globalThis.cy || !globalThis.globalSelectedNode) {
+    if (!topoViewerState.cy || !topoViewerState.selectedNode) {
       log.warn('Cytoscape instance or selected node not available');
       return;
     }
-    const node = globalThis.cy
+    const cy = topoViewerState.cy;
+    const node = cy
       .nodes()
-      .filter((ele: any) => ele.data('extraData')?.longname === globalThis.globalSelectedNode)[0];
+      .filter((ele: any) => ele.data('extraData')?.longname === topoViewerState.selectedNode)[0];
     if (!node) {
       log.warn('Selected node not found in cytoscape');
       return;
     }
-    const currentParentId = node.parent().id();
+    const currentParentId = (node.parent() as any).id();
     node.move({ parent: null });
-    const formerParentNode = globalThis.cy.getElementById(currentParentId);
+    const formerParentNode = cy.getElementById(currentParentId);
     if (formerParentNode && formerParentNode.isChildless()) {
       formerParentNode.remove();
     }
@@ -434,11 +442,12 @@ export async function linkWireshark(
   referenceElementAfterId: string | null
 ): Promise<void> {
   try {
-    if (!globalThis.cy || !globalThis.globalSelectedEdge) {
+    if (!topoViewerState.cy || !topoViewerState.selectedEdge) {
       log.warn('Cytoscape instance or selected edge not available');
       return;
     }
-    const edge = globalThis.cy.getElementById(globalThis.globalSelectedEdge);
+    const cy = topoViewerState.cy;
+    const edge = cy.getElementById(topoViewerState.selectedEdge);
     const extra = edge.data('extraData') || {};
     const sourceNode = extra.clabSourceLongName;
     const sourcePort = extra.clabSourcePort;

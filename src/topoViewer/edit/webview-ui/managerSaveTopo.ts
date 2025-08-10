@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { log } from '../../common/logging/webviewLogger';
+import topoViewerState from '../../common/webview-ui/state';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.
@@ -28,7 +29,7 @@ export class ManagerSaveTopo {
     try {
       log.debug('viewportButtonsSaveTopo triggered');
 
-      const layoutMgr = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+      const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
       const updatedNodes = cy.nodes().map((node: cytoscape.NodeSingular) => {
         const nodeJson: any = node.json();
 
@@ -129,7 +130,7 @@ export class ManagerSaveTopo {
       if (!suppressNotification) {
         loadCytoStyle(cy);
       } else {
-        const lm = (window as any).topoViewerEditorEngine?.layoutAlgoManager;
+        const lm = topoViewerState.editorEngine?.layoutAlgoManager;
         if (lm?.isGeoMapInitialized) {
           const factor = lm.calculateGeoScale();
           lm.applyGeoScale(true, factor);
