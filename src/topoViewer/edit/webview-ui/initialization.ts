@@ -368,6 +368,8 @@ class TopoViewerEditorEngine {
             if (!ele.isNode()) {
               return;
             }
+            // prevent global canvas click handler from closing panels
+            this.viewportPanels.setNodeClicked(true);
             // inside here TS infers ele is NodeSingular
             // this.viewportPanels.panelNodeEditor(ele);
             if (ele.data("topoViewerRole") == "dummyChild") {
