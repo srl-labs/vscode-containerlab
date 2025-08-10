@@ -10,7 +10,7 @@ import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../../treeView/common";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
-import { saveViewport } from '../utilities/saveViewport';
+import { saveViewport } from '../../common/utilities/saveViewport';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.
@@ -477,14 +477,15 @@ topology:
 
           case 'topo-editor-viewport-save': {
             try {
-              await saveViewport(
-                this.adaptor,
-                this.lastYamlFilePath,
-                payload as string,
-                v => {
+              await saveViewport({
+                adaptor: this.adaptor,
+                yamlFilePath: this.lastYamlFilePath,
+                payload: payload as string,
+                mode: 'edit',
+                setInternalUpdate: v => {
                   this.isInternalUpdate = v;
-                }
-              );
+                },
+              });
               result = `Saved topology with preserved comments!`;
               log.info(result);
             } catch (error) {
@@ -496,14 +497,15 @@ topology:
 
           case 'topo-editor-viewport-save-suppress-notification': {
             try {
-              await saveViewport(
-                this.adaptor,
-                this.lastYamlFilePath,
-                payload as string,
-                v => {
+              await saveViewport({
+                adaptor: this.adaptor,
+                yamlFilePath: this.lastYamlFilePath,
+                payload: payload as string,
+                mode: 'edit',
+                setInternalUpdate: v => {
                   this.isInternalUpdate = v;
-                }
-              );
+                },
+              });
             } catch (error) {
                 result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
                 log.error(

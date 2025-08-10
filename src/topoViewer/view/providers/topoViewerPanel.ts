@@ -4,7 +4,7 @@ import { log } from '../../common/logging/extensionLogger';
 import { generateWebviewHtml, ViewerTemplateParams, TemplateMode } from '../../common/htmlTemplateUtils';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from '../utilities/deploymentUtils';
-import { saveViewportPositions } from '../utilities/saveViewportPositions';
+import { saveViewport } from '../../common/utilities/saveViewport';
 
 /* eslint-disable no-unused-vars */
 export interface PanelOptions {
@@ -155,10 +155,11 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
         }
         case 'topo-viewport-save': {
           try {
-            await saveViewportPositions(
+            await saveViewport({
               yamlFilePath,
-              payload as string
-            );
+              payload: payload as string,
+              mode: 'view',
+            });
             result = `Saved positions and groups successfully!`;
             log.info('Viewport positions saved successfully');
             // Show success message
