@@ -277,6 +277,18 @@ class TopoViewerEditorEngine {
     // Expose topology overview function
     (window as any).viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
 
+    // Expose additional functions used by shared navbar buttons
+    (window as any).viewportButtonsZoomToFit = () =>
+      this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
+    (window as any).viewportButtonsLabelEndpoint = () =>
+      this.labelEndpointManager.viewportButtonsLabelEndpoint(this.cy);
+    (window as any).viewportButtonsCaptureViewportAsSvg = () =>
+      this.captureViewportManager.viewportButtonsCaptureViewportAsSvg(this.cy);
+    (window as any).viewportButtonsReloadTopo = () =>
+      this.reloadTopoManager.viewportButtonsReloadTopo(this.cy);
+    (window as any).viewportButtonsSaveTopo = () =>
+      this.saveManager.viewportButtonsSaveTopo(this.cy);
+
     this.setupAutoSave();
 
     window.addEventListener('message', (event) => {
