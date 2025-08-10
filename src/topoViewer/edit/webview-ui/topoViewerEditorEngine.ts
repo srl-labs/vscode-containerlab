@@ -372,7 +372,7 @@ class TopoViewerEditorEngine {
     });
 
     this.cy.cxtmenu({
-      selector: 'node:parent, node[topoViewerRole = "dummyChild"]',
+      selector: 'node:parent, node[topoViewerRole = "dummyChild"], node[topoViewerRole = "group"]',
       commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -400,8 +400,19 @@ class TopoViewerEditorEngine {
                       <div style="height:0.5em;"></div>
                       <span>Delete Group</span>
                     </div>`,
-          select: () => {
-            this.groupManager.nodeParentRemoval();
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            let groupId: string;
+            if (ele.data("topoViewerRole") == "dummyChild") {
+              groupId = ele.parent().first().id();
+            } else if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
+              groupId = ele.id();
+            } else {
+              return;
+            }
+            this.groupManager.directGroupRemoval(groupId);
           }
         }
       ],

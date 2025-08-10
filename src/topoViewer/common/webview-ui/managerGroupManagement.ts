@@ -418,6 +418,48 @@ export class ManagerGroupManagement {
     }
   }
 
+  public directGroupRemoval(groupId: string): boolean {
+    try {
+      const parentNode = this.cy.getElementById(groupId);
+      if (!parentNode || parentNode.empty()) {
+        log.error(`No group node found with id "${groupId}".`);
+        return false;
+      }
+      
+      // Unparent all children except dummy children
+      const children = parentNode.children();
+      children.forEach(child => {
+        if (child.data('topoViewerRole') !== 'dummyChild') {
+          child.move({ parent: null });
+        }
+      });
+      
+      // Remove dummy children
+      const dummyChildren = parentNode.children('[topoViewerRole = "dummyChild"]');
+      dummyChildren.forEach(dummyChild => {
+        dummyChild.remove();
+      });
+      
+      // Remove the parent node itself
+      parentNode.remove();
+      
+      // Close the panel if it's showing this group
+      const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
+      if (parentIdEl && parentIdEl.textContent?.trim() === groupId) {
+        const nodeEditorParentPanel = document.getElementById('panel-node-editor-parent');
+        if (nodeEditorParentPanel) {
+          nodeEditorParentPanel.style.display = 'none';
+        }
+      }
+      
+      log.info(`Group '${groupId}' removed successfully`);
+      return true;
+    } catch (error) {
+      log.error(`Error in directGroupRemoval: ${error}`);
+      return false;
+    }
+  }
+
   public viewportButtonsAddGroup(): void {
     this.createNewParent({ createDummyChild: true });
   }
