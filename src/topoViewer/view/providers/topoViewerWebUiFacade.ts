@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
-import { log } from '../../common/core/logger';
+import { log } from '../../common/logging/extensionLogger';
 import { ClabLabTreeNode } from '../../../treeView/common';
 import { RunningLabTreeDataProvider } from '../../../treeView/runningLabsProvider';
 import { detectDeploymentState, getViewerMode, DeploymentState, ViewerMode } from '../utilities/deploymentUtils';

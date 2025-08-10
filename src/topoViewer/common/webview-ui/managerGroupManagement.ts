@@ -1,5 +1,5 @@
 import cytoscape from 'cytoscape';
-import { log } from '../logger';
+import { log } from '../logging/webviewLogger';
 
 // Declarations for globals provided elsewhere
 /* eslint-disable no-unused-vars */

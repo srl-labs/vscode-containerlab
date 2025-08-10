@@ -1,7 +1,7 @@
 // file: managerZoomToFit.ts
 
 import cytoscape from 'cytoscape';
-import { log } from '../../common/logger';
+import { log } from '../../common/logging/webviewLogger';
 
 /**
  * Provides functionality to zoom and fit the Cytoscape viewport.

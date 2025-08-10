@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { promises as fs } from 'fs';
-import { log } from './logger';
+import { log } from '../logging/extensionLogger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
 
 import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../types/topoViewerType';

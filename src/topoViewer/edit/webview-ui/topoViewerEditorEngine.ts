@@ -30,7 +30,7 @@ import type { ManagerZoomToFit } from './managerZoomToFit';
 import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
 import type { ManagerReloadTopo } from './managerReloadTopo';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../../common/core/managerRegistry';
-import { log } from '../../common/logger';
+import { log } from '../../common/logging/webviewLogger';
 
 
 

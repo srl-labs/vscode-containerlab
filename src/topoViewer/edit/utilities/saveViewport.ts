@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 
-import { log } from '../../common/core/logger';
+import { log } from '../../common/logging/extensionLogger';
 import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { ClabTopology, ClabNode } from '../../common/types/topoViewerType';
 

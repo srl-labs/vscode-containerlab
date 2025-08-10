@@ -1,7 +1,7 @@
 // initialization.ts - Main initialization module for TopoViewer TypeScript
 // This module replaces the initialization logic that was in dev.js
 
-import { log } from '../../common/logger';
+import { log } from '../../common/logging/webviewLogger';
 import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import { layoutAlgoManager, getGroupManager } from '../../common/core/managerRegistry';

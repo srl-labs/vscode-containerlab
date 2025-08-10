@@ -1,7 +1,7 @@
 // file: managerCytoscapeBaseStyles.ts
 
 import cytoscape from 'cytoscape';
-import { log } from '../logger';
+import { log } from '../logging/webviewLogger';
 import { generateEncodedSVG } from './managerSvgGenerator';
 
 /**

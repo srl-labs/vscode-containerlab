@@ -2,7 +2,7 @@
 // Contains functions referenced by onclick handlers in the HTML template
 
 // Import logger for webview
-import { log } from '../../common/logger';
+import { log } from '../../common/logging/webviewLogger';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 
 // Global message sender instance

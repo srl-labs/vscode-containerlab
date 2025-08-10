@@ -1,7 +1,7 @@
 // managerSvgGenerator.ts
 
 // Import logger for webview
-import { log } from '../logger';
+import { log } from '../logging/webviewLogger';
 
 /**
  * Supported node types for SVG generation
