@@ -127,6 +127,14 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
           result = `Show logs executed for ${nodeName}`;
           break;
         }
+        case 'clab-node-release-from-group': {
+          const { nodeName, oldParentId } = payloadObj as {
+            nodeName: string;
+            oldParentId: string;
+          };
+          result = `Node ${nodeName} released from group ${oldParentId}`;
+          break;
+        }
         case 'clab-link-capture': {
           const { nodeName, interfaceName } = payloadObj as {
             nodeName: string;

@@ -8,15 +8,15 @@
     <!-- Load the compiled TypeScript bundle -->
     <script src="{{jsOutDir}}/topoViewerEditorEngine.js?ver=1"></script>
 
-    <!-- Initialize TopoViewerEditor after bundle loads -->
+    <!-- Initialize TopoViewer after bundle loads -->
     <script>
-      if (typeof topoViewerEditorEngine !== 'undefined') {
+      if (typeof topoViewerEngine !== 'undefined') {
         if (typeof log !== 'undefined' && log.info) {
-          log.info('TopoViewerEditorEngine loaded successfully');
+          log.info('TopoViewerEngine loaded successfully');
         }
       } else {
         if (typeof log !== 'undefined' && log.error) {
-          log.error('TopoViewerEditorEngine failed to load');
+          log.error('TopoViewerEngine failed to load');
         }
       }
     </script>

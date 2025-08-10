@@ -13,6 +13,9 @@ let messageSender: VscodeMessageSender | null = null;
 
 // Initialize message sender on first use
 function getMessageSender(): VscodeMessageSender {
+  if (topoViewerState.editorEngine?.messageSender) {
+    return topoViewerState.editorEngine.messageSender;
+  }
   if (!messageSender) {
     try {
       messageSender = new VscodeMessageSender(log);
@@ -392,9 +395,9 @@ export async function nodeActionViewLogs(): Promise<void> {
 }
 
 /**
- * Remove selected node from its parent group
+ * Remove selected node from its parent group and notify backend
  */
-export function nodeActionRemoveFromParent(): void {
+export async function nodeActionRemoveFromParent(): Promise<void> {
   try {
     if (!topoViewerState.cy || !topoViewerState.selectedNode) {
       log.warn('Cytoscape instance or selected node not available');
@@ -414,6 +417,13 @@ export function nodeActionRemoveFromParent(): void {
     if (formerParentNode && formerParentNode.isChildless()) {
       formerParentNode.remove();
     }
+
+    const sender = getMessageSender();
+    await sender.sendMessageToVscodeEndpointPost('clab-node-release-from-group', {
+      nodeName: topoViewerState.selectedNode,
+      oldParentId: currentParentId,
+    });
+    log.info(`Release from group requested for node: ${topoViewerState.selectedNode}`);
   } catch (error) {
     log.error(`nodeActionRemoveFromParent failed: ${error}`);
   }

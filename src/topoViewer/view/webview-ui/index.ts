@@ -1,8 +1,9 @@
 // Import libraries first (must be before any code that uses them)
 import './libraries';
 
-// Import initialization to set up global variables and cytoscape
-import './initialization';
+// Set mode to view before loading shared engine
+(window as any).topoViewerMode = 'view';
+import('../../common/webview-ui/topoViewerEngine');
 
 // Import UI handlers to make them available globally
 import { initializeGlobalHandlers } from './uiHandlers';

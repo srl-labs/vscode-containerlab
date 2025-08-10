@@ -1,56 +1,56 @@
-// file: initialization.ts
+// file: topoViewerEngine.ts
 
 import type cytoscape from 'cytoscape';
-import { createCytoscapeInstance } from '../../common/topoViewerEngineFactory';
+import { createCytoscapeInstance } from '../topoViewerEngineFactory';
 
 // Import Tailwind CSS and Font Awesome
-import '../../common/webview-ui/tailwind.css';
+import './tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 // Import Leaflet CSS for map tiles
 import 'leaflet/dist/leaflet.css';
 // Import cytoscape-leaflet CSS for geo-positioning
 import '../../view/webview-ui/cytoscape-leaflet.css';
 
-import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
-import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
-import { ManagerSaveTopo } from './managerSaveTopo';
-import { ManagerUndo } from './managerUndo';
-import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
-import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerFloatingActionPanel } from './managerFloatingActionPanel';
-import { exportViewportAsSvg } from '../../common/webview-ui/utils';
-import type { ManagerGroupManagement } from '../../common/webview-ui/managerGroupManagement';
-import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
-import type { ManagerZoomToFit } from '../../common/webview-ui/managerZoomToFit';
-import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
-import type { ManagerReloadTopo } from './managerReloadTopo';
-import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../../common/core/managerRegistry';
-import { log } from '../../common/logging/webviewLogger';
-import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
-import topoViewerState from '../../common/webview-ui/state';
-import type { EdgeData } from '../../common/types/topoViewerGraph';
+import loadCytoStyle from './managerCytoscapeBaseStyles';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { fetchAndLoadData, fetchAndLoadDataEnvironment } from '../../edit/webview-ui/managerCytoscapeFetchAndLoad';
+import { ManagerSaveTopo } from '../../edit/webview-ui/managerSaveTopo';
+import { ManagerUndo } from '../../edit/webview-ui/managerUndo';
+import { ManagerAddContainerlabNode } from '../../edit/webview-ui/managerAddContainerlabNode';
+import { ManagerViewportPanels } from '../../edit/webview-ui/managerViewportPanels';
+import { ManagerFloatingActionPanel } from '../../edit/webview-ui/managerFloatingActionPanel';
+import { exportViewportAsSvg } from './utils';
+import type { ManagerGroupManagement } from './managerGroupManagement';
+import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
+import type { ManagerZoomToFit } from './managerZoomToFit';
+import type { ManagerLabelEndpoint } from '../../edit/webview-ui/managerLabelEndpoint';
+import type { ManagerReloadTopo } from '../../edit/webview-ui/managerReloadTopo';
+import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../core/managerRegistry';
+import { log } from '../logging/webviewLogger';
+import { registerCyEventHandlers } from './cyEventHandlers';
+import topoViewerState from './state';
+import type { EdgeData } from '../types/topoViewerGraph';
 
 
 
 
 /**
- * TopoViewerEditorEngine class is responsible for initializing the Cytoscape instance,
+ * TopoViewerEngine class is responsible for initializing the Cytoscape instance,
  * managing edge creation, node editing and viewport panels/buttons.
  * entry point for the topology editor webview; methods are called from vscodeHtmlTemplate.ts.
  */
-class TopoViewerEditorEngine {
+class TopoViewerEngine {
   public cy: cytoscape.Core;
   private cyEvent: cytoscape.EventObject | undefined;
   private eh: any;
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
-  private messageSender: VscodeMessageSender;
+  public messageSender: VscodeMessageSender;
   public saveManager: ManagerSaveTopo;
   public undoManager: ManagerUndo;
   public addNodeManager: ManagerAddContainerlabNode;
-  public viewportPanels: ManagerViewportPanels;
+  public viewportPanels?: ManagerViewportPanels;
   public floatingActionPanel: ManagerFloatingActionPanel | null = null;
   public groupManager: ManagerGroupManagement;
   /** Layout manager instance accessible by other components */
@@ -88,11 +88,11 @@ class TopoViewerEditorEngine {
   }
 
   /**
-   * Creates an instance of TopoViewerEditorEngine.
+   * Creates an instance of TopoViewerEngine.
    * @param containerId - The ID of the container element for Cytoscape.
    * @throws Will throw an error if the container element is not found.
    */
-  constructor(containerId: string) {
+  constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
     const container = document.getElementById(containerId);
     if (!container) {
       throw new Error("Cytoscape container element not found");
@@ -168,23 +168,35 @@ class TopoViewerEditorEngine {
       }
     })();
 
-    this.registerEvents();
-    this.initializeEdgehandles();
-    this.initializeContextMenu();
+    // Register events based on mode
+    this.registerEvents(mode);
+    if (mode === 'edit') {
+      this.initializeEdgehandles();
+      this.initializeContextMenu();
+    }
 
     // Initiate managers and panels
     this.saveManager = new ManagerSaveTopo(this.messageSender);
     this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
-    this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
-    this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
-    this.groupManager = getGroupManager(this.cy, 'edit');
+    if (mode === 'edit') {
+      this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+      this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
+    }
+    this.groupManager = getGroupManager(this.cy, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
     this.layoutAlgoManager = layoutAlgoManagerSingleton;
     this.zoomToFitManager = zoomToFitManagerSingleton;
     this.labelEndpointManager = labelEndpointManagerSingleton;
     this.reloadTopoManager = getReloadTopoManager(this.messageSender);
+
+    // Set editor flag based on mode
+    this.isViewportDrawerClabEditorChecked = mode === 'edit';
+
+    if (mode === 'edit') {
+      this.setupAutoSave();
+    }
 
     // Create capture viewport manager with the required method
     this.captureViewportManager = {
@@ -222,8 +234,6 @@ class TopoViewerEditorEngine {
       this.saveManager.viewportButtonsSaveTopo(this.cy);
     window.viewportButtonsUndo = () =>
       this.undoManager.viewportButtonsUndo();
-
-    this.setupAutoSave();
 
     window.addEventListener('message', (event) => {
       const msg = event.data;
@@ -302,7 +312,7 @@ class TopoViewerEditorEngine {
               return;
             }
             // inside here TS infers ele is NodeSingular
-            this.viewportPanels.panelNodeEditor(ele);
+              this.viewportPanels?.panelNodeEditor(ele);
           }
         },
         {
@@ -369,7 +379,7 @@ class TopoViewerEditorEngine {
               return;
             }
             // prevent global canvas click handler from closing panels
-            this.viewportPanels.setNodeClicked(true);
+              this.viewportPanels?.setNodeClicked(true);
             // inside here TS infers ele is NodeSingular
             // this.viewportPanels.panelNodeEditor(ele);
             if (ele.data("topoViewerRole") == "dummyChild") {
@@ -435,9 +445,9 @@ class TopoViewerEditorEngine {
               return;
             }
             // Set edgeClicked to true to prevent the panel from closing immediately
-            this.viewportPanels.setEdgeClicked(true);
-            // you'll need to implement panelEdgeEditor in ManagerViewportPanels
-            this.viewportPanels.panelEdgeEditor(ele);
+              this.viewportPanels?.setEdgeClicked(true);
+              // you'll need to implement panelEdgeEditor in ManagerViewportPanels
+              this.viewportPanels?.panelEdgeEditor(ele);
           }
         },
         {
@@ -478,81 +488,199 @@ class TopoViewerEditorEngine {
    * Registers event handlers for Cytoscape elements such as canvas, nodes, and edges.
    * @private
    */
-  private async registerEvents(): Promise<void> {
-
-    registerCyEventHandlers({
-      cy: this.cy,
-      onCanvasClick: (event) => {
-        const mouseEvent = event.originalEvent as MouseEvent;
-        if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
-          log.debug('Canvas clicked with Shift key - adding node.');
-          this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
+  private async registerEvents(mode: 'edit' | 'view'): Promise<void> {
+    if (mode === 'edit') {
+      registerCyEventHandlers({
+        cy: this.cy,
+        onCanvasClick: (event) => {
+          const mouseEvent = event.originalEvent as MouseEvent;
+          if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
+            log.debug('Canvas clicked with Shift key - adding node.');
+            this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
+          }
+        },
+        onNodeClick: async (event) => {
+            this.viewportPanels!.nodeClicked = true; // prevent panels from closing
+          const node = event.target;
+          log.debug(`Node clicked: ${node.id()}`);
+          const originalEvent = event.originalEvent as MouseEvent;
+          const extraData = node.data("extraData");
+          const isNodeInEditMode = node.data("editor") === "true";
+          switch (true) {
+            case originalEvent.ctrlKey && node.isChild():
+              log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
+              node.move({ parent: null });
+              break;
+            case originalEvent.shiftKey:
+              log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
+              this.isEdgeHandlerActive = true;
+              this.eh.start(node);
+              break;
+            case originalEvent.altKey && isNodeInEditMode:
+              log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
+              node.remove();
+              break;
+            case (node.data("topoViewerRole") == "textbox"):
+              break;
+            default:
+              break;
+          }
+        },
+        onEdgeClick: (event) => {
+            this.viewportPanels!.edgeClicked = true; // prevent panels from closing
+          const edge = event.target;
+          const originalEvent = event.originalEvent as MouseEvent;
+          if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
+            log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
+            edge.remove();
+          }
         }
-      },
-      onNodeClick: async (event) => {
-        this.viewportPanels.nodeClicked = true; // prevent panels from closing
-        const node = event.target;
-        log.debug(`Node clicked: ${node.id()}`);
-        const originalEvent = event.originalEvent as MouseEvent;
-        const extraData = node.data("extraData");
-        const isNodeInEditMode = node.data("editor") === "true";
-        switch (true) {
-          case originalEvent.ctrlKey && node.isChild():
-            log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
-            node.move({ parent: null });
-            break;
-          case originalEvent.shiftKey:
-            log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
-            this.isEdgeHandlerActive = true;
-            this.eh.start(node);
-            break;
-          case originalEvent.altKey && isNodeInEditMode:
-            log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
-            node.remove();
-            break;
-          case (node.data("topoViewerRole") == "textbox"):
-            break;
-          default:
-            break;
-        }
-      },
-      onEdgeClick: (event) => {
-        this.viewportPanels.edgeClicked = true; // prevent panels from closing
-        const edge = event.target;
-        const originalEvent = event.originalEvent as MouseEvent;
-        if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
-          log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
-          edge.remove();
-        }
-      }
-    });
+      });
 
-    // Edgehandles lifecycle events.
-    this.cy.on('ehstart', () => {
-      this.isEdgeHandlerActive = true;
-    });
+      // Edgehandles lifecycle events.
+      this.cy.on('ehstart', () => {
+        this.isEdgeHandlerActive = true;
+      });
 
-    this.cy.on('ehstop', () => {
-      this.isEdgeHandlerActive = false;
-    });
-
-    this.cy.on('ehcancel', () => {
-      this.isEdgeHandlerActive = false;
-    });
-
-    // Edge creation completion via edgehandles.
-      this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) => {
-      log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
-      log.debug(`Added edge: ${addedEdge.id()}`);
-
-      setTimeout(() => {
+      this.cy.on('ehstop', () => {
         this.isEdgeHandlerActive = false;
-      }, 100);
+      });
 
-      const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
-      const targetEndpoint = this.getNextEndpoint(targetNode.id());
-      addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
-    });
+      this.cy.on('ehcancel', () => {
+        this.isEdgeHandlerActive = false;
+      });
+
+      // Edge creation completion via edgehandles.
+      this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) => {
+        log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
+        log.debug(`Added edge: ${addedEdge.id()}`);
+
+        setTimeout(() => {
+          this.isEdgeHandlerActive = false;
+        }, 100);
+
+        const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
+        const targetEndpoint = this.getNextEndpoint(targetNode.id());
+        addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
+      });
+
+    } else {
+      const cy = this.cy;
+      registerCyEventHandlers({
+        cy,
+        onNodeClick: async (event: any) => {
+          const node = event.target;
+          topoViewerState.nodeClicked = true;
+          const extraData = node.data("extraData") || {};
+          const originalEvent = event.originalEvent as MouseEvent;
+          if (node.isParent() || node.data('topoViewerRole') === 'group') {
+            this.groupManager.showGroupEditor(node);
+            return;
+          }
+          if (node.data("topoViewerRole") === "textbox" || node.data("topoViewerRole") === "dummyChild") {
+            return;
+          }
+          if (!originalEvent.altKey && !originalEvent.ctrlKey && !originalEvent.shiftKey) {
+            const panelOverlays = document.getElementsByClassName("panel-overlay");
+            Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
+            const panelNode = document.getElementById("panel-node");
+            if (panelNode) {
+              panelNode.style.display = panelNode.style.display === "none" ? "block" : "none";
+              const nameEl = document.getElementById("panel-node-name");
+              if (nameEl) nameEl.textContent = extraData.longname || node.data("name") || node.id();
+              const kindEl = document.getElementById("panel-node-kind");
+              if (kindEl) kindEl.textContent = extraData.kind || "";
+              const mgmtIpv4El = document.getElementById("panel-node-mgmtipv4");
+              if (mgmtIpv4El) mgmtIpv4El.textContent = extraData.mgmtIpv4Address || "";
+              const mgmtIpv6El = document.getElementById("panel-node-mgmtipv6");
+              if (mgmtIpv6El) mgmtIpv6El.textContent = extraData.mgmtIpv6Address || "";
+              const fqdnEl = document.getElementById("panel-node-fqdn");
+              if (fqdnEl) fqdnEl.textContent = extraData.fqdn || "";
+              const roleEl = document.getElementById("panel-node-topoviewerrole");
+              if (roleEl) roleEl.textContent = node.data("topoViewerRole") || "";
+              const stateEl = document.getElementById("panel-node-state");
+              if (stateEl) stateEl.textContent = extraData.state || "";
+              const imageEl = document.getElementById("panel-node-image");
+              if (imageEl) imageEl.textContent = extraData.image || "";
+              topoViewerState.selectedNode = extraData.longname || node.id();
+            }
+          }
+        },
+        onEdgeClick: async (event: any) => {
+          const edge = event.target;
+          topoViewerState.edgeClicked = true;
+          const panelOverlays = document.getElementsByClassName("panel-overlay");
+          Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
+          const defaultEdgeColor = "#969799";
+          if (edge.data("editor") === "true") {
+            edge.style("line-color", "#32CD32");
+          } else {
+            edge.style("line-color", "#0043BF");
+          }
+          cy.edges().forEach((e: any) => {
+            if (e !== edge) {
+              e.style("line-color", defaultEdgeColor);
+            }
+          });
+          const panelLink = document.getElementById("panel-link");
+          if (panelLink) {
+            panelLink.style.display = "block";
+            const extraData = edge.data("extraData") || {};
+            const linkNameEl = document.getElementById("panel-link-name");
+            if (linkNameEl) {
+              linkNameEl.innerHTML = `┌ ${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}<br>└ ${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
+            }
+            const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
+            if (endpointANameEl) {
+              endpointANameEl.textContent = `${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}`;
+            }
+            const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
+            if (endpointAMacEl) {
+              endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
+            }
+            const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
+            if (endpointAMtuEl) {
+              endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
+            }
+            const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
+            if (endpointATypeEl) {
+              endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
+            }
+            const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
+            if (endpointBNameEl) {
+              endpointBNameEl.textContent = `${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
+            }
+            const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
+            if (endpointBMacEl) {
+              endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
+            }
+            const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
+            if (endpointBMtuEl) {
+              endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
+            }
+            const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
+            if (endpointBTypeEl) {
+              endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
+            }
+            topoViewerState.selectedEdge = edge.data("id");
+          }
+        },
+        onCanvasClick: () => {
+          if (!topoViewerState.nodeClicked && !topoViewerState.edgeClicked) {
+            const panelOverlays = document.getElementsByClassName('panel-overlay');
+            for (let i = 0; i < panelOverlays.length; i++) {
+              (panelOverlays[i] as HTMLElement).style.display = 'none';
+            }
+            const viewportDrawer = document.getElementsByClassName('viewport-drawer');
+            for (let i = 0; i < viewportDrawer.length; i++) {
+              (viewportDrawer[i] as HTMLElement).style.display = 'none';
+            }
+          }
+          topoViewerState.nodeClicked = false;
+          topoViewerState.edgeClicked = false;
+        }
+      });
+    }
 
     // Drag-and-drop reparenting logic is now handled by groupManager.initializeGroupManagement()
 
@@ -706,12 +834,13 @@ class TopoViewerEditorEngine {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-  const engine = new TopoViewerEditorEngine('cy');
+  const mode = (window as any).topoViewerMode === 'view' ? 'view' : 'edit';
+  const engine = new TopoViewerEngine('cy', mode);
   // Store the instance for other modules
   topoViewerState.editorEngine = engine;
   topoViewerState.cy = engine.cy;
   // Expose for existing HTML bindings
-  window.topoViewerEditorEngine = engine;
+  window.topoViewerEngine = engine;
 
   const gm = engine.groupManager;
   window.orphaningNode = gm.orphaningNode.bind(gm);
@@ -728,4 +857,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-export default TopoViewerEditorEngine;
+export default TopoViewerEngine;
