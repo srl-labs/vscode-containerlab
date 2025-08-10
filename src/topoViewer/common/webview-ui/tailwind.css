@@ -87,7 +87,23 @@
   .btn-icon {
     @apply p-2;
   }
-  
+  .btn-icon-hover-clean {
+    @apply btn-icon focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors duration-150 ease-in-out;
+    background-color: transparent;
+  }
+
+  .btn-icon-hover-clean:hover {
+    background-color: var(--vscode-tab-inactiveBackground);
+  }
+
+  .btn-icon-geo-map-hover-clean {
+    @apply btn-icon focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors duration-150 ease-in-out;
+    background-color: var(--vscode-button-secondaryBackground);
+  }
+
+  .btn-icon-geo-map-hover-clean:hover {
+    background-color: var(--vscode-tab-inactiveBackground);
+  }
   /* Panel styles */
   .panel {
     background-color: var(--bg-secondary);
@@ -172,8 +188,8 @@
   
   /* Navbar styles */
   .navbar {
-    background-color: var(--vscode-titleBar-activeBackground);
-    border-bottom: 1px solid var(--border);
+    background-color: var(--vscode-tab-activeBackground);
+    border-bottom: 1px solid var(--vscode-tab-border);
     @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 shadow-md;
   }
   
