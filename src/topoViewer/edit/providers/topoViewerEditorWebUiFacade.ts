@@ -521,24 +521,28 @@ topology:
               // Get the document for the YAML file
               const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
               
+              // Store the currently active editor to restore focus later
+              const currentActiveEditor = vscode.window.activeTextEditor;
+              
               // Find if there's already an editor with this document open
               const existingEditor = vscode.window.visibleTextEditors.find(
                 editor => editor.document.uri.fsPath === document.uri.fsPath
               );
               
-              // Force focus on the YAML editor
               if (existingEditor) {
-                // Make the existing editor active and focused
+                // Make the existing editor active temporarily
                 await vscode.window.showTextDocument(document, {
                   viewColumn: existingEditor.viewColumn,
                   preview: false,
-                  preserveFocus: false  // Important: don't preserve focus, we want to switch to this editor
+                  preserveFocus: false
                 });
               } else {
-                // Open a new editor if the file isn't already open
-                await vscode.window.showTextDocument(document, { 
-                  preview: false, 
-                  preserveFocus: false  // Important: don't preserve focus
+                // Open in a side column (beside the webview) without stealing focus
+                const targetColumn = vscode.ViewColumn.Beside;
+                await vscode.window.showTextDocument(document, {
+                  viewColumn: targetColumn,
+                  preview: false,
+                  preserveFocus: false
                 });
               }
               
@@ -550,6 +554,15 @@ topology:
               
               // Save the document to trigger file watcher update
               await document.save();
+              
+              // Restore focus to the previously active editor (usually the webview)
+              if (currentActiveEditor && !existingEditor) {
+                await vscode.window.showTextDocument(currentActiveEditor.document, {
+                  viewColumn: currentActiveEditor.viewColumn,
+                  preview: false,
+                  preserveFocus: false
+                });
+              }
               
               result = 'Undo operation completed successfully';
               log.info('Undo operation executed on YAML file');
