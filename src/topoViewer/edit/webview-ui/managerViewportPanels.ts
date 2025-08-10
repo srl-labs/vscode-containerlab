@@ -206,7 +206,7 @@ export class ManagerViewportPanels {
 
   /**
    * Displays the edge editor panel for the provided edge.
-   * Removes any overlay panels, updates form fields with the edge’s current source/target endpoints,
+   * Removes any overlay panels, updates form fields with the edge's current source/target endpoints,
    * and wires up the Close/Save buttons.
    *
    * @param edge - The Cytoscape edge to edit.
@@ -214,6 +214,9 @@ export class ManagerViewportPanels {
    */
   public async panelEdgeEditor(edge: cytoscape.EdgeSingular): Promise<void> {
     try {
+      // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
+      this.edgeClicked = true;
+      
       // 1) Hide other overlays
       const overlays = document.getElementsByClassName("panel-overlay");
       Array.from(overlays).forEach(el => (el as HTMLElement).style.display = "none");
@@ -223,13 +226,12 @@ export class ManagerViewportPanels {
       const panelLinkEditorIdLabel = document.getElementById("panel-link-editor-id");
       const panelLinkEditorIdLabelSrcInput = document.getElementById("panel-link-editor-source-endpoint") as HTMLInputElement | null;
       const panelLinkEditorIdLabelTgtInput = document.getElementById("panel-link-editor-target-endpoint") as HTMLInputElement | null;
-      // const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
+      const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
       const panelLinkEditorIdLabelSaveBtn = document.getElementById("panel-link-editor-save-button");
 
-      // if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
-      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelSaveBtn) {
-
+      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
         log.error('panelEdgeEditor: missing required DOM elements');
+        this.edgeClicked = false;
         return;
       }
       const source = edge.data("source") as string;
@@ -257,9 +259,12 @@ export class ManagerViewportPanels {
       panelLinkEditor.style.display = "block";
 
       // 4) Re-wire Close button (one-shot)
-      // const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
-      // panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
-      // freshClose.addEventListener("click", () => panelLinkEditor.style.display = "none", { once: true });
+      const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
+      panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
+      freshClose.addEventListener("click", () => {
+        panelLinkEditor.style.display = "none";
+        this.edgeClicked = false;
+      }, { once: true });
 
       // 5) Wire real-time preview (optional but helpful)
       panelLinkEditorIdLabelSrcInput.addEventListener("input", updateLabel);
@@ -291,12 +296,14 @@ export class ManagerViewportPanels {
               // 6c) Refresh the ID label so it shows saved values
               if (panelLinkEditorIdLabel) {
                 panelLinkEditorIdLabel.innerHTML =
-                  `┌ ${source} :: ${sourceEP}<br>` +
-                  `└ ${target} :: ${targetEP}`;
+                  `┌ ${source} :: ${newSourceEP}<br>` +
+                  `└ ${target} :: ${newTargetEP}`;
               }
 
               // 6d) Hide the panel
               panelLinkEditor.style.display = "none";
+              // Reset the edgeClicked flag
+              this.edgeClicked = false;
             } catch (saveErr) {
               log.error(`panelEdgeEditor: error during save: ${saveErr instanceof Error ? saveErr.message : String(saveErr)}`);
               // TODO: show user-facing notification if needed
@@ -306,8 +313,14 @@ export class ManagerViewportPanels {
         );
       }
 
+      // Reset the edgeClicked flag after a small delay to ensure the panel stays open
+      setTimeout(() => {
+        this.edgeClicked = false;
+      }, 100);
+
     } catch (err) {
       log.error(`panelEdgeEditor: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
+      this.edgeClicked = false;
       // TODO: show user-facing notification if needed
     }
   }

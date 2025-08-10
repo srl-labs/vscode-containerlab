@@ -434,7 +434,9 @@ class TopoViewerEditorEngine {
             if (!ele.isEdge()) {
               return;
             }
-            // you’ll need to implement panelEdgeEditor in ManagerViewportPanels
+            // Set edgeClicked to true to prevent the panel from closing immediately
+            this.viewportPanels.setEdgeClicked(true);
+            // you'll need to implement panelEdgeEditor in ManagerViewportPanels
             this.viewportPanels.panelEdgeEditor(ele);
           }
         },
