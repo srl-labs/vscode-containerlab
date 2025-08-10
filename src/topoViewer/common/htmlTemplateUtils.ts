@@ -119,6 +119,9 @@ export function generateHtmlTemplate(
   if (mode === 'editor' && !partials.WIRESHARK_MODAL) {
     partials.WIRESHARK_MODAL = '';
   }
+  if (mode === 'viewer' && !partials.FLOATING_ACTION_PANEL) {
+    partials.FLOATING_ACTION_PANEL = '';
+  }
   template = resolvePartials(template, partials);
 
   const logoFile = params.isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';

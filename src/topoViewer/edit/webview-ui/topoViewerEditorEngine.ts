@@ -24,6 +24,7 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
+import { ManagerFloatingActionPanel } from './managerFloatingActionPanel';
 import { exportViewportAsSvg } from '../../common/webview-ui/utils';
 import type { ManagerGroupManagement } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
@@ -64,7 +65,8 @@ class TopoViewerEditorEngine {
   private messageSender: VscodeMessageSender;
   public saveManager: ManagerSaveTopo;
   public addNodeManager: ManagerAddContainerlabNode;
-  private viewportPanels: ManagerViewportPanels;
+  public viewportPanels: ManagerViewportPanels;
+  public floatingActionPanel: ManagerFloatingActionPanel | null = null;
   public groupManager: ManagerGroupManagement;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
@@ -193,6 +195,7 @@ class TopoViewerEditorEngine {
     this.saveManager = new ManagerSaveTopo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
     this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+    this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
     this.groupManager = getGroupManager(this.cy, 'edit');
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
