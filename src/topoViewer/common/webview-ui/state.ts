@@ -1,23 +1,4 @@
-import type cytoscape from 'cytoscape';
-
-export interface TopoViewerState {
-  cy: cytoscape.Core | null;
-  selectedNode: string | null;
-  selectedEdge: string | null;
-  linkEndpointVisibility: boolean;
-  nodeContainerStatusVisibility: boolean;
-  labName: string;
-  prefixName: string;
-  multiLayerViewPortState: boolean;
-  isGeoMapInitialized: boolean;
-  isPanel01Cy: boolean;
-  nodeClicked: boolean;
-  edgeClicked: boolean;
-  deploymentType: string;
-  cytoscapeLeafletMap: any;
-  cytoscapeLeafletLeaf: any;
-  editorEngine: any;
-}
+import type { TopoViewerState } from '../types/topoViewerState';
 
 export const topoViewerState: TopoViewerState = {
   cy: null,
@@ -52,6 +33,7 @@ export function resetState(): void {
   topoViewerState.deploymentType = '';
   topoViewerState.cytoscapeLeafletMap = null;
   topoViewerState.cytoscapeLeafletLeaf = null;
+  topoViewerState.editorEngine = null;
 }
 
 export default topoViewerState;

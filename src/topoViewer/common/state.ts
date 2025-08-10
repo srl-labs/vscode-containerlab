@@ -1,23 +1,7 @@
-export interface TopoViewerState {
-  cy: any;
-  selectedNode: any;
-  selectedEdge: any;
-  linkEndpointVisibility: boolean;
-  nodeContainerStatusVisibility: boolean;
-  labName: string;
-  prefixName: string;
-  multiLayerViewPortState: boolean;
-  isGeoMapInitialized: boolean;
-  isPanel01Cy: boolean;
-  nodeClicked: boolean;
-  edgeClicked: boolean;
-  deploymentType: string;
-  cytoscapeLeafletMap: any;
-  cytoscapeLeafletLeaf: any;
-}
+import type { TopoViewerState } from './types/topoViewerState';
 
 export const topoViewerState: TopoViewerState = {
-  cy: undefined,
+  cy: null,
   selectedNode: null,
   selectedEdge: null,
   linkEndpointVisibility: true,
@@ -30,6 +14,6 @@ export const topoViewerState: TopoViewerState = {
   nodeClicked: false,
   edgeClicked: false,
   deploymentType: '',
-  cytoscapeLeafletMap: undefined,
-  cytoscapeLeafletLeaf: undefined,
+  cytoscapeLeafletMap: null,
+  cytoscapeLeafletLeaf: null,
 };
