@@ -34,6 +34,7 @@ import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomT
 import { log } from '../../common/logging/webviewLogger';
 import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
 import topoViewerState from '../../common/webview-ui/state';
+import type { EdgeData } from '../../common/types/topoViewerGraph';
 
 
 
@@ -47,42 +48,6 @@ cytoscape.use(cytoscapeSvg);
 
 
 
-/**
- * Interface representing node data.
- */
-export interface NodeData {
-  id: string;
-  editor?: string;
-  weight?: string;
-  name?: string;
-  parent?: string;
-  topoViewerRole?: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
-  containerDockerExtraAttribute?: {
-    state?: string;
-    status?: string;
-  };
-  extraData?: {
-    kind?: string;
-    image?: string;
-    type?: string
-    longname?: string;
-    mgmtIpv4Address?: string;
-  };
-}
-
-/**
- * Interface representing edge data.
- */
-export interface EdgeData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
-  editor?: string;
-}
 
 /**
  * TopoViewerEditorEngine class is responsible for initializing the Cytoscape instance,

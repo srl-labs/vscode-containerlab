@@ -1,5 +1,6 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/webviewLogger';
+import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
 
 // Declarations for globals provided elsewhere
 /* eslint-disable no-unused-vars */
@@ -7,22 +8,6 @@ declare function acquireVsCodeApi(): any;
 declare function sendMessageToVscodeEndpointPost(endpoint: string, data: any): Promise<any>;
 /* eslint-enable no-unused-vars */
 
-interface NodeExtraData {
-  clabServerUsername: string;
-  weight: string;
-  name: string;
-  topoViewerGroup: string;
-  topoViewerGroupLevel: string;
-}
-
-interface ParentNodeData {
-  id: string;
-  name: string;
-  weight: string;
-  topoViewerRole: string;
-  extraData: NodeExtraData;
-  parent?: string;
-}
 
 interface NodeOptions {
   group: 'nodes';
@@ -346,7 +331,7 @@ export class ManagerGroupManagemetn {
       if (!this.cy.getElementById(newParentId).empty()) {
         throw new Error(`A node with the new parent ID "${newParentId}" already exists.`);
       }
-      const extraData: NodeExtraData = {
+      const extraData: ParentNodeExtraData = {
         clabServerUsername: 'asad',
         weight: '2',
         name: '',

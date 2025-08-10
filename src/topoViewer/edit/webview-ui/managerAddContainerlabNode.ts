@@ -1,7 +1,7 @@
 // file: managerAddContainerlabNode.ts
 
 import cytoscape from 'cytoscape';
-import { NodeData } from './topoViewerEditorEngine';
+import type { NodeData } from '../../common/types/topoViewerGraph';
 import topoViewerState from '../../common/webview-ui/state';
 
 /**
