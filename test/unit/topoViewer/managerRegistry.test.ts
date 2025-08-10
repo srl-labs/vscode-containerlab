@@ -16,7 +16,7 @@ import {
   labelEndpointManager as labelEndpointManager2,
 } from '../../../src/topoViewer/common/core/managerRegistry';
 import { ManagerLayoutAlgo } from '../../../src/topoViewer/common/webview-ui/managerLayoutAlgo';
-import { ManagerGroupManagemetn } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
+import { ManagerGroupManagement } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
 import { ManagerZoomToFit } from '../../../src/topoViewer/common/webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../../../src/topoViewer/edit/webview-ui/managerLabelEndpoint';
 import { ManagerReloadTopo } from '../../../src/topoViewer/edit/webview-ui/managerReloadTopo';
@@ -35,7 +35,7 @@ describe('manager registry', () => {
     const gm1 = getGroupManager(cy, 'view');
     const gm2 = getGroupManager(cy, 'edit');
     expect(gm1).to.equal(gm2);
-    expect(gm1).to.be.instanceOf(ManagerGroupManagemetn);
+    expect(gm1).to.be.instanceOf(ManagerGroupManagement);
   });
 
   it('exports singleton auxiliary managers', () => {

@@ -27,7 +27,7 @@ interface CreateNewParentOptions {
   createDummyChild?: boolean;
 }
 
-export class ManagerGroupManagemetn {
+export class ManagerGroupManagement {
   private cy: cytoscape.Core;
 
   /* eslint-disable no-unused-vars */
@@ -420,6 +420,18 @@ export class ManagerGroupManagemetn {
 
   public viewportButtonsAddGroup(): void {
     this.createNewParent({ createDummyChild: true });
+  }
+}
+
+/**
+ * @deprecated Use {@link ManagerGroupManagement} instead.
+ * Retained for backwards compatibility and will be removed in a future release.
+ */
+export class ManagerGroupManagemetn extends ManagerGroupManagement {
+  constructor(...args: ConstructorParameters<typeof ManagerGroupManagement>) {
+    // Warn at runtime when deprecated alias is used
+    console.warn('ManagerGroupManagemetn is deprecated. Use ManagerGroupManagement instead.');
+    super(...args);
   }
 }
 

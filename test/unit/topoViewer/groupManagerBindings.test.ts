@@ -2,7 +2,7 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerGroupManagemetn } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
+import { ManagerGroupManagement } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
 
 // ensure window is available for global assignments
 (globalThis as any).window = globalThis;
@@ -15,7 +15,7 @@ describe('group manager global bindings', () => {
       } } }
     ] });
 
-    const mgr = new ManagerGroupManagemetn(cy, 'edit');
+    const mgr = new ManagerGroupManagement(cy, 'edit');
     (window as any).nodeParentPropertiesUpdate = mgr.nodeParentPropertiesUpdate.bind(mgr);
 
     const elements: Record<string, any> = {

@@ -25,7 +25,7 @@ import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { exportViewportAsSvg } from '../../common/webview-ui/utils';
-import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
+import type { ManagerGroupManagement } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import type { ManagerZoomToFit } from '../../common/webview-ui/managerZoomToFit';
 import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
@@ -65,7 +65,7 @@ class TopoViewerEditorEngine {
   public saveManager: ManagerSaveTopo;
   public addNodeManager: ManagerAddContainerlabNode;
   private viewportPanels: ManagerViewportPanels;
-  public groupManager: ManagerGroupManagemetn;
+  public groupManager: ManagerGroupManagement;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
   public zoomToFitManager: ManagerZoomToFit;

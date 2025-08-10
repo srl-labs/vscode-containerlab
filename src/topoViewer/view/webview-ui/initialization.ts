@@ -2,7 +2,7 @@
 // This module replaces the initialization logic that was in dev.js
 
 import { log } from '../../common/logging/webviewLogger';
-import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
+import type { ManagerGroupManagement } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import { layoutAlgoManager, getGroupManager } from '../../common/core/managerRegistry';
 import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
@@ -10,7 +10,7 @@ import topoViewerState, { resetState } from '../../common/webview-ui/state';
 
 // loadCytoStyle function will be called if available
 
-let groupManager: ManagerGroupManagemetn;
+let groupManager: ManagerGroupManagement;
 
 // Reset shared state - moved inside DOMContentLoaded to avoid immediate execution
 function initializeState(): void {
