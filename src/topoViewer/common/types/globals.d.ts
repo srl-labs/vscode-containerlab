@@ -1,6 +1,6 @@
 /* eslint-disable */
 import type { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
-import type { ManagerGroupManagemetn } from '../webview-ui/managerGroupManagement';
+import type { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
 import type { TopoViewerEditorEngine } from '../../edit/webview-ui/topoViewerEditorEngine';
 
 declare global {
@@ -8,7 +8,7 @@ declare global {
 
   interface GlobalState {
     layoutManager?: LayoutManager;
-    groupManager?: ManagerGroupManagemetn;
+    groupManager?: ManagerGroupManagement;
     // layout control functions
     layoutAlgoChange?: (..._args: any[]) => void;
     viewportButtonsLayoutAlgo?: (..._args: any[]) => void;
