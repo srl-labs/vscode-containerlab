@@ -1,5 +1,6 @@
 import cytoscape from 'cytoscape';
 import topoViewerState from './state';
+import { log } from '../logging/webviewLogger';
 
 // Use globally registered style loader to avoid duplicating implementations
 function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
@@ -50,7 +51,7 @@ export class ManagerLayoutAlgo {
       // Just handle scaling, let cytoscape-leaflet handle positions
       const factor = this.calculateGeoScale();
       this.applyGeoScale(true, factor);
-      console.debug('[GeoScale] zoom factor', factor, 'zoom', this.cytoscapeLeafletMap?.getZoom());
+      log.debug(`[GeoScale] zoom factor ${factor} zoom ${this.cytoscapeLeafletMap?.getZoom()}`);
       this.zoomRaf = null;
     });
   };
@@ -62,7 +63,7 @@ export class ManagerLayoutAlgo {
       // Just handle scaling, let cytoscape-leaflet handle positions
       const factor = this.calculateGeoScale();
       this.applyGeoScale(true, factor);
-      console.debug('[GeoScale] zoomend factor', factor, 'zoom', this.cytoscapeLeafletMap?.getZoom());
+      log.debug(`[GeoScale] zoomend factor ${factor} zoom ${this.cytoscapeLeafletMap?.getZoom()}`);
       this.zoomEndTimeout = null;
     }, 300);
   };
@@ -80,7 +81,7 @@ export class ManagerLayoutAlgo {
     this.renderDebounceTimer = window.setTimeout(() => {
       const factor = this.calculateGeoScale();
       if (Math.abs(factor - this.lastGeoScale) > 0.001) {
-        console.debug('[GeoScale] render factor', factor);
+        log.debug(`[GeoScale] render factor ${factor}`);
         this.applyGeoScale(true, factor);
       }
       this.renderDebounceTimer = null;
@@ -112,7 +113,7 @@ export class ManagerLayoutAlgo {
     const cy = this.getCy();
     if (!cy) return;
 
-    console.debug('[GeoScale] apply', enable, 'factor', factor);
+    log.debug(`[GeoScale] apply ${enable} factor ${factor}`);
 
     if (enable) {
       cy.nodes().forEach((n) => {
@@ -439,13 +440,13 @@ export class ManagerLayoutAlgo {
   public viewportDrawerLayoutGeoMap(): void {
     const cy = this.getCy();
     if (!cy) {
-      console.error('[GeoMap] No cytoscape instance found');
+      log.error('[GeoMap] No cytoscape instance found');
       return;
     }
 
     // If already initialized, just ensure it's visible
     if (this.isGeoMapInitialized) {
-      console.log('[GeoMap] Geo-map already initialized, ensuring visibility');
+      log.info('[GeoMap] Geo-map already initialized, ensuring visibility');
       const leafletContainer = document.getElementById('cy-leaflet');
       if (leafletContainer) {
         leafletContainer.classList.remove('hidden');
@@ -459,7 +460,7 @@ export class ManagerLayoutAlgo {
       return;
     }
 
-    console.log('[GeoMap] Initializing geo-positioning layout');
+    log.info('[GeoMap] Initializing geo-positioning layout');
 
     this.viewportDrawerDisableGeoMap();
 
@@ -533,17 +534,19 @@ export class ManagerLayoutAlgo {
 
       // Ensure the container has proper dimensions
       const containerRect = leafletContainer.getBoundingClientRect();
-      console.log('[GeoMap] Leaflet container created/shown', {
+      log.info({
+        msg: '[GeoMap] Leaflet container created/shown',
         width: containerRect.width,
         height: containerRect.height,
         display: (leafletContainer as HTMLElement).style.display,
         className: leafletContainer.className
       });
-      console.log('[GeoMap] Initializing cytoscape-leaflet plugin');
+      log.info('[GeoMap] Initializing cytoscape-leaflet plugin');
       try {
         // Make sure cy is visible and has dimensions
         const cyRect = cy.container()?.getBoundingClientRect();
-        console.log('[GeoMap] Cytoscape container dimensions:', {
+        log.info({
+          msg: '[GeoMap] Cytoscape container dimensions',
           width: cyRect?.width,
           height: cyRect?.height
         });
@@ -557,20 +560,21 @@ export class ManagerLayoutAlgo {
           this.cytoscapeLeafletLeaf.map.removeLayer(this.cytoscapeLeafletLeaf.defaultTileLayer);
         }
         this.cytoscapeLeafletMap = this.cytoscapeLeafletLeaf.map;
-        console.log('[GeoMap] Cytoscape-leaflet initialized successfully', {
+        log.info({
+          msg: '[GeoMap] Cytoscape-leaflet initialized successfully',
           map: this.cytoscapeLeafletMap,
           leaf: this.cytoscapeLeafletLeaf
         });
       } catch (error) {
-        console.error('[GeoMap] Error initializing cytoscape-leaflet:', error);
+        log.error(`[GeoMap] Error initializing cytoscape-leaflet: ${error}`);
         return;
       }
       // add basic tile layer
       if (!window.L) {
-        console.error('[GeoMap] Leaflet library (L) not available');
+        log.error('[GeoMap] Leaflet library (L) not available');
         return;
       }
-      console.log('[GeoMap] Adding tile layer');
+      log.info('[GeoMap] Adding tile layer');
       window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
@@ -602,7 +606,7 @@ export class ManagerLayoutAlgo {
       // We only need to handle scaling
     }
 
-    console.log('[GeoMap] Applying preset layout with geo positions');
+    log.info('[GeoMap] Applying preset layout with geo positions');
 
     // First, ensure all nodes have valid lat/lng before applying layout
     cy.nodes().forEach((node) => {
@@ -611,9 +615,9 @@ export class ManagerLayoutAlgo {
       const lat = parseFloat(data.lat);
       const lng = parseFloat(data.lng);
       if (isNaN(lat) || isNaN(lng)) {
-        console.warn(`[GeoMap] Node ${node.id()} missing valid geo coordinates, will use defaults`);
+        log.warn(`[GeoMap] Node ${node.id()} missing valid geo coordinates, will use defaults`);
       } else {
-        console.log(`[GeoMap] Node ${node.id()} has coordinates: lat=${lat}, lng=${lng}`);
+        log.info(`[GeoMap] Node ${node.id()} has coordinates: lat=${lat}, lng=${lng}`);
       }
     });
 
@@ -633,24 +637,24 @@ export class ManagerLayoutAlgo {
         }
 
         // This should not happen as assignMissingLatLng was called earlier
-        console.error(`[GeoMap] Node ${node.id()} still missing geo coordinates during layout`);
+        log.error(`[GeoMap] Node ${node.id()} still missing geo coordinates during layout`);
         // Keep current position to avoid jumping to ocean
         return { x: node.position().x, y: node.position().y };
       }
     } as any).run();
 
-    console.log('[GeoMap] Layout applied, fitting map');
+    log.info('[GeoMap] Layout applied, fitting map');
 
     // Give the map time to render before fitting
     setTimeout(() => {
       if (this.cytoscapeLeafletLeaf && this.cytoscapeLeafletLeaf.fit) {
         this.cytoscapeLeafletLeaf.fit();
-        console.log('[GeoMap] Map fitted to nodes');
+        log.info('[GeoMap] Map fitted to nodes');
       }
 
       const factor = this.calculateGeoScale();
       this.applyGeoScale(true, factor);
-      console.log('[GeoMap] Scale applied with factor:', factor);
+      log.info(`[GeoMap] Scale applied with factor: ${factor}`);
     }, 100);
 
     cy.on('add', this.onElementAddedBound);
@@ -660,14 +664,14 @@ export class ManagerLayoutAlgo {
       geoMapButtons[i].classList.remove('hidden');
     }
 
-    console.log('[GeoMap] Geo-positioning layout initialization complete');
+    log.info('[GeoMap] Geo-positioning layout initialization complete');
   }
 
   public viewportDrawerDisableGeoMap(): void {
     const cy = this.getCy();
     if (!cy || !this.isGeoMapInitialized) return;
 
-    console.log('[GeoMap] Disabling geo-positioning layout');
+    log.info('[GeoMap] Disabling geo-positioning layout');
 
     // Remove the leaflet-active class and restore background
     cy.container()?.classList.remove('leaflet-active');
@@ -899,9 +903,9 @@ export class ManagerLayoutAlgo {
    * Nodes become non-editable and the Leaflet map receives pointer events.
    */
   public viewportButtonsGeoMapPan(): void {
-    console.log('[GeoMap] Switching to pan mode');
+    log.info('[GeoMap] Switching to pan mode');
     if (!this.cytoscapeLeafletLeaf) {
-      console.error('[GeoMap] Cytoscape-leaflet not initialized');
+      log.error('[GeoMap] Cytoscape-leaflet not initialized');
       return;
     }
     // Switch pointer events to the map
@@ -916,7 +920,7 @@ export class ManagerLayoutAlgo {
 
     this.cytoscapeLeafletLeaf.setZoomControlOpacity('');
     this.cytoscapeLeafletLeaf.map.dragging.enable();
-    console.log('[GeoMap] Pan mode enabled');
+    log.info('[GeoMap] Pan mode enabled');
   }
 
   /**
@@ -924,9 +928,9 @@ export class ManagerLayoutAlgo {
    * Pointer events are forwarded to Cytoscape while map dragging is disabled.
    */
   public viewportButtonsGeoMapEdit(): void {
-    console.log('[GeoMap] Switching to edit mode');
+    log.info('[GeoMap] Switching to edit mode');
     if (!this.cytoscapeLeafletLeaf) {
-      console.error('[GeoMap] Cytoscape-leaflet not initialized');
+      log.error('[GeoMap] Cytoscape-leaflet not initialized');
       return;
     }
     // Switch pointer events back to cytoscape
@@ -940,7 +944,7 @@ export class ManagerLayoutAlgo {
 
     this.cytoscapeLeafletLeaf.setZoomControlOpacity(0.5);
     this.cytoscapeLeafletLeaf.map.dragging.disable();
-    console.log('[GeoMap] Edit mode enabled');
+    log.info('[GeoMap] Edit mode enabled');
   }
 
   /**

@@ -1,7 +1,22 @@
 // file: managerVscodeWebview.ts
 
+import { log } from '../logging/webviewLogger';
+
 // This function is typically provided by the VS Code environment.
 declare function acquireVsCodeApi(): any;
+
+// Acquire VS Code API once and expose it on the window for shared logging
+const vscodeApi: any = (() => {
+  try {
+    return (window as any).vscode ?? acquireVsCodeApi?.();
+  } catch {
+    return undefined;
+  }
+})();
+
+if (vscodeApi) {
+  (window as any).vscode = vscodeApi;
+}
 
 /* eslint-disable no-unused-vars */
 export interface LoggerLike {
@@ -22,13 +37,13 @@ export class VscodeMessageSender {
   /**
    * Creates an instance of VscodeMessageSender.
    * Initializes the VS Code API and sets up a listener for messages from the extension host.
-   * @param logger - Optional logger implementing a warn method. Defaults to console.
+     * @param logger - Optional logger implementing a warn method. Defaults to log.
    * @throws Will throw an error if the VS Code API is not available in this environment.
    */
-  constructor(logger: LoggerLike = console) {
+  constructor(logger: LoggerLike = log) {
     this.logger = logger;
-    if (typeof acquireVsCodeApi === "function") {
-      this.vsCode = acquireVsCodeApi();
+    if (vscodeApi) {
+      this.vsCode = vscodeApi;
     } else {
       throw new Error("VS Code API is not available in this environment.");
     }

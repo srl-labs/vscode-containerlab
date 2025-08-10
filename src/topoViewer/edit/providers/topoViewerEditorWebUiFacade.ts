@@ -408,24 +408,43 @@ topology:
     * Interface for messages received from the webview.
     */
     interface WebviewMessage {
-      type: string;
+      type?: string;
       requestId?: string;
       endpointName?: string;
       payload?: string;
+      command?: string;
+      level?: string;
+      message?: string;
+      fileLine?: string;
     }
 
     // Listen for incoming messages from the webview.
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
-      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
-
-      const payloadObj = JSON.parse(msg.payload as string);
-      log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
-
-      // Validate that the message is an object.
       if (!msg || typeof msg !== 'object') {
         log.error('Invalid message received.');
         return;
       }
+
+      if (msg.command === 'topoViewerLog') {
+        const { level, message, fileLine } = msg;
+        const text = fileLine ? `${fileLine} - ${message}` : message;
+        switch (level) {
+          case 'error':
+            log.error(text);
+            break;
+          case 'warn':
+            log.warn(text);
+            break;
+          case 'debug':
+            log.debug(text);
+            break;
+          default:
+            log.info(text);
+        }
+        return;
+      }
+
+      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
 
       // Process only messages of type 'POST'.
       if (msg.type !== 'POST') {
@@ -434,6 +453,10 @@ topology:
       }
 
       const { requestId, endpointName, payload } = msg;
+      const payloadObj = payload ? JSON.parse(payload) : undefined;
+      if (payloadObj !== undefined) {
+        log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
+      }
       if (!requestId || !endpointName) {
         const missingFields = [];
         if (!requestId) missingFields.push('requestId');

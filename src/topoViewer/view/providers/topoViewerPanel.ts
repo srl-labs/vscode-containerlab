@@ -85,12 +85,35 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
     viewerParams
   );
 
-  panel.webview.onDidReceiveMessage(async msg => {
-    if (!msg || typeof msg !== 'object' || msg.type !== 'POST') {
-      return;
-    }
+    panel.webview.onDidReceiveMessage(async msg => {
+      if (!msg || typeof msg !== 'object') {
+        return;
+      }
 
-    const { requestId, endpointName, payload } = msg;
+      if (msg.command === 'topoViewerLog') {
+        const { level, message, fileLine } = msg as any;
+        const text = fileLine ? `${fileLine} - ${message}` : message;
+        switch (level) {
+          case 'error':
+            log.error(text);
+            break;
+          case 'warn':
+            log.warn(text);
+            break;
+          case 'debug':
+            log.debug(text);
+            break;
+          default:
+            log.info(text);
+        }
+        return;
+      }
+
+      if (msg.type !== 'POST') {
+        return;
+      }
+
+      const { requestId, endpointName, payload } = msg;
     let result: unknown = null;
     let error: string | undefined;
 

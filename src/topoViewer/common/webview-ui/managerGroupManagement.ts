@@ -472,7 +472,7 @@ export class ManagerGroupManagement {
 export class ManagerGroupManagemetn extends ManagerGroupManagement {
   constructor(...args: ConstructorParameters<typeof ManagerGroupManagement>) {
     // Warn at runtime when deprecated alias is used
-    console.warn('ManagerGroupManagemetn is deprecated. Use ManagerGroupManagement instead.');
+    log.warn('ManagerGroupManagemetn is deprecated. Use ManagerGroupManagement instead.');
     super(...args);
   }
 }
