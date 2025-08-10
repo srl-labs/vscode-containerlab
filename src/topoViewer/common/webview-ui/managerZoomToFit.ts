@@ -1,11 +1,9 @@
-// file: managerZoomToFit.ts
-
 import cytoscape from 'cytoscape';
-import { log } from '../../common/logging/webviewLogger';
-import topoViewerState from '../../common/webview-ui/state';
+import { log } from '../logging/webviewLogger';
+import topoViewerState from './state';
 
 /**
- * Provides functionality to zoom and fit the Cytoscape viewport.
+ * Provides functionality to zoom and fit the Cytoscape viewport across modes.
  */
 export class ManagerZoomToFit {
   public viewportButtonsZoomToFit(cy: cytoscape.Core): void {
@@ -16,7 +14,7 @@ export class ManagerZoomToFit {
     const currentZoom = cy.zoom();
     log.info(`And now the zoom level is "${currentZoom}".`);
 
-    const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
+    const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager || (window as any).layoutManager;
     layoutMgr?.cytoscapeLeafletLeaf?.fit();
   }
 }

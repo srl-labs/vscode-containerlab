@@ -17,7 +17,7 @@ import {
 } from '../../../src/topoViewer/common/core/managerRegistry';
 import { ManagerLayoutAlgo } from '../../../src/topoViewer/common/webview-ui/managerLayoutAlgo';
 import { ManagerGroupManagemetn } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
-import { ManagerZoomToFit } from '../../../src/topoViewer/edit/webview-ui/managerZoomToFit';
+import { ManagerZoomToFit } from '../../../src/topoViewer/common/webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../../../src/topoViewer/edit/webview-ui/managerLabelEndpoint';
 import { ManagerReloadTopo } from '../../../src/topoViewer/edit/webview-ui/managerReloadTopo';
 

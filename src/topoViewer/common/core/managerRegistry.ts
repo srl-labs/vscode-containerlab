@@ -1,7 +1,7 @@
 import type cytoscape from 'cytoscape';
 import { ManagerGroupManagemetn } from '../webview-ui/managerGroupManagement';
 import { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
-import { ManagerZoomToFit } from '../../edit/webview-ui/managerZoomToFit';
+import { ManagerZoomToFit } from '../webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../../edit/webview-ui/managerLabelEndpoint';
 import { ManagerReloadTopo } from '../../edit/webview-ui/managerReloadTopo';
 import type { VscodeMessageSender } from '../webview-ui/managerVscodeWebview';

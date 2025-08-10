@@ -27,7 +27,7 @@ import { ManagerViewportPanels } from './managerViewportPanels';
 import { exportViewportAsSvg } from '../../common/webview-ui/utils';
 import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
-import type { ManagerZoomToFit } from './managerZoomToFit';
+import type { ManagerZoomToFit } from '../../common/webview-ui/managerZoomToFit';
 import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
 import type { ManagerReloadTopo } from './managerReloadTopo';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../../common/core/managerRegistry';

@@ -6,6 +6,7 @@ import { log } from '../../common/logging/webviewLogger';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { exportViewportAsSvg } from '../../common/webview-ui/utils';
 import topoViewerState from '../../common/webview-ui/state';
+import { zoomToFitManager } from '../../common/core/managerRegistry';
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -72,21 +73,7 @@ export function viewportButtonsZoomToFit(): void {
       return;
     }
 
-    const cy = topoViewerState.cy;
-    const initialZoom = cy.zoom();
-    log.debug(`Initial zoom level: ${initialZoom}`);
-
-    const layoutManager = (window as any).layoutManager;
-    const geoActive = layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf;
-    if (geoActive) {
-      layoutManager.cytoscapeLeafletLeaf.fit();
-      log.info('Fitted cytoscape-leaflet map');
-    } else {
-      // Fit all nodes with padding
-      cy.fit();
-      const currentZoom = cy.zoom();
-      log.debug(`New zoom level: ${currentZoom}`);
-    }
+    zoomToFitManager.viewportButtonsZoomToFit(topoViewerState.cy);
   } catch (error) {
     log.error(`Error in zoom to fit: ${error}`);
   }
