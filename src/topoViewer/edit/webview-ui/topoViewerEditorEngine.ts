@@ -31,6 +31,7 @@ import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
 import type { ManagerReloadTopo } from './managerReloadTopo';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../../common/core/managerRegistry';
 import { log } from '../../common/logging/webviewLogger';
+import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
 
 
 
@@ -518,67 +519,50 @@ class TopoViewerEditorEngine {
    */
   private async registerEvents(): Promise<void> {
 
-    // Canvas click: add node when Shift is held.
-    this.cy.on('click', (event) => {
-      const mouseEvent = event.originalEvent as MouseEvent;
-      if (event.target === this.cy && mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
-        log.debug('Canvas clicked with Shift key - adding node.');
-        this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
-      }
-    });
-
-    // Node click: handle orphaning, edge creation, and deletion.
-    this.cy.on('click', 'node', async (event) => {
-      this.viewportPanels.nodeClicked = true; // Set flag to true when a node is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a node is clicked.
-      const node = event.target;
-      log.debug(`Node clicked: ${node.id()}`);
-      const originalEvent = event.originalEvent as MouseEvent;
-      const extraData = node.data("extraData");
-      const isNodeInEditMode = node.data("editor") === "true";
-
-      switch (true) {
-        // Remove node from parent if Ctrl is pressed and node is a child.
-        case originalEvent.ctrlKey && node.isChild():
-          log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
-          node.move({ parent: null });
-          break;
-        // Start edge creation if Shift is pressed.
-        case originalEvent.shiftKey:
-          log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
-          this.isEdgeHandlerActive = true;
-          this.eh.start(node);
-          break;
-        // Delete node if Alt is pressed and node is in edit mode.
-        case originalEvent.altKey && isNodeInEditMode:
-          log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
-          node.remove();
-          break;
-
-        case (node.data("topoViewerRole") == "textbox"):
-          break;
-
-        // case (node.data("topoViewerRole") == "dummyChild"):
-        //   console.info("Editing parent of dummyChild: ", node.parent().id());
-        //   this.groupManager.panelGroupToggle(node.parent().id());
-        //   break;
-        // // If the node is a parent, open the panel for that parent.
-        // case node.isParent():
-        //   console.info("Editing existing parent node: ", node.id());
-        //   this.groupManager.panelGroupToggle(node.id());
-        //   break;
-        default:
-          break;
-      }
-    });
-
-    // Edge click: delete edge when Alt is held.
-    this.cy.on('click', 'edge', (event) => {
-      this.viewportPanels.edgeClicked = true; // Set flag to true when a edge is clicked, passed to viewportPanels; this is used to prevent the viewport panels from closing when a edge is clicked.
-      const edge = event.target;
-      const originalEvent = event.originalEvent as MouseEvent;
-      if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
-        log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
-        edge.remove();
+    registerCyEventHandlers({
+      cy: this.cy,
+      onCanvasClick: (event) => {
+        const mouseEvent = event.originalEvent as MouseEvent;
+        if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
+          log.debug('Canvas clicked with Shift key - adding node.');
+          this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
+        }
+      },
+      onNodeClick: async (event) => {
+        this.viewportPanels.nodeClicked = true; // prevent panels from closing
+        const node = event.target;
+        log.debug(`Node clicked: ${node.id()}`);
+        const originalEvent = event.originalEvent as MouseEvent;
+        const extraData = node.data("extraData");
+        const isNodeInEditMode = node.data("editor") === "true";
+        switch (true) {
+          case originalEvent.ctrlKey && node.isChild():
+            log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
+            node.move({ parent: null });
+            break;
+          case originalEvent.shiftKey:
+            log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
+            this.isEdgeHandlerActive = true;
+            this.eh.start(node);
+            break;
+          case originalEvent.altKey && isNodeInEditMode:
+            log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
+            node.remove();
+            break;
+          case (node.data("topoViewerRole") == "textbox"):
+            break;
+          default:
+            break;
+        }
+      },
+      onEdgeClick: (event) => {
+        this.viewportPanels.edgeClicked = true; // prevent panels from closing
+        const edge = event.target;
+        const originalEvent = event.originalEvent as MouseEvent;
+        if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
+          log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
+          edge.remove();
+        }
       }
     });
 

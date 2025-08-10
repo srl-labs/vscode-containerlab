@@ -5,6 +5,7 @@ import { log } from '../../common/logging/webviewLogger';
 import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import { layoutAlgoManager, getGroupManager } from '../../common/core/managerRegistry';
+import { registerCyEventHandlers } from '../../common/webview-ui/cyEventHandlers';
 
 // loadCytoStyle function will be called if available
 
@@ -137,176 +138,125 @@ function initializeCytoscape(): void {
     log.debug(`Remaining selected edges: ${globalThis.cy.$('edge:selected').map((e: any) => e.id()).join(', ')}`);
   });
 
-  // Handle node clicks to open property panels
-  globalThis.cy.on('click', 'node', async (event: any) => {
-    const node = event.target;
-    globalThis.nodeClicked = true;
-
-    log.info(`Node clicked: ${node.id()}`);
-
-    const extraData = node.data("extraData") || {};
-    const originalEvent = event.originalEvent as MouseEvent;
-
-    // Handle parent/group nodes
-    if (node.isParent() || node.data('topoViewerRole') === 'group') {
-      groupManager.showGroupEditor(node);
-      return;
-    }
-
-    // Handle special node types
-    if (node.data("topoViewerRole") === "textbox" || node.data("topoViewerRole") === "dummyChild") {
-      return;
-    }
-
-    // Handle regular nodes - show node properties panel
-    if (!originalEvent.altKey && !originalEvent.ctrlKey && !originalEvent.shiftKey) {
-      // Hide all overlay panels first
-      const panelOverlays = document.getElementsByClassName("panel-overlay");
-      Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-
-      // Show node properties panel
-      const panelNode = document.getElementById("panel-node");
-      if (panelNode) {
-        panelNode.style.display = panelNode.style.display === "none" ? "block" : "none";
-
-        // Update panel content
-        const nameEl = document.getElementById("panel-node-name");
-        if (nameEl) nameEl.textContent = extraData.longname || node.data("name") || node.id();
-
-        const kindEl = document.getElementById("panel-node-kind");
-        if (kindEl) kindEl.textContent = extraData.kind || "";
-
-        const mgmtIpv4El = document.getElementById("panel-node-mgmtipv4");
-        if (mgmtIpv4El) mgmtIpv4El.textContent = extraData.mgmtIpv4Address || "";
-
-        const mgmtIpv6El = document.getElementById("panel-node-mgmtipv6");
-        if (mgmtIpv6El) mgmtIpv6El.textContent = extraData.mgmtIpv6Address || "";
-
-        const fqdnEl = document.getElementById("panel-node-fqdn");
-        if (fqdnEl) fqdnEl.textContent = extraData.fqdn || "";
-
-        const roleEl = document.getElementById("panel-node-topoviewerrole");
-        if (roleEl) roleEl.textContent = node.data("topoViewerRole") || "";
-
-        const stateEl = document.getElementById("panel-node-state");
-        if (stateEl) stateEl.textContent = extraData.state || "";
-
-        const imageEl = document.getElementById("panel-node-image");
-        if (imageEl) imageEl.textContent = extraData.image || "";
-
-        globalThis.globalSelectedNode = extraData.longname || node.id();
-        log.info(`Global selected node: ${globalThis.globalSelectedNode}`);
-      }
-    }
-  });
-
-  // Handle edge clicks to open property panels
-  globalThis.cy.on('click', 'edge', async (event: any) => {
-    const edge = event.target;
-    globalThis.edgeClicked = true;
-
-    log.info(`Edge clicked: ${edge.id()}`);
-
-    // Hide all overlay panels first
-    const panelOverlays = document.getElementsByClassName("panel-overlay");
-    Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-
-    // Change edge color to indicate selection
-    const defaultEdgeColor = "#969799";
-    if (edge.data("editor") === "true") {
-      edge.style("line-color", "#32CD32");
-    } else {
-      edge.style("line-color", "#0043BF");
-    }
-
-    // Revert color of other edges
-    globalThis.cy.edges().forEach((e: any) => {
-      if (e !== edge) {
-        e.style("line-color", defaultEdgeColor);
+    registerCyEventHandlers({
+      cy: globalThis.cy,
+      onNodeClick: async (event: any) => {
+        const node = event.target;
+        globalThis.nodeClicked = true;
+        log.info(`Node clicked: ${node.id()}`);
+        const extraData = node.data("extraData") || {};
+        const originalEvent = event.originalEvent as MouseEvent;
+        if (node.isParent() || node.data('topoViewerRole') === 'group') {
+          groupManager.showGroupEditor(node);
+          return;
+        }
+        if (node.data("topoViewerRole") === "textbox" || node.data("topoViewerRole") === "dummyChild") {
+          return;
+        }
+        if (!originalEvent.altKey && !originalEvent.ctrlKey && !originalEvent.shiftKey) {
+          const panelOverlays = document.getElementsByClassName("panel-overlay");
+          Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
+          const panelNode = document.getElementById("panel-node");
+          if (panelNode) {
+            panelNode.style.display = panelNode.style.display === "none" ? "block" : "none";
+            const nameEl = document.getElementById("panel-node-name");
+            if (nameEl) nameEl.textContent = extraData.longname || node.data("name") || node.id();
+            const kindEl = document.getElementById("panel-node-kind");
+            if (kindEl) kindEl.textContent = extraData.kind || "";
+            const mgmtIpv4El = document.getElementById("panel-node-mgmtipv4");
+            if (mgmtIpv4El) mgmtIpv4El.textContent = extraData.mgmtIpv4Address || "";
+            const mgmtIpv6El = document.getElementById("panel-node-mgmtipv6");
+            if (mgmtIpv6El) mgmtIpv6El.textContent = extraData.mgmtIpv6Address || "";
+            const fqdnEl = document.getElementById("panel-node-fqdn");
+            if (fqdnEl) fqdnEl.textContent = extraData.fqdn || "";
+            const roleEl = document.getElementById("panel-node-topoviewerrole");
+            if (roleEl) roleEl.textContent = node.data("topoViewerRole") || "";
+            const stateEl = document.getElementById("panel-node-state");
+            if (stateEl) stateEl.textContent = extraData.state || "";
+            const imageEl = document.getElementById("panel-node-image");
+            if (imageEl) imageEl.textContent = extraData.image || "";
+            globalThis.globalSelectedNode = extraData.longname || node.id();
+            log.info(`Global selected node: ${globalThis.globalSelectedNode}`);
+          }
+        }
+      },
+      onEdgeClick: async (event: any) => {
+        const edge = event.target;
+        globalThis.edgeClicked = true;
+        log.info(`Edge clicked: ${edge.id()}`);
+        const panelOverlays = document.getElementsByClassName("panel-overlay");
+        Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
+        const defaultEdgeColor = "#969799";
+        if (edge.data("editor") === "true") {
+          edge.style("line-color", "#32CD32");
+        } else {
+          edge.style("line-color", "#0043BF");
+        }
+        globalThis.cy.edges().forEach((e: any) => {
+          if (e !== edge) {
+            e.style("line-color", defaultEdgeColor);
+          }
+        });
+        const panelLink = document.getElementById("panel-link");
+        if (panelLink) {
+          panelLink.style.display = "block";
+          const extraData = edge.data("extraData") || {};
+          const linkNameEl = document.getElementById("panel-link-name");
+          if (linkNameEl) {
+            linkNameEl.innerHTML = `┌ ${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}<br>└ ${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
+          }
+          const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
+          if (endpointANameEl) {
+            endpointANameEl.textContent = `${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}`;
+          }
+          const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
+          if (endpointAMacEl) {
+            endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
+          }
+          const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
+          if (endpointAMtuEl) {
+            endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
+          }
+          const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
+          if (endpointATypeEl) {
+            endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
+          }
+          const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
+          if (endpointBNameEl) {
+            endpointBNameEl.textContent = `${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
+          }
+          const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
+          if (endpointBMacEl) {
+            endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
+          }
+          const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
+          if (endpointBMtuEl) {
+            endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
+          }
+          const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
+          if (endpointBTypeEl) {
+            endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
+          }
+          globalThis.globalSelectedEdge = edge.data("id");
+          log.info(`Global selected edge: ${globalThis.globalSelectedEdge}`);
+          log.debug(`Edge extraData: ${JSON.stringify(extraData)}`);
+        }
+      },
+      onCanvasClick: () => {
+        if (!globalThis.nodeClicked && !globalThis.edgeClicked) {
+          const panelOverlays = document.getElementsByClassName('panel-overlay');
+          for (let i = 0; i < panelOverlays.length; i++) {
+            (panelOverlays[i] as HTMLElement).style.display = 'none';
+          }
+          const viewportDrawer = document.getElementsByClassName('viewport-drawer');
+          for (let i = 0; i < viewportDrawer.length; i++) {
+            (viewportDrawer[i] as HTMLElement).style.display = 'none';
+          }
+        }
+        globalThis.nodeClicked = false;
+        globalThis.edgeClicked = false;
       }
     });
-
-    // Show link properties panel
-    const panelLink = document.getElementById("panel-link");
-    if (panelLink) {
-      panelLink.style.display = "block";
-
-      // Get extraData for interface information
-      const extraData = edge.data("extraData") || {};
-
-      // Update panel content
-      const linkNameEl = document.getElementById("panel-link-name");
-      if (linkNameEl) {
-        linkNameEl.innerHTML = `┌ ${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}<br>└ ${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
-      }
-
-      // Update Endpoint A (source) properties
-      const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
-      if (endpointANameEl) {
-        endpointANameEl.textContent = `${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}`;
-      }
-
-      const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
-      if (endpointAMacEl) {
-        endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
-      }
-
-      const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
-      if (endpointAMtuEl) {
-        endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
-      }
-
-      const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
-      if (endpointATypeEl) {
-        endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
-      }
-
-      // Update Endpoint B (target) properties
-      const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
-      if (endpointBNameEl) {
-        endpointBNameEl.textContent = `${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
-      }
-
-      const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
-      if (endpointBMacEl) {
-        endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
-      }
-
-      const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
-      if (endpointBMtuEl) {
-        endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
-      }
-
-      const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
-      if (endpointBTypeEl) {
-        endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
-      }
-
-      globalThis.globalSelectedEdge = edge.data("id");
-      log.info(`Global selected edge: ${globalThis.globalSelectedEdge}`);
-      log.debug(`Edge extraData: ${JSON.stringify(extraData)}`);
-    }
-  });
-
-  // Close open menus when clicking on empty canvas
-  globalThis.cy.on('click', (event: any) => {
-    if (event.target === globalThis.cy) {
-      // Only close panels if no node or edge was clicked
-      if (!globalThis.nodeClicked && !globalThis.edgeClicked) {
-        const panelOverlays = document.getElementsByClassName('panel-overlay');
-        for (let i = 0; i < panelOverlays.length; i++) {
-          (panelOverlays[i] as HTMLElement).style.display = 'none';
-        }
-        const viewportDrawer = document.getElementsByClassName('viewport-drawer');
-        for (let i = 0; i < viewportDrawer.length; i++) {
-          (viewportDrawer[i] as HTMLElement).style.display = 'none';
-        }
-      }
-      // Reset click flags
-      globalThis.nodeClicked = false;
-      globalThis.edgeClicked = false;
-    }
-  });
 
   // Apply initial styles
   if (typeof (globalThis as any).loadCytoStyle === 'function') {
