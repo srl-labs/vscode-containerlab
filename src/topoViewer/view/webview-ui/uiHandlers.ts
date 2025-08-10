@@ -4,6 +4,7 @@
 // Import logger for webview
 import { log } from '../../common/logging/webviewLogger';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
+import { exportViewportAsSvg } from '../../common/webview-ui/utils';
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -214,25 +215,25 @@ export function viewportDrawerCaptureFunc(event: Event): void {
       log.error('Cytoscape instance not available');
       return;
     }
-
-    // Use cytoscape-svg extension if available
-    if (typeof globalThis.cy.svg === 'function') {
-      const svgContent = globalThis.cy.svg({ scale: 1, full: true });
-      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'topology.svg';
-      link.click();
-
-      URL.revokeObjectURL(url);
-      log.info('Topology exported as SVG');
-    } else {
-      log.warn('Cytoscape SVG extension not available');
-    }
+    exportViewportAsSvg(globalThis.cy);
   } catch (error) {
     log.error(`Error capturing topology: ${error}`);
+  }
+}
+
+/**
+ * Capture viewport as SVG - called by the navbar button
+ */
+export function viewportButtonsCaptureViewportAsSvg(): void {
+  try {
+    if (!globalThis.cy) {
+      log.error('Cytoscape instance not available for SVG capture');
+      return;
+    }
+    exportViewportAsSvg(globalThis.cy);
+    log.info('Viewport captured as SVG');
+  } catch (error) {
+    log.error(`Error capturing viewport as SVG: ${error}`);
   }
 }
 
@@ -518,6 +519,7 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportButtonsReloadTopo = viewportButtonsReloadTopo;
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
+  (globalThis as any).viewportButtonsCaptureViewportAsSvg = viewportButtonsCaptureViewportAsSvg;
   (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
   (globalThis as any).nodeActionConnectToSSH = nodeActionConnectToSSH;
   (globalThis as any).nodeActionAttachShell = nodeActionAttachShell;

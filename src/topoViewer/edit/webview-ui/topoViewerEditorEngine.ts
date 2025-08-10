@@ -24,6 +24,7 @@ import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscap
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
+import { exportViewportAsSvg } from '../../common/webview-ui/utils';
 import type { ManagerGroupManagemetn } from '../../common/webview-ui/managerGroupManagement';
 import type { ManagerLayoutAlgo } from '../../common/webview-ui/managerLayoutAlgo';
 import type { ManagerZoomToFit } from './managerZoomToFit';
@@ -237,27 +238,7 @@ class TopoViewerEditorEngine {
     // Create capture viewport manager with the required method
     this.captureViewportManager = {
       viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => {
-        try {
-          // Cast to any to access svg method added by extension
-          const cyWithSvg = cy as any;
-          if (typeof cyWithSvg.svg === 'function') {
-            const svgContent = cyWithSvg.svg({ scale: 1, full: true });
-            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'topology.svg';
-            link.click();
-
-            URL.revokeObjectURL(url);
-            log.info('Topology exported as SVG');
-          } else {
-            log.error('SVG export not available - cytoscape-svg extension may not be loaded');
-          }
-        } catch (error) {
-          log.error(`Error capturing viewport: ${error}`);
-        }
+        exportViewportAsSvg(cy);
       }
     };
 
