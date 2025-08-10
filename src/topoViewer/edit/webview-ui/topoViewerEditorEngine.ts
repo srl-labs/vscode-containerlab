@@ -22,6 +22,7 @@ import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerSaveTopo } from './managerSaveTopo';
+import { ManagerUndo } from './managerUndo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerFloatingActionPanel } from './managerFloatingActionPanel';
@@ -64,6 +65,7 @@ class TopoViewerEditorEngine {
 
   private messageSender: VscodeMessageSender;
   public saveManager: ManagerSaveTopo;
+  public undoManager: ManagerUndo;
   public addNodeManager: ManagerAddContainerlabNode;
   public viewportPanels: ManagerViewportPanels;
   public floatingActionPanel: ManagerFloatingActionPanel | null = null;
@@ -193,6 +195,7 @@ class TopoViewerEditorEngine {
 
     // Initiate managers and panels
     this.saveManager = new ManagerSaveTopo(this.messageSender);
+    this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
     this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
     this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
@@ -238,6 +241,8 @@ class TopoViewerEditorEngine {
       this.reloadTopoManager.viewportButtonsReloadTopo(this.cy);
     window.viewportButtonsSaveTopo = () =>
       this.saveManager.viewportButtonsSaveTopo(this.cy);
+    window.viewportButtonsUndo = () =>
+      this.undoManager.viewportButtonsUndo();
 
     this.setupAutoSave();
 

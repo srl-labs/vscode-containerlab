@@ -516,6 +516,50 @@ topology:
             break;
           }
 
+          case 'topo-editor-undo': {
+            try {
+              // Get the document for the YAML file
+              const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
+              
+              // Find if there's already an editor with this document open
+              const existingEditor = vscode.window.visibleTextEditors.find(
+                editor => editor.document.uri.fsPath === document.uri.fsPath
+              );
+              
+              // Force focus on the YAML editor
+              if (existingEditor) {
+                // Make the existing editor active and focused
+                await vscode.window.showTextDocument(document, {
+                  viewColumn: existingEditor.viewColumn,
+                  preview: false,
+                  preserveFocus: false  // Important: don't preserve focus, we want to switch to this editor
+                });
+              } else {
+                // Open a new editor if the file isn't already open
+                await vscode.window.showTextDocument(document, { 
+                  preview: false, 
+                  preserveFocus: false  // Important: don't preserve focus
+                });
+              }
+              
+              // Small delay to ensure the editor is fully active
+              await this.sleep(50);
+              
+              // Execute undo command on the now-active editor
+              await vscode.commands.executeCommand('undo');
+              
+              // Save the document to trigger file watcher update
+              await document.save();
+              
+              result = 'Undo operation completed successfully';
+              log.info('Undo operation executed on YAML file');
+            } catch (error) {
+              result = `Error executing undo operation`;
+              log.error(`Error executing undo operation: ${JSON.stringify(error, null, 2)}`);
+            }
+            break;
+          }
+
           case 'topo-editor-show-vscode-message': {
             try {
               // Parse the payload from the webview
