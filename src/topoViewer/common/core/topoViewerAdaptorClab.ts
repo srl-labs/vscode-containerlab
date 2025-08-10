@@ -5,6 +5,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { log } from '../logging/extensionLogger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
+import * as os from 'os';
 
 import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../types/topoViewerType';
 import { resolveNodeConfig } from './nodeConfig';
@@ -14,10 +15,6 @@ import { version as topoViewerVersion } from '../../../../package.json';
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../../treeView/common";
 import { findContainerNode, findInterfaceNode } from '../../view/utilities/treeUtils';
 // log.info(ClabTreeDataProvider.)
-
-import {
-  getHostname,
-} from '../../../commands/index';
 
 log.info(`TopoViewer Version: ${topoViewerVersion}`);
 
@@ -105,8 +102,8 @@ export class TopoViewerAdaptorClab {
 
       // Define the EnvironmentJson object
 
-      const hostname = await getHostname()
-      this.allowedhostname = hostname
+      const hostname = os.hostname();
+      this.allowedhostname = hostname;
 
       const environmentJson: EnvironmentJson = {
         workingDirectory: ".",

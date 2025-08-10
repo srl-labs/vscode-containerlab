@@ -1,11 +1,18 @@
 // file: src/topoViewer/common/logging/extensionLogger.ts
 
-import * as vscode from 'vscode';
-
-/**
- * Create a single OutputChannel for logs.
- */
-const outputChannel = vscode.window.createOutputChannel("TopoViewer Logs");
+/* eslint-disable no-unused-vars */
+interface OutputChannel {
+    appendLine(line: string): void;
+}
+/* eslint-enable no-unused-vars */
+let outputChannel: OutputChannel | undefined;
+try {
+    const vscode = require('vscode') as typeof import('vscode');
+    outputChannel = vscode.window.createOutputChannel('TopoViewer Logs');
+} catch {
+    // Fallback to console when the VS Code API is unavailable (e.g., during tests)
+    outputChannel = undefined;
+}
 
 /**
  * Extract file name + line number from the call stack.
@@ -50,8 +57,12 @@ function logMessage(level: string, message: string): void {
     // time=2024-12-29T09:37:21Z level=info msg=Hello file=topoViewer.ts:108
     const logLine = `time=${now} level=${level} msg=${message} file=${fileLine}`;
 
-    // Write to the OutputChannel but don't use console.* methods
-    outputChannel.appendLine(logLine);
+    // Write to the OutputChannel when available; otherwise, use console
+    if (outputChannel) {
+        outputChannel.appendLine(logLine);
+    } else {
+        console.log(logLine);
+    }
 }
 
 /**
