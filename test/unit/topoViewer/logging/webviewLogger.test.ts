@@ -1,7 +1,9 @@
-/* eslint-env mocha */
+/* eslint-env mocha, node */
+/* global __dirname, global */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import path from 'path';
+import { describe, it, afterEach } from 'mocha';
 
 describe('webviewLogger', () => {
   const webviewLoggerPath = path.join(

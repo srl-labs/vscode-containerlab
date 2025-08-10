@@ -7,7 +7,7 @@ const editorConfig = {
   entry: './src/topoViewer/edit/webview-ui/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'topoViewerEditorEngine.js',
+    filename: 'topologyEditorWebviewController.js',
     libraryTarget: 'module'
   },
   experiments: {
@@ -59,7 +59,7 @@ const topoViewerConfig = {
   entry: './src/topoViewer/view/webview-ui/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'topoViewerEngine.js'
+    filename: 'topologyWebviewController.js'
   },
   module: {
     rules: [

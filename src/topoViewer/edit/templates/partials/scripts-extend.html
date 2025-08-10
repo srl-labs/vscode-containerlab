@@ -6,17 +6,17 @@
     <script> window.updateLinkEndpointsOnKindChange = {{updateLinkEndpointsOnKindChange}}; </script>
 
     <!-- Load the compiled TypeScript bundle -->
-    <script src="{{jsOutDir}}/topoViewerEditorEngine.js?ver=1"></script>
+    <script src="{{jsOutDir}}/topologyEditorWebviewController.js?ver=1"></script>
 
     <!-- Initialize TopoViewer after bundle loads -->
     <script>
-      if (typeof topoViewerEngine !== 'undefined') {
+      if (typeof topologyWebviewController !== 'undefined') {
         if (typeof log !== 'undefined' && log.info) {
-          log.info('TopoViewerEngine loaded successfully');
+          log.info('TopologyWebviewController loaded successfully');
         }
       } else {
         if (typeof log !== 'undefined' && log.error) {
-          log.error('TopoViewerEngine failed to load');
+          log.error('TopologyWebviewController failed to load');
         }
       }
     </script>

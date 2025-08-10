@@ -1,7 +1,7 @@
-// file: topoViewerEngine.ts
+// file: topologyWebviewController.ts
 
 import type cytoscape from 'cytoscape';
-import { createCytoscapeInstance } from '../topoViewerEngineFactory';
+import { createConfiguredCytoscape } from '../cytoscapeInstanceFactory';
 
 // Import Tailwind CSS and Font Awesome
 import './tailwind.css';
@@ -35,11 +35,11 @@ import type { EdgeData } from '../types/topoViewerGraph';
 
 
 /**
- * TopoViewerEngine class is responsible for initializing the Cytoscape instance,
+ * TopologyWebviewController is responsible for initializing the Cytoscape instance,
  * managing edge creation, node editing and viewport panels/buttons.
- * entry point for the topology editor webview; methods are called from vscodeHtmlTemplate.ts.
+ * Entry point for the topology editor webview; methods are called from vscodeHtmlTemplate.ts.
  */
-class TopoViewerEngine {
+class TopologyWebviewController {
   public cy: cytoscape.Core;
   private cyEvent: cytoscape.EventObject | undefined;
   private eh: any;
@@ -88,7 +88,7 @@ class TopoViewerEngine {
   }
 
   /**
-   * Creates an instance of TopoViewerEngine.
+   * Creates an instance of TopologyWebviewController.
    * @param containerId - The ID of the container element for Cytoscape.
    * @throws Will throw an error if the container element is not found.
    */
@@ -105,7 +105,7 @@ class TopoViewerEngine {
     this.detectColorScheme();
 
     // Initialize Cytoscape instance
-    this.cy = createCytoscapeInstance(container, { wheelSensitivity: 2 });
+    this.cy = createConfiguredCytoscape(container, { wheelSensitivity: 2 });
 
     this.cy.on('tap', (event) => {
       this.cyEvent = event as cytoscape.EventObject;
@@ -835,14 +835,14 @@ class TopoViewerEngine {
 
 document.addEventListener('DOMContentLoaded', () => {
   const mode = (window as any).topoViewerMode === 'view' ? 'view' : 'edit';
-  const engine = new TopoViewerEngine('cy', mode);
+  const controller = new TopologyWebviewController('cy', mode);
   // Store the instance for other modules
-  topoViewerState.editorEngine = engine;
-  topoViewerState.cy = engine.cy;
+  topoViewerState.editorEngine = controller;
+  topoViewerState.cy = controller.cy;
   // Expose for existing HTML bindings
-  window.topoViewerEngine = engine;
+  window.topologyWebviewController = controller;
 
-  const gm = engine.groupManager;
+  const gm = controller.groupManager;
   window.orphaningNode = gm.orphaningNode.bind(gm);
   window.createNewParent = gm.createNewParent.bind(gm);
   window.panelNodeEditorParentToggleDropdown = gm.panelNodeEditorParentToggleDropdown.bind(gm);
@@ -853,8 +853,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showPanelGroupEditor = gm.showGroupEditor.bind(gm);
 
   window.addEventListener('unload', () => {
-    engine.dispose();
+    controller.dispose();
   });
 });
 
-export default TopoViewerEngine;
+export default TopologyWebviewController;

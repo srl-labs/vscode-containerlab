@@ -1,7 +1,7 @@
 /* eslint-disable */
 import type { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
 import type { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
-import type { TopoViewerEngine } from '../webview-ui/topoViewerEngine';
+import type { TopologyWebviewController } from '../webview-ui/topologyWebviewController';
 
 declare global {
   interface LayoutManager extends ManagerLayoutAlgo {}
@@ -59,7 +59,7 @@ declare global {
     defaultKind?: string;
     defaultType?: string;
     vscode?: { postMessage(data: unknown): void };
-    topoViewerEngine?: TopoViewerEngine;
+    topologyWebviewController?: TopologyWebviewController;
   }
 
   // Augment the Window interface

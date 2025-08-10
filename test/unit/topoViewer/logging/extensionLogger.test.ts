@@ -1,8 +1,10 @@
-/* eslint-env mocha */
+/* eslint-env mocha, node */
+/* global __dirname */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+import { describe, it, afterEach } from 'mocha';
 
 const originalResolve = (Module as any)._resolveFilename;
 const extensionLoggerPath = path.join(

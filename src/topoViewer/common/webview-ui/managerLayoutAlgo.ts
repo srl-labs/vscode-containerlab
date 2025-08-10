@@ -14,7 +14,7 @@ function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
  * Layout manager handling various Cytoscape layouts.
  *
  * These properties mirror globals used in the JavaScript version but are kept
- * here so other classes (e.g. `TopoViewerEngine`) can access and modify
+ * here so other classes (e.g. `TopologyWebviewController`) can access and modify
  * them directly.
  */
 export class ManagerLayoutAlgo {

@@ -1,5 +1,5 @@
 /**
- * Shared Cytoscape engine factory that registers common extensions and
+ * Shared Cytoscape instance factory that registers common extensions and
  * applies default styling and behavior in one place.
  */
 import cytoscape, { Core, CytoscapeOptions } from 'cytoscape';
@@ -42,7 +42,7 @@ const defaultOptions: CytoscapeOptions = {
   wheelSensitivity: 0,
 };
 
-export function createCytoscapeInstance(container: HTMLElement | undefined, options: CytoscapeOptions = {}): Core {
+export function createConfiguredCytoscape(container: HTMLElement | undefined, options: CytoscapeOptions = {}): Core {
   registerExtensions();
   return cytoscape({
     container,

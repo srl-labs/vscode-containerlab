@@ -1,4 +1,4 @@
 (window as any).topoViewerMode = 'edit';
-import('../../common/webview-ui/topoViewerEngine');
+import('../../common/webview-ui/topologyWebviewController');
 
-export { default as TopoViewerEngine } from '../../common/webview-ui/topoViewerEngine';
+export { default as TopologyWebviewController } from '../../common/webview-ui/topologyWebviewController';
