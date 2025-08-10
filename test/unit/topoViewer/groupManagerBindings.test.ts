@@ -28,8 +28,8 @@ describe('group manager global bindings', () => {
     (globalThis as any).acquireVsCodeApi = () => ({ window: { showWarningMessage: () => {} } });
     (globalThis as any).sendMessageToVscodeEndpointPost = async () => {};
 
-    expect(typeof (window as any).nodeParentPropertiesUpdate).to.equal('function');
-    await (window as any).nodeParentPropertiesUpdate();
+    expect(typeof window.nodeParentPropertiesUpdate).to.equal('function');
+    await window.nodeParentPropertiesUpdate();
     expect(cy.getElementById('group1:1').hasClass('top-center')).to.be.true;
   });
 });

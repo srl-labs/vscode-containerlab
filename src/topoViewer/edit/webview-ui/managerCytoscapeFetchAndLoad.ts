@@ -38,8 +38,9 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     const isVscodeDeployment = true;
     // Determine JSON file URL. In VS Code deployment, assume a global variable is provided.
-    const jsonFileUrlDataCytoMarshall: string = isVscodeDeployment
-      ? (window as any).jsonFileUrlDataCytoMarshall : "dataCytoMarshall.json";
+      const jsonFileUrlDataCytoMarshall: string = isVscodeDeployment
+        ? window.jsonFileUrlDataCytoMarshall ?? 'dataCytoMarshall.json'
+        : 'dataCytoMarshall.json';
 
     log.debug(`fetchAndLoadData called. JSON URL: ${jsonFileUrlDataCytoMarshall}`);
 
@@ -225,7 +226,7 @@ type EnvironmentKeys =
  */
 export async function fetchAndLoadDataEnvironment(keys: EnvironmentKeys[]): Promise<Partial<Record<EnvironmentKeys, string>>> {
   try {
-    const url = (window as { jsonFileUrlDataEnvironment?: string }).jsonFileUrlDataEnvironment;
+    const url = window.jsonFileUrlDataEnvironment;
     if (!url) throw new Error("JSON file URL is undefined.");
 
     log.debug(`Fetching environment data from: ${url}`);

@@ -3,7 +3,7 @@ import topoViewerState from './state';
 
 // Use globally registered style loader to avoid duplicating implementations
 function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
-  const fn = (window as any).loadCytoStyle;
+  const fn = window.loadCytoStyle;
   if (typeof fn === 'function') {
     fn(cy, theme);
   }
@@ -24,7 +24,7 @@ export class ManagerLayoutAlgo {
   /** Reference to the Cytoscape-Leaflet plugin instance. */
   public cytoscapeLeafletLeaf: any;
   /** Whether the editor is running inside VS Code. */
-  public isVscodeDeployment: boolean = (window as any).isVscodeDeployment;
+  public isVscodeDeployment: boolean = window.isVscodeDeployment ?? false;
   /** Force a specific Cytoscape theme (light or dark) while active */
   public geoTheme: 'light' | 'dark' | null = null;
   /** Helper to get the Cytoscape instance from the engine or global scope */
@@ -491,7 +491,7 @@ export class ManagerLayoutAlgo {
       tempDiv.style.width = `${cyContainer.clientWidth}px`;
       tempDiv.style.height = `${cyContainer.clientHeight}px`;
       document.body.appendChild(tempDiv);
-      const tempMap = (window as any).L.map(tempDiv, { zoomControl: false, zoomSnap: 0 });
+      const tempMap = window.L.map(tempDiv, { zoomControl: false, zoomSnap: 0 });
       // Center on Stuttgart, Germany (Europe) instead of Toronto
       tempMap.setView([48.684826888402256, 9.007895390625677], 10);
       cy.nodes().forEach((node) => {
@@ -566,12 +566,12 @@ export class ManagerLayoutAlgo {
         return;
       }
       // add basic tile layer
-      if (!(window as any).L) {
+      if (!window.L) {
         console.error('[GeoMap] Leaflet library (L) not available');
         return;
       }
       console.log('[GeoMap] Adding tile layer');
-      (window as any).L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
         maxZoom: 19

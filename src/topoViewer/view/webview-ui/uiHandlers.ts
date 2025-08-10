@@ -180,7 +180,7 @@ export function viewportNodeFindEvent(): void {
       matchingNodes.select();
 
       // Fit to show selected nodes (or entire map if Geo layout active)
-      const layoutManager = (window as any).layoutManager;
+      const layoutManager = window.layoutManager;
       if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
         layoutManager.cytoscapeLeafletLeaf.fit();
       } else {
@@ -246,7 +246,7 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
     const cy = topoViewerState.cy;
 
     // Check if geo-map is active and update geo coordinates
-    const layoutManager = (window as any).layoutManager;
+    const layoutManager = window.layoutManager;
     const isGeoActive = layoutManager?.isGeoMapInitialized || false;
 
     if (isGeoActive && layoutManager && typeof layoutManager.updateNodeGeoCoordinates === 'function') {

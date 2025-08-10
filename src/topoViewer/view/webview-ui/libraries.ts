@@ -26,7 +26,7 @@ import 'tippy.js/dist/tippy.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 // Make cytoscape available globally first (required by some extensions)
-(window as any).cytoscape = cytoscape;
+window.cytoscape = cytoscape;
 
 // Register Cytoscape extensions with error handling
 try {
@@ -79,14 +79,14 @@ try {
 }
 
 // Make other libraries available globally for backward compatibility
-(window as any).$ = $;
-(window as any).jQuery = $;
-(window as any)._ = _;
-(window as any).L = L;
-(window as any).hljs = hljs;
-(window as any).tippy = tippy;
-(window as any).Popper = { createPopper };
-(window as any).cytoscapePopper = cytoscapePopper;
+window.$ = $;
+window.jQuery = $;
+window._ = _;
+window.L = L;
+window.hljs = hljs;
+window.tippy = tippy;
+window.Popper = { createPopper };
+window.cytoscapePopper = cytoscapePopper;
 
 // Log to verify libraries are loaded
 console.log('TopoViewer libraries loaded:', {

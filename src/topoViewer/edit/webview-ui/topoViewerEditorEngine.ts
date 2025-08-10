@@ -209,31 +209,31 @@ class TopoViewerEditorEngine {
     };
 
     // Expose layout functions globally for HTML event handlers
-    (window as any).viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
-    (window as any).layoutAlgoChange = this.layoutAlgoManager.layoutAlgoChange.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerLayoutGeoMap = this.layoutAlgoManager.viewportDrawerLayoutGeoMap.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerDisableGeoMap = this.layoutAlgoManager.viewportDrawerDisableGeoMap.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerLayoutForceDirected = this.layoutAlgoManager.viewportDrawerLayoutForceDirected.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerLayoutForceDirectedRadial = this.layoutAlgoManager.viewportDrawerLayoutForceDirectedRadial.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerLayoutVertical = this.layoutAlgoManager.viewportDrawerLayoutVertical.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerLayoutHorizontal = this.layoutAlgoManager.viewportDrawerLayoutHorizontal.bind(this.layoutAlgoManager);
-    (window as any).viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(this.layoutAlgoManager);
-    (window as any).viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(this.layoutAlgoManager);
-    (window as any).viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
+    window.viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
+    window.layoutAlgoChange = this.layoutAlgoManager.layoutAlgoChange.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutGeoMap = this.layoutAlgoManager.viewportDrawerLayoutGeoMap.bind(this.layoutAlgoManager);
+    window.viewportDrawerDisableGeoMap = this.layoutAlgoManager.viewportDrawerDisableGeoMap.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutForceDirected = this.layoutAlgoManager.viewportDrawerLayoutForceDirected.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutForceDirectedRadial = this.layoutAlgoManager.viewportDrawerLayoutForceDirectedRadial.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutVertical = this.layoutAlgoManager.viewportDrawerLayoutVertical.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutHorizontal = this.layoutAlgoManager.viewportDrawerLayoutHorizontal.bind(this.layoutAlgoManager);
+    window.viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(this.layoutAlgoManager);
+    window.viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(this.layoutAlgoManager);
+    window.viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
 
     // Expose topology overview function
-    (window as any).viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
+    window.viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
 
     // Expose additional functions used by shared navbar buttons
-    (window as any).viewportButtonsZoomToFit = () =>
+    window.viewportButtonsZoomToFit = () =>
       this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
-    (window as any).viewportButtonsLabelEndpoint = () =>
+    window.viewportButtonsLabelEndpoint = () =>
       this.labelEndpointManager.viewportButtonsLabelEndpoint(this.cy);
-    (window as any).viewportButtonsCaptureViewportAsSvg = () =>
+    window.viewportButtonsCaptureViewportAsSvg = () =>
       this.captureViewportManager.viewportButtonsCaptureViewportAsSvg(this.cy);
-    (window as any).viewportButtonsReloadTopo = () =>
+    window.viewportButtonsReloadTopo = () =>
       this.reloadTopoManager.viewportButtonsReloadTopo(this.cy);
-    (window as any).viewportButtonsSaveTopo = () =>
+    window.viewportButtonsSaveTopo = () =>
       this.saveManager.viewportButtonsSaveTopo(this.cy);
 
     this.setupAutoSave();
@@ -269,7 +269,7 @@ class TopoViewerEditorEngine {
         );
       },
       edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => {
-        const ifaceMap = (window as any).ifacePatternMapping || {};
+        const ifaceMap = window.ifacePatternMapping || {};
         const srcKind = sourceNode.data('extraData')?.kind || 'default';
         const dstKind = targetNode.data('extraData')?.kind || 'default';
         const srcPattern: string = ifaceMap[srcKind] || 'eth{n}';
@@ -589,7 +589,7 @@ class TopoViewerEditorEngine {
    * @private
    */
   private getNextEndpoint(nodeId: string): string {
-    const ifaceMap = (window as any).ifacePatternMapping || {};
+    const ifaceMap = window.ifacePatternMapping || {};
     const node = this.cy.getElementById(nodeId);
     const kind = node.data('extraData')?.kind || 'default';
     const pattern = ifaceMap[kind] || 'eth{n}';
@@ -709,17 +709,17 @@ document.addEventListener('DOMContentLoaded', () => {
   topoViewerState.editorEngine = engine;
   topoViewerState.cy = engine.cy;
   // Expose for existing HTML bindings
-  (window as any).topoViewerEditorEngine = engine;
+  window.topoViewerEditorEngine = engine;
 
   const gm = engine.groupManager;
-  (window as any).orphaningNode = gm.orphaningNode.bind(gm);
-  (window as any).createNewParent = gm.createNewParent.bind(gm);
-  (window as any).panelNodeEditorParentToggleDropdown = gm.panelNodeEditorParentToggleDropdown.bind(gm);
-  (window as any).nodeParentPropertiesUpdate = gm.nodeParentPropertiesUpdate.bind(gm);
-  (window as any).nodeParentPropertiesUpdateClose = gm.nodeParentPropertiesUpdateClose.bind(gm);
-  (window as any).nodeParentRemoval = gm.nodeParentRemoval.bind(gm);
-  (window as any).viewportButtonsAddGroup = gm.viewportButtonsAddGroup.bind(gm);
-  (window as any).showPanelGroupEditor = gm.showGroupEditor.bind(gm);
+  window.orphaningNode = gm.orphaningNode.bind(gm);
+  window.createNewParent = gm.createNewParent.bind(gm);
+  window.panelNodeEditorParentToggleDropdown = gm.panelNodeEditorParentToggleDropdown.bind(gm);
+  window.nodeParentPropertiesUpdate = gm.nodeParentPropertiesUpdate.bind(gm);
+  window.nodeParentPropertiesUpdateClose = gm.nodeParentPropertiesUpdateClose.bind(gm);
+  window.nodeParentRemoval = gm.nodeParentRemoval.bind(gm);
+  window.viewportButtonsAddGroup = gm.viewportButtonsAddGroup.bind(gm);
+  window.showPanelGroupEditor = gm.showGroupEditor.bind(gm);
 
   window.addEventListener('unload', () => {
     engine.dispose();

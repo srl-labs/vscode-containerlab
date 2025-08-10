@@ -23,14 +23,14 @@ function initializeState(): void {
 function initializeCytoscape(): void {
   // Check if cytoscape is available
   log.info('Checking for cytoscape availability...');
-  log.info('window.cytoscape type: ' + typeof (window as any).cytoscape);
+  log.info('window.cytoscape type: ' + typeof window.cytoscape);
 
-  if (typeof (window as any).cytoscape === 'undefined') {
+  if (typeof window.cytoscape === 'undefined') {
     log.error('Cytoscape.js is not loaded');
     return;
   }
 
-  const cytoscape = (window as any).cytoscape;
+  const cytoscape = window.cytoscape;
   log.info('Cytoscape loaded successfully');
 
   // Cytoscape-popper is already registered in libraries.ts, no need to register again
@@ -306,7 +306,7 @@ function handleCustomWheel(event: WheelEvent): void {
 async function loadTopologyData(): Promise<void> {
   try {
     // Get JSON URLs from window variables
-    const cytoscapeUrl = (window as any).jsonFileUrlDataCytoMarshall;
+    const cytoscapeUrl = window.jsonFileUrlDataCytoMarshall;
 
     if (!cytoscapeUrl) {
       log.error('Cytoscape JSON URL is missing');
@@ -346,7 +346,7 @@ async function loadTopologyData(): Promise<void> {
         layout.run();
       }
 
-      const layoutManager = (window as any).layoutManager;
+      const layoutManager = window.layoutManager;
       if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
         layoutManager.cytoscapeLeafletLeaf.fit();
       } else {
@@ -384,7 +384,7 @@ function updateTopologyData(cytoData: any): void {
     log.debug(`Updating topology with ${cytoData.length || 0} elements`);
 
     // Check if geo-map is active
-    const geoLayoutManager = (window as any).layoutManager;
+    const geoLayoutManager = window.layoutManager;
     const isGeoActive = geoLayoutManager?.isGeoMapInitialized || false;
 
     if (isGeoActive) {
@@ -444,7 +444,7 @@ function updateTopologyData(cytoData: any): void {
 
     // Re-apply styles to ensure colors are updated
     // But only if geo-map is not active (geo-map uses light theme)
-    const currentLayoutManager = (window as any).layoutManager;
+    const currentLayoutManager = window.layoutManager;
     const geoMapActive = currentLayoutManager?.isGeoMapInitialized || false;
 
     if (!geoMapActive && typeof (globalThis as any).loadCytoStyle === 'function') {
@@ -494,7 +494,7 @@ function initializeResizeHandling(): void {
         if (cy) {
           cy.resize();
           log.debug('Fitting Cytoscape to new size with animation');
-          const layoutManager = (window as any).layoutManager;
+          const layoutManager = window.layoutManager;
           if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
             layoutManager.cytoscapeLeafletLeaf.fit();
           } else {
@@ -522,7 +522,7 @@ function initializeHelperFunctions(): void {
   // Add getEnvironments function for compatibility
   (globalThis as any).getEnvironments = async function() {
     try {
-      const environmentUrl = (window as any).jsonFileUrlDataEnvironment;
+      const environmentUrl = window.jsonFileUrlDataEnvironment;
       if (!environmentUrl) {
         log.warn('Environment JSON URL not available');
         return null;
@@ -546,7 +546,7 @@ function initializeHelperFunctions(): void {
  */
 async function fetchEnvironmentData(): Promise<void> {
   try {
-    const environmentUrl = (window as any).jsonFileUrlDataEnvironment;
+    const environmentUrl = window.jsonFileUrlDataEnvironment;
     if (environmentUrl) {
       await fetch(environmentUrl);
     } else {
@@ -610,30 +610,30 @@ export function initializeTopoViewer(): void {
     log.info('Initializing layout manager...');
     const layoutManager: ManagerLayoutAlgo = layoutAlgoManager;
     // Make layoutManager globally accessible for update handling
-    (window as any).layoutManager = layoutManager;
-    (window as any).layoutAlgoChange = layoutManager.layoutAlgoChange.bind(layoutManager);
-    (window as any).viewportButtonsLayoutAlgo = layoutManager.viewportButtonsLayoutAlgo.bind(layoutManager);
-    (window as any).viewportDrawerLayoutGeoMap = layoutManager.viewportDrawerLayoutGeoMap.bind(layoutManager);
-    (window as any).viewportDrawerLayoutForceDirected = layoutManager.viewportDrawerLayoutForceDirected.bind(layoutManager);
-    (window as any).viewportDrawerLayoutForceDirectedRadial = layoutManager.viewportDrawerLayoutForceDirectedRadial.bind(layoutManager);
-    (window as any).viewportDrawerLayoutVertical = layoutManager.viewportDrawerLayoutVertical.bind(layoutManager);
-    (window as any).viewportDrawerLayoutHorizontal = layoutManager.viewportDrawerLayoutHorizontal.bind(layoutManager);
-    (window as any).viewportDrawerPreset = layoutManager.viewportDrawerPreset.bind(layoutManager);
-    (window as any).viewportButtonsGeoMapPan = layoutManager.viewportButtonsGeoMapPan.bind(layoutManager);
-    (window as any).viewportButtonsGeoMapEdit = layoutManager.viewportButtonsGeoMapEdit.bind(layoutManager);
+    window.layoutManager = layoutManager;
+    window.layoutAlgoChange = layoutManager.layoutAlgoChange.bind(layoutManager);
+    window.viewportButtonsLayoutAlgo = layoutManager.viewportButtonsLayoutAlgo.bind(layoutManager);
+    window.viewportDrawerLayoutGeoMap = layoutManager.viewportDrawerLayoutGeoMap.bind(layoutManager);
+    window.viewportDrawerLayoutForceDirected = layoutManager.viewportDrawerLayoutForceDirected.bind(layoutManager);
+    window.viewportDrawerLayoutForceDirectedRadial = layoutManager.viewportDrawerLayoutForceDirectedRadial.bind(layoutManager);
+    window.viewportDrawerLayoutVertical = layoutManager.viewportDrawerLayoutVertical.bind(layoutManager);
+    window.viewportDrawerLayoutHorizontal = layoutManager.viewportDrawerLayoutHorizontal.bind(layoutManager);
+    window.viewportDrawerPreset = layoutManager.viewportDrawerPreset.bind(layoutManager);
+    window.viewportButtonsGeoMapPan = layoutManager.viewportButtonsGeoMapPan.bind(layoutManager);
+    window.viewportButtonsGeoMapEdit = layoutManager.viewportButtonsGeoMapEdit.bind(layoutManager);
 
     groupManager = getGroupManager(topoViewerState.cy!, 'view');
     groupManager.initializeWheelSelection();
     groupManager.initializeGroupManagement();
 
-    (window as any).orphaningNode = groupManager.orphaningNode.bind(groupManager);
-    (window as any).createNewParent = groupManager.createNewParent.bind(groupManager);
-    (window as any).panelNodeEditorParentToggleDropdown = groupManager.panelNodeEditorParentToggleDropdown.bind(groupManager);
-    (window as any).nodeParentPropertiesUpdate = groupManager.nodeParentPropertiesUpdate.bind(groupManager);
-    (window as any).nodeParentPropertiesUpdateClose = groupManager.nodeParentPropertiesUpdateClose.bind(groupManager);
-    (window as any).nodeParentRemoval = groupManager.nodeParentRemoval.bind(groupManager);
-    (window as any).viewportButtonsAddGroup = groupManager.viewportButtonsAddGroup.bind(groupManager);
-    (window as any).showPanelGroupEditor = groupManager.showGroupEditor.bind(groupManager);
+    window.orphaningNode = groupManager.orphaningNode.bind(groupManager);
+    window.createNewParent = groupManager.createNewParent.bind(groupManager);
+    window.panelNodeEditorParentToggleDropdown = groupManager.panelNodeEditorParentToggleDropdown.bind(groupManager);
+    window.nodeParentPropertiesUpdate = groupManager.nodeParentPropertiesUpdate.bind(groupManager);
+    window.nodeParentPropertiesUpdateClose = groupManager.nodeParentPropertiesUpdateClose.bind(groupManager);
+    window.nodeParentRemoval = groupManager.nodeParentRemoval.bind(groupManager);
+    window.viewportButtonsAddGroup = groupManager.viewportButtonsAddGroup.bind(groupManager);
+    window.showPanelGroupEditor = groupManager.showGroupEditor.bind(groupManager);
 
     log.info('Calling loadTopologyData...');
     loadTopologyData();

@@ -58,8 +58,8 @@ function sendLogToExtension(level: LogLevelType, message: string, fileLine: stri
   };
 
   // Send message to VS Code extension host
-  if (typeof (window as any).vscode !== 'undefined') {
-    (window as any).vscode.postMessage(logData);
+  if (typeof window.vscode !== 'undefined') {
+    window.vscode.postMessage(logData);
   }
   // Note: Removed console.log fallback to eliminate console output spam
 }

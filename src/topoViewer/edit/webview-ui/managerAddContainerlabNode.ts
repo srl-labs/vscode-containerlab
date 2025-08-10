@@ -14,7 +14,7 @@ export class ManagerAddContainerlabNode {
   ): void {
     const newNodeId = `nodeId-${cy.nodes().length + 1}`;
 
-    const defaultKind = (window as any).defaultKind || 'nokia_srlinux';
+    const defaultKind = window.defaultKind || 'nokia_srlinux';
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
     const shouldIncludeType = nokiaKinds.includes(defaultKind);
 
@@ -32,12 +32,12 @@ export class ManagerAddContainerlabNode {
         kind: defaultKind,
         longname: '',
         image: '',
-        ...(shouldIncludeType && { type: (window as any).defaultType || 'ixrd1' }),
+        ...(shouldIncludeType && { type: window.defaultType || 'ixrd1' }),
         mgmtIpv4Address: ''
       }
     };
 
-    const imageMap = (window as any).imageMapping || {};
+    const imageMap = window.imageMapping || {};
     const kind = newNodeData.extraData?.kind || 'nokia_srlinux';
     newNodeData.extraData!.image = imageMap[kind] || '';
 

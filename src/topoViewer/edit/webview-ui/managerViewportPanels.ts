@@ -146,9 +146,10 @@ export class ManagerViewportPanels {
     }
 
     // Fetch JSON schema.
-    const url = (window as any).schemaUrl;
+    const url = window.schemaUrl;
+    if (!url) throw new Error('Schema URL is undefined.');
     try {
-      const response = await fetch(url);
+        const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
@@ -413,7 +414,7 @@ export class ManagerViewportPanels {
     oldKind: string,
     newKind: string
   ): void {
-    const ifaceMap = (window as any).ifacePatternMapping || {};
+    const ifaceMap = window.ifacePatternMapping || {};
     const oldPattern = ifaceMap[oldKind] || 'eth{n}';
     const newPattern = ifaceMap[newKind] || 'eth{n}';
     const nodeId = node.id();
@@ -507,10 +508,10 @@ export class ManagerViewportPanels {
         // Reset the stored type when kind changes
         this.panelNodeEditorType = "";
         this.panelNodeEditorSetupTypeField(typeOptions);
-        if (this.panelNodeEditorNode && (window as any).updateLinkEndpointsOnKindChange) {
+        if (this.panelNodeEditorNode && window.updateLinkEndpointsOnKindChange) {
           this.updateNodeEndpointsForKindChange(this.panelNodeEditorNode, previousKind, option);
         }
-        const imageMap = (window as any).imageMapping || {};
+        const imageMap = window.imageMapping || {};
         const imageInput = document.getElementById('panel-node-editor-image') as HTMLInputElement;
         if (imageInput) {
           const mappedImage = imageMap[option];
