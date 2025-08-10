@@ -1,0 +1,53 @@
+/* eslint-env mocha */
+import { expect } from 'chai';
+import sinon from 'sinon';
+import path from 'path';
+
+describe('webviewLogger', () => {
+  const webviewLoggerPath = path.join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    'src',
+    'topoViewer',
+    'common',
+    'logging',
+    'webviewLogger'
+  );
+  const originalWindow = (global as any).window;
+
+  afterEach(() => {
+    delete require.cache[require.resolve(webviewLoggerPath)];
+    sinon.restore();
+    (global as any).window = originalWindow;
+  });
+
+  it('posts messages to VS Code extension host', () => {
+    const postMessage = sinon.spy();
+    (global as any).window = { vscode: { postMessage } };
+
+    const { log } = require(webviewLoggerPath);
+    log.error('boom');
+
+    expect(postMessage.calledOnce).to.be.true;
+    const arg = postMessage.firstCall.args[0];
+    expect(arg.command).to.equal('topoViewerLog');
+    expect(arg.level).to.equal('error');
+    expect(arg.message).to.equal('boom');
+    expect(arg.fileLine).to.be.a('string');
+  });
+
+  it('stringifies objects before sending', () => {
+    const postMessage = sinon.spy();
+    (global as any).window = { vscode: { postMessage } };
+
+    const { log } = require(webviewLoggerPath);
+    log.info({ a: 1 });
+
+    const arg = postMessage.firstCall.args[0];
+    expect(arg.message).to.equal('{"a":1}');
+    expect(arg.level).to.equal('info');
+  });
+});
