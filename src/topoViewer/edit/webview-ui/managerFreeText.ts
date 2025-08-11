@@ -313,9 +313,10 @@ export class ManagerFreeText {
       // Bold toggle
       const boldBtn = document.createElement('button');
       boldBtn.innerHTML = '<strong>B</strong>';
+      let isBold = annotation.fontWeight === 'bold';
       boldBtn.style.cssText = `
         padding: 5px 10px;
-        background: ${annotation.fontWeight === 'bold' ? '#007ACC' : '#555'};
+        background: ${isBold ? '#007ACC' : '#555'};
         color: #fff;
         border: none;
         border-radius: 3px;
@@ -324,18 +325,19 @@ export class ManagerFreeText {
         min-width: 35px;
       `;
       boldBtn.onclick = () => {
-        const isBold = boldBtn.style.background.includes('#007ACC');
-        boldBtn.style.background = isBold ? '#555' : '#007ACC';
-        textInput.style.fontWeight = isBold ? 'normal' : 'bold';
+        isBold = !isBold;
+        boldBtn.style.background = isBold ? '#007ACC' : '#555';
+        textInput.style.fontWeight = isBold ? 'bold' : 'normal';
       };
       styleContainer.appendChild(boldBtn);
 
       // Italic toggle
       const italicBtn = document.createElement('button');
       italicBtn.innerHTML = '<em>I</em>';
+      let isItalic = annotation.fontStyle === 'italic';
       italicBtn.style.cssText = `
         padding: 5px 10px;
-        background: ${annotation.fontStyle === 'italic' ? '#007ACC' : '#555'};
+        background: ${isItalic ? '#007ACC' : '#555'};
         color: #fff;
         border: none;
         border-radius: 3px;
@@ -344,18 +346,19 @@ export class ManagerFreeText {
         min-width: 35px;
       `;
       italicBtn.onclick = () => {
-        const isItalic = italicBtn.style.background.includes('#007ACC');
-        italicBtn.style.background = isItalic ? '#555' : '#007ACC';
-        textInput.style.fontStyle = isItalic ? 'normal' : 'italic';
+        isItalic = !isItalic;
+        italicBtn.style.background = isItalic ? '#007ACC' : '#555';
+        textInput.style.fontStyle = isItalic ? 'italic' : 'normal';
       };
       styleContainer.appendChild(italicBtn);
 
       // Underline toggle
       const underlineBtn = document.createElement('button');
       underlineBtn.innerHTML = '<u>U</u>';
+      let isUnderline = annotation.textDecoration === 'underline';
       underlineBtn.style.cssText = `
         padding: 5px 10px;
-        background: ${annotation.textDecoration === 'underline' ? '#007ACC' : '#555'};
+        background: ${isUnderline ? '#007ACC' : '#555'};
         color: #fff;
         border: none;
         border-radius: 3px;
@@ -364,18 +367,19 @@ export class ManagerFreeText {
         min-width: 35px;
       `;
       underlineBtn.onclick = () => {
-        const isUnderline = underlineBtn.style.background.includes('#007ACC');
-        underlineBtn.style.background = isUnderline ? '#555' : '#007ACC';
-        textInput.style.textDecoration = isUnderline ? 'none' : 'underline';
+        isUnderline = !isUnderline;
+        underlineBtn.style.background = isUnderline ? '#007ACC' : '#555';
+        textInput.style.textDecoration = isUnderline ? 'underline' : 'none';
       };
       styleContainer.appendChild(underlineBtn);
 
       // Transparent background toggle
       const transparentBtn = document.createElement('button');
       transparentBtn.textContent = 'Transparent BG';
+      let isTransparentBg = annotation.backgroundColor === 'transparent';
       transparentBtn.style.cssText = `
         padding: 5px 10px;
-        background: ${annotation.backgroundColor === 'transparent' ? '#007ACC' : '#555'};
+        background: ${isTransparentBg ? '#007ACC' : '#555'};
         color: #fff;
         border: none;
         border-radius: 3px;
@@ -383,11 +387,15 @@ export class ManagerFreeText {
         font-size: 12px;
         margin-left: auto;
       `;
+      // Disable color input if starting with transparent
+      if (isTransparentBg) {
+        bgColorInput.disabled = true;
+      }
       transparentBtn.onclick = () => {
-        const isTransparent = transparentBtn.style.background.includes('#007ACC');
-        transparentBtn.style.background = isTransparent ? '#555' : '#007ACC';
-        bgColorInput.disabled = !isTransparent;
-        textInput.style.background = isTransparent ? bgColorInput.value : 'transparent';
+        isTransparentBg = !isTransparentBg;
+        transparentBtn.style.background = isTransparentBg ? '#007ACC' : '#555';
+        bgColorInput.disabled = isTransparentBg;
+        textInput.style.background = isTransparentBg ? 'transparent' : bgColorInput.value;
       };
       styleContainer.appendChild(transparentBtn);
 
@@ -436,10 +444,10 @@ export class ManagerFreeText {
           text,
           fontSize: parseInt(fontSizeInput.value),
           fontColor: fontColorInput.value,
-          backgroundColor: transparentBtn.style.background.includes('#007ACC') ? 'transparent' : bgColorInput.value,
-          fontWeight: boldBtn.style.background.includes('#007ACC') ? 'bold' : 'normal',
-          fontStyle: italicBtn.style.background.includes('#007ACC') ? 'italic' : 'normal',
-          textDecoration: underlineBtn.style.background.includes('#007ACC') ? 'underline' : 'none',
+          backgroundColor: isTransparentBg ? 'transparent' : bgColorInput.value,
+          fontWeight: isBold ? 'bold' : 'normal',
+          fontStyle: isItalic ? 'italic' : 'normal',
+          textDecoration: isUnderline ? 'underline' : 'none',
           fontFamily: fontFamilySelect.value
         };
 
@@ -502,31 +510,66 @@ export class ManagerFreeText {
    * Apply custom styles to a text node based on annotation properties
    */
   private applyTextNodeStyles(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
-    const styles: any = {
-      'font-size': `${annotation.fontSize || 14}px`,
-      'color': annotation.fontColor || '#FFFFFF',
-      'font-weight': annotation.fontWeight || 'normal',
-      'font-style': annotation.fontStyle || 'normal',
-      'font-family': annotation.fontFamily || 'monospace'
-    };
+    // Create a comprehensive style object with all necessary properties
+    const styles: any = {};
 
-    // Handle text decoration (underline)
+    // Font size
+    const fontSize = annotation.fontSize || 14;
+    styles['font-size'] = fontSize;
+
+    // Text color
+    styles['color'] = annotation.fontColor || '#FFFFFF';
+
+    // Font weight - use string values as Cytoscape expects
+    styles['font-weight'] = annotation.fontWeight === 'bold' ? 'bold' : 'normal';
+
+    // Font style
+    styles['font-style'] = annotation.fontStyle === 'italic' ? 'italic' : 'normal';
+
+    // Font family - ensure italic is in the font string if needed
+    const fontFamily = annotation.fontFamily || 'monospace';
+    styles['font-family'] = fontFamily;
+
+    // Build a complete font string for Cytoscape
+    // Format: [style] [weight] [size] [family]
+    const fontParts = [];
+    if (annotation.fontStyle === 'italic') fontParts.push('italic');
+    if (annotation.fontWeight === 'bold') fontParts.push('bold');
+    fontParts.push(`${fontSize}px`);
+    fontParts.push(fontFamily);
+    styles['font'] = fontParts.join(' ');
+
+    // Text outline for visibility (and underline effect)
     if (annotation.textDecoration === 'underline') {
-      // Cytoscape doesn't directly support text-decoration, so we'll use text-outline as a workaround
-      styles['text-border-width'] = '1px';
-      styles['text-border-color'] = annotation.fontColor || '#FFFFFF';
-      styles['text-border-style'] = 'solid';
-    }
-
-    // Handle background
-    if (annotation.backgroundColor === 'transparent') {
-      styles['text-background-opacity'] = 0;
+      // Use a thicker outline to simulate underline
+      styles['text-outline-width'] = 2;
+      styles['text-outline-color'] = annotation.fontColor || '#FFFFFF';
+      styles['text-outline-opacity'] = 0.5;
     } else {
-      styles['text-background-color'] = annotation.backgroundColor || '#000000';
-      styles['text-background-opacity'] = 0.8;
+      // Standard outline for text visibility
+      styles['text-outline-width'] = 1;
+      styles['text-outline-color'] = '#000000';
+      styles['text-outline-opacity'] = 0.8;
     }
 
+    // Background handling - be very explicit
+    if (annotation.backgroundColor === 'transparent') {
+      // For transparent background, set opacity to 0
+      styles['text-background-opacity'] = 0;
+      // Don't set background color or shape when transparent
+    } else {
+      // For colored background
+      styles['text-background-color'] = annotation.backgroundColor || '#000000';
+      styles['text-background-opacity'] = 0.9;
+      styles['text-background-shape'] = 'roundrectangle';
+      styles['text-background-padding'] = 3;
+    }
+
+    // Apply all styles at once
     node.style(styles);
+
+    // Force a render update to ensure styles are applied
+    node.cy().forceRender();
   }
 
   /**
