@@ -236,9 +236,33 @@ class TopologyWebviewController {
       this.undoManager.viewportButtonsUndo();
 
     window.addEventListener('message', (event) => {
-      const msg = event.data;
+      const msg = event.data as any;
       if (msg && msg.type === 'yaml-saved') {
         fetchAndLoadData(this.cy, this.messageSender);
+      } else if (msg && msg.type === 'updateTopology') {
+        try {
+          const elements = msg.data as any[];
+          if (Array.isArray(elements)) {
+            elements.forEach((el) => {
+              const id = el?.data?.id;
+              if (!id) {
+                return;
+              }
+              const existing = this.cy.getElementById(id);
+              if (existing && existing.length > 0) {
+                existing.data(el.data);
+                if (typeof el.classes === 'string') {
+                  existing.classes(el.classes);
+                }
+              } else {
+                this.cy.add(el);
+              }
+            });
+            loadCytoStyle(this.cy);
+          }
+        } catch (error) {
+          log.error(`Error processing updateTopology message: ${error}`);
+        }
       }
     });
   }
