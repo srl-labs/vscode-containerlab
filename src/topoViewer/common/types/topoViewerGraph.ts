@@ -59,6 +59,10 @@ export interface FreeTextAnnotation {
   fontSize?: number;
   fontColor?: string;
   backgroundColor?: string;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
+  fontFamily?: string;
   width?: number;
   height?: number;
   zIndex?: number;
