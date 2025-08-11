@@ -1,6 +1,3 @@
-// Import libraries first (must be before any code that uses them)
-import './libraries';
-
 // Set mode to view before loading shared engine
 (window as any).topoViewerMode = 'view';
 
