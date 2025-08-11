@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { execSync } from "child_process";
+import { exec, execSync } from "child_process";
 import { outputChannel } from "../extension";
 import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
@@ -255,7 +255,16 @@ export async function captureEdgesharkVNC(
   }
 
   const port = await utils.getFreePort()
-  const containerId = await utils.execWithProgress(`docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`, "Starting Wireshark")
+  const containerId = await new Promise<string>((resolve, reject) => {
+    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`;
+    exec(command, { encoding: 'utf-8' }, (err, stdout, stderr) => {
+      if (err) {
+        vscode.window.showErrorMessage(`Starting Wireshark: ${stderr}`);
+        return reject(err);
+      }
+      resolve(stdout.trim());
+    });
+  })
 
   // let vscode port forward for us
   const localUri = vscode.Uri.parse(`http://localhost:${port}`);
@@ -368,7 +377,11 @@ export async function captureEdgesharkVNC(
 
 export async function killAllWiresharkVNCCtrs() {
   const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
-  utils.execWithProgress(`docker rm -f $(docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}")`, "Killing Wireshark container:")
+  exec(`docker rm -f $(docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}")`, (err, _stdout, stderr) => {
+    if (err) {
+      vscode.window.showErrorMessage(`Killing Wireshark container: ${stderr}`);
+    }
+  })
 }
 
 /**

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, gottySessions, runningLabsProvider, refreshGottySessions } from "../extension";
-import { execWithProgress } from "../helpers/utils";
+import { exec } from "child_process";
 import { getHostname } from "./capture";
 
 async function parseGottyLink(output: string): Promise<string | undefined> {
@@ -51,7 +51,14 @@ export async function gottyAttach(node: ClabLabTreeNode) {
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await execWithProgress(`containerlab tools gotty attach -l ${node.name} --port ${port}`, 'Starting GoTTY session...', true);
+    const out = await new Promise<string>((resolve, reject) => {
+      exec(`containerlab tools gotty attach -l ${node.name} --port ${port}`, { encoding: 'utf-8' }, (err, stdout, stderr) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve([stdout, stderr].filter(Boolean).join('\n').trim());
+      });
+    });
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);
@@ -78,7 +85,14 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     return;
   }
   try {
-    await execWithProgress(`containerlab tools gotty detach -l ${node.name}`, 'Detaching GoTTY session...');
+    await new Promise<void>((resolve, reject) => {
+      exec(`containerlab tools gotty detach -l ${node.name}`, (err) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
+      });
+    });
     gottySessions.delete(node.name);
     vscode.window.showInformationMessage('GoTTY session detached');
   } catch (err: any) {
@@ -96,7 +110,14 @@ export async function gottyReattach(node: ClabLabTreeNode) {
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await execWithProgress(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, 'Reattaching GoTTY session...', true);
+    const out = await new Promise<string>((resolve, reject) => {
+      exec(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, { encoding: 'utf-8' }, (err, stdout, stderr) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve([stdout, stderr].filter(Boolean).join('\n').trim());
+      });
+    });
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);
