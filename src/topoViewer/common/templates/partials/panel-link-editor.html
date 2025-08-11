@@ -1,7 +1,7 @@
 <!-- Link Editor Panel -->
-<div class="panel panel-overlay fixed bottom-10 left-10 w-[340px] max-h-[400px] overflow-y-auto overflow-x-hidden z-[21]"
+<div class="panel panel-overlay fixed bottom-10 left-10 w-[360px] max-h-[400px] overflow-y-auto overflow-x-hidden z-[21]"
   id="panel-link-editor" style="display: none;">
-  <p class="panel-heading">
+  <p class="panel-heading text-base font-bold">
     Link Editor
   </p>
 
@@ -9,15 +9,15 @@
     <div class="panel-block p-0">
       <div class="px-0">
 
-        <!-- Link ID Display -->
+        <!-- Link -->
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Link</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Link</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
-                <div id="panel-link-editor-id" class="text-left font-normal break-words">
+              <div class="w-3/5 pl-2 pr-2">
+                <div id="panel-link-editor-id" class="text-left font-extralight text-base break-words">
                   <!-- Dynamically populated -->
                 </div>
               </div>
@@ -29,14 +29,14 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Source Endpoint</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Source Endpoint</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <input
                   type="text"
                   id="panel-link-editor-source-endpoint"
-                  class="input-field w-full"
+                  class="input-field w-full text-base font-extralight h-[28px]"
                   placeholder="e.g., eth1, e1-1">
               </div>
             </div>
@@ -47,14 +47,14 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Target Endpoint</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Target Endpoint</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <input
                   type="text"
                   id="panel-link-editor-target-endpoint"
-                  class="input-field w-full"
+                  class="input-field w-full text-base font-extralight h-[28px]"
                   placeholder="e.g., eth1, e1-1">
               </div>
             </div>
@@ -65,11 +65,11 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1"></div>
-              <div class="w-2/3 pl-2 pr-2">
-                <div class="space-x-2">
-                  <button id="panel-link-editor-save-button" class="btn btn-primary btn-small">Save</button>
-                  <button id="panel-link-editor-close-button" class="btn btn-outlined btn-small">Close</button>
+              <div class="w-2/5 pr-1"></div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="flex justify-end space-x-2">
+                  <button id="panel-link-editor-save-button" class="btn btn-primary btn-small h-[28px] px-3">Save</button>
+                  <button id="panel-link-editor-close-button" class="btn btn-outlined btn-small h-[28px] px-3">Close</button>
                 </div>
               </div>
             </div>

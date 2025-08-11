@@ -1,7 +1,7 @@
 <!-- Node Editor Panel -->
-<div class="panel panel-overlay fixed bottom-10 left-10 w-[340px] max-h-[700px] overflow-y-auto overflow-x-hidden z-[21]"
+<div class="panel panel-overlay fixed bottom-10 left-10 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden z-[21]"
   id="panel-node-editor" style="display: none;">
-  <p class="panel-heading">
+  <p class="panel-heading text-base font-bold">
     Node Properties Editor
   </p>
   <div class="p-0 pl-4 pb-2">
@@ -12,10 +12,10 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Node Name</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Node Name</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <input type="text" class="input-field w-full" id="panel-node-editor-name">
               </div>
             </div>
@@ -26,19 +26,18 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Kind</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Kind</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <div class="dropdown relative" id="panel-node-kind-dropdown">
                   <div class="dropdown-trigger">
-                    <button class="btn btn-small inline-flex justify-between items-center w-full"
+                    <button class="btn btn-small inline-flex items-center justify-start w-full"
                       aria-haspopup="true" aria-controls="panel-node-kind-dropdown-content">
                       <span class="truncate">Select Kind</span>
-                      <span class="ml-2"><i class="fas fa-angle-down" aria-hidden="true"></i></span>
+                      <i class="fas fa-angle-down ml-2"></i>
                     </button>
                   </div>
-                  <!-- absolute menu with its own scroll -->
                   <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto overscroll-contain z-[60]"
                     id="panel-node-kind-dropdown-content" role="menu">
                   </div>
@@ -52,24 +51,22 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Type</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Type</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
-                <!-- Dropdown -->
+              <div class="w-3/5 pl-2 pr-2">
                 <div class="dropdown relative" id="panel-node-type-dropdown" style="display: none;">
                   <div class="dropdown-trigger">
-                    <button class="btn btn-small inline-flex justify-between items-center w-full"
+                    <button class="btn btn-small inline-flex items-center justify-start w-full"
                       aria-haspopup="true" aria-controls="panel-node-type-dropdown-content">
                       <span class="truncate">Select Type</span>
-                      <span class="ml-2"><i class="fas fa-angle-down" aria-hidden="true"></i></span>
+                      <i class="fas fa-angle-down ml-2"></i>
                     </button>
                   </div>
                   <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto overscroll-contain z-[60]"
                     id="panel-node-type-dropdown-content" role="menu">
                   </div>
                 </div>
-                <!-- Custom Input -->
                 <input type="text" class="input-field w-full"
                   id="panel-node-editor-type-input" style="display: none;" placeholder="Enter type">
               </div>
@@ -81,16 +78,16 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">TopoViewer Role</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">TopoViewer Role</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <div class="dropdown relative" id="panel-node-topoviewerrole-dropdown">
                   <div class="dropdown-trigger">
-                    <button class="btn btn-small inline-flex justify-between items-center w-full"
+                    <button class="btn btn-small inline-flex items-center justify-start w-full"
                       aria-haspopup="true" aria-controls="panel-node-topoviewerrole-dropdown-content">
                       <span class="truncate">Select TopoViewerRole</span>
-                      <span class="ml-2"><i class="fas fa-angle-down" aria-hidden="true"></i></span>
+                      <i class="fas fa-angle-down ml-2"></i>
                     </button>
                   </div>
                   <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-32 overflow-y-auto overscroll-contain z-[60]"
@@ -106,11 +103,11 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Id</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Id</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
-                <label class="text-left font-normal break-words block" id="panel-node-editor-id"></label>
+              <div class="w-3/5 pl-2 pr-2">
+                <label class="text-left font-extralight text-base break-words block" id="panel-node-editor-id"></label>
               </div>
             </div>
           </div>
@@ -120,10 +117,10 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Image</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Image</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <input type="text" class="input-field w-full" id="panel-node-editor-image">
               </div>
             </div>
@@ -134,10 +131,10 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1">
-                <label class="label text-right">Group</label>
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Group</label>
               </div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-3/5 pl-2 pr-2">
                 <input type="text" class="input-field w-full" id="panel-node-editor-group">
               </div>
             </div>
@@ -148,8 +145,8 @@
         <div class="my-1">
           <div class="p-0.5">
             <div class="flex items-center">
-              <div class="w-1/3 pr-1"></div>
-              <div class="w-2/3 pl-2 pr-2">
+              <div class="w-2/5 pr-1"></div>
+              <div class="w-3/5 pl-2 pr-2">
                 <div class="space-x-2">
                   <button class="btn btn-primary btn-small" id="panel-node-editor-save-button">Save</button>
                   <button class="btn btn-outlined btn-small" id="panel-node-editor-close-button">Close</button>
