@@ -1,7 +1,7 @@
 <!-- Node Properties Panel -->
 <section class="panel panel-overlay bottom-10 left-10 w-[340px] max-h-[700px] overflow-y-auto overflow-x-hidden"
   id="panel-node" aria-labelledby="node-panel-heading" style="display: none;">
-  <p class="panel-heading text-xs" id="node-panel-heading">
+  <p class="panel-heading" id="node-panel-heading">
     Node Properties
   </p>
   <div class="p-0 pl-4 pb-2">
@@ -12,10 +12,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Node Name</label>
+                <label class="label text-right">Node Name</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-name">
+                <label class="text-left font-normal break-words" id="panel-node-name">
                   node-name-placeholder
                 </label>
               </div>
@@ -28,27 +28,27 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right"></label>
+                <label class="label text-right"></label>
               </div>
               <div class="w-2/3 pl-2">
                 <div class="relative">
                   <input type="checkbox" id="panel-node-action-dropdown-toggle" class="hidden peer">
                   <label for="panel-node-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer">
                     <span>Actions</span>
-                    <span class="ml-2 text-xs">
+                    <span class="ml-2">
                       <i class="fas fa-angle-down" aria-hidden="true"></i>
                     </span>
                   </label>
                   <div class="dropdown-menu hidden peer-checked:block left-0 w-full" id="panel-node-action-dropdown-menu">
                     <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
                       <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs">Connect to SSH</a>
+                        class="py-1 dropdown-item">Connect to SSH</a>
                       <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs">Attach Shell</a>
+                        class="py-1 dropdown-item">Attach Shell</a>
                       <a onclick="nodeActionViewLogs(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs">View Logs</a>
+                        class="py-1 dropdown-item">View Logs</a>
                       <a onclick="nodeActionRemoveFromParent(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs">Release From Group</a>
+                        class="py-1 dropdown-item">Release From Group</a>
                     </div>
                   </div>
                 </div>
@@ -68,10 +68,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Kind</label>
+                <label class="label text-right">Kind</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-kind">
+                <label class="text-left font-normal break-words" id="panel-node-kind">
                   node-kind-placeholder
                 </label>
               </div>
@@ -84,10 +84,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Image</label>
+                <label class="label text-right">Image</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-image">
+                <label class="text-left font-normal break-words" id="panel-node-image">
                   node-image-placeholder
                 </label>
               </div>
@@ -100,10 +100,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">State</label>
+                <label class="label text-right">State</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-state">
+                <label class="text-left font-normal break-words" id="panel-node-state">
                   node-state-placeholder
                 </label>
               </div>
@@ -116,10 +116,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Management IPv4</label>
+                <label class="label text-right">Management IPv4</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-mgmtipv4">
+                <label class="text-left font-normal break-words" id="panel-node-mgmtipv4">
                   node-mgmtipv4-placeholder
                 </label>
               </div>
@@ -132,10 +132,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Management IPv6</label>
+                <label class="label text-right">Management IPv6</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-mgmtipv6">
+                <label class="text-left font-normal break-words" id="panel-node-mgmtipv6">
                   node-mgmtipv6-placeholder
                 </label>
               </div>
@@ -148,10 +148,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">FQDN</label>
+                <label class="label text-right">FQDN</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-fqdn">
+                <label class="text-left font-normal break-words" id="panel-node-fqdn">
                   node-fqdn-placeholder
                 </label>
               </div>
@@ -164,10 +164,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Icon</label>
+                <label class="label text-right">Icon</label>
               </div>
               <div class="w-2/3 pl-2">
-                <label class="text-xs text-left font-normal break-words" id="panel-node-topoviewerrole">
+                <label class="text-left font-normal break-words" id="panel-node-topoviewerrole">
                   node-topoviewerrole-placeholder
                 </label>
               </div>

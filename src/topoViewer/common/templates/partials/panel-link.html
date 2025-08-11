@@ -1,7 +1,7 @@
 <!-- Link Properties Panel -->
 <section class="panel panel-overlay bottom-10 left-10 w-[340px] max-h-[700px] overflow-y-auto overflow-x-hidden"
   id="panel-link" style="display: none;">
-  <p class="panel-heading text-xs">
+  <p class="panel-heading">
     Link Properties
   </p>
   <div class="p-0 pl-4 pb-2">
@@ -11,10 +11,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Link Name</label>
+                <label class="label text-right">Link Name</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-name">
+                <label class="text-left font-normal break-words" id="panel-link-name">
                   link-name-placeholder
                 </label>
               </div>
@@ -26,27 +26,27 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right"></label>
+                <label class="label text-right"></label>
               </div>
               <div class="w-2/3 pl-3">
                 <div class="relative">
                   <input type="checkbox" id="panel-link-action-dropdown-toggle" class="hidden peer">
                   <label for="panel-link-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer">
                     <span>Actions</span>
-                    <span class="ml-2 text-xs">
+                    <span class="ml-2">
                       <i class="fas fa-angle-down" aria-hidden="true"></i>
                     </span>
                   </label>
                   <div class="dropdown-menu hidden peer-checked:block left-0 w-full" id="panel-link-action-dropdown-menu">
                     <div class="py-1" id="panel-link-action-dropdown-menu-dropdown-content">
                       <a onclick="linkWireshark(event, 'edgeSharkInterface', 'source', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs" id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)
+                        class="py-1 dropdown-item" id="endpoint-a-edgeshark">Capture E.Point-A (Edgeshark)
                       </a>
                       <a id="endpoint-a-top"></a>
                       <a id="endpoint-a-bottom"></a>
 
                       <a onclick="linkWireshark(event, 'edgeSharkInterface', 'target'); document.getElementById('panel-link-action-dropdown-toggle').checked = false;" 
-                        class="py-1 dropdown-item text-xs"
+                        class="py-1 dropdown-item"
                         id="endpoint-b-edgeshark">Capture E.Point-B (Edgeshark)
                       </a>
                       <a id="endpoint-b-top"></a>
@@ -55,13 +55,13 @@
                       <hr class="border-t border-default my-1" />
 
                       <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'source', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs" id="endpoint-a-edgeshark-vnc">Capture E.Point-A VNC (Edgeshark)
+                        class="py-1 dropdown-item" id="endpoint-a-edgeshark-vnc">Capture E.Point-A VNC (Edgeshark)
                       </a>
                       <a id="endpoint-a-vnc-top"></a>
                       <a id="endpoint-a-vnc-bottom"></a>
 
                       <a onclick="linkWireshark(event, 'edgeSharkInterfaceVnc', 'target', null); document.getElementById('panel-link-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item text-xs" id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
+                        class="py-1 dropdown-item" id="endpoint-b-edgeshark-vnc">Capture E.Point-B VNC (Edgeshark)
                       </a>
                       <a id="endpoint-b-vnc-top"></a>
                       <a id="endpoint-b-vnc-bottom"></a>
@@ -82,10 +82,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Endpoint-A</label>
+                <label class="label text-right">Endpoint-A</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-name">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-a-name">
                   link-endpoint-a-name-placeholder
                 </label>
               </div>
@@ -96,10 +96,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">MAC address</label>
+                <label class="label text-right">MAC address</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-mac-address">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-a-mac-address">
                   N/A
                 </label>
               </div>
@@ -110,10 +110,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">MTU</label>
+                <label class="label text-right">MTU</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-mtu">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-a-mtu">
                   N/A
                 </label>
               </div>
@@ -124,10 +124,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Type</label>
+                <label class="label text-right">Type</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-a-type">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-a-type">
                   N/A
                 </label>
               </div>
@@ -144,10 +144,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Endpoint-B</label>
+                <label class="label text-right">Endpoint-B</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-name">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-b-name">
                   link-endpoint-b-name-placeholder
                 </label>
               </div>
@@ -158,10 +158,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">MAC address</label>
+                <label class="label text-right">MAC address</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-mac-address">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-b-mac-address">
                   N/A
                 </label>
               </div>
@@ -172,10 +172,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">MTU</label>
+                <label class="label text-right">MTU</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-mtu">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-b-mtu">
                   N/A
                 </label>
               </div>
@@ -186,10 +186,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-1/3 pr-1">
-                <label class="label text-xs text-right">Type</label>
+                <label class="label text-right">Type</label>
               </div>
               <div class="w-2/3 pl-3">
-                <label class="text-xs text-left font-normal break-words" id="panel-link-endpoint-b-type">
+                <label class="text-left font-normal break-words" id="panel-link-endpoint-b-type">
                   N/A
                 </label>
               </div>
