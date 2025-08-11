@@ -127,7 +127,7 @@ export class ManagerFreeText {
   /**
    * Edit existing free text
    */
-  private async editFreeText(id: string): Promise<void> {
+  public async editFreeText(id: string): Promise<void> {
     const annotation = this.annotations.get(id);
     if (!annotation) return;
 
@@ -332,7 +332,7 @@ export class ManagerFreeText {
           }
         });
         this.annotationNodes.clear();
-        
+
         const annotations = response.annotations as FreeTextAnnotation[];
         annotations.forEach(annotation => {
           this.addFreeTextAnnotation(annotation);

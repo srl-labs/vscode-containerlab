@@ -334,8 +334,60 @@ class TopologyWebviewController {
   */
   private initializeContextMenu(): void {
     const self = this;
+    // Context menu for free text elements
     this.cy.cxtmenu({
-      selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"]',
+      selector: 'node[topoViewerRole = "freeText"]',
+      commands: [
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Edit Text</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // Trigger edit for free text
+            this.freeTextManager?.editFreeText(ele.id());
+          }
+        },
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Remove Text</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // Remove free text
+            this.freeTextManager?.removeFreeTextAnnotation(ele.id());
+          }
+        }
+      ],
+      menuRadius: 80, // smaller radius for text menu
+      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      activePadding: 5, // additional size in pixels for the active command
+      indicatorSize: 0, // the size in pixels of the pointer to the active command
+      separatorWidth: 3, // the empty spacing in pixels between successive commands
+      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+      adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
+      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
+      openMenuEvents: 'cxttap', // single right-click to open menu
+      itemColor: 'white', // the colour of text in the command's content
+      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      zIndex: 9999, // the z-index of the ui div
+      atMouse: false, // draw menu at mouse position
+      outsideMenuCancel: 10 // cancel menu when clicking outside
+    });
+
+    // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
+    this.cy.cxtmenu({
+      selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
       commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
