@@ -571,6 +571,9 @@ class TopologyWebviewController {
         onNodeClick: async (event: any) => {
           const node = event.target;
           topoViewerState.nodeClicked = true;
+          cy.edges().removeStyle("line-color");
+          topoViewerState.selectedEdge = null;
+          topoViewerState.edgeClicked = false;
           const extraData = node.data("extraData") || {};
           const originalEvent = event.originalEvent as MouseEvent;
           if (node.isParent() || node.data('topoViewerRole') === 'group') {
@@ -611,17 +614,12 @@ class TopologyWebviewController {
           topoViewerState.edgeClicked = true;
           const panelOverlays = document.getElementsByClassName("panel-overlay");
           Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-          const defaultEdgeColor = "#969799";
+          cy.edges().removeStyle("line-color");
           if (edge.data("editor") === "true") {
             edge.style("line-color", "#32CD32");
           } else {
             edge.style("line-color", "#0043BF");
           }
-          cy.edges().forEach((e: any) => {
-            if (e !== edge) {
-              e.style("line-color", defaultEdgeColor);
-            }
-          });
           const panelLink = document.getElementById("panel-link");
           if (panelLink) {
             panelLink.style.display = "block";
@@ -666,18 +664,18 @@ class TopologyWebviewController {
           }
         },
         onCanvasClick: () => {
-          if (!topoViewerState.nodeClicked && !topoViewerState.edgeClicked) {
-            const panelOverlays = document.getElementsByClassName('panel-overlay');
-            for (let i = 0; i < panelOverlays.length; i++) {
-              (panelOverlays[i] as HTMLElement).style.display = 'none';
-            }
-            const viewportDrawer = document.getElementsByClassName('viewport-drawer');
-            for (let i = 0; i < viewportDrawer.length; i++) {
-              (viewportDrawer[i] as HTMLElement).style.display = 'none';
-            }
+          const panelOverlays = document.getElementsByClassName('panel-overlay');
+          for (let i = 0; i < panelOverlays.length; i++) {
+            (panelOverlays[i] as HTMLElement).style.display = 'none';
+          }
+          const viewportDrawer = document.getElementsByClassName('viewport-drawer');
+          for (let i = 0; i < viewportDrawer.length; i++) {
+            (viewportDrawer[i] as HTMLElement).style.display = 'none';
           }
           topoViewerState.nodeClicked = false;
           topoViewerState.edgeClicked = false;
+          cy.edges().removeStyle("line-color");
+          topoViewerState.selectedEdge = null;
         }
       });
     }
