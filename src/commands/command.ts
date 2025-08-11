@@ -67,7 +67,6 @@ export type SpinnerOptions = {
     command: string;
     spinnerMsg: SpinnerMsg;
     terminalName?: never;
-    useProgress?: false;
 };
 
 export type TerminalOptions = {
@@ -75,18 +74,9 @@ export type TerminalOptions = {
     command: string;
     terminalName: string;
     spinnerMsg?: never;
-    useProgress?: false;
 };
 
-export type DefaultOptions = {
-    command: string;
-    useSpinner?: false;
-    terminalName?: never;
-    spinnerMsg?: never;
-    useProgress?: true;
-};
-
-export type CmdOptions = SpinnerOptions | TerminalOptions | DefaultOptions;
+export type CmdOptions = SpinnerOptions | TerminalOptions;
 
 export type SpinnerMsg = {
     progressMsg: string;
@@ -103,14 +93,12 @@ export class Command {
     protected useSudo: boolean;
     protected spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
-    protected useProgress: boolean;
 
     constructor(options: CmdOptions) {
         this.command = options.command;
         this.useSpinner = options.useSpinner || false;
         this.spinnerMsg = options.spinnerMsg;
         this.terminalName = options.terminalName;
-        this.useProgress = options.useProgress || true;
         this.useSudo = utils.getConfig('sudoEnabledByDefault');
     }
 
@@ -125,9 +113,6 @@ export class Command {
 
         if (this.useSpinner) {
             return this.execSpinner(cmd);
-        }
-        else if (this.useProgress) {
-            return this.execProgress(cmd);
         }
         else {
             execCommandInTerminal(cmd.join(" "), this.terminalName!);
@@ -223,34 +208,4 @@ export class Command {
         }
     }
 
-    protected async execProgress(cmd: string[]): Promise<void> {
-        const title = utils.titleCase(this.useSudo ? cmd[2] : cmd[1])
-        vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Notification,
-                title: title,
-                cancellable: false
-            },
-            (progress) => new Promise<string>((resolve, reject) => {
-                const child = exec(cmd.join(" "), { encoding: 'utf-8' }, (err, stdout, stderr) => {
-                    if (err) {
-                        vscode.window.showErrorMessage(`${title} failed: ${stderr}`);
-                        return reject(err);
-                    }
-                    outputChannel.append(stdout);
-                    resolve(stdout.trim());
-                });
-
-                child.stderr?.on('data', (data) => {
-                    const line = data.toString().trim();
-                    if (line) {
-                        progress.report({ message: line });
-                        outputChannel.appendLine(line);
-                    }
-                });
-            })
-        ).then(() => {
-            vscode.window.showInformationMessage(`${title}: Success`);
-        })
-    }
 }
