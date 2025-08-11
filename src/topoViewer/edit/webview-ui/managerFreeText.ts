@@ -337,6 +337,12 @@ export class ManagerFreeText {
         border-radius: 3px;
         height: 28px;
       `;
+      bgColorInput.addEventListener('input', () => {
+        // Only update background if not transparent (check disabled state which indicates transparency)
+        if (!bgColorInput.disabled) {
+          textInput.style.background = bgColorInput.value;
+        }
+      });
       bgColorGroup.appendChild(bgColorInput);
       formatContainer.appendChild(bgColorGroup);
 
@@ -423,9 +429,12 @@ export class ManagerFreeText {
         font-size: 12px;
         margin-left: auto;
       `;
-      // Disable color input if starting with transparent
+      // Disable color input and apply transparent background if starting with transparent
       if (isTransparentBg) {
         bgColorInput.disabled = true;
+        textInput.style.background = 'transparent';
+      } else {
+        textInput.style.background = bgColorInput.value;
       }
       transparentBtn.onclick = () => {
         isTransparentBg = !isTransparentBg;
