@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 
 import { execSync } from "child_process";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions, activeTopoViewerEditors } from "../extension";
 import { getCurrentTopoViewer } from "../commands/graph";
 
 /**
@@ -154,14 +154,35 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      */
     private async refreshTopoViewerIfOpen(): Promise<void> {
         try {
+            // Refresh the topology viewer (read-only)
             const topoViewer = getCurrentTopoViewer();
             if (topoViewer && topoViewer.currentTopoViewerPanel) {
                 // Update the tree data in the topology viewer
                 await topoViewer.updateTreeData();
                 console.log("[RunningLabTreeDataProvider]:\tRefreshed topology viewer with updated tree data");
             }
+            
+            // Also notify all active topology editors of deployment changes
+            await this.notifyTopoViewerEditorsOfDeploymentChanges();
         } catch (error) {
-            console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer:", error);
+            console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer/editors:", error);
+        }
+    }
+
+    /**
+     * Notify all active TopoViewer editors of deployment state changes
+     */
+    private async notifyTopoViewerEditorsOfDeploymentChanges(): Promise<void> {
+        if (activeTopoViewerEditors.size > 0) {
+            console.log(`[RunningLabTreeDataProvider]:\tNotifying ${activeTopoViewerEditors.size} active TopoViewer editors of deployment changes`);
+            
+            const promises = Array.from(activeTopoViewerEditors).map(editor => 
+                editor.handleDeploymentStateUpdate().catch(error => 
+                    console.error(`[RunningLabTreeDataProvider]:\tFailed to update TopoViewer editor: ${error}`)
+                )
+            );
+            
+            await Promise.all(promises);
         }
     }
 

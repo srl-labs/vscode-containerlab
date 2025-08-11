@@ -35,6 +35,9 @@ export class ManagerFloatingActionPanel {
       return;
     }
 
+    // Check deployment state and update icon accordingly
+    this.updateIconForDeploymentState();
+
     // Main FAB click handler
     this.fabMain.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -84,9 +87,41 @@ export class ManagerFloatingActionPanel {
   }
 
   /**
+   * Updates the FAB icon based on deployment state
+   */
+  public updateIconForDeploymentState(): void {
+    if (!this.fabMain) return;
+
+    const isLabDeployed = this.fabMain.getAttribute('data-is-lab-deployed') === 'true';
+    const icon = this.fabMain.querySelector('#fab-main-icon') as HTMLElement;
+    
+    if (!icon) return;
+
+    if (isLabDeployed) {
+      // Change to red lock icon for deployed labs
+      icon.className = 'fas fa-lock text-xl transition-transform duration-300';
+      this.fabMain.title = 'Editing locked - Lab is deployed';
+      log.info('FAB icon changed to lock - lab is deployed');
+    } else {
+      // Default plus icon for undeployed labs
+      icon.className = 'fas fa-plus text-xl transition-transform duration-300';
+      this.fabMain.title = 'Add elements to topology';
+      log.info('FAB icon set to plus - lab is not deployed');
+    }
+  }
+
+  /**
    * Toggles the radial menu open/closed state
    */
   private toggleMenu(): void {
+    if (!this.fabMain) return;
+    
+    const isLabDeployed = this.fabMain.getAttribute('data-is-lab-deployed') === 'true';
+    if (isLabDeployed) {
+      log.info('Menu toggle blocked - lab is deployed');
+      return;
+    }
+
     if (this.isMenuOpen) {
       this.closeMenu();
     } else {
@@ -104,12 +139,6 @@ export class ManagerFloatingActionPanel {
     this.fabMain.classList.add('active');
     this.radialMenu.classList.add('active');
 
-    // Rotate the plus icon to X
-    const icon = this.fabMain.querySelector('i');
-    if (icon) {
-      icon.style.transform = 'rotate(45deg)';
-    }
-
     log.debug('Floating action menu opened');
   }
 
@@ -122,12 +151,6 @@ export class ManagerFloatingActionPanel {
     this.isMenuOpen = false;
     this.fabMain.classList.remove('active');
     this.radialMenu.classList.remove('active');
-
-    // Rotate icon back to plus
-    const icon = this.fabMain.querySelector('i');
-    if (icon) {
-      icon.style.transform = 'rotate(0deg)';
-    }
 
     log.debug('Floating action menu closed');
   }

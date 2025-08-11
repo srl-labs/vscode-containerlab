@@ -8,6 +8,8 @@ import { log } from '../../common/logging/extensionLogger';
 import { generateWebviewHtml, EditorTemplateParams, TemplateMode } from '../../common/htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../../treeView/common";
+import { RunningLabTreeDataProvider } from '../../../treeView/runningLabsProvider';
+import { detectDeploymentState } from '../../view/utilities/deploymentUtils';
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../../common/utilities/saveViewport';
@@ -29,6 +31,8 @@ export class TopoViewerEditor {
   public createTopoYamlTemplateSuccess: boolean = false;
   private currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+  private clabTreeProviderImported: RunningLabTreeDataProvider;
+  private isLabDeployed: boolean = false;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
@@ -36,14 +40,84 @@ export class TopoViewerEditor {
   private queuedUpdate: boolean = false; // Indicates an update is queued
   private queuedSaveAck: boolean = false; // If any queued update came from a manual save
   private skipInitialValidation: boolean = false; // Skip schema check for template
+  private treeDataChangeListener: vscode.Disposable | undefined;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
+    
+    // Listen for tree data changes to auto-update deployment state
+    this.setupTreeDataListener();
   }
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async updateDeploymentState(yamlContent: string): Promise<void> {
+    try {
+      const treeData = await this.clabTreeProviderImported.discoverInspectLabs();
+      const deploymentState = await detectDeploymentState(yamlContent, treeData);
+      this.isLabDeployed = deploymentState === 'deployed';
+      this.cacheClabTreeDataToTopoviewer = treeData;
+      log.info(`Editor deployment state updated - isLabDeployed: ${this.isLabDeployed}`);
+    } catch (error) {
+      log.error(`Failed to update deployment state: ${error}`);
+    }
+  }
+
+  /**
+   * Setup listener for tree data changes to auto-update deployment state
+   */
+  private setupTreeDataListener(): void {
+    this.treeDataChangeListener = this.clabTreeProviderImported.onDidChangeTreeData(async () => {
+      await this.handleDeploymentStateUpdate();
+    });
+  }
+
+  /**
+   * Handle deployment state updates (can be called internally or externally)
+   */
+  public async handleDeploymentStateUpdate(): Promise<void> {
+    // Only update if we have an active panel and a current lab
+    if (this.currentPanel && this.lastYamlFilePath && this.currentLabName) {
+      try {
+        log.debug('Tree data changed - checking for deployment state updates');
+        const yamlContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+        const previousState = this.isLabDeployed;
+        
+        await this.updateDeploymentState(yamlContent);
+        
+        // If deployment state changed, update the panel and notify the webview
+        if (previousState !== this.isLabDeployed) {
+          log.info(`Deployment state changed from ${previousState} to ${this.isLabDeployed} - updating panel`);
+          await this.updatePanelHtml(this.currentPanel);
+          
+          // Send a message to the webview to update its state
+          this.currentPanel.webview.postMessage({
+            type: 'deployment-state-changed',
+            isLabDeployed: this.isLabDeployed
+          });
+        }
+      } catch (error) {
+        log.error(`Error handling tree data change: ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Unregister this editor from the global extension registry
+   */
+  private unregisterFromExtension(): void {
+    try {
+      // Import here to avoid circular dependencies
+      const { activeTopoViewerEditors } = require('../../../extension');
+      activeTopoViewerEditors.delete(this);
+      log.debug('TopoViewerEditor unregistered from extension');
+    } catch (error) {
+      log.error(`Error unregistering TopoViewerEditor: ${error}`);
+    }
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
@@ -256,6 +330,9 @@ topology:
       this.skipInitialValidation = false;
     }
 
+    // Update deployment state to determine if editing should be locked
+    await this.updateDeploymentState(yamlContent);
+
     const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
       updatedClabTreeDataToTopoviewer
@@ -282,6 +359,7 @@ topology:
         defaultKind,
         defaultType,
         updateLinkEndpointsOnKindChange,
+        isLabDeployed: this.isLabDeployed,
       };
 
       const mode: TemplateMode = 'editor';
@@ -375,7 +453,11 @@ topology:
           return;
         }
       }
-      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, undefined);
+      
+      // Update deployment state before creating webview content
+      await this.updateDeploymentState(yaml);
+      
+      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, this.cacheClabTreeDataToTopoviewer);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
         labName,                // folder below <extension>/topoViewerData/
@@ -404,6 +486,13 @@ topology:
         this.saveListener.dispose();
         this.saveListener = undefined;
       }
+      if (this.treeDataChangeListener) {
+        this.treeDataChangeListener.dispose();
+        this.treeDataChangeListener = undefined;
+      }
+      
+      // Unregister this editor from the global set
+      this.unregisterFromExtension();
     }, null, context.subscriptions);
 
     /**
@@ -478,9 +567,21 @@ topology:
       let error: string | null = null;
 
       try {
-        switch (endpointName) {
+        // Check if editing is disabled due to deployment state
+        const lockedEndpoints = [
+          'topo-editor-viewport-save',
+          'topo-editor-viewport-save-suppress-notification',
+          'topo-editor-undo',
+          'topo-editor-save-annotations'
+        ];
 
-          case 'topo-editor-reload-viewport': {
+        if (this.isLabDeployed && lockedEndpoints.includes(endpointName)) {
+          error = `Editing is locked - Lab is deployed. Please undeploy the lab to enable editing.`;
+          log.warn(`Blocked ${endpointName} - lab is deployed`);
+        } else {
+          switch (endpointName) {
+
+            case 'topo-editor-reload-viewport': {
             try {
               // Refresh the webview content.
               const success = await this.updatePanelHtml(this.currentPanel);
@@ -674,9 +775,10 @@ topology:
             break;
           }
 
-          default: {
-            error = `Unknown endpoint "${endpointName}".`;
-            log.error(error);
+            default: {
+              error = `Unknown endpoint "${endpointName}".`;
+              log.error(error);
+            }
           }
         }
       } catch (err) {

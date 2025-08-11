@@ -28,8 +28,9 @@
     
     <!-- Main + button -->
     <button id="fab-main" 
-            class="w-14 h-14 rounded-full bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] shadow-xl transition-all duration-300 flex items-center justify-center relative z-10">
-      <i class="fas fa-plus text-xl transition-transform duration-300"></i>
+            class="w-14 h-14 rounded-full bg-[var(--vscode-button-background)] hover:bg-[var(--vscode-button-hoverBackground)] text-[var(--vscode-button-foreground)] shadow-xl transition-all duration-300 flex items-center justify-center relative z-10"
+            data-is-lab-deployed="{{isLabDeployed}}">
+      <i id="fab-main-icon" class="fas fa-plus text-xl transition-transform duration-300"></i>
     </button>
   </div>
 </div>
@@ -41,17 +42,22 @@
   }
   
   #fab-main {
-    /* Add subtle animation on hover */
-    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+    /* Add subtle animation on hover and state changes */
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
   }
   
-  #fab-main:hover {
+  #fab-main:hover:not(.active) {
     transform: scale(1.05);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   }
   
   #fab-main.active {
-    transform: rotate(45deg);
+    transform: rotate(45deg) scale(1.1);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+  
+  #fab-main.active:hover {
+    transform: rotate(45deg) scale(1.15);
   }
   
   /* Radial menu positioning when active */
@@ -60,63 +66,31 @@
     pointer-events: auto;
   }
   
-  /* Position radial menu items in an arc */
-  #radial-menu.active #radial-add-node {
-    transform: translate(70px, -20px);
-  }
-  
-  #radial-menu.active #radial-add-group {
-    transform: translate(60px, -60px);
-  }
-  
-  #radial-menu.active #radial-add-text {
-    transform: translate(20px, -85px);
-  }
-  
-  /* Initial hidden state for radial items */
-  #radial-menu:not(.active) .radial-menu-item {
+  /* Initial state for radial items - collapsed at center */
+  .radial-menu-item {
     transform: translate(0, 0) scale(0);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   
-  #radial-menu.active .radial-menu-item {
-    transform-origin: center;
-    animation: fadeInScale 0.3s ease-out forwards;
-  }
-  
+  /* Position radial menu items in a 90-degree arc when active */
+  /* 80px radius, positioned at 0°, 45°, and 90° from positive x-axis */
   #radial-menu.active #radial-add-node {
-    animation-delay: 0.05s;
+    transform: translate(80px, 0px) scale(1); /* 0° - rightward */
+    opacity: 1;
+    transition-delay: 0.05s;
   }
   
   #radial-menu.active #radial-add-group {
-    animation-delay: 0.1s;
+    transform: translate(56px, -56px) scale(1); /* 45° - diagonal up-right */
+    opacity: 1;
+    transition-delay: 0.1s;
   }
   
   #radial-menu.active #radial-add-text {
-    animation-delay: 0.15s;
-  }
-  
-  @keyframes fadeInScale {
-    from {
-      opacity: 0;
-      transform: scale(0) translate(0, 0);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) var(--final-position);
-    }
-  }
-  
-  /* Set final positions as CSS variables */
-  #radial-add-node {
-    --final-position: translate(70px, -20px);
-  }
-  
-  #radial-add-group {
-    --final-position: translate(60px, -60px);
-  }
-  
-  #radial-add-text {
-    --final-position: translate(20px, -85px);
+    transform: translate(0px, -80px) scale(1); /* 90° - upward */
+    opacity: 1;
+    transition-delay: 0.15s;
   }
   
   /* VS Code theme integration */
@@ -124,24 +98,30 @@
     border: 1px solid var(--vscode-button-border, transparent);
   }
   
-  /* Subtle pulse animation for main button */
-  @keyframes pulse {
-    0% {
+  /* Subtle pulse animation for main button when idle */
+  @keyframes gentlePulse {
+    0%, 100% {
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
     50% {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
-    100% {
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
     }
   }
   
-  #fab-main {
-    animation: pulse 2s infinite;
+  #fab-main:not(.active):not(:hover) {
+    animation: gentlePulse 3s infinite ease-in-out;
   }
   
-  #fab-main.active {
-    animation: none;
+  /* Locked state for deployed labs */
+  #fab-main[data-is-lab-deployed="true"] {
+    background-color: #dc2626 !important; /* red-600 */
+    pointer-events: none;
+    cursor: not-allowed;
+    animation: none !important; /* Disable pulse when locked */
+  }
+  
+  #fab-main[data-is-lab-deployed="true"]:hover {
+    background-color: #b91c1c !important; /* red-700 */
+    transform: none !important; /* Disable hover transform when locked */
   }
 </style>

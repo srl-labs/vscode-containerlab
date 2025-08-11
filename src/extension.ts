@@ -28,6 +28,7 @@ export let runningLabsProvider: RunningLabTreeDataProvider;
 export let helpFeedbackProvider: HelpFeedbackProvider;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
+export let activeTopoViewerEditors: Set<TopoViewerEditor> = new Set();
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
@@ -373,6 +374,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
         editor.lastYamlFilePath = yamlUri.fsPath;
 
+        // Register the editor so we can notify it of deployment changes
+        activeTopoViewerEditors.add(editor);
+
         await editor.createWebviewPanel(context, yamlUri, labName);
 
         await editor.openTemplateFile(yamlUri.fsPath);
@@ -401,6 +405,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
       // Delegate to your template‑writer helper:
         const editor = new TopoViewerEditor(context);
+        
+        // Register the editor so we can notify it of deployment changes
+        activeTopoViewerEditors.add(editor);
+        
         try {
           await editor.createTemplateFile(uri);
 

@@ -46,6 +46,7 @@ class TopologyWebviewController {
   private eh: any;
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
+  private isEditingLocked: boolean = false; // Flag to track if editing is locked due to deployment
 
   public messageSender: VscodeMessageSender;
   public saveManager: ManagerSaveTopo;
@@ -74,11 +75,193 @@ class TopologyWebviewController {
     };
   }
 
+  /**
+   * Check if editing is locked due to deployment state
+   */
+  private checkDeploymentState(): void {
+    const isLabDeployed = (window as any).isLabDeployed;
+    this.isEditingLocked = isLabDeployed === true;
+    log.info(`Deployment state check: isLabDeployed=${isLabDeployed}, editing locked: ${this.isEditingLocked}`);
+  }
+
+  /**
+   * Checks if editing operations should be blocked
+   */
+  private isEditingBlocked(): boolean {
+    if (this.isEditingLocked) {
+      log.warn('Editing operation blocked - lab is deployed');
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Apply editing restrictions when lab is deployed
+   */
+  private applyEditingRestrictions(): void {
+    if (!this.isEditingLocked) {
+      return;
+    }
+
+    log.info('Applying editing restrictions - lab is deployed');
+
+    // Disable node dragging
+    this.cy.nodes().ungrabify();
+    
+    // Disable edge creation if edgehandles is active
+    if (this.eh && this.eh.disable) {
+      this.eh.disable();
+    }
+
+    // Disable context menus for editing
+    this.disableEditingContextMenus();
+
+    // Add visual feedback by changing cursor
+    const cyContainer = this.cy.container();
+    if (cyContainer) {
+      cyContainer.style.cursor = 'not-allowed';
+    }
+
+    // Add event listeners to block editing operations
+    this.cy.on('tap', (event) => {
+      if (event.target !== this.cy) { // If clicking on a node or edge
+        event.stopPropagation();
+        event.preventDefault();
+      }
+    });
+
+    // Block right-click context menu events with high priority
+    this.cy.on('cxttap', 'node, edge', (event) => {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      log.info('Context menu blocked - lab is deployed');
+      return false;
+    });
+    
+    // Also block the general canvas right-click
+    this.cy.on('cxttap', (event) => {
+      if (event.target === this.cy) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        log.info('Canvas context menu blocked - lab is deployed');
+        return false;
+      }
+      return true; // Allow other events to continue
+    });
+
+    // Show a message on any attempt to edit
+    this.cy.on('grab', 'node', () => {
+      log.info('Node grab blocked - lab is deployed');
+      return false;
+    });
+  }
+
+  /**
+   * Disable editing-related context menus when lab is deployed
+   */
+  private disableEditingContextMenus(): void {
+    // More aggressive approach to disable context menus
+    try {
+      // First try to destroy existing menus
+      if ((this.cy as any).cxtmenu) {
+        if (typeof (this.cy as any).cxtmenu === 'function') {
+          // If it's a constructor function, try to access instances
+          const instances = (this.cy as any)._private?.cxtmenu || [];
+          if (Array.isArray(instances)) {
+            instances.forEach((instance: any) => {
+              if (instance && typeof instance.destroy === 'function') {
+                instance.destroy();
+              }
+            });
+          }
+        } else if (typeof (this.cy as any).cxtmenu.destroy === 'function') {
+          (this.cy as any).cxtmenu.destroy();
+        }
+      }
+      
+      // Clear cxtmenu data from cytoscape
+      (this.cy as any)._private = (this.cy as any)._private || {};
+      (this.cy as any)._private.cxtmenu = undefined;
+      
+      // Remove any cxtmenu-related data from nodes and edges
+      this.cy.elements().removeData('cxtmenu');
+      
+      log.info('Context menus disabled');
+    } catch (error) {
+      log.error(`Error disabling context menus: ${error}`);
+    }
+  }
+
+  /**
+   * Setup listener for deployment state changes from the extension
+   */
+  private setupDeploymentStateListener(): void {
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (message.type === 'deployment-state-changed') {
+        log.info(`Received deployment state change: ${message.isLabDeployed}`);
+        
+        // Update window global variables
+        (window as any).isLabDeployed = message.isLabDeployed;
+        
+        // Update local state
+        const wasLocked = this.isEditingLocked;
+        this.checkDeploymentState();
+        
+        // Apply or remove restrictions based on new state
+        if (this.isEditingLocked && !wasLocked) {
+          // Lab was deployed - apply restrictions
+          this.applyEditingRestrictions();
+        } else if (!this.isEditingLocked && wasLocked) {
+          // Lab was undeployed - remove restrictions (requires reload)
+          this.removeEditingRestrictions();
+        }
+        
+        // Update floating action panel if it exists
+        if (this.floatingActionPanel) {
+          // Update the data attributes on the FAB button first
+          const fabMain = document.getElementById('fab-main');
+          if (fabMain) {
+            fabMain.setAttribute('data-is-lab-deployed', message.isLabDeployed.toString());
+          }
+          // Then trigger the icon update
+          this.floatingActionPanel.updateIconForDeploymentState();
+        }
+      }
+    });
+  }
+
+  /**
+   * Remove editing restrictions when lab is undeployed
+   */
+  private removeEditingRestrictions(): void {
+    log.info('Removing editing restrictions - lab is undeployed');
+    
+    // Re-enable node dragging
+    this.cy.nodes().grabify();
+    
+    // Re-enable edge creation if edgehandles exists
+    if (this.eh && this.eh.enable) {
+      this.eh.enable();
+    }
+    
+    // Restore normal cursor
+    const cyContainer = this.cy.container();
+    if (cyContainer) {
+      cyContainer.style.cursor = '';
+    }
+    
+    // Re-initialize context menus now that editing is allowed
+    this.initializeContextMenu('edit');
+    
+    log.info('Editing restrictions removed and context menus re-enabled');
+  }
+
   // Add automatic save on change
   private setupAutoSave(): void {
     // Debounced save function
     const autoSave = this.debounce(async () => {
-      if (this.isEdgeHandlerActive) {
+      if (this.isEdgeHandlerActive || this.isEditingBlocked()) {
         return;
       }
       const suppressNotification = true;
@@ -109,6 +292,9 @@ class TopologyWebviewController {
 
     // Initialize message sender
     this.messageSender = new VscodeMessageSender();
+
+    // Check deployment state to determine if editing should be locked
+    this.checkDeploymentState();
 
     // Detect and apply color scheme
     const theme = this.detectColorScheme();
@@ -184,7 +370,10 @@ class TopologyWebviewController {
       this.initializeEdgehandles();
     }
     // Initialize context menu for both edit and view modes (for free text at minimum)
-    this.initializeContextMenu(mode);
+    // Only initialize if lab is not deployed (to prevent right-click menus when locked)
+    if (!this.isEditingLocked) {
+      this.initializeContextMenu(mode);
+    }
 
     // Initiate managers and panels
     this.saveManager = new ManagerSaveTopo(this.messageSender);
@@ -211,6 +400,8 @@ class TopologyWebviewController {
 
     if (mode === 'edit') {
       this.setupAutoSave();
+      // Apply editing restrictions if lab is deployed
+      this.applyEditingRestrictions();
     }
 
     // Create capture viewport manager with the required method
@@ -223,6 +414,9 @@ class TopologyWebviewController {
     // Expose layout functions globally for HTML event handlers
     window.viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
     window.layoutAlgoChange = this.layoutAlgoManager.layoutAlgoChange.bind(this.layoutAlgoManager);
+    
+    // Setup listener for deployment state changes from the extension
+    this.setupDeploymentStateListener();
     window.viewportDrawerLayoutGeoMap = this.layoutAlgoManager.viewportDrawerLayoutGeoMap.bind(this.layoutAlgoManager);
     window.viewportDrawerDisableGeoMap = this.layoutAlgoManager.viewportDrawerDisableGeoMap.bind(this.layoutAlgoManager);
     window.viewportDrawerLayoutForceDirected = this.layoutAlgoManager.viewportDrawerLayoutForceDirected.bind(this.layoutAlgoManager);

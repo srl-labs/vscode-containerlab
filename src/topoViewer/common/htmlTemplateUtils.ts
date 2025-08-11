@@ -29,6 +29,7 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   defaultKind: string;
   defaultType: string;
   updateLinkEndpointsOnKindChange: boolean;
+  isLabDeployed?: boolean;
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -161,6 +162,7 @@ export function generateHtmlTemplate(
       defaultKind: editorParams.defaultKind,
       defaultType: editorParams.defaultType,
       updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
+      isLabDeployed: editorParams.isLabDeployed ? 'true' : 'false',
     };
   }
 
