@@ -16,6 +16,42 @@ export class ManagerFreeText {
     this.cy = cy;
     this.messageSender = messageSender;
     this.setupEventHandlers();
+    this.setupStylePreservation();
+  }
+
+  private setupStylePreservation(): void {
+    // Hook into the global loadCytoStyle function to reapply styles after it's called
+    const originalLoadCytoStyle = (window as any).loadCytoStyle;
+    if (originalLoadCytoStyle) {
+      (window as any).loadCytoStyle = (cy: cytoscape.Core, theme?: string) => {
+        // Call the original function
+        const result = originalLoadCytoStyle(cy, theme);
+
+        // Reapply free text styles after a short delay
+        setTimeout(() => {
+          this.reapplyAllFreeTextStyles();
+        }, 50);
+
+        return result;
+      };
+    }
+
+    // Also listen for style changes on the cy instance
+    this.cy.on('style', () => {
+      // Reapply styles after any style change with a small delay
+      setTimeout(() => {
+        this.reapplyAllFreeTextStyles();
+      }, 50);
+    });
+  }
+
+  private reapplyAllFreeTextStyles(): void {
+    this.annotationNodes.forEach((node, id) => {
+      const annotation = this.annotations.get(id);
+      if (annotation && node && node.inside()) {
+        this.applyTextNodeStyles(node, annotation);
+      }
+    });
   }
 
   private setupEventHandlers(): void {
@@ -499,8 +535,12 @@ export class ManagerFreeText {
       selectable: true
     });
 
-    // Apply custom styles based on annotation properties
+    // Apply custom styles based on annotation properties with a slight delay to ensure node is rendered
     this.applyTextNodeStyles(node, annotation);
+    // Apply styles again after a short delay to ensure they stick
+    setTimeout(() => {
+      this.applyTextNodeStyles(node, annotation);
+    }, 100);
 
     this.annotationNodes.set(annotation.id, node);
     // Don't auto-save here, wait for the main save operation
@@ -510,6 +550,9 @@ export class ManagerFreeText {
    * Apply custom styles to a text node based on annotation properties
    */
   private applyTextNodeStyles(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
+    // Store the annotation data in the node for persistence
+    node.data('freeTextData', annotation);
+
     // Create a comprehensive style object with all necessary properties
     const styles: any = {};
 
@@ -647,6 +690,17 @@ export class ManagerFreeText {
           this.addFreeTextAnnotation(annotation);
         });
         log.info(`Loaded ${annotations.length} free text annotations`);
+
+        // Reapply styles after a delay to ensure they persist after refresh
+        setTimeout(() => {
+          this.annotationNodes.forEach((node, id) => {
+            const annotation = this.annotations.get(id);
+            if (annotation) {
+              this.applyTextNodeStyles(node, annotation);
+            }
+          });
+          log.debug('Reapplied styles to free text annotations');
+        }, 200);
       }
     } catch (error) {
       log.error(`Failed to load annotations: ${error}`);

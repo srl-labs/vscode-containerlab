@@ -122,16 +122,14 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
       cy.fit(cy.nodes(), 120); // Add padding of 50px
       log.info('Viewport fitted to show all nodes');
 
-      // Load free text annotations after layout is complete
-      if ((window as any).topoViewerMode === 'edit') {
-        const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;
-        if (freeTextManager) {
-          freeTextManager.loadAnnotations().then(() => {
-            log.info('Free text annotations loaded');
-          }).catch((error: any) => {
-            log.error(`Failed to load free text annotations: ${error}`);
-          });
-        }
+      // Load free text annotations after layout is complete (for both edit and view modes)
+      const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;
+      if (freeTextManager) {
+        freeTextManager.loadAnnotations().then(() => {
+          log.info('Free text annotations loaded');
+        }).catch((error: any) => {
+          log.error(`Failed to load free text annotations: ${error}`);
+        });
       }
     });
 

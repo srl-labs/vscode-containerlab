@@ -182,18 +182,21 @@ class TopologyWebviewController {
     this.registerEvents(mode);
     if (mode === 'edit') {
       this.initializeEdgehandles();
-      this.initializeContextMenu();
     }
+    // Initialize context menu for both edit and view modes (for free text at minimum)
+    this.initializeContextMenu(mode);
 
     // Initiate managers and panels
     this.saveManager = new ManagerSaveTopo(this.messageSender);
     this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
+
+    // Initialize free text manager for both edit and view modes
+    this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
-      this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
-      // Annotations will be loaded after the topology data is loaded
     }
     this.groupManager = getGroupManager(this.cy, mode);
     this.groupManager.initializeWheelSelection();
@@ -332,9 +335,9 @@ class TopologyWebviewController {
   /**
  * Initializes the circular context menu on nodes.
   */
-  private initializeContextMenu(): void {
+  private initializeContextMenu(mode: 'edit' | 'view' = 'edit'): void {
     const self = this;
-    // Context menu for free text elements
+    // Context menu for free text elements (available in both edit and view modes)
     this.cy.cxtmenu({
       selector: 'node[topoViewerRole = "freeText"]',
       commands: [
@@ -385,10 +388,12 @@ class TopologyWebviewController {
       outsideMenuCancel: 10 // cancel menu when clicking outside
     });
 
-    // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
-    this.cy.cxtmenu({
-      selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
-      commands: [
+    // Only initialize other context menus in edit mode
+    if (mode === 'edit') {
+      // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
+      this.cy.cxtmenu({
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
+        commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                       <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
@@ -567,7 +572,7 @@ class TopologyWebviewController {
       atMouse: false, // draw menu at mouse position
       outsideMenuCancel: 10 // cancel menu when clicking outside
     });
-
+    } // end if (mode === 'edit')
   }
 
 
@@ -669,6 +674,10 @@ class TopologyWebviewController {
             return;
           }
           if (node.data("topoViewerRole") === "textbox" || node.data("topoViewerRole") === "dummyChild") {
+            return;
+          }
+          // Don't show node properties for free text nodes
+          if (node.data("topoViewerRole") === "freeText") {
             return;
           }
           if (!originalEvent.altKey && !originalEvent.ctrlKey && !originalEvent.shiftKey) {
