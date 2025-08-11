@@ -19,6 +19,7 @@ import { ManagerUndo } from '../../edit/webview-ui/managerUndo';
 import { ManagerAddContainerlabNode } from '../../edit/webview-ui/managerAddContainerlabNode';
 import { ManagerViewportPanels } from '../../edit/webview-ui/managerViewportPanels';
 import { ManagerFloatingActionPanel } from '../../edit/webview-ui/managerFloatingActionPanel';
+import { ManagerFreeText } from '../../edit/webview-ui/managerFreeText';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -58,6 +59,7 @@ class TopologyWebviewController {
   public zoomToFitManager: ManagerZoomToFit;
   public labelEndpointManager: ManagerLabelEndpoint;
   public reloadTopoManager: ManagerReloadTopo;
+  public freeTextManager?: ManagerFreeText;
   // eslint-disable-next-line no-unused-vars
   public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => void };
   private interfaceCounters: Record<string, number> = {};
@@ -180,13 +182,18 @@ class TopologyWebviewController {
     this.registerEvents(mode);
     if (mode === 'edit') {
       this.initializeEdgehandles();
-      this.initializeContextMenu();
     }
+    // Initialize context menu for both edit and view modes (for free text at minimum)
+    this.initializeContextMenu(mode);
 
     // Initiate managers and panels
     this.saveManager = new ManagerSaveTopo(this.messageSender);
     this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
+
+    // Initialize free text manager for both edit and view modes
+    this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
@@ -288,9 +295,13 @@ class TopologyWebviewController {
       snapFrequency: 150,
       noEdgeEventsInDraw: false,
       disableBrowserGestures: false,
+      handleNodes: 'node[topoViewerRole != "freeText"]',
       canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean => {
+        const sourceRole = sourceNode.data('topoViewerRole');
         const targetRole = targetNode.data('topoViewerRole');
         return (
+          sourceRole !== 'freeText' &&
+          targetRole !== 'freeText' &&
           !sourceNode.same(targetNode) &&
           !sourceNode.isParent() &&
           !targetNode.isParent() &&
@@ -328,11 +339,65 @@ class TopologyWebviewController {
   /**
  * Initializes the circular context menu on nodes.
   */
-  private initializeContextMenu(): void {
+  private initializeContextMenu(mode: 'edit' | 'view' = 'edit'): void {
     const self = this;
+    // Context menu for free text elements (available in both edit and view modes)
     this.cy.cxtmenu({
-      selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"]',
+      selector: 'node[topoViewerRole = "freeText"]',
       commands: [
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Edit Text</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // Trigger edit for free text
+            this.freeTextManager?.editFreeText(ele.id());
+          }
+        },
+        {
+          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                      <div style="height:0.5em;"></div>
+                      <span>Remove Text</span>
+                    </div>`,
+          select: (ele: cytoscape.Singular) => {
+            if (!ele.isNode()) {
+              return;
+            }
+            // Remove free text
+            this.freeTextManager?.removeFreeTextAnnotation(ele.id());
+          }
+        }
+      ],
+      menuRadius: 60, // smaller fixed radius for text menu
+      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      activePadding: 5, // additional size in pixels for the active command
+      indicatorSize: 0, // the size in pixels of the pointer to the active command
+      separatorWidth: 3, // the empty spacing in pixels between successive commands
+      spotlightPadding: 4, // minimal spacing to keep menu close
+      adaptativeNodeSpotlightRadius: false, // DON'T adapt to node size - keep it small
+      minSpotlightRadius: 20, // fixed small spotlight
+      maxSpotlightRadius: 20, // fixed small spotlight
+      openMenuEvents: 'cxttap', // single right-click to open menu
+      itemColor: 'white', // the colour of text in the command's content
+      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      zIndex: 9999, // the z-index of the ui div
+      atMouse: false, // draw menu at mouse position
+      outsideMenuCancel: 10 // cancel menu when clicking outside
+    });
+
+    // Only initialize other context menus in edit mode
+    if (mode === 'edit') {
+      // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
+      this.cy.cxtmenu({
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
+        commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                       <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
@@ -511,7 +576,7 @@ class TopologyWebviewController {
       atMouse: false, // draw menu at mouse position
       outsideMenuCancel: 10 // cancel menu when clicking outside
     });
-
+    } // end if (mode === 'edit')
   }
 
 
@@ -543,7 +608,7 @@ class TopologyWebviewController {
               log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
               node.move({ parent: null });
               break;
-            case originalEvent.shiftKey:
+            case originalEvent.shiftKey && node.data('topoViewerRole') !== 'freeText':
               log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
               this.isEdgeHandlerActive = true;
               this.eh.start(node);
@@ -613,6 +678,10 @@ class TopologyWebviewController {
             return;
           }
           if (node.data("topoViewerRole") === "textbox" || node.data("topoViewerRole") === "dummyChild") {
+            return;
+          }
+          // Don't show node properties for free text nodes
+          if (node.data("topoViewerRole") === "freeText") {
             return;
           }
           if (!originalEvent.altKey && !originalEvent.ctrlKey && !originalEvent.shiftKey) {

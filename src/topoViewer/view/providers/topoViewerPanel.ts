@@ -5,6 +5,7 @@ import { generateWebviewHtml, ViewerTemplateParams, TemplateMode } from '../../c
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { DeploymentState, ViewerMode } from '../utilities/deploymentUtils';
 import { saveViewport } from '../../common/utilities/saveViewport';
+import { AnnotationsManager } from '../../common/utilities/annotationsManager';
 
 /* eslint-disable no-unused-vars */
 export interface PanelOptions {
@@ -210,6 +211,35 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
           } catch (reloadError: any) {
             error = `Failed to reload viewport: ${reloadError.message ?? String(reloadError)}`;
             log.error(`Error reloading viewport: ${reloadError}`);
+          }
+          break;
+        }
+        case 'topo-editor-load-annotations': {
+          // Load annotations for view mode
+          try {
+            const annotationsManager = new AnnotationsManager();
+            const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+            result = { annotations: annotations.freeTextAnnotations || [] };
+            log.info(`Loaded ${annotations.freeTextAnnotations?.length || 0} annotations for view mode`);
+          } catch (innerError) {
+            result = { annotations: [] };
+            log.error(`Error loading annotations in view mode: ${JSON.stringify(innerError, null, 2)}`);
+          }
+          break;
+        }
+        case 'topo-editor-save-annotations': {
+          // Save annotations from view mode
+          try {
+            const annotationsManager = new AnnotationsManager();
+            const annotations = payloadObj?.annotations || [];
+            await annotationsManager.saveAnnotations(yamlFilePath, {
+              freeTextAnnotations: annotations
+            });
+            result = { success: true };
+            log.info(`Saved ${annotations.length} annotations from view mode`);
+          } catch (innerError) {
+            error = `Failed to save annotations: ${innerError}`;
+            log.error(`Error saving annotations in view mode: ${JSON.stringify(innerError, null, 2)}`);
           }
           break;
         }

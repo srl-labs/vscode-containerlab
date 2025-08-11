@@ -48,3 +48,26 @@ export interface EdgeData {
   targetEndpoint?: string;
   editor?: string;
 }
+
+export interface FreeTextAnnotation {
+  id: string;
+  text: string;
+  position: {
+    x: number;
+    y: number;
+  };
+  fontSize?: number;
+  fontColor?: string;
+  backgroundColor?: string;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
+  fontFamily?: string;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+}
+
+export interface TopologyAnnotations {
+  freeTextAnnotations?: FreeTextAnnotation[];
+}

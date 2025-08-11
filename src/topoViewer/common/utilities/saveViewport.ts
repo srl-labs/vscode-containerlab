@@ -113,7 +113,7 @@ export async function saveViewport({
   };
 
   payloadParsed
-    .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group')
+    .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'freeText')
     .forEach(element => {
       const nodeId: string = element.data.id;
       let nodeYaml = yamlNodes.get(nodeId, true) as YAML.YAMLMap | undefined;
@@ -191,7 +191,7 @@ export async function saveViewport({
 
   if (mode === 'edit') {
     const payloadNodeIds = new Set(
-      payloadParsed.filter(el => el.group === 'nodes').map(el => el.data.id)
+      payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText').map(el => el.data.id)
     );
     for (const item of [...yamlNodes.items]) {
       const keyStr = String(item.key);

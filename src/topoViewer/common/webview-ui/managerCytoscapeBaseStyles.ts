@@ -344,8 +344,60 @@ const roleStyles: any[] = Object.entries(roleSvgMap).map(([role, svgId]) => ({
   }
 }));
 
+// Free text annotation styles
+const freeTextStyles = [
+  {
+    selector: 'node[topoViewerRole="freeText"]',
+    style: {
+      shape: 'rectangle',
+      'background-color': 'transparent',
+      'background-opacity': 0,
+      'border-width': 0,
+      content: 'data(name)',
+      'text-wrap': 'wrap',
+      'text-max-width': '200px',
+      // Default font properties - will be overridden by custom styles
+      'font-size': 14,
+      'color': '#FFFFFF',
+      'text-outline-color': '#000000',
+      'text-outline-width': 1,
+      'text-background-color': '#000000',
+      'text-background-opacity': 0.7,
+      'text-background-padding': 3,
+      'text-background-shape': 'roundrectangle',
+      'text-halign': 'center',
+      'text-valign': 'center',
+      'z-index': 10,
+      width: 'label',
+      height: 'label',
+      'padding': 10,
+      'events': 'yes',
+      'text-events': 'yes'
+    }
+  },
+  {
+    selector: 'node[topoViewerRole="freeText"]:selected',
+    style: {
+      'border-width': '1px',
+      'border-color': '#007ACC',
+      'border-style': 'dashed',
+      'background-color': 'rgba(0, 122, 204, 0.1)',
+      'background-opacity': 0.1,
+      width: 'label',
+      height: 'label',
+      'padding': '5px'
+    }
+  },
+  {
+    selector: 'node[topoViewerRole="freeText"]:grabbed',
+    style: {
+      'cursor': 'move'
+    }
+  }
+];
+
 const insertIndex = cytoscapeStylesBase.findIndex((s: any) => s.selector === 'edge');
-cytoscapeStylesBase.splice(insertIndex, 0, ...roleStyles);
+cytoscapeStylesBase.splice(insertIndex, 0, ...roleStyles, ...freeTextStyles);
 
 /**
  * Returns a cloned Cytoscape style array adjusted for the given theme.

@@ -335,6 +335,42 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
     const response = await sender.sendMessageToVscodeEndpointPost('topo-viewport-save', updatedNodes);
     log.info(`Topology saved successfully: ${JSON.stringify(response)}`);
 
+    // Also save free text annotations in view mode
+    // Filter out only the free text nodes from the updated nodes
+    const freeTextNodes = updatedNodes.filter((node: any) =>
+      node.data && node.data.topoViewerRole === 'freeText'
+    );
+
+    if (freeTextNodes.length > 0) {
+      log.info(`Found ${freeTextNodes.length} free text nodes to save as annotations`);
+
+      // Convert free text nodes to annotations format
+      const annotations = freeTextNodes.map((node: any) => {
+        const data = node.data.freeTextData || {};
+        return {
+          id: node.data.id,
+          text: node.data.name || '',
+          position: node.position || { x: 0, y: 0 },
+          fontSize: data.fontSize || 14,
+          fontColor: data.fontColor || '#FFFFFF',
+          backgroundColor: data.backgroundColor || 'transparent',
+          fontWeight: data.fontWeight || 'normal',
+          fontStyle: data.fontStyle || 'normal',
+          textDecoration: data.textDecoration || 'none',
+          fontFamily: data.fontFamily || 'monospace'
+        };
+      });
+
+      // Send annotations to backend for saving
+      const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
+        'topo-editor-save-annotations',
+        { annotations }
+      );
+      log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
+    } else {
+      log.info('No free text annotations to save');
+    }
+
   } catch (error) {
     log.error(`Failed to save topology: ${error}`);
   }
@@ -519,6 +555,8 @@ export async function linkWireshark(
 export function initializeGlobalHandlers(): void {
   // Make functions available globally for HTML onclick handlers
   (globalThis as any).showPanelAbout = showPanelAbout;
+  // Override the save handler for view mode to include annotation saving
+  (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
   // Note: Most viewport button handlers are now managed by TopologyWebviewController
   // Only set view-specific handlers here that are not provided by the controller
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;

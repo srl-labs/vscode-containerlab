@@ -160,6 +160,15 @@ export class ManagerSaveTopo {
       );
       log.debug(`Response from backend: ${JSON.stringify(response)}`);
 
+      // Also save free text annotations if in edit mode
+      if (mode === 'edit') {
+        const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;
+        if (freeTextManager) {
+          // Trigger save of annotations
+          await freeTextManager.saveAnnotations();
+        }
+      }
+
       // Note: The backend handles showing the notification message in view mode
     } catch (err) {
       log.error(`Backend call failed: ${err instanceof Error ? err.message : String(err)}`);
