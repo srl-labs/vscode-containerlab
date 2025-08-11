@@ -300,8 +300,18 @@ export class TopoViewerAdaptorClab {
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
 
     const clabName = parsed.name;
-    const prefixName = parsed.prefix && parsed.prefix.trim() !== '' ? parsed.prefix.trim() : 'clab';
-    const labPrefix = `${prefixName}-${clabName}`;
+    let labPrefix: string;
+
+    if (parsed.prefix === undefined) {
+      // When prefix key is not present, containerlab uses 'clab-[labname]' format
+      labPrefix = `clab-${clabName}`;
+    } else if (parsed.prefix === '' || parsed.prefix.trim() === '') {
+      // When prefix is explicitly empty, containerlab uses just the node names
+      labPrefix = '';
+    } else {
+      // When prefix has a value, use 'prefix-[labname]' format
+      labPrefix = `${parsed.prefix.trim()}-${clabName}`;
+    }
 
     const parentMap = new Map<string, string | undefined>();
     let nodeIndex = 0;
@@ -319,7 +329,7 @@ export class TopoViewerAdaptorClab {
         log.info(`nodeName: ${nodeName}`);
         let containerData: ClabContainerTreeNode | null = null;
         if (opts.includeContainerData) {
-          const containerName = `${labPrefix}-${nodeName}`;
+          const containerName = labPrefix ? `${labPrefix}-${nodeName}` : nodeName;
           containerData = findContainerNode(
             opts.clabTreeData ?? {},
             containerName,
@@ -346,9 +356,9 @@ export class TopoViewerAdaptorClab {
               index: nodeIndex.toString(),
               kind: mergedNode.kind ?? '',
               type: mergedNode.type ?? '',
-              labdir: `${labPrefix}/`,
+              labdir: labPrefix ? `${labPrefix}/` : '',
               labels: mergedNode.labels ?? {},
-              longname: containerData?.name ?? `${labPrefix}-${nodeName}`,
+              longname: containerData?.name ?? (labPrefix ? `${labPrefix}-${nodeName}` : nodeName),
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
@@ -424,8 +434,8 @@ export class TopoViewerAdaptorClab {
         const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
         const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
 
-        const sourceContainerName = `${labPrefix}-${sourceNode}`;
-        const targetContainerName = `${labPrefix}-${targetNode}`;
+        const sourceContainerName = labPrefix ? `${labPrefix}-${sourceNode}` : sourceNode;
+        const targetContainerName = labPrefix ? `${labPrefix}-${targetNode}` : targetNode;
         const sourceIfaceData = findInterfaceNode(
           opts.clabTreeData ?? {},
           sourceContainerName,

@@ -337,13 +337,13 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
 
     // Also save free text annotations in view mode
     // Filter out only the free text nodes from the updated nodes
-    const freeTextNodes = updatedNodes.filter((node: any) => 
+    const freeTextNodes = updatedNodes.filter((node: any) =>
       node.data && node.data.topoViewerRole === 'freeText'
     );
-    
+
     if (freeTextNodes.length > 0) {
       log.info(`Found ${freeTextNodes.length} free text nodes to save as annotations`);
-      
+
       // Convert free text nodes to annotations format
       const annotations = freeTextNodes.map((node: any) => {
         const data = node.data.freeTextData || {};
@@ -360,7 +360,7 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
           fontFamily: data.fontFamily || 'monospace'
         };
       });
-      
+
       // Send annotations to backend for saving
       const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
         'topo-editor-save-annotations',
