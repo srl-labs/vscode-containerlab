@@ -84,7 +84,14 @@ class TopologyWebviewController {
     }, 500); // Wait 500ms after last change before saving
 
     // Listen for topology changes
-    this.cy.on('add remove data position', autoSave);
+    this.cy.on('add remove data', autoSave);
+    this.cy.on('position', (event) => {
+      // Avoid autosave while a node is actively being dragged
+      if (!event.target.grabbed()) {
+        autoSave();
+      }
+    });
+    this.cy.on('dragfree', 'node', autoSave);
   }
 
   /**
