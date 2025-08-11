@@ -44,6 +44,7 @@ export async function createTopoViewerPanel(options: PanelOptions): Promise<vsco
         vscode.Uri.joinPath(context.extensionUri, 'topoViewerData', folderName),
         vscode.Uri.joinPath(context.extensionUri, 'dist'),
       ],
+      retainContextWhenHidden: true,
     }
   );
 

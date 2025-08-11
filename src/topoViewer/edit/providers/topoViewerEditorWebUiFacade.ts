@@ -339,6 +339,7 @@ topology:
           // Schema directory for YAML validation and dropdown data.
           vscode.Uri.joinPath(this.context.extensionUri, 'schema'),
         ],
+        retainContextWhenHidden: true,
       }
     );
 
