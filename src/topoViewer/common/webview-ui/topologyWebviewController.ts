@@ -295,9 +295,13 @@ class TopologyWebviewController {
       snapFrequency: 150,
       noEdgeEventsInDraw: false,
       disableBrowserGestures: false,
+      handleNodes: 'node[topoViewerRole != "freeText"]',
       canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean => {
+        const sourceRole = sourceNode.data('topoViewerRole');
         const targetRole = targetNode.data('topoViewerRole');
         return (
+          sourceRole !== 'freeText' &&
+          targetRole !== 'freeText' &&
           !sourceNode.same(targetNode) &&
           !sourceNode.isParent() &&
           !targetNode.isParent() &&
@@ -604,7 +608,7 @@ class TopologyWebviewController {
               log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
               node.move({ parent: null });
               break;
-            case originalEvent.shiftKey:
+            case originalEvent.shiftKey && node.data('topoViewerRole') !== 'freeText':
               log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
               this.isEdgeHandlerActive = true;
               this.eh.start(node);
