@@ -102,7 +102,7 @@ class TopologyWebviewController {
     this.messageSender = new VscodeMessageSender();
 
     // Detect and apply color scheme
-    this.detectColorScheme();
+    const theme = this.detectColorScheme();
 
     // Initialize Cytoscape instance
     this.cy = createConfiguredCytoscape(container, { wheelSensitivity: 2 });
@@ -113,6 +113,7 @@ class TopologyWebviewController {
     });
 
     // Enable grid guide extension (casting cy as any to satisfy TypeScript)
+    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
     (this.cy as any).gridGuide({
       snapToGridOnRelease: true,
       snapToGridDuringDrag: false,
@@ -132,7 +133,7 @@ class TopologyWebviewController {
       zoomDash: true,
       panGrid: true,
       gridStackOrder: -1,
-      gridColor: '#434343',
+      gridColor,
       lineWidth: 0.5,
 
       guidelinesStackOrder: 4,
@@ -781,10 +782,11 @@ class TopologyWebviewController {
    * Detects the user's preferred color scheme and applies the corresponding theme.
    * @returns The applied theme ("dark" or "light").
    */
-  public detectColorScheme(): string {
+  public detectColorScheme(): 'light' | 'dark' {
     const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    this.applyTheme(darkMode ? 'dark' : 'light');
-    return darkMode ? 'dark' : 'light';
+    const theme = darkMode ? 'dark' : 'light';
+    this.applyTheme(theme);
+    return theme;
   }
 
   /**
@@ -792,7 +794,7 @@ class TopologyWebviewController {
    * @param theme - The theme to apply ("dark" or "light").
    * @private
    */
-  private applyTheme(theme: string): void {
+  private applyTheme(theme: 'light' | 'dark'): void {
     const rootElement = document.getElementById('root');
     if (rootElement) {
       rootElement.setAttribute('data-theme', theme);

@@ -221,6 +221,8 @@ export class ManagerLayoutAlgo {
   private disableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
+    const theme = topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light';
+    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
     (cy as any).gridGuide({
       drawGrid: false,
       snapToGridOnRelease: false,
@@ -238,7 +240,7 @@ export class ManagerLayoutAlgo {
       zoomDash: false,
       panGrid: false,
       gridStackOrder: -1,
-      gridColor: '#434343',
+      gridColor,
       lineWidth: 0.5,
       guidelinesStackOrder: 4,
       guidelinesTolerance: 2.0,
@@ -264,6 +266,8 @@ export class ManagerLayoutAlgo {
   private enableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
+    const theme = topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light';
+    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
     (cy as any).gridGuide({
       drawGrid: true,
       snapToGridOnRelease: true,
@@ -281,7 +285,7 @@ export class ManagerLayoutAlgo {
       zoomDash: true,
       panGrid: true,
       gridStackOrder: -1,
-      gridColor: '#434343',
+      gridColor,
       lineWidth: 0.5,
       guidelinesStackOrder: 4,
       guidelinesTolerance: 2.0,
