@@ -74,6 +74,10 @@ const cytoscapeStylesBase: any[] = [
       'z-index': '1'
     }
   },
+  {
+    selector: 'node[topoViewerRole="group"]',
+    style: {}
+  },
   // Alignment for parent nodes
   {
     selector: 'node:parent.top-center',

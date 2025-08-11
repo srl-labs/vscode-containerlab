@@ -783,8 +783,9 @@ class TopologyWebviewController {
    * @returns The applied theme ("dark" or "light").
    */
   public detectColorScheme(): 'light' | 'dark' {
-    const darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = darkMode ? 'dark' : 'light';
+    const bodyClassList = document.body?.classList;
+    const darkMode = bodyClassList?.contains('vscode-dark') || bodyClassList?.contains('vscode-high-contrast');
+    const theme: 'light' | 'dark' = darkMode ? 'dark' : 'light';
     this.applyTheme(theme);
     return theme;
   }
