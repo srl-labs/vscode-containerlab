@@ -519,14 +519,10 @@ export async function linkWireshark(
 export function initializeGlobalHandlers(): void {
   // Make functions available globally for HTML onclick handlers
   (globalThis as any).showPanelAbout = showPanelAbout;
-  (globalThis as any).viewportButtonsZoomToFit = viewportButtonsZoomToFit;
-  (globalThis as any).viewportButtonsTopologyOverview = viewportButtonsTopologyOverview;
-  (globalThis as any).viewportButtonsLabelEndpoint = viewportButtonsLabelEndpoint;
-  (globalThis as any).viewportButtonsReloadTopo = viewportButtonsReloadTopo;
+  // Note: Most viewport button handlers are now managed by TopologyWebviewController
+  // Only set view-specific handlers here that are not provided by the controller
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
-  (globalThis as any).viewportButtonsCaptureViewportAsSvg = viewportButtonsCaptureViewportAsSvg;
-  (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
   (globalThis as any).nodeActionConnectToSSH = nodeActionConnectToSSH;
   (globalThis as any).nodeActionAttachShell = nodeActionAttachShell;
   (globalThis as any).nodeActionViewLogs = nodeActionViewLogs;

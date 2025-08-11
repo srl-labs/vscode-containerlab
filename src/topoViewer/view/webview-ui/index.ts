@@ -3,6 +3,8 @@ import './libraries';
 
 // Set mode to view before loading shared engine
 (window as any).topoViewerMode = 'view';
+
+// Import the topology controller which will set up all viewport handlers
 import('../../common/webview-ui/topologyWebviewController');
 
 // Import UI handlers to make them available globally
@@ -17,7 +19,8 @@ import './cytoscape-leaflet.css';
 // Import cytoscape styles
 import '../../common/webview-ui/managerCytoscapeBaseStyles';
 
-// Initialize global handlers for HTML onclick functions
+// Initialize only the view-specific global handlers
+// The TopologyWebviewController will handle viewport button handlers
 initializeGlobalHandlers();
 
 export * from '../../common/webview-ui/managerVscodeWebview';

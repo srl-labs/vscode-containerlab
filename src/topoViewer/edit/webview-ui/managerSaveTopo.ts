@@ -140,23 +140,27 @@ export class ManagerSaveTopo {
       const updatedElements = [...updatedNodes, ...updatedEdges];
       log.debug(`Updated Topology Data: ${JSON.stringify(updatedElements, null, 2)}`);
 
-      if (!suppressNotification) {
-        const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-          'topo-editor-viewport-save-suppress-notification',
-          updatedElements
-        );
-        log.debug(`Response from backend: ${JSON.stringify(response)}`);
+      // Determine the correct endpoint based on the mode
+      const mode = (window as any).topoViewerMode;
+      let endpoint: string;
+
+      if (mode === 'view') {
+        // View mode uses a single endpoint and doesn't support suppress notification
+        endpoint = 'topo-viewport-save';
       } else {
-        const endpoint = suppressNotification
+        // Edit mode uses different endpoints based on suppressNotification
+        endpoint = suppressNotification
           ? 'topo-editor-viewport-save-suppress-notification'
           : 'topo-editor-viewport-save';
-
-        const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-          endpoint,
-          updatedElements
-        );
-        log.debug(`Response from backend: ${JSON.stringify(response)}`);
       }
+
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+        endpoint,
+        updatedElements
+      );
+      log.debug(`Response from backend: ${JSON.stringify(response)}`);
+
+      // Note: The backend handles showing the notification message in view mode
     } catch (err) {
       log.error(`Backend call failed: ${err instanceof Error ? err.message : String(err)}`);
     }
