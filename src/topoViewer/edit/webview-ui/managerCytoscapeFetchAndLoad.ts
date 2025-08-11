@@ -81,19 +81,36 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     cy.add(elementsToAdd);
 
+    // Determine if any node already has saved position labels
+    const nodes = elementsToAdd.filter((element: any) => element.group === 'nodes');
+    const hasPosLabels = nodes.some((element: any) => {
+      const labels = element?.data?.extraData?.labels;
+      return labels && labels['graph-posX'] && labels['graph-posY'];
+    });
+
     // Set all node to have a editor flag.
     cy.nodes().data('editor', 'true');
 
-
-    // Run a layout - always use preset to respect specified positions
-    const layout = cy.layout({
-      name: 'preset',
-      animate: true,
-      randomize: false,
-      maxSimulationTime: 10,
-      positions: undefined, // Use the positions already set on elements
-      fit: false // Don't auto-fit to viewport, keep the specified positions
-    } as any);
+    // Choose layout based on presence of saved positions
+    let layout: cytoscape.Layouts;
+    if (!hasPosLabels && (window as any).topoViewerMode === 'view') {
+      // Spread nodes automatically when no position labels exist in view mode
+      layout = cy.layout({
+        name: 'cose',
+        animate: true,
+        fit: true
+      } as any);
+    } else {
+      // Respect saved positions using the preset layout
+      layout = cy.layout({
+        name: 'preset',
+        animate: true,
+        randomize: false,
+        maxSimulationTime: 10,
+        positions: undefined, // Use the positions already set on elements
+        fit: false // Don't auto-fit to viewport, keep the specified positions
+      } as any);
+    }
     layout.run();
 
     // Remove specific nodes by name.
