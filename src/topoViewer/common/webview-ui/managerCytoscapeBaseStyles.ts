@@ -3,7 +3,7 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/webviewLogger';
 import { generateEncodedSVG, NodeType } from './managerSvgGenerator';
-import topoViewerState from './state';
+import topoViewerState from '../state';
 
 /**
  * Cytoscape styles shared between view and edit webviews.

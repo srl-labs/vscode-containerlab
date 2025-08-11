@@ -5,7 +5,7 @@
 import { log } from '../../common/logging/webviewLogger';
 import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
 import { exportViewportAsSvg } from '../../common/webview-ui/utils';
-import topoViewerState from '../../common/webview-ui/state';
+import topoViewerState from '../../common/state';
 import { zoomToFitManager } from '../../common/core/managerRegistry';
 
 // Global message sender instance

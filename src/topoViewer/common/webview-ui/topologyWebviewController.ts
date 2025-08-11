@@ -28,7 +28,7 @@ import type { ManagerReloadTopo } from '../../edit/webview-ui/managerReloadTopo'
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../core/managerRegistry';
 import { log } from '../logging/webviewLogger';
 import { registerCyEventHandlers } from './cyEventHandlers';
-import topoViewerState from './state';
+import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 
 

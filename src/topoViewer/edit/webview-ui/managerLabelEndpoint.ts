@@ -1,7 +1,7 @@
 // file: managerLabelEndpoint.ts
 
 import cytoscape from 'cytoscape';
-import topoViewerState from '../../common/webview-ui/state';
+import topoViewerState from '../../common/state';
 
 /**
  * Manages toggling the visibility of endpoint labels on edges.

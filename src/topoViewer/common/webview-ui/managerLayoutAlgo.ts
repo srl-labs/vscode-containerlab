@@ -1,5 +1,5 @@
 import cytoscape from 'cytoscape';
-import topoViewerState from './state';
+import topoViewerState from '../state';
 import { log } from '../logging/webviewLogger';
 
 // Use globally registered style loader to avoid duplicating implementations

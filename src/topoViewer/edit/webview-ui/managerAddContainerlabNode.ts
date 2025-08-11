@@ -2,7 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import type { NodeData } from '../../common/types/topoViewerGraph';
-import topoViewerState from '../../common/webview-ui/state';
+import topoViewerState from '../../common/state';
 
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.

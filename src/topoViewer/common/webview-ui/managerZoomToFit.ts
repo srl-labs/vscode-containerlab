@@ -1,6 +1,6 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/webviewLogger';
-import topoViewerState from './state';
+import topoViewerState from '../state';
 
 /**
  * Provides functionality to zoom and fit the Cytoscape viewport across modes.
