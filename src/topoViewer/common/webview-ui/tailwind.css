@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* VSCode Theme Variables */
 :root {
@@ -27,7 +25,11 @@
 
 @layer base {
   html, body {
-    @apply h-full w-full m-0 p-0 overflow-hidden;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
     background: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--vscode-font-family);
@@ -39,7 +41,16 @@
 @layer components {
   /* Button styles */
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 font-medium rounded-md transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
   }
   
   .btn-primary {
@@ -81,15 +92,19 @@
   }
   
   .btn-small {
-    @apply px-3 py-1;
+    padding: 0.25rem 0.75rem;
   }
-  
+
   .btn-icon {
-    @apply p-2;
+    padding: 0.5rem;
   }
   .btn-icon-hover-clean {
-    @apply btn-icon focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors duration-150 ease-in-out;
+    padding: 0.5rem;
     background-color: transparent;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
   }
 
   .btn-icon-hover-clean:hover {
@@ -97,8 +112,12 @@
   }
 
   .btn-icon-geo-map-hover-clean {
-    @apply btn-icon focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors duration-150 ease-in-out;
+    padding: 0.5rem;
     background-color: var(--vscode-button-secondaryBackground);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
   }
 
   .btn-icon-geo-map-hover-clean:hover {
@@ -108,29 +127,43 @@
   .panel {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
-    @apply rounded-lg shadow-md;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
   
   .panel-heading, .panel-header {
     background-color: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--border);
-    @apply px-4 py-3 font-semibold text-sm;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
   }
   
   .panel-block {
     border-bottom: 1px solid var(--border);
-    @apply px-4 py-3 last:border-b-0;
+    padding: 0.75rem 1rem;
   }
+.panel-block:last-child {
+  border-bottom: 0;
+}
   
   /* Dropdown styles */
   .dropdown-menu {
     background-color: var(--vscode-dropdown-background);
     border: 1px solid var(--vscode-dropdown-border);
-    @apply absolute z-50 mt-1 rounded-md shadow-lg;
+    position: absolute;
+    z-index: 50;
+    margin-top: 0.25rem;
+    border-radius: 0.375rem;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
   }
   
   .dropdown-button {
-    @apply px-3 py-2 text-sm rounded inline-flex items-center;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    display: inline-flex;
+    align-items: center;
     background-color: var(--vscode-dropdown-background);
     color: var(--vscode-dropdown-foreground);
   }
@@ -141,7 +174,10 @@
   
   .dropdown-item {
     color: var(--vscode-dropdown-foreground);
-    @apply block px-4 py-2 text-sm cursor-pointer;
+    display: block;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    cursor: pointer;
   }
   
   .dropdown-item:hover {
@@ -153,7 +189,10 @@
     background-color: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border);
-    @apply w-full px-3 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:border-transparent;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    outline: none;
   }
   
   .input-field:focus {
@@ -164,109 +203,149 @@
   /* Label styles */
   .label {
     color: var(--text-primary);
-    @apply block font-medium;
+    display: block;
+    font-weight: 500;
   }
   
   /* Modal styles */
   .modal-backdrop {
     background-color: rgba(0, 0, 0, 0.5);
-    @apply fixed inset-0 z-50;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
   }
   
   .modal-content {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
-    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-xl z-50 max-w-2xl w-full max-h-[90vh] overflow-auto;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0.5rem;
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    z-index: 50;
+    max-width: 42rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow: auto;
   }
   
   /* Loading spinner */
   .loading-spinner {
     border-color: var(--vscode-progressBar-background);
     border-top-color: var(--accent);
-    @apply inline-block w-8 h-8 border-4 rounded-full animate-spin;
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border-width: 4px;
+    border-radius: 9999px;
+    animation: spin 1s linear infinite;
   }
   
   /* Navbar styles */
   .navbar {
     background-color: var(--vscode-tab-activeBackground);
     border-bottom: 1px solid var(--vscode-tab-border);
-    @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 shadow-md;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
   
   .navbar-brand {
-    @apply flex items-center space-x-3;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
   
   .navbar-end {
-    @apply ml-auto flex items-center;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
   }
   
   /* Column utilities */
   .column {
     background-color: var(--vscode-panel-background);
-    @apply flex-1;
+    flex: 1 1 0%;
   }
   
   .columns {
-    @apply flex flex-wrap -mx-2;
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
   }
   
   .columns > * {
-    @apply px-2;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
   
   /* Size utilities matching Bulma */
   .is-size-7 {
-    @apply text-xs;
+    font-size: 0.75rem;
   }
   
   .is-size-6 {
-    @apply text-sm;
+    font-size: 0.875rem;
   }
   
   .is-size-5 {
-    @apply text-base;
+    font-size: 1rem;
   }
   
   .is-size-4 {
-    @apply text-lg;
+    font-size: 1.125rem;
   }
   
   /* Visibility utilities */
   .is-hidden {
-    @apply hidden;
+    display: none;
   }
   
   /* Flex utilities matching Bulma */
   .is-flex {
-    @apply flex;
+    display: flex;
   }
   
   .is-flex-direction-column {
-    @apply flex-col;
+    flex-direction: column;
   }
   
   .is-justify-content-space-between {
-    @apply justify-between;
+    justify-content: space-between;
   }
   
   .is-justify-content-center {
-    @apply justify-center;
+    justify-content: center;
   }
   
   .is-justify-content-flex-end {
-    @apply justify-end;
+    justify-content: flex-end;
   }
   
   .is-align-items-center {
-    @apply items-center;
+    align-items: center;
   }
 
   /* Migrated from style.css */
   .panel-overlay {
     background-color: var(--vscode-editorWidget-background) !important;
     border: 1px solid var(--vscode-editorWidget-border) !important;
-    @apply fixed z-[9999] shadow-xl;
+    position: fixed;
+    z-index: 9999;
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
   }
 
   .navbar-element-4a {
@@ -276,22 +355,27 @@
   .ViewPortDrawer {
     background-color: var(--vscode-panel-background);
     border: 1px solid var(--vscode-panel-border);
-    @apply shadow-md;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
 
   .box {
     background-color: var(--vscode-panel-background);
     border: 1px solid var(--vscode-panel-border);
-    @apply shadow-md;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
 
   .panel-tabContainer {
     background-color: var(--vscode-panel-background);
-    @apply p-0;
+    padding: 0;
   }
 
   .loading {
-    @apply absolute top-1/2 left-1/2 w-24 h-24 -translate-x-1/2 -translate-y-1/2;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6rem;
+    height: 6rem;
+    transform: translate(-50%, -50%);
   }
 
   /* Cytoscape context menu styling */
@@ -313,67 +397,70 @@
 @layer utilities {
   /* Text utilities */
   .has-text-weight-normal {
-    @apply font-normal;
+    font-weight: 400;
   }
   
   .has-text-weight-medium {
-    @apply font-medium;
+    font-weight: 500;
   }
   
   .has-text-weight-semibold {
-    @apply font-semibold;
+    font-weight: 600;
   }
   
   .has-text-weight-bold {
-    @apply font-bold;
+    font-weight: 700;
   }
   
   .has-text-weight-light {
-    @apply font-light;
+    font-weight: 300;
   }
   
   .has-text-white {
-    @apply text-white;
+    color: #ffffff;
   }
   
   .has-text-left {
-    @apply text-left;
+    text-align: left;
   }
   
   .has-text-right {
-    @apply text-right;
+    text-align: right;
   }
   
   .has-text-center {
-    @apply text-center;
+    text-align: center;
   }
   
   /* Background utilities */
   .has-background-4a {
     background-color: var(--vscode-titleBar-activeBackground);
-    @apply shadow-md;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
   
   /* Unselectable text */
   .is-unselectable {
-    @apply select-none;
+    user-select: none;
   }
   
   /* Field utilities */
   .field {
-    @apply mb-4;
+    margin-bottom: 1rem;
   }
   
   .control {
-    @apply relative;
+    position: relative;
   }
   
   .has-icons-left .icon {
-    @apply absolute left-3 top-1/2 transform -translate-y-1/2;
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
   }
   
   .has-icons-left .input-field {
-    @apply pl-10;
+    padding-left: 2.5rem;
   }
 
   /* Link utilities */
@@ -394,7 +481,30 @@
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Override cytoscape default styles for VSCode theme */
 #cy {
   background-color: var(--vscode-editor-background);
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#cy-leaflet {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
