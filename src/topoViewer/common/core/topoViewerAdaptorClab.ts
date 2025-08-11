@@ -13,7 +13,7 @@ import { resolveNodeConfig } from './nodeConfig';
 import { version as topoViewerVersion } from '../../../../package.json';
 
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../../treeView/common";
-import { findContainerNode, findInterfaceNode } from '../../view/utilities/treeUtils';
+import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 // log.info(ClabTreeDataProvider.)
 
 log.info(`TopoViewer Version: ${topoViewerVersion}`);

@@ -140,7 +140,8 @@ export function generateHtmlTemplate(
     logoFile,
     navSubtitle: mode === 'viewer' ? 'TopoViewer' : 'TopoEditor',
     pageTitle: mode === 'viewer' ? 'TopoViewer' : 'TopoViewer Editor',
-    cssBundle: mode === 'viewer' ? 'topoViewerStyles.css' : 'topoViewerEditorStyles.css',
+    cssBundle: 'topoViewerEditorStyles.css', // Use the same CSS for both modes
+    topoViewerMode: mode, // Add the mode so JS can access it
   };
 
   let replacements: Record<string, string>;

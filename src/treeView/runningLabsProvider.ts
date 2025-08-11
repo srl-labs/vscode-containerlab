@@ -154,10 +154,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      */
     private async refreshTopoViewerIfOpen(): Promise<void> {
         try {
-            const topoViewer = getCurrentTopoViewer();
-            if (topoViewer && topoViewer.currentTopoViewerPanel) {
-                // Update the tree data in the topology viewer
-                await topoViewer.updateTreeData();
+            const topoViewer = getCurrentTopoViewer() as any;
+            if (topoViewer && topoViewer.currentPanel) {
+                await topoViewer.updatePanelHtml(topoViewer.currentPanel);
                 console.log("[RunningLabTreeDataProvider]:\tRefreshed topology viewer with updated tree data");
             }
         } catch (error) {

@@ -8,9 +8,6 @@ import './tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 // Import Leaflet CSS for map tiles
 import 'leaflet/dist/leaflet.css';
-// Import cytoscape-leaflet CSS for geo-positioning
-import '../../view/webview-ui/cytoscape-leaflet.css';
-
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from '../../edit/webview-ui/managerCytoscapeFetchAndLoad';

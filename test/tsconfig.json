@@ -5,6 +5,6 @@
     "outDir": "../out/test",
     "resolveJsonModule": true
   },
-  "include": ["**/*.ts", "../src/topoViewer/common/types/globals.d.ts", "../src/topoViewer/view/webview-ui/types.d.ts"],
+  "include": ["**/*.ts", "../src/topoViewer/common/types/globals.d.ts", "../src/topoViewer/common/webview-ui/types.d.ts"],
   "exclude": []
 }

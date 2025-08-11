@@ -67,7 +67,7 @@ describe('ClabCommand', () => {
     expect(cmdStub.instances).to.have.lengthOf(1);
     const inst = cmdStub.instances[0];
     expect(inst.options.command).to.equal('containerlab');
-    expect(inst.options.useSpinner).to.be.false;
+    expect(inst.options.useSpinner).to.be.true;
     expect(inst.options.terminalName).to.equal('term');
 
     const execSpy = cmdStub.Command.prototype.execute as sinon.SinonSpy;

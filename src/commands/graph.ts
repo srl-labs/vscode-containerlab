@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as path from "path";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
-import { TopoViewer } from "../topoViewer/view/providers/topoViewerWebUiFacade";
+import { TopoViewer } from "../topoViewer";
 import { getSelectedLabNode } from "../helpers/utils";
 
 
@@ -83,20 +84,33 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   // Get node if not provided
   node = await getSelectedLabNode(node);
 
-  let labPath: string;
+  let labPath: string = '';
+  let isViewMode = false;
 
-  if (node && node.labPath && node.labPath.absolute) {
+  // Check if this is a deployed lab (view mode)
+  if (node && node.contextValue &&
+      (node.contextValue === 'containerlabLabDeployed' ||
+       node.contextValue === 'containerlabLabDeployedFavorite')) {
+    isViewMode = true;
+    // Deployed labs might still have a labPath, but we treat them as view-only
+    labPath = node.labPath?.absolute || '';
+  } else if (node && node.labPath && node.labPath.absolute) {
+    // Undeployed lab with YAML file - edit mode
     labPath = node.labPath.absolute;
+    isViewMode = false;
   } else {
     // Try to get from active editor
     const editor = vscode.window.activeTextEditor;
-    if (!editor || !editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
+    if (editor && editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
+      labPath = editor.document.uri.fsPath;
+      isViewMode = false; // Editor mode when opened from file
+    } else {
+      // No valid source, show error
       vscode.window.showErrorMessage(
         'No lab node or topology file selected'
       );
       return;
     }
-    labPath = editor.document.uri.fsPath;
   }
 
   if (!context) {
@@ -111,11 +125,10 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   currentTopoViewer = viewer;
 
   try {
-    // 3) call openViewer, which returns (panel | undefined).
-    // Pass undefined for clabTreeDataToTopoviewer - let openViewer handle discovery internally
-    currentTopoViewerPanel = await viewer.openViewer(labPath, undefined);
+    const labName = node?.name || (labPath ? path.basename(labPath, path.extname(labPath)) : 'Unknown Lab');
+    await viewer.createWebviewPanel(context, labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''), labName, isViewMode);
+    currentTopoViewerPanel = (viewer as any).currentPanel;
 
-    // 4) If the panel is undefined, do nothing or return
     if (!currentTopoViewerPanel) {
       return;
     }

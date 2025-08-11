@@ -18,16 +18,12 @@ async function build() {
     await fs.copy(sharedPartialsDir, path.join(templateDestDir, 'partials'));
   }
 
-  // Copy viewer-specific partials directory
-  const viewerPartialsSrcDir = path.join(__dirname, 'src/topoViewer/view/templates/partials');
-  if (fs.existsSync(viewerPartialsSrcDir)) {
-    await fs.copy(viewerPartialsSrcDir, path.join(templateDestDir, 'viewer-partials'));
-  }
-
   // Copy editor-specific partials directory
   const editorPartialsSrcDir = path.join(__dirname, 'src/topoViewer/edit/templates/partials');
   if (fs.existsSync(editorPartialsSrcDir)) {
     await fs.copy(editorPartialsSrcDir, path.join(templateDestDir, 'editor-partials'));
+    // Also copy as viewer-partials since we're unifying the modes
+    await fs.copy(editorPartialsSrcDir, path.join(templateDestDir, 'viewer-partials'));
   }
 
   // Copy common images

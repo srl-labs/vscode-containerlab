@@ -5,7 +5,7 @@ import sinon from 'sinon';
 import cytoscape from 'cytoscape';
 
 import topoViewerState from '../../../src/topoViewer/common/state';
-import { nodeActionConnectToSSH, nodeActionAttachShell, nodeActionViewLogs, linkWireshark } from '../../../src/topoViewer/view/webview-ui/uiHandlers';
+import { nodeActionConnectToSSH, nodeActionAttachShell, nodeActionViewLogs, linkWireshark } from '../../../src/topoViewer/common/webview-ui/uiHandlers';
 
 // Ensure window global for webview code
 (globalThis as any).window = globalThis;

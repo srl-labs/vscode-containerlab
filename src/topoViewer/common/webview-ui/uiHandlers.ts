@@ -2,11 +2,11 @@
 // Contains functions referenced by onclick handlers in the HTML template
 
 // Import logger for webview
-import { log } from '../../common/logging/webviewLogger';
-import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { exportViewportAsSvg } from '../../common/webview-ui/utils';
-import topoViewerState from '../../common/state';
-import { zoomToFitManager } from '../../common/core/managerRegistry';
+import { log } from '../logging/webviewLogger';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { exportViewportAsSvg } from './utils';
+import topoViewerState from '../state';
+import { zoomToFitManager } from '../core/managerRegistry';
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
