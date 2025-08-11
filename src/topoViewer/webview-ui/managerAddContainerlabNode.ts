@@ -1,8 +1,8 @@
 // file: managerAddContainerlabNode.ts
 
 import cytoscape from 'cytoscape';
-import type { NodeData } from '../../common/types/topoViewerGraph';
-import topoViewerState from '../../common/state';
+import type { NodeData } from '../types/topoViewerGraph';
+import topoViewerState from '../state';
 
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.

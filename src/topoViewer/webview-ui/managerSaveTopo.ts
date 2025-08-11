@@ -1,10 +1,10 @@
 // file: managerSaveTopo.ts
 
 import cytoscape from 'cytoscape';
-import loadCytoStyle from '../../common/webview-ui/managerCytoscapeBaseStyles';
-import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { log } from '../../common/logging/webviewLogger';
-import topoViewerState from '../../common/state';
+import loadCytoStyle from './managerCytoscapeBaseStyles';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { log } from '../logging/webviewLogger';
+import topoViewerState from '../state';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.

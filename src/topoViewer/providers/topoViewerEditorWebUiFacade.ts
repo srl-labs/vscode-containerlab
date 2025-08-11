@@ -3,16 +3,16 @@ import * as path from 'path';
 
 import * as fs from 'fs';
 
-import { log } from '../../common/logging/extensionLogger';
+import { log } from '../logging/extensionLogger';
 
-import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../../common/htmlTemplateUtils';
-import { TopoViewerAdaptorClab } from '../../common/core/topoViewerAdaptorClab';
-import { ClabLabTreeNode } from "../../../treeView/common";
-import * as inspector from "../../../treeView/inspector";
+import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../htmlTemplateUtils';
+import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
+import { ClabLabTreeNode } from "../../treeView/common";
+import * as inspector from "../../treeView/inspector";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
-import { saveViewport } from '../../common/utilities/saveViewport';
-import { annotationsManager } from '../../common/utilities/annotationsManager';
+import { saveViewport } from '../utilities/saveViewport';
+import { annotationsManager } from '../utilities/annotationsManager';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.

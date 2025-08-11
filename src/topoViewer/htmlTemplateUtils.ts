@@ -71,20 +71,20 @@ function resolvePartials(content: string, partials: Record<string, string>): str
   });
 }
 
-function resolveTemplatePaths(mode: TemplateMode): { templatePath: string; partialsDir: string; sharedPartialsDir?: string } {
+function resolveTemplatePaths(): { templatePath: string; partialsDir: string; sharedPartialsDir?: string } {
   // Try multiple possible locations for the template files
   const possiblePaths = [
     {
-      // Production (dist) paths
+      // Production (dist) paths - now unified
       templatePath: path.join(__dirname, 'main.html'),
-      partialsDir: path.join(__dirname, `${mode}-partials`),
-      sharedPartialsDir: path.join(__dirname, 'partials') // Shared partials already merged in dist
+      partialsDir: path.join(__dirname, 'partials'),
+      sharedPartialsDir: undefined // All partials are in one directory now
     },
     {
       // Development (source) paths
-      templatePath: path.resolve(__dirname, '../common/templates/main.html'),
-      partialsDir: path.resolve(__dirname, `../${mode}/templates/partials`),
-      sharedPartialsDir: path.resolve(__dirname, '../common/templates/partials')
+      templatePath: path.resolve(__dirname, './templates/main.html'),
+      partialsDir: path.resolve(__dirname, './templates/partials'),
+      sharedPartialsDir: undefined // All partials are in one directory now
     }
   ];
 
@@ -104,7 +104,7 @@ export function generateHtmlTemplate(
   mode: TemplateMode,
   params: ViewerTemplateParams | EditorTemplateParams
 ): string {
-  const { templatePath, partialsDir, sharedPartialsDir } = resolveTemplatePaths(mode);
+  const { templatePath, partialsDir, sharedPartialsDir } = resolveTemplatePaths();
 
   log.info(`allowedHostname in htmlTemplateUtils: ${params.allowedHostname}`);
   if (mode === 'viewer') {
@@ -116,12 +116,22 @@ export function generateHtmlTemplate(
   let template = fs.readFileSync(templatePath, 'utf8');
   const partials = loadPartials(partialsDir, sharedPartialsDir);
 
-  if (mode === 'editor' && !partials.WIRESHARK_MODAL) {
+  // Ensure all unresolved placeholders are replaced with empty strings
+  if (!partials.WIRESHARK_MODAL) {
     partials.WIRESHARK_MODAL = '';
   }
+  if (!partials.CSS_EXTEND) {
+    partials.CSS_EXTEND = '';
+  }
+  if (!partials.SCRIPTS_EXTEND) {
+    partials.SCRIPTS_EXTEND = '';
+  }
+
+  // Mode-specific handling
   if (mode === 'viewer' && !partials.FLOATING_ACTION_PANEL) {
     partials.FLOATING_ACTION_PANEL = '';
   }
+
   template = resolvePartials(template, partials);
 
   const logoFile = params.isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';

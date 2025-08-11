@@ -1,5 +1,5 @@
-import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { log } from '../../common/logging/webviewLogger';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { log } from '../logging/webviewLogger';
 
 /**
  * Handles undo functionality by triggering undo on the YAML file.

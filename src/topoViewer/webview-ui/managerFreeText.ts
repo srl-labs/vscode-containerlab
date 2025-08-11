@@ -1,7 +1,7 @@
 import cytoscape from 'cytoscape';
-import { VscodeMessageSender } from '../../common/webview-ui/managerVscodeWebview';
-import { FreeTextAnnotation } from '../../common/types/topoViewerGraph';
-import { log } from '../../common/logging/webviewLogger';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { FreeTextAnnotation } from '../types/topoViewerGraph';
+import { log } from '../logging/webviewLogger';
 
 /**
  * Manages free text annotations in the Cytoscape viewport

@@ -10,9 +10,9 @@ import * as os from 'os';
 import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../types/topoViewerType';
 import { resolveNodeConfig } from './nodeConfig';
 
-import { version as topoViewerVersion } from '../../../../package.json';
+import { version as topoViewerVersion } from '../../../package.json';
 
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 // log.info(ClabTreeDataProvider.)
 

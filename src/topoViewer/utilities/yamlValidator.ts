@@ -3,7 +3,7 @@ import * as YAML from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
-import { log } from '../../common/logging/extensionLogger';
+import { log } from '../logging/extensionLogger';
 
 export async function validateYamlContent(context: vscode.ExtensionContext, yamlContent: string): Promise<boolean> {
   try {

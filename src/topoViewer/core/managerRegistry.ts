@@ -2,8 +2,8 @@ import type cytoscape from 'cytoscape';
 import { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
 import { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
 import { ManagerZoomToFit } from '../webview-ui/managerZoomToFit';
-import { ManagerLabelEndpoint } from '../../edit/webview-ui/managerLabelEndpoint';
-import { ManagerReloadTopo } from '../../edit/webview-ui/managerReloadTopo';
+import { ManagerLabelEndpoint } from '../webview-ui/managerLabelEndpoint';
+import { ManagerReloadTopo } from '../webview-ui/managerReloadTopo';
 import type { VscodeMessageSender } from '../webview-ui/managerVscodeWebview';
 
 // Singleton instances for managers that don't require external dependencies

@@ -1,4 +1,4 @@
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
 
 export function findContainerNode(
   labs: Record<string, ClabLabTreeNode> | undefined,

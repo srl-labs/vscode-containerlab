@@ -4,7 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const editorConfig = {
   mode: 'production', // or 'development' for debugging
   target: 'web',
-  entry: './src/topoViewer/edit/webview-ui/index.ts',
+  entry: './src/topoViewer/webview-ui/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'topologyEditorWebviewController.js',

@@ -2,8 +2,8 @@
 
 import cytoscape from 'cytoscape';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
-import { getGroupManager } from '../../common/core/managerRegistry';
-import { log } from '../../common/logging/webviewLogger';
+import { getGroupManager } from '../core/managerRegistry';
+import { log } from '../logging/webviewLogger';
 
 /**
  * ManagerFloatingActionPanel handles the floating action button (FAB) and radial menu
