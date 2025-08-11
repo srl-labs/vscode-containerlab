@@ -61,10 +61,9 @@ export class ManagerFloatingActionPanel {
     }
 
     if (addTextBtn) {
-      // Future feature - text annotations
       addTextBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        log.info('Text annotations coming soon');
+        this.handleAddText();
       });
     }
 
@@ -198,6 +197,23 @@ export class ManagerFloatingActionPanel {
     this.closeMenu();
 
     log.info('Added new group via floating action panel');
+  }
+
+  /**
+   * Handles adding free text to the topology
+   */
+  private handleAddText(): void {
+    log.debug('Adding free text via floating action panel');
+
+    // Access the free text manager from the global topology controller
+    const topoController = (window as any).topologyWebviewController;
+    if (topoController && topoController.freeTextManager) {
+      topoController.freeTextManager.enableAddTextMode();
+      this.closeMenu();
+      log.info('Free text mode enabled via floating action panel');
+    } else {
+      log.error('Free text manager not available');
+    }
   }
 
   /**

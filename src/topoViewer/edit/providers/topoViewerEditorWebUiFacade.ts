@@ -11,6 +11,7 @@ import { ClabLabTreeNode } from "../../../treeView/common";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../../common/utilities/saveViewport';
+import { annotationsManager } from '../../common/utilities/annotationsManager';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.
@@ -646,6 +647,33 @@ topology:
             }
             break;
           }
+          case 'topo-editor-load-annotations': {
+            try {
+              const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+              result = { annotations: annotations.freeTextAnnotations || [] };
+              log.info(`Loaded ${annotations.freeTextAnnotations?.length || 0} annotations`);
+            } catch (innerError) {
+              result = { annotations: [] };
+              log.error(`Error loading annotations: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'topo-editor-save-annotations': {
+            try {
+              const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+              await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
+                freeTextAnnotations: data.annotations
+              });
+              result = { success: true };
+              log.info(`Saved ${data.annotations.length} annotations`);
+            } catch (innerError) {
+              error = `Error saving annotations: ${innerError}`;
+              log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           default: {
             error = `Unknown endpoint "${endpointName}".`;
             log.error(error);

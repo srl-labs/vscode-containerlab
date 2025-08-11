@@ -19,6 +19,7 @@ import { ManagerUndo } from '../../edit/webview-ui/managerUndo';
 import { ManagerAddContainerlabNode } from '../../edit/webview-ui/managerAddContainerlabNode';
 import { ManagerViewportPanels } from '../../edit/webview-ui/managerViewportPanels';
 import { ManagerFloatingActionPanel } from '../../edit/webview-ui/managerFloatingActionPanel';
+import { ManagerFreeText } from '../../edit/webview-ui/managerFreeText';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -58,6 +59,7 @@ class TopologyWebviewController {
   public zoomToFitManager: ManagerZoomToFit;
   public labelEndpointManager: ManagerLabelEndpoint;
   public reloadTopoManager: ManagerReloadTopo;
+  public freeTextManager?: ManagerFreeText;
   // eslint-disable-next-line no-unused-vars
   public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => void };
   private interfaceCounters: Record<string, number> = {};
@@ -190,6 +192,8 @@ class TopologyWebviewController {
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
+      this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+      // Annotations will be loaded after the topology data is loaded
     }
     this.groupManager = getGroupManager(this.cy, mode);
     this.groupManager.initializeWheelSelection();
