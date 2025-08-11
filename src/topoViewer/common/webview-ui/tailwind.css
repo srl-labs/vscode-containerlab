@@ -1,5 +1,67 @@
 @import "tailwindcss";
 
+/* Tailwind v4 Configuration */
+@source "./../../../../src/topoViewer/**/*.{ts,tsx,html}";
+@source "./../../../../src/topoViewerEditor/**/*.{ts,tsx,html}";
+
+@theme {
+  /* Custom colors from tailwind.config.js */
+  --color-vscode-bg: var(--vscode-editor-background);
+  --color-vscode-fg: var(--vscode-editor-foreground);
+  --color-vscode-panel-bg: var(--vscode-panel-background);
+  --color-vscode-panel-fg: var(--vscode-panel-foreground);
+  --color-vscode-sidebar-bg: var(--vscode-sideBar-background);
+  --color-vscode-sidebar-fg: var(--vscode-sideBar-foreground);
+  --color-vscode-button-bg: var(--vscode-button-background);
+  --color-vscode-button-fg: var(--vscode-button-foreground);
+  --color-vscode-button-hover: var(--vscode-button-hoverBackground);
+  --color-vscode-input-bg: var(--vscode-input-background);
+  --color-vscode-input-fg: var(--vscode-input-foreground);
+  --color-vscode-input-border: var(--vscode-input-border);
+  --color-vscode-dropdown-bg: var(--vscode-dropdown-background);
+  --color-vscode-dropdown-fg: var(--vscode-dropdown-foreground);
+  --color-vscode-dropdown-border: var(--vscode-dropdown-border);
+  --color-vscode-link: var(--vscode-textLink-foreground);
+  --color-vscode-link-hover: var(--vscode-textLink-activeForeground);
+  
+  /* Dark theme colors */
+  --color-dark-navbar: rgb(24, 24, 24);
+  --color-dark-panel: rgb(40, 40, 40);
+  --color-dark-border: #363636;
+  --color-dark-text: #ffffff;
+  --color-dark-text-muted: #b5b5b5;
+  
+  /* Light theme colors */
+  --color-light-navbar: rgb(70, 86, 246);
+  --color-light-panel: #ffffff;
+  --color-light-border: #dbdbdb;
+  --color-light-text: #000000;
+  --color-light-text-muted: #4a4a4a;
+  
+  /* Custom font sizes */
+  --font-size-xxs: 0.625rem;
+  
+  /* Custom spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  
+  /* Custom box shadows */
+  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-panel-dark: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-navbar: 0px 3px 6px rgba(0, 0, 0, 0.1);
+  --shadow-navbar-dark: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  
+  /* Custom z-index values */
+  --z-9: 9;
+  --z-99: 99;
+  --z-999: 999;
+  --z-9999: 9999;
+  --z-99999: 99999;
+}
+
+/* Dark mode selector */
+@variant dark (&:where(.dark, [data-theme="dark"], .dark *));
+
 /* VSCode Theme Variables */
 :root {
   --bg-primary: var(--vscode-editor-background);
