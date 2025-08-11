@@ -932,7 +932,7 @@ class TopologyWebviewController {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-  const mode = (window as any).topoViewerMode === 'view' ? 'view' : 'edit';
+  const mode = (window as any).topoViewerMode === 'viewer' ? 'view' : 'edit';
   const controller = new TopologyWebviewController('cy', mode);
   // Store the instance for other modules
   topoViewerState.editorEngine = controller;

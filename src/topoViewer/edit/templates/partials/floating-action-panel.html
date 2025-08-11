@@ -1,5 +1,5 @@
-<!-- Floating Action Button with Radial Menu -->
-<div id="floating-action-panel" class="fixed bottom-4 left-4 z-50">
+<!-- Floating Action Button with Radial Menu (Edit Mode Only) -->
+<div id="floating-action-panel" class="fixed bottom-4 left-4 z-50" style="display: none;">
   <!-- Main FAB button -->
   <div id="fab-container" class="relative">
     <!-- Radial menu items (hidden by default) -->
@@ -145,3 +145,14 @@
     animation: none;
   }
 </style>
+
+<script>
+  // Show/hide floating action panel based on mode
+  document.addEventListener('DOMContentLoaded', function() {
+    const panel = document.getElementById('floating-action-panel');
+    // Only show in edit mode (not viewer mode)
+    if (panel && window.topoViewerMode !== 'viewer') {
+      panel.style.display = 'block';
+    }
+  });
+</script>

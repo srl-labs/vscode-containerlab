@@ -7,7 +7,7 @@
     <div class="flex flex-col leading-tight pl-0">
       <!-- <p class="text-xl font-semibold select-none">containerlab</p> -->
       <p class="text-lg font-normal select-none">
-        <span class="">TopoViewer · {{topologyName}}</span>
+        <span class="">TopoViewer <span id="mode-indicator" class="mode-{{topoViewerMode}} px-2 py-0.5 text-xs font-semibold rounded uppercase text-white">{{topoViewerMode}}</span> · {{topologyName}}</span>
       </p>
     </div>
   </div>
@@ -18,3 +18,12 @@
     </div>
   </div>
 </nav>
+
+<style>
+  #mode-indicator.mode-viewer {
+    background-color: #10b981; /* green-500 */
+  }
+  #mode-indicator.mode-editor {
+    background-color: #3b82f6; /* blue-500 */
+  }
+</style>
