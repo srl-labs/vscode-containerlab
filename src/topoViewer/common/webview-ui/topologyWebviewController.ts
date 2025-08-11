@@ -367,16 +367,16 @@ class TopologyWebviewController {
           }
         }
       ],
-      menuRadius: 80, // smaller radius for text menu
+      menuRadius: 60, // smaller fixed radius for text menu
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command
       separatorWidth: 3, // the empty spacing in pixels between successive commands
-      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
-      adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
-      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
-      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
+      spotlightPadding: 4, // minimal spacing to keep menu close
+      adaptativeNodeSpotlightRadius: false, // DON'T adapt to node size - keep it small
+      minSpotlightRadius: 20, // fixed small spotlight
+      maxSpotlightRadius: 20, // fixed small spotlight
       openMenuEvents: 'cxttap', // single right-click to open menu
       itemColor: 'white', // the colour of text in the command's content
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
