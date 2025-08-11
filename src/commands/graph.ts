@@ -3,8 +3,7 @@ import * as fs from "fs";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
-import { TopoViewer } from "../topoViewer/backend/topoViewerWebUiFacade";
-import { RunningLabTreeDataProvider } from "../treeView/runningLabsProvider";
+import { TopoViewer } from "../topoViewer/view/providers/topoViewerWebUiFacade";
 import { getSelectedLabNode } from "../helpers/utils";
 
 
@@ -34,17 +33,18 @@ async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizo
 
   // Wait for containerlab to finish generating the .drawio file,
   // passing the theme argument.
-  await graphCmd
-    .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
-    .then(() => {
-      // Verify the file exists.
-      if (!fs.existsSync(drawioPath)) {
-        return vscode.window.showErrorMessage(
-          `Containerlab failed to generate .drawio file for lab: ${node.name}.`
-        );
-      }
-      vscode.commands.executeCommand("vscode.open", drawioUri);
-    });
+    await graphCmd
+      .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
+      .then(() => {
+        // Verify the file exists.
+        if (!fs.existsSync(drawioPath)) {
+          vscode.window.showErrorMessage(
+            `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+          );
+          return;
+        }
+        vscode.commands.executeCommand("vscode.open", drawioUri);
+      });
 }
 
 export async function graphDrawIOHorizontal(node?: ClabLabTreeNode) {
@@ -110,16 +110,10 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   // 2) store the viewer in the global variable
   currentTopoViewer = viewer;
 
-  // do the same logic as before...
-  const provider = new RunningLabTreeDataProvider(context);
-  const clabTreeDataToTopoviewer = await provider.discoverInspectLabs();
-
   try {
     // 3) call openViewer, which returns (panel | undefined).
-    currentTopoViewerPanel = await viewer.openViewer(labPath, clabTreeDataToTopoviewer);
-
-    // await viewer.openViewer(yamlFilePath, clabTreeDataToTopoviewer);
-    // currentTopoViewerPanel = viewer.currentTopoViewerPanel
+    // Pass undefined for clabTreeDataToTopoviewer - let openViewer handle discovery internally
+    currentTopoViewerPanel = await viewer.openViewer(labPath, undefined);
 
     // 4) If the panel is undefined, do nothing or return
     if (!currentTopoViewerPanel) {
@@ -160,4 +154,11 @@ export async function graphTopoviewerReload() {
 
   // 3) Now call updatePanelHtml on the existing panel
   currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
+}
+
+/**
+ * Get the current TopoViewer instance
+ */
+export function getCurrentTopoViewer(): TopoViewer | undefined {
+  return currentTopoViewer;
 }

@@ -1,20 +1,34 @@
 {
-        "compilerOptions": {
-          "module": "commonjs",
-          "esModuleInterop": true,
-          "target": "ES2020",
-          "lib": ["ES2020", "dom"], // Includes 'dom' for browser globals
-          "outDir": "out",
-          "rootDir": ".",
-          "strict": true,
-          "sourceMap": true,
-          "typeRoots": ["src/topoViewer/backend/types", "./node_modules/@types"],
-          "resolveJsonModule": true,
-          "types": ["mocha", "node"]
-        },
-        "exclude": [
-          "node_modules",
-          ".vscode-test"
-        ]
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "esModuleInterop": true,
+    "lib": ["ES2024", "dom"],
+    "module": "commonjs",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "outDir": "out",
+    "resolveJsonModule": true,
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "target": "ES2024",
+    "typeRoots": [
+        "src/topoViewer/common/types",
+      "./node_modules/@types"
+    ],
+    "types": ["mocha", "node"]
+  },
+  "exclude": [
+    "node_modules",
+    ".vscode-test",
+    "test/**/*",
+    "legacy-backup/**/*"
+  ]
 }
-  

@@ -1,0 +1,593 @@
+@import "tailwindcss";
+
+/* Tailwind v4 Configuration */
+@source "./../../../../src/topoViewer/**/*.{ts,tsx,html}";
+@source "./../../../../src/topoViewerEditor/**/*.{ts,tsx,html}";
+
+@theme {
+  /* Custom colors from tailwind.config.js */
+  --color-vscode-bg: var(--vscode-editor-background);
+  --color-vscode-fg: var(--vscode-editor-foreground);
+  --color-vscode-panel-bg: var(--vscode-panel-background);
+  --color-vscode-panel-fg: var(--vscode-panel-foreground);
+  --color-vscode-sidebar-bg: var(--vscode-sideBar-background);
+  --color-vscode-sidebar-fg: var(--vscode-sideBar-foreground);
+  --color-vscode-button-bg: var(--vscode-button-background);
+  --color-vscode-button-fg: var(--vscode-button-foreground);
+  --color-vscode-button-hover: var(--vscode-button-hoverBackground);
+  --color-vscode-input-bg: var(--vscode-input-background);
+  --color-vscode-input-fg: var(--vscode-input-foreground);
+  --color-vscode-input-border: var(--vscode-input-border);
+  --color-vscode-dropdown-bg: var(--vscode-dropdown-background);
+  --color-vscode-dropdown-fg: var(--vscode-dropdown-foreground);
+  --color-vscode-dropdown-border: var(--vscode-dropdown-border);
+  --color-vscode-link: var(--vscode-textLink-foreground);
+  --color-vscode-link-hover: var(--vscode-textLink-activeForeground);
+  
+  /* Dark theme colors */
+  --color-dark-navbar: rgb(24, 24, 24);
+  --color-dark-panel: rgb(40, 40, 40);
+  --color-dark-border: #363636;
+  --color-dark-text: #ffffff;
+  --color-dark-text-muted: #b5b5b5;
+  
+  /* Light theme colors */
+  --color-light-navbar: rgb(70, 86, 246);
+  --color-light-panel: #ffffff;
+  --color-light-border: #dbdbdb;
+  --color-light-text: #000000;
+  --color-light-text-muted: #4a4a4a;
+  
+  /* Custom font sizes */
+  --font-size-xxs: 0.625rem;
+  
+  /* Custom spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  
+  /* Custom box shadows */
+  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-panel-dark: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-navbar: 0px 3px 6px rgba(0, 0, 0, 0.1);
+  --shadow-navbar-dark: 0px 3px 6px rgba(0, 0, 0, 0.4);
+  
+  /* Custom z-index values */
+  --z-9: 9;
+  --z-99: 99;
+  --z-999: 999;
+  --z-9999: 9999;
+  --z-99999: 99999;
+}
+
+/* Dark mode selector */
+@variant dark (&:where(.dark, [data-theme="dark"], .dark *));
+
+/* VSCode Theme Variables */
+:root {
+  --bg-primary: var(--vscode-editor-background);
+  --bg-secondary: var(--vscode-panel-background);
+  --bg-hover: var(--vscode-list-hoverBackground);
+  --text-primary: var(--vscode-editor-foreground);
+  --text-secondary: var(--vscode-descriptionForeground);
+  --border: var(--vscode-panel-border);
+  --accent: var(--vscode-button-background);
+  --accent-hover: var(--vscode-button-hoverBackground);
+  --success: var(--vscode-charts-green);
+  --warning: var(--vscode-charts-yellow);
+  --error: var(--vscode-charts-red);
+  --info: var(--vscode-charts-blue);
+  --diff-add: var(--vscode-diffEditor-insertedTextBorder, var(--vscode-charts-green));
+  --diff-add-bg: var(--vscode-diffEditor-insertedTextBackground);
+  --diff-add-line-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground));
+  --diff-remove: var(--vscode-diffEditor-removedTextBorder, var(--vscode-charts-red));
+  --diff-remove-bg: var(--vscode-diffEditor-removedTextBackground);
+  --diff-remove-line-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground));
+  --diff-line-number: var(--vscode-editorLineNumber-foreground);
+}
+
+@layer base {
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+}
+
+/* Custom component classes using Tailwind */
+@layer components {
+  /* Button styles */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+  }
+  
+  .btn-primary {
+    background-color: var(--accent);
+    color: var(--vscode-button-foreground);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--accent-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-secondaryBackground));
+  }
+
+  .btn-outlined {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background-color: transparent;
+  }
+  
+  .btn-outlined:hover {
+    background-color: var(--bg-hover);
+  }
+
+  .btn-danger {
+    border: 1px solid var(--error);
+    color: var(--error);
+    background-color: transparent;
+  }
+
+  .btn-danger:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  .btn-small {
+    padding: 0.25rem 0.75rem;
+  }
+
+  .btn-icon {
+    padding: 0.5rem;
+  }
+  .btn-icon-hover-clean {
+    padding: 0.5rem;
+    background-color: transparent;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+  }
+
+  .btn-icon-hover-clean:hover {
+    background-color: var(--vscode-tab-inactiveBackground);
+  }
+
+  .btn-icon-geo-map-hover-clean {
+    padding: 0.5rem;
+    background-color: var(--vscode-button-secondaryBackground);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+  }
+
+  .btn-icon-geo-map-hover-clean:hover {
+    background-color: var(--vscode-tab-inactiveBackground);
+  }
+  /* Panel styles */
+  .panel {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  .panel-heading, .panel-header {
+    background-color: var(--vscode-sideBar-background);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  
+  .panel-block {
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+  }
+.panel-block:last-child {
+  border-bottom: 0;
+}
+  
+  /* Dropdown styles */
+  .dropdown-menu {
+    background-color: var(
+      --vscode-dropdown-background,
+      var(--vscode-editor-background)
+    );
+    border: 1px solid var(
+      --vscode-dropdown-border,
+      var(--vscode-editor-foreground)
+    );
+    position: absolute;
+    z-index: 50;
+    margin-top: 0.25rem;
+    border-radius: 0.375rem;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .dropdown-button {
+    padding: 0.5rem 0.75rem;
+    font-size: var(--vscode-font-size);
+    border-radius: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    background-color: var(
+      --vscode-dropdown-background,
+      var(--vscode-editor-background)
+    );
+    color: var(
+      --vscode-dropdown-foreground,
+      var(--text-primary)
+    );
+  }
+
+  .dropdown-button:hover {
+    background-color: var(
+      --vscode-list-hoverBackground,
+      var(--bg-hover)
+    );
+  }
+
+  .dropdown-item {
+    color: var(
+      --vscode-dropdown-foreground,
+      var(--text-primary)
+    );
+    display: block;
+    padding: 0.5rem 1rem;
+    font-size: var(--vscode-font-size);
+    cursor: pointer;
+  }
+
+  .dropdown-item:hover {
+    background-color: var(
+      --vscode-list-hoverBackground,
+      var(--bg-hover)
+    );
+  }
+  
+  /* Input styles */
+  .input-field {
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    outline: none;
+  }
+  
+  .input-field:focus {
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+  }
+  
+  /* Label styles */
+  .label {
+    color: var(--text-primary);
+    display: block;
+    font-weight: 500;
+  }
+  
+  /* Modal styles */
+  .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+  }
+  
+  .modal-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0.5rem;
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    z-index: 50;
+    max-width: 42rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow: auto;
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+    border-color: var(--vscode-progressBar-background);
+    border-top-color: var(--accent);
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border-width: 4px;
+    border-radius: 9999px;
+    animation: spin 1s linear infinite;
+  }
+  
+  /* Navbar styles */
+  .navbar {
+    background-color: var(--vscode-tab-activeBackground);
+    border-bottom: 1px solid var(--vscode-tab-border);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .navbar-end {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Column utilities */
+  .column {
+    background-color: var(--vscode-panel-background);
+    flex: 1 1 0%;
+  }
+  
+  .columns {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+  
+  .columns > * {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  /* Size utilities matching Bulma */
+  .is-size-7 {
+    font-size: 0.75rem;
+  }
+  
+  .is-size-6 {
+    font-size: 0.875rem;
+  }
+  
+  .is-size-5 {
+    font-size: 1rem;
+  }
+  
+  .is-size-4 {
+    font-size: 1.125rem;
+  }
+  
+  /* Visibility utilities */
+  .is-hidden {
+    display: none;
+  }
+  
+  /* Flex utilities matching Bulma */
+  .is-flex {
+    display: flex;
+  }
+  
+  .is-flex-direction-column {
+    flex-direction: column;
+  }
+  
+  .is-justify-content-space-between {
+    justify-content: space-between;
+  }
+  
+  .is-justify-content-center {
+    justify-content: center;
+  }
+  
+  .is-justify-content-flex-end {
+    justify-content: flex-end;
+  }
+  
+  .is-align-items-center {
+    align-items: center;
+  }
+
+  /* Migrated from style.css */
+  .panel-overlay {
+    background-color: var(--vscode-editorWidget-background) !important;
+    border: 1px solid var(--vscode-editorWidget-border) !important;
+    position: fixed;
+    z-index: 9999;
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+  }
+
+  .navbar-element-4a {
+    background-color: var(--vscode-titleBar-activeBackground);
+  }
+
+  .ViewPortDrawer {
+    background-color: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-panel-border);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  .box {
+    background-color: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-panel-border);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  .panel-tabContainer {
+    background-color: var(--vscode-panel-background);
+    padding: 0;
+  }
+
+  .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6rem;
+    height: 6rem;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Cytoscape context menu styling */
+  .cxtmenu {
+    background-color: var(--vscode-dropdown-background);
+    border: 1px solid var(--vscode-dropdown-border);
+  }
+
+  .cxtmenu-item {
+    color: var(--vscode-dropdown-foreground);
+  }
+
+  .cxtmenu-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  /* Text utilities */
+  .has-text-weight-normal {
+    font-weight: 400;
+  }
+  
+  .has-text-weight-medium {
+    font-weight: 500;
+  }
+  
+  .has-text-weight-semibold {
+    font-weight: 600;
+  }
+  
+  .has-text-weight-bold {
+    font-weight: 700;
+  }
+  
+  .has-text-weight-light {
+    font-weight: 300;
+  }
+  
+  .has-text-white {
+    color: #ffffff;
+  }
+  
+  .has-text-left {
+    text-align: left;
+  }
+  
+  .has-text-right {
+    text-align: right;
+  }
+  
+  .has-text-center {
+    text-align: center;
+  }
+  
+  /* Background utilities */
+  .has-background-4a {
+    background-color: var(--vscode-titleBar-activeBackground);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  /* Unselectable text */
+  .is-unselectable {
+    user-select: none;
+  }
+  
+  /* Field utilities */
+  .field {
+    margin-bottom: 1rem;
+  }
+  
+  .control {
+    position: relative;
+  }
+  
+  .has-icons-left .icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .has-icons-left .input-field {
+    padding-left: 2.5rem;
+  }
+
+  /* Link utilities */
+  .link {
+    color: var(--vscode-textLink-foreground);
+  }
+
+  .link:hover {
+    color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .border-default {
+    border-color: var(--border);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Override cytoscape default styles for VSCode theme */
+#cy {
+  background-color: var(--vscode-editor-background);
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#cy-leaflet {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}

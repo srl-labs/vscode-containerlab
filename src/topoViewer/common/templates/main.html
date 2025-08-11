@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" id="root" class="h-full">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{pageTitle}}</title>
+
+  <!-- Bundled CSS (includes Tailwind) -->
+  <link rel="stylesheet" href="{{jsOutDir}}/{{cssBundle}}?ver=1" />
+
+  {{CSS_EXTEND}}
+</head>
+
+<body class="h-full w-full m-0 p-2 overflow-hidden font-sans text-sm">
+
+  {{NAVBAR}}
+
+  <div id="root-div" class="absolute inset-0 z-10">
+
+    <div id="cy-leaflet" class="absolute inset-0 p-0 z-0 hidden"></div>
+
+    <div id="cy" class="absolute inset-0 p-0 z-10"></div>
+
+    {{VIEWPORT_DRAWER_LAYOUT}}
+    {{VIEWPORT_DRAWER_TOPOLOGY_OVERVIEW}}
+    {{VIEWPORT_DRAWER_CAPTURE_SCEENSHOOT}}
+    {{PANEL_NODE}}
+    {{PANEL_NODE_EDITOR_PARENT}}
+    {{PANEL_NODE_EDITOR}}
+    {{PANEL_TOPOVIEWER_ABOUT}}
+    {{PANEL_LINK}}
+    {{PANEL_LINK_EDITOR}}
+    {{WIRESHARK_MODAL}}
+    {{FLOATING_ACTION_PANEL}}
+    {{SCRIPTS}}
+  </div>
+
+</body>
+
+</html>

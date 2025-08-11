@@ -90,7 +90,7 @@ export class ClabCommand extends cmd.Command {
             {
                 location: vscode.ProgressLocation.Notification,
                 title: title,
-                cancellable: false
+                cancellable: true
             },
             (progress) => new Promise<string>((resolve, reject) => {
                 const child = exec(cmd.join(" "), { encoding: 'utf-8' }, (err, stdout, stderr) => {

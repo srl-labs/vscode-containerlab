@@ -10,7 +10,8 @@ export default [
       'out/**',
       'dist/**',
       'node_modules/**',
-      '.vscode-test.mjs'  // VS Code test harness
+      '.vscode-test.mjs',  // VS Code test harness
+      'legacy-backup/**'   // Legacy backup files
     ]
   },
 

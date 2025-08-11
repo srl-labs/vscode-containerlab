@@ -1,0 +1,22 @@
+    <!-- Inject mappings and defaults -->
+    <script> window.imageMapping = {{imageMapping}}; </script>
+    <script> window.ifacePatternMapping = {{ifacePatternMapping}}; </script>
+    <script> window.defaultKind = "{{defaultKind}}"; </script>
+    <script> window.defaultType = "{{defaultType}}"; </script>
+    <script> window.updateLinkEndpointsOnKindChange = {{updateLinkEndpointsOnKindChange}}; </script>
+
+    <!-- Load the compiled TypeScript bundle -->
+    <script src="{{jsOutDir}}/topologyEditorWebviewController.js?ver=1"></script>
+
+    <!-- Initialize TopoViewer after bundle loads -->
+    <script>
+      if (typeof topologyWebviewController !== 'undefined') {
+        if (typeof log !== 'undefined' && log.info) {
+          log.info('TopologyWebviewController loaded successfully');
+        }
+      } else {
+        if (typeof log !== 'undefined' && log.error) {
+          log.error('TopologyWebviewController failed to load');
+        }
+      }
+    </script>

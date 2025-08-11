@@ -1,0 +1,21 @@
+    <!-- Smart Viewer/Editor Detection Variables -->
+    <script> window.deploymentState = "{{deploymentState}}"; </script>
+    <script> window.viewerMode = "{{viewerMode}}"; </script>
+
+    <!-- Load the compiled TypeScript bundle -->
+    <script src="{{jsOutDir}}/topologyWebviewController.js?ver=1"></script>
+
+    <!-- Initialize TopoViewer after bundle loads -->
+    <script>
+      // Wait for TopologyWebviewController to be available and initialize
+      if (typeof TopologyWebviewController !== 'undefined') {
+        if (typeof log !== 'undefined' && log.info) {
+          log.info('TopologyWebviewController loaded successfully');
+        }
+        // The bundle includes DOMContentLoaded handler, so initialization is automatic
+      } else {
+        if (typeof log !== 'undefined' && log.error) {
+          log.error('TopologyWebviewController failed to load');
+        }
+      }
+    </script>
