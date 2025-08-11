@@ -103,25 +103,34 @@ export class TopoViewer {
     try {
       const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
 
-      if (!clabTreeDataToTopoviewer) {
-        clabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
-      }
-
-      const [deploymentState, cytoTopology] = await Promise.all([
-        detectDeploymentState(yamlContent, clabTreeDataToTopoviewer),
-        Promise.resolve(
-          this.adaptor.clabYamlToCytoscapeElements(
-            yamlContent,
-            clabTreeDataToTopoviewer
-          )
-        ),
-      ]);
-
-      this.deploymentState = deploymentState;
-      this.viewerMode = getViewerMode(deploymentState);
-
       const folderName = path.basename(yamlFilePath, path.extname(yamlFilePath));
       this.lastFolderName = folderName;
+
+      let cytoTopology;
+
+      if (clabTreeDataToTopoviewer) {
+        const [deploymentState, cyto] = await Promise.all([
+          detectDeploymentState(yamlContent, clabTreeDataToTopoviewer),
+          Promise.resolve(
+            this.adaptor.clabYamlToCytoscapeElements(
+              yamlContent,
+              clabTreeDataToTopoviewer
+            )
+          ),
+        ]);
+
+        this.deploymentState = deploymentState;
+        this.viewerMode = getViewerMode(deploymentState);
+        cytoTopology = cyto;
+        this.cacheClabTreeDataToTopoviewer = clabTreeDataToTopoviewer;
+      } else {
+        this.deploymentState = 'unknown';
+        this.viewerMode = getViewerMode('unknown');
+        cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+          yamlContent,
+          undefined
+        );
+      }
 
       await this.adaptor.createFolderAndWriteJson(
         this.context,
@@ -150,13 +159,44 @@ export class TopoViewer {
       });
       this.currentTopoViewerPanel = panel;
 
-      this.cacheClabTreeDataToTopoviewer = clabTreeDataToTopoviewer;
+      if (!clabTreeDataToTopoviewer) {
+        void this.initializeDeploymentState(yamlContent);
+      }
 
       return panel;
     } catch (err) {
       vscode.window.showErrorMessage(`Error in openViewer: ${err}`);
       log.error(`openViewer: ${err}`);
       return undefined;
+    }
+  }
+
+  private async initializeDeploymentState(yamlContent: string): Promise<void> {
+    try {
+      const treeData = await this.clabTreeProviderImported.discoverInspectLabs();
+      const deploymentState = await detectDeploymentState(yamlContent, treeData);
+      this.deploymentState = deploymentState;
+      this.viewerMode = getViewerMode(deploymentState);
+      this.cacheClabTreeDataToTopoviewer = treeData;
+
+      if (this.lastFolderName) {
+        const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+          yamlContent,
+          treeData
+        );
+        await this.adaptor.createFolderAndWriteJson(
+          this.context,
+          this.lastFolderName,
+          cytoTopology,
+          yamlContent
+        );
+      }
+
+      if (this.currentTopoViewerPanel) {
+        await this.updatePanelHtml(this.currentTopoViewerPanel, treeData, false);
+      }
+    } catch (err) {
+      log.error(`initializeDeploymentState: ${err}`);
     }
   }
 
@@ -214,7 +254,11 @@ export class TopoViewer {
    * @param panel - The active WebviewPanel to update.
    * @returns A promise that resolves when the panel has been updated.
    */
-  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<void> {
+  public async updatePanelHtml(
+    panel: vscode.WebviewPanel | undefined,
+    clabTreeDataToTopoviewer?: Record<string, ClabLabTreeNode>,
+    showInfo: boolean = true
+  ): Promise<void> {
     if (!this.lastFolderName) {
       return;
     }
@@ -222,8 +266,9 @@ export class TopoViewer {
     const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.lastFolderName;
 
-    // Always fetch fresh tree data before updating
-    const updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+    const updatedClabTreeDataToTopoviewer =
+      clabTreeDataToTopoviewer ||
+      (await this.clabTreeProviderImported.discoverInspectLabs());
 
     // Update the cache with fresh data
     this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
@@ -237,7 +282,12 @@ export class TopoViewer {
       updatedClabTreeDataToTopoviewer
     );
 
-    this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    this.adaptor.createFolderAndWriteJson(
+      this.context,
+      folderName,
+      cytoTopology,
+      yamlContent
+    );
 
     if (panel) {
       const viewerParams: Partial<ViewerTemplateParams> = {
@@ -255,8 +305,9 @@ export class TopoViewer {
         viewerParams
       );
 
-      // Only show message for manual reload, not for automatic updates
-      vscode.window.showInformationMessage('TopoViewer Webview reloaded!');
+      if (showInfo) {
+        vscode.window.showInformationMessage('TopoViewer Webview reloaded!');
+      }
     } else {
       log.error('Panel is undefined');
     }
