@@ -15,7 +15,7 @@ import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 
 /** Our global output channel */
-export let outputChannel: vscode.OutputChannel;
+export let outputChannel: vscode.LogOutputChannel;
 export let treeView: any;
 export let localTreeView: any;
 export let runningTreeView: any;
@@ -66,7 +66,7 @@ export async function refreshSshxSessions() {
       });
     }
   } catch (err: any) {
-    outputChannel.appendLine(`[ERROR] Failed to refresh SSHX sessions: ${err.message || err}`);
+    outputChannel.error(`Failed to refresh SSHX sessions: ${err.message || err}`);
   }
 }
 
@@ -111,7 +111,7 @@ export async function refreshGottySessions() {
       });
     }
   } catch (err: any) {
-    outputChannel.appendLine(`[ERROR] Failed to refresh GoTTY sessions: ${err.message || err}`);
+    outputChannel.error(`Failed to refresh GoTTY sessions: ${err.message || err}`);
   }
 }
 
@@ -126,10 +126,10 @@ export const sshUserMapping = sshUserJson;
  */
 export async function activate(context: vscode.ExtensionContext) {
   // Create and register the output channel
-  outputChannel = vscode.window.createOutputChannel('Containerlab');
+  outputChannel = vscode.window.createOutputChannel('Containerlab', {log: true});
   context.subscriptions.push(outputChannel);
 
-  outputChannel.appendLine(process.platform);
+  outputChannel.info(process.platform);
 
   // Allow activation only on Linux or when connected via WSL.
   if (process.platform !== "linux" && vscode.env.remoteName !== "wsl") {
@@ -139,7 +139,7 @@ export async function activate(context: vscode.ExtensionContext) {
     return; // Do not activate the extension.
   }
 
-  outputChannel.appendLine('[DEBUG] Containerlab extension activated.');
+  outputChannel.info('Containerlab extension activated.');
 
   // 1) Ensure containerlab is installed
   const clabInstalled = await utils.ensureClabInstalled(outputChannel);
@@ -150,7 +150,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 2) If installed, check for updates
   utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
-    outputChannel.appendLine(`[ERROR] Update check error: ${err.message}`);
+    outputChannel.error(`Update check error: ${err.message}`);
   });
 
   // Show welcome page
@@ -673,6 +673,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   if (outputChannel) {
-    outputChannel.appendLine('[DEBUG] Deactivating Containerlab extension.');
+    outputChannel.info('Deactivating Containerlab extension.');
   }
 }

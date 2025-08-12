@@ -62,7 +62,7 @@ export async function openBrowser(node: ClabContainerTreeNode) {
     }
   } catch (error: any) {
     vscode.window.showErrorMessage(`Error getting port mappings: ${error.message}`);
-    outputChannel.appendLine(`[ERROR] openPort() => ${error.message}`);
+    outputChannel.error(`openPort() => ${error.message}`);
   }
 }
 
@@ -81,14 +81,14 @@ async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
     const { stdout, stderr } = await execAsync(command);
 
     if (stderr) {
-      outputChannel.appendLine(`[WARN] stderr from port mapping command: ${stderr}`);
+      outputChannel.warn(`stderr from port mapping command: ${stderr}`);
     }
 
     // Store unique port mappings by hostPort to avoid duplicates
     const portMap = new Map<string, PortMapping>();
 
     if (!stdout.trim()) {
-      outputChannel.appendLine(`[INFO] No exposed ports found for container ${containerId}`);
+      outputChannel.info(`No exposed ports found for container ${containerId}`);
       return [];
     }
 
@@ -128,14 +128,14 @@ async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
           });
         }
       } else {
-        outputChannel.appendLine(`[WARN] Failed to parse port mapping from: ${line}`);
+        outputChannel.warn(`Failed to parse port mapping from: ${line}`);
       }
     }
 
     // Convert the map values to an array
     return Array.from(portMap.values());
   } catch (error: any) {
-    outputChannel.appendLine(`[ERROR] Error getting port mappings: ${error.message}`);
+    outputChannel.error(`Error getting port mappings: ${error.message}`);
     return [];
   }
 }
@@ -147,7 +147,7 @@ function openPortInBrowser(mapping: PortMapping, containerName: string) {
   // Always use HTTP protocol - simple and direct
   const url = `http://localhost:${mapping.hostPort}`;
 
-  outputChannel.appendLine(`[INFO] Opening ${url} for container ${containerName}`);
+  outputChannel.info(`Opening ${url} for container ${containerName}`);
 
   // Ensure the URL has a proper protocol so the system opens it in a browser
   vscode.env.openExternal(vscode.Uri.parse(url));

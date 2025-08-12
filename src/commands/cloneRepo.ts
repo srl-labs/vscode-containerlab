@@ -28,14 +28,14 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
   const repoName = path.basename(repoUrl.replace(/\.git$/, ""));
   const dest = path.join(destBase, repoName);
 
-  outputChannel.appendLine(`[INFO] git clone ${repoUrl} ${dest}`);
+  outputChannel.info(`git clone ${repoUrl} ${dest}`);
 
   exec(`${utils.getSudo()}git clone ${repoUrl} "${dest}"`, (error, stdout, stderr) => {
     if (stdout) { outputChannel.append(stdout); }
     if (stderr) { outputChannel.append(stderr); }
     if (error) {
       vscode.window.showErrorMessage(`Git clone failed: ${error.message}`);
-      outputChannel.appendLine(`[ERROR] git clone failed: ${error.message}`);
+      outputChannel.error(`git clone failed: ${error.message}`);
       return;
     }
     vscode.window.showInformationMessage(`Repository cloned to ${dest}`);

@@ -38,7 +38,7 @@ async function parseGottyLink(output: string): Promise<string | undefined> {
       return url;
     }
   } catch (error) {
-    outputChannel.appendLine(`[ERROR] Failed to parse GoTTY link: ${error}`);
+    outputChannel.error(`Failed to parse GoTTY link: ${error}`);
   }
 
   return undefined;
