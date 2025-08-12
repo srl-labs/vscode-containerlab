@@ -14,7 +14,6 @@ describe('webviewLogger', () => {
     '..',
     'src',
     'topoViewer',
-    'common',
     'logging',
     'webviewLogger'
   );

@@ -3,8 +3,9 @@
   "compilerOptions": {
     "rootDir": "..",
     "outDir": "../out/test",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": ["../src/topoViewer/types", "../node_modules/@types"]
   },
-  "include": ["**/*.ts", "../src/topoViewer/common/types/globals.d.ts", "../src/topoViewer/common/webview-ui/types.d.ts"],
+  "include": ["**/*.ts", "../src/topoViewer/types/**/*.d.ts", "../src/topoViewer/webview-ui/types.d.ts"],
   "exclude": []
 }

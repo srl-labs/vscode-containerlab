@@ -1,1 +1,1 @@
-declare module 'cytoscape-grid-guide'
+declare module 'cytoscape-grid-guide';
