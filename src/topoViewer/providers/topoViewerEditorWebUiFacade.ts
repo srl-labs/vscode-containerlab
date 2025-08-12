@@ -9,6 +9,7 @@ import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, Templa
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
+import { RunningLabTreeDataProvider } from "../../treeView/runningLabsProvider";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
@@ -30,6 +31,7 @@ export class TopoViewerEditor {
   public createTopoYamlTemplateSuccess: boolean = false;
   private currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+  private clabTreeProviderImported: RunningLabTreeDataProvider;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
@@ -43,6 +45,7 @@ export class TopoViewerEditor {
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
 
   private sleep(ms: number): Promise<void> {
@@ -238,7 +241,15 @@ topology:
     const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.currentLabName;
 
-    const updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
+    let updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
+    if (this.isViewMode) {
+      try {
+        updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+        this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
+      } catch (err) {
+        log.warn(`Failed to refresh running lab data: ${err}`);
+      }
+    }
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
     let yamlContent: string = '';
@@ -461,7 +472,16 @@ topology:
         }
       }
 
-      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, undefined);
+      let treeData: Record<string, ClabLabTreeNode> | undefined = undefined;
+      if (this.isViewMode) {
+        try {
+          treeData = await this.clabTreeProviderImported.discoverInspectLabs();
+          this.cacheClabTreeDataToTopoviewer = treeData;
+        } catch (err) {
+          log.warn(`Failed to load running lab data: ${err}`);
+        }
+      }
+      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, treeData);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
         labName,                // folder below <extension>/topoViewerData/
