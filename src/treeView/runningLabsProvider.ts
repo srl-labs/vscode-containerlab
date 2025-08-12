@@ -155,9 +155,36 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private async refreshTopoViewerIfOpen(): Promise<void> {
         try {
             const topoViewer = getCurrentTopoViewer() as any;
-            if (topoViewer && topoViewer.currentPanel) {
-                await topoViewer.updatePanelHtml(topoViewer.currentPanel);
-                console.log("[RunningLabTreeDataProvider]:\tRefreshed topology viewer with updated tree data");
+            if (topoViewer && topoViewer.currentPanel && topoViewer.currentLabName) {
+                // Check if deployment state changed for the active lab
+                const labName = topoViewer.currentLabName;
+                const labNode = this.treeItems.find(lab => lab.name === labName);
+                const isCurrentlyDeployed = labNode?.contextValue?.startsWith("containerlabLabDeployed") ?? false;
+                const shouldBeViewMode = isCurrentlyDeployed;
+                
+                console.log(`[RunningLabsProvider]: Lab ${labName} - deployed: ${isCurrentlyDeployed}, current mode: ${topoViewer.isViewMode ? 'viewer' : 'editor'}, should be: ${shouldBeViewMode ? 'viewer' : 'editor'}`);
+                console.log(`[RunningLabsProvider]: Lab node context: ${labNode?.contextValue}`);
+                console.log(`[RunningLabsProvider]: All tree items:`, this.treeItems.map(item => `${item.name}: ${item.contextValue}`));
+                
+                // Always recreate the webview to ensure it's fully refreshed
+                console.log(`[RunningLabsProvider]: Recreating webview for ${labName} in ${shouldBeViewMode ? 'VIEWER' : 'EDITOR'} mode`);
+                
+                // Dispose current panel
+                topoViewer.currentPanel.dispose();
+                
+                // Recreate with correct mode by calling createWebviewPanel
+                const fileUri = topoViewer.lastYamlFilePath ? 
+                    require('vscode').Uri.file(topoViewer.lastYamlFilePath) : 
+                    require('vscode').Uri.parse('');
+                
+                await topoViewer.createWebviewPanel(
+                    topoViewer.context,
+                    fileUri,
+                    labName,
+                    shouldBeViewMode
+                );
+                
+                console.debug(`[RunningLabsProvider]: Successfully recreated webview in ${shouldBeViewMode ? 'viewer' : 'editor'} mode`);
             }
         } catch (error) {
             console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer:", error);
