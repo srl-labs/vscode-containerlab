@@ -281,7 +281,9 @@ topology:
     const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.currentLabName;
 
-    let updatedClabTreeDataToTopoviewer = this.cacheClabTreeDataToTopoviewer;
+    let updatedClabTreeDataToTopoviewer = this.isViewMode
+      ? this.cacheClabTreeDataToTopoviewer
+      : undefined;
     if (this.isViewMode) {
       try {
         updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();

@@ -7,7 +7,7 @@ export async function validateYamlContent(_context: vscode.ExtensionContext, yam
   try {
     // Parse YAML first to check basic syntax
     const yamlObj = YAML.parse(yamlContent);
-    
+
     // Basic structure validation - only check for essential fields
     if (!yamlObj || typeof yamlObj !== 'object') {
       vscode.window.showErrorMessage('Invalid YAML: Content must be an object');
@@ -30,9 +30,9 @@ export async function validateYamlContent(_context: vscode.ExtensionContext, yam
     }
 
     // Nodes section is optional within topology - can be empty object or missing
-    if (yamlObj.topology?.nodes !== undefined && 
-        (yamlObj.topology.nodes === null || 
-         (typeof yamlObj.topology.nodes !== 'object') || 
+    if (yamlObj.topology?.nodes !== undefined &&
+        (yamlObj.topology.nodes === null ||
+         (typeof yamlObj.topology.nodes !== 'object') ||
          Array.isArray(yamlObj.topology.nodes))) {
       vscode.window.showErrorMessage('Invalid Containerlab YAML: "topology.nodes" must be an object if present');
       log.error('Invalid Containerlab YAML: "topology.nodes" must be an object if present');
@@ -58,8 +58,8 @@ export async function validateYamlContent(_context: vscode.ExtensionContext, yam
     }
 
     // Only check link references if both nodes and links exist and are not empty
-    if (yamlObj.topology?.nodes && yamlObj.topology?.links && 
-        Object.keys(yamlObj.topology.nodes).length > 0 && 
+    if (yamlObj.topology?.nodes && yamlObj.topology?.links &&
+        Object.keys(yamlObj.topology.nodes).length > 0 &&
         yamlObj.topology.links.length > 0) {
       const linkError = checkLinkReferences(yamlObj);
       if (linkError) {
