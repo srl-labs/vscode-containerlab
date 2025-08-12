@@ -6,7 +6,7 @@ import * as ins from "./inspector"
 import { execSync } from "child_process";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
-import { getCurrentTopoViewer } from "../commands/graph";
+import { getCurrentTopoViewer, setCurrentTopoViewer } from "../commands/graph";
 
 /**
  * Interface corresponding to fields in the
@@ -104,8 +104,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
             // Only fire change event if labs were added/removed
             const labsChanged = previousLabCount !== currentLabCount ||
-                               ![...previousLabKeys].every(key => currentLabKeys.has(key)) ||
-                               ![...currentLabKeys].every(key => previousLabKeys.has(key));
+                ![...previousLabKeys].every(key => currentLabKeys.has(key)) ||
+                ![...currentLabKeys].every(key => previousLabKeys.has(key));
 
             if (labsChanged) {
                 console.log("[RunningLabTreeDataProvider]:\tLabs changed, refreshing tree view");
@@ -155,36 +155,38 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private async refreshTopoViewerIfOpen(): Promise<void> {
         try {
             const topoViewer = getCurrentTopoViewer() as any;
-            if (topoViewer && topoViewer.currentPanel && topoViewer.currentLabName) {
-                // Check if deployment state changed for the active lab
+
+            if (topoViewer) {
                 const labName = topoViewer.currentLabName;
-                const labNode = this.treeItems.find(lab => lab.name === labName);
-                const isCurrentlyDeployed = labNode?.contextValue?.startsWith("containerlabLabDeployed") ?? false;
-                const shouldBeViewMode = isCurrentlyDeployed;
-                
-                console.log(`[RunningLabsProvider]: Lab ${labName} - deployed: ${isCurrentlyDeployed}, current mode: ${topoViewer.isViewMode ? 'viewer' : 'editor'}, should be: ${shouldBeViewMode ? 'viewer' : 'editor'}`);
-                console.log(`[RunningLabsProvider]: Lab node context: ${labNode?.contextValue}`);
-                console.log(`[RunningLabsProvider]: All tree items:`, this.treeItems.map(item => `${item.name}: ${item.contextValue}`));
-                
-                // Always recreate the webview to ensure it's fully refreshed
-                console.log(`[RunningLabsProvider]: Recreating webview for ${labName} in ${shouldBeViewMode ? 'VIEWER' : 'EDITOR'} mode`);
-                
-                // Dispose current panel
+                const labPath = topoViewer.lastYamlFilePath;
+                const context = topoViewer.context;
+
+                console.debug(labName)
+                console.debug(labPath)
+                console.debug(context)
+
+                const deployedLabNode = this.treeItems.find(lab => lab.labPath.absolute === labPath.toString());
+                console.log(deployedLabNode?.labPath);
+
+                const viewMode = deployedLabNode ? true : false;
+
+                // already view mode -> no action required
+                if (deployedLabNode && topoViewer.isViewMode) {
+                    return
+                }
+
                 topoViewer.currentPanel.dispose();
-                
-                // Recreate with correct mode by calling createWebviewPanel
-                const fileUri = topoViewer.lastYamlFilePath ? 
-                    require('vscode').Uri.file(topoViewer.lastYamlFilePath) : 
-                    require('vscode').Uri.parse('');
-                
+
+                const fileUri = labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse("");
+
                 await topoViewer.createWebviewPanel(
-                    topoViewer.context,
+                    context,
                     fileUri,
                     labName,
-                    shouldBeViewMode
+                    viewMode
                 );
-                
-                console.debug(`[RunningLabsProvider]: Successfully recreated webview in ${shouldBeViewMode ? 'viewer' : 'editor'} mode`);
+
+                setCurrentTopoViewer(topoViewer);
             }
         } catch (error) {
             console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer:", error);
