@@ -782,7 +782,7 @@
         },
         {
           "command": "containerlab.lab.graph.topoViewer",
-          "when": "viewItem =~ /containerlabLab/",
+          "when": "viewItem =~ /containerlabLabDeployed/",
           "group": "graph@1"
         },
         {
