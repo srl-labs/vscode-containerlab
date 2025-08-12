@@ -150,8 +150,8 @@ export function getConfig(relCfgPath: string): any {
 /**
  * Log info messages to the output channel.
  */
-function log(message: string, channel: vscode.OutputChannel) {
-  channel.appendLine(`[INFO] ${message}`);
+function log(message: string, channel: vscode.LogOutputChannel) {
+  channel.info(message);
 }
 
 /**
@@ -174,7 +174,7 @@ function escapeDoubleQuotes(input: string): string {
 export async function runWithSudo(
   command: string,
   description: string,
-  outputChannel: vscode.OutputChannel,
+  outputChannel: vscode.LogOutputChannel,
   checkType: 'generic' | 'containerlab' = 'containerlab',
   returnOutput: boolean = false,
   includeStderr: boolean = false
@@ -191,8 +191,8 @@ export async function runWithSudo(
       if (groups.includes("clab_admins")) {
         log(`User is in "clab_admins". Running without sudo: ${command}`, outputChannel);
         const { stdout: cmdOut, stderr: cmdErr } = await execAsync(command);
-        if (cmdOut) outputChannel.appendLine(cmdOut);
-        if (cmdErr) outputChannel.appendLine(`[${description} stderr]: ${cmdErr}`);
+        if (cmdOut) outputChannel.info(cmdOut);
+        if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
         const combined = includeStderr && returnOutput
           ? [cmdOut, cmdErr].filter(Boolean).join('\n')
           : cmdOut;
@@ -224,8 +224,8 @@ export async function runWithSudo(
     const cmdToRun = `sudo -E bash -c "${escapedCommand}"`;
     try {
       const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmdToRun);
-      if (cmdOut) outputChannel.appendLine(cmdOut);
-      if (cmdErr) outputChannel.appendLine(`[${description} stderr]: ${cmdErr}`);
+      if (cmdOut) outputChannel.info(cmdOut);
+      if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
       const combined = includeStderr && returnOutput
         ? [cmdOut, cmdErr].filter(Boolean).join('\n')
         : cmdOut;
@@ -260,8 +260,8 @@ export async function runWithSudo(
   const cmdToRun = `echo '${password}' | sudo -S -E bash -c "${escapedCommand}"`;
   try {
     const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmdToRun);
-    if (cmdOut) outputChannel.appendLine(cmdOut);
-    if (cmdErr) outputChannel.appendLine(`[${description} stderr]: ${cmdErr}`);
+    if (cmdOut) outputChannel.info(cmdOut);
+    if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
     const combined = includeStderr && returnOutput
       ? [cmdOut, cmdErr].filter(Boolean).join('\n')
       : cmdOut;
@@ -274,7 +274,7 @@ export async function runWithSudo(
 /**
  * Installs containerlab using the official installer script, via sudo.
  */
-export async function installContainerlab(outputChannel: vscode.OutputChannel): Promise<void> {
+export async function installContainerlab(outputChannel: vscode.LogOutputChannel): Promise<void> {
   log(`Installing containerlab...`, outputChannel);
   const installerCmd = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
   await runWithSudo(installerCmd, 'Installing containerlab', outputChannel, 'generic');
@@ -284,7 +284,7 @@ export async function installContainerlab(outputChannel: vscode.OutputChannel): 
  * Ensures containerlab is installed by running "which containerlab".
  * If not found, offers to install it.
  */
-export async function ensureClabInstalled(outputChannel: vscode.OutputChannel): Promise<boolean> {
+export async function ensureClabInstalled(outputChannel: vscode.LogOutputChannel): Promise<boolean> {
   try {
     log(`Checking "which containerlab" to verify installation...`, outputChannel);
     const { stdout } = await execAsync('which containerlab');
@@ -330,7 +330,7 @@ export async function ensureClabInstalled(outputChannel: vscode.OutputChannel): 
  * This version uses runWithSudo to execute the version check only once.
  */
 export async function checkAndUpdateClabIfNeeded(
-  outputChannel: vscode.OutputChannel,
+  outputChannel: vscode.LogOutputChannel,
   context: vscode.ExtensionContext
 ): Promise<void> {
   try {

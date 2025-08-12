@@ -15,8 +15,8 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
     return vscode.window.showErrorMessage("No interface to capture found.");
   }
 
-  outputChannel.appendLine(`[DEBUG] captureInterface() called for node=${node.parentName}, interface=${node.name}`);
-  outputChannel.appendLine(`[DEBUG] remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`);
+  outputChannel.debug(`captureInterface() called for node=${node.parentName}, interface=${node.name}`);
+  outputChannel.debug(`remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`);
 
   // Settings override
   const preferredCaptureMethod = vscode.workspace.getConfiguration("containerlab").get<string>("capture.preferredAction");
@@ -39,7 +39,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   if (!node) {
     return vscode.window.showErrorMessage("No interface to capture found.");
   }
-  outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
+  outputChannel.debug(`captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
   // Check edgeshark is available on the host
   // - make a simple API call to get version of packetflix
@@ -71,7 +71,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
     const uniqueContainers = new Set(selected.map(i => i.parentName));
     if (uniqueContainers.size > 1) {
       // from different containers => spawn multiple edgeshark sessions
-      outputChannel.appendLine("[DEBUG] Edgeshark multi selection => multiple containers => launching individually");
+      outputChannel.debug("Edgeshark multi selection => multiple containers => launching individually");
       for (const nd of selected) {
         await captureInterfaceWithPacketflix(nd); // re-call for single
       }
@@ -83,7 +83,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   }
 
   // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
-  outputChannel.appendLine(`[DEBUG] captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
+  outputChannel.debug(`captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
 
   // Make sure we have a valid hostname
   const hostname = await getHostname();
@@ -107,7 +107,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
     `Starting edgeshark capture on ${node.parentName}/${node.name}...`
   );
 
-  outputChannel.appendLine(`[DEBUG] single-edgeShark => ${uri.toString()}`);
+  outputChannel.debug(`single-edgeShark => ${uri.toString()}`);
 
   return [uri, bracketed]
 }
@@ -116,7 +116,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
 async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
   const base = nodes[0];
   const ifNames = nodes.map(n => n.name);
-  outputChannel.appendLine(`[DEBUG] multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
+  outputChannel.debug(`multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
 
   // We optionally store "netns" in node if needed.
   const netnsVal = (base as any).netns || 4026532270; // example if you track netns
@@ -141,7 +141,7 @@ async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
   vscode.window.showInformationMessage(
     `Starting multi-interface edgeshark on ${base.parentName} for: ${ifNames.join(", ")}`
   );
-  outputChannel.appendLine(`[DEBUG] multi-edgeShark => ${packetflixUri}`);
+  outputChannel.debug(`multi-edgeShark => ${packetflixUri}`);
 
   return [packetflixUri, bracketed]
 }
@@ -236,7 +236,7 @@ export async function captureEdgesharkVNC(
       pathParts.pop(); // Remove lab name (e.g., "clab-vlan")
       const labRootDir = pathParts.join('/');
       volumeMount = `-v "${labRootDir}:/pcaps"`;
-      outputChannel.appendLine(`[DEBUG] Mounting lab directory: ${labRootDir} as /pcaps`);
+      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`);
     }
   } catch {
     // If we can't get the lab directory, continue without mounting
@@ -426,15 +426,15 @@ export async function getHostname(): Promise<string> {
     .getConfiguration("containerlab")
     .get<string>("remote.hostname", "");
   if (cfgHost) {
-    outputChannel.appendLine(
-      `[DEBUG] Using containerlab.remote.hostname from settings: ${cfgHost}`
+    outputChannel.debug(
+      `Using containerlab.remote.hostname from settings: ${cfgHost}`
     );
     return cfgHost;
   }
 
   // 2. If in a WSL environment, always use "localhost".
   if (vscode.env.remoteName === "wsl") {
-    outputChannel.appendLine("[DEBUG] Detected WSL environment; using 'localhost'");
+    outputChannel.debug("Detected WSL environment; using 'localhost'");
     return "localhost";
   }
 
@@ -446,18 +446,18 @@ export async function getHostname(): Promise<string> {
       }).toString();
       const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
       if (ipMatch && ipMatch[1]) {
-        outputChannel.appendLine(
-          `[DEBUG] (Orbstack) Using IPv4 from 'ip -4 add show eth0': ${ipMatch[1]}`
+        outputChannel.debug(
+          `(Orbstack) Using IPv4 from 'ip -4 add show eth0': ${ipMatch[1]}`
         );
         return ipMatch[1];
       } else {
-        outputChannel.appendLine(
-          "[DEBUG] (Orbstack) Could not extract IPv4 address from 'ip -4 add show eth0'"
+        outputChannel.debug(
+          "(Orbstack) Could not extract IPv4 address from 'ip -4 add show eth0'"
         );
       }
     } catch (e: any) {
-      outputChannel.appendLine(
-        `[DEBUG] (Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`
+      outputChannel.debug(
+        `(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`
       );
     }
   }
@@ -465,13 +465,13 @@ export async function getHostname(): Promise<string> {
   // 4. If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.
   if (vscode.env.remoteName === "ssh-remote") {
     const sshConnection = process.env.SSH_CONNECTION;
-    outputChannel.appendLine(`[DEBUG] (SSH non-Orb) SSH_CONNECTION: ${sshConnection}`);
+    outputChannel.debug(`(SSH non-Orb) SSH_CONNECTION: ${sshConnection}`);
     if (sshConnection) {
       const parts = sshConnection.split(" ");
       if (parts.length >= 3) {
         const remoteIp = parts[2];
-        outputChannel.appendLine(
-          `[DEBUG] (SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`
+        outputChannel.debug(
+          `(SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`
         );
         return remoteIp;
       }
@@ -480,11 +480,11 @@ export async function getHostname(): Promise<string> {
 
   // 5. If a session hostname was manually set, use it.
   if (sessionHostname) {
-    outputChannel.appendLine(`[DEBUG] Using sessionHostname: ${sessionHostname}`);
+    outputChannel.debug(`Using sessionHostname: ${sessionHostname}`);
     return sessionHostname;
   }
 
   // 6. Fallback: default to "localhost".
-  outputChannel.appendLine("[DEBUG] No suitable hostname found; defaulting to 'localhost'");
+  outputChannel.debug("No suitable hostname found; defaulting to 'localhost'");
   return "localhost";
 }
