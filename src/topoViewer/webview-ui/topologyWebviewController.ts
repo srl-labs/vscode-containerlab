@@ -247,6 +247,8 @@ class TopologyWebviewController {
     window.viewportButtonsUndo = () =>
       this.undoManager.viewportButtonsUndo();
 
+    // Don't trigger here - will be called after controller is exposed to window
+
     window.addEventListener('message', (event) => {
       const msg = event.data as any;
       if (msg && msg.type === 'yaml-saved') {
@@ -953,6 +955,12 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('unload', () => {
     controller.dispose();
   });
+
+  // After EVERYTHING is done, trigger fit-to-viewport
+  setTimeout(() => {
+    controller.cy.fit(controller.cy.elements(), 120);
+    log.info('Initial fit-to-viewport triggered after full initialization');
+  }, 2000);
 });
 
 export default TopologyWebviewController;

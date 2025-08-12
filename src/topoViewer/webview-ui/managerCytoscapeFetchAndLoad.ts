@@ -97,14 +97,16 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
       // Spread nodes automatically when no position labels exist in view mode
       layout = cy.layout({
         name: 'cose',
-        animate: true,
+        // Disable animation to reduce CPU usage during initial layout
+        animate: false,
         fit: true
       } as any);
     } else {
       // Respect saved positions using the preset layout
       layout = cy.layout({
         name: 'preset',
-        animate: true,
+        // Avoid animating to saved positions to prevent unnecessary re-renders
+        animate: false,
         randomize: false,
         maxSimulationTime: 10,
         positions: undefined, // Use the positions already set on elements
@@ -117,10 +119,9 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     cy.filter('node[name = "topoviewer"]').remove();
     cy.filter('node[name = "TopoViewer:1"]').remove();
 
-    // Fit the viewport to show all nodes after layout is complete
+    // Simple layout completion handler
     layout.promiseOn('layoutstop').then(() => {
-      cy.fit(cy.nodes(), 120); // Add padding of 50px
-      log.info('Viewport fitted to show all nodes');
+      log.info('Layout completed');
 
       // Load free text annotations after layout is complete (for both edit and view modes)
       const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;
