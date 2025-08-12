@@ -170,32 +170,30 @@ export class TopoViewerEditor {
     // Use the derived lab name for folder storage
     this.lastFolderName = baseNameWithoutExt;
 
-    // Build the template with the actual lab name
+    // Build the template with the actual lab name - minimal template to show flexibility
     const templateContent = `
 name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
 
 topology:
   nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
+    node1:
+      # kind and type are optional now
+      # kind: nokia_srlinux
+      # type: ixrd1
+      # image: ghcr.io/nokia/srlinux:latest
       labels:
         graph-posX: "65"
         graph-posY: "25"
         graph-icon: router
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
+    node2:
+      # Completely minimal node - only position labels
       labels:
         graph-posX: "165"
         graph-posY: "25"
-        graph-icon: router
 
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+  # links section is optional - uncomment to add links
+  # links:
+  #   - endpoints: [ node1:eth1, node2:eth1 ]
 `;
 
     try {
