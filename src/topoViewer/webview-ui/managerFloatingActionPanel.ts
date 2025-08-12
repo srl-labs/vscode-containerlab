@@ -104,12 +104,6 @@ export class ManagerFloatingActionPanel {
     this.fabMain.classList.add('active');
     this.radialMenu.classList.add('active');
 
-    // Rotate the plus icon to X
-    const icon = this.fabMain.querySelector('i');
-    if (icon) {
-      icon.style.transform = 'rotate(45deg)';
-    }
-
     log.debug('Floating action menu opened');
   }
 
@@ -122,12 +116,6 @@ export class ManagerFloatingActionPanel {
     this.isMenuOpen = false;
     this.fabMain.classList.remove('active');
     this.radialMenu.classList.remove('active');
-
-    // Rotate icon back to plus
-    const icon = this.fabMain.querySelector('i');
-    if (icon) {
-      icon.style.transform = 'rotate(0deg)';
-    }
 
     log.debug('Floating action menu closed');
   }

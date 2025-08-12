@@ -54,69 +54,44 @@
     transform: rotate(45deg);
   }
   
+  #fab-main.active:hover {
+    transform: rotate(45deg) scale(1.05);
+  }
+  
   /* Radial menu positioning when active */
   #radial-menu.active {
     opacity: 1;
     pointer-events: auto;
   }
   
-  /* Position radial menu items in an arc */
-  #radial-menu.active #radial-add-node {
-    transform: translate(70px, -20px);
-  }
-  
-  #radial-menu.active #radial-add-group {
-    transform: translate(60px, -60px);
-  }
-  
-  #radial-menu.active #radial-add-text {
-    transform: translate(20px, -85px);
+  /* Position radial menu items in a 90-degree arc */
+  .radial-menu-item {
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
   
   /* Initial hidden state for radial items */
   #radial-menu:not(.active) .radial-menu-item {
     transform: translate(0, 0) scale(0);
+    opacity: 0;
   }
   
-  #radial-menu.active .radial-menu-item {
-    transform-origin: center;
-    animation: fadeInScale 0.3s ease-out forwards;
-  }
-  
+  /* 90-degree arc positioning - radius of 80px */
   #radial-menu.active #radial-add-node {
-    animation-delay: 0.05s;
+    transform: translate(80px, 0px) scale(1);
+    opacity: 1;
+    transition-delay: 0.05s;
   }
   
   #radial-menu.active #radial-add-group {
-    animation-delay: 0.1s;
+    transform: translate(56.57px, -56.57px) scale(1);
+    opacity: 1;
+    transition-delay: 0.1s;
   }
   
   #radial-menu.active #radial-add-text {
-    animation-delay: 0.15s;
-  }
-  
-  @keyframes fadeInScale {
-    from {
-      opacity: 0;
-      transform: scale(0) translate(0, 0);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) var(--final-position);
-    }
-  }
-  
-  /* Set final positions as CSS variables */
-  #radial-add-node {
-    --final-position: translate(70px, -20px);
-  }
-  
-  #radial-add-group {
-    --final-position: translate(60px, -60px);
-  }
-  
-  #radial-add-text {
-    --final-position: translate(20px, -85px);
+    transform: translate(0px, -80px) scale(1);
+    opacity: 1;
+    transition-delay: 0.15s;
   }
   
   /* VS Code theme integration */
