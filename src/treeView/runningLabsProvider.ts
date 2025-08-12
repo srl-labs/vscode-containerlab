@@ -6,7 +6,7 @@ import * as ins from "./inspector"
 import { execSync } from "child_process";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
-import { getCurrentTopoViewer, setCurrentTopoViewer } from "../commands/graph";
+import { getCurrentTopoViewer } from "../commands/graph";
 
 /**
  * Interface corresponding to fields in the
@@ -157,6 +157,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             const topoViewer = getCurrentTopoViewer() as any;
 
             if (topoViewer) {
+                if (topoViewer.isModeSwitchInProgress) {
+                    return;
+                }
+
                 const labName = topoViewer.currentLabName;
                 const labPath = topoViewer.lastYamlFilePath;
                 const context = topoViewer.context;
@@ -170,23 +174,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
                 const viewMode = deployedLabNode ? true : false;
 
-                // already view mode -> no action required
-                if (deployedLabNode && topoViewer.isViewMode) {
-                    return
+                const needsModeSwitch = (deployedLabNode && !topoViewer.isViewMode) || (!deployedLabNode && topoViewer.isViewMode);
+                
+                if (!needsModeSwitch) {
+                    return; 
                 }
 
-                topoViewer.currentPanel.dispose();
-
-                const fileUri = labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse("");
-
-                await topoViewer.createWebviewPanel(
-                    context,
-                    fileUri,
-                    labName,
-                    viewMode
-                );
-
-                setCurrentTopoViewer(topoViewer);
+                topoViewer.isViewMode = viewMode;
+                
+                topoViewer.deploymentState = await topoViewer.checkDeploymentState(topoViewer.currentLabName);
+                
+                await topoViewer.updatePanelHtml(topoViewer.currentPanel);
             }
         } catch (error) {
             console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer:", error);

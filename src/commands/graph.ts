@@ -165,8 +165,8 @@ export async function graphTopoviewerReload() {
     return;
   }
 
-  // 3) Now call updatePanelHtml on the existing panel
-  currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
+  // 3) Now call updatePanelHtml on the existing panel (don't bypass mode switch check for manual reload)
+  await currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
 }
 
 /**

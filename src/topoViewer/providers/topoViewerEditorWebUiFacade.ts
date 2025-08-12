@@ -41,6 +41,7 @@ export class TopoViewerEditor {
   private skipInitialValidation: boolean = false; // Skip schema check for template
   public isViewMode: boolean = false; // Indicates if running in view-only mode
   private deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
+  private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -106,6 +107,11 @@ export class TopoViewerEditor {
       this.queuedSaveAck = this.queuedSaveAck || sendSaveAck;
       return;
     }
+    
+    if (this.isSwitchingMode) {
+      return;
+    }
+    
     this.isUpdating = true;
     try {
       const success = await this.updatePanelHtml(this.currentPanel);
@@ -225,6 +231,13 @@ topology:
     }
   }
   /**
+   * Internal method to update panel HTML without mode switch checks (used during panel creation)
+   */
+  private async updatePanelHtmlInternal(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
+    return this.updatePanelHtmlCore(panel);
+  }
+
+  /**
    * Updates the webview panel's HTML with the latest topology data.
    *
    * This method reads the YAML file, regenerates Cytoscape elements, updates JSON files,
@@ -234,6 +247,34 @@ topology:
    * @returns A promise that resolves when the panel has been updated.
    */
   public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
+    if (!this.currentLabName) {
+      return false;
+    }
+    
+    // Skip update if mode switching is in progress 
+    if (this.isSwitchingMode) {
+      log.debug('Skipping updatePanelHtml - mode switch in progress');
+      return false;
+    }
+
+    // Use the same queuing mechanism as triggerUpdate to prevent concurrent updates
+    if (this.isUpdating) {
+      log.debug('Panel HTML update already in progress, skipping');
+      return false;
+    }
+
+    this.isUpdating = true;
+    try {
+      return await this.updatePanelHtmlCore(panel);
+    } finally {
+      this.isUpdating = false;
+    }
+  }
+
+  /**
+   * Core implementation of updating panel HTML
+   */
+  private async updatePanelHtmlCore(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
     }
@@ -499,7 +540,7 @@ topology:
 
 
 
-    await this.updatePanelHtml(this.currentPanel);
+    await this.updatePanelHtmlInternal(this.currentPanel);
 
     // Only setup file watchers and save listeners in edit mode
     if (!this.isViewMode && this.lastYamlFilePath) {
@@ -596,6 +637,13 @@ topology:
 
           case 'topo-editor-reload-viewport': {
             try {
+              // Skip reload if mode switching is in progress
+              if (this.isSwitchingMode) {
+                result = 'Reload skipped - mode switch in progress';
+                log.debug(result);
+                break;
+              }
+              
               // Refresh deployment state
               this.deploymentState = await this.checkDeploymentState(this.currentLabName);
               // Refresh the webview content.
@@ -870,6 +918,16 @@ topology:
 
           case 'topo-switch-mode': {
             try {
+              // Prevent concurrent mode switches
+              if (this.isSwitchingMode) {
+                error = 'Mode switch already in progress';
+                log.debug('Mode switch already in progress');
+                break;
+              }
+              
+              log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
+              this.isSwitchingMode = true;
+
               // Switch between view and edit modes
               const data = payload ? JSON.parse(payload as string) : { mode: 'toggle' };
               if (data.mode === 'toggle') {
@@ -883,17 +941,23 @@ topology:
               // Update deployment state
               this.deploymentState = await this.checkDeploymentState(this.currentLabName);
 
-              // Refresh the panel
-              const success = await this.updatePanelHtml(this.currentPanel);
+              // Update the panel HTML to reflect the new mode
+              const success = await this.updatePanelHtmlInternal(this.currentPanel);
               if (success) {
                 result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
                 log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
               } else {
                 error = 'Failed to switch mode';
               }
+
+              // Add a small delay to ensure any concurrent operations see the flag
+              await this.sleep(100);
             } catch (innerError) {
               error = `Error switching mode: ${innerError}`;
               log.error(`Error switching mode: ${JSON.stringify(innerError, null, 2)}`);
+            } finally {
+              this.isSwitchingMode = false;
+              log.debug(`Mode switch completed, flag cleared`);
             }
             break;
           }
@@ -965,9 +1029,16 @@ topology:
 
 
   /**
+   * Check if a mode switch operation is currently in progress
+   */
+  public get isModeSwitchInProgress(): boolean {
+    return this.isSwitchingMode;
+  }
+
+  /**
    * Check if a lab is deployed by querying containerlab
    */
-  private async checkDeploymentState(labName: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
+  public async checkDeploymentState(labName: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
       // Update the inspector data
       await inspector.update();
