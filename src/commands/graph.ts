@@ -175,3 +175,8 @@ export async function graphTopoviewerReload() {
 export function getCurrentTopoViewer(): TopoViewer | undefined {
   return currentTopoViewer;
 }
+
+export function setCurrentTopoViewer(viewer: TopoViewer) {
+  currentTopoViewer = viewer;
+  currentTopoViewerPanel = (viewer as any).currentPanel;
+}
