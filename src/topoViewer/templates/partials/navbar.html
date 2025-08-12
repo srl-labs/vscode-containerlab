@@ -1,0 +1,29 @@
+<nav class="navbar py-0 h-[4.5rem]" role="navigation" aria-label="main navigation">
+  <!-- Left: Logo + Title -->
+  <div class="navbar-brand flex items-center space-x-2 px-2">
+    <a href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
+      <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-12 w-auto block" />
+    </a>
+    <div class="flex flex-col leading-tight pl-0">
+      <!-- <p class="text-xl font-semibold select-none">containerlab</p> -->
+      <p class="text-lg font-normal select-none">
+        <span class="">TopoViewer <span id="mode-indicator" class="mode-{{topoViewerMode}} px-2 py-0.5 text-xs font-semibold rounded uppercase text-white">{{topoViewerMode}}</span> · {{topologyName}}</span>
+      </p>
+    </div>
+  </div>
+
+  <div id="viewport-buttons">
+    <div class="flex flex-row justify-evenly space-x-1">
+      {{NAVBAR_BUTTONS}}
+    </div>
+  </div>
+</nav>
+
+<style>
+  #mode-indicator.mode-viewer {
+    background-color: #10b981; /* green-500 */
+  }
+  #mode-indicator.mode-editor {
+    background-color: #3b82f6; /* blue-500 */
+  }
+</style>

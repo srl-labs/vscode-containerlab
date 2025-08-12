@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as path from "path";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
-import { TopoViewer } from "../topoViewer/view/providers/topoViewerWebUiFacade";
+import { TopoViewer } from "../topoViewer";
 import { getSelectedLabNode } from "../helpers/utils";
 
 
@@ -83,20 +84,33 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   // Get node if not provided
   node = await getSelectedLabNode(node);
 
-  let labPath: string;
+  let labPath: string = '';
+  let isViewMode = false;
 
-  if (node && node.labPath && node.labPath.absolute) {
+  // Check if this is a deployed lab (view mode)
+  if (node && node.contextValue &&
+      (node.contextValue === 'containerlabLabDeployed' ||
+       node.contextValue === 'containerlabLabDeployedFavorite')) {
+    isViewMode = true;
+    // Deployed labs might still have a labPath, but we treat them as view-only
+    labPath = node.labPath?.absolute || '';
+  } else if (node && node.labPath && node.labPath.absolute) {
+    // Undeployed lab with YAML file - edit mode
     labPath = node.labPath.absolute;
+    isViewMode = false;
   } else {
     // Try to get from active editor
     const editor = vscode.window.activeTextEditor;
-    if (!editor || !editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
+    if (editor && editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
+      labPath = editor.document.uri.fsPath;
+      isViewMode = false; // Editor mode when opened from file
+    } else {
+      // No valid source, show error
       vscode.window.showErrorMessage(
         'No lab node or topology file selected'
       );
       return;
     }
-    labPath = editor.document.uri.fsPath;
   }
 
   if (!context) {
@@ -108,14 +122,15 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   const viewer = new TopoViewer(context);
 
   // 2) store the viewer in the global variable
-  currentTopoViewer = viewer;
+  setCurrentTopoViewer(viewer);
 
   try {
-    // 3) call openViewer, which returns (panel | undefined).
-    // Pass undefined for clabTreeDataToTopoviewer - let openViewer handle discovery internally
-    currentTopoViewerPanel = await viewer.openViewer(labPath, undefined);
+    // Use the node's name if available (it's the actual lab name from containerlab inspect)
+    // Otherwise derive from the file path (but this may not match the deployed name)
+    const labName = node?.name || (labPath ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '') : 'Unknown Lab');
+    await viewer.createWebviewPanel(context, labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''), labName, isViewMode);
+    currentTopoViewerPanel = (viewer as any).currentPanel;
 
-    // 4) If the panel is undefined, do nothing or return
     if (!currentTopoViewerPanel) {
       return;
     }
@@ -125,8 +140,7 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
 
     // 6) Track disposal
     currentTopoViewerPanel.onDidDispose(() => {
-      currentTopoViewerPanel = undefined;
-      currentTopoViewer = undefined; // also nullify the viewer reference
+      setCurrentTopoViewer(undefined);
       vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
     });
 
@@ -152,8 +166,8 @@ export async function graphTopoviewerReload() {
     return;
   }
 
-  // 3) Now call updatePanelHtml on the existing panel
-  currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
+  // 3) Now call updatePanelHtml on the existing panel (don't bypass mode switch check for manual reload)
+  await currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
 }
 
 /**
@@ -161,4 +175,13 @@ export async function graphTopoviewerReload() {
  */
 export function getCurrentTopoViewer(): TopoViewer | undefined {
   return currentTopoViewer;
+}
+
+export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
+  currentTopoViewer = viewer;
+  if (viewer) {
+    currentTopoViewerPanel = (viewer as any).currentPanel;
+  } else {
+    currentTopoViewerPanel = undefined;
+  }
 }

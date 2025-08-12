@@ -9,17 +9,17 @@ import {
   labelEndpointManager,
   getGroupManager,
   getReloadTopoManager,
-} from '../../../src/topoViewer/common/core/managerRegistry';
+} from '../../../src/topoViewer/core/managerRegistry';
 import {
   layoutAlgoManager as layoutAlgoManager2,
   zoomToFitManager as zoomToFitManager2,
   labelEndpointManager as labelEndpointManager2,
-} from '../../../src/topoViewer/common/core/managerRegistry';
-import { ManagerLayoutAlgo } from '../../../src/topoViewer/common/webview-ui/managerLayoutAlgo';
-import { ManagerGroupManagement } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
-import { ManagerZoomToFit } from '../../../src/topoViewer/common/webview-ui/managerZoomToFit';
-import { ManagerLabelEndpoint } from '../../../src/topoViewer/edit/webview-ui/managerLabelEndpoint';
-import { ManagerReloadTopo } from '../../../src/topoViewer/edit/webview-ui/managerReloadTopo';
+} from '../../../src/topoViewer/core/managerRegistry';
+import { ManagerLayoutAlgo } from '../../../src/topoViewer/webview-ui/managerLayoutAlgo';
+import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
+import { ManagerZoomToFit } from '../../../src/topoViewer/webview-ui/managerZoomToFit';
+import { ManagerLabelEndpoint } from '../../../src/topoViewer/webview-ui/managerLabelEndpoint';
+import { ManagerReloadTopo } from '../../../src/topoViewer/webview-ui/managerReloadTopo';
 
 // Ensure window is defined for modules that expect it
 (globalThis as any).window = globalThis;

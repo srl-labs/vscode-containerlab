@@ -16,8 +16,8 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { TopoViewerAdaptorClab } from '../../../src/topoViewer/common/core/topoViewerAdaptorClab';
-import * as treeUtils from '../../../src/topoViewer/view/utilities/treeUtils';
+import { TopoViewerAdaptorClab } from '../../../src/topoViewer/core/topoViewerAdaptorClab';
+import * as treeUtils from '../../../src/topoViewer/utilities/treeUtils';
 
 describe('buildCytoscapeElements delegation', () => {
   after(() => {

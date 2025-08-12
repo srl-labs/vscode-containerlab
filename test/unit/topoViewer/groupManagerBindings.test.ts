@@ -2,7 +2,7 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerGroupManagement } from '../../../src/topoViewer/common/webview-ui/managerGroupManagement';
+import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
 
 // ensure window is available for global assignments
 (globalThis as any).window = globalThis;
@@ -16,7 +16,7 @@ describe('group manager global bindings', () => {
     ] });
 
     const mgr = new ManagerGroupManagement(cy, 'edit');
-    window.nodeParentPropertiesUpdate = mgr.nodeParentPropertiesUpdate.bind(mgr);
+    (window as any).nodeParentPropertiesUpdate = mgr.nodeParentPropertiesUpdate.bind(mgr);
 
     const elements: Record<string, any> = {
       'panel-node-editor-parent-graph-group-id': { textContent: 'group1:1' },
@@ -28,8 +28,8 @@ describe('group manager global bindings', () => {
     (globalThis as any).acquireVsCodeApi = () => ({ window: { showWarningMessage: () => {} } });
     (globalThis as any).sendMessageToVscodeEndpointPost = async () => {};
 
-    expect(typeof window.nodeParentPropertiesUpdate).to.equal('function');
-    await window.nodeParentPropertiesUpdate!();
+    expect(typeof (window as any).nodeParentPropertiesUpdate).to.equal('function');
+    await (window as any).nodeParentPropertiesUpdate!();
     expect(cy.getElementById('group1:1').hasClass('top-center')).to.be.true;
   });
 });

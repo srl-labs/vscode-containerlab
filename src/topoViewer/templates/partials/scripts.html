@@ -1,0 +1,23 @@
+    <!-- Inject schemaUri as a global variable -->
+    <script> window.schemaUrl = "{{schemaUri}}"; </script>
+
+    <!-- Inject imagesUri as a global variable -->
+    <script> window.imagesUrl = "{{imagesUri}}"; </script>
+
+    <!-- Inject JSON dataCytoMarshall.json as a global variable -->
+    <script> window.jsonFileUrlDataCytoMarshall = "{{jsonFileUrlDataCytoMarshall}}"; </script>
+
+    <!-- Inject JSON environment.json as a global variable -->
+    <script> window.jsonFileUrlDataEnvironment = "{{jsonFileUrlDataEnvironment}}"; </script>
+
+    <!-- Inject isVscodeDeployment boolean as a global variable -->
+    <script> window.isVscodeDeployment = "{{isVscodeDeployment}}"; </script>
+
+    <!-- Inject allowedHostname string as a global variable -->
+    <script> window.allowedHostname = "{{allowedHostname}}"; </script>
+
+    <!-- Inject topoViewerMode as a global variable -->
+    <script> window.topoViewerMode = "{{topoViewerMode}}"; </script>
+
+    <!-- Load the main JavaScript bundle -->
+    <script type="module" src="{{jsOutDir}}/topologyEditorWebviewController.js"></script>

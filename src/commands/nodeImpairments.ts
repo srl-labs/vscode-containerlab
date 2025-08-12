@@ -105,12 +105,12 @@ export async function manageNodeImpairments(
           corruption: corruptionValue,
         };
       });
-      outputChannel.appendLine("[INFO] Netem settings refreshed via JSON.");
+      outputChannel.info("Netem settings refreshed via JSON.");
     } catch (err: any) {
       vscode.window.showWarningMessage(
         `Failed to retrieve netem settings: ${err.message}`
       );
-      outputChannel.appendLine(`[INFO] Error executing "${showCmd}": ${err.message}`);
+      outputChannel.info(`Error executing "${showCmd}": ${err.message}`);
     }
 
     // Ensure every interface is represented (excluding "lo"); default baseline values if missing.
@@ -127,7 +127,7 @@ export async function manageNodeImpairments(
           rate: "0",
           corruption: "0.00%",
         };
-        outputChannel.appendLine(`[INFO] Defaulted values for ${norm}.`);
+        outputChannel.info(`Defaulted values for ${norm}.`);
       }
     });
     return netemMap;

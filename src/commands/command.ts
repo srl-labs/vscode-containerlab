@@ -45,18 +45,18 @@ export async function execCommandInOutput(command: string, show?: boolean, stdou
 
     proc.stdout?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
-        outputChannel.append(cleaned);
+        outputChannel.info(cleaned);
         if (stdoutCb) { stdoutCb(proc, cleaned); }
     });
 
     proc.stderr?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
-        outputChannel.append(cleaned);
+        outputChannel.info(cleaned);
         if (stderrCb) { stderrCb(proc, cleaned); }
     });
 
     proc.on('close', (code) => {
-        outputChannel.appendLine(`Exited with code ${code}`);
+        outputChannel.info(`Exited with code ${code}`);
         // trigger a refresh after execution
         vscode.commands.executeCommand('containerlab.refresh');
     });
@@ -109,7 +109,7 @@ export class Command {
         cmd.push(this.command);
         if (args) { cmd.push(...args); }
 
-        outputChannel.appendLine(`[${this.command}] Running: ${cmd.join(" ")}`);
+        outputChannel.info(`[${this.command}] Running: ${cmd.join(" ")}`);
 
         if (this.useSpinner) {
             return this.execSpinner(cmd);
@@ -161,7 +161,7 @@ export class Command {
                                 if (trimmed) {
                                     const cleanLine = utils.stripAnsi(trimmed);
                                     progress.report({ message: cleanLine });
-                                    outputChannel.appendLine(cleanLine);
+                                    outputChannel.info(cleanLine);
                                 }
                             }
                         });
@@ -172,7 +172,7 @@ export class Command {
                             for (const line of lines) {
                                 const trimmed = line.trim();
                                 if (trimmed) {
-                                    outputChannel.appendLine(`[stderr] ${utils.stripAnsi(trimmed)}`);
+                                    outputChannel.info(`${utils.stripAnsi(trimmed)}`);
                                 }
                             }
                         });

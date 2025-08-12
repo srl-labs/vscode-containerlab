@@ -8,30 +8,20 @@ async function build() {
 
   // Copy main template
   await fs.copy(
-    path.join(__dirname, 'src/topoViewer/common/templates/main.html'),
+    path.join(__dirname, 'src/topoViewer/templates/main.html'),
     path.join(templateDestDir, 'main.html')
   );
 
   // Copy shared partials
-  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/common/templates/partials');
+  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/templates/partials');
   if (fs.existsSync(sharedPartialsDir)) {
     await fs.copy(sharedPartialsDir, path.join(templateDestDir, 'partials'));
   }
 
-  // Copy viewer-specific partials directory
-  const viewerPartialsSrcDir = path.join(__dirname, 'src/topoViewer/view/templates/partials');
-  if (fs.existsSync(viewerPartialsSrcDir)) {
-    await fs.copy(viewerPartialsSrcDir, path.join(templateDestDir, 'viewer-partials'));
-  }
+  // Editor partials are now merged with shared partials
 
-  // Copy editor-specific partials directory
-  const editorPartialsSrcDir = path.join(__dirname, 'src/topoViewer/edit/templates/partials');
-  if (fs.existsSync(editorPartialsSrcDir)) {
-    await fs.copy(editorPartialsSrcDir, path.join(templateDestDir, 'editor-partials'));
-  }
-
-  // Copy common images
-  const commonImagesDir = path.join(__dirname, 'src/topoViewer/common/images');
+  // Copy images
+  const commonImagesDir = path.join(__dirname, 'src/topoViewer/images');
   const imagesDestDir = path.join(__dirname, 'dist/images');
   
   if (fs.existsSync(commonImagesDir)) {

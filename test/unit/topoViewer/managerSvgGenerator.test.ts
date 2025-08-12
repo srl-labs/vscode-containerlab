@@ -1,7 +1,7 @@
 /* eslint-env mocha */
 /* global describe, it */
 import { expect } from 'chai';
-import { generateEncodedSVG, NodeType } from '../../../src/topoViewer/common/webview-ui/managerSvgGenerator';
+import { generateEncodedSVG, NodeType } from '../../../src/topoViewer/webview-ui/managerSvgGenerator';
 
 describe('generateEncodedSVG', () => {
   const nodeTypes: NodeType[] = [
