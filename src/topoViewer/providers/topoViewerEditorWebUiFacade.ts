@@ -714,6 +714,123 @@ topology:
             break;
           }
 
+          case 'clab-node-connect-ssh': {
+            try {
+              const nodeName = payloadObj as string;
+              const node = {
+                label: nodeName,
+                name: nodeName,
+                name_short: nodeName,
+                cID: nodeName,
+                state: '',
+                kind: '',
+                image: '',
+                interfaces: [],
+                labPath: { absolute: '', relative: '' }
+              } as any;
+              await vscode.commands.executeCommand('containerlab.node.ssh', node);
+              result = `SSH connection executed for ${nodeName}`;
+            } catch (innerError) {
+              error = `Error executing SSH connection: ${innerError}`;
+              log.error(`Error executing SSH connection: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'clab-node-attach-shell': {
+            try {
+              const nodeName = payloadObj as string;
+              const node = {
+                label: nodeName,
+                name: nodeName,
+                name_short: nodeName,
+                cID: nodeName,
+                state: '',
+                kind: '',
+                image: '',
+                interfaces: [],
+                labPath: { absolute: '', relative: '' }
+              } as any;
+              await vscode.commands.executeCommand('containerlab.node.attachShell', node);
+              result = `Attach shell executed for ${nodeName}`;
+            } catch (innerError) {
+              error = `Error executing attach shell: ${innerError}`;
+              log.error(`Error executing attach shell: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'clab-node-view-logs': {
+            try {
+              const nodeName = payloadObj as string;
+              const node = {
+                label: nodeName,
+                name: nodeName,
+                name_short: nodeName,
+                cID: nodeName,
+                state: '',
+                kind: '',
+                image: '',
+                interfaces: [],
+                labPath: { absolute: '', relative: '' }
+              } as any;
+              await vscode.commands.executeCommand('containerlab.node.showLogs', node);
+              result = `Show logs executed for ${nodeName}`;
+            } catch (innerError) {
+              error = `Error executing show logs: ${innerError}`;
+              log.error(`Error executing show logs: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'clab-link-capture': {
+            try {
+              const data = payloadObj as { nodeName: string; interfaceName: string };
+              const iface = {
+                label: data.interfaceName,
+                parentName: data.nodeName,
+                cID: data.nodeName,
+                name: data.interfaceName,
+                type: '',
+                alias: '',
+                mac: '',
+                mtu: 0,
+                ifIndex: 0,
+                state: ''
+              } as any;
+              await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
+              result = `Capture executed for ${data.nodeName}/${data.interfaceName}`;
+            } catch (innerError) {
+              error = `Error executing capture: ${innerError}`;
+              log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'clab-link-capture-edgeshark-vnc': {
+            try {
+              const data = payloadObj as { nodeName: string; interfaceName: string };
+              const iface = {
+                label: data.interfaceName,
+                parentName: data.nodeName,
+                cID: data.nodeName,
+                name: data.interfaceName,
+                type: '',
+                alias: '',
+                mac: '',
+                mtu: 0,
+                ifIndex: 0,
+                state: ''
+              } as any;
+              await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
+              result = `VNC capture executed for ${data.nodeName}/${data.interfaceName}`;
+            } catch (innerError) {
+              error = `Error executing VNC capture: ${innerError}`;
+              log.error(`Error executing VNC capture: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           case 'topo-editor-show-vscode-message': {
             try {
               // Parse the payload from the webview
