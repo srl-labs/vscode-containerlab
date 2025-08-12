@@ -160,17 +160,20 @@
   .btn-icon {
     padding: 0.5rem;
   }
+
   .btn-icon-hover-clean {
     padding: 0.5rem;
     background-color: transparent;
+    transition: ho;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-duration: 150ms;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
+    border-radius: var(--radius-md);
   }
 
   .btn-icon-hover-clean:hover {
-    background-color: var(--vscode-tab-inactiveBackground);
+    background-color: var(--vscode-button-hoverBackground);
   }
 
   .btn-icon-geo-map-hover-clean {
