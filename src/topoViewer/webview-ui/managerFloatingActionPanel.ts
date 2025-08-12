@@ -1,6 +1,7 @@
 // file: managerFloatingActionPanel.ts
 
 import cytoscape from 'cytoscape';
+import tippy from 'tippy.js';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { getGroupManager } from '../core/managerRegistry';
 import { log } from '../logging/webviewLogger';
@@ -45,12 +46,14 @@ export class ManagerFloatingActionPanel {
     const addNodeBtn = document.getElementById('radial-add-node');
     const addGroupBtn = document.getElementById('radial-add-group');
     const addTextBtn = document.getElementById('radial-add-text');
+    const tooltipOptions = { delay: [100, 0] as [number, number] };
 
     if (addNodeBtn) {
       addNodeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.handleAddNode();
       });
+      tippy(addNodeBtn, tooltipOptions);
     }
 
     if (addGroupBtn) {
@@ -58,6 +61,7 @@ export class ManagerFloatingActionPanel {
         e.stopPropagation();
         this.handleAddGroup();
       });
+      tippy(addGroupBtn, tooltipOptions);
     }
 
     if (addTextBtn) {
@@ -65,6 +69,7 @@ export class ManagerFloatingActionPanel {
         e.stopPropagation();
         this.handleAddText();
       });
+      tippy(addTextBtn, tooltipOptions);
     }
 
     // Close menu when clicking outside

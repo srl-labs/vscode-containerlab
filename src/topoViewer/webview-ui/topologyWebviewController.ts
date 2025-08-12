@@ -8,6 +8,7 @@ import './tailwind.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 // Import Leaflet CSS for map tiles
 import 'leaflet/dist/leaflet.css';
+import 'tippy.js/dist/tippy.css';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
