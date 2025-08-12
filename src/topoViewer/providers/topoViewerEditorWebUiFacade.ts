@@ -39,7 +39,7 @@ export class TopoViewerEditor {
   private queuedUpdate: boolean = false; // Indicates an update is queued
   private queuedSaveAck: boolean = false; // If any queued update came from a manual save
   private skipInitialValidation: boolean = false; // Skip schema check for template
-  private isViewMode: boolean = false; // Indicates if running in view-only mode
+  public isViewMode: boolean = false; // Indicates if running in view-only mode
   private deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
 
   constructor(context: vscode.ExtensionContext) {
