@@ -175,15 +175,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 const viewMode = deployedLabNode ? true : false;
 
                 const needsModeSwitch = (deployedLabNode && !topoViewer.isViewMode) || (!deployedLabNode && topoViewer.isViewMode);
-                
+
                 if (!needsModeSwitch) {
-                    return; 
+                    return;
                 }
 
                 topoViewer.isViewMode = viewMode;
-                
+
                 topoViewer.deploymentState = await topoViewer.checkDeploymentState(topoViewer.currentLabName);
-                
+
                 await topoViewer.updatePanelHtml(topoViewer.currentPanel);
             }
         } catch (error) {

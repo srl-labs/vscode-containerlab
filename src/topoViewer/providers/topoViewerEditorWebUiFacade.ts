@@ -107,11 +107,11 @@ export class TopoViewerEditor {
       this.queuedSaveAck = this.queuedSaveAck || sendSaveAck;
       return;
     }
-    
+
     if (this.isSwitchingMode) {
       return;
     }
-    
+
     this.isUpdating = true;
     try {
       const success = await this.updatePanelHtml(this.currentPanel);
@@ -120,12 +120,13 @@ export class TopoViewerEditor {
           this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
         }
       } else {
-        vscode.window.showErrorMessage(
-          'Invalid Containerlab YAML: changes not applied'
-        );
+        // updatePanelHtml returns false for various reasons, not just validation
+        // The actual error message (if any) has already been shown
+        log.debug('Panel update returned false - see previous logs for details');
       }
     } catch (err) {
       log.error(`Error updating topology: ${err}`);
+      vscode.window.showErrorMessage(`Error updating topology: ${err}`);
     } finally {
       this.isUpdating = false;
       if (this.queuedUpdate) {
@@ -250,8 +251,8 @@ topology:
     if (!this.currentLabName) {
       return false;
     }
-    
-    // Skip update if mode switching is in progress 
+
+    // Skip update if mode switching is in progress
     if (this.isSwitchingMode) {
       log.debug('Skipping updatePanelHtml - mode switch in progress');
       return false;
@@ -643,7 +644,7 @@ topology:
                 log.debug(result);
                 break;
               }
-              
+
               // Refresh deployment state
               this.deploymentState = await this.checkDeploymentState(this.currentLabName);
               // Refresh the webview content.
@@ -652,10 +653,10 @@ topology:
                 result = `Endpoint "${endpointName}" executed successfully.`;
                 log.info(result);
               } else {
-                result = `YAML validation failed.`;
-                vscode.window.showErrorMessage(
-                  'Invalid Containerlab YAML: changes not applied'
-                );
+                result = `Panel update failed - check logs for details`;
+                // updatePanelHtml returns false for various reasons
+                // The actual error message (if any) has already been shown
+                log.debug('Panel update returned false during reload');
               }
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
@@ -924,7 +925,7 @@ topology:
                 log.debug('Mode switch already in progress');
                 break;
               }
-              
+
               log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
               this.isSwitchingMode = true;
 
