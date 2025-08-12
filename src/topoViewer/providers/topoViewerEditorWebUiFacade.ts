@@ -21,15 +21,15 @@ import { annotationsManager } from '../utilities/annotationsManager';
  * that displays the Cytoscape graph.
  */
 export class TopoViewerEditor {
-  private currentPanel: vscode.WebviewPanel | undefined;
+  public currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = 'topoViewerEditor';
   private adaptor: TopoViewerAdaptorClab;
-  private context: vscode.ExtensionContext;
+  public context: vscode.ExtensionContext;
   public lastYamlFilePath: string = '';
   public lastFolderName: string | undefined;
   public targetDirPath: string | undefined;
   public createTopoYamlTemplateSuccess: boolean = false;
-  private currentLabName: string = '';
+  public currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private clabTreeProviderImported: RunningLabTreeDataProvider;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
@@ -40,7 +40,7 @@ export class TopoViewerEditor {
   private queuedSaveAck: boolean = false; // If any queued update came from a manual save
   private skipInitialValidation: boolean = false; // Skip schema check for template
   public isViewMode: boolean = false; // Indicates if running in view-only mode
-  private deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
+  public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
 
   constructor(context: vscode.ExtensionContext) {
@@ -1046,12 +1046,32 @@ topology:
 
       // Check if the lab exists in the raw inspect data
       if (inspector.rawInspectData) {
-        // Check if this lab exists in the inspect data
-        for (const lab of Object.values(inspector.rawInspectData)) {
-          if ((lab as any).name === labName) {
-            return 'deployed';
+        // First try exact name match
+        if (labName in inspector.rawInspectData) {
+          return 'deployed';
+        }
+
+        // If we have a YAML file path, also check by comparing lab paths
+        if (this.lastYamlFilePath) {
+          const normalizedYamlPath = this.lastYamlFilePath.replace(/\\/g, '/');
+
+          for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData)) {
+            const deployedLab = labData as any;
+            // Check if the lab's topo-file matches our YAML path
+            if (deployedLab['topo-file']) {
+              const normalizedTopoFile = deployedLab['topo-file'].replace(/\\/g, '/');
+              if (normalizedTopoFile === normalizedYamlPath) {
+                // Update the currentLabName to match the deployed lab name
+                if (this.currentLabName !== deployedLabName) {
+                  log.info(`Updating lab name from '${this.currentLabName}' to '${deployedLabName}' based on topo-file match`);
+                  this.currentLabName = deployedLabName;
+                }
+                return 'deployed';
+              }
+            }
           }
         }
+
         return 'undeployed';
       }
     } catch (err) {

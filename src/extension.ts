@@ -6,6 +6,7 @@ import * as c from './treeView/common';
 import * as path from 'path';
 
 import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
+import { setCurrentTopoViewer } from './commands/graph';
 
 
 import { WelcomePage } from './welcomePage';
@@ -367,13 +368,25 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const labName = path.basename(yamlUri.fsPath, path.extname(yamlUri.fsPath));
+        // Extract lab name properly - remove .clab.yml or .clab.yaml
+        const baseName = path.basename(yamlUri.fsPath);
+        const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
 
         const editor = new TopoViewerEditor(context);
+
+        // Register globally so refresh can find it
+        setCurrentTopoViewer(editor);
 
         editor.lastYamlFilePath = yamlUri.fsPath;
 
         await editor.createWebviewPanel(context, yamlUri, labName);
+
+        // Track disposal to clear global reference
+        if (editor.currentPanel) {
+          editor.currentPanel.onDidDispose(() => {
+            setCurrentTopoViewer(undefined);
+          });
+        }
 
         await editor.openTemplateFile(yamlUri.fsPath);
       }
@@ -397,15 +410,27 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       // Derive the labName (without extension) from what they typed:
-      const labName = path.basename(uri.fsPath, path.extname(uri.fsPath));
+      const baseName = path.basename(uri.fsPath);
+      const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
 
       // Delegate to your template‑writer helper:
         const editor = new TopoViewerEditor(context);
+
+        // Register globally so refresh can find it
+        setCurrentTopoViewer(editor);
+
         try {
           await editor.createTemplateFile(uri);
 
         // Open the webview panel topoViewerEditor.
         await editor.createWebviewPanel(context, uri, labName)
+
+        // Track disposal to clear global reference
+        if (editor.currentPanel) {
+          editor.currentPanel.onDidDispose(() => {
+            setCurrentTopoViewer(undefined);
+          });
+        }
 
         // Open the created file in a split editor.
         await editor.openTemplateFile(editor.lastYamlFilePath);

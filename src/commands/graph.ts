@@ -122,10 +122,12 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   const viewer = new TopoViewer(context);
 
   // 2) store the viewer in the global variable
-  currentTopoViewer = viewer;
+  setCurrentTopoViewer(viewer);
 
   try {
-    const labName = node?.name || (labPath ? path.basename(labPath, path.extname(labPath)) : 'Unknown Lab');
+    // Use the node's name if available (it's the actual lab name from containerlab inspect)
+    // Otherwise derive from the file path (but this may not match the deployed name)
+    const labName = node?.name || (labPath ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '') : 'Unknown Lab');
     await viewer.createWebviewPanel(context, labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''), labName, isViewMode);
     currentTopoViewerPanel = (viewer as any).currentPanel;
 
@@ -138,8 +140,7 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
 
     // 6) Track disposal
     currentTopoViewerPanel.onDidDispose(() => {
-      currentTopoViewerPanel = undefined;
-      currentTopoViewer = undefined; // also nullify the viewer reference
+      setCurrentTopoViewer(undefined);
       vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
     });
 
@@ -176,7 +177,11 @@ export function getCurrentTopoViewer(): TopoViewer | undefined {
   return currentTopoViewer;
 }
 
-export function setCurrentTopoViewer(viewer: TopoViewer) {
+export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
   currentTopoViewer = viewer;
-  currentTopoViewerPanel = (viewer as any).currentPanel;
+  if (viewer) {
+    currentTopoViewerPanel = (viewer as any).currentPanel;
+  } else {
+    currentTopoViewerPanel = undefined;
+  }
 }
