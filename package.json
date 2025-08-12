@@ -68,7 +68,7 @@
       },
       {
         "view": "localLabs",
-        "contents": "No labs discovered in the current directory\n[Create topology with TopoEditor](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)\n[Clone popular lab](command:containerlab.lab.clonePopularRepo)",
+        "contents": "No labs discovered in the current directory\n[Create topology with TopoViewer](command:containerlab.editor.topoViewerEditor)\n[Clone Repository from git](command:containerlab.lab.cloneRepo)\n[Clone popular lab](command:containerlab.lab.clonePopularRepo)",
         "when": "workbenchState != empty"
       },
       {
@@ -97,7 +97,7 @@
       },
       {
         "command": "containerlab.editor.topoViewerEditor.open",
-        "title": "Edit topology (TopoEditor)"
+        "title": "Edit topology (TopoViewer)"
       },
       {
         "command": "containerlab.lab.copyPath",
@@ -640,6 +640,48 @@
           "group": "graph@1"
         }
       ],
+      "explorer/context": [
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy",
+          "group": "clabLabActions@1"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.deploy.cleanup",
+          "group": "clabLabActions@2"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy",
+          "group": "clabLabActions@3"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.redeploy.cleanup",
+          "group": "clabLabActions@4"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy",
+          "group": "clabLabActions@5"
+        },
+        {
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "command": "containerlab.lab.destroy.cleanup",
+          "group": "clabLabActions@6"
+        },
+        {
+          "submenu": "containerlab.submenu.lab.graph.drawio",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "group": "graph@0"
+        },
+        {
+          "command": "containerlab.lab.graph.topoViewer",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "group": "graph@1"
+        }
+      ],
       "view/item/context": [
         {
           "command": "containerlab.refresh",
@@ -658,13 +700,13 @@
         {
           "command": "containerlab.lab.openFile",
           "when": "viewItem =~ /containerlabLab/",
-          "group": "labFile@0"
+          "group": "labEditor@0"
         },
         {
           "command": "containerlab.editor.topoViewerEditor.open",
           "when": "viewItem =~ /containerlabLabUndeployed/",
-          "group": "labFile@1",
-          "title": "Edit Topology (TopoEditor)"
+          "group": "labEditor@1",
+          "title": "Edit Topology (TopoViewer)"
         },
         {
           "command": "containerlab.lab.copyPath",
@@ -685,65 +727,65 @@
           "command": "containerlab.lab.toggleFavorite",
           "title": "Add to Favorites",
           "when": "view == localLabs && viewItem =~ /containerlabLab(Deployed|Undeployed)$/",
-          "group": "navigation@0"
+          "group": "_favorites@0"
         },
         {
           "command": "containerlab.lab.toggleFavorite",
           "title": "Add to Favorites",
           "when": "view == runningLabs && viewItem =~ /containerlabLab(Deployed|Undeployed)$/",
-          "group": "navigation@0"
+          "group": "_favorites@0"
         },
         {
           "command": "containerlab.lab.toggleFavorite",
           "title": "Remove from Favorites",
           "when": "view == localLabs && viewItem =~ /containerlabLab.*Favorite/",
-          "group": "navigation@0"
+          "group": "_favorites@0"
         },
         {
           "command": "containerlab.lab.toggleFavorite",
           "title": "Remove from Favorites",
           "when": "view == runningLabs && viewItem =~ /containerlabLab.*Favorite/",
-          "group": "navigation@0"
+          "group": "_favorites@0"
         },
         {
           "command": "containerlab.lab.deploy",
           "when": "viewItem =~ /containerlabLabUndeployed/",
-          "group": "navigation@1"
+          "group": "clabActions@1"
         },
         {
           "command": "containerlab.lab.deploy.cleanup",
           "when": "viewItem =~ /containerlabLabUndeployed/",
-          "group": "navigation@2"
+          "group": "clabActions@2"
         },
         {
           "command": "containerlab.lab.destroy",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@3"
+          "group": "clabActions@3"
         },
         {
           "command": "containerlab.lab.destroy.cleanup",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@4"
+          "group": "clabActions@4"
         },
         {
           "command": "containerlab.lab.redeploy",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@5"
+          "group": "clabActions@5"
         },
         {
           "command": "containerlab.lab.redeploy.cleanup",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@6"
+          "group": "clabActions@6"
         },
         {
           "command": "containerlab.lab.save",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@7"
+          "group": "clabActions@7"
         },
         {
           "command": "containerlab.lab.delete",
           "when": "viewItem =~ /containerlabLabUndeployed/",
-          "group": "navigation@8"
+          "group": "clabActions@8"
         },
         {
           "command": "containerlab.lab.sshToAllNodes",
@@ -753,12 +795,12 @@
         {
           "command": "containerlab.node.openBrowser",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@8"
+          "group": "nodeNavigationPort@8"
         },
         {
           "command": "containerlab.inspectOneLab",
           "when": "viewItem =~ /containerlabLabDeployed/",
-          "group": "navigation@9"
+          "group": "clabActions@9"
         },
         {
           "submenu": "containerlab.submenu.lab.share",
@@ -798,7 +840,7 @@
         {
           "command": "containerlab.node.save",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@4"
+          "group": "nodeNavigationSaveCfg@4"
         },
         {
           "command": "containerlab.node.attachShell",
@@ -833,12 +875,12 @@
         {
           "command": "containerlab.node.showLogs",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@5"
+          "group": "nodeNavigationLogs@0"
         },
         {
           "command": "containerlab.node.manageImpairments",
           "when": "viewItem == containerlabContainer",
-          "group": "nodeNavigation@6"
+          "group": "nodeNavigationImpairments@0"
         },
         {
           "submenu": "containerlab.submenu.node.copy",
@@ -1237,12 +1279,12 @@
         "containerlab.editor.defaultKind": {
           "type": "string",
           "default": "nokia_srlinux",
-          "markdownDescription": "The default kind of the node when adding a new node in the TopoEditor."
+          "markdownDescription": "The default kind of the node when adding a new node in the TopoViewer edit mode."
         },
         "containerlab.editor.defaultType": {
           "type": "string",
           "default": "ixrd1",
-          "markdownDescription": "The default type of the node when adding a new node in the TopoEditor."
+          "markdownDescription": "The default type of the node when adding a new node in the TopoViewer edit mode."
         },
         "containerlab.editor.imageMapping": {
           "type": "object",
@@ -1252,7 +1294,7 @@
           "default": {
             "nokia_srlinux": "ghcr.io/nokia/srlinux:latest"
           },
-          "markdownDescription": "Default docker image (with tag) for each node kind when creating nodes in the TopoEditor. Example: `{ \"nokia_srlinux\": \"ghcr.io/nokia/srlinux:latest\" }`"
+          "markdownDescription": "Default docker image (with tag) for each node kind when creating nodes in the TopoVIewer edit mode. Example: `{ \"nokia_srlinux\": \"ghcr.io/nokia/srlinux:latest\" }`"
         },
         "containerlab.editor.interfacePatternMapping": {
           "type": "object",
@@ -1262,7 +1304,7 @@
           "default": {
             "nokia_srlinux": "e1-{n}"
           },
-          "markdownDescription": "Interface name pattern used when creating links in the TopoEditor. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
+          "markdownDescription": "Interface name pattern used when creating links in the TopoViewer edit mode.. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
         },
         "containerlab.editor.updateLinkEndpointsOnKindChange": {
           "type": "boolean",
