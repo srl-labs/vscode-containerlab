@@ -5,10 +5,14 @@
       <img id="nokia-logo-img" src="{{imagesUri}}/{{logoFile}}" alt="Containerlab Logo" class="h-12 w-auto block" />
     </a>
     <div class="flex flex-col leading-tight pl-0">
-      <!-- <p class="text-xl font-semibold select-none">containerlab</p> -->
-      <p class="text-lg font-normal select-none">
-        <span class="">TopoViewer <span id="mode-indicator" class="mode-{{topoViewerMode}} px-2 py-0.5 text-xs font-semibold rounded uppercase text-white">{{topoViewerMode}}</span> · {{topologyName}}</span>
-      </p>
+      <span class="text-xl">TopoViewer</span>
+      <span class="inline-flex items-center gap-x-2">
+        <span id="mode-indicator"
+          class="mode-{{topoViewerMode}} inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded uppercase text-white">
+          {{topoViewerMode}}
+        </span>
+        <span class="leading-none">· {{topologyName}}</span>
+      </span>
     </div>
   </div>
 
@@ -21,9 +25,12 @@
 
 <style>
   #mode-indicator.mode-viewer {
-    background-color: #10b981; /* green-500 */
+    background-color: #10b981;
+    /* green-500 */
   }
+
   #mode-indicator.mode-editor {
-    background-color: #3b82f6; /* blue-500 */
+    background-color: #3b82f6;
+    /* blue-500 */
   }
 </style>
