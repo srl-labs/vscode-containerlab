@@ -45,13 +45,13 @@ export async function execCommandInOutput(command: string, show?: boolean, stdou
 
     proc.stdout?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
-        outputChannel.append(cleaned);
+        outputChannel.info(cleaned);
         if (stdoutCb) { stdoutCb(proc, cleaned); }
     });
 
     proc.stderr?.on('data', (data) => {
         const cleaned = utils.stripAnsi(data.toString());
-        outputChannel.append(cleaned);
+        outputChannel.info(cleaned);
         if (stderrCb) { stderrCb(proc, cleaned); }
     });
 
@@ -172,7 +172,7 @@ export class Command {
                             for (const line of lines) {
                                 const trimmed = line.trim();
                                 if (trimmed) {
-                                    outputChannel.warn(`[stderr] ${utils.stripAnsi(trimmed)}`);
+                                    outputChannel.info(`${utils.stripAnsi(trimmed)}`);
                                 }
                             }
                         });

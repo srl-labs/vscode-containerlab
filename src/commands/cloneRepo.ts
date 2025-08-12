@@ -31,8 +31,8 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
   outputChannel.info(`git clone ${repoUrl} ${dest}`);
 
   exec(`${utils.getSudo()}git clone ${repoUrl} "${dest}"`, (error, stdout, stderr) => {
-    if (stdout) { outputChannel.append(stdout); }
-    if (stderr) { outputChannel.append(stderr); }
+    if (stdout) { outputChannel.info(stdout); }
+    if (stderr) { outputChannel.error(stderr); }
     if (error) {
       vscode.window.showErrorMessage(`Git clone failed: ${error.message}`);
       outputChannel.error(`git clone failed: ${error.message}`);
