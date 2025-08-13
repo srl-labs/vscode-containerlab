@@ -177,18 +177,6 @@
     cursor: pointer;
   }
 
-  .btn-icon-geo-map-hover-clean {
-    padding: 0.5rem;
-    background-color: var(--vscode-button-secondaryBackground);
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    outline: none;
-  }
-
-  .btn-icon-geo-map-hover-clean:hover {
-    background-color: var(--vscode-tab-inactiveBackground);
-  }
   /* Panel styles */
   .panel {
     background-color: var(--bg-secondary);
