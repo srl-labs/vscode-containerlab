@@ -2,7 +2,7 @@
 // Contains functions referenced by onclick handlers in the HTML template
 
 // Import logger for webview
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { exportViewportAsSvg } from './utils';
 import topoViewerState from '../state';

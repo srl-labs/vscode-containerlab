@@ -1,5 +1,5 @@
-/* eslint-env mocha, node */
-/* global __dirname */
+/* eslint-env node, mocha */
+/* global __dirname:readonly */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';
@@ -7,7 +7,7 @@ import path from 'path';
 import { describe, it, afterEach } from 'mocha';
 
 const originalResolve = (Module as any)._resolveFilename;
-const extensionLoggerPath = path.join(
+const loggerPath = path.join(
   __dirname,
   '..',
   '..',
@@ -15,14 +15,13 @@ const extensionLoggerPath = path.join(
   '..',
   'src',
   'topoViewer',
-  'common',
   'logging',
-  'extensionLogger'
+  'logger'
 );
 
-describe('extensionLogger', () => {
+describe('logger (extension)', () => {
   afterEach(() => {
-    delete require.cache[require.resolve(extensionLoggerPath)];
+    delete require.cache[require.resolve(loggerPath)];
     (Module as any)._resolveFilename = originalResolve;
     sinon.restore();
   });
@@ -37,14 +36,22 @@ describe('extensionLogger', () => {
 
     const vscodeStubPath = path.join(__dirname, '..', '..', '..', '..', 'helpers', 'vscode-stub.js');
     const vscodeStub = require(vscodeStubPath);
-    const appendSpy = sinon.spy();
-    vscodeStub.window.createOutputChannel = () => ({ appendLine: appendSpy });
+    const debugSpy = sinon.spy();
+    const infoSpy = sinon.spy();
+    const warnSpy = sinon.spy();
+    const errorSpy = sinon.spy();
+    vscodeStub.window.createOutputChannel = () => ({
+      debug: debugSpy,
+      info: infoSpy,
+      warn: warnSpy,
+      error: errorSpy,
+    });
 
-    const { log } = require(extensionLoggerPath);
+    const { log } = require(loggerPath);
     log.info('hello');
 
-    expect(appendSpy.calledOnce).to.be.true;
-    const line = appendSpy.firstCall.args[0];
+    expect(infoSpy.calledOnce).to.be.true;
+    const line = infoSpy.firstCall.args[0];
     expect(line).to.include('level=info');
     expect(line).to.include('msg=hello');
   });
@@ -57,8 +64,8 @@ describe('extensionLogger', () => {
       return originalResolve.call(this, request, parent, isMain, options);
     };
 
-    const consoleSpy = sinon.spy(console, 'log');
-    const { log } = require(extensionLoggerPath);
+    const consoleSpy = sinon.spy(console, 'warn');
+    const { log } = require(loggerPath);
     log.warn('hi');
 
     expect(consoleSpy.calledOnce).to.be.true;

@@ -1,5 +1,5 @@
 import cytoscape from 'cytoscape';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 
 /**
  * Export the current Cytoscape viewport as an SVG file.

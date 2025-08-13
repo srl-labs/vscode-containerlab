@@ -4,7 +4,7 @@ import cytoscape from 'cytoscape';
 import tippy from 'tippy.js';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { getGroupManager } from '../core/managerRegistry';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 
 /**
  * ManagerFloatingActionPanel handles the floating action button (FAB) and radial menu

@@ -1,6 +1,6 @@
 // file: managerVscodeWebview.ts
 
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 
 // This function is typically provided by the VS Code environment.
 declare function acquireVsCodeApi(): any;
