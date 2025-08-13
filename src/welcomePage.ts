@@ -289,7 +289,7 @@ topology:
                   <li class="text-blue underline"><a href="https://containerlab.dev/">Containerlab Documentation</a></li>
                   <li class="text-blue underline"><a href="https://containerlab.dev/manual/vsc-extension/">VS Code Extension Documentation</a></li>
                   <li class="text-blue underline"><a href="https://github.com/srl-labs/">Browse Labs on GitHub (srl-labs)</a></li>
-                  <li class="text-blue underline"><a href="https://github.com/search?q=topic%3Aclab-topo+org%3Asrl-labs+fork%3Atrue&type=repositories">Find more labs tagged with "clab-topo"</a></li>
+                  <li class="text-blue underline"><a href="https://github.com/search?q=topic%3Aclab-topo++fork%3Atrue&type=repositories">Find more labs tagged with "clab-topo"</a></li>
                   <li class="text-blue underline"><a href="https://discord.gg/vAyddtaEV9">Join our Discord server</a></li>
                   <li class="text-blue underline"><a href="https://github.com/siemens/cshargextcap/releases/latest">Download cshargextcap Wireshark plugin</a></li>
               </ul>

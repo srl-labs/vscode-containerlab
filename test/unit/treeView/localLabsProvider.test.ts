@@ -140,20 +140,23 @@ describe('LocalLabTreeDataProvider', () => {
     expect(children![0].favorite).to.be.true;
   });
 
-  it('removes favorites that no longer exist', async () => {
+  it('keeps favorites that no longer exist and displays them', async () => {
     sinon.stub(vscodeStub.workspace, 'findFiles').resolves([]);
     sinon.stub(require('fs'), 'existsSync').returns(false);
 
-    extension.favoriteLabs.add('/workspace/missing/lab.clab.yml');
+    extension.favoriteLabs.add('/outside/lab.clab.yml');
 
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);
 
-    expect(nodes).to.be.undefined;
-    expect(extension.favoriteLabs.size).to.equal(0);
+    expect(nodes).to.have.lengthOf(1);
+    const favNode = nodes![0];
+    expect(favNode.label).to.equal('lab.clab.yml');
+    expect(favNode.favorite).to.be.true;
+    expect(extension.favoriteLabs.size).to.equal(1);
     expect(vscodeStub.commands.executed).to.deep.include({
       command: 'setContext',
-      args: ['localLabsEmpty', true],
+      args: ['localLabsEmpty', false],
     });
   });
 

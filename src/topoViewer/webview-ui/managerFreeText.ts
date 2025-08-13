@@ -11,6 +11,8 @@ export class ManagerFreeText {
   private messageSender: VscodeMessageSender;
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
+  private styleReapplyInProgress = false;
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
     this.cy = cy;
@@ -38,6 +40,7 @@ export class ManagerFreeText {
 
     // Also listen for style changes on the cy instance
     this.cy.on('style', () => {
+      if (this.styleReapplyInProgress) return;
       // Reapply styles after any style change with a small delay
       setTimeout(() => {
         this.reapplyAllFreeTextStyles();
@@ -46,12 +49,22 @@ export class ManagerFreeText {
   }
 
   private reapplyAllFreeTextStyles(): void {
-    this.annotationNodes.forEach((node, id) => {
-      const annotation = this.annotations.get(id);
-      if (annotation && node && node.inside()) {
-        this.applyTextNodeStyles(node, annotation);
-      }
-    });
+    // Set flag before reapplying to prevent recursive calls
+    if (this.styleReapplyInProgress) return;
+    this.styleReapplyInProgress = true;
+
+    try {
+      this.annotationNodes.forEach((node, id) => {
+        const annotation = this.annotations.get(id);
+        if (annotation && node && node.inside()) {
+          // Note: applyTextNodeStyles also sets/unsets styleReapplyInProgress
+          // but we need the outer flag to prevent multiple simultaneous reapplies
+          this.applyTextNodeStyles(node, annotation);
+        }
+      });
+    } finally {
+      this.styleReapplyInProgress = false;
+    }
   }
 
   private setupEventHandlers(): void {
@@ -176,7 +189,8 @@ export class ManagerFreeText {
       // Update the annotation with new values
       Object.assign(annotation, result);
       this.updateFreeTextNode(id, annotation);
-      // Annotations will be saved with the main topology save
+      // Save annotations after edit (debounced)
+      this.debouncedSave();
     }
   }
 
@@ -552,7 +566,8 @@ export class ManagerFreeText {
     }, 100);
 
     this.annotationNodes.set(annotation.id, node);
-    // Don't auto-save here, wait for the main save operation
+    // Save annotations after adding new text (debounced)
+    this.debouncedSave();
   }
 
   /**
@@ -582,14 +597,8 @@ export class ManagerFreeText {
     const fontFamily = annotation.fontFamily || 'monospace';
     styles['font-family'] = fontFamily;
 
-    // Build a complete font string for Cytoscape
-    // Format: [style] [weight] [size] [family]
-    const fontParts = [];
-    if (annotation.fontStyle === 'italic') fontParts.push('italic');
-    if (annotation.fontWeight === 'bold') fontParts.push('bold');
-    fontParts.push(`${fontSize}px`);
-    fontParts.push(fontFamily);
-    styles['font'] = fontParts.join(' ');
+    // Cytoscape doesn't support the CSS `font` shorthand property,
+    // so we rely on the individual font-* properties above.
 
     // Text outline for visibility (and underline effect)
     if (annotation.textDecoration === 'underline') {
@@ -618,7 +627,18 @@ export class ManagerFreeText {
     }
 
     // Apply all styles at once
-    node.style(styles);
+    // Note: The flag is already managed by reapplyAllFreeTextStyles if called from there
+    const wasAlreadyInProgress = this.styleReapplyInProgress;
+    if (!wasAlreadyInProgress) {
+      this.styleReapplyInProgress = true;
+    }
+    try {
+      node.style(styles);
+    } finally {
+      if (!wasAlreadyInProgress) {
+        this.styleReapplyInProgress = false;
+      }
+    }
 
     // Force a render update to ensure styles are applied
     node.cy().forceRender();
@@ -647,7 +667,8 @@ export class ManagerFreeText {
         x: Math.round(position.x),
         y: Math.round(position.y)
       };
-      // Annotations will be saved with the main topology save
+      // Save annotations after position update (debounced)
+      this.debouncedSave();
     }
   }
 
@@ -661,7 +682,8 @@ export class ManagerFreeText {
       node.remove();
     }
     this.annotationNodes.delete(id);
-    // Annotations will be saved with the main topology save
+    // Save annotations after removal (debounced)
+    this.debouncedSave();
   }
 
   /**
@@ -717,6 +739,18 @@ export class ManagerFreeText {
   }
 
   /**
+   * Debounced save - prevents rapid-fire saves when multiple annotations change
+   */
+  private debouncedSave(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(() => {
+      this.saveAnnotations();
+    }, 300); // Wait 300ms after last change before saving
+  }
+
+  /**
    * Save annotations to backend
    */
   public async saveAnnotations(): Promise<void> {
@@ -743,6 +777,12 @@ export class ManagerFreeText {
    * Clear all annotations
    */
   public clearAnnotations(save: boolean = true): void {
+    // Cancel any pending saves first
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+
     this.annotationNodes.forEach(node => {
       if (node && node.inside()) {
         node.remove();

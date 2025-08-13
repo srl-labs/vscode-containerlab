@@ -65,7 +65,7 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
     return;
   }
 
-  const graphCmd = new ClabCommand("graph", node);
+  const graphCmd = new ClabCommand("graph", node, undefined, true, "Containerlab Graph");
 
   graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
 }
@@ -78,6 +78,7 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 
 let currentTopoViewer: TopoViewer | undefined;
 let currentTopoViewerPanel: vscode.WebviewPanel | undefined;
+const activeTopoViewers: Set<TopoViewer> = new Set();
 
 
 export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.ExtensionContext) {
@@ -181,7 +182,37 @@ export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
   currentTopoViewer = viewer;
   if (viewer) {
     currentTopoViewerPanel = (viewer as any).currentPanel;
+    activeTopoViewers.add(viewer);
+
+    // Set up disposal handler to remove from active set
+    if (currentTopoViewerPanel) {
+      currentTopoViewerPanel.onDidDispose(() => {
+        activeTopoViewers.delete(viewer);
+      });
+    }
   } else {
     currentTopoViewerPanel = undefined;
   }
+}
+
+/**
+ * Notifies all active topoviewers that are viewing the specified lab path about state changes
+ */
+export async function notifyTopoViewersOfStateChange(labPath: string, deploymentState: 'deployed' | 'undeployed', isViewMode: boolean) {
+  const promises = Array.from(activeTopoViewers)
+    .filter(viewer => viewer.lastYamlFilePath === labPath)
+    .map(async (viewer) => {
+      viewer.deploymentState = deploymentState;
+      viewer.isViewMode = isViewMode;
+
+      if (viewer.currentPanel) {
+        try {
+          await viewer.updatePanelHtml(viewer.currentPanel);
+        } catch (error) {
+          console.error(`Failed to update topoviewer for ${labPath}:`, error);
+        }
+      }
+    });
+
+  await Promise.all(promises);
 }

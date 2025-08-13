@@ -9,7 +9,7 @@ import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, Templa
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
-import { RunningLabTreeDataProvider } from "../../treeView/runningLabsProvider";
+import { runningLabsProvider } from "../../extension";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
@@ -31,7 +31,6 @@ export class TopoViewerEditor {
   public createTopoYamlTemplateSuccess: boolean = false;
   public currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
-  private clabTreeProviderImported: RunningLabTreeDataProvider;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
@@ -46,7 +45,6 @@ export class TopoViewerEditor {
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
-    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
 
   private sleep(ms: number): Promise<void> {
@@ -112,7 +110,6 @@ export class TopoViewerEditor {
       return;
     }
 
-    this.isUpdating = true;
     try {
       const success = await this.updatePanelHtml(this.currentPanel);
       if (success) {
@@ -127,14 +124,13 @@ export class TopoViewerEditor {
     } catch (err) {
       log.error(`Error updating topology: ${err}`);
       vscode.window.showErrorMessage(`Error updating topology: ${err}`);
-    } finally {
-      this.isUpdating = false;
-      if (this.queuedUpdate) {
-        const nextSaveAck = this.queuedSaveAck;
-        this.queuedUpdate = false;
-        this.queuedSaveAck = false;
-        await this.triggerUpdate(nextSaveAck);
-      }
+    }
+
+    if (this.queuedUpdate) {
+      const nextSaveAck = this.queuedSaveAck;
+      this.queuedUpdate = false;
+      this.queuedSaveAck = false;
+      await this.triggerUpdate(nextSaveAck);
     }
   }
 
@@ -170,30 +166,34 @@ export class TopoViewerEditor {
     // Use the derived lab name for folder storage
     this.lastFolderName = baseNameWithoutExt;
 
-    // Build the template with the actual lab name - minimal template to show flexibility
+    // Build the template with the actual lab name - default topology with two SRL routers
     const templateContent = `
 name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
 
 topology:
   nodes:
-    node1:
-      # kind and type are optional now
-      # kind: nokia_srlinux
-      # type: ixrd1
-      # image: ghcr.io/nokia/srlinux:latest
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
       labels:
-        graph-posX: "65"
-        graph-posY: "25"
+        graph-posX: "80"
+        graph-posY: "20"
         graph-icon: router
-    node2:
-      # Completely minimal node - only position labels
-      labels:
-        graph-posX: "165"
-        graph-posY: "25"
 
-  # links section is optional - uncomment to add links
-  # links:
-  #   - endpoints: [ node1:eth1, node2:eth1 ]
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+      labels:
+        graph-posX: "160"
+        graph-posY: "20"
+        graph-icon: router
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
 `;
 
     try {
@@ -286,7 +286,7 @@ topology:
       : undefined;
     if (this.isViewMode) {
       try {
-        updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+        updatedClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
         this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
       } catch (err) {
         log.warn(`Failed to refresh running lab data: ${err}`);
@@ -363,6 +363,7 @@ topology:
         const viewerParams: Partial<ViewerTemplateParams> = {
           deploymentState: this.deploymentState,
           viewerMode: 'viewer',
+          currentLabPath: this.lastYamlFilePath,
         };
         templateParams = viewerParams;
       } else {
@@ -379,6 +380,7 @@ topology:
           defaultKind,
           defaultType,
           updateLinkEndpointsOnKindChange,
+          currentLabPath: this.lastYamlFilePath,
         };
         templateParams = editorParams;
       }
@@ -517,7 +519,7 @@ topology:
       let treeData: Record<string, ClabLabTreeNode> | undefined = undefined;
       if (this.isViewMode) {
         try {
-          treeData = await this.clabTreeProviderImported.discoverInspectLabs();
+          treeData = await runningLabsProvider.discoverInspectLabs();
           this.cacheClabTreeDataToTopoviewer = treeData;
         } catch (err) {
           log.warn(`Failed to load running lab data: ${err}`);
@@ -998,6 +1000,186 @@ topology:
             } catch (innerError) {
               error = `Error saving annotations: ${innerError}`;
               log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'deployLab': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for deployment';
+                break;
+              }
+
+              // Create a temporary lab node for the deploy command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
+              result = `Lab deployment initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error deploying lab: ${innerError}`;
+              log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'destroyLab': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for destruction';
+                break;
+              }
+
+              // Create a temporary lab node for the destroy command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
+              result = `Lab destruction initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error destroying lab: ${innerError}`;
+              log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'deployLabCleanup': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for deployment with cleanup';
+                break;
+              }
+
+              // Create a temporary lab node for the deploy with cleanup command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.deploy.cleanup', tempNode);
+              result = `Lab deployment with cleanup initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error deploying lab with cleanup: ${innerError}`;
+              log.error(`Error deploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'destroyLabCleanup': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for destruction with cleanup';
+                break;
+              }
+
+              // Create a temporary lab node for the destroy with cleanup command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.destroy.cleanup', tempNode);
+              result = `Lab destruction with cleanup initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error destroying lab with cleanup: ${innerError}`;
+              log.error(`Error destroying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'redeployLab': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for redeploy';
+                break;
+              }
+
+              // Create a temporary lab node for the redeploy command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.redeploy', tempNode);
+              result = `Lab redeploy initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error redeploying lab: ${innerError}`;
+              log.error(`Error redeploying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'redeployLabCleanup': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for redeploy with cleanup';
+                break;
+              }
+
+              // Create a temporary lab node for the redeploy with cleanup command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.redeploy.cleanup', tempNode);
+              result = `Lab redeploy with cleanup initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error redeploying lab with cleanup: ${innerError}`;
+              log.error(`Error redeploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'showError': {
+            try {
+              const message = payloadObj as string;
+              await vscode.window.showErrorMessage(message);
+              result = 'Error message displayed';
+            } catch (innerError) {
+              error = `Error showing error message: ${innerError}`;
+              log.error(`Error showing error message: ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }

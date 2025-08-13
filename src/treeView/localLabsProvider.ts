@@ -2,8 +2,7 @@ import * as vscode from "vscode"
 import * as utils from "../helpers/utils"
 import * as c from "./common";
 import * as ins from "./inspector";
-import { localTreeView, favoriteLabs, extensionContext } from "../extension";
-import * as fs from "fs";
+import { localTreeView, favoriteLabs } from "../extension";
 import path = require("path");
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
@@ -168,14 +167,8 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             if (uris.find(u => utils.normalizeLabPath(u.fsPath) === norm)) {
                 return;
             }
-            if (fs.existsSync(norm)) {
-                addLab(p, true);
-            } else {
-                favoriteLabs.delete(p);
-                if (extensionContext) {
-                    extensionContext.globalState.update('favoriteLabs', Array.from(favoriteLabs));
-                }
-            }
+            // Always include favorite labs even if the file no longer exists locally
+            addLab(p, true);
         });
 
         if (this.treeFilter) {
@@ -197,6 +190,9 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         Object.values(labs).forEach(lab => {
             const labDir = path.dirname(lab.labPath.absolute);
             if (labDir === dirPath) {
+                labNodes.push(lab);
+            } else if (dirPath === workspaceRoot && !labDir.startsWith(workspaceRoot)) {
+                // Labs outside the workspace root appear directly under the root
                 labNodes.push(lab);
             } else if (labDir.startsWith(dirPath + path.sep) || (dirPath === workspaceRoot && labDir !== workspaceRoot && labDir.startsWith(dirPath))) {
                 const relative = path.relative(dirPath, labDir).split(path.sep)[0];

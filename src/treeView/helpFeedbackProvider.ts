@@ -10,7 +10,7 @@ export class HelpFeedbackProvider implements vscode.TreeDataProvider<vscode.Tree
     { label: 'Containerlab Documentation', url: 'https://containerlab.dev/' },
     { label: 'VS Code Extension Documentation', url: 'https://containerlab.dev/manual/vsc-extension/' },
     { label: 'Browse Labs on GitHub (srl-labs)', url: 'https://github.com/srl-labs/' },
-    { label: 'Find more labs tagged with "clab-topo"', url: 'https://github.com/search?q=topic%3Aclab-topo+org%3Asrl-labs+fork%3Atrue&type=repositories' },
+    { label: 'Find more labs tagged with "clab-topo"', url: 'https://github.com/search?q=topic%3Aclab-topo++fork%3Atrue&type=repositories' },
     { label: 'Join our Discord server', url: 'https://discord.gg/vAyddtaEV9' },
     { label: 'Download cshargextcap Wireshark plugin', url: 'https://github.com/siemens/cshargextcap/releases/latest' }
   ];

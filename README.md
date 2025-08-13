@@ -80,7 +80,7 @@ Customize your experience under `containerlab.*` in VS Code Settings:
 
 - **`containerlab.sudoEnabledByDefault`** (boolean)
   Whether to prepend `sudo` to containerlab commands.
-  _Default: `true`_
+  _Default: `false`_
 
 - **`containerlab.refreshInterval`** (number)
   Auto-refresh interval (in ms) for the Containerlab Explorer.

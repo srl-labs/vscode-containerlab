@@ -26,6 +26,9 @@ const originalResolve = (Module as any)._resolveFilename;
   if (request.includes('utils')) {
     return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
   }
+  if (request === './graph' || request.endsWith('/graph')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'graph-stub.js');
+  }
   return originalResolve.call(this, request, parent, isMain, options);
 };
 

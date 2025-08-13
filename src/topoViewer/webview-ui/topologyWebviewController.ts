@@ -16,7 +16,7 @@ import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerUndo } from './managerUndo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerFloatingActionPanel } from './managerFloatingActionPanel';
+import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
 import { ManagerFreeText } from './managerFreeText';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
@@ -50,7 +50,7 @@ class TopologyWebviewController {
   public undoManager: ManagerUndo;
   public addNodeManager: ManagerAddContainerlabNode;
   public viewportPanels?: ManagerViewportPanels;
-  public floatingActionPanel: ManagerFloatingActionPanel | null = null;
+  public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
   public groupManager: ManagerGroupManagement;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
@@ -83,16 +83,65 @@ class TopologyWebviewController {
       await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
-    // Listen for topology changes
-    this.cy.on('add remove data', autoSave);
+    // Listen for topology changes - but skip free text nodes as they handle their own saves
+    this.cy.on('add remove data', (event) => {
+      const target = event.target;
+      // Skip autosave for free text nodes - they save themselves
+      if (target.isNode() && target.data('topoViewerRole') === 'freeText') {
+        return;
+      }
+      autoSave();
+    });
+
     this.cy.on('position', (event) => {
+      const target = event.target;
+      // Only process node position changes, not edges
+      if (!target.isNode()) {
+        return;
+      }
+      // Skip position events for free text nodes - they handle their own saves
+      if (target.data('topoViewerRole') === 'freeText') {
+        return;
+      }
       // Avoid autosave while a node is actively being dragged
-      if (!event.target.grabbed()) {
+      if (!target.grabbed()) {
         autoSave();
       }
     });
-    this.cy.on('dragfree', 'node', autoSave);
+
+    this.cy.on('dragfree', 'node', (event) => {
+      const node = event.target;
+      // Skip dragfree for free text nodes - they handle their own saves
+      if (node.data('topoViewerRole') === 'freeText') {
+        return;
+      }
+      autoSave();
+    });
   }
+
+  private registerCustomZoom(): void {
+    this.cy.userZoomingEnabled(false);
+    const container = this.cy.container();
+    container?.addEventListener('wheel', this.handleCustomWheel, { passive: false });
+  }
+
+  private handleCustomWheel = (event: WheelEvent): void => {
+    event.preventDefault();
+    let step = event.deltaY;
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      step *= 100;
+    } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      step *= window.innerHeight;
+    }
+    const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
+    const sensitivity = isTrackpad ? 0.002 : 0.0002;
+    const factor = Math.pow(10, -step * sensitivity);
+    const newZoom = this.cy.zoom() * factor;
+    this.cy.zoom({
+      level: newZoom,
+      renderedPosition: { x: event.offsetX, y: event.offsetY },
+    });
+  };
 
   /**
    * Creates an instance of TopologyWebviewController.
@@ -112,7 +161,8 @@ class TopologyWebviewController {
     const theme = this.detectColorScheme();
 
     // Initialize Cytoscape instance
-    this.cy = createConfiguredCytoscape(container, { wheelSensitivity: 2 });
+    this.cy = createConfiguredCytoscape(container);
+    this.registerCustomZoom();
 
     this.cy.on('tap', (event) => {
       this.cyEvent = event as cytoscape.EventObject;
@@ -192,10 +242,22 @@ class TopologyWebviewController {
     // Initialize free text manager for both edit and view modes
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
 
+    // Load annotations after freeTextManager is created
+    // We need to wait a bit for the initial layout to complete
+    setTimeout(() => {
+      this.freeTextManager?.loadAnnotations().then(() => {
+        log.info('Free text annotations loaded successfully');
+      }).catch((error) => {
+        log.error(`Failed to load free text annotations: ${error}`);
+      });
+    }, 500);
+
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
-      this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
     }
+
+    // Initialize unified floating panel for both modes
+    this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(this.cy, this.messageSender, this.addNodeManager);
     this.groupManager = getGroupManager(this.cy, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
