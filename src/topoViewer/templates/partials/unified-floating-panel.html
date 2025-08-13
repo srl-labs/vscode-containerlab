@@ -54,14 +54,14 @@
       class="group relative flex items-center justify-start w-[28px] h-[28px] overflow-visible">
       <!-- Main Deploy/Destroy Button -->
       <button id="deploy-destroy-btn"
-        class="bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] relative z-30 hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]"
+        class="bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] relative z-50 hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]"
         data-tippy-content="Deploy Lab">
         <i class="fas fa-play text-[10px]"></i>
       </button>
 
       <!-- Drawer with options -->
       <div id="deploy-drawer"
-        class="absolute pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 pointer-events-none transition-all ease-out duration-200 z-40">
+        class="absolute pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 pointer-events-none transition-all ease-out duration-200 z-20">
         <!-- Deploy (cleanup) - editor mode -->
         <button id="deploy-cleanup-btn"
           class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]"
@@ -339,15 +339,15 @@
           // In viewer mode (lab is running), show destroy button and redeploy button
           deployBtn.innerHTML = '<i class="fas fa-stop text-[10px]"></i>';
           deployBtn.setAttribute('data-tippy-content', 'Destroy Lab');
-          deployBtn.style.background = 'var(--vscode-errorForeground, #f85149)';
-          deployBtn.style.color = 'var(--vscode-button-foreground, #ffffff)';
+          deployBtn.style.background = 'var(--vscode-button-background)';
+          deployBtn.style.color = 'var(--vscode-button-foreground)';
           deployBtn.onmouseover = function () {
-            this.style.background = 'var(--vscode-errorForeground, #f85149)';
+            this.style.background = 'var(--vscode-button-hoverBackground)';
             this.style.transform = 'translateY(-1px)';
-            this.style.opacity = '0.9';
+            this.style.opacity = '1';
           };
           deployBtn.onmouseout = function () {
-            this.style.background = 'var(--vscode-errorForeground, #f85149)';
+            this.style.background = 'var(--vscode-button-background)';
             this.style.transform = 'translateY(0)';
             this.style.opacity = '1';
           };

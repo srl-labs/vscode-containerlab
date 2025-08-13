@@ -55,7 +55,12 @@ export class ManagerUnifiedFloatingPanel {
     this.setupActionButtons();
     // Delegate mode-driven UI (viewer/editor) to HTML script
     (window as any).updateUnifiedPanelState?.();
-    document.addEventListener('topo-mode-changed', () => (window as any).updateUnifiedPanelState?.());
+    document.addEventListener('topo-mode-changed', () => this.updateState());
+
+    // Re-initialize tooltips after HTML script potentially modifies attributes
+    setTimeout(() => {
+      this.initializeTooltips();
+    }, 200);
 
     log.debug('Unified floating panel initialized');
   }
@@ -65,6 +70,26 @@ export class ManagerUnifiedFloatingPanel {
    */
   private initializeTooltips(): void {
     const tooltipOptions = { delay: [100, 0] as [number, number] };
+
+    // Destroy existing tooltips to avoid conflicts
+    const buttons = [
+      this.deployBtn,
+      this.redeployBtn,
+      this.deployCleanupBtn,
+      this.destroyCleanupBtn,
+      this.redeployCleanupBtn,
+      this.addNodeBtn,
+      this.addGroupBtn,
+      this.addTextBtn
+    ];
+
+    buttons.forEach(btn => {
+      if (btn && (btn as any)._tippy) {
+        (btn as any)._tippy.destroy();
+      }
+    });
+
+    // Re-initialize tooltips
     if (this.deployBtn) tippy(this.deployBtn, tooltipOptions);
     if (this.redeployBtn) tippy(this.redeployBtn, tooltipOptions);
     if (this.deployCleanupBtn) tippy(this.deployCleanupBtn, tooltipOptions);
@@ -82,14 +107,16 @@ export class ManagerUnifiedFloatingPanel {
   }
 
   private setupActionButtons(): void {
-    this.deployBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.handleDeployDestroy(this.isViewerMode());
+    // Listen for custom events dispatched by the HTML script
+    document.addEventListener('unified-deploy-destroy-click', (e: any) => {
+      this.handleDeployDestroy(e.detail.isViewerMode);
     });
-    this.redeployBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.handleRedeploy(this.isViewerMode());
+
+    document.addEventListener('unified-redeploy-click', (e: any) => {
+      this.handleRedeploy(e.detail.isViewerMode);
     });
+
+    // Direct event handlers for cleanup buttons (not handled by HTML script)
     this.deployCleanupBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.deployLabWithCleanup();
@@ -102,16 +129,17 @@ export class ManagerUnifiedFloatingPanel {
       e.stopPropagation();
       this.handleRedeployCleanup();
     });
-    this.addNodeBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
+
+    // Listen for custom events for other buttons
+    document.addEventListener('unified-add-node-click', () => {
       this.handleAddNode();
     });
-    this.addGroupBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
+
+    document.addEventListener('unified-add-group-click', () => {
       this.handleAddGroup();
     });
-    this.addTextBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
+
+    document.addEventListener('unified-add-text-click', () => {
       this.handleAddText();
     });
   }
@@ -452,6 +480,11 @@ export class ManagerUnifiedFloatingPanel {
     (window as any).updateUnifiedPanelState?.();
     const isViewerMode = (window as any).topoViewerMode === 'viewer';
     log.debug(`Unified panel state updated for ${isViewerMode ? 'viewer' : 'editor'} mode`);
+
+    // Re-initialize tooltips after state update to handle dynamic content changes
+    setTimeout(() => {
+      this.initializeTooltips();
+    }, 100);
   }
 
   /**
