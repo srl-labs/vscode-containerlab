@@ -119,6 +119,30 @@ class TopologyWebviewController {
     });
   }
 
+  private registerCustomZoom(): void {
+    this.cy.userZoomingEnabled(false);
+    const container = this.cy.container();
+    container?.addEventListener('wheel', this.handleCustomWheel, { passive: false });
+  }
+
+  private handleCustomWheel = (event: WheelEvent): void => {
+    event.preventDefault();
+    let step = event.deltaY;
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      step *= 100;
+    } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      step *= window.innerHeight;
+    }
+    const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
+    const sensitivity = isTrackpad ? 0.002 : 0.0002;
+    const factor = Math.pow(10, -step * sensitivity);
+    const newZoom = this.cy.zoom() * factor;
+    this.cy.zoom({
+      level: newZoom,
+      renderedPosition: { x: event.offsetX, y: event.offsetY },
+    });
+  };
+
   /**
    * Creates an instance of TopologyWebviewController.
    * @param containerId - The ID of the container element for Cytoscape.
@@ -137,7 +161,8 @@ class TopologyWebviewController {
     const theme = this.detectColorScheme();
 
     // Initialize Cytoscape instance
-    this.cy = createConfiguredCytoscape(container, { wheelSensitivity: 2 });
+    this.cy = createConfiguredCytoscape(container);
+    this.registerCustomZoom();
 
     this.cy.on('tap', (event) => {
       this.cyEvent = event as cytoscape.EventObject;
