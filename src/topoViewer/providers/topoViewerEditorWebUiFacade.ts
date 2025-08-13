@@ -363,6 +363,7 @@ topology:
         const viewerParams: Partial<ViewerTemplateParams> = {
           deploymentState: this.deploymentState,
           viewerMode: 'viewer',
+          currentLabPath: this.lastYamlFilePath,
         };
         templateParams = viewerParams;
       } else {
@@ -379,6 +380,7 @@ topology:
           defaultKind,
           defaultType,
           updateLinkEndpointsOnKindChange,
+          currentLabPath: this.lastYamlFilePath,
         };
         templateParams = editorParams;
       }
@@ -998,6 +1000,68 @@ topology:
             } catch (innerError) {
               error = `Error saving annotations: ${innerError}`;
               log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'deployLab': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for deployment';
+                break;
+              }
+              
+              // Create a temporary lab node for the deploy command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+              
+              await vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
+              result = `Lab deployment initiated for ${labPath}`;
+            } catch (innerError) {
+              error = `Error deploying lab: ${innerError}`;
+              log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'destroyLab': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for destruction';
+                break;
+              }
+              
+              // Create a temporary lab node for the destroy command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+              
+              await vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
+              result = `Lab destruction initiated for ${labPath}`;
+            } catch (innerError) {
+              error = `Error destroying lab: ${innerError}`;
+              log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'showError': {
+            try {
+              const message = payloadObj as string;
+              await vscode.window.showErrorMessage(message);
+              result = 'Error message displayed';
+            } catch (innerError) {
+              error = `Error showing error message: ${innerError}`;
+              log.error(`Error showing error message: ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }

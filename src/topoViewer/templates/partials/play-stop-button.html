@@ -1,0 +1,78 @@
+<div id="play-stop-panel" class="fixed bottom-4 right-4 z-50">
+  <button id="play-stop-btn" 
+          class="w-14 h-14 rounded-full flex items-center justify-center relative top-0 left-0 border-none transform-none">
+    <i id="play-icon" class="fas fa-play text-xl transition-opacity duration-300"></i>
+    <i id="stop-icon" class="fas fa-stop text-xl transition-opacity duration-300 opacity-0 absolute"></i>
+  </button>
+</div>
+
+<style>
+  #play-stop-btn {
+    background-color: var(--color-vscode-button-bg);
+    color: var(--color-white);
+    transition-duration: var(--default-transition-duration);
+  }
+  
+  #play-stop-btn:hover {
+    background-color: var(--color-vscode-button-hover);
+    cursor: pointer;
+  }
+  
+  /* Stop state - red button */
+  #play-stop-btn.show-stop {
+    background-color: var(--color-red-500);
+  }
+  
+  #play-stop-btn.show-stop:hover {
+    background-color: var(--color-red-700);
+  }
+  
+  #play-stop-btn.show-stop #play-icon {
+    opacity: 0;
+  }
+  
+  #play-stop-btn.show-stop #stop-icon {
+    opacity: 1;
+  }
+  
+  #play-stop-btn.loading {
+    transform: none !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+
+</style>
+
+<script>
+  // Show play/stop button in both viewer and editor modes
+  document.addEventListener('DOMContentLoaded', function() {
+    const panel = document.getElementById('play-stop-panel');
+    if (panel) {
+      panel.style.display = 'block';
+      
+      // Initialize button state based on current mode
+      updatePlayStopButtonState();
+    }
+  });
+  
+  /**
+   * Updates the play/stop button state based on current mode
+   */
+  function updatePlayStopButtonState() {
+    const button = document.getElementById('play-stop-btn');
+    const isViewerMode = window.topoViewerMode === 'viewer';
+    
+    if (button) {
+      if (isViewerMode) {
+        // In viewer mode, show stop icon (lab is running)
+        button.classList.add('show-stop');
+        button.setAttribute('data-tippy-content', 'Stop Lab');
+      } else {
+        // In editor mode, show play icon (lab is not running)
+        button.classList.remove('show-stop');
+        button.setAttribute('data-tippy-content', 'Deploy Lab');
+      }
+    }
+  }
+</script>

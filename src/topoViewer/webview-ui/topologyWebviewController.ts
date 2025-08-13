@@ -17,6 +17,7 @@ import { ManagerUndo } from './managerUndo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerFloatingActionPanel } from './managerFloatingActionPanel';
+import { ManagerPlayStopButton } from './managerPlayStopButton';
 import { ManagerFreeText } from './managerFreeText';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
@@ -51,6 +52,7 @@ class TopologyWebviewController {
   public addNodeManager: ManagerAddContainerlabNode;
   public viewportPanels?: ManagerViewportPanels;
   public floatingActionPanel: ManagerFloatingActionPanel | null = null;
+  public playStopButton: ManagerPlayStopButton | null = null;
   public groupManager: ManagerGroupManagement;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
@@ -196,6 +198,9 @@ class TopologyWebviewController {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
     }
+    
+    // Initialize play/stop button for both modes
+    this.playStopButton = new ManagerPlayStopButton(this.messageSender);
     this.groupManager = getGroupManager(this.cy, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
