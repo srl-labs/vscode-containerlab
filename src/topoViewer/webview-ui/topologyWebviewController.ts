@@ -87,7 +87,7 @@ class TopologyWebviewController {
     this.cy.on('add remove data', (event) => {
       const target = event.target;
       // Skip autosave for free text nodes - they save themselves
-      if (target.isNode && target.isNode() && target.data('topoViewerRole') === 'freeText') {
+      if (target.isNode() && target.data('topoViewerRole') === 'freeText') {
         return;
       }
       autoSave();
@@ -95,8 +95,12 @@ class TopologyWebviewController {
 
     this.cy.on('position', (event) => {
       const target = event.target;
+      // Only process node position changes, not edges
+      if (!target.isNode()) {
+        return;
+      }
       // Skip position events for free text nodes - they handle their own saves
-      if (target.isNode && target.isNode() && target.data('topoViewerRole') === 'freeText') {
+      if (target.data('topoViewerRole') === 'freeText') {
         return;
       }
       // Avoid autosave while a node is actively being dragged
@@ -212,6 +216,16 @@ class TopologyWebviewController {
 
     // Initialize free text manager for both edit and view modes
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+
+    // Load annotations after freeTextManager is created
+    // We need to wait a bit for the initial layout to complete
+    setTimeout(() => {
+      this.freeTextManager?.loadAnnotations().then(() => {
+        log.info('Free text annotations loaded successfully');
+      }).catch((error) => {
+        log.error(`Failed to load free text annotations: ${error}`);
+      });
+    }, 500);
 
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);

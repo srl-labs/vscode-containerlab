@@ -12,6 +12,7 @@ export class ManagerFreeText {
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
   private styleReapplyInProgress = false;
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
     this.cy = cy;
@@ -48,12 +49,22 @@ export class ManagerFreeText {
   }
 
   private reapplyAllFreeTextStyles(): void {
-    this.annotationNodes.forEach((node, id) => {
-      const annotation = this.annotations.get(id);
-      if (annotation && node && node.inside()) {
-        this.applyTextNodeStyles(node, annotation);
-      }
-    });
+    // Set flag before reapplying to prevent recursive calls
+    if (this.styleReapplyInProgress) return;
+    this.styleReapplyInProgress = true;
+
+    try {
+      this.annotationNodes.forEach((node, id) => {
+        const annotation = this.annotations.get(id);
+        if (annotation && node && node.inside()) {
+          // Note: applyTextNodeStyles also sets/unsets styleReapplyInProgress
+          // but we need the outer flag to prevent multiple simultaneous reapplies
+          this.applyTextNodeStyles(node, annotation);
+        }
+      });
+    } finally {
+      this.styleReapplyInProgress = false;
+    }
   }
 
   private setupEventHandlers(): void {
@@ -178,8 +189,8 @@ export class ManagerFreeText {
       // Update the annotation with new values
       Object.assign(annotation, result);
       this.updateFreeTextNode(id, annotation);
-      // Save annotations after edit
-      this.saveAnnotations();
+      // Save annotations after edit (debounced)
+      this.debouncedSave();
     }
   }
 
@@ -555,8 +566,8 @@ export class ManagerFreeText {
     }, 100);
 
     this.annotationNodes.set(annotation.id, node);
-    // Save annotations after adding new text
-    this.saveAnnotations();
+    // Save annotations after adding new text (debounced)
+    this.debouncedSave();
   }
 
   /**
@@ -616,11 +627,17 @@ export class ManagerFreeText {
     }
 
     // Apply all styles at once
-    this.styleReapplyInProgress = true;
+    // Note: The flag is already managed by reapplyAllFreeTextStyles if called from there
+    const wasAlreadyInProgress = this.styleReapplyInProgress;
+    if (!wasAlreadyInProgress) {
+      this.styleReapplyInProgress = true;
+    }
     try {
       node.style(styles);
     } finally {
-      this.styleReapplyInProgress = false;
+      if (!wasAlreadyInProgress) {
+        this.styleReapplyInProgress = false;
+      }
     }
 
     // Force a render update to ensure styles are applied
@@ -650,8 +667,8 @@ export class ManagerFreeText {
         x: Math.round(position.x),
         y: Math.round(position.y)
       };
-      // Save annotations after position update
-      this.saveAnnotations();
+      // Save annotations after position update (debounced)
+      this.debouncedSave();
     }
   }
 
@@ -665,8 +682,8 @@ export class ManagerFreeText {
       node.remove();
     }
     this.annotationNodes.delete(id);
-    // Save annotations after removal
-    this.saveAnnotations();
+    // Save annotations after removal (debounced)
+    this.debouncedSave();
   }
 
   /**
@@ -722,6 +739,18 @@ export class ManagerFreeText {
   }
 
   /**
+   * Debounced save - prevents rapid-fire saves when multiple annotations change
+   */
+  private debouncedSave(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(() => {
+      this.saveAnnotations();
+    }, 300); // Wait 300ms after last change before saving
+  }
+
+  /**
    * Save annotations to backend
    */
   public async saveAnnotations(): Promise<void> {
@@ -748,6 +777,12 @@ export class ManagerFreeText {
    * Clear all annotations
    */
   public clearAnnotations(save: boolean = true): void {
+    // Cancel any pending saves first
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+
     this.annotationNodes.forEach(node => {
       if (node && node.inside()) {
         node.remove();
