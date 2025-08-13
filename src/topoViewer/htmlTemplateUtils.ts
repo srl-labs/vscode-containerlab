@@ -164,6 +164,12 @@ export function generateHtmlTemplate(
       ...baseReplacements,
       deploymentState: viewerParams.deploymentState,
       viewerMode: viewerParams.viewerMode,
+      // Provide default values for editor-specific settings in viewer mode
+      imageMapping: '{}',
+      ifacePatternMapping: '{}',
+      defaultKind: 'nokia_srlinux',
+      defaultType: 'ixrd1',
+      updateLinkEndpointsOnKindChange: 'true',
     };
   } else {
     const editorParams = params as EditorTemplateParams;

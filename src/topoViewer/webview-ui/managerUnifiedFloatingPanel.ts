@@ -246,12 +246,12 @@ export class ManagerUnifiedFloatingPanel {
     }
 
     log.debug('Redeploying lab via unified panel');
-    
+
     this.setProcessing(true);
-    
+
     try {
       const labPath = (window as any).currentLabPath;
-      
+
       if (!labPath) {
         log.error('No current lab path available for redeploy');
         this.showError('No lab file available for redeploy');
@@ -261,15 +261,15 @@ export class ManagerUnifiedFloatingPanel {
       // First destroy the lab, then redeploy it
       log.debug('Step 1: Destroying lab for redeploy...');
       await this.messageSender.sendMessageToVscodeEndpointPost('destroyLab', labPath);
-      
+
       // Wait a brief moment to ensure cleanup is complete
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       log.debug('Step 2: Deploying lab for redeploy...');
       await this.messageSender.sendMessageToVscodeEndpointPost('deployLab', labPath);
-      
+
       log.info('Lab redeploy completed successfully');
-      
+
     } catch (error) {
       log.error(`Error redeploying lab: ${error}`);
       this.showError('Failed to redeploy lab');
