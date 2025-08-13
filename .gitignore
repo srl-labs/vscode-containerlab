@@ -13,6 +13,7 @@ mochawesome-report/
 clab-*/
 *.clab.yml*
 CLAUDE.md
+AGENTS.md
 patch.sh
 
 
