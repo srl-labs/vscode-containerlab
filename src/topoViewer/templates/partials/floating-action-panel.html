@@ -1,5 +1,5 @@
 <!-- Floating Action Button with Radial Menu (Edit Mode Only) -->
-<div id="floating-action-panel" class="fixed bottom-4 left-4 z-50" style="display: none;">
+<div id="floating-action-panel" class="fixed bottom-20 left-4 z-50" style="display: none;">
   <!-- Main FAB button -->
   <div id="fab-container" class="relative">
     <!-- Radial menu items (hidden by default) -->
@@ -64,7 +64,7 @@
     pointer-events: auto;
   }
   
-  /* Position radial menu items in a 90-degree arc */
+  /* Position menu items horizontally */
   .radial-menu-item {
     transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
@@ -75,21 +75,21 @@
     opacity: 0;
   }
   
-  /* 90-degree arc positioning - radius of 80px */
+  /* Horizontal expansion positioning */
   #radial-menu.active #radial-add-node {
-    transform: translate(80px, 0px) scale(1);
+    transform: translate(60px, 0px) scale(1);
     opacity: 1;
     transition-delay: 0.05s;
   }
   
   #radial-menu.active #radial-add-group {
-    transform: translate(56.57px, -56.57px) scale(1);
+    transform: translate(120px, 0px) scale(1);
     opacity: 1;
     transition-delay: 0.1s;
   }
   
   #radial-menu.active #radial-add-text {
-    transform: translate(0px, -80px) scale(1);
+    transform: translate(180px, 0px) scale(1);
     opacity: 1;
     transition-delay: 0.15s;
   }
