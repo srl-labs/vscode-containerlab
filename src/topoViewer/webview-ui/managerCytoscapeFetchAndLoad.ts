@@ -1,7 +1,7 @@
 // file: managerCytoscapeFetchAndLoad.ts
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 
 
 /**

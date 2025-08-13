@@ -1,6 +1,6 @@
 import cytoscape from 'cytoscape';
 import topoViewerState from '../state';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 
 // Use globally registered style loader to avoid duplicating implementations
 function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
