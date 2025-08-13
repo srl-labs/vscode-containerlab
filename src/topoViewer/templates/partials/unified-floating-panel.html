@@ -1,0 +1,594 @@
+<!-- Unified Floating Action Panel -->
+<style>
+#unified-floating-panel {
+  width: 44px !important;
+  max-width: 44px !important;
+  min-width: 44px !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  overflow: visible !important;
+}
+#unified-floating-panel * {
+  box-sizing: border-box;
+}
+#deploy-button-group {
+  overflow: visible !important;
+}
+</style>
+<div id="unified-floating-panel" style="position: fixed !important; bottom: 20px; left: 20px; z-index: 99999; background: var(--vscode-editor-background, rgba(30, 30, 30, 0.95)); color: var(--vscode-foreground, #cccccc); border-radius: 6px; box-shadow: 0 4px 16px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36)); border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35)); padding: 8px; display: flex !important; flex-direction: column !important; gap: 4px; width: 44px !important; max-width: 44px !important; min-width: 44px !important; cursor: grab; user-select: none; box-sizing: border-box !important; flex-shrink: 0 !important; flex-grow: 0 !important; overflow: visible;">
+  <!-- Drag Handle -->
+  <div class="drag-handle" style="width: 100%; height: 4px; background: var(--vscode-panel-border, rgba(128, 128, 128, 0.35)); border-radius: 2px; margin: -2px 0 4px 0; cursor: grab;"></div>
+  
+  <!-- Lock/Unlock Button -->
+  <button id="lock-panel-btn" style="background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31)); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px;"
+          data-tippy-content="Lock Panel">
+    <i class="fas fa-unlock" style="font-size: 10px;"></i>
+  </button>
+  
+  <!-- Panel Content -->
+  <div id="panel-content" style="display: flex; flex-direction: column; gap: 4px;">
+  
+  <!-- Deploy/Destroy Button Group -->
+  <div id="deploy-button-group" style="position: relative; display: flex; align-items: center; justify-content: flex-start; width: 28px; height: 28px; overflow: visible;">
+    <!-- Main Deploy/Destroy Button -->
+    <button id="deploy-destroy-btn" style="background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px; position: relative; z-index: 3;" 
+            onmouseover="this.style.background='var(--vscode-button-hoverBackground, #1177bb)'; this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.background='var(--vscode-button-background, #0e639c)'; this.style.transform='translateY(0)'"
+            data-tippy-content="Deploy Lab">
+      <i class="fas fa-play" style="font-size: 10px;"></i>
+    </button>
+    
+    <!-- Expandable Secondary Buttons -->
+    <div id="deploy-secondary-buttons" style="position: absolute; top: 0; left: 0; display: flex; flex-direction: row; gap: 2px; transform: translateX(0); opacity: 0; visibility: hidden; transition: all 0.2s ease; pointer-events: none; z-index: 2; width: auto; height: 28px;">
+      <!-- Redeploy Button -->
+      <button id="redeploy-btn" style="background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px; margin-left: 30px;"
+              onmouseover="this.style.background='var(--vscode-button-hoverBackground, #1177bb)'; this.style.transform='translateY(-1px)'"
+              onmouseout="this.style.background='var(--vscode-button-background, #0e639c)'; this.style.transform='translateY(0)'"
+              data-tippy-content="Redeploy Lab">
+        <i class="fas fa-redo" style="font-size: 10px;"></i>
+      </button>
+      
+      <!-- Cleanup Button -->
+      <button id="cleanup-action-btn" style="background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31)); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px; margin-left: 32px;"
+              onmouseover="this.style.background='var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))'; this.style.transform='translateY(-1px)'"
+              onmouseout="this.style.background='var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))'; this.style.transform='translateY(0)'"
+              data-tippy-content="Cleanup Lab">
+        <i class="fas fa-broom" style="font-size: 10px;"></i>
+      </button>
+    </div>
+  </div>
+  
+  <!-- Divider -->
+  <div style="height: 1px; background: var(--vscode-panel-border, rgba(128, 128, 128, 0.35)); margin: 2px 0;"></div>
+  
+  <!-- Add Node Button -->
+  <button id="add-node-btn" style="background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31)); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px;"
+          onmouseover="this.style.background='var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))'; this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))'; this.style.transform='translateY(0)'"
+          data-tippy-content="Add Node">
+    <i class="fas fa-plus" style="font-size: 10px;"></i>
+  </button>
+  
+  <!-- Add Group Button -->
+  <button id="add-group-btn" style="background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31)); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px;"
+          onmouseover="this.style.background='var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))'; this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))'; this.style.transform='translateY(0)'"
+          data-tippy-content="Add Group">
+    <i class="fas fa-layer-group" style="font-size: 10px;"></i>
+  </button>
+  
+  <!-- Add Text Button -->
+  <button id="add-text-btn" style="background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31)); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px;"
+          onmouseover="this.style.background='var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))'; this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))'; this.style.transform='translateY(0)'"
+          data-tippy-content="Add Text">
+    <i class="fas fa-font" style="font-size: 10px;"></i>
+  </button>
+  </div> <!-- End panel-content -->
+  
+  <!-- Collapse Control Section -->
+  <div style="height: 1px; background: var(--vscode-panel-border, rgba(128, 128, 128, 0.35)); margin: 2px 0;"></div>
+  
+  <!-- Collapse/Expand Button -->
+  <button id="collapse-panel-btn" style="background: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31)); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.15s ease; width: 28px; height: 28px;"
+          data-tippy-content="Collapse Panel">
+    <i class="fas fa-chevron-up" style="font-size: 10px;"></i>
+  </button>
+</div>
+
+<script>
+// Unified Floating Panel Event Handlers
+document.addEventListener('DOMContentLoaded', function() {
+  const panel = document.getElementById('unified-floating-panel');
+  const panelContent = document.getElementById('panel-content');
+  const lockBtn = document.getElementById('lock-panel-btn');
+  const collapseBtn = document.getElementById('collapse-panel-btn');
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+  let isLocked = false;
+  let isCollapsed = false;
+  
+  // Initialize panel dimensions immediately to prevent sizing issues
+  if (panel) {
+    panel.style.width = '44px !important';
+    panel.style.maxWidth = '44px !important';
+    panel.style.minWidth = '44px !important';
+    panel.style.boxSizing = 'border-box !important';
+    panel.style.flexShrink = '0 !important';
+    panel.style.flexGrow = '0 !important';
+    panel.style.overflow = 'visible';
+    
+    // Force immediate layout
+    panel.offsetWidth;
+  }
+  
+  // Load saved state from localStorage
+  function loadPanelState() {
+    const savedState = localStorage.getItem('unifiedPanelState');
+    if (savedState && panel) {
+      const state = JSON.parse(savedState);
+      panel.style.left = state.left + 'px';
+      panel.style.top = state.top + 'px';
+      isLocked = state.locked || false;
+      isCollapsed = state.collapsed || false;
+      
+      updateLockState();
+      updateCollapseState();
+    }
+  }
+  
+  // Save panel state to localStorage
+  function savePanelState() {
+    if (panel) {
+      const rect = panel.getBoundingClientRect();
+      const state = {
+        left: rect.left,
+        top: rect.top,
+        locked: isLocked,
+        collapsed: isCollapsed
+      };
+      localStorage.setItem('unifiedPanelState', JSON.stringify(state));
+    }
+  }
+  
+  // Update lock button and panel cursor
+  function updateLockState() {
+    const lockBtnRef = document.getElementById('lock-panel-btn');
+    if (!lockBtnRef || !panel) return;
+    
+    if (isLocked) {
+      lockBtnRef.innerHTML = '<i class="fas fa-lock" style="font-size: 10px;"></i>';
+      lockBtnRef.setAttribute('data-tippy-content', 'Unlock Panel');
+      lockBtnRef.style.background = '#dc3545';
+      lockBtnRef.style.color = 'var(--vscode-button-foreground, #ffffff)';
+      
+      panel.style.cursor = 'default';
+      const dragHandle = panel.querySelector('.drag-handle');
+      if (dragHandle) dragHandle.style.cursor = 'default';
+    } else {
+      lockBtnRef.innerHTML = '<i class="fas fa-unlock" style="font-size: 10px;"></i>';
+      lockBtnRef.setAttribute('data-tippy-content', 'Lock Panel');
+      lockBtnRef.style.background = 'var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))';
+      lockBtnRef.style.color = 'var(--vscode-button-secondaryForeground, #cccccc)';
+      
+      panel.style.cursor = 'grab';
+      const dragHandle = panel.querySelector('.drag-handle');
+      if (dragHandle) dragHandle.style.cursor = 'grab';
+    }
+  }
+  
+  // Update collapse button and panel content visibility
+  function updateCollapseState() {
+    const collapseBtnRef = document.getElementById('collapse-panel-btn');
+    if (!collapseBtnRef || !panelContent) return;
+    
+    if (isCollapsed) {
+      collapseBtnRef.innerHTML = '<i class="fas fa-chevron-down" style="font-size: 10px;"></i>';
+      collapseBtnRef.setAttribute('data-tippy-content', 'Expand Panel');
+      panelContent.style.display = 'none';
+      // Also hide the divider
+      const divider = document.querySelector('#unified-floating-panel > div[style*="height: 1px"]');
+      if (divider) divider.style.display = 'none';
+    } else {
+      collapseBtnRef.innerHTML = '<i class="fas fa-chevron-up" style="font-size: 10px;"></i>';
+      collapseBtnRef.setAttribute('data-tippy-content', 'Collapse Panel');
+      panelContent.style.display = 'flex';
+      // Show the divider
+      const divider = document.querySelector('#unified-floating-panel > div[style*="height: 1px"]');
+      if (divider) divider.style.display = 'block';
+    }
+  }
+  
+  // Initialize drag functionality
+  function initializeDrag() {
+    if (!panel) return;
+    
+    // Load saved state
+    loadPanelState();
+    
+    // Mouse down on panel (start drag)
+    panel.addEventListener('mousedown', function(e) {
+      // Don't drag if locked or clicking on buttons
+      if (isLocked || e.target.tagName === 'BUTTON' || e.target.tagName === 'I') {
+        return;
+      }
+      
+      // Only start drag if clicking on panel background or drag handle
+      if (!e.target.classList.contains('drag-handle') && e.target !== panel && !panel.contains(e.target)) {
+        return;
+      }
+      
+      isDragging = true;
+      panel.style.cursor = 'grabbing';
+      const dragHandle = panel.querySelector('.drag-handle');
+      if (dragHandle) dragHandle.style.cursor = 'grabbing';
+      
+      const rect = panel.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+      e.preventDefault();
+    });
+    
+    // Mouse move (drag)
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging || isLocked) return;
+      
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      let newLeft = initialLeft + deltaX;
+      let newTop = initialTop + deltaY;
+      
+      // Keep panel within viewport bounds
+      const panelRect = panel.getBoundingClientRect();
+      const maxLeft = window.innerWidth - panelRect.width;
+      const maxTop = window.innerHeight - panelRect.height;
+      
+      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      newTop = Math.max(0, Math.min(newTop, maxTop));
+      
+      panel.style.left = newLeft + 'px';
+      panel.style.top = newTop + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+    });
+    
+    // Mouse up (end drag)
+    document.addEventListener('mouseup', function() {
+      if (isDragging) {
+        isDragging = false;
+        updateLockState(); // This will restore proper cursor
+        savePanelState();
+      }
+    });
+    
+    // Event listeners are now handled in setupControlButtons()
+  }
+  
+  // Get current viewer mode state
+  function isViewerMode() {
+    return window.topoViewerMode === 'viewer' || 
+           (window.topoViewerState && window.topoViewerState.currentMode === 'viewer');
+  }
+  
+  // Update panel state based on current mode
+  function updateUnifiedPanelState() {
+    const deployBtn = document.getElementById('deploy-destroy-btn');
+    const redeployBtn = document.getElementById('redeploy-btn');
+    const addNodeBtn = document.getElementById('add-node-btn');
+    const addGroupBtn = document.getElementById('add-group-btn');
+    const addTextBtn = document.getElementById('add-text-btn');
+    
+    if (deployBtn && redeployBtn) {
+      if (isViewerMode()) {
+        // In viewer mode (lab is running), show destroy button and redeploy button
+        deployBtn.innerHTML = '<i class="fas fa-stop" style="font-size: 10px;"></i>';
+        deployBtn.setAttribute('data-tippy-content', 'Destroy Lab');
+        deployBtn.style.background = 'var(--vscode-errorForeground, #f85149)';
+        deployBtn.style.color = 'var(--vscode-button-foreground, #ffffff)';
+        deployBtn.onmouseover = function() {
+          this.style.background='var(--vscode-errorForeground, #f85149)'; 
+          this.style.transform='translateY(-1px)';
+          this.style.opacity='0.9';
+        };
+        deployBtn.onmouseout = function() {
+          this.style.background='var(--vscode-errorForeground, #f85149)'; 
+          this.style.transform='translateY(0)';
+          this.style.opacity='1';
+        };
+        
+        // Show redeploy button in viewer mode
+        if (redeployBtn) {
+          redeployBtn.style.display = 'flex';
+        }
+      } else {
+        // In editor mode (lab is not running), show deploy button and hide redeploy button
+        deployBtn.innerHTML = '<i class="fas fa-play" style="font-size: 10px;"></i>';
+        deployBtn.setAttribute('data-tippy-content', 'Deploy Lab');
+        deployBtn.style.background = 'var(--vscode-button-background, #0e639c)';
+        deployBtn.style.color = 'var(--vscode-button-foreground, #ffffff)';
+        deployBtn.onmouseover = function() {
+          this.style.background='var(--vscode-button-hoverBackground, #1177bb)'; 
+          this.style.transform='translateY(-1px)';
+          this.style.opacity='1';
+        };
+        deployBtn.onmouseout = function() {
+          this.style.background='var(--vscode-button-background, #0e639c)'; 
+          this.style.transform='translateY(0)';
+          this.style.opacity='1';
+        };
+        
+        // Hide redeploy button in editor mode
+        if (redeployBtn) {
+          redeployBtn.style.display = 'none';
+        }
+      }
+    }
+    
+    // Editor tools only visible in editor mode
+    const editorButtons = [addNodeBtn, addGroupBtn, addTextBtn];
+    editorButtons.forEach(btn => {
+      if (btn) {
+        btn.style.display = isViewerMode() ? 'none' : 'flex';
+      }
+    });
+    
+    // Hide divider in viewer mode if no editor buttons are visible
+    const divider = document.querySelector('#unified-floating-panel div[style*="height: 1px"]');
+    if (divider) {
+      divider.style.display = isViewerMode() ? 'none' : 'block';
+    }
+  }
+  
+  // Initialize panel dimensions and state
+  function initializePanel() {
+    if (panel) {
+      // Ensure consistent panel size with more specific constraints
+      panel.style.width = '44px !important';
+      panel.style.maxWidth = '44px !important';
+      panel.style.minWidth = '44px !important';
+      panel.style.boxSizing = 'border-box !important';
+      panel.style.flexShrink = '0 !important';
+      panel.style.flexGrow = '0 !important';
+      
+      // Ensure proper height constraints
+      panel.style.height = 'auto';
+      panel.style.maxHeight = 'none';
+      panel.style.minHeight = 'auto';
+      
+      // Force layout recalculation immediately
+      panel.offsetWidth;
+      panel.offsetHeight;
+      
+      // Double-check and reapply if needed
+      setTimeout(() => {
+        if (panel.offsetWidth !== 44) {
+          panel.style.width = '44px !important';
+          panel.style.maxWidth = '44px !important';
+          panel.style.minWidth = '44px !important';
+        }
+      }, 0);
+    }
+  }
+  
+  // Setup deploy button group expansion
+  function setupDeployButtonExpansion() {
+    const deployButtonGroup = document.getElementById('deploy-button-group');
+    const deployMainBtn = document.getElementById('deploy-destroy-btn');
+    const secondaryButtons = document.getElementById('deploy-secondary-buttons');
+    const redeployBtn = document.getElementById('redeploy-btn');
+    const cleanupBtn = document.getElementById('cleanup-action-btn');
+    
+    let hoverTimeout;
+    let isExpanded = false;
+    
+    function showSecondaryButtons() {
+      if (!secondaryButtons) return;
+      
+      clearTimeout(hoverTimeout);
+      isExpanded = true;
+      
+      secondaryButtons.style.opacity = '1';
+      secondaryButtons.style.visibility = 'visible';
+      secondaryButtons.style.pointerEvents = 'auto';
+      
+      // Show appropriate secondary buttons based on mode
+      if (isViewerMode()) {
+        if (redeployBtn && redeployBtn.style.display !== 'none') {
+          redeployBtn.style.opacity = '1';
+          redeployBtn.style.transform = 'translateX(0)';
+        }
+      }
+      if (cleanupBtn) {
+        cleanupBtn.style.opacity = '1';
+        cleanupBtn.style.transform = 'translateX(0)';
+      }
+    }
+    
+    function hideSecondaryButtons() {
+      if (!secondaryButtons) return;
+      
+      hoverTimeout = setTimeout(() => {
+        if (!isExpanded) return;
+        
+        isExpanded = false;
+        secondaryButtons.style.opacity = '0';
+        secondaryButtons.style.visibility = 'hidden';
+        secondaryButtons.style.pointerEvents = 'none';
+        
+        // Hide secondary buttons
+        if (redeployBtn) {
+          redeployBtn.style.opacity = '0';
+          redeployBtn.style.transform = 'translateX(-10px)';
+        }
+        if (cleanupBtn) {
+          cleanupBtn.style.opacity = '0';
+          cleanupBtn.style.transform = 'translateX(-10px)';
+        }
+      }, 150);
+    }
+    
+    // Add hover listeners to the button group
+    if (deployButtonGroup) {
+      deployButtonGroup.addEventListener('mouseenter', showSecondaryButtons);
+      deployButtonGroup.addEventListener('mouseleave', hideSecondaryButtons);
+    }
+  }
+
+  // Add event listeners for control buttons
+  function setupControlButtons() {
+    const lockBtn = document.getElementById('lock-panel-btn');
+    const collapseBtn = document.getElementById('collapse-panel-btn');
+    
+    if (lockBtn) {
+      lockBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        isLocked = !isLocked;
+        updateLockState();
+        savePanelState();
+        // Re-enforce panel size after state change
+        initializePanel();
+      });
+      
+      // Add hover effects
+      lockBtn.addEventListener('mouseenter', function() {
+        if (isLocked) {
+          this.style.opacity = '0.9';
+        } else {
+          this.style.background = 'var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))';
+        }
+        this.style.transform = 'translateY(-1px)';
+      });
+      
+      lockBtn.addEventListener('mouseleave', function() {
+        if (isLocked) {
+          this.style.opacity = '1';
+          this.style.background = '#dc3545';
+        } else {
+          this.style.background = 'var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))';
+        }
+        this.style.transform = 'translateY(0)';
+      });
+    }
+    
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        isCollapsed = !isCollapsed;
+        updateCollapseState();
+        savePanelState();
+        // Re-enforce panel size after state change
+        setTimeout(initializePanel, 0);
+      });
+      
+      // Add hover effects
+      collapseBtn.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))';
+        this.style.transform = 'translateY(-1px)';
+      });
+      
+      collapseBtn.addEventListener('mouseleave', function() {
+        this.style.background = 'var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))';
+        this.style.transform = 'translateY(0)';
+      });
+    }
+  }
+  
+  // Initialize everything
+  initializePanel();
+  initializeDrag();
+  setupControlButtons();
+  setupDeployButtonExpansion();
+  updateUnifiedPanelState();
+  
+  // Make function globally available for TypeScript manager
+  window.updateUnifiedPanelState = updateUnifiedPanelState;
+  
+  // Add event listeners for all buttons
+  const deployBtn = document.getElementById('deploy-destroy-btn');
+  const redeployBtn = document.getElementById('redeploy-btn');
+  const cleanupBtn = document.getElementById('cleanup-action-btn');
+  const addNodeBtn = document.getElementById('add-node-btn');
+  const addGroupBtn = document.getElementById('add-group-btn');
+  const addTextBtn = document.getElementById('add-text-btn');
+  
+  if (deployBtn) {
+    deployBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const event = new CustomEvent('unified-deploy-destroy-click', {
+        detail: { isViewerMode: isViewerMode() }
+      });
+      document.dispatchEvent(event);
+    });
+  }
+  
+  if (redeployBtn) {
+    redeployBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const event = new CustomEvent('unified-redeploy-click', {
+        detail: { isViewerMode: isViewerMode() }
+      });
+      document.dispatchEvent(event);
+    });
+  }
+  
+  if (cleanupBtn) {
+    cleanupBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const event = new CustomEvent('unified-cleanup-click', {
+        detail: { isViewerMode: isViewerMode() }
+      });
+      document.dispatchEvent(event);
+    });
+  }
+  
+  if (addNodeBtn) {
+    addNodeBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const event = new CustomEvent('unified-add-node-click');
+      document.dispatchEvent(event);
+    });
+  }
+  
+  if (addGroupBtn) {
+    addGroupBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const event = new CustomEvent('unified-add-group-click');
+      document.dispatchEvent(event);
+    });
+  }
+  
+  if (addTextBtn) {
+    addTextBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const event = new CustomEvent('unified-add-text-click');
+      document.dispatchEvent(event);
+    });
+  }
+  
+  // Listen for mode changes
+  document.addEventListener('topo-mode-changed', updateUnifiedPanelState);
+  
+  // Handle window resize to keep panel in bounds
+  window.addEventListener('resize', function() {
+    if (panel) {
+      const rect = panel.getBoundingClientRect();
+      const maxLeft = window.innerWidth - rect.width;
+      const maxTop = window.innerHeight - rect.height;
+      
+      let newLeft = Math.max(0, Math.min(rect.left, maxLeft));
+      let newTop = Math.max(0, Math.min(rect.top, maxTop));
+      
+      if (newLeft !== rect.left || newTop !== rect.top) {
+        panel.style.left = newLeft + 'px';
+        panel.style.top = newTop + 'px';
+        savePanelState();
+      }
+    }
+  });
+});
+</script>

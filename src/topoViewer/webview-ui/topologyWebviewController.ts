@@ -16,8 +16,7 @@ import { ManagerSaveTopo } from './managerSaveTopo';
 import { ManagerUndo } from './managerUndo';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerFloatingActionPanel } from './managerFloatingActionPanel';
-import { ManagerPlayStopButton } from './managerPlayStopButton';
+import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
 import { ManagerFreeText } from './managerFreeText';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
@@ -51,8 +50,7 @@ class TopologyWebviewController {
   public undoManager: ManagerUndo;
   public addNodeManager: ManagerAddContainerlabNode;
   public viewportPanels?: ManagerViewportPanels;
-  public floatingActionPanel: ManagerFloatingActionPanel | null = null;
-  public playStopButton: ManagerPlayStopButton | null = null;
+  public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
   public groupManager: ManagerGroupManagement;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
@@ -196,11 +194,10 @@ class TopologyWebviewController {
 
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
-      this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
     }
 
-    // Initialize play/stop button for both modes
-    this.playStopButton = new ManagerPlayStopButton(this.messageSender);
+    // Initialize unified floating panel for both modes
+    this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(this.cy, this.messageSender, this.addNodeManager);
     this.groupManager = getGroupManager(this.cy, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
