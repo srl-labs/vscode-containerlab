@@ -290,7 +290,7 @@ export class TopoViewerAdaptorClab {
     if (parsed.topology.nodes) {
       this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
         .every(([, nodeObj]) => {
-          const merged = resolveNodeConfig(parsed, nodeObj);
+          const merged = resolveNodeConfig(parsed, nodeObj || {});
           return (
             !!merged.labels?.['graph-posX'] &&
             !!merged.labels?.['graph-posY']
@@ -318,7 +318,7 @@ export class TopoViewerAdaptorClab {
 
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
-        const mergedNode = resolveNodeConfig(parsed, nodeObj);
+        const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
         const parentId = this.buildParent(mergedNode);
         if (parentId) {
           if (!parentMap.has(parentId)) {
