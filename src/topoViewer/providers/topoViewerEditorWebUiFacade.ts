@@ -110,7 +110,6 @@ export class TopoViewerEditor {
       return;
     }
 
-    this.isUpdating = true;
     try {
       const success = await this.updatePanelHtml(this.currentPanel);
       if (success) {
@@ -125,14 +124,13 @@ export class TopoViewerEditor {
     } catch (err) {
       log.error(`Error updating topology: ${err}`);
       vscode.window.showErrorMessage(`Error updating topology: ${err}`);
-    } finally {
-      this.isUpdating = false;
-      if (this.queuedUpdate) {
-        const nextSaveAck = this.queuedSaveAck;
-        this.queuedUpdate = false;
-        this.queuedSaveAck = false;
-        await this.triggerUpdate(nextSaveAck);
-      }
+    }
+
+    if (this.queuedUpdate) {
+      const nextSaveAck = this.queuedSaveAck;
+      this.queuedUpdate = false;
+      this.queuedSaveAck = false;
+      await this.triggerUpdate(nextSaveAck);
     }
   }
 
