@@ -9,7 +9,7 @@ import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, Templa
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { ClabLabTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
-import { RunningLabTreeDataProvider } from "../../treeView/runningLabsProvider";
+import { runningLabsProvider } from "../../extension";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
@@ -31,7 +31,6 @@ export class TopoViewerEditor {
   public createTopoYamlTemplateSuccess: boolean = false;
   public currentLabName: string = '';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
-  private clabTreeProviderImported: RunningLabTreeDataProvider;
   private fileWatcher: vscode.FileSystemWatcher | undefined;
   private saveListener: vscode.Disposable | undefined;
   private isInternalUpdate: boolean = false; // Flag to prevent feedback loops
@@ -46,7 +45,6 @@ export class TopoViewerEditor {
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
-    this.clabTreeProviderImported = new RunningLabTreeDataProvider(context);
   }
 
   private sleep(ms: number): Promise<void> {
@@ -286,7 +284,7 @@ topology:
       : undefined;
     if (this.isViewMode) {
       try {
-        updatedClabTreeDataToTopoviewer = await this.clabTreeProviderImported.discoverInspectLabs();
+        updatedClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
         this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
       } catch (err) {
         log.warn(`Failed to refresh running lab data: ${err}`);
@@ -519,7 +517,7 @@ topology:
       let treeData: Record<string, ClabLabTreeNode> | undefined = undefined;
       if (this.isViewMode) {
         try {
-          treeData = await this.clabTreeProviderImported.discoverInspectLabs();
+          treeData = await runningLabsProvider.discoverInspectLabs();
           this.cacheClabTreeDataToTopoviewer = treeData;
         } catch (err) {
           log.warn(`Failed to load running lab data: ${err}`);
@@ -1022,6 +1020,10 @@ topology:
               
               await vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
               result = `Lab deployment initiated for ${labPath}`;
+              
+              // Update local state immediately to avoid race conditions
+              this.deploymentState = 'deployed';
+              this.isViewMode = true;
             } catch (innerError) {
               error = `Error deploying lab: ${innerError}`;
               log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
@@ -1047,6 +1049,10 @@ topology:
               
               await vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
               result = `Lab destruction initiated for ${labPath}`;
+              
+              // Update local state immediately to avoid race conditions
+              this.deploymentState = 'undeployed';
+              this.isViewMode = false;
             } catch (innerError) {
               error = `Error destroying lab: ${innerError}`;
               log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
