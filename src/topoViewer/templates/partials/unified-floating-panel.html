@@ -21,19 +21,19 @@
     <!-- Drawer with options -->
     <div id="deploy-drawer" class="absolute pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 invisible pointer-events-none -translate-x-2 transition-all duration-200 group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-x-0 z-20">
       <!-- Deploy (cleanup) - editor mode -->
-      <button id="deploy-cleanup-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Deploy (cleanup)">
+      <button id="deploy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Deploy (cleanup)">
         <i class="fas fa-trash text-[10px]"></i>
       </button>
       <!-- Destroy (cleanup) - viewer mode -->
-      <button id="destroy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Destroy (cleanup)">
+      <button id="destroy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Destroy (cleanup)">
         <i class="fas fa-trash text-[10px]"></i>
       </button>
       <!-- Redeploy - viewer mode -->
-      <button id="redeploy-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy">
+      <button id="redeploy-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy">
         <i class="fas fa-redo text-[10px]"></i>
       </button>
       <!-- Redeploy (cleanup) - viewer mode -->
-      <button id="redeploy-cleanup-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy (cleanup)">
+      <button id="redeploy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Redeploy (cleanup)">
         <i class="fas fa-redo text-[10px]"></i>
       </button>
     </div>
@@ -249,6 +249,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateUnifiedPanelState() {
     const deployBtn = document.getElementById('deploy-destroy-btn');
     const redeployBtn = document.getElementById('redeploy-btn');
+    const deployCleanupBtn = document.getElementById('deploy-cleanup-btn');
+    const destroyCleanupBtn = document.getElementById('destroy-cleanup-btn');
+    const redeployCleanupBtn = document.getElementById('redeploy-cleanup-btn');
     const addNodeBtn = document.getElementById('add-node-btn');
     const addGroupBtn = document.getElementById('add-group-btn');
     const addTextBtn = document.getElementById('add-text-btn');
@@ -271,11 +274,11 @@ document.addEventListener('DOMContentLoaded', function() {
           this.style.opacity='1';
         };
         
-        // Show redeploy button in viewer mode
-        if (redeployBtn) {
-          redeployBtn.classList.remove('hidden');
-          redeployBtn.classList.add('flex');
-        }
+        // Show viewer-mode buttons
+        if (redeployBtn) { redeployBtn.classList.remove('hidden'); redeployBtn.classList.add('flex'); }
+        if (destroyCleanupBtn) { destroyCleanupBtn.classList.remove('hidden'); destroyCleanupBtn.classList.add('flex'); }
+        if (redeployCleanupBtn) { redeployCleanupBtn.classList.remove('hidden'); redeployCleanupBtn.classList.add('flex'); }
+        if (deployCleanupBtn) { deployCleanupBtn.classList.add('hidden'); deployCleanupBtn.classList.remove('flex'); }
       } else {
         // In editor mode (lab is not running), show deploy button and hide redeploy button
         deployBtn.innerHTML = '<i class="fas fa-play text-[10px]"></i>';
@@ -293,11 +296,11 @@ document.addEventListener('DOMContentLoaded', function() {
           this.style.opacity='1';
         };
         
-        // Hide redeploy button in editor mode
-        if (redeployBtn) {
-          redeployBtn.classList.add('hidden');
-          redeployBtn.classList.remove('flex');
-        }
+        // Editor-mode visibility
+        if (redeployBtn) { redeployBtn.classList.add('hidden'); redeployBtn.classList.remove('flex'); }
+        if (destroyCleanupBtn) { destroyCleanupBtn.classList.add('hidden'); destroyCleanupBtn.classList.remove('flex'); }
+        if (redeployCleanupBtn) { redeployCleanupBtn.classList.add('hidden'); redeployCleanupBtn.classList.remove('flex'); }
+        if (deployCleanupBtn) { deployCleanupBtn.classList.remove('hidden'); deployCleanupBtn.classList.add('flex'); }
       }
     }
     
