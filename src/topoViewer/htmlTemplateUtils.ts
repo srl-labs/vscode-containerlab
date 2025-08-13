@@ -16,6 +16,7 @@ export interface BaseTemplateParams {
   allowedHostname: string;
   topologyName?: string;
   isDarkTheme?: boolean;
+  currentLabPath?: string;
 }
 
 export interface ViewerTemplateParams extends BaseTemplateParams {
@@ -152,6 +153,7 @@ export function generateHtmlTemplate(
     pageTitle: mode === 'viewer' ? 'TopoViewer' : 'TopoViewer Editor',
     cssBundle: 'topoViewerEditorStyles.css', // Use the same CSS for both modes
     topoViewerMode: mode, // Add the mode so JS can access it
+    currentLabPath: params.currentLabPath || '',
   };
 
   let replacements: Record<string, string>;
