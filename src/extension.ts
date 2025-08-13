@@ -203,8 +203,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Refresh the tree view
   context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.refresh', () => {
-      localLabsProvider.refresh();
+    vscode.commands.registerCommand('containerlab.refresh', async () => {
+      // Update inspector data first to get latest running labs status
+      await ins.update();
+      // Force refresh local labs to invalidate cache and re-discover files
+      localLabsProvider.forceRefresh();
+      // Refresh running labs provider
       runningLabsProvider.refresh();
     })
   );
