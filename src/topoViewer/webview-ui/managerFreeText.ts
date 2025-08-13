@@ -11,6 +11,7 @@ export class ManagerFreeText {
   private messageSender: VscodeMessageSender;
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
+  private styleReapplyInProgress = false;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
     this.cy = cy;
@@ -38,6 +39,7 @@ export class ManagerFreeText {
 
     // Also listen for style changes on the cy instance
     this.cy.on('style', () => {
+      if (this.styleReapplyInProgress) return;
       // Reapply styles after any style change with a small delay
       setTimeout(() => {
         this.reapplyAllFreeTextStyles();
@@ -176,7 +178,8 @@ export class ManagerFreeText {
       // Update the annotation with new values
       Object.assign(annotation, result);
       this.updateFreeTextNode(id, annotation);
-      // Annotations will be saved with the main topology save
+      // Save annotations after edit
+      this.saveAnnotations();
     }
   }
 
@@ -552,7 +555,8 @@ export class ManagerFreeText {
     }, 100);
 
     this.annotationNodes.set(annotation.id, node);
-    // Don't auto-save here, wait for the main save operation
+    // Save annotations after adding new text
+    this.saveAnnotations();
   }
 
   /**
@@ -582,14 +586,8 @@ export class ManagerFreeText {
     const fontFamily = annotation.fontFamily || 'monospace';
     styles['font-family'] = fontFamily;
 
-    // Build a complete font string for Cytoscape
-    // Format: [style] [weight] [size] [family]
-    const fontParts = [];
-    if (annotation.fontStyle === 'italic') fontParts.push('italic');
-    if (annotation.fontWeight === 'bold') fontParts.push('bold');
-    fontParts.push(`${fontSize}px`);
-    fontParts.push(fontFamily);
-    styles['font'] = fontParts.join(' ');
+    // Cytoscape doesn't support the CSS `font` shorthand property,
+    // so we rely on the individual font-* properties above.
 
     // Text outline for visibility (and underline effect)
     if (annotation.textDecoration === 'underline') {
@@ -618,7 +616,12 @@ export class ManagerFreeText {
     }
 
     // Apply all styles at once
-    node.style(styles);
+    this.styleReapplyInProgress = true;
+    try {
+      node.style(styles);
+    } finally {
+      this.styleReapplyInProgress = false;
+    }
 
     // Force a render update to ensure styles are applied
     node.cy().forceRender();
@@ -647,7 +650,8 @@ export class ManagerFreeText {
         x: Math.round(position.x),
         y: Math.round(position.y)
       };
-      // Annotations will be saved with the main topology save
+      // Save annotations after position update
+      this.saveAnnotations();
     }
   }
 
@@ -661,7 +665,8 @@ export class ManagerFreeText {
       node.remove();
     }
     this.annotationNodes.delete(id);
-    // Annotations will be saved with the main topology save
+    // Save annotations after removal
+    this.saveAnnotations();
   }
 
   /**

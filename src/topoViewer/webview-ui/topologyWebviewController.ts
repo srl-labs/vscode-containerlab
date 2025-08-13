@@ -83,15 +83,36 @@ class TopologyWebviewController {
       await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
-    // Listen for topology changes
-    this.cy.on('add remove data', autoSave);
+    // Listen for topology changes - but skip free text nodes as they handle their own saves
+    this.cy.on('add remove data', (event) => {
+      const target = event.target;
+      // Skip autosave for free text nodes - they save themselves
+      if (target.isNode && target.isNode() && target.data('topoViewerRole') === 'freeText') {
+        return;
+      }
+      autoSave();
+    });
+
     this.cy.on('position', (event) => {
+      const target = event.target;
+      // Skip position events for free text nodes - they handle their own saves
+      if (target.isNode && target.isNode() && target.data('topoViewerRole') === 'freeText') {
+        return;
+      }
       // Avoid autosave while a node is actively being dragged
-      if (!event.target.grabbed()) {
+      if (!target.grabbed()) {
         autoSave();
       }
     });
-    this.cy.on('dragfree', 'node', autoSave);
+
+    this.cy.on('dragfree', 'node', (event) => {
+      const node = event.target;
+      // Skip dragfree for free text nodes - they handle their own saves
+      if (node.data('topoViewerRole') === 'freeText') {
+        return;
+      }
+      autoSave();
+    });
   }
 
   /**
