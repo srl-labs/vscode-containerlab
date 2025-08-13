@@ -29,7 +29,9 @@ export class ManagerUnifiedFloatingPanel {
   private panelContent: HTMLElement | null = null;
   private deployBtn: HTMLButtonElement | null = null;
   private redeployBtn: HTMLButtonElement | null = null;
-  private cleanupBtn: HTMLButtonElement | null = null;
+  private deployCleanupBtn: HTMLButtonElement | null = null;
+  private destroyCleanupBtn: HTMLButtonElement | null = null;
+  private redeployCleanupBtn: HTMLButtonElement | null = null;
   private addNodeBtn: HTMLButtonElement | null = null;
   private addGroupBtn: HTMLButtonElement | null = null;
   private addTextBtn: HTMLButtonElement | null = null;
@@ -37,8 +39,7 @@ export class ManagerUnifiedFloatingPanel {
   private collapseBtn: HTMLButtonElement | null = null;
   private dividerTop: HTMLElement | null = null;
   private dividerBottom: HTMLElement | null = null;
-  private secondaryButtons: HTMLElement | null = null;
-  private deployButtonGroup: HTMLElement | null = null;
+  // Drawer expansion handled purely via CSS
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: ManagerAddContainerlabNode) {
     this.cy = cy;
@@ -56,7 +57,9 @@ export class ManagerUnifiedFloatingPanel {
     this.panelContent = document.getElementById('panel-content');
     this.deployBtn = document.getElementById('deploy-destroy-btn') as HTMLButtonElement | null;
     this.redeployBtn = document.getElementById('redeploy-btn') as HTMLButtonElement | null;
-    this.cleanupBtn = document.getElementById('cleanup-action-btn') as HTMLButtonElement | null;
+    this.deployCleanupBtn = document.getElementById('deploy-cleanup-btn') as HTMLButtonElement | null;
+    this.destroyCleanupBtn = document.getElementById('destroy-cleanup-btn') as HTMLButtonElement | null;
+    this.redeployCleanupBtn = document.getElementById('redeploy-cleanup-btn') as HTMLButtonElement | null;
     this.addNodeBtn = document.getElementById('add-node-btn') as HTMLButtonElement | null;
     this.addGroupBtn = document.getElementById('add-group-btn') as HTMLButtonElement | null;
     this.addTextBtn = document.getElementById('add-text-btn') as HTMLButtonElement | null;
@@ -64,8 +67,7 @@ export class ManagerUnifiedFloatingPanel {
     this.collapseBtn = document.getElementById('collapse-panel-btn') as HTMLButtonElement | null;
     this.dividerTop = document.getElementById('panel-divider-editor');
     this.dividerBottom = document.getElementById('panel-divider-collapse');
-    this.secondaryButtons = document.getElementById('deploy-secondary-buttons');
-    this.deployButtonGroup = document.getElementById('deploy-button-group');
+    // No JS refs needed for drawer expansion
 
     // Initialize tooltips
     this.initializeTooltips();
@@ -73,7 +75,7 @@ export class ManagerUnifiedFloatingPanel {
     // Set up interactions
     this.setupDrag();
     this.setupControlButtons();
-    this.setupDeployButtonExpansion();
+    // Drawer expansion via CSS (group-hover)
     this.setupActionButtons();
     this.loadPanelState();
 
@@ -106,7 +108,9 @@ export class ManagerUnifiedFloatingPanel {
     const tooltipOptions = { delay: [100, 0] as [number, number] };
     if (this.deployBtn) tippy(this.deployBtn, tooltipOptions);
     if (this.redeployBtn) tippy(this.redeployBtn, tooltipOptions);
-    if (this.cleanupBtn) tippy(this.cleanupBtn, tooltipOptions);
+    if (this.deployCleanupBtn) tippy(this.deployCleanupBtn, tooltipOptions);
+    if (this.destroyCleanupBtn) tippy(this.destroyCleanupBtn, tooltipOptions);
+    if (this.redeployCleanupBtn) tippy(this.redeployCleanupBtn, tooltipOptions);
     if (this.addNodeBtn) tippy(this.addNodeBtn, tooltipOptions);
     if (this.addGroupBtn) tippy(this.addGroupBtn, tooltipOptions);
     if (this.addTextBtn) tippy(this.addTextBtn, tooltipOptions);
@@ -128,9 +132,17 @@ export class ManagerUnifiedFloatingPanel {
       e.stopPropagation();
       this.handleRedeploy(this.isViewerMode());
     });
-    this.cleanupBtn?.addEventListener('click', (e) => {
+    this.deployCleanupBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.handleCleanupAction(this.isViewerMode());
+      this.deployLabWithCleanup();
+    });
+    this.destroyCleanupBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.destroyLabWithCleanup();
+    });
+    this.redeployCleanupBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.handleRedeployCleanup();
     });
     this.addNodeBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -205,32 +217,7 @@ export class ManagerUnifiedFloatingPanel {
     });
   }
 
-  private setupDeployButtonExpansion(): void {
-    if (!this.deployButtonGroup || !this.secondaryButtons) return;
-    let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
-    const show = () => {
-      if (hoverTimeout) clearTimeout(hoverTimeout);
-      this.secondaryButtons!.classList.remove('opacity-0', 'invisible', 'pointer-events-none');
-      this.secondaryButtons!.classList.add('opacity-100', 'visible', 'pointer-events-auto');
-      // animate children
-      this.redeployBtn?.classList.remove('-translate-x-[10px]');
-      this.redeployBtn?.classList.add('translate-x-0');
-      this.cleanupBtn?.classList.remove('-translate-x-[10px]');
-      this.cleanupBtn?.classList.add('translate-x-0');
-    };
-    const hide = () => {
-      hoverTimeout = setTimeout(() => {
-        this.secondaryButtons!.classList.remove('opacity-100', 'visible', 'pointer-events-auto');
-        this.secondaryButtons!.classList.add('opacity-0', 'invisible', 'pointer-events-none');
-        this.redeployBtn?.classList.add('-translate-x-[10px]');
-        this.redeployBtn?.classList.remove('translate-x-0');
-        this.cleanupBtn?.classList.add('-translate-x-[10px]');
-        this.cleanupBtn?.classList.remove('translate-x-0');
-      }, 150);
-    };
-    this.deployButtonGroup.addEventListener('mouseenter', show);
-    this.deployButtonGroup.addEventListener('mouseleave', hide);
-  }
+  // Drawer expansion handled in CSS; no JS needed
 
   private loadPanelState(): void {
     try {
@@ -317,16 +304,29 @@ export class ManagerUnifiedFloatingPanel {
       }
     }
 
-    // Redeploy visibility only in viewer mode
-    if (this.redeployBtn) {
-      if (viewer) {
-        this.redeployBtn.classList.remove('hidden');
-        this.redeployBtn.classList.add('flex');
+    // Drawer button visibility based on mode
+    // Editor mode: show Deploy (cleanup) only
+    if (this.deployCleanupBtn) {
+      if (!viewer) {
+        this.deployCleanupBtn.classList.remove('hidden');
+        this.deployCleanupBtn.classList.add('flex');
       } else {
-        this.redeployBtn.classList.add('hidden');
-        this.redeployBtn.classList.remove('flex');
+        this.deployCleanupBtn.classList.add('hidden');
+        this.deployCleanupBtn.classList.remove('flex');
       }
     }
+    // Viewer mode: show Destroy (cleanup), Redeploy, Redeploy (cleanup)
+    const viewerButtons = [this.destroyCleanupBtn, this.redeployBtn, this.redeployCleanupBtn];
+    viewerButtons.forEach((btn) => {
+      if (!btn) return;
+      if (viewer) {
+        btn.classList.remove('hidden');
+        btn.classList.add('flex');
+      } else {
+        btn.classList.add('hidden');
+        btn.classList.remove('flex');
+      }
+    });
 
     // Editor tools visibility only in editor mode
     const editorButtons = [this.addNodeBtn, this.addGroupBtn, this.addTextBtn];
@@ -363,21 +363,7 @@ export class ManagerUnifiedFloatingPanel {
     }
   }
 
-  /**
-   * Handles cleanup action (deploy/destroy with -c flag)
-   */
-  private async handleCleanupAction(isViewerMode: boolean): Promise<void> {
-    if (this.isProcessing) {
-      log.debug('Cleanup action ignored - already processing');
-      return;
-    }
-
-    if (isViewerMode) {
-      await this.destroyLabWithCleanup();
-    } else {
-      await this.deployLabWithCleanup();
-    }
-  }
+  // Cleanup handled by specific buttons: deploy-cleanup, destroy-cleanup, redeploy-cleanup
 
   /**
    * Deploys the current lab
@@ -533,6 +519,42 @@ export class ManagerUnifiedFloatingPanel {
     } catch (error) {
       log.error(`Error redeploying lab: ${error}`);
       this.showError('Failed to redeploy lab');
+    } finally {
+      this.setProcessing(false);
+    }
+  }
+
+  /**
+   * Handles redeploy with cleanup: destroy with cleanup then deploy with cleanup
+   */
+  private async handleRedeployCleanup(): Promise<void> {
+    if (this.isProcessing) {
+      log.debug('Redeploy (cleanup) action ignored - already processing');
+      return;
+    }
+    const isViewer = this.isViewerMode();
+    if (!isViewer) {
+      log.warn('Redeploy (cleanup) called but not in viewer mode');
+      return;
+    }
+    this.setProcessing(true);
+    try {
+      const labPath = (window as any).currentLabPath;
+      if (!labPath) {
+        log.error('No current lab path available for redeploy (cleanup)');
+        this.showError('No lab file available for redeploy');
+        return;
+      }
+      // Destroy with cleanup
+      await this.messageSender.sendMessageToVscodeEndpointPost('destroyLabCleanup', labPath);
+      // Wait briefly
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Deploy with cleanup
+      await this.messageSender.sendMessageToVscodeEndpointPost('deployLabCleanup', labPath);
+      log.info('Lab redeploy (cleanup) completed successfully');
+    } catch (error) {
+      log.error(`Error in redeploy (cleanup): ${error}`);
+      this.showError('Failed to redeploy (cleanup)');
     } finally {
       this.setProcessing(false);
     }

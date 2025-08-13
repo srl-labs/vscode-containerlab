@@ -12,22 +12,29 @@
   <div id="panel-content" class="flex flex-col gap-1">
 
   <!-- Deploy/Destroy Button Group -->
-  <div id="deploy-button-group" class="relative flex items-center justify-start w-[28px] h-[28px] overflow-visible">
+  <div id="deploy-button-group" class="group relative flex items-center justify-start w-[28px] h-[28px] overflow-visible">
     <!-- Main Deploy/Destroy Button -->
     <button id="deploy-destroy-btn" class="bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] relative z-30 hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Deploy Lab">
       <i class="fas fa-play text-[10px]"></i>
     </button>
 
-    <!-- Expandable Secondary Buttons -->
-    <div id="deploy-secondary-buttons" class="absolute top-0 left-0 flex flex-row gap-[2px] opacity-0 invisible transition-all duration-200 pointer-events-none z-20 h-[28px]">
-      <!-- Redeploy Button -->
-      <button id="redeploy-btn" class="hidden bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] ml-[30px] hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy Lab">
+    <!-- Drawer with options -->
+    <div id="deploy-drawer" class="absolute top-1 pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 invisible pointer-events-none -translate-x-2 transition-all duration-200 group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-x-0 z-20">
+      <!-- Deploy (cleanup) - editor mode -->
+      <button id="deploy-cleanup-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Deploy (cleanup)">
+        <i class="fas fa-trash text-[10px]"></i>
+      </button>
+      <!-- Destroy (cleanup) - viewer mode -->
+      <button id="destroy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Destroy (cleanup)">
+        <i class="fas fa-trash text-[10px]"></i>
+      </button>
+      <!-- Redeploy - viewer mode -->
+      <button id="redeploy-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy">
         <i class="fas fa-redo text-[10px]"></i>
       </button>
-
-      <!-- Cleanup Button -->
-      <button id="cleanup-action-btn" class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] ml-8 hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Cleanup Lab">
-        <i class="fas fa-broom text-[10px]"></i>
+      <!-- Redeploy (cleanup) - viewer mode -->
+      <button id="redeploy-cleanup-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy (cleanup)">
+        <i class="fas fa-redo text-[10px]"></i>
       </button>
     </div>
   </div>
