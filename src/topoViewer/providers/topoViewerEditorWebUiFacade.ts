@@ -1023,9 +1023,8 @@ topology:
               await vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
               result = `Lab deployment initiated for ${labPath}`;
 
-              // Update local state immediately to avoid race conditions
-              this.deploymentState = 'deployed';
-              this.isViewMode = true;
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error deploying lab: ${innerError}`;
               log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
@@ -1052,12 +1051,123 @@ topology:
               await vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
               result = `Lab destruction initiated for ${labPath}`;
 
-              // Update local state immediately to avoid race conditions
-              this.deploymentState = 'undeployed';
-              this.isViewMode = false;
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error destroying lab: ${innerError}`;
               log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'deployLabCleanup': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for deployment with cleanup';
+                break;
+              }
+
+              // Create a temporary lab node for the deploy with cleanup command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.deploy.cleanup', tempNode);
+              result = `Lab deployment with cleanup initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error deploying lab with cleanup: ${innerError}`;
+              log.error(`Error deploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'destroyLabCleanup': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for destruction with cleanup';
+                break;
+              }
+
+              // Create a temporary lab node for the destroy with cleanup command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.destroy.cleanup', tempNode);
+              result = `Lab destruction with cleanup initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error destroying lab with cleanup: ${innerError}`;
+              log.error(`Error destroying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'redeployLab': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for redeploy';
+                break;
+              }
+
+              // Create a temporary lab node for the redeploy command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.redeploy', tempNode);
+              result = `Lab redeploy initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error redeploying lab: ${innerError}`;
+              log.error(`Error redeploying lab: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'redeployLabCleanup': {
+            try {
+              const labPath = payloadObj as string;
+              if (!labPath) {
+                error = 'No lab path provided for redeploy with cleanup';
+                break;
+              }
+
+              // Create a temporary lab node for the redeploy with cleanup command
+              const { ClabLabTreeNode } = await import('../../treeView/common');
+              const tempNode = new ClabLabTreeNode(
+                '',
+                vscode.TreeItemCollapsibleState.None,
+                { absolute: labPath, relative: '' }
+              );
+
+              await vscode.commands.executeCommand('containerlab.lab.redeploy.cleanup', tempNode);
+              result = `Lab redeploy with cleanup initiated for ${labPath}`;
+
+              // Refresh deployment state instead of forcing it
+              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+            } catch (innerError) {
+              error = `Error redeploying lab with cleanup: ${innerError}`;
+              log.error(`Error redeploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }

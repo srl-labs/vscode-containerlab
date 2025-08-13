@@ -249,7 +249,7 @@ export class ManagerUnifiedFloatingPanel {
   }
 
   /**
-   * Handles redeploy action (destroy and deploy)
+   * Handles redeploy action using dedicated redeploy command
    */
   private async handleRedeploy(isViewerMode: boolean): Promise<void> {
     if (this.isProcessing) {
@@ -275,16 +275,7 @@ export class ManagerUnifiedFloatingPanel {
         return;
       }
 
-      // First destroy the lab, then redeploy it
-      log.debug('Step 1: Destroying lab for redeploy...');
-      await this.messageSender.sendMessageToVscodeEndpointPost('destroyLab', labPath);
-
-      // Wait a brief moment to ensure cleanup is complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      log.debug('Step 2: Deploying lab for redeploy...');
-      await this.messageSender.sendMessageToVscodeEndpointPost('deployLab', labPath);
-
+      await this.messageSender.sendMessageToVscodeEndpointPost('redeployLab', labPath);
       log.info('Lab redeploy completed successfully');
 
     } catch (error) {
@@ -296,7 +287,7 @@ export class ManagerUnifiedFloatingPanel {
   }
 
   /**
-   * Handles redeploy with cleanup: destroy with cleanup then deploy with cleanup
+   * Handles redeploy with cleanup using dedicated redeploy cleanup command
    */
   private async handleRedeployCleanup(): Promise<void> {
     if (this.isProcessing) {
@@ -316,12 +307,8 @@ export class ManagerUnifiedFloatingPanel {
         this.showError('No lab file available for redeploy');
         return;
       }
-      // Destroy with cleanup
-      await this.messageSender.sendMessageToVscodeEndpointPost('destroyLabCleanup', labPath);
-      // Wait briefly
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Deploy with cleanup
-      await this.messageSender.sendMessageToVscodeEndpointPost('deployLabCleanup', labPath);
+
+      await this.messageSender.sendMessageToVscodeEndpointPost('redeployLabCleanup', labPath);
       log.info('Lab redeploy (cleanup) completed successfully');
     } catch (error) {
       log.error(`Error in redeploy (cleanup): ${error}`);
