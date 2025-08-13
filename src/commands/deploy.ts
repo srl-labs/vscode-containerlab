@@ -13,7 +13,7 @@ export async function deploy(node?: ClabLabTreeNode) {
 
   const deployCmd = new ClabCommand("deploy", node);
   await deployCmd.run();
-  
+
   // Notify active topoviewer about state change
   await notifyTopoViewersOfDeployment(node);
 }
@@ -42,7 +42,7 @@ export async function deployCleanup(node?: ClabLabTreeNode) {
 
   const deployCmd = new ClabCommand("deploy", node);
   await deployCmd.run(["-c"]);
-  
+
   // Notify active topoviewer about state change
   await notifyTopoViewersOfDeployment(node);
 }

@@ -51,7 +51,7 @@ export class ManagerPlayStopButton {
     }
 
     const isViewerMode = (window as any).topoViewerMode === 'viewer';
-    
+
     if (isViewerMode) {
       // In viewer mode, stop the lab
       this.stopLab();
@@ -66,13 +66,13 @@ export class ManagerPlayStopButton {
    */
   private async deployLab(): Promise<void> {
     log.debug('Deploying lab via play/stop button');
-    
+
     this.setProcessing(true);
-    
+
     try {
       // Get the current lab path from the global window variable
       const labPath = (window as any).currentLabPath;
-      
+
       if (!labPath) {
         log.error('No current lab path available for deployment');
         this.showError('No lab file available for deployment');
@@ -83,7 +83,7 @@ export class ManagerPlayStopButton {
       await this.messageSender.sendMessageToVscodeEndpointPost('deployLab', labPath);
 
       log.info('Lab deployment completed successfully');
-      
+
     } catch (error) {
       log.error(`Error deploying lab: ${error}`);
       this.showError('Failed to deploy lab');
@@ -97,13 +97,13 @@ export class ManagerPlayStopButton {
    */
   private async stopLab(): Promise<void> {
     log.debug('Stopping lab via play/stop button');
-    
+
     this.setProcessing(true);
-    
+
     try {
       // Get the current lab path from the global window variable
       const labPath = (window as any).currentLabPath;
-      
+
       if (!labPath) {
         log.error('No current lab path available for destruction');
         this.showError('No lab file available for destruction');
@@ -114,7 +114,7 @@ export class ManagerPlayStopButton {
       await this.messageSender.sendMessageToVscodeEndpointPost('destroyLab', labPath);
 
       log.info('Lab destruction completed successfully');
-      
+
     } catch (error) {
       log.error(`Error stopping lab: ${error}`);
       this.showError('Failed to stop lab');
@@ -128,7 +128,7 @@ export class ManagerPlayStopButton {
    */
   private setProcessing(processing: boolean): void {
     this.isProcessing = processing;
-    
+
     if (!this.button) return;
 
     if (processing) {
@@ -157,7 +157,7 @@ export class ManagerPlayStopButton {
    */
   public updateState(): void {
     const isViewerMode = (window as any).topoViewerMode === 'viewer';
-    
+
     if (!this.button) return;
 
     if (isViewerMode) {

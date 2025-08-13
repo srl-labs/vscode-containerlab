@@ -168,30 +168,34 @@ export class TopoViewerEditor {
     // Use the derived lab name for folder storage
     this.lastFolderName = baseNameWithoutExt;
 
-    // Build the template with the actual lab name - minimal template to show flexibility
+    // Build the template with the actual lab name - default topology with two SRL routers
     const templateContent = `
 name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
 
 topology:
   nodes:
-    node1:
-      # kind and type are optional now
-      # kind: nokia_srlinux
-      # type: ixrd1
-      # image: ghcr.io/nokia/srlinux:latest
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
       labels:
-        graph-posX: "65"
-        graph-posY: "25"
+        graph-posX: "80"
+        graph-posY: "20"
         graph-icon: router
-    node2:
-      # Completely minimal node - only position labels
-      labels:
-        graph-posX: "165"
-        graph-posY: "25"
 
-  # links section is optional - uncomment to add links
-  # links:
-  #   - endpoints: [ node1:eth1, node2:eth1 ]
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+      labels:
+        graph-posX: "160"
+        graph-posY: "20"
+        graph-icon: router
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
 `;
 
     try {
@@ -1009,7 +1013,7 @@ topology:
                 error = 'No lab path provided for deployment';
                 break;
               }
-              
+
               // Create a temporary lab node for the deploy command
               const { ClabLabTreeNode } = await import('../../treeView/common');
               const tempNode = new ClabLabTreeNode(
@@ -1017,10 +1021,10 @@ topology:
                 vscode.TreeItemCollapsibleState.None,
                 { absolute: labPath, relative: '' }
               );
-              
+
               await vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
               result = `Lab deployment initiated for ${labPath}`;
-              
+
               // Update local state immediately to avoid race conditions
               this.deploymentState = 'deployed';
               this.isViewMode = true;
@@ -1038,7 +1042,7 @@ topology:
                 error = 'No lab path provided for destruction';
                 break;
               }
-              
+
               // Create a temporary lab node for the destroy command
               const { ClabLabTreeNode } = await import('../../treeView/common');
               const tempNode = new ClabLabTreeNode(
@@ -1046,10 +1050,10 @@ topology:
                 vscode.TreeItemCollapsibleState.None,
                 { absolute: labPath, relative: '' }
               );
-              
+
               await vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
               result = `Lab destruction initiated for ${labPath}`;
-              
+
               // Update local state immediately to avoid race conditions
               this.deploymentState = 'undeployed';
               this.isViewMode = false;

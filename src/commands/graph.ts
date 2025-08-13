@@ -183,7 +183,7 @@ export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
   if (viewer) {
     currentTopoViewerPanel = (viewer as any).currentPanel;
     activeTopoViewers.add(viewer);
-    
+
     // Set up disposal handler to remove from active set
     if (currentTopoViewerPanel) {
       currentTopoViewerPanel.onDidDispose(() => {
@@ -204,7 +204,7 @@ export async function notifyTopoViewersOfStateChange(labPath: string, deployment
     .map(async (viewer) => {
       viewer.deploymentState = deploymentState;
       viewer.isViewMode = isViewMode;
-      
+
       if (viewer.currentPanel) {
         try {
           await viewer.updatePanelHtml(viewer.currentPanel);
@@ -213,6 +213,6 @@ export async function notifyTopoViewersOfStateChange(labPath: string, deployment
         }
       }
     });
-    
+
   await Promise.all(promises);
 }

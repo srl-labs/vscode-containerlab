@@ -15,7 +15,7 @@ import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 
 /** Our global output channel */
-export let outputChannel: vscode.LogOutputChannel;  
+export let outputChannel: vscode.LogOutputChannel;
 export let treeView: any;
 export let localTreeView: any;
 export let runningTreeView: any;

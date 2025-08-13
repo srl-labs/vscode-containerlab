@@ -12,7 +12,7 @@ export async function destroy(node?: ClabLabTreeNode) {
 
   const destroyCmd = new ClabCommand("destroy", node);
   await destroyCmd.run();
-  
+
   // Notify active topoviewer about state change
   await notifyTopoViewersOfLabDestruction(node);
 }
@@ -41,7 +41,7 @@ export async function destroyCleanup(node?: ClabLabTreeNode) {
 
   const destroyCmd = new ClabCommand("destroy", node);
   await destroyCmd.run(["-c"]);
-  
+
   // Notify active topoviewer about state change
   await notifyTopoViewersOfLabDestruction(node);
 }

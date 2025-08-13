@@ -198,7 +198,7 @@ class TopologyWebviewController {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       this.floatingActionPanel = new ManagerFloatingActionPanel(this.cy, this.addNodeManager);
     }
-    
+
     // Initialize play/stop button for both modes
     this.playStopButton = new ManagerPlayStopButton(this.messageSender);
     this.groupManager = getGroupManager(this.cy, mode);
