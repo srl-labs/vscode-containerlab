@@ -21,19 +21,19 @@
     <!-- Drawer with options -->
     <div id="deploy-drawer" class="absolute pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 invisible pointer-events-none -translate-x-2 transition-all duration-200 group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-x-0 z-20">
       <!-- Deploy (cleanup) - editor mode -->
-      <button id="deploy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Deploy (cleanup)">
-        <i class="fas fa-trash text-[10px]"></i>
+      <button id="deploy-cleanup-btn" class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Deploy (cleanup)">
+        <i class="fas fa-broom text-[10px]"></i>
       </button>
       <!-- Destroy (cleanup) - viewer mode -->
-      <button id="destroy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Destroy (cleanup)">
-        <i class="fas fa-trash text-[10px]"></i>
+      <button id="destroy-cleanup-btn" class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Destroy (cleanup)">
+        <i class="fas fa-broom text-[10px]"></i>
       </button>
       <!-- Redeploy - viewer mode -->
       <button id="redeploy-btn" class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]" data-tippy-content="Redeploy">
         <i class="fas fa-redo text-[10px]"></i>
       </button>
       <!-- Redeploy (cleanup) - viewer mode -->
-      <button id="redeploy-cleanup-btn" class="hidden bg-[var(--vscode-errorForeground)] text-[var(--vscode-errorForeground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Redeploy (cleanup)">
+      <button id="redeploy-cleanup-btn" class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]" data-tippy-content="Redeploy (cleanup)">
         <i class="fas fa-redo text-[10px]"></i>
       </button>
     </div>
@@ -280,18 +280,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (redeployCleanupBtn) { redeployCleanupBtn.classList.remove('hidden'); redeployCleanupBtn.classList.add('flex'); }
         if (deployCleanupBtn) { deployCleanupBtn.classList.add('hidden'); deployCleanupBtn.classList.remove('flex'); }
       } else {
+
         // In editor mode (lab is not running), show deploy button and hide redeploy button
         deployBtn.innerHTML = '<i class="fas fa-play text-[10px]"></i>';
         deployBtn.setAttribute('data-tippy-content', 'Deploy Lab');
-        deployBtn.style.background = 'var(--vscode-button-background, #0e639c)';
-        deployBtn.style.color = 'var(--vscode-button-foreground, #ffffff)';
+        deployBtn.style.background = 'var(--vscode-button-background)';
+        deployBtn.style.color = 'var(--vscode-button-foreground)';
         deployBtn.onmouseover = function() {
-          this.style.background='var(--vscode-button-hoverBackground, #1177bb)'; 
+          this.style.background='var(--vscode-button-hoverBackground)'; 
           this.style.transform='translateY(-1px)';
           this.style.opacity='1';
         };
         deployBtn.onmouseout = function() {
-          this.style.background='var(--vscode-button-background, #0e639c)'; 
+          this.style.background='var(--vscode-button-background)'; 
           this.style.transform='translateY(0)';
           this.style.opacity='1';
         };
@@ -305,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Editor tools only visible in editor mode
-    const editorButtons = [addNodeBtn, addGroupBtn, addTextBtn];
+    const editorButtons = [addNodeBtn];
     editorButtons.forEach(btn => {
       if (btn) {
         btn.style.display = isViewerMode() ? 'none' : 'flex';
@@ -432,9 +433,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Add hover effects
       lockBtn.addEventListener('mouseenter', function() {
         if (isLocked) {
-          this.style.opacity = '0.9';
+          this.style.background = 'var(--color-red-600)';
         } else {
-          this.style.background = 'var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))';
+          this.style.background = 'var(--vscode-button-secondaryHoverBackground)';
         }
         this.style.transform = 'translateY(-1px)';
       });
@@ -442,9 +443,9 @@ document.addEventListener('DOMContentLoaded', function() {
       lockBtn.addEventListener('mouseleave', function() {
         if (isLocked) {
           this.style.opacity = '1';
-          this.style.background = '#dc3545';
+          this.style.background = 'var(--color-red-500)';
         } else {
-          this.style.background = 'var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))';
+          this.style.background = 'var(--vscode-button-secondaryBackground)';
         }
         this.style.transform = 'translateY(0)';
       });
