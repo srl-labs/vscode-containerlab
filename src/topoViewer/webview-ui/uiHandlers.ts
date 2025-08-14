@@ -370,6 +370,14 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
         { annotations, groupStyles }
       );
       log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
+
+      // Reapply group styles after saving to maintain visual consistency
+      if (topoViewerState.editorEngine?.groupStyleManager) {
+        groupStyles.forEach((style: any) => {
+          topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(style.id);
+        });
+        log.info('Reapplied group styles after save');
+      }
     } else {
       log.info('No annotations to save');
     }
