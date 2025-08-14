@@ -396,7 +396,10 @@ export class ManagerUnifiedFloatingPanel {
   private handleAddGroup(): void {
     log.debug('Adding new group via unified panel');
 
-    const groupManager = getGroupManager(this.cy, 'edit');
+    const topoController = (window as any).topologyWebviewController;
+    const groupManager = topoController
+      ? getGroupManager(this.cy, topoController.groupStyleManager, 'edit')
+      : null;
     if (!groupManager) {
       log.error('Group manager not available');
       return;

@@ -1,6 +1,7 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/webviewLogger';
 import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
+import type { ManagerGroupStyle } from './managerGroupStyle';
 
 // Declarations for globals provided elsewhere
 /* eslint-disable no-unused-vars */
@@ -29,11 +30,13 @@ interface CreateNewParentOptions {
 
 export class ManagerGroupManagement {
   private cy: cytoscape.Core;
+  private groupStyleManager: ManagerGroupStyle;
 
   /* eslint-disable no-unused-vars */
-  constructor(cy: cytoscape.Core, _mode: 'edit' | 'view' = 'view') {
+  constructor(cy: cytoscape.Core, groupStyleManager: ManagerGroupStyle, _mode: 'edit' | 'view' = 'view') {
   /* eslint-enable no-unused-vars */
     this.cy = cy;
+    this.groupStyleManager = groupStyleManager;
     // Mode parameter kept for backwards compatibility but not used currently
   }
 
@@ -225,6 +228,10 @@ export class ManagerGroupManagement {
       const groupEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
       const levelEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
       const labelButtonEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
+      const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
+      const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
+      const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
+      const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
 
       if (groupIdEl) groupIdEl.textContent = currentParentId;
       if (groupEl) groupEl.value = currentParentId.split(':')[0];
@@ -241,6 +248,12 @@ export class ManagerGroupManagement {
         const currentClass = labelClasses.find(cls => node.hasClass(cls));
         labelButtonEl.textContent = currentClass || 'Select Position';
       }
+
+      const style = this.groupStyleManager.getStyle(currentParentId);
+      if (bgColorEl) bgColorEl.value = style?.backgroundColor || '#d9d9d9';
+      if (borderColorEl) borderColorEl.value = style?.borderColor || '#DDDDDD';
+      if (borderWidthEl) borderWidthEl.value = style?.borderWidth?.toString() || '0.5';
+      if (textColorEl) textColorEl.value = style?.color || '#EBECF0';
     } catch (error) {
       log.error(`showGroupEditor failed: ${error}`);
     }
@@ -278,6 +291,10 @@ export class ManagerGroupManagement {
       const groupInputEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
       const levelInputEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
       const labelPositionEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
+      const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
+      const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
+      const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
+      const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
       if (!parentIdEl || !groupInputEl || !levelInputEl || !labelPositionEl) {
         const errorMsg = 'One or more required UI elements were not found.';
         acquireVsCodeApi().window.showWarningMessage(errorMsg);
@@ -321,10 +338,19 @@ export class ManagerGroupManagement {
           log.debug(`Applied label position '${labelPos}' to node: ${node.id()}`);
         }
       };
+      const style = {
+        id: newParentId,
+        backgroundColor: bgColorEl?.value,
+        borderColor: borderColorEl?.value,
+        borderWidth: borderWidthEl?.value ? parseFloat(borderWidthEl.value) : undefined,
+        color: textColorEl?.value
+      };
+
       if (parentNodeId === newParentId) {
         if (groupLabelPosition && groupLabelPosition !== 'select position') {
           updateLabelPositionClass(oldParentNode, groupLabelPosition);
         }
+        this.groupStyleManager.updateGroupStyle(parentNodeId, style);
         log.debug(`No parent node update needed. Parent remains: ${parentNodeId}`);
         return;
       }
@@ -356,6 +382,10 @@ export class ManagerGroupManagement {
       parentIdEl.textContent = newParentId;
       if (groupLabelPosition && groupLabelPosition !== 'select position') {
         updateLabelPositionClass(newParentNode, groupLabelPosition);
+      }
+      this.groupStyleManager.updateGroupStyle(newParentId, style);
+      if (parentNodeId !== newParentId) {
+        this.groupStyleManager.removeGroupStyle(parentNodeId);
       }
       log.info(`Parent node updated successfully. New parent ID: ${newParentId}`);
     } catch (error) {
@@ -410,6 +440,7 @@ export class ManagerGroupManagement {
       } else {
         log.warn('Node editor parent panel element not found');
       }
+      this.groupStyleManager.removeGroupStyle(parentNodeId);
       log.info(`Parent node '${parentNodeId}' removed successfully along with reparenting its children`);
       return true;
     } catch (error) {

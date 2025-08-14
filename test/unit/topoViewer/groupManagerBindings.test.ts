@@ -3,6 +3,7 @@ import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
 import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
+import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
 
 // ensure window is available for global assignments
 (globalThis as any).window = globalThis;
@@ -15,14 +16,20 @@ describe('group manager global bindings', () => {
       } } }
     ] });
 
-    const mgr = new ManagerGroupManagement(cy, 'edit');
+    const messageSender = { sendMessageToVscodeEndpointPost: async () => ({}) } as any;
+    const gsm = new ManagerGroupStyle(cy, messageSender);
+    const mgr = new ManagerGroupManagement(cy, gsm, 'edit');
     (window as any).nodeParentPropertiesUpdate = mgr.nodeParentPropertiesUpdate.bind(mgr);
 
     const elements: Record<string, any> = {
       'panel-node-editor-parent-graph-group-id': { textContent: 'group1:1' },
       'panel-node-editor-parent-graph-group': { value: 'group1' },
       'panel-node-editor-parent-graph-level': { value: '1' },
-      'panel-node-editor-parent-label-dropdown-button-text': { textContent: 'top-center' }
+      'panel-node-editor-parent-label-dropdown-button-text': { textContent: 'top-center' },
+      'panel-node-editor-parent-bg-color': { value: '#d9d9d9' },
+      'panel-node-editor-parent-border-color': { value: '#DDDDDD' },
+      'panel-node-editor-parent-border-width': { value: '0.5' },
+      'panel-node-editor-parent-text-color': { value: '#EBECF0' }
     };
     (globalThis as any).document = { getElementById: (id: string) => elements[id] } as any;
     (globalThis as any).acquireVsCodeApi = () => ({ window: { showWarningMessage: () => {} } });

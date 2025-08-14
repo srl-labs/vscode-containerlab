@@ -20,6 +20,7 @@ import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/manag
 import { ManagerZoomToFit } from '../../../src/topoViewer/webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../../../src/topoViewer/webview-ui/managerLabelEndpoint';
 import { ManagerReloadTopo } from '../../../src/topoViewer/webview-ui/managerReloadTopo';
+import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
 
 // Ensure window is defined for modules that expect it
 (globalThis as any).window = globalThis;
@@ -32,8 +33,10 @@ describe('manager registry', () => {
 
   it('provides singleton group manager', () => {
     const cy = cytoscape({ headless: true });
-    const gm1 = getGroupManager(cy, 'view');
-    const gm2 = getGroupManager(cy, 'edit');
+    const sender = { sendMessageToVscodeEndpointPost: async () => ({}) } as any;
+    const gsm = new ManagerGroupStyle(cy, sender);
+    const gm1 = getGroupManager(cy, gsm, 'view');
+    const gm2 = getGroupManager(cy, gsm, 'edit');
     expect(gm1).to.equal(gm2);
     expect(gm1).to.be.instanceOf(ManagerGroupManagement);
   });

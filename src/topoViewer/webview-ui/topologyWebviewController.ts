@@ -18,6 +18,7 @@ import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
 import { ManagerFreeText } from './managerFreeText';
+import { ManagerGroupStyle } from './managerGroupStyle';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -52,6 +53,7 @@ class TopologyWebviewController {
   public viewportPanels?: ManagerViewportPanels;
   public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
   public groupManager: ManagerGroupManagement;
+  public groupStyleManager: ManagerGroupStyle;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
   public zoomToFitManager: ManagerZoomToFit;
@@ -239,16 +241,21 @@ class TopologyWebviewController {
     this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
 
-    // Initialize free text manager for both edit and view modes
+    // Initialize free text and group style managers
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+    this.groupStyleManager = new ManagerGroupStyle(this.cy, this.messageSender, this.freeTextManager);
+    this.freeTextManager.setGroupStyleManager(this.groupStyleManager);
 
-    // Load annotations after freeTextManager is created
+    // Load annotations after managers are created
     // We need to wait a bit for the initial layout to complete
     setTimeout(() => {
       this.freeTextManager?.loadAnnotations().then(() => {
         log.info('Free text annotations loaded successfully');
       }).catch((error) => {
         log.error(`Failed to load free text annotations: ${error}`);
+      });
+      this.groupStyleManager?.loadGroupStyles().catch((error) => {
+        log.error(`Failed to load group style annotations: ${error}`);
       });
     }, 500);
 
@@ -258,7 +265,7 @@ class TopologyWebviewController {
 
     // Initialize unified floating panel for both modes
     this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(this.cy, this.messageSender, this.addNodeManager);
-    this.groupManager = getGroupManager(this.cy, mode);
+    this.groupManager = getGroupManager(this.cy, this.groupStyleManager, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
     this.layoutAlgoManager = layoutAlgoManagerSingleton;

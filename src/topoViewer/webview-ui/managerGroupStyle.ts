@@ -1,0 +1,104 @@
+import cytoscape from 'cytoscape';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { log } from '../logging/webviewLogger';
+import type { GroupStyleAnnotation } from '../types/topoViewerGraph';
+import type { ManagerFreeText } from './managerFreeText';
+
+export class ManagerGroupStyle {
+  private cy: cytoscape.Core;
+  private messageSender: VscodeMessageSender;
+  private freeTextManager?: ManagerFreeText;
+  private groupStyles: Map<string, GroupStyleAnnotation> = new Map();
+  private saveDebounced: () => void;
+
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, freeTextManager?: ManagerFreeText) {
+    this.cy = cy;
+    this.messageSender = messageSender;
+    this.freeTextManager = freeTextManager;
+    this.saveDebounced = this.debounce(() => {
+      this.saveAnnotations();
+    }, 300);
+  }
+
+  public setFreeTextManager(manager: ManagerFreeText): void {
+    this.freeTextManager = manager;
+  }
+
+  private debounce(func: Function, wait: number) {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  }
+
+  public getGroupStyles(): GroupStyleAnnotation[] {
+    return Array.from(this.groupStyles.values());
+  }
+
+  public getStyle(id: string): GroupStyleAnnotation | undefined {
+    return this.groupStyles.get(id);
+  }
+
+  public updateGroupStyle(id: string, style: GroupStyleAnnotation): void {
+    style.id = id;
+    this.groupStyles.set(id, style);
+    this.applyStyleToNode(id);
+    this.saveDebounced();
+  }
+
+  public removeGroupStyle(id: string): void {
+    this.groupStyles.delete(id);
+    const node = this.cy.getElementById(id);
+    if (!node.empty()) {
+      node.style({
+        'background-color': '',
+        'border-color': '',
+        'border-width': '',
+        color: ''
+      });
+    }
+    this.saveDebounced();
+  }
+
+  public applyStyleToNode(id: string): void {
+    const style = this.groupStyles.get(id);
+    const node = this.cy.getElementById(id);
+    if (!style || node.empty()) return;
+    const css: any = {};
+    if (style.backgroundColor) css['background-color'] = style.backgroundColor;
+    if (style.borderColor) css['border-color'] = style.borderColor;
+    if (style.borderWidth !== undefined) css['border-width'] = `${style.borderWidth}px`;
+    if (style.color) css['color'] = style.color;
+    node.style(css);
+  }
+
+  public async loadGroupStyles(): Promise<void> {
+    try {
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-load-annotations', {});
+      if (response && Array.isArray(response.groupStyles)) {
+        response.groupStyles.forEach((s: GroupStyleAnnotation) => {
+          this.groupStyles.set(s.id, s);
+          this.applyStyleToNode(s.id);
+        });
+        log.info(`Loaded ${response.groupStyles.length} group style annotations`);
+      }
+    } catch (error) {
+      log.error(`Failed to load group style annotations: ${error}`);
+    }
+  }
+
+  private async saveAnnotations(): Promise<void> {
+    try {
+      const annotations = this.freeTextManager ? this.freeTextManager.getAnnotations() : [];
+      const groupStyles = this.getGroupStyles();
+      await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-save-annotations', {
+        annotations,
+        groupStyles
+      });
+      log.debug(`Saved ${groupStyles.length} group style annotations`);
+    } catch (error) {
+      log.error(`Failed to save group style annotations: ${error}`);
+    }
+  }
+}

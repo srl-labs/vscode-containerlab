@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from '../logging/extensionLogger';
-import { FreeTextAnnotation, TopologyAnnotations } from '../types/topoViewerGraph';
+import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations } from '../types/topoViewerGraph';
 
 /**
  * Manages free text annotations for a topology.
@@ -34,7 +34,7 @@ export class AnnotationsManager {
       log.warn(`Failed to load annotations from ${annotationsPath}: ${error}`);
     }
 
-    return { freeTextAnnotations: [] };
+    return { freeTextAnnotations: [], groupStyleAnnotations: [] };
   }
 
   /**
@@ -48,7 +48,9 @@ export class AnnotationsManager {
 
     try {
       // Only save if there are annotations, otherwise delete the file
-      if (annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0) {
+      const hasFreeText = annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0;
+      const hasGroupStyles = annotations.groupStyleAnnotations && annotations.groupStyleAnnotations.length > 0;
+      if (hasFreeText || hasGroupStyles) {
         const content = JSON.stringify(annotations, null, 2);
         await fs.promises.writeFile(annotationsPath, content, 'utf8');
         log.info(`Saved annotations to ${annotationsPath}`);
@@ -102,6 +104,38 @@ export class AnnotationsManager {
       annotations.freeTextAnnotations = annotations.freeTextAnnotations.filter(
         a => a.id !== annotationId
       );
+    }
+    return annotations;
+  }
+
+  /**
+   * Add or update a group style annotation
+   */
+  public addOrUpdateGroupStyle(
+    annotations: TopologyAnnotations,
+    style: GroupStyleAnnotation
+  ): TopologyAnnotations {
+    if (!annotations.groupStyleAnnotations) {
+      annotations.groupStyleAnnotations = [];
+    }
+    const existingIndex = annotations.groupStyleAnnotations.findIndex(a => a.id === style.id);
+    if (existingIndex >= 0) {
+      annotations.groupStyleAnnotations[existingIndex] = style;
+    } else {
+      annotations.groupStyleAnnotations.push(style);
+    }
+    return annotations;
+  }
+
+  /**
+   * Remove a group style annotation
+   */
+  public removeGroupStyle(
+    annotations: TopologyAnnotations,
+    styleId: string
+  ): TopologyAnnotations {
+    if (annotations.groupStyleAnnotations) {
+      annotations.groupStyleAnnotations = annotations.groupStyleAnnotations.filter(a => a.id !== styleId);
     }
     return annotations;
   }

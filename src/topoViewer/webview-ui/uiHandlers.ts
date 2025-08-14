@@ -340,9 +340,12 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
     const freeTextNodes = updatedNodes.filter((node: any) =>
       node.data && node.data.topoViewerRole === 'freeText'
     );
+    const groupStyles = topoViewerState.editorEngine?.groupStyleManager?.getGroupStyles() || [];
 
-    if (freeTextNodes.length > 0) {
-      log.info(`Found ${freeTextNodes.length} free text nodes to save as annotations`);
+    if (freeTextNodes.length > 0 || groupStyles.length > 0) {
+      if (freeTextNodes.length > 0) {
+        log.info(`Found ${freeTextNodes.length} free text nodes to save as annotations`);
+      }
 
       // Convert free text nodes to annotations format
       const annotations = freeTextNodes.map((node: any) => {
@@ -361,14 +364,14 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
         };
       });
 
-      // Send annotations to backend for saving
+      // Send annotations and group styles to backend for saving
       const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
         'topo-editor-save-annotations',
-        { annotations }
+        { annotations, groupStyles }
       );
       log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
     } else {
-      log.info('No free text annotations to save');
+      log.info('No annotations to save');
     }
 
   } catch (error) {
