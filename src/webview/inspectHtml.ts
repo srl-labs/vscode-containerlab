@@ -205,12 +205,46 @@ export function getInspectHtml(
 
         const searchBox = document.getElementById('searchBox');
         searchBox.addEventListener('input', () => {
-          const query = searchBox.value.toLowerCase();
+          const query = searchBox.value.trim();
+          
+          // regex filter function
+          let filter;
+          if (!query) {
+            filter = () => true;
+          } else {
+            try {
+              // Convert user-friendly patterns to regex
+              let processedPattern = query;
+              
+             // Check if it already looks like regex
+              const looksLikeRegex = query.includes('\\\\') || query.includes('[') || query.includes('(') || 
+                                   query.includes('|') || query.includes('^') || query.includes('$') ||
+                                   query.includes('.*') || query.includes('.+');
+              
+              if (!looksLikeRegex) {
+                // Convert wildcards to regex
+                const hasWildcards = /[\\*\\?#]/.test(query);
+                processedPattern = query.replace(/\\*/g, '.*').replace(/\\?/g, '.').replace(/#/g, '\\\\d+');
+                
+                if (hasWildcards) {
+                  processedPattern = '^' + processedPattern + '$';
+                }
+              }
+              
+              const regex = new RegExp(processedPattern, 'i');
+              filter = (value) => regex.test(value);
+            } catch (error) {
+              // Invalid regex -> fall back simple string
+              const queryLower = query.toLowerCase();
+              filter = (value) => value.toLowerCase().includes(queryLower);
+            }
+          }
+          
           document.querySelectorAll('.lab-section').forEach(section => {
             const labName = section.getAttribute('data-lab-name') || '';
             let sectionVisible = false;
 
-            if (query && labName.includes(query)) {
+            if (query && filter(labName)) {
               section.style.display = '';
               section.querySelectorAll('tbody tr').forEach(tr => (tr.style.display = ''));
               return;
@@ -218,8 +252,8 @@ export function getInspectHtml(
 
             section.querySelectorAll('tbody tr').forEach(tr => {
               const node = tr.getAttribute('data-node-name') || '';
-              const rowText = tr.textContent.toLowerCase();
-              const match = node.includes(query) || rowText.includes(query);
+              const rowText = tr.textContent || '';
+              const match = filter(node) || filter(rowText);
               tr.style.display = !query || match ? '' : 'none';
               if (match) sectionVisible = true;
             });

@@ -3,6 +3,7 @@ import * as utils from "../helpers/utils"
 import * as c from "./common";
 import * as ins from "./inspector";
 import { localTreeView, favoriteLabs } from "../extension";
+import { FilterUtils } from "../helpers/filterUtils";
 import path = require("path");
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
@@ -66,7 +67,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     }
 
     setTreeFilter(filterText: string) {
-        this.treeFilter = filterText.toLowerCase();
+        this.treeFilter = filterText;
         if (localTreeView) {
             localTreeView.message = `Filter: ${filterText}`;
         }
@@ -172,11 +173,11 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         });
 
         if (this.treeFilter) {
-            const filter = this.treeFilter;
+            const filter = FilterUtils.createFilter(this.treeFilter);
             for (const [p, node] of Object.entries(labs)) {
-                const rel = path.relative(workspaceRoot, p).toLowerCase();
-                const lbl = String(node.label).toLowerCase();
-                if (!lbl.includes(filter) && !rel.includes(filter)) {
+                const rel = path.relative(workspaceRoot, p);
+                const lbl = String(node.label);
+                if (!filter(lbl) && !filter(rel)) {
                     delete labs[p];
                 }
             }
