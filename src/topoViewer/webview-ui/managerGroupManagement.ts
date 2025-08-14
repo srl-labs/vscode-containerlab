@@ -162,9 +162,10 @@ export class ManagerGroupManagement {
       this.cy.on('dragfree', 'node', (event: cytoscape.EventObject) => {
         const draggedNode = event.target as cytoscape.NodeSingular;
 
-        // Don't process group nodes or dummy children being dragged
+        // Don't process group nodes, dummy children, or free text nodes being dragged
         if (draggedNode.data('topoViewerRole') === 'group' ||
-            draggedNode.data('topoViewerRole') === 'dummyChild') {
+            draggedNode.data('topoViewerRole') === 'dummyChild' ||
+            draggedNode.data('topoViewerRole') === 'freeText') {
           return;
         }
 
