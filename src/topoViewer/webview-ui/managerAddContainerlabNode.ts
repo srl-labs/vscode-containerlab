@@ -8,11 +8,26 @@ import topoViewerState from '../state';
  * Adds new Containerlab nodes into the Cytoscape canvas.
  */
 export class ManagerAddContainerlabNode {
+  private static nodeCounter: number = 0;
+
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject
   ): void {
-    const newNodeId = `nodeId-${cy.nodes().length + 1}`;
+    if (ManagerAddContainerlabNode.nodeCounter === 0) {
+      const existingNodeIds = cy.nodes().map(node => node.id());
+      const maxId = existingNodeIds
+        .filter(id => id.startsWith('nodeId-'))
+        .map(id => parseInt(id.replace('nodeId-', ''), 10))
+        .filter(num => !isNaN(num))
+        .reduce((max, current) => Math.max(max, current), 0);
+      ManagerAddContainerlabNode.nodeCounter = maxId;
+    }
+
+
+    ManagerAddContainerlabNode.nodeCounter++;
+    const newNodeId = `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
+
 
     const defaultKind = window.defaultKind || 'nokia_srlinux';
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
