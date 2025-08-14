@@ -229,8 +229,11 @@ export class ManagerGroupManagement {
       const levelEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
       const labelButtonEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
       const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
+      const bgOpacityEl = document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement;
       const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
       const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
+      const borderStyleEl = document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement;
+      const borderRadiusEl = document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement;
       const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
 
       if (groupIdEl) groupIdEl.textContent = currentParentId;
@@ -251,8 +254,21 @@ export class ManagerGroupManagement {
 
       const style = this.groupStyleManager.getStyle(currentParentId);
       if (bgColorEl) bgColorEl.value = style?.backgroundColor || '#d9d9d9';
+      if (bgOpacityEl) {
+        const opacity = style?.backgroundOpacity ?? 100;
+        bgOpacityEl.value = opacity.toString();
+        const opacityValueEl = document.getElementById('panel-node-editor-parent-bg-opacity-value');
+        if (opacityValueEl) opacityValueEl.textContent = opacity + '%';
+      }
       if (borderColorEl) borderColorEl.value = style?.borderColor || '#DDDDDD';
       if (borderWidthEl) borderWidthEl.value = style?.borderWidth?.toString() || '0.5';
+      if (borderStyleEl) borderStyleEl.value = style?.borderStyle || 'solid';
+      if (borderRadiusEl) {
+        const radius = style?.borderRadius ?? 0;
+        borderRadiusEl.value = radius.toString();
+        const radiusValueEl = document.getElementById('panel-node-editor-parent-border-radius-value');
+        if (radiusValueEl) radiusValueEl.textContent = radius + 'px';
+      }
       if (textColorEl) textColorEl.value = style?.color || '#EBECF0';
     } catch (error) {
       log.error(`showGroupEditor failed: ${error}`);
@@ -292,8 +308,11 @@ export class ManagerGroupManagement {
       const levelInputEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
       const labelPositionEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
       const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
+      const bgOpacityEl = document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement;
       const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
       const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
+      const borderStyleEl = document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement;
+      const borderRadiusEl = document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement;
       const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
       if (!parentIdEl || !groupInputEl || !levelInputEl || !labelPositionEl) {
         const errorMsg = 'One or more required UI elements were not found.';
@@ -341,8 +360,11 @@ export class ManagerGroupManagement {
       const style = {
         id: newParentId,
         backgroundColor: bgColorEl?.value,
+        backgroundOpacity: bgOpacityEl?.value ? parseFloat(bgOpacityEl.value) : undefined,
         borderColor: borderColorEl?.value,
         borderWidth: borderWidthEl?.value ? parseFloat(borderWidthEl.value) : undefined,
+        borderStyle: borderStyleEl?.value as 'solid' | 'dotted' | 'dashed' | 'double' | undefined,
+        borderRadius: borderRadiusEl?.value ? parseFloat(borderRadiusEl.value) : undefined,
         color: textColorEl?.value
       };
 

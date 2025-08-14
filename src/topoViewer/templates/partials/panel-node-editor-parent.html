@@ -1,5 +1,5 @@
 <!-- Node Parent Properties Editor Panel -->
-<section class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden"
+<section class="panel panel-overlay bottom-10 left-20 w-[420px] max-h-[750px] overflow-y-auto overflow-x-hidden"
   id="panel-node-editor-parent" aria-labelledby="group-panel-heading" style="display: none;">
   <p class="panel-heading text-base font-bold" id="group-panel-heading">
     Group Properties
@@ -144,6 +144,59 @@
           </div>
         </div>
 
+        <!-- Background Opacity -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Bg Opacity</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="flex items-center space-x-2">
+                  <input type="range" min="0" max="100" value="100" class="flex-1" id="panel-node-editor-parent-bg-opacity">
+                  <span class="text-sm w-10 text-right" id="panel-node-editor-parent-bg-opacity-value">100%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Border Style -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Border Style</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <select class="input-field text-base w-full" id="panel-node-editor-parent-border-style">
+                  <option value="solid">Solid</option>
+                  <option value="dotted">Dotted</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="double">Double</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Border Radius -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Corner Radius</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="flex items-center space-x-2">
+                  <input type="range" min="0" max="50" value="0" class="flex-1" id="panel-node-editor-parent-border-radius">
+                  <span class="text-sm w-10 text-right" id="panel-node-editor-parent-border-radius-value">0px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div class="my-1">
           <div class="p-0.5">
@@ -169,3 +222,17 @@
     </div>
   </div>
 </section>
+
+<script>
+  // Handle opacity slider
+  document.getElementById('panel-node-editor-parent-bg-opacity')?.addEventListener('input', (e) => {
+    const value = e.target.value;
+    document.getElementById('panel-node-editor-parent-bg-opacity-value').textContent = value + '%';
+  });
+
+  // Handle border radius slider
+  document.getElementById('panel-node-editor-parent-border-radius')?.addEventListener('input', (e) => {
+    const value = e.target.value;
+    document.getElementById('panel-node-editor-parent-border-radius-value').textContent = value + 'px';
+  });
+</script>

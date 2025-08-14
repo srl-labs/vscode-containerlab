@@ -53,8 +53,12 @@ export class ManagerGroupStyle {
     if (!node.empty()) {
       node.style({
         'background-color': '',
+        'background-opacity': '',
         'border-color': '',
         'border-width': '',
+        'border-style': '',
+        'shape': '',
+        'corner-radius': '',
         color: ''
       });
     }
@@ -66,9 +70,19 @@ export class ManagerGroupStyle {
     const node = this.cy.getElementById(id);
     if (!style || node.empty()) return;
     const css: any = {};
-    if (style.backgroundColor) css['background-color'] = style.backgroundColor;
+    if (style.backgroundColor) {
+      css['background-color'] = style.backgroundColor;
+      if (style.backgroundOpacity !== undefined) {
+        css['background-opacity'] = style.backgroundOpacity / 100;
+      }
+    }
     if (style.borderColor) css['border-color'] = style.borderColor;
     if (style.borderWidth !== undefined) css['border-width'] = `${style.borderWidth}px`;
+    if (style.borderStyle) css['border-style'] = style.borderStyle;
+    if (style.borderRadius !== undefined) {
+      css['shape'] = style.borderRadius > 0 ? 'round-rectangle' : 'rectangle';
+      css['corner-radius'] = `${style.borderRadius}px`;
+    }
     if (style.color) css['color'] = style.color;
     node.style(css);
   }
