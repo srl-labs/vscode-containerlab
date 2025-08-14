@@ -93,13 +93,35 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     // Choose layout based on presence of saved positions
     let layout: cytoscape.Layouts;
-    if (!hasPosLabels && (window as any).topoViewerMode === 'view') {
-      // Spread nodes automatically when no position labels exist in view mode
+    if (!hasPosLabels && (window as any).topoViewerMode === 'viewer') {
+      // Use force-directed radial layout when no position labels exist in view mode
+      // Extract node weights based on group levels for radial layout
+      const nodeWeights: Record<string, number> = {};
+      cy.nodes().forEach((node) => {
+        const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
+        nodeWeights[node.id()] = 1 / level;
+      });
+
+      // Apply bezier curve style to edges for better radial visualization
+      cy.edges().forEach((edge) => {
+        edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
+      });
+
       layout = cy.layout({
-        name: 'cose',
-        // Disable animation to reduce CPU usage during initial layout
-        animate: false,
-        fit: true
+        name: 'cola',
+        fit: true,
+        nodeSpacing: 5,
+        edgeLength: (edge: cytoscape.EdgeSingular) => {
+          const s = nodeWeights[edge.source().id()] || 1;
+          const t = nodeWeights[edge.target().id()] || 1;
+          return 100 / (s + t);
+        },
+        edgeSymDiffLength: 10,
+        nodeDimensionsIncludeLabels: true,
+        animate: true,
+        maxSimulationTime: 2000,
+        avoidOverlap: true,
+        randomize: true  // Let cola handle the randomization
       } as any);
     } else {
       // Respect saved positions using the preset layout
