@@ -32,23 +32,42 @@ function getCallerFileLine(): string {
 }
 
 /**
- * Convert any value into a string suitable for logging.
- *
- * @param msg Value to format.
- * @returns String representation of the value.
+ * Safely stringify objects for logging.
+ * Converts Error instances to plain objects and protects against circular references.
  */
-function formatMessage(msg: any): string {
-  if (typeof msg === 'string') {
-    return msg;
+function safeFormat(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
   }
-  if (typeof msg === 'object' && msg !== null) {
+  const seen = new WeakSet();
+  const replacer = (_key: string, val: unknown): unknown => {
+    if (val instanceof Error) {
+      return {
+        name: val.name,
+        message: val.message,
+        stack: val.stack,
+        code: (val as any).code,
+        cause: (val as Error & { cause?: unknown }).cause,
+      };
+    }
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val as object)) {
+        return '[Circular]';
+      }
+      seen.add(val as object);
+    }
+    return val;
+  };
+
+  try {
+    return JSON.stringify(value, replacer, 2);
+  } catch {
     try {
-      return JSON.stringify(msg);
+      return String(value);
     } catch {
-      return String(msg);
+      return '[Unserializable]';
     }
   }
-  return String(msg);
 }
 
 const isWebview = typeof window !== 'undefined' && typeof (window as any).vscode !== 'undefined';
@@ -72,14 +91,12 @@ if (isWebview) {
    */
   function send(level: LogLevel, message: any): void {
     const fileLine = getCallerFileLine();
-    const formatted = formatMessage(message);
-    const timestamp = new Date().toISOString();
+    const formatted = safeFormat(message);
     vscodeApi?.postMessage({
       command: 'topoViewerLog',
       level,
       message: formatted,
       fileLine,
-      timestamp,
     });
   }
 
@@ -90,9 +107,17 @@ if (isWebview) {
     error(msg: any) { send('error', msg); },
   };
 } else {
+  // Access Node's require function without triggering bundler warnings
+  // eslint-disable-next-line no-undef
+  const nodeModule = typeof module !== 'undefined' ? (module as any) : undefined;
+  const nodeRequire =
+    nodeModule && typeof nodeModule.require === 'function'
+      ? nodeModule.require.bind(nodeModule)
+      : undefined;
+
   let vscodeModule: typeof import('vscode') | undefined;
   try {
-    vscodeModule = eval('require')('vscode') as typeof import('vscode');
+    vscodeModule = nodeRequire ? (nodeRequire('vscode') as typeof import('vscode')) : undefined;
   } catch {
     vscodeModule = undefined;
   }
@@ -105,9 +130,8 @@ if (isWebview) {
    */
   function write(level: LogLevel, message: any): void {
     const fileLine = getCallerFileLine();
-    const formatted = formatMessage(message);
-    const timestamp = new Date().toISOString();
-    const logLine = `time=${timestamp} level=${level} msg=${formatted} file=${fileLine}`;
+    const formatted = safeFormat(message);
+    const logLine = `level=${level} msg=${formatted} file=${fileLine}`;
 
     if (outputChannel) {
       switch (level) {
