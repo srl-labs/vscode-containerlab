@@ -58,6 +58,8 @@ export async function saveViewport({
     throw new Error('YAML topology nodes is not a map');
   }
   const yamlNodes: YAML.YAMLMap = nodesMaybe;
+  // Ensure block style for the nodes mapping (avoid inline `{}` flow style)
+  yamlNodes.flow = false;
 
   const topoObj = mode === 'edit' ? (doc.toJS() as ClabTopology) : undefined;
 
@@ -121,6 +123,8 @@ export async function saveViewport({
       if (mode === 'edit') {
         if (!nodeYaml) {
           nodeYaml = new YAML.YAMLMap();
+          // Ensure new node maps are block style
+          nodeYaml.flow = false;
           yamlNodes.set(nodeId, nodeYaml);
         }
         const nodeMap = nodeYaml;
@@ -163,6 +167,8 @@ export async function saveViewport({
           let labels = nodeMap.get('labels', true) as YAML.YAMLMap | undefined;
           if (!labels || !YAML.isMap(labels)) {
             labels = new YAML.YAMLMap();
+            // Ensure labels map renders in block style
+            labels.flow = false;
             nodeMap.set('labels', labels);
           }
           for (const [key, value] of Object.entries(extraData.labels)) {
@@ -211,6 +217,8 @@ export async function saveViewport({
         topologyNode.set('links', linksNode);
       }
     }
+    // Ensure links list renders with indented hyphens (block style)
+    linksNode.flow = false;
 
     payloadParsed.filter(el => el.group === 'edges').forEach(element => {
       const data = element.data;
@@ -221,6 +229,8 @@ export async function saveViewport({
       let linkFound = false;
       for (const linkItem of linksNode.items) {
         if (YAML.isMap(linkItem)) {
+          // Ensure each link map uses block style (no `{}`)
+          (linkItem as YAML.YAMLMap).flow = false;
           const eps = linkItem.get('endpoints', true);
           if (YAML.isSeq(eps)) {
             const yamlEndpointsStr = eps.items
@@ -236,8 +246,11 @@ export async function saveViewport({
       if (!linkFound) {
         const endpointsArrStr = endpointsStr;
         const newLink = new YAML.YAMLMap();
+        // New link map should be block style
+        newLink.flow = false;
         const endpoints = endpointsArrStr.split(',');
         const endpointsNode = doc.createNode(endpoints) as YAML.YAMLSeq;
+        // Endpoints list should be inline with []
         endpointsNode.flow = true;
         newLink.set('endpoints', endpointsNode);
         linksNode.add(newLink);
@@ -265,6 +278,8 @@ export async function saveViewport({
 
     for (const linkItem of linksNode.items) {
       if (YAML.isMap(linkItem)) {
+        // Normalize to block style for link entries
+        (linkItem as YAML.YAMLMap).flow = false;
         const endpointsNode = linkItem.get('endpoints', true);
         if (YAML.isSeq(endpointsNode)) {
           endpointsNode.items = endpointsNode.items.map(item => {
@@ -279,6 +294,7 @@ export async function saveViewport({
             }
             return doc.createNode(endpointStr);
           });
+          // Ensure endpoints list renders inline with []
           endpointsNode.flow = true;
         }
       }
@@ -300,4 +316,3 @@ export async function saveViewport({
     log.info(`Updated file: ${yamlFilePath}`);
   }
 }
-
