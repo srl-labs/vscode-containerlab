@@ -506,6 +506,9 @@ export class ManagerGroupManagement {
         }
       }
 
+      // Remove the group style from annotations
+      this.groupStyleManager.removeGroupStyle(groupId);
+
       log.info(`Group '${groupId}' removed successfully`);
       return true;
     } catch (error) {
