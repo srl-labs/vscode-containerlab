@@ -466,53 +466,73 @@ class TopologyWebviewController {
       // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
       this.cy.cxtmenu({
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
-        commands: [
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
-                      <div style="height:0.5em;"></div>
-                      <span>Edit Node</span>
-                    </div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
+        commands: (ele: cytoscape.Singular) => {
+          const commands = [
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Edit Node</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isNode()) {
+                  return;
+                }
+                // inside here TS infers ele is NodeSingular
+                  this.viewportPanels?.panelNodeEditor(ele);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Delete Node</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isNode()) {
+                  return;
+                }
+                const parent = ele.parent();
+                ele.remove();
+                // If parent exists and now has no children, remove the parent
+                if (parent.nonempty() && parent.children().length === 0) {
+                  parent.remove();
+                }
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-link" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Add Link</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                // initiate edgehandles drawing from this node
+                self.isEdgeHandlerActive = true;
+                self.eh.start(ele);
+              }
             }
-            // inside here TS infers ele is NodeSingular
-              this.viewportPanels?.panelNodeEditor(ele);
-          }
-        },
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
-                      <div style="height:0.5em;"></div>
-                      <span>Delete Node</span>
-                    </div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            const parent = ele.parent();
-            ele.remove();
-            // If parent exists and now has no children, remove the parent
-            if (parent.nonempty() && parent.children().length === 0) {
-              parent.remove();
-            }
-          }
-        },
+          ];
 
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                      <i class="fas fa-link" style="font-size:1.5em;"></i>
-                      <div style="height:0.5em;"></div>
-                      <span>Add Link</span>
-                    </div>`,
-          select: (ele: cytoscape.Singular) => {
-            // initiate edgehandles drawing from this node
-            self.isEdgeHandlerActive = true;
-            self.eh.start(ele);
+          // Add "Release from Group" option if the node is a child of a group
+          if (ele.isNode() && ele.parent().nonempty()) {
+            commands.push({
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-users-slash" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Release from Group</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isNode()) {
+                  return;
+                }
+                this.groupManager.orphaningNode(ele);
+              }
+            });
           }
-        }
-      ],
+
+          return commands;
+        },
       menuRadius: 110, // the radius of the menu
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
