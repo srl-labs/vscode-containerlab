@@ -341,9 +341,10 @@ topology:
       }
     }
 
-    const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+    const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
-      updatedClabTreeDataToTopoviewer
+      updatedClabTreeDataToTopoviewer,
+      this.lastYamlFilePath
     );
 
     try {
@@ -525,7 +526,7 @@ topology:
           log.warn(`Failed to load running lab data: ${err}`);
         }
       }
-      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, treeData);
+      const cyElements = await this.adaptor.clabYamlToCytoscapeElements(yaml, treeData, this.lastYamlFilePath);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
         labName,                // folder below <extension>/topoViewerData/

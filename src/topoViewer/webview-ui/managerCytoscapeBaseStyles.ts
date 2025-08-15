@@ -253,6 +253,29 @@ const cytoscapeStylesBase: any[] = [
       'line-style': 'solid'
     }
   },
+  // Stub link styles for special endpoints
+  {
+    selector: 'edge.stub-link',
+    style: {
+      'target-arrow-shape': 'circle',
+      'target-arrow-color': '#969799',
+      'arrow-scale': 0.8,
+      'line-style': 'dashed',
+      'line-dash-pattern': [6, 3]
+    }
+  },
+  {
+    selector: 'node.special-endpoint',
+    style: {
+      'background-color': '#E8E8E8',
+      'border-width': '1px',
+      'border-color': '#969799',
+      'background-opacity': 0.9,
+      shape: 'round-rectangle',
+      width: '20',
+      height: '20'
+    }
+  },
   // Edge handles plugin styles
   {
     selector: '.eh-handle',

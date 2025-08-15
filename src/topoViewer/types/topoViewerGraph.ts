@@ -79,7 +79,18 @@ export interface GroupStyleAnnotation {
   color?: string;
 }
 
+export interface CloudNodeAnnotation {
+  id: string;
+  type: 'host' | 'mgmt-net' | 'macvlan';
+  label: string;
+  position: {
+    x: number;
+    y: number;
+  };
+}
+
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
+  cloudNodeAnnotations?: CloudNodeAnnotation[];
 }
