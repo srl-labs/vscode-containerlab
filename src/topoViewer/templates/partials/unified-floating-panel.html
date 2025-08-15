@@ -391,12 +391,18 @@
       }
 
       // Editor tools only visible in editor mode
+      const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
       const editorButtons = [addNodeBtn];
       editorButtons.forEach(btn => {
         if (btn) {
           btn.style.display = isViewerMode() ? 'none' : 'flex';
         }
       });
+      
+      // Bulk link button only visible in editor mode
+      if (addBulkLinkBtn) {
+        addBulkLinkBtn.style.display = isViewerMode() ? 'none' : 'flex';
+      }
     }
 
     // Initialize panel dimensions and state
@@ -655,7 +661,6 @@
       });
     }
 
-    const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
     if (addBulkLinkBtn) {
       addBulkLinkBtn.addEventListener('click', function (e) {
         e.stopPropagation();

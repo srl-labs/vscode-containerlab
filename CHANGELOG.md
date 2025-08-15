@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.15.1] - 2025-08-15
+## [0.16.0] - 2025-08-15
 
 - TopoViewer/editor:
   - Groups can now be freely styled
