@@ -596,7 +596,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Filter commands for running labs
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.runningLabs.filter', async () => {
-      const val = await vscode.window.showInputBox({ 
+      const val = await vscode.window.showInputBox({
         placeHolder: 'Filter running labs',
         prompt: 'use * for wildcard, # for numbers: "srl*", "spine#-leaf*", "^spine.*"'
       });
@@ -614,7 +614,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('containerlab.treeView.localLabs.filter', async () => {
-      const val = await vscode.window.showInputBox({ 
+      const val = await vscode.window.showInputBox({
         placeHolder: 'Filter local labs',
         prompt: 'use * for wildcard, # for numbers: "spine", "*test*", "lab#", "^my-.*'
       });

@@ -402,7 +402,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             if (this.treeFilter) {
                 const filter = FilterUtils.createFilter(this.treeFilter);
                 const containerMatches = filter(String(element.label));
-                
+
                 if (containerMatches) {
                     // Container name matches - show ALL interfaces
                     return interfaces;

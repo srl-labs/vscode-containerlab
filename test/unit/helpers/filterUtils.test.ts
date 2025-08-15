@@ -1,5 +1,5 @@
-/* eslint-env mocha */
-/* global describe, it, global */
+/* eslint-env node, mocha */
+/* global describe, it, after, __dirname */
 import { expect } from 'chai';
 import Module from 'module';
 import path from 'path';
@@ -31,14 +31,14 @@ describe('FilterUtils', () => {
     it('returns always-true function for null/undefined filter text', () => {
       const filterNull = FilterUtils.createFilter(null as any);
       const filterUndefined = FilterUtils.createFilter(undefined as any);
-      
+
       expect(filterNull('test')).to.be.true;
       expect(filterUndefined('test')).to.be.true;
     });
 
     it('handles partial string matching', () => {
       const filter = FilterUtils.createFilter('lab');
-      
+
       expect(filter('contlabainer')).to.be.true;
       expect(filter('lab-test')).to.be.true;
       expect(filter('la_b')).to.be.false;
@@ -46,7 +46,7 @@ describe('FilterUtils', () => {
 
     it('converts question mark wildcard to regex correctly', () => {
       const filter = FilterUtils.createFilter('test?');
-      
+
       expect(filter('test1')).to.be.true;
       expect(filter('testa')).to.be.true;
       expect(filter('test-')).to.be.true;
@@ -57,7 +57,7 @@ describe('FilterUtils', () => {
 
     it('handles complex wildcard combinations', () => {
       const filter = FilterUtils.createFilter('test*#');
-      
+
       expect(filter('test123')).to.be.true;
       expect(filter('test-case-1')).to.be.true;
       expect(filter('test')).to.be.false;
@@ -66,7 +66,7 @@ describe('FilterUtils', () => {
 
     it('recognizes and handles regex patterns with backslashes', () => {
       const filter = FilterUtils.createFilter('test\\d+');
-      
+
       expect(filter('test1')).to.be.true;
       expect(filter('test123')).to.be.true;
       expect(filter('test')).to.be.false;
@@ -74,7 +74,7 @@ describe('FilterUtils', () => {
 
     it('recognizes and handles regex patterns with brackets', () => {
       const filter = FilterUtils.createFilter('test[0-9]+');
-      
+
       expect(filter('test1')).to.be.true;
       expect(filter('test123')).to.be.true;
       expect(filter('test')).to.be.false;
@@ -84,7 +84,7 @@ describe('FilterUtils', () => {
 
     it('recognizes and handles regex patterns with pipe', () => {
       const filter = FilterUtils.createFilter('node|container');
-      
+
       expect(filter('node1')).to.be.true;
       expect(filter('container-lab')).to.be.true;
       expect(filter('my-node')).to.be.true;
@@ -93,14 +93,14 @@ describe('FilterUtils', () => {
 
     it('recognizes and handles regex patterns with anchors', () => {
       const filter = FilterUtils.createFilter('^test$');
-      
+
       expect(filter('test')).to.be.true;
       expect(filter('testing')).to.be.false;
     });
 
     it('falls back to string matching for invalid regex patterns', () => {
       const filter = FilterUtils.createFilter('test[invalid');
-      
+
       expect(filter('test[InValid')).to.be.true;
       expect(filter('my-test[invalid-case')).to.be.true;
       expect(filter('[invalid')).to.be.false;
@@ -108,7 +108,7 @@ describe('FilterUtils', () => {
 
     it('handles special characters in string matching', () => {
       const filter = FilterUtils.createFilter('test.case');
-      
+
       expect(filter('test.cAse')).to.be.true;
       expect(filter('my-test.case-example')).to.be.true;
       expect(filter('.ca')).to.be.false;
@@ -116,7 +116,7 @@ describe('FilterUtils', () => {
 
     it('handles whitespace in filter patterns', () => {
       const filter = FilterUtils.createFilter('test case');
-      
+
       expect(filter('TEST CASE')).to.be.true;
       expect(filter('my test case example')).to.be.true;
       expect(filter('testcase')).to.be.false;
@@ -124,7 +124,7 @@ describe('FilterUtils', () => {
 
     it('handles unicode characters', () => {
       const filter = FilterUtils.createFilter('tëst');
-      
+
       expect(filter('tëst')).to.be.true;
       expect(filter('TËST')).to.be.true;
       expect(filter('my-tëst-case')).to.be.true;
@@ -133,7 +133,7 @@ describe('FilterUtils', () => {
 
     it('matches file extensions with regex', () => {
       const filter = FilterUtils.createFilter('\\.(yml|yaml)$');
-      
+
       expect(filter('topology.yml')).to.be.true;
       expect(filter('config.yaml')).to.be.true;
       expect(filter('yaml.json')).to.be.false;
@@ -144,7 +144,7 @@ describe('FilterUtils', () => {
       const stringFilter = FilterUtils.createFilter('TeSt');
       const wildcardFilter = FilterUtils.createFilter('TeSt*');
       const regexFilter = FilterUtils.createFilter('TeSt\\d+');
-      
+
       expect(stringFilter('test')).to.be.true;
       expect(wildcardFilter('TEST456')).to.be.true;
       expect(regexFilter('test42')).to.be.true;
@@ -152,7 +152,7 @@ describe('FilterUtils', () => {
 
     it('handles multiple consecutive wildcards', () => {
       const filter = FilterUtils.createFilter('test**?##');
-      
+
       expect(filter('testabcd123')).to.be.true;
       expect(filter('test-case-456')).to.be.true;
       expect(filter('test')).to.be.false;
@@ -161,7 +161,7 @@ describe('FilterUtils', () => {
     describe('regex pattern edge cases', () => {
       it('recognize .*gw02.* as existing regex and match correctly', () => {
         const filter = FilterUtils.createFilter('.*gw02.*');
-        
+
         expect(filter('bs1-gw02')).to.be.true;
         expect(filter('test-gw02-lab')).to.be.true;
       });
@@ -169,15 +169,15 @@ describe('FilterUtils', () => {
       it('recognize .+gw02.+ as existing regex and match correctly', () => {
         // .+ requires at least one character after
         const filter = FilterUtils.createFilter('.+gw02.+');
-        
+
         expect(filter('bs1-gw02')).to.be.false;
-        expect(filter('gw02')).to.be.false; 
+        expect(filter('gw02')).to.be.false;
         expect(filter('agw02b')).to.be.true;
       });
 
       it('handle regex patterns with word boundaries', () => {
         const filter = FilterUtils.createFilter('\\bgw02\\b');
-        
+
         expect(filter('bs1-gw02')).to.be.true;
         expect(filter('gw020')).to.be.false;
         expect(filter('pgw02')).to.be.false;
@@ -186,7 +186,7 @@ describe('FilterUtils', () => {
 
       it('handle complex regex with lookahead/lookbehind (if supported)', () => {
         const filter = FilterUtils.createFilter('.*gw(?=\\d{2}).*');
-        
+
         expect(filter('test-gw01-lab')).to.be.true;
         expect(filter('bs1-gw2')).to.be.false;
         expect(filter('bs1-gw')).to.be.false;

@@ -4,9 +4,9 @@ export class FilterUtils {
      * @param filterText The filter text (can be regex or plain string)
      * @returns A function that tests if a value matches the filter
      */
-    static createFilter(filterText: string): (value: string) => boolean {
+    static createFilter(filterText: string) {
         if (!filterText) {
-            return () => true; 
+            return () => true;
         }
 
         // Convert user-friendly patterns to regex
@@ -15,8 +15,8 @@ export class FilterUtils {
         try {
             const regex = new RegExp(processedPattern, 'i');
             return (value: string) => regex.test(value);
-        } catch (error) {
-            // Invalid regex -> fall back simple string 
+        } catch {
+            // Invalid regex -> fall back simple string
             const searchText = filterText.toLowerCase();
             return (value: string) => value.toLowerCase().includes(searchText);
         }
@@ -29,7 +29,7 @@ export class FilterUtils {
         if (this.looksLikeRegex(pattern)) {
             return pattern;
         }
-        const hasWildcards = /[\*\?#]/.test(pattern);
+        const hasWildcards = /[*?#]/.test(pattern);
 
         let converted = pattern
             .replace(/\*/g, '.*')        // * becomes .*
