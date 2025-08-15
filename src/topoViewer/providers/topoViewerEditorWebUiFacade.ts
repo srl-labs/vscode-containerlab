@@ -980,10 +980,15 @@ topology:
           case 'topo-editor-load-annotations': {
             try {
               const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-              result = { annotations: annotations.freeTextAnnotations || [] };
-              log.info(`Loaded ${annotations.freeTextAnnotations?.length || 0} annotations`);
+              result = {
+                annotations: annotations.freeTextAnnotations || [],
+                groupStyles: annotations.groupStyleAnnotations || []
+              };
+              log.info(
+                `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
+              );
             } catch (innerError) {
-              result = { annotations: [] };
+              result = { annotations: [], groupStyles: [] };
               log.error(`Error loading annotations: ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
@@ -993,10 +998,13 @@ topology:
             try {
               const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
               await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-                freeTextAnnotations: data.annotations
+                freeTextAnnotations: data.annotations,
+                groupStyleAnnotations: data.groupStyles
               });
               result = { success: true };
-              log.info(`Saved ${data.annotations.length} annotations`);
+              log.info(
+                `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
+              );
             } catch (innerError) {
               error = `Error saving annotations: ${innerError}`;
               log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);

@@ -18,6 +18,7 @@ import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
 import { ManagerFreeText } from './managerFreeText';
+import { ManagerGroupStyle } from './managerGroupStyle';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -52,6 +53,7 @@ class TopologyWebviewController {
   public viewportPanels?: ManagerViewportPanels;
   public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
   public groupManager: ManagerGroupManagement;
+  public groupStyleManager: ManagerGroupStyle;
   /** Layout manager instance accessible by other components */
   public layoutAlgoManager: ManagerLayoutAlgo;
   public zoomToFitManager: ManagerZoomToFit;
@@ -239,16 +241,21 @@ class TopologyWebviewController {
     this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
 
-    // Initialize free text manager for both edit and view modes
+    // Initialize free text and group style managers
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+    this.groupStyleManager = new ManagerGroupStyle(this.cy, this.messageSender, this.freeTextManager);
+    this.freeTextManager.setGroupStyleManager(this.groupStyleManager);
 
-    // Load annotations after freeTextManager is created
+    // Load annotations after managers are created
     // We need to wait a bit for the initial layout to complete
     setTimeout(() => {
       this.freeTextManager?.loadAnnotations().then(() => {
         log.info('Free text annotations loaded successfully');
       }).catch((error) => {
         log.error(`Failed to load free text annotations: ${error}`);
+      });
+      this.groupStyleManager?.loadGroupStyles().catch((error) => {
+        log.error(`Failed to load group style annotations: ${error}`);
       });
     }, 500);
 
@@ -258,7 +265,7 @@ class TopologyWebviewController {
 
     // Initialize unified floating panel for both modes
     this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(this.cy, this.messageSender, this.addNodeManager);
-    this.groupManager = getGroupManager(this.cy, mode);
+    this.groupManager = getGroupManager(this.cy, this.groupStyleManager, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
     this.layoutAlgoManager = layoutAlgoManagerSingleton;
@@ -459,53 +466,76 @@ class TopologyWebviewController {
       // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
       this.cy.cxtmenu({
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
-        commands: [
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                      <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
-                      <div style="height:0.5em;"></div>
-                      <span>Edit Node</span>
-                    </div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
+        commands: (ele: cytoscape.Singular) => {
+          const commands = [
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Edit Node</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isNode()) {
+                  return;
+                }
+                // inside here TS infers ele is NodeSingular
+                  this.viewportPanels?.panelNodeEditor(ele);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Delete Node</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isNode()) {
+                  return;
+                }
+                const parent = ele.parent();
+                ele.remove();
+                // If parent exists and now has no children, remove the parent
+                if (parent.nonempty() && parent.children().length === 0) {
+                  parent.remove();
+                }
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-link" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Add Link</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                // initiate edgehandles drawing from this node
+                self.isEdgeHandlerActive = true;
+                self.eh.start(ele);
+              }
             }
-            // inside here TS infers ele is NodeSingular
-              this.viewportPanels?.panelNodeEditor(ele);
-          }
-        },
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                      <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
-                      <div style="height:0.5em;"></div>
-                      <span>Delete Node</span>
-                    </div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            const parent = ele.parent();
-            ele.remove();
-            // If parent exists and now has no children, remove the parent
-            if (parent.nonempty() && parent.children().length === 0) {
-              parent.remove();
-            }
-          }
-        },
+          ];
 
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                      <i class="fas fa-link" style="font-size:1.5em;"></i>
-                      <div style="height:0.5em;"></div>
-                      <span>Add Link</span>
-                    </div>`,
-          select: (ele: cytoscape.Singular) => {
-            // initiate edgehandles drawing from this node
-            self.isEdgeHandlerActive = true;
-            self.eh.start(ele);
+          // Add "Release from Group" option if the node is a child of a group
+          if (ele.isNode() && ele.parent().nonempty()) {
+            commands.push({
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-users-slash" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Release from Group</span>
+                        </div>`,
+              select: (node: cytoscape.Singular) => {
+                if (!node.isNode()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(() => {
+                  self.groupManager.orphaningNode(node);
+                }, 50);
+              }
+            });
           }
-        }
-      ],
+
+          return commands;
+        },
       menuRadius: 110, // the radius of the menu
       fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
       activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
@@ -577,10 +607,10 @@ class TopologyWebviewController {
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
-      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+      spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
-      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       openMenuEvents: 'cxttap', // single right-click to open menu
       itemColor: 'white', // the colour of text in the command's content
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
@@ -639,6 +669,388 @@ class TopologyWebviewController {
       outsideMenuCancel: 10 // cancel menu when clicking outside
     });
     } // end if (mode === 'edit')
+
+    // Add radial context menu for viewer mode
+    if (mode === 'view') {
+      const self = this;
+      // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
+      this.cy.cxtmenu({
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
+        commands: (ele: cytoscape.Singular) => {
+          const commands = [
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-terminal" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>SSH</span>
+                        </div>`,
+              select: async (node: cytoscape.Singular) => {
+                if (!node.isNode()) {
+                  return;
+                }
+                const nodeName = node.data("extraData")?.longname || node.data("name") || node.id();
+                await self.messageSender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-cube" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Shell</span>
+                        </div>`,
+              select: async (node: cytoscape.Singular) => {
+                if (!node.isNode()) {
+                  return;
+                }
+                const nodeName = node.data("extraData")?.longname || node.data("name") || node.id();
+                await self.messageSender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-file-alt" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Logs</span>
+                        </div>`,
+              select: async (node: cytoscape.Singular) => {
+                if (!node.isNode()) {
+                  return;
+                }
+                const nodeName = node.data("extraData")?.longname || node.data("name") || node.id();
+                await self.messageSender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-info-circle" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Properties</span>
+                        </div>`,
+              select: (node: cytoscape.Singular) => {
+                if (!node.isNode()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(() => {
+                  // Show node properties panel
+                  const panelOverlays = document.getElementsByClassName("panel-overlay");
+                  Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
+                  const panelNode = document.getElementById("panel-node");
+                  if (panelNode) {
+                    panelNode.style.display = "block";
+                    const extraData = node.data("extraData") || {};
+                    const nameEl = document.getElementById("panel-node-name");
+                    if (nameEl) nameEl.textContent = extraData.longname || node.data("name") || node.id();
+                    const kindEl = document.getElementById("panel-node-kind");
+                    if (kindEl) kindEl.textContent = extraData.kind || "";
+                    const mgmtIpv4El = document.getElementById("panel-node-mgmtipv4");
+                    if (mgmtIpv4El) mgmtIpv4El.textContent = extraData.mgmtIpv4Address || "";
+                    const mgmtIpv6El = document.getElementById("panel-node-mgmtipv6");
+                    if (mgmtIpv6El) mgmtIpv6El.textContent = extraData.mgmtIpv6Address || "";
+                    const fqdnEl = document.getElementById("panel-node-fqdn");
+                    if (fqdnEl) fqdnEl.textContent = extraData.fqdn || "";
+                    const roleEl = document.getElementById("panel-node-topoviewerrole");
+                    if (roleEl) roleEl.textContent = node.data("topoViewerRole") || "";
+                    const stateEl = document.getElementById("panel-node-state");
+                    if (stateEl) stateEl.textContent = extraData.state || "";
+                    const imageEl = document.getElementById("panel-node-image");
+                    if (imageEl) imageEl.textContent = extraData.image || "";
+                    topoViewerState.selectedNode = extraData.longname || node.id();
+                    topoViewerState.nodeClicked = true;
+                  }
+                }, 50);
+              }
+            }
+          ];
+
+          // Add "Release from Group" option if the node is a child of a group
+          if (ele.isNode() && ele.parent().nonempty()) {
+            commands.push({
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-users-slash" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Release from Group</span>
+                        </div>`,
+              select: (node: cytoscape.Singular) => {
+                if (!node.isNode()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(() => {
+                  self.groupManager.orphaningNode(node);
+                }, 50);
+              }
+            });
+          }
+
+          return commands;
+        },
+        menuRadius: 110, // standard radius for multiple actions
+        fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+        activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+        activePadding: 5, // additional size in pixels for the active command
+        indicatorSize: 0, // the size in pixels of the pointer to the active command
+        separatorWidth: 3, // the empty spacing in pixels between successive commands
+        spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+        adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+        minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
+        maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
+        openMenuEvents: 'cxttap', // single right-click to open menu
+        itemColor: 'white', // the colour of text in the command's content
+        itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+        zIndex: 9999, // the z-index of the ui div
+        atMouse: false, // draw menu at mouse position
+        outsideMenuCancel: 10 // cancel menu when clicking outside
+      });
+
+      // Context menu for edges/links in viewer mode
+      this.cy.cxtmenu({
+        selector: 'edge',
+        commands: (ele: cytoscape.Singular) => {
+          const sourceName = ele.data("source");
+          const targetName = ele.data("target");
+          const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
+          const targetEndpoint = ele.data("targetEndpoint") || "Port B";
+
+          return [
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
+                          <div style="height:0.3em;"></div>
+                          <span style="font-size:0.9em;">${sourceName} - ${sourceEndpoint}</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isEdge()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(async () => {
+                  const nodeName = ele.data("source");
+                  const interfaceName = ele.data("sourceEndpoint") || "";
+                  if (nodeName && interfaceName) {
+                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture', { nodeName, interfaceName });
+                  }
+                }, 50);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
+                          <div style="height:0.3em;"></div>
+                          <span style="font-size:0.9em;">${targetName} - ${targetEndpoint}</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isEdge()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(async () => {
+                  const nodeName = ele.data("target");
+                  const interfaceName = ele.data("targetEndpoint") || "";
+                  if (nodeName && interfaceName) {
+                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture', { nodeName, interfaceName });
+                  }
+                }, 50);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-desktop" style="font-size:1.4em;"></i>
+                          <div style="height:0.3em;"></div>
+                          <span style="font-size:0.85em;">${sourceName} - ${sourceEndpoint} (VNC)</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isEdge()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(async () => {
+                  const nodeName = ele.data("source");
+                  const interfaceName = ele.data("sourceEndpoint") || "";
+                  if (nodeName && interfaceName) {
+                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture-edgeshark-vnc', { nodeName, interfaceName });
+                  }
+                }, 50);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-desktop" style="font-size:1.4em;"></i>
+                          <div style="height:0.3em;"></div>
+                          <span style="font-size:0.85em;">${targetName} - ${targetEndpoint} (VNC)</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isEdge()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(async () => {
+                  const nodeName = ele.data("target");
+                  const interfaceName = ele.data("targetEndpoint") || "";
+                  if (nodeName && interfaceName) {
+                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture-edgeshark-vnc', { nodeName, interfaceName });
+                  }
+                }, 50);
+              }
+            },
+            {
+              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-info-circle" style="font-size:1.4em;"></i>
+                          <div style="height:0.3em;"></div>
+                          <span style="font-size:0.9em;">Link Properties</span>
+                        </div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isEdge()) {
+                return;
+              }
+              // Use setTimeout to ensure this runs after any other event handlers
+              setTimeout(() => {
+                // Show link properties panel
+                const panelOverlays = document.getElementsByClassName("panel-overlay");
+                Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
+                self.cy.edges().removeStyle("line-color");
+                if (ele.data("editor") === "true") {
+                  ele.style("line-color", "#32CD32");
+                } else {
+                  ele.style("line-color", "#0043BF");
+                }
+                const panelLink = document.getElementById("panel-link");
+                if (panelLink) {
+                  panelLink.style.display = "block";
+                  const extraData = ele.data("extraData") || {};
+                  const linkNameEl = document.getElementById("panel-link-name");
+                  if (linkNameEl) {
+                    linkNameEl.innerHTML = `┌ ${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}<br>└ ${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`;
+                  }
+                  const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
+                  if (endpointANameEl) {
+                    endpointANameEl.textContent = `${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}`;
+                  }
+                  const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
+                  if (endpointAMacEl) {
+                    endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
+                  }
+                  const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
+                  if (endpointAMtuEl) {
+                    endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
+                  }
+                  const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
+                  if (endpointATypeEl) {
+                    endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
+                  }
+                  const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
+                  if (endpointBNameEl) {
+                    endpointBNameEl.textContent = `${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`;
+                  }
+                  const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
+                  if (endpointBMacEl) {
+                    endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
+                  }
+                  const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
+                  if (endpointBMtuEl) {
+                    endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
+                  }
+                  const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
+                  if (endpointBTypeEl) {
+                    endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
+                  }
+                  topoViewerState.selectedEdge = ele.id();
+                  topoViewerState.edgeClicked = true;
+                }
+              }, 50);
+            }
+          }
+          ];
+        },
+        menuRadius: 160, // larger radius for better readability
+        fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+        activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+        activePadding: 5, // additional size in pixels for the active command
+        indicatorSize: 0, // the size in pixels of the pointer to the active command
+        separatorWidth: 3, // the empty spacing in pixels between successive commands
+        spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
+        adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+        minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight
+        maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight
+        openMenuEvents: 'cxttap', // single right-click to open menu
+        itemColor: 'white', // the colour of text in the command's content
+        itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+        zIndex: 9999, // the z-index of the ui div
+        atMouse: false, // draw menu at mouse position
+        outsideMenuCancel: 10 // cancel menu when clicking outside
+      });
+
+      // Context menu for groups (same as in editor mode for group wheel functionality)
+      this.cy.cxtmenu({
+        selector: 'node:parent, node[topoViewerRole = "dummyChild"], node[topoViewerRole = "group"]',
+        commands: [
+          {
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                        <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                        <div style="height:0.5em;"></div>
+                        <span>Edit Group</span>
+                      </div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              // Use setTimeout to ensure this runs after any other event handlers
+              setTimeout(() => {
+                let groupId: string;
+                if (ele.data("topoViewerRole") == "dummyChild") {
+                  groupId = ele.parent().first().id();
+                } else if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
+                  groupId = ele.id();
+                } else {
+                  return;
+                }
+                self.groupManager.showGroupEditor(groupId);
+              }, 50);
+            }
+          },
+          {
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                        <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
+                        <div style="height:0.5em;"></div>
+                        <span>Delete Group</span>
+                      </div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              // Use setTimeout to ensure this runs after any other event handlers
+              setTimeout(() => {
+                let groupId: string;
+                if (ele.data("topoViewerRole") == "dummyChild") {
+                  groupId = ele.parent().first().id();
+                } else if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
+                  groupId = ele.id();
+                } else {
+                  return;
+                }
+                self.groupManager.directGroupRemoval(groupId);
+              }, 50);
+            }
+          }
+        ],
+        menuRadius: 80, // smaller radius for single action
+        fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
+        activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+        activePadding: 5, // additional size in pixels for the active command
+        indicatorSize: 0, // the size in pixels of the pointer to the active command
+        separatorWidth: 3, // the empty spacing in pixels between successive commands
+        spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
+        adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
+        minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight
+        maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight
+        openMenuEvents: 'cxttap', // single right-click to open menu
+        itemColor: 'white', // the colour of text in the command's content
+        itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+        zIndex: 9999, // the z-index of the ui div
+        atMouse: false, // draw menu at mouse position
+        outsideMenuCancel: 10 // cancel menu when clicking outside
+      });
+    } // end if (mode === 'view')
   }
 
 
@@ -724,109 +1136,29 @@ class TopologyWebviewController {
       });
 
     } else {
+      // Viewer mode - NO left-click interactions, only right-click radial menus
       const cy = this.cy;
+      let radialMenuOpen = false;
+
+      // Track radial menu state
+      cy.on('cxtmenu:open', () => {
+        radialMenuOpen = true;
+      });
+
+      cy.on('cxtmenu:close', () => {
+        setTimeout(() => {
+          radialMenuOpen = false;
+        }, 200);
+      });
+
+      // Only register canvas click to close panels
       registerCyEventHandlers({
         cy,
-        onNodeClick: async (event: any) => {
-          const node = event.target;
-          topoViewerState.nodeClicked = true;
-          cy.edges().removeStyle("line-color");
-          topoViewerState.selectedEdge = null;
-          topoViewerState.edgeClicked = false;
-          const extraData = node.data("extraData") || {};
-          const originalEvent = event.originalEvent as MouseEvent;
-          if (node.isParent() || node.data('topoViewerRole') === 'group') {
-            this.groupManager.showGroupEditor(node);
-            return;
-          }
-          if (node.data("topoViewerRole") === "textbox" || node.data("topoViewerRole") === "dummyChild") {
-            return;
-          }
-          // Don't show node properties for free text nodes
-          if (node.data("topoViewerRole") === "freeText") {
-            return;
-          }
-          if (!originalEvent.altKey && !originalEvent.ctrlKey && !originalEvent.shiftKey) {
-            const panelOverlays = document.getElementsByClassName("panel-overlay");
-            Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-            const panelNode = document.getElementById("panel-node");
-            if (panelNode) {
-              panelNode.style.display = panelNode.style.display === "none" ? "block" : "none";
-              const nameEl = document.getElementById("panel-node-name");
-              if (nameEl) nameEl.textContent = extraData.longname || node.data("name") || node.id();
-              const kindEl = document.getElementById("panel-node-kind");
-              if (kindEl) kindEl.textContent = extraData.kind || "";
-              const mgmtIpv4El = document.getElementById("panel-node-mgmtipv4");
-              if (mgmtIpv4El) mgmtIpv4El.textContent = extraData.mgmtIpv4Address || "";
-              const mgmtIpv6El = document.getElementById("panel-node-mgmtipv6");
-              if (mgmtIpv6El) mgmtIpv6El.textContent = extraData.mgmtIpv6Address || "";
-              const fqdnEl = document.getElementById("panel-node-fqdn");
-              if (fqdnEl) fqdnEl.textContent = extraData.fqdn || "";
-              const roleEl = document.getElementById("panel-node-topoviewerrole");
-              if (roleEl) roleEl.textContent = node.data("topoViewerRole") || "";
-              const stateEl = document.getElementById("panel-node-state");
-              if (stateEl) stateEl.textContent = extraData.state || "";
-              const imageEl = document.getElementById("panel-node-image");
-              if (imageEl) imageEl.textContent = extraData.image || "";
-              topoViewerState.selectedNode = extraData.longname || node.id();
-            }
-          }
-        },
-        onEdgeClick: async (event: any) => {
-          const edge = event.target;
-          topoViewerState.edgeClicked = true;
-          const panelOverlays = document.getElementsByClassName("panel-overlay");
-          Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-          cy.edges().removeStyle("line-color");
-          if (edge.data("editor") === "true") {
-            edge.style("line-color", "#32CD32");
-          } else {
-            edge.style("line-color", "#0043BF");
-          }
-          const panelLink = document.getElementById("panel-link");
-          if (panelLink) {
-            panelLink.style.display = "block";
-            const extraData = edge.data("extraData") || {};
-            const linkNameEl = document.getElementById("panel-link-name");
-            if (linkNameEl) {
-              linkNameEl.innerHTML = `┌ ${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}<br>└ ${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
-            }
-            const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
-            if (endpointANameEl) {
-              endpointANameEl.textContent = `${edge.data("source")} :: ${edge.data("sourceEndpoint") || ""}`;
-            }
-            const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
-            if (endpointAMacEl) {
-              endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
-            }
-            const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
-            if (endpointAMtuEl) {
-              endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
-            }
-            const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
-            if (endpointATypeEl) {
-              endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
-            }
-            const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
-            if (endpointBNameEl) {
-              endpointBNameEl.textContent = `${edge.data("target")} :: ${edge.data("targetEndpoint") || ""}`;
-            }
-            const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
-            if (endpointBMacEl) {
-              endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
-            }
-            const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
-            if (endpointBMtuEl) {
-              endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
-            }
-            const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
-            if (endpointBTypeEl) {
-              endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
-            }
-            topoViewerState.selectedEdge = edge.data("id");
-          }
-        },
         onCanvasClick: () => {
+          // Don't close panels if radial menu is open
+          if (radialMenuOpen) {
+            return;
+          }
           const panelOverlays = document.getElementsByClassName('panel-overlay');
           for (let i = 0; i < panelOverlays.length; i++) {
             (panelOverlays[i] as HTMLElement).style.display = 'none';
@@ -840,6 +1172,8 @@ class TopologyWebviewController {
           cy.edges().removeStyle("line-color");
           topoViewerState.selectedEdge = null;
         }
+        // NO onNodeClick handler - all node interactions via right-click menu
+        // NO onEdgeClick handler - all edge interactions via right-click menu (if needed)
       });
     }
 

@@ -68,6 +68,18 @@ export interface FreeTextAnnotation {
   zIndex?: number;
 }
 
+export interface GroupStyleAnnotation {
+  id: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: 'solid' | 'dotted' | 'dashed' | 'double';
+  borderRadius?: number;
+  color?: string;
+}
+
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
+  groupStyleAnnotations?: GroupStyleAnnotation[];
 }

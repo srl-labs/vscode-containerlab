@@ -2,6 +2,7 @@ import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { FreeTextAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/webviewLogger';
+import type { ManagerGroupStyle } from './managerGroupStyle';
 
 /**
  * Manages free text annotations in the Cytoscape viewport
@@ -9,16 +10,22 @@ import { log } from '../logging/webviewLogger';
 export class ManagerFreeText {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
+  private groupStyleManager?: ManagerGroupStyle;
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
   private styleReapplyInProgress = false;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, groupStyleManager?: ManagerGroupStyle) {
     this.cy = cy;
     this.messageSender = messageSender;
+    this.groupStyleManager = groupStyleManager;
     this.setupEventHandlers();
     this.setupStylePreservation();
+  }
+
+  public setGroupStyleManager(manager: ManagerGroupStyle): void {
+    this.groupStyleManager = manager;
   }
 
   private setupStylePreservation(): void {
@@ -128,6 +135,21 @@ export class ManagerFreeText {
 
     // Add one-time click handler for placing text
     const handler = (event: cytoscape.EventObject) => {
+      const target = event.target;
+
+      // Check if target is a group or parent node - prevent text addition on groups
+      if (target !== this.cy) {
+        // If clicked on a group, parent node, or dummyChild, cancel text mode
+        if (target.isParent?.() ||
+            target.data?.('topoViewerRole') === 'group' ||
+            target.data?.('topoViewerRole') === 'dummyChild') {
+          this.disableAddTextMode();
+          log.debug('Text addition cancelled - cannot add text to groups');
+          return;
+        }
+      }
+
+      // Only add text when clicking on empty canvas
       if (event.target === this.cy) {
         const position = event.position || (event as any).cyPosition;
         if (position) {
@@ -756,11 +778,14 @@ export class ManagerFreeText {
   public async saveAnnotations(): Promise<void> {
     try {
       const annotations = Array.from(this.annotations.values());
+      const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];
       await this.messageSender.sendMessageToVscodeEndpointPost(
         'topo-editor-save-annotations',
-        { annotations }
+        { annotations, groupStyles }
       );
-      log.debug(`Saved ${annotations.length} annotations successfully`);
+      log.debug(
+        `Saved ${annotations.length} annotations and ${groupStyles.length} group styles successfully`
+      );
     } catch (error) {
       log.error(`Failed to save annotations: ${error}`);
     }

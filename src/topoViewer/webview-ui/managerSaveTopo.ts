@@ -129,6 +129,14 @@ export class ManagerSaveTopo {
 
       if (!suppressNotification) {
         loadCytoStyle(cy);
+
+        // Reapply group styles after loadCytoStyle to maintain visual consistency
+        if (topoViewerState.editorEngine?.groupStyleManager) {
+          const groupStyles = topoViewerState.editorEngine.groupStyleManager.getGroupStyles();
+          groupStyles.forEach((style: any) => {
+            topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(style.id);
+          });
+        }
       } else {
         const lm = topoViewerState.editorEngine?.layoutAlgoManager;
         if (lm?.isGeoMapInitialized) {

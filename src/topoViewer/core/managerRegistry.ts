@@ -1,5 +1,6 @@
 import type cytoscape from 'cytoscape';
 import { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
+import type { ManagerGroupStyle } from '../webview-ui/managerGroupStyle';
 import { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
 import { ManagerZoomToFit } from '../webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../webview-ui/managerLabelEndpoint';
@@ -15,9 +16,13 @@ export const labelEndpointManager = new ManagerLabelEndpoint();
 let groupManager: ManagerGroupManagement | null = null;
 let reloadTopoManager: ManagerReloadTopo | null = null;
 
-export function getGroupManager(cy: cytoscape.Core, mode: 'edit' | 'view'): ManagerGroupManagement {
+export function getGroupManager(
+  cy: cytoscape.Core,
+  groupStyleManager: ManagerGroupStyle,
+  mode: 'edit' | 'view'
+): ManagerGroupManagement {
   if (!groupManager) {
-    groupManager = new ManagerGroupManagement(cy, mode);
+    groupManager = new ManagerGroupManagement(cy, groupStyleManager, mode);
   }
   return groupManager;
 }
