@@ -1,5 +1,16 @@
 # Change Log
 
+## [0.15.1] - 2025-08-15
+
+- TopoViewer/editor:
+  - Groups can now be freely styled
+  - Streamlined object interaction ( now only via right click )
+  - Bulk link creation
+  - fixes
+- General: 
+  - Filters now support regex
+  - fixes
+
 ## [0.15.0] - 2025-08-13
 
 - TopoViewer/editor
