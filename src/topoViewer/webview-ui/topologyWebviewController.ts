@@ -607,10 +607,10 @@ class TopologyWebviewController {
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
-      spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+      spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
-      minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
+      maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       openMenuEvents: 'cxttap', // single right-click to open menu
       itemColor: 'white', // the colour of text in the command's content
       itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
@@ -1032,10 +1032,10 @@ class TopologyWebviewController {
         activePadding: 5, // additional size in pixels for the active command
         indicatorSize: 0, // the size in pixels of the pointer to the active command
         separatorWidth: 3, // the empty spacing in pixels between successive commands
-        spotlightPadding: 20, // extra spacing in pixels between the element and the spotlight
+        spotlightPadding: 0, // extra spacing in pixels between the element and the spotlight
         adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
-        minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
-        maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
+        minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight
+        maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight
         openMenuEvents: 'cxttap', // single right-click to open menu
         itemColor: 'white', // the colour of text in the command's content
         itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
