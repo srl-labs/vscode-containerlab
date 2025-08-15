@@ -30,6 +30,7 @@ import { log } from '../logging/webviewLogger';
 import { registerCyEventHandlers } from './cyEventHandlers';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
+import { FilterUtils } from '../../helpers/filterUtils';
 
 
 
@@ -1319,6 +1320,36 @@ class TopologyWebviewController {
     } catch (error) {
       log.error(`Error in topology overview button: ${error}`);
     }
+  }
+
+  public showBulkLinkPanel(): void {
+    const panel = document.getElementById('panel-bulk-link');
+    if (panel) {
+      panel.style.display = 'block';
+    }
+  }
+
+  public bulkCreateLinks(sourceFilterText: string, targetFilterText: string): void {
+    const sourceFilter = FilterUtils.createFilter(sourceFilterText);
+    const targetFilter = FilterUtils.createFilter(targetFilterText);
+    const sources = this.cy.nodes('node[topoViewerRole != "freeText"][!parent]').filter((node) => sourceFilter(node.data('name')));
+    const targets = this.cy.nodes('node[topoViewerRole != "freeText"][!parent]').filter((node) => targetFilter(node.data('name')));
+    sources.forEach((source) => {
+      targets.forEach((target) => {
+        if (source.id() !== target.id() && !source.edgesTo(target).nonempty()) {
+          const edgeData = {
+            id: `${source.id()}-${target.id()}`,
+            source: source.id(),
+            target: target.id(),
+            sourceEndpoint: this.getNextEndpoint(source.id()),
+            targetEndpoint: this.getNextEndpoint(target.id()),
+            editor: 'true'
+          };
+          this.cy.add({ group: 'edges', data: edgeData });
+        }
+      });
+    });
+    this.saveManager.viewportButtonsSaveTopo(this.cy, true);
   }
 
   /**

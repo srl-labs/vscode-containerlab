@@ -1,0 +1,65 @@
+<section class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden" id="panel-bulk-link" aria-labelledby="bulk-link-panel-heading" style="display: none;">
+    <p class="panel-heading text-base font-bold" id="bulk-link-panel-heading">
+      Bulk Link Devices
+    </p>
+    <div class="p-0 pl-4 pb-2">
+      <div class="panel-block p-0">
+        <div class="px-0">
+          <!-- Source Pattern -->
+          <div class="my-1">
+            <div class="p-0.5">
+              <div class="flex items-center">
+                <div class="w-2/5 pr-1">
+                  <label class="label text-right text-base font-semibold">Source Pattern</label>
+                </div>
+                <div class="w-3/5 pl-2 pr-2">
+                  <input type="text" class="input-field text-base w-full" id="source-regex" placeholder="e.g. leaf, spine?# or ^core-.$">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Target Pattern -->
+          <div class="my-1">
+            <div class="p-0.5">
+              <div class="flex items-center">
+                <div class="w-2/5 pr-1">
+                  <label class="label text-right text-base font-semibold">Target Pattern</label>
+                </div>
+                <div class="w-3/5 pl-2 pr-2">
+                  <input type="text" class="input-field text-base w-full" id="target-regex" placeholder="e.g. spine, leaf?# or ^edge-.$">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Action Buttons -->
+          <div class="my-1">
+            <div class="p-0.5">
+              <div class="flex items-center">
+                <div class="w-2/5 pr-1"></div>
+                <div class="w-3/5 pl-2 pr-2">
+                  <div class="flex justify-end space-x-2">
+                    <button class="btn btn-secondary btn-small" id="bulk-link-cancel">Cancel</button>
+                    <button class="btn btn-primary btn-small" id="bulk-link-apply">Apply</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>
+  // Event listeners remain the same
+  document.getElementById('bulk-link-cancel').addEventListener('click', () => {
+    document.getElementById('panel-bulk-link').style.display = 'none';
+  });
+  document.getElementById('bulk-link-apply').addEventListener('click', () => {
+    const source = document.getElementById('source-regex').value;
+    const target = document.getElementById('target-regex').value;
+    if (source && target) {
+      window.topologyWebviewController.bulkCreateLinks(source, target);
+      document.getElementById('panel-bulk-link').style.display = 'none';
+    }
+  });
+  </script>

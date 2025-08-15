@@ -1,5 +1,3 @@
-// file: managerUnifiedFloatingPanel.ts
-
 import tippy from 'tippy.js';
 import { log } from '../logging/webviewLogger';
 import { VscodeMessageSender } from './managerVscodeWebview';
@@ -25,6 +23,7 @@ export class ManagerUnifiedFloatingPanel {
   private addNodeBtn: HTMLButtonElement | null = null;
   private addGroupBtn: HTMLButtonElement | null = null;
   private addTextBtn: HTMLButtonElement | null = null;
+  private addBulkLinkBtn: HTMLButtonElement | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: ManagerAddContainerlabNode) {
     this.cy = cy;
@@ -46,6 +45,7 @@ export class ManagerUnifiedFloatingPanel {
     this.addNodeBtn = document.getElementById('add-node-btn') as HTMLButtonElement | null;
     this.addGroupBtn = document.getElementById('add-group-btn') as HTMLButtonElement | null;
     this.addTextBtn = document.getElementById('add-text-btn') as HTMLButtonElement | null;
+    this.addBulkLinkBtn = document.getElementById('add-bulk-link-btn') as HTMLButtonElement | null;
     // No JS refs needed for drawer expansion
 
     // Initialize tooltips
@@ -80,7 +80,8 @@ export class ManagerUnifiedFloatingPanel {
       this.redeployCleanupBtn,
       this.addNodeBtn,
       this.addGroupBtn,
-      this.addTextBtn
+      this.addTextBtn,
+      this.addBulkLinkBtn
     ];
 
     buttons.forEach(btn => {
@@ -98,6 +99,7 @@ export class ManagerUnifiedFloatingPanel {
     if (this.addNodeBtn) tippy(this.addNodeBtn, tooltipOptions);
     if (this.addGroupBtn) tippy(this.addGroupBtn, tooltipOptions);
     if (this.addTextBtn) tippy(this.addTextBtn, tooltipOptions);
+    if (this.addBulkLinkBtn) tippy(this.addBulkLinkBtn, tooltipOptions);
     // Lock/Collapse tooltips handled by HTML
   }
 
@@ -141,6 +143,10 @@ export class ManagerUnifiedFloatingPanel {
 
     document.addEventListener('unified-add-text-click', () => {
       this.handleAddText();
+    });
+
+    document.addEventListener('unified-add-bulk-link-click', () => {
+      this.handleAddBulkLink();
     });
   }
 
@@ -422,6 +428,15 @@ export class ManagerUnifiedFloatingPanel {
     } else {
       log.error('Free text manager not available');
     }
+  }
+
+  /**
+   * Handles adding a bulk link to the topology
+   */
+  private handleAddBulkLink(): void {
+    log.debug('Bulk linking via unified panel');
+    const controller = (window as any).topologyWebviewController;
+    controller.showBulkLinkPanel();
   }
 
   /**

@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import * as utils from "../helpers/utils"
 import * as c from "./common";
 import * as ins from "./inspector"
+import { FilterUtils } from "../helpers/filterUtils";
 
 import { execSync } from "child_process";
 import path = require("path");
@@ -133,7 +134,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     setTreeFilter(filterText: string) {
-        this.treeFilter = filterText.toLowerCase();
+        this.treeFilter = filterText;
         if (runningTreeView) {
             runningTreeView.message = `Filter: ${filterText}`;
         }
@@ -342,16 +343,16 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 labs = this.treeItems;
             }
             if (this.treeFilter) {
-                const filter = this.treeFilter;
+                const filter = FilterUtils.createFilter(this.treeFilter);
                 labs = labs.filter(lab => {
-                    const lbl = String(lab.label).toLowerCase();
-                    if (lbl.includes(filter)) return true;
+                    const lbl = String(lab.label);
+                    if (filter(lbl)) return true;
                     if (lab.containers) {
                         return lab.containers.some(cn => {
-                            if (String(cn.label).toLowerCase().includes(filter)) {
+                            if (filter(String(cn.label))) {
                                 return true;
                             }
-                            return cn.interfaces.some(it => String(it.label).toLowerCase().includes(filter));
+                            return cn.interfaces.some(it => filter(String(it.label)));
                         });
                     }
                     return false;
@@ -374,15 +375,17 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 containers = [element.gottyNode, ...containers];
             }
             if (this.treeFilter) {
-                const labMatch = String(element.label).toLowerCase().includes(this.treeFilter);
+                const filter = FilterUtils.createFilter(this.treeFilter);
+                const labMatch = filter(String(element.label));
                 if (!labMatch) {
+                    // Filter containers, but keep ALL interfaces for matching containers
                     containers = containers.filter(cn => {
-                        if (String(cn.label).toLowerCase().includes(this.treeFilter)) {
-                            return true;
+                        if (filter(String(cn.label))) {
+                            return true; // Keep entire container with all interfaces
                         }
                         if ((cn as c.ClabContainerTreeNode).interfaces) {
                             return (cn as c.ClabContainerTreeNode).interfaces.some(it =>
-                                String(it.label).toLowerCase().includes(this.treeFilter)
+                                filter(String(it.label))
                             );
                         }
                         return false;
@@ -397,9 +400,15 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             // The existing discoverContainerInterfaces logic with caching should handle this.
             let interfaces = element.interfaces;
             if (this.treeFilter) {
-                const parentMatch = String(element.label).toLowerCase().includes(this.treeFilter);
-                if (!parentMatch) {
-                    interfaces = interfaces.filter(it => String(it.label).toLowerCase().includes(this.treeFilter));
+                const filter = FilterUtils.createFilter(this.treeFilter);
+                const containerMatches = filter(String(element.label));
+
+                if (containerMatches) {
+                    // Container name matches - show ALL interfaces
+                    return interfaces;
+                } else {
+                    // Container name doesn't match - filter to show only matching interfaces
+                    interfaces = interfaces.filter(it => filter(String(it.label)));
                 }
             }
             return interfaces;

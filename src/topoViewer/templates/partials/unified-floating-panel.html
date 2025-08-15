@@ -112,6 +112,13 @@
       data-tippy-content="Add Text">
       <i class="fas fa-font text-[10px]"></i>
     </button>
+
+    <!-- Add Bulk Link Button -->
+    <button id="add-bulk-link-btn"
+      class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
+      data-tippy-content="Bulk Link Devices">
+      <i class="fas fa-link text-[10px]"></i>
+    </button>
   </div> <!-- End panel-content -->
 
   <!-- Collapse Control Section -->
@@ -544,6 +551,36 @@
           this.style.transform = 'translateY(0)';
         });
       }
+
+      // Mouse leave window (stop drag to prevent jumping)
+      document.addEventListener('mouseleave', function () {
+        if (isDragging) {
+          isDragging = false;
+          updateLockState();
+          savePanelState();
+          updateDrawerDirection();
+        }
+      });
+
+      // Visibility change (stop drag when tab becomes hidden)
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden && isDragging) {
+          isDragging = false;
+          updateLockState();
+          savePanelState();
+          updateDrawerDirection();
+        }
+      });
+
+      // Window blur (stop drag when window loses focus)
+      window.addEventListener('blur', function () {
+        if (isDragging) {
+          isDragging = false;
+          updateLockState();
+          savePanelState();
+          updateDrawerDirection();
+        }
+      });
     }
 
     // Initialize everything
@@ -614,6 +651,15 @@
       addTextBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         const event = new CustomEvent('unified-add-text-click');
+        document.dispatchEvent(event);
+      });
+    }
+
+    const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
+    if (addBulkLinkBtn) {
+      addBulkLinkBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const event = new CustomEvent('unified-add-bulk-link-click');
         document.dispatchEvent(event);
       });
     }
