@@ -1134,6 +1134,9 @@ class TopologyWebviewController {
         const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
         const targetEndpoint = this.getNextEndpoint(targetNode.id());
         addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
+        if (this.isSpecialEndpoint(sourceNode.id()) || this.isSpecialEndpoint(targetNode.id())) {
+          addedEdge.addClass('stub-link');
+        }
       });
 
     } else {
@@ -1208,13 +1211,30 @@ class TopologyWebviewController {
   //   this.cy.add({ group: 'nodes', data: newNodeData, position });
   // }
 
+  private isSpecialEndpoint(nodeId: string): boolean {
+    return (
+      nodeId.startsWith('host:') ||
+      nodeId.startsWith('mgmt-net:') ||
+      nodeId.startsWith('macvlan:')
+    );
+  }
+
   /**
    * Determines the next available endpoint identifier for a given node.
    * @param nodeId - The ID of the node.
    * @returns The next available endpoint string.
    * @private
-   */
+  */
   private getNextEndpoint(nodeId: string): string {
+    // Cloud-based nodes like host, mgmt-net or macvlan do not expose
+    // regular interfaces. When creating a link to such nodes we must not
+    // append an automatically generated endpoint (e.g. `eth1`). Returning an
+    // empty string here ensures that the calling code stores only the node ID
+    // itself as the link endpoint.
+    if (this.isSpecialEndpoint(nodeId)) {
+      return '';
+    }
+
     const ifaceMap = window.ifacePatternMapping || {};
     const node = this.cy.getElementById(nodeId);
     const kind = node.data('extraData')?.kind || 'default';
@@ -1345,7 +1365,13 @@ class TopologyWebviewController {
             targetEndpoint: this.getNextEndpoint(target.id()),
             editor: 'true'
           };
-          this.cy.add({ group: 'edges', data: edgeData });
+          const isStubLink =
+            this.isSpecialEndpoint(source.id()) || this.isSpecialEndpoint(target.id());
+          this.cy.add({
+            group: 'edges',
+            data: edgeData,
+            classes: isStubLink ? 'stub-link' : undefined
+          });
         }
       });
     });
