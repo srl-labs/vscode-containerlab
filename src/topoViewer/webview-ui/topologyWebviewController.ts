@@ -468,8 +468,10 @@ class TopologyWebviewController {
       this.cy.cxtmenu({
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
-          const commands = [
-            {
+          const commands: any[] = [];
+
+          if (ele.data('topoViewerRole') !== 'cloud') {
+            commands.push({
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
                           <div style="height:0.5em;"></div>
@@ -480,9 +482,12 @@ class TopologyWebviewController {
                   return;
                 }
                 // inside here TS infers ele is NodeSingular
-                  this.viewportPanels?.panelNodeEditor(ele);
+                this.viewportPanels?.panelNodeEditor(ele);
               }
-            },
+            });
+          }
+
+          commands.push(
             {
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
@@ -513,7 +518,7 @@ class TopologyWebviewController {
                 self.eh.start(ele);
               }
             }
-          ];
+          );
 
           // Add "Release from Group" option if the node is a child of a group
           if (ele.isNode() && ele.parent().nonempty()) {
@@ -676,7 +681,7 @@ class TopologyWebviewController {
       const self = this;
       // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
       this.cy.cxtmenu({
-        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"][topoViewerRole != "cloud"]',
         commands: (ele: cytoscape.Singular) => {
           const commands = [
             {
