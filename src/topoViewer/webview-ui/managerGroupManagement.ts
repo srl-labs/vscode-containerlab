@@ -624,7 +624,43 @@ export class ManagerGroupManagement {
   }
 
   public viewportButtonsAddGroup(): void {
-    this.createNewParent({ createDummyChild: true });
+    const selectedNodes = this.getGroupableSelectedNodes();
+    if (selectedNodes.length > 0) {
+      this.createGroupFromSelectedNodes(selectedNodes);
+    } else {
+      this.createEmptyGroup();
+    }
+  }
+
+  private getGroupableSelectedNodes(): cytoscape.NodeSingular[] {
+    return this.cy.nodes(':selected').filter(node =>
+      node.isNode() &&
+      node.data('topoViewerRole') !== 'dummyChild' &&
+      node.data('topoViewerRole') !== 'freeText' &&
+      node.data('topoViewerRole') !== 'group'
+    ).toArray() as cytoscape.NodeSingular[];
+  }
+
+  private createGroupFromSelectedNodes(nodes: cytoscape.NodeSingular[]): void {
+
+  // Create empty group first (keeping original interface)
+  const groupId = this.createNewParent({
+    createDummyChild: false,
+  });
+
+  // Then manually add all nodes to the group
+  nodes.forEach(node => {
+    node.move({ parent: groupId });
+    node.data('parent', groupId);
+  });
+
+  this.cy.nodes().unselect();
+  log.info(`Created group ${groupId} from ${nodes.length} selected nodes`);
+}
+
+  private createEmptyGroup(): void {
+    const groupId = this.createNewParent({ createDummyChild: true });
+    log.info(`Created empty group ${groupId}`);
   }
 }
 
