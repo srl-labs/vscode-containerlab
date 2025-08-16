@@ -436,7 +436,12 @@ export class ManagerUnifiedFloatingPanel {
   private handleAddBulkLink(): void {
     log.debug('Bulk linking via unified panel');
     const controller = (window as any).topologyWebviewController;
-    controller.showBulkLinkPanel();
+    if (controller && controller.showBulkLinkPanel) {
+      controller.showBulkLinkPanel();
+      log.info('Bulk link panel opened via unified panel');
+    } else {
+      log.error('Topology controller or showBulkLinkPanel method not available');
+    }
   }
 
   /**
