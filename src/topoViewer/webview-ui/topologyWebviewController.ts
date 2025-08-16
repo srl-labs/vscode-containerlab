@@ -470,9 +470,24 @@ class TopologyWebviewController {
         commands: (ele: cytoscape.Singular) => {
           const commands: any[] = [];
 
-          if (ele.data('topoViewerRole') !== 'cloud') {
+          if (ele.data('topoViewerRole') === 'cloud') {
             commands.push({
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Edit Network</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              // inside here TS infers ele is NodeSingular
+                this.viewportPanels?.panelNetworkEditor(ele);
+            }
+          });
+        } else {
+          commands.push({
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
                           <div style="height:0.5em;"></div>
                           <span>Edit Node</span>

@@ -276,6 +276,22 @@ const cytoscapeStylesBase: any[] = [
       height: '20'
     }
   },
+  // Cloud node styles for network endpoints
+  {
+    selector: 'node[topoViewerRole="cloud"]',
+    style: {
+      'background-color': '#E8E8E8',
+      'border-width': '1px',
+      'border-color': '#969799',
+      'background-opacity': 0.9,
+      shape: 'round-rectangle',
+      width: '20',
+      height: '20',
+      'font-size': '6px',
+      content: 'data(name)',
+      label: 'data(name)'
+    }
+  },
   // Edge handles plugin styles
   {
     selector: '.eh-handle',

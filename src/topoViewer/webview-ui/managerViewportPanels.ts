@@ -203,6 +203,64 @@ export class ManagerViewportPanels {
     }
   }
 
+  /**
+   * Displays the network editor panel for a cloud network node.
+   * @param node - The Cytoscape node representing the network.
+   */
+  public async panelNetworkEditor(node: cytoscape.NodeSingular): Promise<void> {
+    this.nodeClicked = true;
+
+    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    Array.from(panelOverlays).forEach(panel => {
+      (panel as HTMLElement).style.display = 'none';
+    });
+
+    // Parse the node ID to extract network type and interface
+    const nodeId = node.data('id') as string;
+    const parts = nodeId.split(':');
+    const networkType = parts[0] || 'host';
+    const interfaceName = parts[1] || 'eth1';
+
+    // Set fields
+    const idLabel = document.getElementById('panel-network-editor-id');
+    if (idLabel) {
+      idLabel.textContent = nodeId;
+    }
+
+    const typeSelect = document.getElementById('panel-network-type') as HTMLSelectElement | null;
+    if (typeSelect) {
+      typeSelect.value = networkType;
+    }
+
+    const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
+    if (interfaceInput) {
+      interfaceInput.value = interfaceName;
+    }
+
+    const panel = document.getElementById('panel-network-editor');
+    if (panel) {
+      panel.style.display = 'block';
+    }
+
+    const closeBtn = document.getElementById('panel-network-editor-close-button');
+    if (closeBtn && panel) {
+      closeBtn.addEventListener('click', () => {
+        panel.style.display = 'none';
+      });
+    }
+
+    const saveBtn = document.getElementById('panel-network-editor-save-button');
+    if (saveBtn) {
+      const newSaveBtn = saveBtn.cloneNode(true) as HTMLElement;
+      saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
+      newSaveBtn.addEventListener('click', async () => {
+        await this.updateNetworkFromEditor(node);
+        const suppressNotification = false;
+        await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
+      });
+    }
+  }
+
 
   /**
    * Displays the edge editor panel for the provided edge.
@@ -411,6 +469,106 @@ export class ManagerViewportPanels {
     const panelNodeEditor = document.getElementById("panel-node-editor");
     if (panelNodeEditor) {
       panelNodeEditor.style.display = "none";
+    }
+  }
+
+  /**
+   * Updates a network node based on the network editor inputs.
+   * @param node - The Cytoscape node representing the network.
+   */
+  public async updateNetworkFromEditor(node: cytoscape.NodeSingular): Promise<void> {
+    const targetNode: cytoscape.NodeSingular = (node as any).length && (node as any).length > 1 ? (node as any)[0] : node;
+
+    const typeSelect = document.getElementById('panel-network-type') as HTMLSelectElement | null;
+    const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
+
+    const currentData = targetNode.data();
+    const oldId = currentData.id as string;
+    const oldName = currentData.name as string;
+
+    // Build new ID from network type and interface
+    const networkType = typeSelect ? typeSelect.value : 'host';
+    const interfaceName = interfaceInput ? interfaceInput.value : 'eth1';
+    const newId = `${networkType}:${interfaceName}`;
+    const newName = newId;
+
+    // If ID hasn't changed, just update the data
+    if (oldId === newId) {
+      const updatedData = {
+        ...currentData,
+        name: newName,
+        extraData: {
+          ...currentData.extraData,
+          kind: networkType
+        }
+      };
+      targetNode.data(updatedData);
+    } else {
+      // ID has changed - we need to recreate the node since Cytoscape IDs are immutable
+      const position = targetNode.position();
+      const connectedEdges = targetNode.connectedEdges().map(edge => {
+        const edgeData = edge.data();
+        return {
+          id: edge.id(),
+          source: edgeData.source,
+          target: edgeData.target,
+          sourceEndpoint: edgeData.sourceEndpoint,
+          targetEndpoint: edgeData.targetEndpoint,
+          data: edgeData
+        };
+      });
+
+      // Remove the old node (this also removes connected edges)
+      this.cy.remove(targetNode);
+
+      // Create new node with new ID
+      const newNodeData = {
+        ...currentData,
+        id: newId,
+        name: newName,
+        extraData: {
+          ...currentData.extraData,
+          kind: networkType
+        }
+      };
+
+      this.cy.add({
+        group: 'nodes',
+        data: newNodeData,
+        position: position
+      });
+
+      // Recreate edges with updated references
+      connectedEdges.forEach(edgeInfo => {
+        const newEdgeData = { ...edgeInfo.data };
+
+        // Update source/target references
+        if (newEdgeData.source === oldId) {
+          newEdgeData.source = newId;
+        }
+        if (newEdgeData.target === oldId) {
+          newEdgeData.target = newId;
+        }
+
+        // sourceName and targetName should also be updated
+        if (newEdgeData.sourceName === oldName) {
+          newEdgeData.sourceName = newName;
+        }
+        if (newEdgeData.targetName === oldName) {
+          newEdgeData.targetName = newName;
+        }
+
+        // Add the edge back
+        this.cy.add({
+          group: 'edges',
+          data: newEdgeData
+        });
+      });
+    }
+
+    const panel = document.getElementById('panel-network-editor');
+    if (panel) {
+      panel.style.display = 'none';
     }
   }
 
