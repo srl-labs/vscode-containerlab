@@ -390,18 +390,21 @@
         }
       }
 
-      // Editor tools only visible in editor mode
+      // Editor-only tools (only visible in editor mode)
       const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
-      const editorButtons = [addNodeBtn];
-      editorButtons.forEach(btn => {
+      const editorOnlyButtons = [addNodeBtn, addBulkLinkBtn];
+      editorOnlyButtons.forEach(btn => {
         if (btn) {
           btn.style.display = isViewerMode() ? 'none' : 'flex';
         }
       });
       
-      // Bulk link button only visible in editor mode
-      if (addBulkLinkBtn) {
-        addBulkLinkBtn.style.display = isViewerMode() ? 'none' : 'flex';
+      // Add group and add text are available in both modes
+      if (addGroupBtn) {
+        addGroupBtn.style.display = 'flex';
+      }
+      if (addTextBtn) {
+        addTextBtn.style.display = 'flex';
       }
     }
 
@@ -606,6 +609,7 @@
     const addNodeBtn = document.getElementById('add-node-btn');
     const addGroupBtn = document.getElementById('add-group-btn');
     const addTextBtn = document.getElementById('add-text-btn');
+    const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
 
     if (deployBtn) {
       deployBtn.addEventListener('click', function (e) {
