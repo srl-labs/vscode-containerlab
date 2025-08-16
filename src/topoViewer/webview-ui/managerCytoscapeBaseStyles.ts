@@ -260,7 +260,7 @@ const cytoscapeStylesBase: any[] = [
       'target-arrow-shape': 'circle',
       'source-arrow-shape': 'circle',
       'target-arrow-color': '#969799',
-      'arrow-scale': 0.8,
+      'arrow-scale': 0.5,
       'line-style': 'dashed',
       'line-dash-pattern': [6, 3]
     }
@@ -282,10 +282,10 @@ const cytoscapeStylesBase: any[] = [
     selector: 'node[topoViewerRole="cloud"]',
     style: {
       'background-color': '#E8E8E8',
-      'border-width': '1px',
+      'border-width': '0px',
       'border-color': '#969799',
       'background-opacity': 0.9,
-      shape: 'round-rectangle',
+      shape: 'rectangle',
       width: '20',
       height: '20',
       'font-size': '6px',
