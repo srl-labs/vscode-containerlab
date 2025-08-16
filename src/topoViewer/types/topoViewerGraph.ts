@@ -9,6 +9,7 @@ export interface NodeExtraData {
   type?: string;
   longname?: string;
   mgmtIpv4Address?: string;
+  networkInterface?: string;
 }
 
 export interface NodeData {
