@@ -258,6 +258,7 @@ const cytoscapeStylesBase: any[] = [
     selector: 'edge.stub-link',
     style: {
       'target-arrow-shape': 'circle',
+      'source-arrow-shape': 'circle',
       'target-arrow-color': '#969799',
       'arrow-scale': 0.8,
       'line-style': 'dashed',
