@@ -447,24 +447,24 @@ export class TopoViewerAdaptorClab {
         // Check for special nodes
         if (nodeA === 'host') {
           const { iface: ifaceA } = this.splitEndpoint(endA);
-          specialNodes.set(`host:${ifaceA}`, { type: 'host', label: ifaceA || 'host' });
+          specialNodes.set(`host:${ifaceA}`, { type: 'host', label: `host:${ifaceA || 'host'}` });
         } else if (nodeA === 'mgmt-net') {
           const { iface: ifaceA } = this.splitEndpoint(endA);
-          specialNodes.set(`mgmt-net:${ifaceA}`, { type: 'mgmt-net', label: ifaceA || 'mgmt-net' });
+          specialNodes.set(`mgmt-net:${ifaceA}`, { type: 'mgmt-net', label: `mgmt-net:${ifaceA || 'mgmt-net'}` });
         } else if (nodeA.startsWith('macvlan:')) {
           const macvlanIface = nodeA.substring(8);
-          specialNodes.set(nodeA, { type: 'macvlan', label: macvlanIface });
+          specialNodes.set(nodeA, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
         }
 
         if (nodeB === 'host') {
           const { iface: ifaceB } = this.splitEndpoint(endB);
-          specialNodes.set(`host:${ifaceB}`, { type: 'host', label: ifaceB || 'host' });
+          specialNodes.set(`host:${ifaceB}`, { type: 'host', label: `host:${ifaceB || 'host'}` });
         } else if (nodeB === 'mgmt-net') {
           const { iface: ifaceB } = this.splitEndpoint(endB);
-          specialNodes.set(`mgmt-net:${ifaceB}`, { type: 'mgmt-net', label: ifaceB || 'mgmt-net' });
+          specialNodes.set(`mgmt-net:${ifaceB}`, { type: 'mgmt-net', label: `mgmt-net:${ifaceB || 'mgmt-net'}` });
         } else if (nodeB.startsWith('macvlan:')) {
           const macvlanIface = nodeB.substring(8);
-          specialNodes.set(nodeB, { type: 'macvlan', label: macvlanIface });
+          specialNodes.set(nodeB, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
         }
       }
 
