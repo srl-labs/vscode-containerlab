@@ -42,7 +42,6 @@ import { FilterUtils } from '../../helpers/filterUtils';
  */
 class TopologyWebviewController {
   public cy: cytoscape.Core;
-  private cyEvent: cytoscape.EventObject | undefined;
   private eh: any;
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
@@ -168,7 +167,6 @@ class TopologyWebviewController {
     this.registerCustomZoom();
 
     this.cy.on('tap', (event) => {
-      this.cyEvent = event as cytoscape.EventObject;
       log.debug(`Cytoscape event: ${event.type}`);
     });
 
@@ -1068,7 +1066,7 @@ class TopologyWebviewController {
           const mouseEvent = event.originalEvent as MouseEvent;
           if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
             log.debug('Canvas clicked with Shift key - adding node.');
-            this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, this.cyEvent as cytoscape.EventObject);
+            this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, event);
           }
         },
         onNodeClick: async (event) => {
