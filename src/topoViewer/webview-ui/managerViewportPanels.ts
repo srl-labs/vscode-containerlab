@@ -971,7 +971,7 @@ export class ManagerViewportPanels {
           />
           <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
         </div>
-        <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto overscroll-contain z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg" 
+        <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg" 
              id="${containerId}-dropdown-menu">
         </div>
       </div>
@@ -993,9 +993,11 @@ export class ManagerViewportPanels {
 
       filteredOptions.forEach(option => {
         const optionElement = document.createElement('a');
-        optionElement.classList.add('dropdown-item', 'block', 'px-3', 'py-2', 'text-sm', 'cursor-pointer');
+        optionElement.classList.add('dropdown-item', 'block', 'px-3', 'py-2', 'cursor-pointer');
         optionElement.style.color = 'var(--vscode-dropdown-foreground)';
         optionElement.style.backgroundColor = 'transparent';
+        optionElement.style.fontSize = 'var(--vscode-font-size)';
+        optionElement.style.fontFamily = 'var(--vscode-font-family)';
         optionElement.textContent = option;
         optionElement.href = '#';
 
@@ -1075,6 +1077,8 @@ export class ManagerViewportPanels {
           if (items[currentIndex]) {
             items[currentIndex].classList.add('bg-highlight');
             (items[currentIndex] as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+            // Scroll into view if needed
+            items[currentIndex].scrollIntoView({ block: 'nearest' });
           }
           dropdownMenu.classList.remove('hidden');
           break;
@@ -1091,6 +1095,8 @@ export class ManagerViewportPanels {
           if (items[currentIndex]) {
             items[currentIndex].classList.add('bg-highlight');
             (items[currentIndex] as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+            // Scroll into view if needed
+            items[currentIndex].scrollIntoView({ block: 'nearest' });
           }
           dropdownMenu.classList.remove('hidden');
           break;
