@@ -102,6 +102,8 @@ export interface NodeAnnotation {
   };
   icon?: string;
   groupLabelPos?: string;
+  group?: string;
+  level?: string;
 }
 
 export interface TopologyAnnotations {

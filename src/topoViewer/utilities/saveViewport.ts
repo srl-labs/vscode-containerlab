@@ -78,25 +78,15 @@ export async function saveViewport({
 
   const topoObj = mode === 'edit' ? (doc.toJS() as ClabTopology) : undefined;
 
-  const updateLabels = (nodeMap: YAML.YAMLMap, element: any): void => {
+  const updateLabels = (nodeMap: YAML.YAMLMap): void => {
     let labels = nodeMap.get('labels', true) as YAML.YAMLMap | undefined;
     if (!labels || !YAML.isMap(labels)) {
       labels = new YAML.YAMLMap();
       nodeMap.set('labels', labels);
     }
 
-    ['graph-posX', 'graph-posY', 'graph-icon', 'graph-geoCoordinateLat', 'graph-geoCoordinateLng', 'graph-groupLabelPos']
+    ['graph-posX', 'graph-posY', 'graph-icon', 'graph-geoCoordinateLat', 'graph-geoCoordinateLng', 'graph-groupLabelPos', 'graph-group', 'graph-level']
       .forEach(key => labels.delete(key));
-
-    const parent = element.parent;
-    if (parent) {
-      const parts = parent.split(':');
-      labels.set('graph-group', doc.createNode(parts[0]));
-      labels.set('graph-level', doc.createNode(parts[1]));
-    } else {
-      labels.delete('graph-group');
-      labels.delete('graph-level');
-    }
 
   };
 
@@ -164,7 +154,7 @@ export async function saveViewport({
           }
         }
 
-        updateLabels(nodeMap, element);
+        updateLabels(nodeMap);
 
         const newKey = element.data.name;
         if (nodeId !== newKey) {
@@ -177,7 +167,7 @@ export async function saveViewport({
           log.warn(`Node ${nodeId} not found in YAML, skipping`);
           return;
         }
-        updateLabels(nodeYaml, element);
+        updateLabels(nodeYaml);
       }
     });
 
@@ -312,6 +302,14 @@ export async function saveViewport({
     }
     if (node.data.groupLabelPos) {
       nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
+    }
+    // Add group and level if node has a parent
+    if (node.parent) {
+      const parts = node.parent.split(':');
+      if (parts.length === 2) {
+        nodeAnnotation.group = parts[0];
+        nodeAnnotation.level = parts[1];
+      }
     }
     annotations.nodeAnnotations!.push(nodeAnnotation);
   }

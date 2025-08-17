@@ -248,11 +248,11 @@ export class TopoViewerAdaptorClab {
    * @param nodeObj - The Containerlab node object.
    * @returns A string representing the parent identifier.
    */
-  private buildParent(nodeObj: ClabNode): string {
+  private buildParent(nodeObj: ClabNode, nodeAnnotation?: any): string {
     // const grp = nodeObj.group ?? '';
 
-    const grp = nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
-    const lvl = nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '1';
+    const grp = nodeAnnotation?.group || nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
+    const lvl = nodeAnnotation?.level || nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '1';
 
     if (grp && lvl) {
       return `${grp}:${lvl}`;
@@ -326,8 +326,8 @@ export class TopoViewerAdaptorClab {
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
         const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
-        const parentId = this.buildParent(mergedNode);
         const nodeAnn = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
+        const parentId = this.buildParent(mergedNode, nodeAnn);
         if (parentId) {
           if (!parentMap.has(parentId)) {
             parentMap.set(parentId, nodeAnn?.groupLabelPos);
@@ -352,6 +352,8 @@ export class TopoViewerAdaptorClab {
         delete cleanedLabels['graph-geoCoordinateLat'];
         delete cleanedLabels['graph-geoCoordinateLng'];
         delete cleanedLabels['graph-groupLabelPos'];
+        delete cleanedLabels['graph-group'];
+        delete cleanedLabels['graph-level'];
 
         const nodeEl: CyElement = {
           group: 'nodes',
