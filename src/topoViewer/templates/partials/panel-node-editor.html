@@ -30,17 +30,8 @@
                 <label class="label text-right text-base font-semibold">Kind</label>
               </div>
               <div class="w-3/5 pl-2 pr-2">
-                <div class="dropdown relative" id="panel-node-kind-dropdown">
-                  <div class="dropdown-trigger">
-                    <button class="btn btn-small inline-flex items-center justify-start w-full"
-                      aria-haspopup="true" aria-controls="panel-node-kind-dropdown-content">
-                      <span class="truncate">Select Kind</span>
-                      <i class="fas fa-angle-down ml-2"></i>
-                    </button>
-                  </div>
-                  <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto overscroll-contain z-[60]"
-                    id="panel-node-kind-dropdown-content" role="menu">
-                  </div>
+                <div id="panel-node-kind-dropdown-container">
+                  <!-- Filterable dropdown will be inserted here -->
                 </div>
               </div>
             </div>
@@ -55,17 +46,8 @@
                 <label class="label text-right text-base font-semibold">Type</label>
               </div>
               <div class="w-3/5 pl-2 pr-2">
-                <div class="dropdown relative" id="panel-node-type-dropdown" style="display: none;">
-                  <div class="dropdown-trigger">
-                    <button class="btn btn-small inline-flex items-center justify-start w-full"
-                      aria-haspopup="true" aria-controls="panel-node-type-dropdown-content">
-                      <span class="truncate">Select Type</span>
-                      <i class="fas fa-angle-down ml-2"></i>
-                    </button>
-                  </div>
-                  <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto overscroll-contain z-[60]"
-                    id="panel-node-type-dropdown-content" role="menu">
-                  </div>
+                <div id="panel-node-type-dropdown-container" style="display: none;">
+                  <!-- Filterable dropdown will be inserted here -->
                 </div>
                 <input type="text" class="input-field w-full"
                   id="panel-node-editor-type-input" style="display: none;" placeholder="Enter type">
@@ -82,17 +64,8 @@
                 <label class="label text-right text-base font-semibold">TopoViewer Role</label>
               </div>
               <div class="w-3/5 pl-2 pr-2">
-                <div class="dropdown relative" id="panel-node-topoviewerrole-dropdown">
-                  <div class="dropdown-trigger">
-                    <button class="btn btn-small inline-flex items-center justify-start w-full"
-                      aria-haspopup="true" aria-controls="panel-node-topoviewerrole-dropdown-content">
-                      <span class="truncate">Select TopoViewerRole</span>
-                      <i class="fas fa-angle-down ml-2"></i>
-                    </button>
-                  </div>
-                  <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-32 overflow-y-auto overscroll-contain z-[60]"
-                    id="panel-node-topoviewerrole-dropdown-content" role="menu">
-                  </div>
+                <div id="panel-node-topoviewerrole-dropdown-container">
+                  <!-- Filterable dropdown will be inserted here -->
                 </div>
               </div>
             </div>

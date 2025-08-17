@@ -227,10 +227,17 @@ export class ManagerViewportPanels {
       idLabel.textContent = nodeId;
     }
 
-    const typeSelect = document.getElementById('panel-network-type') as HTMLSelectElement | null;
-    if (typeSelect) {
-      typeSelect.value = networkType;
-    }
+    // Initialize network type filterable dropdown
+    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan'];
+    this.createFilterableDropdown(
+      'panel-network-type-dropdown-container',
+      networkTypeOptions,
+      networkType,
+      (selectedValue: string) => {
+        log.debug(`Network type ${selectedValue} selected`);
+      },
+      'Search for network type...'
+    );
 
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
     if (interfaceInput) {
@@ -398,12 +405,12 @@ export class ManagerViewportPanels {
     // Get the input values.
     const nodeNameInput = document.getElementById("panel-node-editor-name") as HTMLInputElement;
     const nodeImageInput = document.getElementById("panel-node-editor-image") as HTMLInputElement;
-    const typeDropdownTrigger = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button span");
+    const typeDropdownInput = document.getElementById("panel-node-type-dropdown-container-filter-input") as HTMLInputElement;
     const typeInput = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
 
     // Retrieve dropdown selections.
-    const kindDropdownTrigger = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button span");
-    const topoViewerRoleDropdownTrigger = document.querySelector("#panel-node-topoviewerrole-dropdown .dropdown-trigger button span");
+    const kindDropdownInput = document.getElementById("panel-node-kind-dropdown-container-filter-input") as HTMLInputElement;
+    const topoViewerRoleDropdownInput = document.getElementById("panel-node-topoviewerrole-dropdown-container-filter-input") as HTMLInputElement;
 
     // Retrieve current node data.
     const currentData = targetNode.data();
@@ -412,14 +419,14 @@ export class ManagerViewportPanels {
 
     // Build updated extraData, preserving other fields.
     const typeValue = this.panelNodeEditorUseDropdownForType
-      ? (typeDropdownTrigger ? (typeDropdownTrigger as HTMLElement).textContent || '' : '')
+      ? (typeDropdownInput ? typeDropdownInput.value || '' : '')
       : (typeInput ? typeInput.value : '');
 
     const updatedExtraData = {
       ...currentData.extraData,
       name: nodeNameInput.value,
       image: nodeImageInput.value,
-      kind: kindDropdownTrigger ? kindDropdownTrigger.textContent : 'nokia_srlinux',
+      kind: kindDropdownInput ? kindDropdownInput.value : 'nokia_srlinux',
     };
 
     if (this.panelNodeEditorUseDropdownForType || typeValue.trim() !== '') {
@@ -432,7 +439,7 @@ export class ManagerViewportPanels {
     const updatedData = {
       ...currentData,
       name: nodeNameInput.value,
-      topoViewerRole: topoViewerRoleDropdownTrigger ? topoViewerRoleDropdownTrigger.textContent : 'pe',
+      topoViewerRole: topoViewerRoleDropdownInput ? topoViewerRoleDropdownInput.value : 'pe',
       extraData: updatedExtraData,
     };
 
@@ -479,7 +486,7 @@ export class ManagerViewportPanels {
   public async updateNetworkFromEditor(node: cytoscape.NodeSingular): Promise<void> {
     const targetNode: cytoscape.NodeSingular = (node as any).length && (node as any).length > 1 ? (node as any)[0] : node;
 
-    const typeSelect = document.getElementById('panel-network-type') as HTMLSelectElement | null;
+    const networkTypeInput = document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement | null;
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
 
     const currentData = targetNode.data();
@@ -487,7 +494,7 @@ export class ManagerViewportPanels {
     const oldName = currentData.name as string;
 
     // Build new ID from network type and interface
-    const networkType = typeSelect ? typeSelect.value : 'host';
+    const networkType = networkTypeInput ? networkTypeInput.value : 'host';
     const interfaceName = interfaceInput ? interfaceInput.value : 'eth1';
     const newId = `${networkType}:${interfaceName}`;
     const newName = newId;
@@ -664,53 +671,28 @@ export class ManagerViewportPanels {
    * @param options - An array of kind option strings.
    */
   private panelNodeEditorPopulateKindDropdown(options: string[]): void {
-    const dropdownTrigger = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button span");
-    const dropdownContent = document.getElementById("panel-node-kind-dropdown-content");
-    const dropdownButton = document.querySelector("#panel-node-kind-dropdown .dropdown-trigger button") as HTMLButtonElement;
-    const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
-
-    if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
-      log.error('Dropdown elements not found in the DOM.');
-      return;
-    }
-
-    // Set the initial value on the dropdown button.
-    dropdownTrigger.textContent = this.panelNodeEditorKind;
-    // Clear any existing content.
-    dropdownContent.innerHTML = "";
-
-    // Add click handler to toggle dropdown
-    dropdownButton.onclick = (e) => {
-      e.preventDefault();
-      dropdownContainer.classList.toggle("is-active");
-      dropdownContent.classList.toggle("hidden");
-    };
-
-    options.forEach(option => {
-      const optionElement = document.createElement("a");
-      optionElement.classList.add("dropdown-item", "label", "has-text-weight-normal", "is-small", "py-0");
-      optionElement.textContent = option;
-      optionElement.href = "#";
-
-      optionElement.addEventListener("click", (event) => {
-        event.preventDefault();
+    this.createFilterableDropdown(
+      'panel-node-kind-dropdown-container',
+      options,
+      this.panelNodeEditorKind,
+      (selectedValue: string) => {
         const previousKind = this.panelNodeEditorKind;
-        this.panelNodeEditorKind = option;
+        this.panelNodeEditorKind = selectedValue;
         log.debug(`${this.panelNodeEditorKind} selected`);
-        dropdownTrigger.textContent = this.panelNodeEditorKind;
-        dropdownContainer.classList.remove("is-active");
-        dropdownContent.classList.add("hidden");
-        const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(this.nodeSchemaData, `(${option})`);
+
+        const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(this.nodeSchemaData, `(${selectedValue})`);
         // Reset the stored type when kind changes
         this.panelNodeEditorType = "";
         this.panelNodeEditorSetupTypeField(typeOptions);
+
         if (this.panelNodeEditorNode && window.updateLinkEndpointsOnKindChange) {
-          this.updateNodeEndpointsForKindChange(this.panelNodeEditorNode, previousKind, option);
+          this.updateNodeEndpointsForKindChange(this.panelNodeEditorNode, previousKind, selectedValue);
         }
+
         const imageMap = window.imageMapping || {};
         const imageInput = document.getElementById('panel-node-editor-image') as HTMLInputElement;
         if (imageInput) {
-          const mappedImage = imageMap[option];
+          const mappedImage = imageMap[selectedValue];
           if (mappedImage !== undefined) {
             imageInput.value = mappedImage;
             imageInput.dispatchEvent(new Event('input'));
@@ -719,23 +701,22 @@ export class ManagerViewportPanels {
             imageInput.dispatchEvent(new Event('input'));
           }
         }
-      });
-
-      dropdownContent.appendChild(optionElement);
-    });
+      },
+      'Search for kind...'
+    );
   }
 
   private panelNodeEditorSetupTypeField(options: string[]): void {
-    const dropdown = document.getElementById("panel-node-type-dropdown");
+    const dropdownContainer = document.getElementById("panel-node-type-dropdown-container");
     const input = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
 
-    if (!dropdown || !input) {
+    if (!dropdownContainer || !input) {
       log.error('Type input elements not found in the DOM.');
       return;
     }
 
     if (options.length > 0) {
-      dropdown.style.display = "";
+      dropdownContainer.style.display = "";
       input.style.display = "none";
       this.panelNodeEditorUseDropdownForType = true;
       // Ensure type matches available options
@@ -744,7 +725,7 @@ export class ManagerViewportPanels {
       }
       this.panelNodeEditorPopulateTypeDropdown(options);
     } else {
-      dropdown.style.display = "none";
+      dropdownContainer.style.display = "none";
       input.style.display = "";
       this.panelNodeEditorUseDropdownForType = false;
       input.value = this.panelNodeEditorType || "";
@@ -755,45 +736,20 @@ export class ManagerViewportPanels {
   }
 
   private panelNodeEditorPopulateTypeDropdown(options: string[]): void {
-    const dropdownTrigger = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button span");
-    const dropdownContent = document.getElementById("panel-node-type-dropdown-content");
-    const dropdownButton = document.querySelector("#panel-node-type-dropdown .dropdown-trigger button") as HTMLButtonElement;
-    const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
-
-    if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
-      log.error('Dropdown elements not found in the DOM.');
-      return;
-    }
-
     if (!options.includes(this.panelNodeEditorType)) {
       this.panelNodeEditorType = options.length > 0 ? options[0] : "";
     }
-    dropdownTrigger.textContent = this.panelNodeEditorType || "";
-    dropdownContent.innerHTML = "";
 
-    // Add click handler to toggle dropdown
-    dropdownButton.onclick = (e) => {
-      e.preventDefault();
-      dropdownContainer.classList.toggle("is-active");
-      dropdownContent.classList.toggle("hidden");
-    };
-
-    options.forEach(option => {
-      const optionElement = document.createElement("a");
-      optionElement.classList.add("dropdown-item", "label", "has-text-weight-normal", "is-small", "py-0");
-      optionElement.textContent = option;
-      optionElement.href = "#";
-
-      optionElement.addEventListener("click", (event) => {
-        event.preventDefault();
-        this.panelNodeEditorType = option;
-        dropdownTrigger.textContent = this.panelNodeEditorType;
-        dropdownContainer.classList.remove("is-active");
-        dropdownContent.classList.add("hidden");
-      });
-
-      dropdownContent.appendChild(optionElement);
-    });
+    this.createFilterableDropdown(
+      'panel-node-type-dropdown-container',
+      options,
+      this.panelNodeEditorType,
+      (selectedValue: string) => {
+        this.panelNodeEditorType = selectedValue;
+        log.debug(`Type ${this.panelNodeEditorType} selected`);
+      },
+      'Search for type...'
+    );
   }
 
   /**
@@ -802,45 +758,16 @@ export class ManagerViewportPanels {
    * @param options - An array of topoViewerRole option strings.
    */
   private panelNodeEditorPopulateTopoViewerRoleDropdown(options: string[]): void {
-    const dropdownTrigger = document.querySelector("#panel-node-topoviewerrole-dropdown .dropdown-trigger button span");
-    const dropdownContent = document.getElementById("panel-node-topoviewerrole-dropdown-content");
-    const dropdownButton = document.querySelector("#panel-node-topoviewerrole-dropdown .dropdown-trigger button") as HTMLButtonElement;
-    const dropdownContainer = dropdownButton ? dropdownButton.closest(".dropdown") : null;
-
-    if (!dropdownTrigger || !dropdownContent || !dropdownButton || !dropdownContainer) {
-      log.error('Dropdown elements not found in the DOM.');
-      return;
-    }
-
-    // Set the initial value on the dropdown button.
-    dropdownTrigger.textContent = this.panelNodeEditorTopoViewerRole;
-    // Clear any existing content.
-    dropdownContent.innerHTML = "";
-
-    // Add click handler to toggle dropdown
-    dropdownButton.onclick = (e) => {
-      e.preventDefault();
-      dropdownContainer.classList.toggle("is-active");
-      dropdownContent.classList.toggle("hidden");
-    };
-
-    options.forEach(option => {
-      const optionElement = document.createElement("a");
-      optionElement.classList.add("dropdown-item", "label", "has-text-weight-normal", "is-small", "py-0");
-      optionElement.textContent = option;
-      optionElement.href = "#";
-
-      optionElement.addEventListener("click", (event) => {
-        event.preventDefault();
-        this.panelNodeEditorTopoViewerRole = option;
+    this.createFilterableDropdown(
+      'panel-node-topoviewerrole-dropdown-container',
+      options,
+      this.panelNodeEditorTopoViewerRole,
+      (selectedValue: string) => {
+        this.panelNodeEditorTopoViewerRole = selectedValue;
         log.debug(`${this.panelNodeEditorTopoViewerRole} selected`);
-        dropdownTrigger.textContent = this.panelNodeEditorTopoViewerRole;
-        dropdownContainer.classList.remove("is-active");
-        dropdownContent.classList.add("hidden");
-      });
-
-      dropdownContent.appendChild(optionElement);
-    });
+      },
+      'Search for role...'
+    );
   }
 
   /**
@@ -1004,6 +931,184 @@ export class ManagerViewportPanels {
           }
         }
       });
+    });
+  }
+
+  /**
+   * Creates a filterable dropdown with search functionality.
+   * @param containerId - The ID of the container element
+   * @param options - Array of options to display
+   * @param currentValue - Currently selected value
+   * @param onSelect - Callback function when an option is selected
+   * @param placeholder - Placeholder text for the filter input
+   */
+  private createFilterableDropdown(
+    containerId: string,
+    options: string[],
+    currentValue: string,
+    onSelect: (value: string) => void, // eslint-disable-line no-unused-vars
+    placeholder: string = 'Type to filter...'
+  ): void {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      log.error(`Container ${containerId} not found`);
+      return;
+    }
+
+    // Clear existing content
+    container.innerHTML = '';
+
+    // Create the filterable dropdown structure
+    const dropdownHtml = `
+      <div class="filterable-dropdown relative w-full">
+        <div class="filterable-dropdown-input-container">
+          <input 
+            type="text" 
+            class="input-field w-full pr-8" 
+            placeholder="${placeholder}"
+            value="${currentValue}"
+            id="${containerId}-filter-input"
+          />
+          <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+        </div>
+        <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto overscroll-contain z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg" 
+             id="${containerId}-dropdown-menu">
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = dropdownHtml;
+
+    const filterInput = document.getElementById(`${containerId}-filter-input`) as HTMLInputElement;
+    const dropdownMenu = document.getElementById(`${containerId}-dropdown-menu`);
+
+    if (!filterInput || !dropdownMenu) {
+      log.error(`Failed to create filterable dropdown elements for ${containerId}`);
+      return;
+    }
+
+    // Function to populate dropdown options
+    const populateOptions = (filteredOptions: string[]) => {
+      dropdownMenu.innerHTML = '';
+
+      filteredOptions.forEach(option => {
+        const optionElement = document.createElement('a');
+        optionElement.classList.add('dropdown-item', 'block', 'px-3', 'py-2', 'text-sm', 'cursor-pointer');
+        optionElement.style.color = 'var(--vscode-dropdown-foreground)';
+        optionElement.style.backgroundColor = 'transparent';
+        optionElement.textContent = option;
+        optionElement.href = '#';
+
+        // Add hover effect
+        optionElement.addEventListener('mouseenter', () => {
+          optionElement.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
+        });
+        optionElement.addEventListener('mouseleave', () => {
+          if (!optionElement.classList.contains('bg-highlight')) {
+            optionElement.style.backgroundColor = 'transparent';
+          }
+        });
+
+        optionElement.addEventListener('click', (e) => {
+          e.preventDefault();
+          filterInput.value = option;
+          dropdownMenu.classList.add('hidden');
+          onSelect(option);
+        });
+
+        dropdownMenu.appendChild(optionElement);
+      });
+    };
+
+    // Initial population
+    populateOptions(options);
+
+    // Filter functionality
+    filterInput.addEventListener('input', () => {
+      const filterValue = filterInput.value.toLowerCase();
+      const filteredOptions = options.filter(option =>
+        option.toLowerCase().includes(filterValue)
+      );
+      populateOptions(filteredOptions);
+
+      if (!dropdownMenu.classList.contains('hidden')) {
+        // Keep dropdown open if it was already open
+        dropdownMenu.classList.remove('hidden');
+      }
+    });
+
+    // Show/hide dropdown on focus/blur
+    filterInput.addEventListener('focus', () => {
+      dropdownMenu.classList.remove('hidden');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (!container.contains(target)) {
+        dropdownMenu.classList.add('hidden');
+      }
+    });
+
+    // Handle keyboard navigation
+    filterInput.addEventListener('keydown', (e) => {
+      const items = dropdownMenu.querySelectorAll('.dropdown-item') as NodeListOf<HTMLElement>;
+      let currentIndex = -1;
+
+      // Find currently highlighted item
+      items.forEach((item, index) => {
+        if (item.classList.contains('bg-highlight')) {
+          currentIndex = index;
+        }
+      });
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          // Remove current highlight
+          if (currentIndex >= 0) {
+            items[currentIndex].classList.remove('bg-highlight');
+            (items[currentIndex] as HTMLElement).style.backgroundColor = 'transparent';
+          }
+          // Add highlight to next item
+          currentIndex = Math.min(currentIndex + 1, items.length - 1);
+          if (items[currentIndex]) {
+            items[currentIndex].classList.add('bg-highlight');
+            (items[currentIndex] as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+          }
+          dropdownMenu.classList.remove('hidden');
+          break;
+
+        case 'ArrowUp':
+          e.preventDefault();
+          // Remove current highlight
+          if (currentIndex >= 0) {
+            items[currentIndex].classList.remove('bg-highlight');
+            (items[currentIndex] as HTMLElement).style.backgroundColor = 'transparent';
+          }
+          // Add highlight to previous item
+          currentIndex = Math.max(currentIndex - 1, 0);
+          if (items[currentIndex]) {
+            items[currentIndex].classList.add('bg-highlight');
+            (items[currentIndex] as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+          }
+          dropdownMenu.classList.remove('hidden');
+          break;
+
+        case 'Enter':
+          e.preventDefault();
+          if (currentIndex >= 0 && items[currentIndex]) {
+            const selectedValue = items[currentIndex].textContent || '';
+            filterInput.value = selectedValue;
+            dropdownMenu.classList.add('hidden');
+            onSelect(selectedValue);
+          }
+          break;
+
+        case 'Escape':
+          dropdownMenu.classList.add('hidden');
+          break;
+      }
     });
   }
 }
