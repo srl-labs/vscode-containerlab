@@ -21,6 +21,7 @@ export class ManagerUnifiedFloatingPanel {
   private destroyCleanupBtn: HTMLButtonElement | null = null;
   private redeployCleanupBtn: HTMLButtonElement | null = null;
   private addNodeBtn: HTMLButtonElement | null = null;
+  private addNetworkBtn: HTMLButtonElement | null = null;
   private addGroupBtn: HTMLButtonElement | null = null;
   private addTextBtn: HTMLButtonElement | null = null;
   private addBulkLinkBtn: HTMLButtonElement | null = null;
@@ -43,6 +44,7 @@ export class ManagerUnifiedFloatingPanel {
     this.destroyCleanupBtn = document.getElementById('destroy-cleanup-btn') as HTMLButtonElement | null;
     this.redeployCleanupBtn = document.getElementById('redeploy-cleanup-btn') as HTMLButtonElement | null;
     this.addNodeBtn = document.getElementById('add-node-btn') as HTMLButtonElement | null;
+    this.addNetworkBtn = document.getElementById('add-network-btn') as HTMLButtonElement | null;
     this.addGroupBtn = document.getElementById('add-group-btn') as HTMLButtonElement | null;
     this.addTextBtn = document.getElementById('add-text-btn') as HTMLButtonElement | null;
     this.addBulkLinkBtn = document.getElementById('add-bulk-link-btn') as HTMLButtonElement | null;
@@ -79,6 +81,7 @@ export class ManagerUnifiedFloatingPanel {
       this.destroyCleanupBtn,
       this.redeployCleanupBtn,
       this.addNodeBtn,
+      this.addNetworkBtn,
       this.addGroupBtn,
       this.addTextBtn,
       this.addBulkLinkBtn
@@ -97,6 +100,7 @@ export class ManagerUnifiedFloatingPanel {
     if (this.destroyCleanupBtn) tippy(this.destroyCleanupBtn, tooltipOptions);
     if (this.redeployCleanupBtn) tippy(this.redeployCleanupBtn, tooltipOptions);
     if (this.addNodeBtn) tippy(this.addNodeBtn, tooltipOptions);
+    if (this.addNetworkBtn) tippy(this.addNetworkBtn, tooltipOptions);
     if (this.addGroupBtn) tippy(this.addGroupBtn, tooltipOptions);
     if (this.addTextBtn) tippy(this.addTextBtn, tooltipOptions);
     if (this.addBulkLinkBtn) tippy(this.addBulkLinkBtn, tooltipOptions);
@@ -135,6 +139,10 @@ export class ManagerUnifiedFloatingPanel {
     // Listen for custom events for other buttons
     document.addEventListener('unified-add-node-click', () => {
       this.handleAddNode();
+    });
+
+    document.addEventListener('unified-add-network-click', () => {
+      this.handleAddNetwork();
     });
 
     document.addEventListener('unified-add-group-click', () => {
@@ -394,6 +402,43 @@ export class ManagerUnifiedFloatingPanel {
     }
 
     log.info('Added new node via unified panel');
+  }
+
+  private handleAddNetwork(): void {
+    log.debug('Adding new network via unified panel');
+
+    const extent = this.cy.extent();
+    const viewportCenterX = (extent.x1 + extent.x2) / 2;
+    const viewportCenterY = (extent.y1 + extent.y2) / 2;
+
+    const syntheticEvent: cytoscape.EventObject = {
+      type: 'click',
+      target: this.cy,
+      cy: this.cy,
+      namespace: '',
+      timeStamp: Date.now(),
+      position: {
+        x: viewportCenterX,
+        y: viewportCenterY
+      },
+      renderedPosition: {
+        x: viewportCenterX,
+        y: viewportCenterY
+      },
+      originalEvent: new MouseEvent('click')
+    } as cytoscape.EventObject;
+
+    this.addNodeManager.viewportButtonsAddNetworkNode(this.cy, syntheticEvent);
+
+    const newNode = this.cy.nodes().last();
+    const state = (window as any).topoViewerState;
+    if (newNode && state?.editorEngine?.viewportPanels) {
+      setTimeout(() => {
+        state.editorEngine.viewportPanels.panelNetworkEditor(newNode);
+      }, 100);
+    }
+
+    log.info('Added new network via unified panel');
   }
 
   /**

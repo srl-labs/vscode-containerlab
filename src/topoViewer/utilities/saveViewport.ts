@@ -5,6 +5,21 @@ import { log } from '../logging/extensionLogger';
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabTopology } from '../types/topoViewerType';
+import { annotationsManager } from './annotationsManager';
+import { CloudNodeAnnotation } from '../types/topoViewerGraph';
+
+/**
+ * Determines if a node ID represents a special endpoint.
+ * @param nodeId - The node ID to check.
+ * @returns True if the node is a special endpoint (host, mgmt-net, macvlan).
+ */
+function isSpecialEndpoint(nodeId: string): boolean {
+  return (
+    nodeId.startsWith('host:') ||
+    nodeId.startsWith('mgmt-net:') ||
+    nodeId.startsWith('macvlan:')
+  );
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -115,7 +130,7 @@ export async function saveViewport({
   };
 
   payloadParsed
-    .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'freeText')
+    .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id))
     .forEach(element => {
       const nodeId: string = element.data.id;
       let nodeYaml = yamlNodes.get(nodeId, true) as YAML.YAMLMap | undefined;
@@ -197,7 +212,7 @@ export async function saveViewport({
 
   if (mode === 'edit') {
     const payloadNodeIds = new Set(
-      payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText').map(el => el.data.id)
+      payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id)).map(el => el.data.id)
     );
     for (const item of [...yamlNodes.items]) {
       const keyStr = String(item.key);
@@ -299,6 +314,31 @@ export async function saveViewport({
         }
       }
     }
+  }
+
+  // Save cloud node positions to annotations
+  const cloudNodes = payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud');
+  if (cloudNodes.length > 0) {
+    const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+
+    // Clear existing cloud node annotations
+    annotations.cloudNodeAnnotations = [];
+
+    // Add new cloud node annotations
+    for (const cloudNode of cloudNodes) {
+      const cloudNodeAnnotation: CloudNodeAnnotation = {
+        id: cloudNode.data.id,
+        type: cloudNode.data.extraData?.kind || 'host',
+        label: cloudNode.data.name || cloudNode.data.id,
+        position: {
+          x: cloudNode.position?.x || 0,
+          y: cloudNode.position?.y || 0
+        }
+      };
+      annotations.cloudNodeAnnotations.push(cloudNodeAnnotation);
+    }
+
+    await annotationsManager.saveAnnotations(yamlFilePath, annotations);
   }
 
   const updatedYamlString = doc.toString();

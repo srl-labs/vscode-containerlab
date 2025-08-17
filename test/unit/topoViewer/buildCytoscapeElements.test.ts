@@ -28,7 +28,7 @@ describe('buildCytoscapeElements delegation', () => {
     sinon.restore();
   });
 
-  it('delegates for both converter methods', () => {
+  it('delegates for both converter methods', async () => {
     const adaptor = new TopoViewerAdaptorClab();
     const spy = sinon.spy(adaptor as any, 'buildCytoscapeElements');
     sinon.stub(treeUtils, 'findContainerNode').returns({
@@ -40,7 +40,7 @@ describe('buildCytoscapeElements delegation', () => {
 
     const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1:\n      labels:\n        graph-posX: '1'\n        graph-posY: '2'\n  links:\n    - endpoints: ['node1:eth0','node1:eth1']\n`;
 
-    const withMgmt = adaptor.clabYamlToCytoscapeElements(yaml, {});
+    const withMgmt = await adaptor.clabYamlToCytoscapeElements(yaml, {});
     const withoutMgmt = adaptor.clabYamlToCytoscapeElementsEditor(yaml);
 
     expect(spy.calledTwice).to.be.true;

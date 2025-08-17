@@ -253,6 +253,46 @@ const cytoscapeStylesBase: any[] = [
       'line-style': 'solid'
     }
   },
+  // Stub link styles for special endpoints
+  {
+    selector: 'edge.stub-link',
+    style: {
+      'target-arrow-shape': 'circle',
+      'source-arrow-shape': 'circle',
+      'target-arrow-color': '#969799',
+      'arrow-scale': 0.5,
+      'line-style': 'dashed',
+      'line-dash-pattern': [6, 3]
+    }
+  },
+  {
+    selector: 'node.special-endpoint',
+    style: {
+      'background-color': '#E8E8E8',
+      'border-width': '1px',
+      'border-color': '#969799',
+      'background-opacity': 0.9,
+      shape: 'round-rectangle',
+      width: '14',
+      height: '14'
+    }
+  },
+  // Cloud node styles for network endpoints
+  {
+    selector: 'node[topoViewerRole="cloud"]',
+    style: {
+      'background-color': '#E8E8E8',
+      'border-width': '0px',
+      'border-color': '#969799',
+      'background-opacity': 0.9,
+      shape: 'rectangle',
+      width: '14',
+      height: '14',
+      'font-size': '6px',
+      content: 'data(name)',
+      label: 'data(name)'
+    }
+  },
   // Edge handles plugin styles
   {
     selector: '.eh-handle',
@@ -472,20 +512,20 @@ export default async function loadCytoStyle(
  * Extracts node types from the style definitions.
  */
 export function extractNodeIcons(): string[] {
-  const nodeTypes: string[] = [];
+  const nodeTypesSet = new Set<string>();
   const regex = /node\[topoViewerRole="([^"]+)"\]/;
-  const skipList = ['dummyChild', 'group'];
+  const skipList = ['dummyChild', 'group', 'freeText'];
 
   for (const styleDef of cytoscapeStylesBase) {
     if (typeof styleDef.selector === 'string') {
       const match = styleDef.selector.match(regex);
       if (match && match[1] && !skipList.includes(match[1])) {
-        nodeTypes.push(match[1]);
+        nodeTypesSet.add(match[1]);
       }
     }
   }
 
-  return nodeTypes;
+  return Array.from(nodeTypesSet).sort();
 }
 
 // Expose globally for external consumers

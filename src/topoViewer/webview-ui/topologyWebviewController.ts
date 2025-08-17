@@ -466,9 +466,26 @@ class TopologyWebviewController {
       this.cy.cxtmenu({
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
-          const commands = [
-            {
+          const commands: any[] = [];
+
+          if (this.isSpecialEndpoint(ele.id())) {
+            commands.push({
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
+                          <div style="height:0.5em;"></div>
+                          <span>Edit Network</span>
+                        </div>`,
+              select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              // inside here TS infers ele is NodeSingular
+                this.viewportPanels?.panelNetworkEditor(ele);
+            }
+          });
+        } else {
+          commands.push({
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
                           <div style="height:0.5em;"></div>
                           <span>Edit Node</span>
@@ -478,9 +495,12 @@ class TopologyWebviewController {
                   return;
                 }
                 // inside here TS infers ele is NodeSingular
-                  this.viewportPanels?.panelNodeEditor(ele);
+                this.viewportPanels?.panelNodeEditor(ele);
               }
-            },
+            });
+          }
+
+          commands.push(
             {
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-trash-alt" style="font-size:1.5em;"></i>
@@ -511,7 +531,7 @@ class TopologyWebviewController {
                 self.eh.start(ele);
               }
             }
-          ];
+          );
 
           // Add "Release from Group" option if the node is a child of a group
           if (ele.isNode() && ele.parent().nonempty()) {
@@ -676,6 +696,10 @@ class TopologyWebviewController {
       this.cy.cxtmenu({
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
+          // Skip special endpoints - they don't have SSH/Shell/Logs
+          if (self.isSpecialEndpoint(ele.id())) {
+            return [];
+          }
           const commands = [
             {
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -803,17 +827,21 @@ class TopologyWebviewController {
       });
 
       // Context menu for edges/links in viewer mode
-      this.cy.cxtmenu({
-        selector: 'edge',
-        commands: (ele: cytoscape.Singular) => {
-          const sourceName = ele.data("source");
-          const targetName = ele.data("target");
-          const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
-          const targetEndpoint = ele.data("targetEndpoint") || "Port B";
+        this.cy.cxtmenu({
+          selector: 'edge',
+          commands: (ele: cytoscape.Singular) => {
+            const sourceName = ele.data("source");
+            const targetName = ele.data("target");
+            if (self.isSpecialEndpoint(sourceName) ||
+                self.isSpecialEndpoint(targetName)) {
+              return [];
+            }
+            const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
+            const targetEndpoint = ele.data("targetEndpoint") || "Port B";
 
-          return [
-            {
-              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+            return [
+              {
+                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">${sourceName} - ${sourceEndpoint}</span>
@@ -1132,6 +1160,9 @@ class TopologyWebviewController {
         const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
         const targetEndpoint = this.getNextEndpoint(targetNode.id());
         addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
+        if (this.isSpecialEndpoint(sourceNode.id()) || this.isSpecialEndpoint(targetNode.id())) {
+          addedEdge.addClass('stub-link');
+        }
       });
 
     } else {
@@ -1206,13 +1237,30 @@ class TopologyWebviewController {
   //   this.cy.add({ group: 'nodes', data: newNodeData, position });
   // }
 
+  private isSpecialEndpoint(nodeId: string): boolean {
+    return (
+      nodeId.startsWith('host:') ||
+      nodeId.startsWith('mgmt-net:') ||
+      nodeId.startsWith('macvlan:')
+    );
+  }
+
   /**
    * Determines the next available endpoint identifier for a given node.
    * @param nodeId - The ID of the node.
    * @returns The next available endpoint string.
    * @private
-   */
+  */
   private getNextEndpoint(nodeId: string): string {
+    // Cloud-based nodes like host, mgmt-net or macvlan do not expose
+    // regular interfaces. When creating a link to such nodes we must not
+    // append an automatically generated endpoint (e.g. `eth1`). Returning an
+    // empty string here ensures that the calling code stores only the node ID
+    // itself as the link endpoint.
+    if (this.isSpecialEndpoint(nodeId)) {
+      return '';
+    }
+
     const ifaceMap = window.ifacePatternMapping || {};
     const node = this.cy.getElementById(nodeId);
     const kind = node.data('extraData')?.kind || 'default';
@@ -1343,7 +1391,13 @@ class TopologyWebviewController {
             targetEndpoint: this.getNextEndpoint(target.id()),
             editor: 'true'
           };
-          this.cy.add({ group: 'edges', data: edgeData });
+          const isStubLink =
+            this.isSpecialEndpoint(source.id()) || this.isSpecialEndpoint(target.id());
+          this.cy.add({
+            group: 'edges',
+            data: edgeData,
+            classes: isStubLink ? 'stub-link' : undefined
+          });
         }
       });
     });

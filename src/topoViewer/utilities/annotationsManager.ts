@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from '../logging/extensionLogger';
-import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations } from '../types/topoViewerGraph';
+import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations, CloudNodeAnnotation } from '../types/topoViewerGraph';
 
 /**
  * Manages free text annotations for a topology.
@@ -34,7 +34,7 @@ export class AnnotationsManager {
       log.warn(`Failed to load annotations from ${annotationsPath}: ${error}`);
     }
 
-    return { freeTextAnnotations: [], groupStyleAnnotations: [] };
+    return { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [] };
   }
 
   /**
@@ -50,7 +50,8 @@ export class AnnotationsManager {
       // Only save if there are annotations, otherwise delete the file
       const hasFreeText = annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0;
       const hasGroupStyles = annotations.groupStyleAnnotations && annotations.groupStyleAnnotations.length > 0;
-      if (hasFreeText || hasGroupStyles) {
+      const hasCloudNodes = annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0;
+      if (hasFreeText || hasGroupStyles || hasCloudNodes) {
         const content = JSON.stringify(annotations, null, 2);
         await fs.promises.writeFile(annotationsPath, content, 'utf8');
         log.info(`Saved annotations to ${annotationsPath}`);
@@ -136,6 +137,38 @@ export class AnnotationsManager {
   ): TopologyAnnotations {
     if (annotations.groupStyleAnnotations) {
       annotations.groupStyleAnnotations = annotations.groupStyleAnnotations.filter(a => a.id !== styleId);
+    }
+    return annotations;
+  }
+
+  /**
+   * Add or update a cloud node annotation
+   */
+  public addOrUpdateCloudNode(
+    annotations: TopologyAnnotations,
+    cloudNode: CloudNodeAnnotation
+  ): TopologyAnnotations {
+    if (!annotations.cloudNodeAnnotations) {
+      annotations.cloudNodeAnnotations = [];
+    }
+    const existingIndex = annotations.cloudNodeAnnotations.findIndex(a => a.id === cloudNode.id);
+    if (existingIndex >= 0) {
+      annotations.cloudNodeAnnotations[existingIndex] = cloudNode;
+    } else {
+      annotations.cloudNodeAnnotations.push(cloudNode);
+    }
+    return annotations;
+  }
+
+  /**
+   * Remove a cloud node annotation
+   */
+  public removeCloudNode(
+    annotations: TopologyAnnotations,
+    cloudNodeId: string
+  ): TopologyAnnotations {
+    if (annotations.cloudNodeAnnotations) {
+      annotations.cloudNodeAnnotations = annotations.cloudNodeAnnotations.filter(a => a.id !== cloudNodeId);
     }
     return annotations;
   }

@@ -99,6 +99,13 @@
       <i class="fas fa-plus text-[10px]"></i>
     </button>
 
+    <!-- Add Network Button -->
+    <button id="add-network-btn"
+      class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
+      data-tippy-content="Add Network">
+      <i class="fas fa-cloud text-[10px]"></i>
+    </button>
+
     <!-- Add Group Button -->
     <button id="add-group-btn"
       class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
@@ -338,6 +345,7 @@
       const destroyCleanupBtn = document.getElementById('destroy-cleanup-btn');
       const redeployCleanupBtn = document.getElementById('redeploy-cleanup-btn');
       const addNodeBtn = document.getElementById('add-node-btn');
+      const addNetworkBtn = document.getElementById('add-network-btn');
       const addGroupBtn = document.getElementById('add-group-btn');
       const addTextBtn = document.getElementById('add-text-btn');
 
@@ -392,7 +400,7 @@
 
       // Editor-only tools (only visible in editor mode)
       const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
-      const editorOnlyButtons = [addNodeBtn, addBulkLinkBtn];
+      const editorOnlyButtons = [addNodeBtn, addNetworkBtn, addBulkLinkBtn];
       editorOnlyButtons.forEach(btn => {
         if (btn) {
           btn.style.display = isViewerMode() ? 'none' : 'flex';
@@ -607,6 +615,7 @@
     const redeployBtn = document.getElementById('redeploy-btn');
     const cleanupBtn = document.getElementById('cleanup-action-btn');
     const addNodeBtn = document.getElementById('add-node-btn');
+    const addNetworkBtn = document.getElementById('add-network-btn');
     const addGroupBtn = document.getElementById('add-group-btn');
     const addTextBtn = document.getElementById('add-text-btn');
     const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
@@ -645,6 +654,14 @@
       addNodeBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         const event = new CustomEvent('unified-add-node-click');
+        document.dispatchEvent(event);
+      });
+    }
+
+    if (addNetworkBtn) {
+      addNetworkBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const event = new CustomEvent('unified-add-network-click');
         document.dispatchEvent(event);
       });
     }

@@ -175,11 +175,14 @@ export class TopoViewerAdaptorClab {
    * - Assigns placeholder values for fields like `weight` and `clabServerUsername` which can be replaced with real data.
    *
    * @param yamlContent - The Containerlab YAML content as a string.
+   * @param clabTreeDataToTopoviewer - Tree data for the topology viewer.
+   * @param yamlFilePath - The path to the YAML file (for loading annotations).
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
-  public clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined): CyElement[] {
+  public async clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined, yamlFilePath?: string): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
-    return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer });
+    const annotations = yamlFilePath ? await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager.loadAnnotations(yamlFilePath)) : undefined;
+    return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer, annotations });
   }
 
 
@@ -207,6 +210,7 @@ export class TopoViewerAdaptorClab {
    * Example:
    * - "Spine-01:e1-1" => { node: "Spine-01", iface: "e1-1" }
    * - "Spine-01" => { node: "Spine-01", iface: "" }
+   * - "macvlan:enp0s3" => { node: "macvlan:enp0s3", iface: "" } (special case)
    *
    * @param endpoint - The endpoint string from Containerlab YAML.
    * @returns An object containing the node and interface.
@@ -215,6 +219,11 @@ export class TopoViewerAdaptorClab {
     endpoint: string | { node: string; interface?: string }
   ): { node: string; iface: string } {
     if (typeof endpoint === 'string') {
+      // Special handling for macvlan endpoints
+      if (endpoint.startsWith('macvlan:')) {
+        return { node: endpoint, iface: '' };
+      }
+
       const parts = endpoint.split(':');
       if (parts.length === 2) {
         return { node: parts[0], iface: parts[1] };
@@ -278,9 +287,10 @@ export class TopoViewerAdaptorClab {
 
   private buildCytoscapeElements(
     parsed: ClabTopology,
-    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> }
+    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
   ): CyElement[] {
     const elements: CyElement[] = [];
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan'; label: string }>();
 
     if (!parsed.topology) {
       log.warn('Parsed YAML does not contain \x27topology\x27 object.');
@@ -423,6 +433,100 @@ export class TopoViewerAdaptorClab {
 
     let linkIndex = 0;
     if (parsed.topology.links) {
+      // First pass: identify special endpoints
+      for (const linkObj of parsed.topology.links) {
+        const endA = linkObj.endpoints?.[0] ?? '';
+        const endB = linkObj.endpoints?.[1] ?? '';
+        if (!endA || !endB) {
+          continue;
+        }
+
+        const { node: nodeA } = this.splitEndpoint(endA);
+        const { node: nodeB } = this.splitEndpoint(endB);
+
+        // Check for special nodes
+        if (nodeA === 'host') {
+          const { iface: ifaceA } = this.splitEndpoint(endA);
+          specialNodes.set(`host:${ifaceA}`, { type: 'host', label: `host:${ifaceA || 'host'}` });
+        } else if (nodeA === 'mgmt-net') {
+          const { iface: ifaceA } = this.splitEndpoint(endA);
+          specialNodes.set(`mgmt-net:${ifaceA}`, { type: 'mgmt-net', label: `mgmt-net:${ifaceA || 'mgmt-net'}` });
+        } else if (nodeA.startsWith('macvlan:')) {
+          const macvlanIface = nodeA.substring(8);
+          specialNodes.set(nodeA, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
+        }
+
+        if (nodeB === 'host') {
+          const { iface: ifaceB } = this.splitEndpoint(endB);
+          specialNodes.set(`host:${ifaceB}`, { type: 'host', label: `host:${ifaceB || 'host'}` });
+        } else if (nodeB === 'mgmt-net') {
+          const { iface: ifaceB } = this.splitEndpoint(endB);
+          specialNodes.set(`mgmt-net:${ifaceB}`, { type: 'mgmt-net', label: `mgmt-net:${ifaceB || 'mgmt-net'}` });
+        } else if (nodeB.startsWith('macvlan:')) {
+          const macvlanIface = nodeB.substring(8);
+          specialNodes.set(nodeB, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
+        }
+      }
+
+      // Add cloud nodes for special endpoints
+      for (const [nodeId, nodeInfo] of specialNodes) {
+        // Look for saved position in annotations
+        let position = { x: 0, y: 0 };
+        if (opts.annotations?.cloudNodeAnnotations) {
+          const savedCloudNode = opts.annotations.cloudNodeAnnotations.find((cn: any) => cn.id === nodeId);
+          if (savedCloudNode && savedCloudNode.position) {
+            position = savedCloudNode.position;
+          }
+        }
+
+        const cloudNodeEl: CyElement = {
+          group: 'nodes',
+          data: {
+            id: nodeId,
+            weight: '30',
+            name: nodeInfo.label,
+            parent: undefined,
+            topoViewerRole: 'cloud',
+            lat: '',
+            lng: '',
+            extraData: {
+              clabServerUsername: '',
+              fqdn: '',
+              group: '',
+              id: nodeId,
+              image: '',
+              index: '999',
+              kind: nodeInfo.type,
+              type: nodeInfo.type,
+              labdir: '',
+              labels: {},
+              longname: nodeId,
+              macAddress: '',
+              mgmtIntf: '',
+              mgmtIpv4AddressLength: 0,
+              mgmtIpv4Address: '',
+              mgmtIpv6Address: '',
+              mgmtIpv6AddressLength: 0,
+              mgmtNet: '',
+              name: nodeInfo.label,
+              shortname: nodeInfo.label,
+              state: '',
+              weight: '3',
+            },
+          },
+          position,
+          removed: false,
+          selected: false,
+          selectable: true,
+          locked: false,
+          grabbed: false,
+          grabbable: true,
+          classes: 'special-endpoint',
+        };
+        elements.push(cloudNodeEl);
+      }
+
+      // Second pass: create edges
       for (const linkObj of parsed.topology.links) {
         const endA = linkObj.endpoints?.[0] ?? '';
         const endB = linkObj.endpoints?.[1] ?? '';
@@ -434,8 +538,32 @@ export class TopoViewerAdaptorClab {
         const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
         const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
 
-        const sourceContainerName = labPrefix ? `${labPrefix}-${sourceNode}` : sourceNode;
-        const targetContainerName = labPrefix ? `${labPrefix}-${targetNode}` : targetNode;
+        // Handle special endpoints
+        let actualSourceNode = sourceNode;
+        let actualTargetNode = targetNode;
+
+        if (sourceNode === 'host') {
+          actualSourceNode = `host:${sourceIface}`;
+        } else if (sourceNode === 'mgmt-net') {
+          actualSourceNode = `mgmt-net:${sourceIface}`;
+        } else if (sourceNode.startsWith('macvlan:')) {
+          actualSourceNode = sourceNode;
+        }
+
+        if (targetNode === 'host') {
+          actualTargetNode = `host:${targetIface}`;
+        } else if (targetNode === 'mgmt-net') {
+          actualTargetNode = `mgmt-net:${targetIface}`;
+        } else if (targetNode.startsWith('macvlan:')) {
+          actualTargetNode = targetNode;
+        }
+
+        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:'))
+          ? actualSourceNode
+          : (labPrefix ? `${labPrefix}-${sourceNode}` : sourceNode);
+        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
+          ? actualTargetNode
+          : (labPrefix ? `${labPrefix}-${targetNode}` : targetNode);
         const sourceIfaceData = findInterfaceNode(
           opts.clabTreeData ?? {},
           sourceContainerName,
@@ -464,12 +592,12 @@ export class TopoViewerAdaptorClab {
             name: edgeId,
             parent: '',
             topoViewerRole: 'link',
-            sourceEndpoint: sourceIface,
-            targetEndpoint: targetIface,
+            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:')) ? '' : sourceIface,
+            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:')) ? '' : targetIface,
             lat: '',
             lng: '',
-            source: sourceNode,
-            target: targetNode,
+            source: actualSourceNode,
+            target: actualTargetNode,
             extraData: {
               clabServerUsername: 'asad',
               clabSourceLongName: sourceContainerName,
@@ -493,7 +621,7 @@ export class TopoViewerAdaptorClab {
           locked: false,
           grabbed: false,
           grabbable: true,
-          classes: edgeClass,
+          classes: edgeClass + (specialNodes.has(actualSourceNode) || specialNodes.has(actualTargetNode) ? ' stub-link' : ''),
         };
         elements.push(edgeEl);
         linkIndex++;

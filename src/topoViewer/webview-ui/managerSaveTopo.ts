@@ -109,11 +109,19 @@ export class ManagerSaveTopo {
           const sourceEp = edgeJson.data.sourceEndpoint;
           const targetEp = edgeJson.data.targetEndpoint;
 
+          // Check if source or target are special nodes (host, mgmt-net, macvlan)
+          const isSourceSpecial = sourceId.startsWith('host:') || sourceId.startsWith('mgmt-net:') || sourceId.startsWith('macvlan:');
+          const isTargetSpecial = targetId.startsWith('host:') || targetId.startsWith('mgmt-net:') || targetId.startsWith('macvlan:');
+
           if (
-            typeof sourceEp === 'string' && sourceEp &&
-            typeof targetEp === 'string' && targetEp
+            (isSourceSpecial || (typeof sourceEp === 'string' && sourceEp)) &&
+            (isTargetSpecial || (typeof targetEp === 'string' && targetEp))
           ) {
-            edgeJson.data.endpoints = [`${sourceId}:${sourceEp}`, `${targetId}:${targetEp}`];
+            // For special nodes, the ID already contains the full endpoint
+            const sourceEndpoint = isSourceSpecial ? sourceId : `${sourceId}:${sourceEp}`;
+            const targetEndpoint = isTargetSpecial ? targetId : `${targetId}:${targetEp}`;
+
+            edgeJson.data.endpoints = [sourceEndpoint, targetEndpoint];
             acc.push(edgeJson);
           } else if (
             Array.isArray(edgeJson.data.endpoints) &&

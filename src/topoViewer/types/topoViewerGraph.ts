@@ -9,6 +9,7 @@ export interface NodeExtraData {
   type?: string;
   longname?: string;
   mgmtIpv4Address?: string;
+  networkInterface?: string;
 }
 
 export interface NodeData {
@@ -79,7 +80,18 @@ export interface GroupStyleAnnotation {
   color?: string;
 }
 
+export interface CloudNodeAnnotation {
+  id: string;
+  type: 'host' | 'mgmt-net' | 'macvlan';
+  label: string;
+  position: {
+    x: number;
+    y: number;
+  };
+}
+
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
+  cloudNodeAnnotations?: CloudNodeAnnotation[];
 }

@@ -341,9 +341,10 @@ topology:
       }
     }
 
-    const cytoTopology = this.adaptor.clabYamlToCytoscapeElements(
+    const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
-      updatedClabTreeDataToTopoviewer
+      updatedClabTreeDataToTopoviewer,
+      this.lastYamlFilePath
     );
 
     try {
@@ -525,7 +526,7 @@ topology:
           log.warn(`Failed to load running lab data: ${err}`);
         }
       }
-      const cyElements = this.adaptor.clabYamlToCytoscapeElements(yaml, treeData);
+      const cyElements = await this.adaptor.clabYamlToCytoscapeElements(yaml, treeData, this.lastYamlFilePath);
       await this.adaptor.createFolderAndWriteJson(
         this.context,
         labName,                // folder below <extension>/topoViewerData/
@@ -663,15 +664,30 @@ topology:
             } catch (innerError) {
               result = `Error executing endpoint "${endpointName}".`;
               log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
           }
+          break;
+        }
 
-          case 'topo-editor-viewport-save': {
-            try {
-              await saveViewport({
-                adaptor: this.adaptor,
-                yamlFilePath: this.lastYamlFilePath,
+        case 'topo-viewport-save': {
+          try {
+            await saveViewport({
+              yamlFilePath: this.lastYamlFilePath,
+              payload: payload as string,
+              mode: 'view'
+            });
+            result = `Saved viewport positions successfully.`;
+            log.info(result);
+          } catch (error) {
+            log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(error, null, 2)}`);
+          }
+          break;
+        }
+
+        case 'topo-editor-viewport-save': {
+          try {
+            await saveViewport({
+              adaptor: this.adaptor,
+              yamlFilePath: this.lastYamlFilePath,
                 payload: payload as string,
                 mode: 'edit',
                 setInternalUpdate: v => {
@@ -997,9 +1013,11 @@ topology:
           case 'topo-editor-save-annotations': {
             try {
               const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+              const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
               await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
                 freeTextAnnotations: data.annotations,
-                groupStyleAnnotations: data.groupStyles
+                groupStyleAnnotations: data.groupStyles,
+                cloudNodeAnnotations: existing.cloudNodeAnnotations
               });
               result = { success: true };
               log.info(
