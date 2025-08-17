@@ -512,7 +512,7 @@ export default async function loadCytoStyle(
  * Extracts node types from the style definitions.
  */
 export function extractNodeIcons(): string[] {
-  const nodeTypes: string[] = [];
+  const nodeTypesSet = new Set<string>();
   const regex = /node\[topoViewerRole="([^"]+)"\]/;
   const skipList = ['dummyChild', 'group', 'freeText'];
 
@@ -520,12 +520,12 @@ export function extractNodeIcons(): string[] {
     if (typeof styleDef.selector === 'string') {
       const match = styleDef.selector.match(regex);
       if (match && match[1] && !skipList.includes(match[1])) {
-        nodeTypes.push(match[1]);
+        nodeTypesSet.add(match[1]);
       }
     }
   }
 
-  return nodeTypes;
+  return Array.from(nodeTypesSet).sort();
 }
 
 // Expose globally for external consumers
