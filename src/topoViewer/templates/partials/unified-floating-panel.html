@@ -303,13 +303,16 @@
         let newLeft = initialLeft + deltaX;
         let newTop = initialTop + deltaY;
 
-        // Keep panel within viewport bounds
+        // Keep panel within viewport bounds (respect navbar boundaries)
         const panelRect = panel.getBoundingClientRect();
+        const navbar = document.querySelector('.navbar');
+        const navbarHeight = navbar ? navbar.offsetHeight : 72; // Default to 72px if not found
         const maxLeft = window.innerWidth - panelRect.width;
         const maxTop = window.innerHeight - panelRect.height;
+        const minTop = navbarHeight; // Can't go above navbar
 
         newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-        newTop = Math.max(0, Math.min(newTop, maxTop));
+        newTop = Math.max(minTop, Math.min(newTop, maxTop));
 
         panel.style.left = newLeft + 'px';
         panel.style.top = newTop + 'px';
@@ -697,11 +700,14 @@
     window.addEventListener('resize', function () {
       if (panel) {
         const rect = panel.getBoundingClientRect();
+        const navbar = document.querySelector('.navbar');
+        const navbarHeight = navbar ? navbar.offsetHeight : 72; // Default to 72px if not found
         const maxLeft = window.innerWidth - rect.width;
         const maxTop = window.innerHeight - rect.height;
+        const minTop = navbarHeight; // Can't go above navbar
 
         let newLeft = Math.max(0, Math.min(rect.left, maxLeft));
-        let newTop = Math.max(0, Math.min(rect.top, maxTop));
+        let newTop = Math.max(minTop, Math.min(rect.top, maxTop));
 
         if (newLeft !== rect.left || newTop !== rect.top) {
           panel.style.left = newLeft + 'px';
