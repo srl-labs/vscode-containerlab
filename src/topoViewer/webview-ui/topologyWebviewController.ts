@@ -825,17 +825,23 @@ class TopologyWebviewController {
       });
 
       // Context menu for edges/links in viewer mode
-      this.cy.cxtmenu({
-        selector: 'edge',
-        commands: (ele: cytoscape.Singular) => {
-          const sourceName = ele.data("source");
-          const targetName = ele.data("target");
-          const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
-          const targetEndpoint = ele.data("targetEndpoint") || "Port B";
+        this.cy.cxtmenu({
+          selector: 'edge',
+          commands: (ele: cytoscape.Singular) => {
+            const sourceName = ele.data("source");
+            const targetName = ele.data("target");
+            const sourceNode = self.cy.getElementById(sourceName);
+            const targetNode = self.cy.getElementById(targetName);
+            if (sourceNode.data("topoViewerRole") === "cloud" ||
+                targetNode.data("topoViewerRole") === "cloud") {
+              return [];
+            }
+            const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
+            const targetEndpoint = ele.data("targetEndpoint") || "Port B";
 
-          return [
-            {
-              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+            return [
+              {
+                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">${sourceName} - ${sourceEndpoint}</span>
