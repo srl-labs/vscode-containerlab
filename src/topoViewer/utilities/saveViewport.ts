@@ -78,18 +78,6 @@ export async function saveViewport({
 
   const topoObj = mode === 'edit' ? (doc.toJS() as ClabTopology) : undefined;
 
-  const updateLabels = (nodeMap: YAML.YAMLMap): void => {
-    let labels = nodeMap.get('labels', true) as YAML.YAMLMap | undefined;
-    if (!labels || !YAML.isMap(labels)) {
-      labels = new YAML.YAMLMap();
-      nodeMap.set('labels', labels);
-    }
-
-    ['graph-posX', 'graph-posY', 'graph-icon', 'graph-geoCoordinateLat', 'graph-geoCoordinateLng', 'graph-groupLabelPos', 'graph-group', 'graph-level']
-      .forEach(key => labels.delete(key));
-
-  };
-
   payloadParsed
     .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id))
     .forEach(element => {
@@ -139,23 +127,6 @@ export async function saveViewport({
           nodeMap.delete('type');
         }
 
-        if (extraData.labels) {
-          let labels = nodeMap.get('labels', true) as YAML.YAMLMap | undefined;
-          if (!labels || !YAML.isMap(labels)) {
-            labels = new YAML.YAMLMap();
-            // Ensure labels map renders in block style
-            labels.flow = false;
-            nodeMap.set('labels', labels);
-          }
-          for (const [key, value] of Object.entries(extraData.labels)) {
-            if (value !== undefined && value !== null && value !== '') {
-              labels.set(key, doc.createNode(value));
-            }
-          }
-        }
-
-        updateLabels(nodeMap);
-
         const newKey = element.data.name;
         if (nodeId !== newKey) {
           yamlNodes.set(newKey, nodeMap);
@@ -167,7 +138,6 @@ export async function saveViewport({
           log.warn(`Node ${nodeId} not found in YAML, skipping`);
           return;
         }
-        updateLabels(nodeYaml);
       }
     });
 
