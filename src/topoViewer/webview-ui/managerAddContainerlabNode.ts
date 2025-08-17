@@ -91,12 +91,6 @@ export class ManagerAddContainerlabNode {
       const node = cy.getElementById(newNodeId);
       node.data('lat', latlng.lat.toString());
       node.data('lng', latlng.lng.toString());
-      const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
-      labels['graph-geoCoordinateLat'] = latlng.lat.toString();
-      labels['graph-geoCoordinateLng'] = latlng.lng.toString();
-      if (node.data('extraData')) {
-        (node.data('extraData') as any).labels = labels;
-      }
     }
   }
 
@@ -173,12 +167,6 @@ export class ManagerAddContainerlabNode {
       const node = cy.getElementById(newNodeId);
       node.data('lat', latlng.lat.toString());
       node.data('lng', latlng.lng.toString());
-      const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
-      labels['graph-geoCoordinateLat'] = latlng.lat.toString();
-      labels['graph-geoCoordinateLng'] = latlng.lng.toString();
-      if (node.data('extraData')) {
-        (node.data('extraData') as any).labels = labels;
-      }
     }
   }
 }

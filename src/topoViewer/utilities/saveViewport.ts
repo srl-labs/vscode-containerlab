@@ -6,7 +6,7 @@ import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabTopology } from '../types/topoViewerType';
 import { annotationsManager } from './annotationsManager';
-import { CloudNodeAnnotation } from '../types/topoViewerGraph';
+import { CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
 
 /**
  * Determines if a node ID represents a special endpoint.
@@ -85,24 +85,8 @@ export async function saveViewport({
       nodeMap.set('labels', labels);
     }
 
-    let x = element.position?.x || 0;
-    let y = element.position?.y || 0;
-    if (mode === 'view' && element.data?.extraData?.labels) {
-      const labelPosX = element.data.extraData.labels['graph-posX'];
-      const labelPosY = element.data.extraData.labels['graph-posY'];
-      if (labelPosX !== undefined && labelPosX !== null) {
-        x = parseFloat(labelPosX) || x;
-      }
-      if (labelPosY !== undefined && labelPosY !== null) {
-        y = parseFloat(labelPosY) || y;
-      }
-    }
-
-    labels.set('graph-posX', doc.createNode(Math.round(x).toString()));
-    labels.set('graph-posY', doc.createNode(Math.round(y).toString()));
-    if (element.data.topoViewerRole) {
-      labels.set('graph-icon', doc.createNode(element.data.topoViewerRole));
-    }
+    ['graph-posX', 'graph-posY', 'graph-icon', 'graph-geoCoordinateLat', 'graph-geoCoordinateLng', 'graph-groupLabelPos']
+      .forEach(key => labels.delete(key));
 
     const parent = element.parent;
     if (parent) {
@@ -114,19 +98,6 @@ export async function saveViewport({
       labels.delete('graph-level');
     }
 
-    const groupLabelPos = element.data.groupLabelPos;
-    labels.set('graph-groupLabelPos', doc.createNode(groupLabelPos || 'bottom-center'));
-
-    if (mode === 'view' && element.data?.extraData?.labels) {
-      const geoLat = element.data.extraData.labels['graph-geoCoordinateLat'];
-      const geoLng = element.data.extraData.labels['graph-geoCoordinateLng'];
-      if (geoLat !== undefined && geoLat !== null && geoLat !== '') {
-        labels.set('graph-geoCoordinateLat', doc.createNode(geoLat));
-      }
-      if (geoLng !== undefined && geoLng !== null && geoLng !== '') {
-        labels.set('graph-geoCoordinateLng', doc.createNode(geoLng));
-      }
-    }
   };
 
   payloadParsed
@@ -316,30 +287,50 @@ export async function saveViewport({
     }
   }
 
-  // Save cloud node positions to annotations
-  const cloudNodes = payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud');
-  if (cloudNodes.length > 0) {
-    const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+  const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+  annotations.nodeAnnotations = [];
+  annotations.cloudNodeAnnotations = [];
 
-    // Clear existing cloud node annotations
-    annotations.cloudNodeAnnotations = [];
-
-    // Add new cloud node annotations
-    for (const cloudNode of cloudNodes) {
-      const cloudNodeAnnotation: CloudNodeAnnotation = {
-        id: cloudNode.data.id,
-        type: cloudNode.data.extraData?.kind || 'host',
-        label: cloudNode.data.name || cloudNode.data.id,
-        position: {
-          x: cloudNode.position?.x || 0,
-          y: cloudNode.position?.y || 0
-        }
-      };
-      annotations.cloudNodeAnnotations.push(cloudNodeAnnotation);
+  const regularNodes = payloadParsed.filter(
+    el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'cloud' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id)
+  );
+  for (const node of regularNodes) {
+    const nodeAnnotation: NodeAnnotation = {
+      id: node.data.id,
+      position: {
+        x: Math.round(node.position?.x || 0),
+        y: Math.round(node.position?.y || 0)
+      },
+      icon: node.data.topoViewerRole,
+    };
+    if (node.data.lat && node.data.lng) {
+      const lat = parseFloat(node.data.lat);
+      const lng = parseFloat(node.data.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        nodeAnnotation.geoCoordinates = { lat, lng };
+      }
     }
-
-    await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+    if (node.data.groupLabelPos) {
+      nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
+    }
+    annotations.nodeAnnotations!.push(nodeAnnotation);
   }
+
+  const cloudNodes = payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud');
+  for (const cloudNode of cloudNodes) {
+    const cloudNodeAnnotation: CloudNodeAnnotation = {
+      id: cloudNode.data.id,
+      type: cloudNode.data.extraData?.kind || 'host',
+      label: cloudNode.data.name || cloudNode.data.id,
+      position: {
+        x: cloudNode.position?.x || 0,
+        y: cloudNode.position?.y || 0
+      }
+    };
+    annotations.cloudNodeAnnotations!.push(cloudNodeAnnotation);
+  }
+
+  await annotationsManager.saveAnnotations(yamlFilePath, annotations);
 
   const updatedYamlString = doc.toString();
   if (mode === 'edit' && setInternalUpdate) {

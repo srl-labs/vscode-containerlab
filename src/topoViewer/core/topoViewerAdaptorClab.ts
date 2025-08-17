@@ -298,13 +298,10 @@ export class TopoViewerAdaptorClab {
     }
 
     if (parsed.topology.nodes) {
-      this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([, nodeObj]) => {
-          const merged = resolveNodeConfig(parsed, nodeObj || {});
-          return (
-            !!merged.labels?.['graph-posX'] &&
-            !!merged.labels?.['graph-posY']
-          );
+      this.currentIsPresetLayout = Object.keys(parsed.topology.nodes)
+        .every(nodeName => {
+          const ann = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
+          return ann?.position !== undefined;
         });
     }
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
@@ -330,9 +327,10 @@ export class TopoViewerAdaptorClab {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
         const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
         const parentId = this.buildParent(mergedNode);
+        const nodeAnn = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
         if (parentId) {
           if (!parentMap.has(parentId)) {
-            parentMap.set(parentId, mergedNode.labels?.['graph-groupLabelPos']);
+            parentMap.set(parentId, nodeAnn?.groupLabelPos);
           }
         }
 
@@ -347,6 +345,14 @@ export class TopoViewerAdaptorClab {
           ) ?? null;
         }
 
+        const cleanedLabels = { ...(mergedNode.labels ?? {}) } as Record<string, any>;
+        delete cleanedLabels['graph-posX'];
+        delete cleanedLabels['graph-posY'];
+        delete cleanedLabels['graph-icon'];
+        delete cleanedLabels['graph-geoCoordinateLat'];
+        delete cleanedLabels['graph-geoCoordinateLng'];
+        delete cleanedLabels['graph-groupLabelPos'];
+
         const nodeEl: CyElement = {
           group: 'nodes',
           data: {
@@ -354,9 +360,9 @@ export class TopoViewerAdaptorClab {
             weight: '30',
             name: nodeName,
             parent: parentId || undefined,
-            topoViewerRole: mergedNode.labels?.['topoViewer-role'] || mergedNode.labels?.['graph-icon'] || 'router',
-            lat: mergedNode.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: mergedNode.labels?.['graph-geoCoordinateLng'] ?? '',
+            topoViewerRole: nodeAnn?.icon || mergedNode.labels?.['topoViewer-role'] || 'router',
+            lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
+            lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
               clabServerUsername: 'asad',
               fqdn: `${nodeName}.${clabName}.io`,
@@ -367,7 +373,7 @@ export class TopoViewerAdaptorClab {
               kind: mergedNode.kind ?? '',
               type: mergedNode.type ?? '',
               labdir: labPrefix ? `${labPrefix}/` : '',
-              labels: mergedNode.labels ?? {},
+              labels: cleanedLabels,
               longname: containerData?.name ?? (labPrefix ? `${labPrefix}-${nodeName}` : nodeName),
               macAddress: '',
               mgmtIntf: '',
@@ -382,10 +388,7 @@ export class TopoViewerAdaptorClab {
               weight: '3',
             },
           },
-          position: {
-            x: parseFloat(mergedNode.labels?.['graph-posX'] ?? 0),
-            y: parseFloat(mergedNode.labels?.['graph-posY'] ?? 0),
-          },
+          position: nodeAnn?.position ? { x: nodeAnn.position.x, y: nodeAnn.position.y } : { x: 0, y: 0 },
           removed: false,
           selected: false,
           selectable: true,

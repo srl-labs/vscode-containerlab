@@ -261,33 +261,25 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
       const nodeJson = node.json();
 
       // Update position property
-      nodeJson.position = node.position();
-
-      // Check if extraData and labels exist before modifying
-      if (nodeJson.data?.extraData?.labels) {
-        // If in geo map mode, use original positions for graph-posX/Y
-        let posX = nodeJson.position.x;
-        let posY = nodeJson.position.y;
-
-        if (isGeoActive) {
-          const origX = node.data('_origPosX');
-          const origY = node.data('_origPosY');
-          if (origX !== undefined && origY !== undefined) {
-            posX = origX;
-            posY = origY;
-          }
+      let posX = node.position().x;
+      let posY = node.position().y;
+      if (isGeoActive) {
+        const origX = node.data('_origPosX');
+        const origY = node.data('_origPosY');
+        if (origX !== undefined && origY !== undefined) {
+          posX = origX;
+          posY = origY;
         }
+      }
+      nodeJson.position = { x: posX, y: posY };
 
-        nodeJson.data.extraData.labels['graph-posX'] = posX.toString();
-        nodeJson.data.extraData.labels['graph-posY'] = posY.toString();
-
-        // Save geo coordinates if available
-        const lat = node.data('lat');
-        const lng = node.data('lng');
-        if (lat !== undefined && lng !== undefined) {
-          nodeJson.data.extraData.labels['graph-geoCoordinateLat'] = lat.toString();
-          nodeJson.data.extraData.labels['graph-geoCoordinateLng'] = lng.toString();
-        }
+      // Save geo coordinates if available
+      const lat = node.data('lat');
+      const lng = node.data('lng');
+      if (lat !== undefined && lng !== undefined) {
+        nodeJson.data = nodeJson.data || {};
+        nodeJson.data.lat = lat.toString();
+        nodeJson.data.lng = lng.toString();
       }
 
       // Update parent property

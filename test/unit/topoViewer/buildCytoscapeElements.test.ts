@@ -38,7 +38,7 @@ describe('buildCytoscapeElements delegation', () => {
       interfaces: []
     } as any);
 
-    const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1:\n      labels:\n        graph-posX: '1'\n        graph-posY: '2'\n  links:\n    - endpoints: ['node1:eth0','node1:eth1']\n`;
+    const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1: {}\n  links:\n    - endpoints: ['node1:eth0','node1:eth1']\n`;
 
     const withMgmt = await adaptor.clabYamlToCytoscapeElements(yaml, {});
     const withoutMgmt = adaptor.clabYamlToCytoscapeElementsEditor(yaml);

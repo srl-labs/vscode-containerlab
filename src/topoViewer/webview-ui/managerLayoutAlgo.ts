@@ -361,12 +361,6 @@ export class ManagerLayoutAlgo {
       node.data('lat', latStr);
       node.data('lng', lngStr);
 
-      const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
-      labels['graph-geoCoordinateLat'] = latStr;
-      labels['graph-geoCoordinateLng'] = lngStr;
-      if (node.data('extraData')) {
-        (node.data('extraData') as any).labels = labels;
-      }
     });
   }
 
@@ -508,12 +502,6 @@ export class ManagerLayoutAlgo {
           });
           node.data('lat', latlng.lat.toString());
           node.data('lng', latlng.lng.toString());
-          const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
-          labels['graph-geoCoordinateLat'] = latlng.lat.toString();
-          labels['graph-geoCoordinateLng'] = latlng.lng.toString();
-          if (node.data('extraData')) {
-            (node.data('extraData') as any).labels = labels;
-          }
         }
       });
       tempMap.remove();
@@ -953,7 +941,7 @@ export class ManagerLayoutAlgo {
 
   /**
    * Convert current node positions to latitude/longitude and store them
-   * in node data and labels so they persist across layout changes.
+   * in node data so they persist across layout changes.
    */
   public updateNodeGeoCoordinates(): void {
     const cy = this.getCy();
@@ -977,12 +965,6 @@ export class ManagerLayoutAlgo {
         node.data('lng', lng);
       }
 
-      const labels = (node.data('extraData')?.labels ?? {}) as Record<string, string>;
-      labels['graph-geoCoordinateLat'] = lat.toString();
-      labels['graph-geoCoordinateLng'] = lng.toString();
-      if (node.data('extraData')) {
-        (node.data('extraData') as any).labels = labels;
-      }
     });
   }
 }

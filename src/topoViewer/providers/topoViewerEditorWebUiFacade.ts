@@ -176,19 +176,11 @@ topology:
       kind: nokia_srlinux
       type: ixrd1
       image: ghcr.io/nokia/srlinux:latest
-      labels:
-        graph-posX: "80"
-        graph-posY: "20"
-        graph-icon: router
 
     srl2:
       kind: nokia_srlinux
       type: ixrd1
       image: ghcr.io/nokia/srlinux:latest
-      labels:
-        graph-posX: "160"
-        graph-posY: "20"
-        graph-icon: router
 
   links:
     # inter-switch link
@@ -1017,7 +1009,8 @@ topology:
               await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
                 freeTextAnnotations: data.annotations,
                 groupStyleAnnotations: data.groupStyles,
-                cloudNodeAnnotations: existing.cloudNodeAnnotations
+                cloudNodeAnnotations: existing.cloudNodeAnnotations,
+                nodeAnnotations: existing.nodeAnnotations
               });
               result = { success: true };
               log.info(
