@@ -5,51 +5,49 @@
       </header>
 
       <div class="py-2">
-        <article class="px-4 text-sm max-h-[280px] overflow-y-auto">
+        <article class="px-4 text-base max-h-[280px] overflow-y-auto">
           <section class="mb-4">
-            <p>
-              TopoViewer is a powerful, interactive network-topology visualization framework that makes it easy to explore
-              your infrastructure.
-              In this vscode-Containerlab extension, it is customized to provide an intuitive view of your Containerlab
-              topologies.
+            <p class="mt-2"><strong>Getting Started</strong></p>
+            <p class="text-sm">
+              TopoViewer provides two modes for working with Containerlab topologies:
             </p>
 
-            <p class="mt-3"><strong>Author</strong></p>
-            <p>
-              Designed and developed by
-                <strong><a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener" class="link">Asad
-                    Arafat</a></strong>
+            <p class="mt-3"><strong>Viewer Mode</strong></p>
+            <p class="text-sm mb-2">
+              Explore and interact with deployed topologies. Visualize running labs and manage containers.
             </p>
-
-            <p class="mt-3"><strong>Key Features</strong></p>
-            <ul class="list-disc list-inside">
-              <li>Effortlessly visualize your Containerlab topologies with an intuitive interface.</li>
-              <li>Click on nodes and links to explore detailed attributes on demand.</li>
-              <li>Full GUI to create and edit Containerlab topology files.</li>
+            <ul class="list-disc list-inside text-sm">
+              <li><strong>Left-click:</strong> Select and view node/link details</li>
+              <li><strong>Right-click node:</strong> SSH, attach shell, view logs</li>
+              <li><strong>Right-click link:</strong> Capture packets with Wireshark</li>
+              <li><strong>Drag:</strong> Move nodes to organize layout</li>
             </ul>
 
-            <p class="mt-3"><strong>Getting Started</strong></p>
-            <ul class="list-disc list-inside">
-              <li>Click on nodes and links to explore your network.</li>
-              <li>Use the layout feature to fine-tune your topology view.</li>
-              <li>Right click on nodes and links to perform action in editor mode.</li>
+            <p class="mt-3"><strong>Editor Mode</strong></p>
+            <p class="text-sm mb-2">
+              Create and modify topology files visually. Design your infrastructure with GUI.
+            </p>
+            <ul class="list-disc list-inside text-sm">
+              <li><strong>Shift + Click canvas:</strong> Add new node</li>
+              <li><strong>Shift + Click node:</strong> Start link creation</li>
+              <li><strong>Alt + Click:</strong> Delete node or link</li>
+              <li><strong>Right-click:</strong> Context menu for edit/delete</li>
+              <li><strong>Drag node to group:</strong> Auto-assign to group</li>
             </ul>
 
-            <p class="mt-3"><strong>Viewer Shortcuts</strong></p>
-            <ul class="list-disc list-inside">
-              <li><strong>Ctrl + Click:</strong> Connect to node via SSH</li>
-              <li><strong>Shift + Click:</strong> Create/reassign group</li>
-              <li><strong>Alt + Click:</strong> Release node/remove empty group</li>
-              <li><strong>Drag + Drop:</strong> Assign node to group</li>
+            <p class="mt-3"><strong>Tips</strong></p>
+            <ul class="list-disc list-inside text-sm">
+              <li>Use layout algorithms to auto-arrange topologies</li>
+              <li>Box selection to select multiple elements</li>
+              <li>Double-click text annotations to edit</li>
+              <li>Export topology as image from context menu</li>
             </ul>
 
-            <p class="mt-3"><strong>Editor Shortcuts</strong></p>
-            <ul class="list-disc list-inside">
-              <li><strong>Shift + Click (canvas):</strong> Add node at pointer</li>
-              <li><strong>Shift + Click (node):</strong> Begin link creation</li>
-              <li><strong>Alt + Click (node):</strong> Delete node</li>
-              <li><strong>Alt + Click (link):</strong> Delete link</li>
-            </ul>
+            <p class="mt-3"><strong>Original Author</strong></p>
+            <p class="text-sm">
+              TopoViewer was originally designed and developed by
+              <strong><a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener" class="link">Asad Arafat</a></strong>
+            </p>
 
             <p class="mt-3"><strong>Repositories</strong></p>
             <ul class="list-disc list-inside">

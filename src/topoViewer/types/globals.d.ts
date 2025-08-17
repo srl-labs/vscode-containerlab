@@ -28,6 +28,7 @@ declare global {
     viewportButtonsReloadTopo?: () => void;
     viewportButtonsSaveTopo?: () => void;
     viewportButtonsUndo?: () => void;
+    showPanelAbout?: () => void;
     // group manager bindings
     orphaningNode?: (..._args: any[]) => void;
     createNewParent?: (..._args: any[]) => void;
