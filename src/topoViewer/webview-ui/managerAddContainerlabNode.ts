@@ -104,30 +104,27 @@ export class ManagerAddContainerlabNode {
     cy: cytoscape.Core,
     event: cytoscape.EventObject
   ): void {
-    // Initialize static counter once
-    if (!(ManagerAddContainerlabNode as any).networkNodeCounter) {
-      (ManagerAddContainerlabNode as any).networkNodeCounter = 0;
-    }
-    (ManagerAddContainerlabNode as any).networkNodeCounter++;
-    const counter = (ManagerAddContainerlabNode as any).networkNodeCounter;
-
-    // Define network type/interface
     const networkType = 'host';
-    const interfaceName = 'eth';
 
-    // Unique Id like: networkNode-0, networkNode-1 ...
-    const newNodeId = `networkNode-${counter}`;
+    // Determine next available host interface number (eth1, eth2, ...)
+    const existingNodeIds = cy.nodes().map(node => node.id());
+    const hostRegex = new RegExp(`^${networkType}:eth(\\d+)$`);
+    const usedNumbers = existingNodeIds
+      .map(id => {
+        const match = id.match(hostRegex);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((n): n is number => n !== null);
+    const nextInterface = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
+    const interfaceName = `eth${nextInterface}`;
 
-    // Unique Name like: host-eth0, host-eth1 ...
-    // We avoid reusing newNodeId for newNodeName, since that could cause confusion.
-    // during debugging — it might look like the node name was edited in the viewport.
-    const newNodeName = `${networkType}:${interfaceName}-${counter}`;
+    const newNodeId = `${networkType}:${interfaceName}`;
 
     const newNodeData: NodeData = {
       id: newNodeId,
       editor: 'true',
       weight: '30',
-      name: newNodeName,
+      name: newNodeId,
       parent: '',
       topoViewerRole: 'cloud',
       sourceEndpoint: '',
