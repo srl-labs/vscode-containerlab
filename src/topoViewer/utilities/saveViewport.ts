@@ -121,7 +121,7 @@ export async function saveViewport({
         }
 
         const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-        if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== inherit.type) {
+        if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== '' && desiredType !== inherit.type) {
           nodeMap.set('type', doc.createNode(desiredType));
         } else {
           nodeMap.delete('type');
