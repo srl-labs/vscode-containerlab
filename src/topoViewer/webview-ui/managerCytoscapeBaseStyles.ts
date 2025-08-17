@@ -273,8 +273,8 @@ const cytoscapeStylesBase: any[] = [
       'border-color': '#969799',
       'background-opacity': 0.9,
       shape: 'round-rectangle',
-      width: '20',
-      height: '20'
+      width: '14',
+      height: '14'
     }
   },
   // Cloud node styles for network endpoints
@@ -286,8 +286,8 @@ const cytoscapeStylesBase: any[] = [
       'border-color': '#969799',
       'background-opacity': 0.9,
       shape: 'rectangle',
-      width: '20',
-      height: '20',
+      width: '14',
+      height: '14',
       'font-size': '6px',
       content: 'data(name)',
       label: 'data(name)'
@@ -514,7 +514,7 @@ export default async function loadCytoStyle(
 export function extractNodeIcons(): string[] {
   const nodeTypes: string[] = [];
   const regex = /node\[topoViewerRole="([^"]+)"\]/;
-  const skipList = ['dummyChild', 'group'];
+  const skipList = ['dummyChild', 'group', 'freeText'];
 
   for (const styleDef of cytoscapeStylesBase) {
     if (typeof styleDef.selector === 'string') {

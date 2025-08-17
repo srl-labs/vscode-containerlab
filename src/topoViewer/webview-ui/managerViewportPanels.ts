@@ -514,7 +514,8 @@ export class ManagerViewportPanels {
           target: edgeData.target,
           sourceEndpoint: edgeData.sourceEndpoint,
           targetEndpoint: edgeData.targetEndpoint,
-          data: edgeData
+          data: edgeData,
+          classes: edge.classes()
         };
       });
 
@@ -558,10 +559,20 @@ export class ManagerViewportPanels {
           newEdgeData.targetName = newName;
         }
 
+        // Determine if edge should have stub-link class based on special endpoints
+        let edgeClasses = edgeInfo.classes || [];
+        const isStubLink = this.isSpecialEndpoint(newEdgeData.source) || this.isSpecialEndpoint(newEdgeData.target);
+
+        // Ensure stub-link class is present for special endpoints
+        if (isStubLink && !edgeClasses.includes('stub-link')) {
+          edgeClasses = [...edgeClasses, 'stub-link'];
+        }
+
         // Add the edge back
         this.cy.add({
           group: 'edges',
-          data: newEdgeData
+          data: newEdgeData,
+          classes: edgeClasses.join(' ')
         });
       });
     }
@@ -570,6 +581,20 @@ export class ManagerViewportPanels {
     if (panel) {
       panel.style.display = 'none';
     }
+  }
+
+  /**
+   * Determines if a node ID represents a special endpoint.
+   * @param nodeId - The node ID to check.
+   * @returns True if the node is a special endpoint (host, mgmt-net, macvlan).
+   * @private
+   */
+  private isSpecialEndpoint(nodeId: string): boolean {
+    return (
+      nodeId.startsWith('host:') ||
+      nodeId.startsWith('mgmt-net:') ||
+      nodeId.startsWith('macvlan:')
+    );
   }
 
   /**

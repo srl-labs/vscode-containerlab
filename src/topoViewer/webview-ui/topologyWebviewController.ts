@@ -470,7 +470,7 @@ class TopologyWebviewController {
         commands: (ele: cytoscape.Singular) => {
           const commands: any[] = [];
 
-          if (ele.data('topoViewerRole') === 'cloud') {
+          if (this.isSpecialEndpoint(ele.id())) {
             commands.push({
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
@@ -696,8 +696,12 @@ class TopologyWebviewController {
       const self = this;
       // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
       this.cy.cxtmenu({
-        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"][topoViewerRole != "cloud"]',
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
+          // Skip special endpoints - they don't have SSH/Shell/Logs
+          if (self.isSpecialEndpoint(ele.id())) {
+            return [];
+          }
           const commands = [
             {
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -830,10 +834,8 @@ class TopologyWebviewController {
           commands: (ele: cytoscape.Singular) => {
             const sourceName = ele.data("source");
             const targetName = ele.data("target");
-            const sourceNode = self.cy.getElementById(sourceName);
-            const targetNode = self.cy.getElementById(targetName);
-            if (sourceNode.data("topoViewerRole") === "cloud" ||
-                targetNode.data("topoViewerRole") === "cloud") {
+            if (self.isSpecialEndpoint(sourceName) ||
+                self.isSpecialEndpoint(targetName)) {
               return [];
             }
             const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
