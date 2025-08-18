@@ -181,7 +181,86 @@ export class TopoViewerAdaptorClab {
    */
   public async clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined, yamlFilePath?: string): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
-    const annotations = yamlFilePath ? await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager.loadAnnotations(yamlFilePath)) : undefined;
+    const annotationsManager = await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager);
+    let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
+
+    // Migrate graph-* labels to annotations if not already present
+    if (yamlFilePath && parsed.topology?.nodes) {
+      let needsSave = false;
+
+      if (!annotations) {
+        annotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+      }
+
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
+
+      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+        // Check if this node already has annotations
+        const existingAnnotation = annotations.nodeAnnotations.find(na => na.id === nodeName);
+
+        if (!existingAnnotation && nodeObj?.labels) {
+          const labels = nodeObj.labels;
+
+          // Check if any graph-* labels exist
+          if (labels['graph-posX'] || labels['graph-posY'] || labels['graph-icon'] ||
+              labels['graph-group'] || labels['graph-level'] || labels['graph-groupLabelPos'] ||
+              labels['graph-geoCoordinateLat'] || labels['graph-geoCoordinateLng']) {
+
+            // Create new annotation from graph-* labels
+            const newAnnotation: any = {
+              id: nodeName
+            };
+
+            // Migrate position
+            if (labels['graph-posX'] && labels['graph-posY']) {
+              newAnnotation.position = {
+                x: parseInt(labels['graph-posX'] as string, 10) || 0,
+                y: parseInt(labels['graph-posY'] as string, 10) || 0
+              };
+            }
+
+            // Migrate icon
+            if (labels['graph-icon']) {
+              newAnnotation.icon = labels['graph-icon'] as string;
+            }
+
+            // Migrate group and level
+            if (labels['graph-group']) {
+              newAnnotation.group = labels['graph-group'] as string;
+            }
+            if (labels['graph-level']) {
+              newAnnotation.level = labels['graph-level'] as string;
+            }
+
+            // Migrate group label position
+            if (labels['graph-groupLabelPos']) {
+              newAnnotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
+            }
+
+            // Migrate geo coordinates
+            if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
+              newAnnotation.geoCoordinates = {
+                lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
+                lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0
+              };
+            }
+
+            annotations.nodeAnnotations.push(newAnnotation);
+            needsSave = true;
+            log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
+          }
+        }
+      }
+
+      // Save annotations if we migrated any labels
+      if (needsSave) {
+        await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+        log.info('Saved migrated graph-* labels to annotations.json');
+      }
+    }
+
     return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer, annotations });
   }
 
@@ -196,11 +275,92 @@ export class TopoViewerAdaptorClab {
    * - Assigns placeholder values for fields like `weight` and `clabServerUsername` which can be replaced with real data.
    *
    * @param yamlContent - The Containerlab YAML content as a string.
+   * @param yamlFilePath - The path to the YAML file (for loading annotations).
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
-  public clabYamlToCytoscapeElementsEditor(yamlContent: string): CyElement[] {
+  public async clabYamlToCytoscapeElementsEditor(yamlContent: string, yamlFilePath?: string): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
-    return this.buildCytoscapeElements(parsed, { includeContainerData: false });
+    const annotationsManager = await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager);
+    let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
+
+    // Migrate graph-* labels to annotations if not already present (same as viewer mode)
+    if (yamlFilePath && parsed.topology?.nodes) {
+      let needsSave = false;
+
+      if (!annotations) {
+        annotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+      }
+
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
+
+      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+        // Check if this node already has annotations
+        const existingAnnotation = annotations.nodeAnnotations.find(na => na.id === nodeName);
+
+        if (!existingAnnotation && nodeObj?.labels) {
+          const labels = nodeObj.labels;
+
+          // Check if any graph-* labels exist
+          if (labels['graph-posX'] || labels['graph-posY'] || labels['graph-icon'] ||
+              labels['graph-group'] || labels['graph-level'] || labels['graph-groupLabelPos'] ||
+              labels['graph-geoCoordinateLat'] || labels['graph-geoCoordinateLng']) {
+
+            // Create new annotation from graph-* labels
+            const newAnnotation: any = {
+              id: nodeName
+            };
+
+            // Migrate position
+            if (labels['graph-posX'] && labels['graph-posY']) {
+              newAnnotation.position = {
+                x: parseInt(labels['graph-posX'] as string, 10) || 0,
+                y: parseInt(labels['graph-posY'] as string, 10) || 0
+              };
+            }
+
+            // Migrate icon
+            if (labels['graph-icon']) {
+              newAnnotation.icon = labels['graph-icon'] as string;
+            }
+
+            // Migrate group and level
+            if (labels['graph-group']) {
+              newAnnotation.group = labels['graph-group'] as string;
+            }
+            if (labels['graph-level']) {
+              newAnnotation.level = labels['graph-level'] as string;
+            }
+
+            // Migrate group label position
+            if (labels['graph-groupLabelPos']) {
+              newAnnotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
+            }
+
+            // Migrate geo coordinates
+            if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
+              newAnnotation.geoCoordinates = {
+                lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
+                lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0
+              };
+            }
+
+            annotations.nodeAnnotations.push(newAnnotation);
+            needsSave = true;
+            log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
+          }
+        }
+      }
+
+      // Save annotations if we migrated any labels
+      if (needsSave) {
+        await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+        log.info('Saved migrated graph-* labels to annotations.json');
+      }
+    }
+
+    return this.buildCytoscapeElements(parsed, { includeContainerData: false, annotations });
   }
 
 

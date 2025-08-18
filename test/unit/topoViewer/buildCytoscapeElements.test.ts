@@ -41,7 +41,7 @@ describe('buildCytoscapeElements delegation', () => {
     const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1: {}\n  links:\n    - endpoints: ['node1:eth0','node1:eth1']\n`;
 
     const withMgmt = await adaptor.clabYamlToCytoscapeElements(yaml, {});
-    const withoutMgmt = adaptor.clabYamlToCytoscapeElementsEditor(yaml);
+    const withoutMgmt = await adaptor.clabYamlToCytoscapeElementsEditor(yaml);
 
     expect(spy.calledTwice).to.be.true;
     const nodeWith = withMgmt.find((e: any) => e.group === 'nodes');
@@ -50,12 +50,12 @@ describe('buildCytoscapeElements delegation', () => {
     expect(nodeWithout?.data.extraData.mgmtIpv4Address).to.equal('');
   });
 
-  it('does not mark links as down when interface state is unknown', () => {
+  it('does not mark links as down when interface state is unknown', async () => {
     const adaptor = new TopoViewerAdaptorClab();
 
     const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1: {}\n  links:\n    - endpoints: ['node1:eth0','node1:eth1']\n`;
 
-    const elements = adaptor.clabYamlToCytoscapeElementsEditor(yaml);
+    const elements = await adaptor.clabYamlToCytoscapeElementsEditor(yaml);
     const edge = elements.find((e: any) => e.group === 'edges');
     expect(edge?.classes).to.equal('');
   });
