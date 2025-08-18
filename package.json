@@ -1361,7 +1361,7 @@
     "tailwindcss": "^4.1.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.39.0",
+    "typescript-eslint": "^8.39.1",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
