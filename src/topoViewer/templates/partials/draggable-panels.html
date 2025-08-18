@@ -11,6 +11,21 @@ document.addEventListener('DOMContentLoaded', function () {
     return panelId !== 'unified-floating-panel';
   }
 
+  // Check if unified floating panel is locked
+  function isUnifiedPanelLocked() {
+    // Try to get the unified panel state from localStorage
+    const savedState = localStorage.getItem('unifiedPanelState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        return state.locked || false;
+      } catch (e) {
+        console.warn('Failed to parse unified panel state:', e);
+      }
+    }
+    return false;
+  }
+
   // Load shared panel position from localStorage
   function loadSharedPanelPosition() {
     const savedPosition = localStorage.getItem('topoViewerSharedPanelPosition');
@@ -61,6 +76,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Update drag handle appearance based on lock state
+  function updateDragHandleAppearance(dragHandle) {
+    if (!dragHandle) return;
+    
+    if (isUnifiedPanelLocked()) {
+      dragHandle.style.cursor = 'default';
+    } else {
+      dragHandle.style.cursor = 'grab';
+    }
+  }
+
   // Create and insert drag handle for a panel
   function createDragHandle(panel) {
     // Check if drag handle already exists
@@ -70,10 +96,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Create the drag handle element
     const dragHandle = document.createElement('div');
-    dragHandle.className = 'panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab -mt-1 mb-2 hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150';
+    dragHandle.className = 'panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150';
+    dragHandle.style.margin = '0 0 8px 0';
     
     // Insert as the first child of the panel
     panel.insertBefore(dragHandle, panel.firstChild);
+    
+    // Update appearance based on current lock state
+    updateDragHandleAppearance(dragHandle);
     
     return dragHandle;
   }
@@ -114,6 +144,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Mouse down on drag handle (start drag)
     dragHandle.addEventListener('mousedown', function (e) {
+      // Don't start dragging if unified floating panel is locked
+      if (isUnifiedPanelLocked()) {
+        return;
+      }
+      
       isDragging = true;
       currentPanel = panel;
       
@@ -139,21 +174,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add visual feedback on hover
     dragHandle.addEventListener('mouseenter', function () {
-      if (!isDragging) {
+      if (!isDragging && !isUnifiedPanelLocked()) {
         dragHandle.style.backgroundColor = 'var(--vscode-button-hoverBackground)';
       }
     });
 
     dragHandle.addEventListener('mouseleave', function () {
       if (!isDragging) {
-        dragHandle.style.backgroundColor = '';
+        updateDragHandleAppearance(dragHandle);
       }
     });
   }
 
   // Global mouse move (drag)
   document.addEventListener('mousemove', function (e) {
-    if (!isDragging || !currentPanel) return;
+    if (!isDragging || !currentPanel || isUnifiedPanelLocked()) return;
 
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
@@ -248,6 +283,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // Update all drag handles appearance based on lock state
+  function updateAllDragHandles() {
+    panels.forEach((data, panelId) => {
+      if (data.dragHandle) {
+        updateDragHandleAppearance(data.dragHandle);
+      }
+    });
+  }
+
   // Initialize all draggable panels
   function initializeAllDraggablePanels() {
     const draggablePanels = document.querySelectorAll('.draggable-panel');
@@ -260,6 +304,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Initial setup
   initializeAllDraggablePanels();
+
+  // Listen for unified panel lock state changes
+  // Check for lock state changes periodically (since localStorage doesn't emit events across scripts)
+  let lastLockState = isUnifiedPanelLocked();
+  setInterval(() => {
+    const currentLockState = isUnifiedPanelLocked();
+    if (currentLockState !== lastLockState) {
+      lastLockState = currentLockState;
+      updateAllDragHandles();
+    }
+  }, 100); // Check every 100ms
 
   // Re-initialize when DOM changes (for dynamically added panels)
   const mainObserver = new MutationObserver(() => {
