@@ -66,26 +66,12 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
       ? updatedElements
       : ((updatedElements as { elements?: any[] }).elements ?? updatedElements);
 
-    // Apply positions from graph-posX and graph-posY labels
-    elementsToAdd.forEach((element: any) => {
-      if (element.group === 'nodes' && element.data?.extraData?.labels) {
-        const labels = element.data.extraData.labels;
-        if (labels['graph-posX'] && labels['graph-posY']) {
-          element.position = {
-            x: parseFloat(labels['graph-posX']),
-            y: parseFloat(labels['graph-posY'])
-          };
-        }
-      }
-    });
-
     cy.add(elementsToAdd);
 
-    // Determine if any node already has saved position labels
+    // Determine if any node already has saved positions
     const nodes = elementsToAdd.filter((element: any) => element.group === 'nodes');
     const hasPosLabels = nodes.some((element: any) => {
-      const labels = element?.data?.extraData?.labels;
-      return labels && labels['graph-posX'] && labels['graph-posY'];
+      return element.position && element.position.x !== undefined && element.position.y !== undefined;
     });
 
     // Set all node to have a editor flag.

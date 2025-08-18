@@ -90,8 +90,25 @@ export interface CloudNodeAnnotation {
   };
 }
 
+export interface NodeAnnotation {
+  id: string;
+  position?: {
+    x: number;
+    y: number;
+  };
+  geoCoordinates?: {
+    lat: number;
+    lng: number;
+  };
+  icon?: string;
+  groupLabelPos?: string;
+  group?: string;
+  level?: string;
+}
+
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
   cloudNodeAnnotations?: CloudNodeAnnotation[];
+  nodeAnnotations?: NodeAnnotation[];
 }
