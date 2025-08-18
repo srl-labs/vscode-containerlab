@@ -456,14 +456,14 @@ export function sanitize(
   }
 
   // Trim leading/trailing separators not allowed at ends
-  out = out.replace(/^[\-.]+/, "").replace(/[\-.]+$/, "");
+  out = out.replace(/^[-.]+/, "").replace(/[-.]+$/, "");
 
   // Must start with alphanumeric
   if (!out || !/^[A-Za-z0-9]/.test(out)) out = `c-${out}`;
 
   // Enforce length and avoid bad trailing chars after cut
   if (out.length > maxLen) out = out.slice(0, maxLen);
-  out = out.replace(/[\-.]+$/, "");
+  out = out.replace(/[-.]+$/, "");
   if (!out) out = "container";
 
   return lower ? out.toLowerCase() : out;
