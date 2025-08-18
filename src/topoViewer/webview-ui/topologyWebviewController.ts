@@ -121,6 +121,41 @@ class TopologyWebviewController {
     });
   }
 
+  // Add automatic save for view mode (only saves annotations.json)
+  private setupAutoSaveViewMode(): void {
+    // Debounced save function for view mode
+    const autoSaveViewMode = this.debounce(async () => {
+      const suppressNotification = true;
+      await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
+    }, 500); // Wait 500ms after last change before saving
+
+    // Listen for position changes only - view mode doesn't add/remove nodes
+    this.cy.on('position', (event) => {
+      const target = event.target;
+      // Only process node position changes, not edges
+      if (!target.isNode()) {
+        return;
+      }
+      // Skip position events for free text nodes - they handle their own saves
+      if (target.data('topoViewerRole') === 'freeText') {
+        return;
+      }
+      // Avoid autosave while a node is actively being dragged
+      if (!target.grabbed()) {
+        autoSaveViewMode();
+      }
+    });
+
+    this.cy.on('dragfree', 'node', (event) => {
+      const node = event.target;
+      // Skip dragfree for free text nodes - they handle their own saves
+      if (node.data('topoViewerRole') === 'freeText') {
+        return;
+      }
+      autoSaveViewMode();
+    });
+  }
+
   private registerCustomZoom(): void {
     this.cy.userZoomingEnabled(false);
     const container = this.cy.container();
@@ -277,6 +312,9 @@ class TopologyWebviewController {
 
     if (mode === 'edit') {
       this.setupAutoSave();
+    } else {
+      // Enable autosave for view mode as well (saves annotations.json)
+      this.setupAutoSaveViewMode();
     }
 
     // Create capture viewport manager with the required method
