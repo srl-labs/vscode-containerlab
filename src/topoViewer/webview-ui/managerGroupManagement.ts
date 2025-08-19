@@ -377,6 +377,62 @@ export class ManagerGroupManagement {
         if (radiusValueEl) radiusValueEl.textContent = radius + 'px';
       }
       if (textColorEl) textColorEl.value = style?.color || '#ebecf0';
+
+      // Attach event listeners for auto-update
+      const autoUpdateGroup = () => this.nodeParentPropertiesUpdate();
+
+      // Format range display values
+      const formatRangeValue = (el: HTMLInputElement, value: string) => {
+        if (el.id.includes('opacity')) return value + '%';
+        if (el.dataset.unit) return value + el.dataset.unit;
+        return value + 'px';
+      };
+
+      // Attach listeners to all relevant inputs
+      panel.querySelectorAll('input[type="range"], input[type="number"], input[type="color"], input[type="text"][id$="-hex"], select').forEach(el => {
+        const inputEl = el as HTMLInputElement | HTMLSelectElement;
+        const isRange = inputEl instanceof HTMLInputElement && inputEl.type === 'range';
+        const isColor = inputEl instanceof HTMLInputElement && inputEl.type === 'color';
+        const isHex = inputEl instanceof HTMLInputElement && inputEl.type === 'text' && inputEl.id.endsWith('-hex');
+        const eventType = isRange || isColor || isHex ? 'input' : 'change';
+
+        const onChange = () => {
+          if (isRange) {
+            const valueEl = panel.querySelector('#' + inputEl.id + '-value') as HTMLElement;
+            if (valueEl) valueEl.textContent = formatRangeValue(inputEl, inputEl.value);
+          } else if (isColor) {
+            const hexId = inputEl.id.replace('-color', '-color-hex');
+            const hex = document.getElementById(hexId) as HTMLInputElement;
+            if (hex) hex.value = inputEl.value;
+          } else if (isHex) {
+            const val = inputEl.value.toUpperCase();
+            if (/^#[0-9A-F]{6}$/.test(val)) {
+              const colorId = inputEl.id.replace('-hex', '');
+              const color = document.getElementById(colorId) as HTMLInputElement;
+              if (color) color.value = val;
+            }
+          }
+          autoUpdateGroup();
+        };
+
+        inputEl.addEventListener(eventType, onChange);
+        if (isRange || isColor) onChange(); // Initial update
+      });
+
+      // Attach button click handlers
+      const deleteButton = document.getElementById('panel-node-editor-parent-delete-button');
+      if (deleteButton) deleteButton.addEventListener('click', () => this.nodeParentRemoval());
+
+      const closeButton = document.getElementById('panel-node-editor-parent-close-button');
+      if (closeButton) closeButton.addEventListener('click', () => this.nodeParentPropertiesUpdateClose());
+
+      const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement;
+      if (updateButton) updateButton.addEventListener('click', () => autoUpdateGroup());
+
+      // Attach dropdown toggle
+      const dropdownButton = panel.querySelector('#panel-node-editor-parent-label-dropdown button');
+      if (dropdownButton) dropdownButton.addEventListener('click', () => this.panelNodeEditorParentToggleDropdown());
+
     } catch (error) {
       log.error(`showGroupEditor failed: ${error}`);
     }

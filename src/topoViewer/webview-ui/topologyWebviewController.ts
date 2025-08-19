@@ -286,6 +286,23 @@ class TopologyWebviewController {
       }
     };
 
+    // Add double-click handlers for opening editors
+    this.cy.on('dblclick', 'node[topoViewerRole != "freeText"][topoViewerRole != "dummyChild"]', (event) => {
+      const node = event.target;
+      if (node.data('topoViewerRole') === 'group') {
+        this.groupManager.showGroupEditor(node);
+      } else if (node.data('topoViewerRole') === 'cloud') {
+        this.viewportPanels?.panelNetworkEditor(node);
+      } else {
+        this.viewportPanels?.panelNodeEditor(node);
+      }
+    });
+
+    this.cy.on('dblclick', 'edge', (event) => {
+      const edge = event.target;
+      this.viewportPanels?.panelEdgeEditor(edge);
+    });
+
     // Expose layout functions globally for HTML event handlers
     window.viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
     window.layoutAlgoChange = this.layoutAlgoManager.layoutAlgoChange.bind(this.layoutAlgoManager);
@@ -1114,9 +1131,14 @@ class TopologyWebviewController {
               this.isEdgeHandlerActive = true;
               this.eh.start(node);
               break;
-            case originalEvent.altKey && isNodeInEditMode:
-              log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
-              node.remove();
+            case originalEvent.altKey && (isNodeInEditMode || node.data('topoViewerRole') === 'group'):
+              if (node.data('topoViewerRole') === 'group') {
+                log.debug(`Alt+click on group: deleting group ${node.id()}`);
+                this.groupManager?.directGroupRemoval(node.id());
+              } else {
+                log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
+                node.remove();
+              }
               break;
             case (node.data("topoViewerRole") == "textbox"):
               break;
@@ -1146,6 +1168,23 @@ class TopologyWebviewController {
 
       this.cy.on('ehcancel', () => {
         this.isEdgeHandlerActive = false;
+      });
+
+      document.addEventListener('keydown', (event) => {
+        // Check if we should handle the keyboard event
+        if (!this.shouldHandleKeyboardEvent(event)) {
+          return;
+        }
+
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          event.preventDefault();
+          this.handleDeleteKeyPress();
+        } else if (event.ctrlKey && event.key === 'a') {
+          event.preventDefault();
+          this.handleSelectAll();
+        } else if (event.key.toLowerCase() === 'g') {
+          this.groupManager.viewportButtonsAddGroup();
+        }
       });
 
       // Edge creation completion via edgehandles.
@@ -1205,6 +1244,19 @@ class TopologyWebviewController {
         // NO onNodeClick handler - all node interactions via right-click menu
         // NO onEdgeClick handler - all edge interactions via right-click menu (if needed)
       });
+
+      // Global keyboard event handler for Ctrl+A in viewer mode
+      document.addEventListener('keydown', (event) => {
+        // Check if we should handle the keyboard event
+        if (!this.shouldHandleKeyboardEvent(event)) {
+          return;
+        }
+
+        if (event.ctrlKey && event.key === 'a') {
+          event.preventDefault();
+          this.handleSelectAll();
+        }
+      });
     }
 
     // Drag-and-drop reparenting logic is now handled by groupManager.initializeGroupManagement()
@@ -1212,37 +1264,120 @@ class TopologyWebviewController {
 
   }
 
-  // /**
-  //  * Adds a new node at the specified position.
-  //  * @param position - The position where the node will be added.
-  //  * @public
-  //  */
-  // public addNodeAtPosition(position: cytoscape.Position): void {
-  //   // const newNodeId = `id:nodeId-${this.cy.nodes().length + 1}`;
-  //   const newNodeId = `nodeId-${this.cy.nodes().length + 1}`;
-
-  //   const newNodeData: NodeData = {
-  //     id: newNodeId,
-  //     editor: "true",
-  //     weight: "30",
-  //     // name: newNodeId.split(":")[1]
-  //     name: newNodeId,
-  //     parent: "",
-  //     topoViewerRole: "pe",
-  //     sourceEndpoint: "",
-  //     targetEndpoint: "",
-  //     containerDockerExtraAttribute: { state: "", status: "" },
-  //     extraData: { kind: "nokia_srlinux", longname: "", image: "", mgmtIpv4Addresss: "" },
-  // };
-  //   this.cy.add({ group: 'nodes', data: newNodeData, position });
-  // }
-
   private isSpecialEndpoint(nodeId: string): boolean {
     return (
       nodeId.startsWith('host:') ||
       nodeId.startsWith('mgmt-net:') ||
       nodeId.startsWith('macvlan:')
     );
+  }
+
+  /**
+   * Determines if keyboard events should be handled by the topology viewer
+   * @private
+   */
+  private shouldHandleKeyboardEvent(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement;
+
+    // Don't handle if focus is on an input, textarea, or contenteditable element
+    if (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.contentEditable === 'true' ||
+      target.isContentEditable) {
+      return false;
+    }
+
+    // Don't handle if focus is on a dropdown or select element
+    if (target.tagName === 'SELECT') {
+      return false;
+    }
+
+    // Don't handle if we're inside a dialog or modal that's not our confirmation dialog
+    const isInDialog = target.closest('.free-text-dialog, .panel-overlay, .dropdown-menu');
+    const isInOurConfirmDialog = target.closest('.delete-confirmation-dialog');
+
+    if (isInDialog && !isInOurConfirmDialog) {
+      return false;
+    }
+
+    // Only handle if the event target is: doc body, cytoscape/canvas area
+    const cyContainer = document.getElementById('cy');
+    const isInCyContainer = cyContainer && (target === cyContainer || cyContainer.contains(target));
+    const isDocumentBody = target === document.body;
+
+    return isDocumentBody || isInCyContainer || target.tagName === 'CANVAS';
+  }
+
+  /**
+   * Handles Ctrl+A to select all selectable items
+   * @private
+   */
+  private handleSelectAll(): void {
+    // Get all nodes and edges that are selectable
+    const selectableElements = this.cy.$('node, edge').filter((element) => {
+      // Only select elements that are actually selectable
+      return element.selectable();
+    });
+
+    // Deselect all first, then select all selectable elements
+    this.cy.$(':selected').unselect();
+    selectableElements.select();
+
+    log.debug(`Selected ${selectableElements.length} elements with Ctrl+A`);
+  }
+
+  /**
+   * Handles Delete key press to remove selected nodes and edges
+   * @private
+   */
+  private async handleDeleteKeyPress(): Promise<void> {
+    // Get all selected elements
+    const selectedElements = this.cy.$(':selected');
+
+    if (selectedElements.length === 0) {
+      return;
+    }
+
+    // Show confirmation dialog if more than one item is selected
+    if (selectedElements.length > 1) {
+      const result = await (window as any).showDeleteConfirm(null, selectedElements.length);
+      if (!result) {
+        return;
+      }
+    }
+
+    // Handle selected nodes
+    const selectedNodes = selectedElements.nodes();
+    selectedNodes.forEach(node => {
+      const topoViewerRole = node.data('topoViewerRole');
+
+      // Handle free text nodes using the existing manager
+      if (topoViewerRole === 'freeText') {
+        this.freeTextManager?.removeFreeTextAnnotation(node.id());
+      } else if (topoViewerRole === 'group') {
+        // Handle group nodes - use the group management system
+        if (this.isViewportDrawerClabEditorChecked) {
+          log.debug(`Delete key: removing group ${node.id()}`);
+          this.groupManager?.directGroupRemoval(node.id());
+        }
+      } else {
+        // Handle regular nodes - only delete if in edit mode and node is editable
+        const isNodeInEditMode = node.data("editor") === "true";
+        if (this.isViewportDrawerClabEditorChecked && isNodeInEditMode) {
+          log.debug(`Delete key: removing node ${node.data('extraData')?.longname || node.id()}`);
+          node.remove();
+        }
+      }
+    });
+
+    // Handle selected edges
+    const selectedEdges = selectedElements.edges();
+    selectedEdges.forEach(edge => {
+      if (this.isViewportDrawerClabEditorChecked) {
+        log.debug(`Delete key: removing edge ${edge.id()}`);
+        edge.remove();
+      }
+    });
   }
 
   /**
@@ -1375,11 +1510,46 @@ class TopologyWebviewController {
     }
   }
 
-  public bulkCreateLinks(sourceFilterText: string, targetFilterText: string): void {
+  public async bulkCreateLinks(sourceFilterText: string, targetFilterText: string): Promise<void> {
     const sourceFilter = FilterUtils.createFilter(sourceFilterText);
     const targetFilter = FilterUtils.createFilter(targetFilterText);
-    const sources = this.cy.nodes('node[topoViewerRole != "freeText"][!parent]').filter((node) => sourceFilter(node.data('name')));
-    const targets = this.cy.nodes('node[topoViewerRole != "freeText"][!parent]').filter((node) => targetFilter(node.data('name')));
+    const sources = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"][topoViewerRole != "dummyChild"]').filter((node) => sourceFilter(node.data('name')));
+    const targets = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"][topoViewerRole != "dummyChild"]').filter((node) => targetFilter(node.data('name')));
+
+    // Calculate potential links to show in confirmation
+    let potentialLinks = 0;
+    sources.forEach((source) => {
+      targets.forEach((target) => {
+        if (source.id() !== target.id() && !source.edgesTo(target).nonempty()) {
+          potentialLinks++;
+        }
+      });
+    });
+
+    if (potentialLinks === 0) {
+      (window as any).showConfirmDialog({
+        title: 'No Links to Create',
+        message: 'No new links would be created with the specified patterns.',
+        icon: 'fas fa-info-circle text-blue-500',
+        confirmText: 'OK',
+        confirmStyle: 'btn-primary',
+        cancelText: null // Hide cancel button for info dialogs
+      });
+      return;
+    }
+
+    // Show confirmation dialog
+    const result = await (window as any).showBulkActionConfirm(
+      'Bulk Link Creation',
+      sourceFilterText,
+      targetFilterText,
+      potentialLinks
+    );
+
+    if (!result) {
+      return;
+    }
+
     sources.forEach((source) => {
       targets.forEach((target) => {
         if (source.id() !== target.id() && !source.edgesTo(target).nonempty()) {
