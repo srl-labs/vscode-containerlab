@@ -430,3 +430,41 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 
   return undefined;
 }
+
+// Sanitizes a string to a Docker-safe container name.
+// Rules: only [A-Za-z0-9_.-], must start with alnum, no trailing '.'/'-'.
+export function sanitize(
+  raw: string,
+  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {}
+): string {
+  if (!raw) return "container";
+
+  const allowed = /[A-Za-z0-9_.-]/;
+  let out = "";
+  let lastDash = false;
+
+  for (const ch of raw) {
+    if (allowed.test(ch) && ch !== "/") { // '/' is not allowed in --name
+      out += ch;
+      lastDash = false;
+    } else {
+      if (!lastDash) {
+        out += "-";
+        lastDash = true;
+      }
+    }
+  }
+
+  // Trim leading/trailing separators not allowed at ends
+  out = out.replace(/^[-.]+/, "").replace(/[-.]+$/, "");
+
+  // Must start with alphanumeric
+  if (!out || !/^[A-Za-z0-9]/.test(out)) out = `c-${out}`;
+
+  // Enforce length and avoid bad trailing chars after cut
+  if (out.length > maxLen) out = out.slice(0, maxLen);
+  out = out.replace(/[-.]+$/, "");
+  if (!out) out = "container";
+
+  return lower ? out.toLowerCase() : out;
+}
