@@ -29,14 +29,12 @@ jobs:
 
       - name: Run tests
         run: npm test
-        continue-on-error: true  # Continue to upload test artifacts even if tests fail
 
       - name: Build webview
         run: npm run build:webview
 
       - name: Package extension
         run: npm run package
-        continue-on-error: true  # Continue even if packaging fails
 
       - name: Upload test reports
         uses: actions/upload-artifact@v4
