@@ -3,9 +3,11 @@ dist
 node_modules
 .vscode-test/
 topoViewerData
-.vscode/
+.vscode/*
+!.vscode/
+!.vscode/launch.json
+
 package.json
-.vscode/launch.json
 .DS_Store
 **/.DS_Store
 *.vsix
