@@ -553,6 +553,23 @@ export async function linkWireshark(
 }
 
 /**
+ * Toggle split view with YAML editor
+ */
+export async function viewportButtonsToggleSplit(event?: Event): Promise<void> {
+  if (event) {
+    event.preventDefault();
+  }
+
+  try {
+    const sender = getMessageSender();
+    await sender.sendMessageToVscodeEndpointPost('topo-toggle-split-view', {});
+    log.info('Split view toggle requested');
+  } catch (error) {
+    log.error(`Failed to toggle split view: ${error}`);
+  }
+}
+
+/**
  * Initialize global handlers - make functions available globally for onclick handlers
  */
 export function initializeGlobalHandlers(): void {
@@ -564,6 +581,7 @@ export function initializeGlobalHandlers(): void {
   // Only set view-specific handlers here that are not provided by the controller
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
+  (globalThis as any).viewportButtonsToggleSplit = viewportButtonsToggleSplit;
   (globalThis as any).nodeActionConnectToSSH = nodeActionConnectToSSH;
   (globalThis as any).nodeActionAttachShell = nodeActionAttachShell;
   (globalThis as any).nodeActionViewLogs = nodeActionViewLogs;
