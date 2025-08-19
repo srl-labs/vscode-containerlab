@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.16.1] - 2025-08-19
+## [0.16.1-2] - 2025-08-19
 
 - TopoViewer/editor:
   - Filterable dropdowns
