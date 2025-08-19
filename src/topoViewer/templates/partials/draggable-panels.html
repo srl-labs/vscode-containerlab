@@ -1,0 +1,329 @@
+<script>
+// Draggable Panels Manager
+document.addEventListener('DOMContentLoaded', function () {
+  const panels = new Map(); // Store panel instances
+  let isDragging = false;
+  let currentPanel = null;
+  let startX, startY, initialLeft, initialTop;
+
+  // Check if panel should use shared positioning (exclude unified floating panel)
+  function shouldUseSharedPosition(panelId) {
+    return panelId !== 'unified-floating-panel';
+  }
+
+  // Check if unified floating panel is locked
+  function isUnifiedPanelLocked() {
+    // Try to get the unified panel state from localStorage
+    const savedState = localStorage.getItem('unifiedPanelState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        return state.locked || false;
+      } catch (e) {
+        console.warn('Failed to parse unified panel state:', e);
+      }
+    }
+    return false;
+  }
+
+  // Load shared panel position from localStorage
+  function loadSharedPanelPosition() {
+    const savedPosition = localStorage.getItem('topoViewerSharedPanelPosition');
+    if (savedPosition) {
+      try {
+        return JSON.parse(savedPosition);
+      } catch (e) {
+        console.warn('Failed to parse saved shared panel position:', e);
+      }
+    }
+    return null;
+  }
+
+  // Save shared panel position to localStorage
+  function saveSharedPanelPosition(position) {
+    localStorage.setItem('topoViewerSharedPanelPosition', JSON.stringify(position));
+  }
+
+  // Get navbar height to calculate proper bounds
+  function getNavbarHeight() {
+    const navbar = document.querySelector('.navbar');
+    return navbar ? navbar.offsetHeight : 72; // Default to 72px (4.5rem) if not found
+  }
+
+  // Apply saved position to a panel
+  function applySavedPosition(panel, panelId) {
+    if (!shouldUseSharedPosition(panelId)) {
+      return; // Skip positioning for excluded panels
+    }
+
+    const savedPosition = loadSharedPanelPosition();
+    
+    if (savedPosition) {
+      // Keep panel within viewport bounds (below navbar, above bottom)
+      const navbarHeight = getNavbarHeight();
+      const maxLeft = window.innerWidth - panel.offsetWidth;
+      const maxTop = window.innerHeight - panel.offsetHeight;
+      const minTop = navbarHeight; // Can't go above navbar
+      
+      const left = Math.max(0, Math.min(savedPosition.left, maxLeft));
+      const top = Math.max(minTop, Math.min(savedPosition.top, maxTop));
+      
+      panel.style.position = 'fixed';
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+    }
+  }
+
+  // Update drag handle appearance based on lock state
+  function updateDragHandleAppearance(dragHandle) {
+    if (!dragHandle) return;
+    
+    if (isUnifiedPanelLocked()) {
+      dragHandle.style.cursor = 'default';
+    } else {
+      dragHandle.style.cursor = 'grab';
+    }
+  }
+
+  // Create and insert drag handle for a panel
+  function createDragHandle(panel) {
+    // Check if drag handle already exists
+    if (panel.querySelector('.panel-drag-handle')) {
+      return panel.querySelector('.panel-drag-handle');
+    }
+
+    // Create the drag handle element
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150';
+    dragHandle.style.margin = '0 0 8px 0';
+    
+    // Insert as the first child of the panel
+    panel.insertBefore(dragHandle, panel.firstChild);
+    
+    // Update appearance based on current lock state
+    updateDragHandleAppearance(dragHandle);
+    
+    return dragHandle;
+  }
+
+  // Initialize drag functionality for a panel
+  function initializePanelDrag(panel) {
+    const panelId = panel.id;
+    const dragHandle = createDragHandle(panel);
+    
+    if (!dragHandle) {
+      console.warn(`Failed to create drag handle for panel: ${panelId}`);
+      return;
+    }
+
+    // Store panel data
+    panels.set(panelId, {
+      element: panel,
+      dragHandle: dragHandle,
+      isDraggable: true
+    });
+
+    // Apply saved position when panel becomes visible
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          if (panel.style.display !== 'none' && !panel.hasAttribute('data-position-applied')) {
+            applySavedPosition(panel, panelId);
+            panel.setAttribute('data-position-applied', 'true');
+          }
+        }
+      });
+    });
+    
+    observer.observe(panel, { 
+      attributes: true, 
+      attributeFilter: ['style'] 
+    });
+
+    // Mouse down on drag handle (start drag)
+    dragHandle.addEventListener('mousedown', function (e) {
+      // Don't start dragging if unified floating panel is locked
+      if (isUnifiedPanelLocked()) {
+        return;
+      }
+      
+      isDragging = true;
+      currentPanel = panel;
+      
+      dragHandle.style.cursor = 'grabbing';
+      panel.style.cursor = 'grabbing';
+      
+      const rect = panel.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+      // Ensure panel is positioned absolutely for dragging
+      panel.style.position = 'fixed';
+      panel.style.left = initialLeft + 'px';
+      panel.style.top = initialTop + 'px';
+      panel.style.bottom = 'auto';
+      panel.style.right = 'auto';
+      
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    // Add visual feedback on hover
+    dragHandle.addEventListener('mouseenter', function () {
+      if (!isDragging && !isUnifiedPanelLocked()) {
+        dragHandle.style.backgroundColor = 'var(--vscode-button-hoverBackground)';
+      }
+    });
+
+    dragHandle.addEventListener('mouseleave', function () {
+      if (!isDragging) {
+        updateDragHandleAppearance(dragHandle);
+      }
+    });
+  }
+
+  // Global mouse move (drag)
+  document.addEventListener('mousemove', function (e) {
+    if (!isDragging || !currentPanel || isUnifiedPanelLocked()) return;
+
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+
+    let newLeft = initialLeft + deltaX;
+    let newTop = initialTop + deltaY;
+
+    // Keep panel within viewport bounds (respect navbar boundaries)
+    const panelRect = currentPanel.getBoundingClientRect();
+    const navbarHeight = getNavbarHeight();
+    const maxLeft = window.innerWidth - panelRect.width;
+    const maxTop = window.innerHeight - panelRect.height;
+    const minTop = navbarHeight; // Can't go above navbar
+
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    newTop = Math.max(minTop, Math.min(newTop, maxTop));
+
+    currentPanel.style.left = newLeft + 'px';
+    currentPanel.style.top = newTop + 'px';
+  });
+
+  // Global mouse up (end drag)
+  document.addEventListener('mouseup', function () {
+    if (isDragging && currentPanel) {
+      isDragging = false;
+      
+      const dragHandle = currentPanel.querySelector('.panel-drag-handle');
+      if (dragHandle) {
+        dragHandle.style.cursor = 'grab';
+        dragHandle.style.backgroundColor = '';
+      }
+      currentPanel.style.cursor = 'default';
+      
+      // Save shared position for all panels (except excluded ones)
+      if (shouldUseSharedPosition(currentPanel.id)) {
+        const rect = currentPanel.getBoundingClientRect();
+        saveSharedPanelPosition({
+          left: rect.left,
+          top: rect.top
+        });
+      }
+      
+      currentPanel = null;
+    }
+  });
+
+  // Handle window resize to keep panels in bounds
+  window.addEventListener('resize', function () {
+    let sharedPositionUpdated = false;
+    
+    panels.forEach((data, panelId) => {
+      const panel = document.getElementById(panelId);
+      if (panel && panel.style.display !== 'none') {
+        const rect = panel.getBoundingClientRect();
+        const navbarHeight = getNavbarHeight();
+        const maxLeft = window.innerWidth - rect.width;
+        const maxTop = window.innerHeight - rect.height;
+        const minTop = navbarHeight; // Can't go above navbar
+
+        let newLeft = Math.max(0, Math.min(rect.left, maxLeft));
+        let newTop = Math.max(minTop, Math.min(rect.top, maxTop));
+
+        if (newLeft !== rect.left || newTop !== rect.top) {
+          panel.style.left = newLeft + 'px';
+          panel.style.top = newTop + 'px';
+          
+          // Update shared position once for all shared panels
+          if (shouldUseSharedPosition(panelId) && !sharedPositionUpdated) {
+            saveSharedPanelPosition({
+              left: newLeft,
+              top: newTop
+            });
+            sharedPositionUpdated = true;
+          }
+        }
+      }
+    });
+  });
+
+  // Prevent drag when clicking on interactive elements
+  document.addEventListener('mousedown', function (e) {
+    const target = e.target;
+    if (target.tagName === 'INPUT' || 
+        target.tagName === 'BUTTON' || 
+        target.tagName === 'SELECT' || 
+        target.tagName === 'TEXTAREA' ||
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('.dropdown-menu') ||
+        target.closest('.input-field')) {
+      return; // Don't interfere with form elements
+    }
+  });
+
+  // Update all drag handles appearance based on lock state
+  function updateAllDragHandles() {
+    panels.forEach((data, panelId) => {
+      if (data.dragHandle) {
+        updateDragHandleAppearance(data.dragHandle);
+      }
+    });
+  }
+
+  // Initialize all draggable panels
+  function initializeAllDraggablePanels() {
+    const draggablePanels = document.querySelectorAll('.draggable-panel');
+    draggablePanels.forEach(panel => {
+      if (!panels.has(panel.id)) {
+        initializePanelDrag(panel);
+      }
+    });
+  }
+
+  // Initial setup
+  initializeAllDraggablePanels();
+
+  // Listen for unified panel lock state changes
+  // Check for lock state changes periodically (since localStorage doesn't emit events across scripts)
+  let lastLockState = isUnifiedPanelLocked();
+  setInterval(() => {
+    const currentLockState = isUnifiedPanelLocked();
+    if (currentLockState !== lastLockState) {
+      lastLockState = currentLockState;
+      updateAllDragHandles();
+    }
+  }, 100); // Check every 100ms
+
+  // Re-initialize when DOM changes (for dynamically added panels)
+  const mainObserver = new MutationObserver(() => {
+    initializeAllDraggablePanels();
+  });
+  
+  mainObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+});
+</script>
