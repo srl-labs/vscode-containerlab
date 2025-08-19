@@ -346,29 +346,53 @@
                                 "type": "string",
                                 "enum": [
                                     "ixsa1",
+                                    "ixs-a1",
                                     "ixrd1",
+                                    "ixr-d1",
                                     "ixrd2",
+                                    "ixr-d2",
                                     "ixrd3",
+                                    "ixr-d3",
                                     "ixrd2l",
+                                    "ixr-d2l",
                                     "ixrd3l",
+                                    "ixr-d3l",
                                     "ixrd4",
+                                    "ixr-d4",
                                     "ixrd5",
+                                    "ixr-d5",
                                     "ixrh2",
+                                    "ixr-h2",
                                     "ixrh3",
+                                    "ixr-h3",
                                     "ixrh4",
+                                    "ixr-h4",
                                     "ixrh432d",
+                                    "ixr-h4-32d",
                                     "ixrh5",
+                                    "ixr-h5",
                                     "ixrh564d",
+                                    "ixr-h5-64d",
                                     "ixrh564o",
+                                    "ixr-h5-64o",
                                     "ixr6",
+                                    "ixr-6",
                                     "ixr6e",
+                                    "ixr-6e",
                                     "ixr10",
+                                    "ixr-10",
                                     "ixr10e",
+                                    "ixr-10e",
                                     "ixr18e",
+                                    "ixr-18e",
                                     "sxr1x44s",
+                                    "sxr-1x-44s",
                                     "sxr1d32d",
+                                    "sxr-1d-32d",
                                     "ixrx1b",
-                                    "ixrx3b"
+                                    "ixr-x1b",
+                                    "ixrx3b",
+                                    "ixr-x3b"
                                 ]
                             }
                         }
@@ -393,6 +417,7 @@
                                     {
                                         "enum": [
                                             "sr-1",
+                                            "sr-1-24d",
                                             "sr-1e",
                                             "sr-1e-sec",
                                             "sr-1s",
@@ -1354,7 +1379,16 @@
                         "juniper_vjunosevolved": {
                             "$ref": "#/definitions/node-config"
                         },
+                        "cjunosevolved": {
+                            "ref": "#/definitions/node-config"
+                        },
+                        "juniper_cjunosevolved": {
+                            "ref": "#/definitions/node-config"
+                        },
                         "aruba_aoscx": {
+                            "$ref": "#/definitions/node-config"
+                        },
+                        "cisco_xrd": {
                             "$ref": "#/definitions/node-config"
                         },
                         "cisco_xrv": {
@@ -1364,6 +1398,9 @@
                             "$ref": "#/definitions/node-config"
                         },
                         "cisco_nxos": {
+                            "$ref": "#/definitions/node-config"
+                        },
+                        "cisco_n9kv": {
                             "$ref": "#/definitions/node-config"
                         },
                         "cisco_csr": {
@@ -1376,6 +1413,12 @@
                             "$ref": "#/definitions/node-config"
                         },
                         "cisco_iol": {
+                            "$ref": "#/definitions/node-config"
+                        },
+                        "cisco_8000": {
+                            "$ref": "#/definitions/node-config"
+                        },
+                        "cisco_c8000v": {
                             "$ref": "#/definitions/node-config"
                         },
                         "linux": {
@@ -1402,16 +1445,7 @@
                         "ext-container": {
                             "$ref": "#/definitions/node-config"
                         },
-                        "cisco_xrd": {
-                            "$ref": "#/definitions/node-config"
-                        },
                         "rare": {
-                            "$ref": "#/definitions/node-config"
-                        },
-                        "cisco_8000": {
-                            "$ref": "#/definitions/node-config"
-                        },
-                        "cisco_c8000v": {
                             "$ref": "#/definitions/node-config"
                         },
                         "cumulus_cvx": {
@@ -1423,6 +1457,9 @@
                         "freebsd": {
                             "$ref": "#/definitions/node-config"
                         },
+                        "openwrt": {
+                            "$ref": "#/definitions/node-config"
+                        },
                         "huawei_vrp": {
                             "$ref": "#/definitions/node-config"
                         },
@@ -1431,12 +1468,6 @@
                         },
                         "fdio_vpp": {
                             "$ref": "#/definitions/node-config"
-                        },
-                        "cjunosevolved": {
-                            "ref": "#/definitions/node-config"
-                        },
-                        "juniper_cjunosevolved": {
-                            "ref": "#/definitions/node-config"
                         }
                     },
                     "additionalProperties": false

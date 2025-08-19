@@ -39,3 +39,7 @@ clab-*/
 #others
 .claude/**
 legacy-backup/**
+AGENTS.md
+CLAUDE.md
+mochawesome-report/**
+patch.sh
