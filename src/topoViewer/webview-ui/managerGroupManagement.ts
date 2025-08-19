@@ -133,41 +133,7 @@ export class ManagerGroupManagement {
     };
     this.groupStyleManager.updateGroupStyle(newParentId, defaultStyle);
 
-    const panel = document.getElementById('panel-node-editor-parent');
-    if (panel) {
-      panel.style.display = 'block';
-      const groupIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
-      const groupEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
-      const levelEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
-      const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
-      const bgOpacityEl = document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement;
-      const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
-      const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
-      const borderStyleEl = document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement;
-      const borderRadiusEl = document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement;
-      const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
-
-      if (groupIdEl) groupIdEl.textContent = newParentId;
-      if (groupEl) groupEl.value = newParentId.split(':')[0];
-      if (levelEl) levelEl.value = newParentId.split(':')[1];
-
-      // Set the default style values in the inputs
-      if (bgColorEl) bgColorEl.value = '#d9d9d9';
-      if (bgOpacityEl) {
-        bgOpacityEl.value = '20';
-        const opacityValueEl = document.getElementById('panel-node-editor-parent-bg-opacity-value');
-        if (opacityValueEl) opacityValueEl.textContent = '20%';
-      }
-      if (borderColorEl) borderColorEl.value = '#dddddd';
-      if (borderWidthEl) borderWidthEl.value = '0.5';
-      if (borderStyleEl) borderStyleEl.value = 'solid';
-      if (borderRadiusEl) {
-        borderRadiusEl.value = '0';
-        const radiusValueEl = document.getElementById('panel-node-editor-parent-border-radius-value');
-        if (radiusValueEl) radiusValueEl.textContent = '0px';
-      }
-      if (textColorEl) textColorEl.value = '#ebecf0';
-    }
+    this.showGroupEditor(newParentId);
 
     return newParentId;
   }
