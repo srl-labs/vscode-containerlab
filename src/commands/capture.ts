@@ -255,8 +255,9 @@ export async function captureEdgesharkVNC(
   }
 
   const port = await utils.getFreePort()
+  const ctrName = utils.sanitize(`clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()}`)
   const containerId = await new Promise<string>((resolve, reject) => {
-    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()} ${dockerImage}`;
+    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name ${ctrName} ${dockerImage}`;
     exec(command, { encoding: 'utf-8' }, (err, stdout, stderr) => {
       if (err) {
         vscode.window.showErrorMessage(`Starting Wireshark: ${stderr}`);

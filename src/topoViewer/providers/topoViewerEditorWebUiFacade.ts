@@ -7,7 +7,7 @@ import { log } from '../logging/extensionLogger';
 
 import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
-import { ClabLabTreeNode } from "../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
 import { runningLabsProvider } from "../../extension";
 
@@ -41,6 +41,7 @@ export class TopoViewerEditor {
   public isViewMode: boolean = false; // Indicates if running in view-only mode
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
+  private isSplitViewOpen: boolean = false; // Track if YAML split view is open
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -49,6 +50,22 @@ export class TopoViewerEditor {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
+    const labs = await runningLabsProvider?.discoverInspectLabs();
+    if (!labs) {
+      return undefined;
+    }
+    for (const lab of Object.values(labs)) {
+      const container = lab.containers?.find(
+        (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+      );
+      if (container) {
+        return container;
+      }
+    }
+    return undefined;
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
@@ -176,19 +193,11 @@ topology:
       kind: nokia_srlinux
       type: ixrd1
       image: ghcr.io/nokia/srlinux:latest
-      labels:
-        graph-posX: "80"
-        graph-posY: "20"
-        graph-icon: router
 
     srl2:
       kind: nokia_srlinux
       type: ixrd1
       image: ghcr.io/nokia/srlinux:latest
-      labels:
-        graph-posX: "160"
-        graph-posY: "20"
-        graph-icon: router
 
   links:
     # inter-switch link
@@ -807,7 +816,7 @@ topology:
           case 'clab-node-attach-shell': {
             try {
               const nodeName = payloadObj as string;
-              const node = {
+              const node = (await this.getContainerNode(nodeName)) ?? {
                 label: nodeName,
                 name: nodeName,
                 name_short: nodeName,
@@ -1017,7 +1026,8 @@ topology:
               await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
                 freeTextAnnotations: data.annotations,
                 groupStyleAnnotations: data.groupStyles,
-                cloudNodeAnnotations: existing.cloudNodeAnnotations
+                cloudNodeAnnotations: existing.cloudNodeAnnotations,
+                nodeAnnotations: existing.nodeAnnotations
               });
               result = { success: true };
               log.info(
@@ -1210,6 +1220,18 @@ topology:
             break;
           }
 
+          case 'topo-toggle-split-view': {
+            try {
+              await this.toggleSplitView();
+              result = { splitViewOpen: this.isSplitViewOpen };
+              log.info(`Split view toggled: ${this.isSplitViewOpen ? 'opened' : 'closed'}`);
+            } catch (innerError) {
+              error = `Error toggling split view: ${innerError}`;
+              log.error(`Error toggling split view: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           default: {
             error = `Unknown endpoint "${endpointName}".`;
             log.error(error);
@@ -1296,12 +1318,88 @@ topology:
   public async openTemplateFile(filePath: string): Promise<void> {
     try {
       const document = await vscode.workspace.openTextDocument(filePath);
+
+      // First, open the YAML file in a split view
       await vscode.window.showTextDocument(document, {
         preview: false,
         viewColumn: vscode.ViewColumn.Beside,
       });
+
+      // Wait for the editor to be fully rendered
+      await this.sleep(100);
+
+      // Set a custom layout with the topology editor taking 60% and YAML taking 40%
+      // This provides a good balance - the topology editor has more space while
+      // the YAML remains comfortably readable
+      await vscode.commands.executeCommand('vscode.setEditorLayout', {
+        orientation: 0,  // 0 = horizontal (left-right split)
+        groups: [
+          { size: 0.6 },  // Topology editor: 60%
+          { size: 0.4 }   // YAML editor: 40%
+        ]
+      });
+
+      // Mark split view as open
+      this.isSplitViewOpen = true;
+
+      // Return focus to the webview panel if it exists
+      if (this.currentPanel) {
+        this.currentPanel.reveal();
+      }
     } catch (error) {
       vscode.window.showErrorMessage(`Error opening template file: ${error}`);
+    }
+  }
+
+  /**
+   * Toggle the split view with YAML editor
+   */
+  public async toggleSplitView(): Promise<void> {
+    try {
+      if (!this.lastYamlFilePath) {
+        vscode.window.showWarningMessage('No YAML file associated with this topology');
+        return;
+      }
+
+      if (this.isSplitViewOpen) {
+        // Close the YAML editor
+        // Find the text editor showing the YAML file
+        const yamlUri = vscode.Uri.file(this.lastYamlFilePath);
+        const editors = vscode.window.visibleTextEditors;
+        let yamlEditor: vscode.TextEditor | undefined;
+
+        for (const editor of editors) {
+          if (editor.document.uri.fsPath === yamlUri.fsPath) {
+            yamlEditor = editor;
+            break;
+          }
+        }
+
+        if (yamlEditor) {
+          // Make the YAML editor active, then close it
+          await vscode.window.showTextDocument(yamlEditor.document, yamlEditor.viewColumn);
+          await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        }
+
+        // Reset to single column layout
+        await vscode.commands.executeCommand('vscode.setEditorLayout', {
+          orientation: 0,
+          groups: [{ size: 1 }]
+        });
+
+        this.isSplitViewOpen = false;
+
+        // Ensure webview has focus
+        if (this.currentPanel) {
+          this.currentPanel.reveal();
+        }
+      } else {
+        // Open the YAML editor in split view
+        await this.openTemplateFile(this.lastYamlFilePath);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error toggling split view: ${error}`);
+      log.error(`Error toggling split view: ${error}`);
     }
   }
 }

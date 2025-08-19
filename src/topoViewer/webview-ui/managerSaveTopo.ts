@@ -44,10 +44,6 @@ export class ManagerSaveTopo {
           }
         }
         nodeJson.position = { x: posX, y: posY };
-        if (nodeJson.data?.extraData?.labels) {
-          nodeJson.data.extraData.labels['graph-posX'] = posX.toString();
-          nodeJson.data.extraData.labels['graph-posY'] = posY.toString();
-        }
 
         if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
           nodeJson.data = nodeJson.data || {};
@@ -64,13 +60,6 @@ export class ManagerSaveTopo {
             nodeJson.data.lat = latlng.lat.toString();
             nodeJson.data.lng = latlng.lng.toString();
           }
-          nodeJson.data.extraData = nodeJson.data.extraData || {};
-          nodeJson.data.extraData.labels = nodeJson.data.extraData.labels || {};
-          nodeJson.data.extraData.labels['graph-geoCoordinateLat'] = nodeJson.data.lat;
-          nodeJson.data.extraData.labels['graph-geoCoordinateLng'] = nodeJson.data.lng;
-        } else if (nodeJson.data?.lat && nodeJson.data?.lng && nodeJson.data?.extraData?.labels) {
-          nodeJson.data.extraData.labels['graph-geoCoordinateLat'] = nodeJson.data.lat;
-          nodeJson.data.extraData.labels['graph-geoCoordinateLng'] = nodeJson.data.lng;
         }
 
         const parentCollection = node.parent();

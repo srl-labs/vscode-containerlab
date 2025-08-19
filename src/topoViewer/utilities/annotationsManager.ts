@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from '../logging/extensionLogger';
-import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations, CloudNodeAnnotation } from '../types/topoViewerGraph';
+import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations, CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
 
 /**
  * Manages free text annotations for a topology.
@@ -34,7 +34,7 @@ export class AnnotationsManager {
       log.warn(`Failed to load annotations from ${annotationsPath}: ${error}`);
     }
 
-    return { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [] };
+    return { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
   }
 
   /**
@@ -51,7 +51,8 @@ export class AnnotationsManager {
       const hasFreeText = annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0;
       const hasGroupStyles = annotations.groupStyleAnnotations && annotations.groupStyleAnnotations.length > 0;
       const hasCloudNodes = annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0;
-      if (hasFreeText || hasGroupStyles || hasCloudNodes) {
+      const hasNodeAnnotations = annotations.nodeAnnotations && annotations.nodeAnnotations.length > 0;
+      if (hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations) {
         const content = JSON.stringify(annotations, null, 2);
         await fs.promises.writeFile(annotationsPath, content, 'utf8');
         log.info(`Saved annotations to ${annotationsPath}`);
@@ -169,6 +170,38 @@ export class AnnotationsManager {
   ): TopologyAnnotations {
     if (annotations.cloudNodeAnnotations) {
       annotations.cloudNodeAnnotations = annotations.cloudNodeAnnotations.filter(a => a.id !== cloudNodeId);
+    }
+    return annotations;
+  }
+
+  /**
+   * Add or update a node annotation
+   */
+  public addOrUpdateNode(
+    annotations: TopologyAnnotations,
+    node: NodeAnnotation
+  ): TopologyAnnotations {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+    const existingIndex = annotations.nodeAnnotations.findIndex(a => a.id === node.id);
+    if (existingIndex >= 0) {
+      annotations.nodeAnnotations[existingIndex] = node;
+    } else {
+      annotations.nodeAnnotations.push(node);
+    }
+    return annotations;
+  }
+
+  /**
+   * Remove a node annotation
+   */
+  public removeNode(
+    annotations: TopologyAnnotations,
+    nodeId: string
+  ): TopologyAnnotations {
+    if (annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = annotations.nodeAnnotations.filter(a => a.id !== nodeId);
     }
     return annotations;
   }

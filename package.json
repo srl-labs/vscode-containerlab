@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.16.1",
+  "version": "0.16.2",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.100.0"
@@ -1302,7 +1302,17 @@
             "type": "string"
           },
           "default": {
-            "nokia_srlinux": "e1-{n}"
+            "nokia_srlinux": "e1-{n}",
+            "nokia_srsim": "1/1/c{n}/1",
+            "nokia_sros": "1/1/{n}",
+            "cisco_xrd": "Gi0-0-0-{n}",
+            "cisco_xrv": "Gi0/0/0/{n}",
+            "cisco_xrv9k": "Gi0/0/0/{n}",
+            "cisco_csr1000v": "Gi{n}",
+            "cisco_c8000v": "Gi{n}",
+            "cisco_cat9kv": "Gi1/0/{n}",
+            "cisco_iol": "e0/{n}"
+
           },
           "markdownDescription": "Interface name pattern used when creating links in the TopoViewer edit mode.. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
         },
@@ -1336,7 +1346,7 @@
     "@types/leaflet": "^1.9.20",
     "@types/lodash": "^4.17.20",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.2.1",
+    "@types/node": "^24.3.0",
     "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
@@ -1346,7 +1356,7 @@
     "chai-as-promised": "^8.0.1",
     "chai-http": "^5.1.2",
     "css-loader": "^7.1.2",
-    "esbuild": "^0.25.8",
+    "esbuild": "^0.25.9",
     "eslint": "^9.33.0",
     "fs-extra": "^11.3.1",
     "mini-css-extract-plugin": "^2.9.3",
@@ -1358,10 +1368,10 @@
     "sinon": "^21.0.0",
     "style-loader": "^4.0.0",
     "@tailwindcss/postcss": "^4.1.11",
-    "tailwindcss": "^4.1.11",
+    "tailwindcss": "^4.1.12",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.39.0",
+    "typescript-eslint": "^8.39.1",
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
@@ -1376,7 +1386,7 @@
     "@types/sinon-chai": "^4.0.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "cytoscape": "^3.33.0",
+    "cytoscape": "^3.33.1",
     "cytoscape-cola": "^2.5.1",
     "cytoscape-cxtmenu": "^3.5.0",
     "cytoscape-edgehandles": "^4.0.1",

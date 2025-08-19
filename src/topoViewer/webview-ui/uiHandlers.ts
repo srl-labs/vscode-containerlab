@@ -27,6 +27,13 @@ function getMessageSender(): VscodeMessageSender {
   return messageSender;
 }
 
+// Build the full container name based on prefix and lab name settings
+function getFullNodeName(nodeName: string): string {
+  const prefix = topoViewerState.prefixName;
+  const labName = topoViewerState.labName;
+  return prefix === '' ? nodeName : `${prefix}-${labName}-${nodeName}`;
+}
+
 /**
  * Show the About panel
  */
@@ -261,33 +268,25 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
       const nodeJson = node.json();
 
       // Update position property
-      nodeJson.position = node.position();
-
-      // Check if extraData and labels exist before modifying
-      if (nodeJson.data?.extraData?.labels) {
-        // If in geo map mode, use original positions for graph-posX/Y
-        let posX = nodeJson.position.x;
-        let posY = nodeJson.position.y;
-
-        if (isGeoActive) {
-          const origX = node.data('_origPosX');
-          const origY = node.data('_origPosY');
-          if (origX !== undefined && origY !== undefined) {
-            posX = origX;
-            posY = origY;
-          }
+      let posX = node.position().x;
+      let posY = node.position().y;
+      if (isGeoActive) {
+        const origX = node.data('_origPosX');
+        const origY = node.data('_origPosY');
+        if (origX !== undefined && origY !== undefined) {
+          posX = origX;
+          posY = origY;
         }
+      }
+      nodeJson.position = { x: posX, y: posY };
 
-        nodeJson.data.extraData.labels['graph-posX'] = posX.toString();
-        nodeJson.data.extraData.labels['graph-posY'] = posY.toString();
-
-        // Save geo coordinates if available
-        const lat = node.data('lat');
-        const lng = node.data('lng');
-        if (lat !== undefined && lng !== undefined) {
-          nodeJson.data.extraData.labels['graph-geoCoordinateLat'] = lat.toString();
-          nodeJson.data.extraData.labels['graph-geoCoordinateLng'] = lng.toString();
-        }
+      // Save geo coordinates if available
+      const lat = node.data('lat');
+      const lng = node.data('lng');
+      if (lat !== undefined && lng !== undefined) {
+        nodeJson.data = nodeJson.data || {};
+        nodeJson.data.lat = lat.toString();
+        nodeJson.data.lng = lng.toString();
       }
 
       // Update parent property
@@ -398,8 +397,9 @@ export async function nodeActionConnectToSSH(): Promise<void> {
       return;
     }
     const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
-    log.info(`SSH connection requested for node: ${nodeName}`);
+    const containerName = getFullNodeName(nodeName);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', containerName);
+    log.info(`SSH connection requested for node: ${containerName}`);
   } catch (error) {
     log.error(`nodeActionConnectToSSH failed: ${error}`);
   }
@@ -416,8 +416,9 @@ export async function nodeActionAttachShell(): Promise<void> {
       return;
     }
     const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
-    log.info(`Attach shell requested for node: ${nodeName}`);
+    const containerName = getFullNodeName(nodeName);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', containerName);
+    log.info(`Attach shell requested for node: ${containerName}`);
   } catch (error) {
     log.error(`nodeActionAttachShell failed: ${error}`);
   }
@@ -434,8 +435,9 @@ export async function nodeActionViewLogs(): Promise<void> {
       return;
     }
     const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
-    log.info(`View logs requested for node: ${nodeName}`);
+    const containerName = getFullNodeName(nodeName);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', containerName);
+    log.info(`View logs requested for node: ${containerName}`);
   } catch (error) {
     log.error(`nodeActionViewLogs failed: ${error}`);
   }
@@ -561,6 +563,23 @@ export async function linkWireshark(
 }
 
 /**
+ * Toggle split view with YAML editor
+ */
+export async function viewportButtonsToggleSplit(event?: Event): Promise<void> {
+  if (event) {
+    event.preventDefault();
+  }
+
+  try {
+    const sender = getMessageSender();
+    await sender.sendMessageToVscodeEndpointPost('topo-toggle-split-view', {});
+    log.info('Split view toggle requested');
+  } catch (error) {
+    log.error(`Failed to toggle split view: ${error}`);
+  }
+}
+
+/**
  * Initialize global handlers - make functions available globally for onclick handlers
  */
 export function initializeGlobalHandlers(): void {
@@ -572,6 +591,7 @@ export function initializeGlobalHandlers(): void {
   // Only set view-specific handlers here that are not provided by the controller
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
+  (globalThis as any).viewportButtonsToggleSplit = viewportButtonsToggleSplit;
   (globalThis as any).nodeActionConnectToSSH = nodeActionConnectToSSH;
   (globalThis as any).nodeActionAttachShell = nodeActionAttachShell;
   (globalThis as any).nodeActionViewLogs = nodeActionViewLogs;

@@ -7,7 +7,7 @@ export const topoViewerState: TopoViewerState = {
   linkEndpointVisibility: true,
   nodeContainerStatusVisibility: false,
   labName: '',
-  prefixName: '',
+  prefixName: 'clab',
   multiLayerViewPortState: false,
   isGeoMapInitialized: false,
   isPanel01Cy: false,

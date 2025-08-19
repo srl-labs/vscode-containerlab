@@ -1,5 +1,15 @@
 # Change Log
 
+## [0.16.1-2] - 2025-08-19
+
+- TopoViewer/editor:
+  - Filterable dropdowns
+  - Node Positions are now saved in the .annotations.json
+  - Autosave positions in viewer mode
+  - Panels are now dragable
+  - Split view toggle
+  - Fixes and cosmetics
+
 ## [0.16.0] - 2025-08-15
 
 - TopoViewer/editor:

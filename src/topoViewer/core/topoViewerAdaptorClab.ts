@@ -91,13 +91,10 @@ export class TopoViewerAdaptorClab {
       this.currentClabTopo = parsed;
       this.currentClabDoc = YAML.parseDocument(yamlContent); // <-- store the raw Document
 
-      var clabName = parsed.name;
-      var clabPrefix = parsed.prefix;
+      const clabName = parsed.name;
+      let clabPrefix = parsed.prefix ?? 'clab';
       this.currentClabName = clabName;
       this.currentClabPrefix = clabPrefix;
-      // if (clabPrefix == "") {
-      //   clabPrefix = ""
-      // }
 
 
       // Define the EnvironmentJson object
@@ -107,7 +104,7 @@ export class TopoViewerAdaptorClab {
 
       const environmentJson: EnvironmentJson = {
         workingDirectory: ".",
-        clabPrefix: `${clabPrefix}`,
+        clabPrefix: clabPrefix,
         clabName: `${clabName}`,
         clabServerAddress: "",
         clabAllowedHostname: hostname,
@@ -181,7 +178,86 @@ export class TopoViewerAdaptorClab {
    */
   public async clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined, yamlFilePath?: string): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
-    const annotations = yamlFilePath ? await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager.loadAnnotations(yamlFilePath)) : undefined;
+    const annotationsManager = await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager);
+    let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
+
+    // Migrate graph-* labels to annotations if not already present
+    if (yamlFilePath && parsed.topology?.nodes) {
+      let needsSave = false;
+
+      if (!annotations) {
+        annotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+      }
+
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
+
+      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+        // Check if this node already has annotations
+        const existingAnnotation = annotations.nodeAnnotations.find(na => na.id === nodeName);
+
+        if (!existingAnnotation && nodeObj?.labels) {
+          const labels = nodeObj.labels;
+
+          // Check if any graph-* labels exist
+          if (labels['graph-posX'] || labels['graph-posY'] || labels['graph-icon'] ||
+              labels['graph-group'] || labels['graph-level'] || labels['graph-groupLabelPos'] ||
+              labels['graph-geoCoordinateLat'] || labels['graph-geoCoordinateLng']) {
+
+            // Create new annotation from graph-* labels
+            const newAnnotation: any = {
+              id: nodeName
+            };
+
+            // Migrate position
+            if (labels['graph-posX'] && labels['graph-posY']) {
+              newAnnotation.position = {
+                x: parseInt(labels['graph-posX'] as string, 10) || 0,
+                y: parseInt(labels['graph-posY'] as string, 10) || 0
+              };
+            }
+
+            // Migrate icon
+            if (labels['graph-icon']) {
+              newAnnotation.icon = labels['graph-icon'] as string;
+            }
+
+            // Migrate group and level
+            if (labels['graph-group']) {
+              newAnnotation.group = labels['graph-group'] as string;
+            }
+            if (labels['graph-level']) {
+              newAnnotation.level = labels['graph-level'] as string;
+            }
+
+            // Migrate group label position
+            if (labels['graph-groupLabelPos']) {
+              newAnnotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
+            }
+
+            // Migrate geo coordinates
+            if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
+              newAnnotation.geoCoordinates = {
+                lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
+                lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0
+              };
+            }
+
+            annotations.nodeAnnotations.push(newAnnotation);
+            needsSave = true;
+            log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
+          }
+        }
+      }
+
+      // Save annotations if we migrated any labels
+      if (needsSave) {
+        await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+        log.info('Saved migrated graph-* labels to annotations.json');
+      }
+    }
+
     return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer, annotations });
   }
 
@@ -196,11 +272,92 @@ export class TopoViewerAdaptorClab {
    * - Assigns placeholder values for fields like `weight` and `clabServerUsername` which can be replaced with real data.
    *
    * @param yamlContent - The Containerlab YAML content as a string.
+   * @param yamlFilePath - The path to the YAML file (for loading annotations).
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
-  public clabYamlToCytoscapeElementsEditor(yamlContent: string): CyElement[] {
+  public async clabYamlToCytoscapeElementsEditor(yamlContent: string, yamlFilePath?: string): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
-    return this.buildCytoscapeElements(parsed, { includeContainerData: false });
+    const annotationsManager = await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager);
+    let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
+
+    // Migrate graph-* labels to annotations if not already present (same as viewer mode)
+    if (yamlFilePath && parsed.topology?.nodes) {
+      let needsSave = false;
+
+      if (!annotations) {
+        annotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+      }
+
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
+
+      for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
+        // Check if this node already has annotations
+        const existingAnnotation = annotations.nodeAnnotations.find(na => na.id === nodeName);
+
+        if (!existingAnnotation && nodeObj?.labels) {
+          const labels = nodeObj.labels;
+
+          // Check if any graph-* labels exist
+          if (labels['graph-posX'] || labels['graph-posY'] || labels['graph-icon'] ||
+              labels['graph-group'] || labels['graph-level'] || labels['graph-groupLabelPos'] ||
+              labels['graph-geoCoordinateLat'] || labels['graph-geoCoordinateLng']) {
+
+            // Create new annotation from graph-* labels
+            const newAnnotation: any = {
+              id: nodeName
+            };
+
+            // Migrate position
+            if (labels['graph-posX'] && labels['graph-posY']) {
+              newAnnotation.position = {
+                x: parseInt(labels['graph-posX'] as string, 10) || 0,
+                y: parseInt(labels['graph-posY'] as string, 10) || 0
+              };
+            }
+
+            // Migrate icon
+            if (labels['graph-icon']) {
+              newAnnotation.icon = labels['graph-icon'] as string;
+            }
+
+            // Migrate group and level
+            if (labels['graph-group']) {
+              newAnnotation.group = labels['graph-group'] as string;
+            }
+            if (labels['graph-level']) {
+              newAnnotation.level = labels['graph-level'] as string;
+            }
+
+            // Migrate group label position
+            if (labels['graph-groupLabelPos']) {
+              newAnnotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
+            }
+
+            // Migrate geo coordinates
+            if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
+              newAnnotation.geoCoordinates = {
+                lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
+                lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0
+              };
+            }
+
+            annotations.nodeAnnotations.push(newAnnotation);
+            needsSave = true;
+            log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
+          }
+        }
+      }
+
+      // Save annotations if we migrated any labels
+      if (needsSave) {
+        await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+        log.info('Saved migrated graph-* labels to annotations.json');
+      }
+    }
+
+    return this.buildCytoscapeElements(parsed, { includeContainerData: false, annotations });
   }
 
 
@@ -248,11 +405,11 @@ export class TopoViewerAdaptorClab {
    * @param nodeObj - The Containerlab node object.
    * @returns A string representing the parent identifier.
    */
-  private buildParent(nodeObj: ClabNode): string {
+  private buildParent(nodeObj: ClabNode, nodeAnnotation?: any): string {
     // const grp = nodeObj.group ?? '';
 
-    const grp = nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
-    const lvl = nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '1';
+    const grp = nodeAnnotation?.group || nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
+    const lvl = nodeAnnotation?.level || nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '1';
 
     if (grp && lvl) {
       return `${grp}:${lvl}`;
@@ -298,29 +455,26 @@ export class TopoViewerAdaptorClab {
     }
 
     if (parsed.topology.nodes) {
-      this.currentIsPresetLayout = Object.entries(parsed.topology.nodes)
-        .every(([, nodeObj]) => {
-          const merged = resolveNodeConfig(parsed, nodeObj || {});
-          return (
-            !!merged.labels?.['graph-posX'] &&
-            !!merged.labels?.['graph-posY']
-          );
+      this.currentIsPresetLayout = Object.keys(parsed.topology.nodes)
+        .every(nodeName => {
+          const ann = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
+          return ann?.position !== undefined;
         });
     }
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
 
     const clabName = parsed.name;
-    let labPrefix: string;
+    let fullPrefix: string;
 
     if (parsed.prefix === undefined) {
-      // When prefix key is not present, containerlab uses 'clab-[labname]' format
-      labPrefix = `clab-${clabName}`;
+      // When prefix key is not present, containerlab uses 'clab-<labName>'
+      fullPrefix = `clab-${clabName}`;
     } else if (parsed.prefix === '' || parsed.prefix.trim() === '') {
-      // When prefix is explicitly empty, containerlab uses just the node names
-      labPrefix = '';
+      // When prefix is explicitly empty, container names are just the node names
+      fullPrefix = '';
     } else {
-      // When prefix has a value, use 'prefix-[labname]' format
-      labPrefix = `${parsed.prefix.trim()}-${clabName}`;
+      // When prefix has a value, container names use '<prefix>-<labName>'
+      fullPrefix = `${parsed.prefix.trim()}-${clabName}`;
     }
 
     const parentMap = new Map<string, string | undefined>();
@@ -329,23 +483,34 @@ export class TopoViewerAdaptorClab {
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
         const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
-        const parentId = this.buildParent(mergedNode);
+        const nodeAnn = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
+        const parentId = this.buildParent(mergedNode, nodeAnn);
         if (parentId) {
           if (!parentMap.has(parentId)) {
-            parentMap.set(parentId, mergedNode.labels?.['graph-groupLabelPos']);
+            parentMap.set(parentId, nodeAnn?.groupLabelPos);
           }
         }
 
         log.info(`nodeName: ${nodeName}`);
         let containerData: ClabContainerTreeNode | null = null;
         if (opts.includeContainerData) {
-          const containerName = labPrefix ? `${labPrefix}-${nodeName}` : nodeName;
+          const containerName = fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
           containerData = findContainerNode(
             opts.clabTreeData ?? {},
             containerName,
             clabName
           ) ?? null;
         }
+
+        const cleanedLabels = { ...(mergedNode.labels ?? {}) } as Record<string, any>;
+        delete cleanedLabels['graph-posX'];
+        delete cleanedLabels['graph-posY'];
+        delete cleanedLabels['graph-icon'];
+        delete cleanedLabels['graph-geoCoordinateLat'];
+        delete cleanedLabels['graph-geoCoordinateLng'];
+        delete cleanedLabels['graph-groupLabelPos'];
+        delete cleanedLabels['graph-group'];
+        delete cleanedLabels['graph-level'];
 
         const nodeEl: CyElement = {
           group: 'nodes',
@@ -354,9 +519,9 @@ export class TopoViewerAdaptorClab {
             weight: '30',
             name: nodeName,
             parent: parentId || undefined,
-            topoViewerRole: mergedNode.labels?.['topoViewer-role'] || mergedNode.labels?.['graph-icon'] || 'router',
-            lat: mergedNode.labels?.['graph-geoCoordinateLat'] ?? '',
-            lng: mergedNode.labels?.['graph-geoCoordinateLng'] ?? '',
+            topoViewerRole: nodeAnn?.icon || mergedNode.labels?.['topoViewer-role'] || 'router',
+            lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
+            lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
               clabServerUsername: 'asad',
               fqdn: `${nodeName}.${clabName}.io`,
@@ -366,9 +531,9 @@ export class TopoViewerAdaptorClab {
               index: nodeIndex.toString(),
               kind: mergedNode.kind ?? '',
               type: mergedNode.type ?? '',
-              labdir: labPrefix ? `${labPrefix}/` : '',
-              labels: mergedNode.labels ?? {},
-              longname: containerData?.name ?? (labPrefix ? `${labPrefix}-${nodeName}` : nodeName),
+              labdir: fullPrefix ? `${fullPrefix}/` : '',
+              labels: cleanedLabels,
+              longname: containerData?.name ?? (fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName),
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
@@ -382,10 +547,7 @@ export class TopoViewerAdaptorClab {
               weight: '3',
             },
           },
-          position: {
-            x: parseFloat(mergedNode.labels?.['graph-posX'] ?? 0),
-            y: parseFloat(mergedNode.labels?.['graph-posY'] ?? 0),
-          },
+          position: nodeAnn?.position ? { x: nodeAnn.position.x, y: nodeAnn.position.y } : { x: 0, y: 0 },
           removed: false,
           selected: false,
           selectable: true,
@@ -560,10 +722,10 @@ export class TopoViewerAdaptorClab {
 
         const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:'))
           ? actualSourceNode
-          : (labPrefix ? `${labPrefix}-${sourceNode}` : sourceNode);
+          : (fullPrefix ? `${fullPrefix}-${sourceNode}` : sourceNode);
         const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
           ? actualTargetNode
-          : (labPrefix ? `${labPrefix}-${targetNode}` : targetNode);
+          : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
         const sourceIfaceData = findInterfaceNode(
           opts.clabTreeData ?? {},
           sourceContainerName,
