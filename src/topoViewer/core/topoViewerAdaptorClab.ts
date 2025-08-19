@@ -91,13 +91,10 @@ export class TopoViewerAdaptorClab {
       this.currentClabTopo = parsed;
       this.currentClabDoc = YAML.parseDocument(yamlContent); // <-- store the raw Document
 
-      var clabName = parsed.name;
-      var clabPrefix = parsed.prefix;
+      const clabName = parsed.name;
+      let clabPrefix = parsed.prefix ?? 'clab';
       this.currentClabName = clabName;
       this.currentClabPrefix = clabPrefix;
-      // if (clabPrefix == "") {
-      //   clabPrefix = ""
-      // }
 
 
       // Define the EnvironmentJson object
@@ -107,7 +104,7 @@ export class TopoViewerAdaptorClab {
 
       const environmentJson: EnvironmentJson = {
         workingDirectory: ".",
-        clabPrefix: `${clabPrefix}`,
+        clabPrefix: clabPrefix,
         clabName: `${clabName}`,
         clabServerAddress: "",
         clabAllowedHostname: hostname,
@@ -467,17 +464,17 @@ export class TopoViewerAdaptorClab {
     log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
 
     const clabName = parsed.name;
-    let labPrefix: string;
+    let fullPrefix: string;
 
     if (parsed.prefix === undefined) {
-      // When prefix key is not present, containerlab uses 'clab-[labname]' format
-      labPrefix = `clab-${clabName}`;
+      // When prefix key is not present, containerlab uses 'clab-<labName>'
+      fullPrefix = `clab-${clabName}`;
     } else if (parsed.prefix === '' || parsed.prefix.trim() === '') {
-      // When prefix is explicitly empty, containerlab uses just the node names
-      labPrefix = '';
+      // When prefix is explicitly empty, container names are just the node names
+      fullPrefix = '';
     } else {
-      // When prefix has a value, use 'prefix-[labname]' format
-      labPrefix = `${parsed.prefix.trim()}-${clabName}`;
+      // When prefix has a value, container names use '<prefix>-<labName>'
+      fullPrefix = `${parsed.prefix.trim()}-${clabName}`;
     }
 
     const parentMap = new Map<string, string | undefined>();
@@ -497,7 +494,7 @@ export class TopoViewerAdaptorClab {
         log.info(`nodeName: ${nodeName}`);
         let containerData: ClabContainerTreeNode | null = null;
         if (opts.includeContainerData) {
-          const containerName = labPrefix ? `${labPrefix}-${nodeName}` : nodeName;
+          const containerName = fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
           containerData = findContainerNode(
             opts.clabTreeData ?? {},
             containerName,
@@ -534,9 +531,9 @@ export class TopoViewerAdaptorClab {
               index: nodeIndex.toString(),
               kind: mergedNode.kind ?? '',
               type: mergedNode.type ?? '',
-              labdir: labPrefix ? `${labPrefix}/` : '',
+              labdir: fullPrefix ? `${fullPrefix}/` : '',
               labels: cleanedLabels,
-              longname: containerData?.name ?? (labPrefix ? `${labPrefix}-${nodeName}` : nodeName),
+              longname: containerData?.name ?? (fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName),
               macAddress: '',
               mgmtIntf: '',
               mgmtIpv4AddressLength: 0,
@@ -725,10 +722,10 @@ export class TopoViewerAdaptorClab {
 
         const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:'))
           ? actualSourceNode
-          : (labPrefix ? `${labPrefix}-${sourceNode}` : sourceNode);
+          : (fullPrefix ? `${fullPrefix}-${sourceNode}` : sourceNode);
         const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
           ? actualTargetNode
-          : (labPrefix ? `${labPrefix}-${targetNode}` : targetNode);
+          : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
         const sourceIfaceData = findInterfaceNode(
           opts.clabTreeData ?? {},
           sourceContainerName,

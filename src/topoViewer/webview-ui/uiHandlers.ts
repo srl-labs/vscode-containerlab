@@ -27,6 +27,13 @@ function getMessageSender(): VscodeMessageSender {
   return messageSender;
 }
 
+// Build the full container name based on prefix and lab name settings
+function getFullNodeName(nodeName: string): string {
+  const prefix = topoViewerState.prefixName;
+  const labName = topoViewerState.labName;
+  return prefix === '' ? nodeName : `${prefix}-${labName}-${nodeName}`;
+}
+
 /**
  * Show the About panel
  */
@@ -390,8 +397,9 @@ export async function nodeActionConnectToSSH(): Promise<void> {
       return;
     }
     const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
-    log.info(`SSH connection requested for node: ${nodeName}`);
+    const containerName = getFullNodeName(nodeName);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', containerName);
+    log.info(`SSH connection requested for node: ${containerName}`);
   } catch (error) {
     log.error(`nodeActionConnectToSSH failed: ${error}`);
   }
@@ -408,8 +416,9 @@ export async function nodeActionAttachShell(): Promise<void> {
       return;
     }
     const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
-    log.info(`Attach shell requested for node: ${nodeName}`);
+    const containerName = getFullNodeName(nodeName);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', containerName);
+    log.info(`Attach shell requested for node: ${containerName}`);
   } catch (error) {
     log.error(`nodeActionAttachShell failed: ${error}`);
   }
@@ -426,8 +435,9 @@ export async function nodeActionViewLogs(): Promise<void> {
       return;
     }
     const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
-    log.info(`View logs requested for node: ${nodeName}`);
+    const containerName = getFullNodeName(nodeName);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', containerName);
+    log.info(`View logs requested for node: ${containerName}`);
   } catch (error) {
     log.error(`nodeActionViewLogs failed: ${error}`);
   }

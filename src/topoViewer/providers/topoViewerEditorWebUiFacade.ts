@@ -7,7 +7,7 @@ import { log } from '../logging/extensionLogger';
 
 import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
-import { ClabLabTreeNode } from "../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
 import { runningLabsProvider } from "../../extension";
 
@@ -50,6 +50,22 @@ export class TopoViewerEditor {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
+    const labs = await runningLabsProvider?.discoverInspectLabs();
+    if (!labs) {
+      return undefined;
+    }
+    for (const lab of Object.values(labs)) {
+      const container = lab.containers?.find(
+        (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+      );
+      if (container) {
+        return container;
+      }
+    }
+    return undefined;
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
@@ -800,7 +816,7 @@ topology:
           case 'clab-node-attach-shell': {
             try {
               const nodeName = payloadObj as string;
-              const node = {
+              const node = (await this.getContainerNode(nodeName)) ?? {
                 label: nodeName,
                 name: nodeName,
                 name_short: nodeName,

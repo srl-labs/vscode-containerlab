@@ -244,6 +244,7 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
 type EnvironmentKeys =
   | "working-directory"
   | "clab-name"
+  | "clab-prefix"
   | "clab-server-address"
   | "clab-allowed-hostname"
   | "clab-allowed-hostname01"

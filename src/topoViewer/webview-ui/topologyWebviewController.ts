@@ -252,13 +252,18 @@ class TopologyWebviewController {
     loadCytoStyle(this.cy);
     fetchAndLoadData(this.cy, this.messageSender);
 
-    // Fetch and load data from the environment and update the subtitle
+    // Fetch and load data from the environment and update subtitle and prefix
     (async () => {
       try {
-        const result = await fetchAndLoadDataEnvironment(["clab-name"]);
-        this.updateSubtitle(result["clab-name"] || "Unknown");
+        const result = await fetchAndLoadDataEnvironment(["clab-name", "clab-prefix"]);
+        const labName = result["clab-name"] || "Unknown";
+        this.updateSubtitle(labName);
+        topoViewerState.labName = labName;
+        if (typeof result["clab-prefix"] === 'string') {
+          topoViewerState.prefixName = result["clab-prefix"] as string;
+        }
       } catch (error) {
-        log.error(`Error loading lab name: ${error instanceof Error ? error.message : String(error)}`);
+        log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
       }
     })();
 
