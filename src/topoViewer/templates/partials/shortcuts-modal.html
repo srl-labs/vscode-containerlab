@@ -1,5 +1,5 @@
 <!-- Shortcuts Panel -->
-<aside class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-80 z-[30] max-h-[calc(100vh-5rem)]" id="shortcuts-panel" style="display: none;">
+<aside class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-100 z-[30] max-h-[calc(100vh-5rem)]" id="shortcuts-panel" style="display: none;">
   <header class="panel-heading flex-shrink-0">
     <i class="fas fa-keyboard mr-2"></i>Shortcuts & Interactions
   </header>
@@ -43,6 +43,10 @@
         <div class="flex justify-between">
           <span>Delete</span>
           <kbd>Alt + Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Release from group</span>
+          <kbd>Ctrl + Click</kbd>
         </div>
         <div class="flex justify-between">
           <span>Context menu</span>
@@ -95,4 +99,15 @@
 window.showShortcutsModal = function() {
   document.getElementById('shortcuts-panel').style.display = 'block';
 };
+(function() {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  if (isMac) {
+    document.querySelectorAll('kbd').forEach(el => {
+      let text = el.textContent;
+      text = text.replace(/Ctrl/g, 'Cmd');
+      text = text.replace(/Alt/g, 'Option');
+      el.textContent = text;
+    });
+  }
+})();
 </script>
