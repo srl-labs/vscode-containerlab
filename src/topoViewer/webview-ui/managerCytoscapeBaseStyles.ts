@@ -491,6 +491,26 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
     return clone;
   });
 
+  // Add font size scaling based on VS Code theme
+  const bodyStyle = window.getComputedStyle(document.body);
+  const basePx = parseFloat(bodyStyle.fontSize) || 12;
+  const scaleFactor = basePx / 12;
+
+  styles.forEach((def) => {
+    const s = def.style;
+    if (s) {
+      ['font-size', 'min-zoomed-font-size'].forEach((key) => {
+        if (s[key] !== undefined) {
+          const valStr = s[key].toString();
+          const val = parseFloat(valStr);
+          if (!isNaN(val)) {
+            s[key] = `${Math.round(val * scaleFactor)}px`;
+          }
+        }
+      });
+    }
+  });
+
   const vis = topoViewerState.linkEndpointVisibility;
   if (typeof vis === 'boolean' && !vis) {
     const edgeStyle = styles.find((s: any) => s.selector === 'edge');
