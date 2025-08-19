@@ -408,6 +408,9 @@ class TopologyWebviewController {
         }
       }
     });
+
+    // Focus the container after initialization
+    document.getElementById('cy')?.focus();
   }
 
   /**
