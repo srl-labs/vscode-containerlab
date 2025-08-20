@@ -741,26 +741,58 @@ export class TopoViewerAdaptorClab {
         const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
           ? actualTargetNode
           : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
-        const sourceIfaceData = findInterfaceNode(
+        // Get interface data (might be undefined in editor mode)
+        const sourceIfaceData = opts.includeContainerData ? findInterfaceNode(
           opts.clabTreeData ?? {},
           sourceContainerName,
           sourceIface,
           clabName
-        );
-        const targetIfaceData = findInterfaceNode(
+        ) : undefined;
+        const targetIfaceData = opts.includeContainerData ? findInterfaceNode(
           opts.clabTreeData ?? {},
           targetContainerName,
           targetIface,
           clabName
-        );
+        ) : undefined;
+
         const edgeId = `Clab-Link${linkIndex}`;
         let edgeClass = '';
-        if (sourceIfaceData?.state && targetIfaceData?.state) {
-          edgeClass =
-            sourceIfaceData.state === 'up' && targetIfaceData.state === 'up'
-              ? 'link-up'
-              : 'link-down';
+
+        // Only apply link state colors in viewer mode (when includeContainerData is true)
+        if (opts.includeContainerData) {
+          // Check if either node is a bridge
+          const sourceNodeData = parsed.topology.nodes?.[sourceNode];
+          const targetNodeData = parsed.topology.nodes?.[targetNode];
+          const sourceBridge = sourceNodeData?.kind === 'bridge' || sourceNodeData?.kind === 'ovs-bridge';
+          const targetBridge = targetNodeData?.kind === 'bridge' || targetNodeData?.kind === 'ovs-bridge';
+
+          if (sourceBridge || targetBridge) {
+            // For bridge connections, only check the non-bridge side
+            if (sourceBridge && !targetBridge) {
+              // Source is bridge, check target state only
+              // Only set link state if we have actual interface data
+              if (targetIfaceData?.state) {
+                edgeClass = targetIfaceData.state === 'up' ? 'link-up' : 'link-down';
+              }
+            } else if (!sourceBridge && targetBridge) {
+              // Target is bridge, check source state only
+              // Only set link state if we have actual interface data
+              if (sourceIfaceData?.state) {
+                edgeClass = sourceIfaceData.state === 'up' ? 'link-up' : 'link-down';
+              }
+            } else if (sourceBridge && targetBridge) {
+              // Both are bridges, assume up
+              edgeClass = 'link-up';
+            }
+          } else if (sourceIfaceData?.state && targetIfaceData?.state) {
+            // Normal link - both sides must be up
+            edgeClass =
+              sourceIfaceData.state === 'up' && targetIfaceData.state === 'up'
+                ? 'link-up'
+                : 'link-down';
+          }
         }
+        // In editor mode (includeContainerData = false), edgeClass remains empty string, resulting in gray links
         const edgeEl: CyElement = {
           group: 'edges',
           data: {
