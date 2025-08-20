@@ -27,11 +27,11 @@ const cytoscapeStylesBase: any[] = [
       height: '10',
       content: 'data(name)',
       label: 'data(name)',
-      'font-size': '7px',
+      'font-size': 7,
       'text-valign': 'bottom',
       'text-halign': 'center',
       'background-color': '#8F96AC',
-      'min-zoomed-font-size': '7px',
+      'min-zoomed-font-size': 7,
       color: '#F5F5F5',
       'text-outline-color': '#3C3E41',
       'text-outline-width': '0.3px',
@@ -50,7 +50,7 @@ const cytoscapeStylesBase: any[] = [
       'text-outline-color': '#aaa',
       width: '10px',
       height: '10px',
-      'font-size': '8px',
+      'font-size': 8,
       'z-index': '2'
     }
   },
@@ -70,7 +70,7 @@ const cytoscapeStylesBase: any[] = [
       'background-opacity': '0.2',
       color: '#EBECF0',
       'text-outline-color': '#000000',
-      'font-size': '8px',
+      'font-size': 8,
       'z-index': '1'
     }
   },
@@ -183,7 +183,7 @@ const cytoscapeStylesBase: any[] = [
       'background-opacity': '0.2',
       color: '#EBECF0',
       'text-outline-color': '#000000',
-      'font-size': '8px',
+      'font-size': 8,
       'z-index': '1'
     }
   },
@@ -192,7 +192,7 @@ const cytoscapeStylesBase: any[] = [
     selector: 'edge',
     style: {
       targetArrowShape: 'none',
-      'font-size': '5px',
+      'font-size': 5,
       'source-label': 'data(sourceEndpoint)',
       'target-label': 'data(targetEndpoint)',
       'source-text-offset': 20,
@@ -283,7 +283,7 @@ const cytoscapeStylesBase: any[] = [
       shape: 'rectangle',
       width: '14',
       height: '14',
-      'font-size': '6px',
+      'font-size': 6,
       content: 'data(name)',
       label: 'data(name)'
     }
@@ -489,26 +489,6 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
     }
 
     return clone;
-  });
-
-  // Add font size scaling based on VS Code theme
-  const bodyStyle = window.getComputedStyle(document.body);
-  const basePx = parseFloat(bodyStyle.fontSize) || 12;
-  const scaleFactor = basePx / 12;
-
-  styles.forEach((def) => {
-    const s = def.style;
-    if (s) {
-      ['font-size', 'min-zoomed-font-size'].forEach((key) => {
-        if (s[key] !== undefined) {
-          const valStr = s[key].toString();
-          const val = parseFloat(valStr);
-          if (!isNaN(val)) {
-            s[key] = `${Math.round(val * scaleFactor)}px`;
-          }
-        }
-      });
-    }
   });
 
   const vis = topoViewerState.linkEndpointVisibility;
