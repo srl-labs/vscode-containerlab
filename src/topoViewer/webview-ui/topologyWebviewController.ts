@@ -511,7 +511,7 @@ class TopologyWebviewController {
         commands: (ele: cytoscape.Singular) => {
           const commands: any[] = [];
 
-          if (this.isSpecialEndpoint(ele.id())) {
+          if (this.isNetworkNode(ele.id())) {
             commands.push({
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
@@ -740,7 +740,7 @@ class TopologyWebviewController {
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
           // Skip special endpoints - they don't have SSH/Shell/Logs
-          if (self.isSpecialEndpoint(ele.id())) {
+          if (self.isNetworkNode(ele.id())) {
             return [];
           }
           const commands = [
@@ -875,8 +875,8 @@ class TopologyWebviewController {
           commands: (ele: cytoscape.Singular) => {
             const sourceName = ele.data("source");
             const targetName = ele.data("target");
-            if (self.isSpecialEndpoint(sourceName) ||
-                self.isSpecialEndpoint(targetName)) {
+            if (self.isNetworkNode(sourceName) ||
+                self.isNetworkNode(targetName)) {
               return [];
             }
             const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
@@ -1203,7 +1203,7 @@ class TopologyWebviewController {
         const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
         const targetEndpoint = this.getNextEndpoint(targetNode.id());
         addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
-        if (this.isSpecialEndpoint(sourceNode.id()) || this.isSpecialEndpoint(targetNode.id())) {
+        if (this.isNetworkNode(sourceNode.id()) || this.isNetworkNode(targetNode.id())) {
           addedEdge.addClass('stub-link');
         }
       });
@@ -1286,6 +1286,15 @@ class TopologyWebviewController {
       nodeId.startsWith('mgmt-net:') ||
       nodeId.startsWith('macvlan:')
     );
+  }
+
+  private isNetworkNode(nodeId: string): boolean {
+    if (this.isSpecialEndpoint(nodeId)) {
+      return true;
+    }
+    const node = this.cy.getElementById(nodeId);
+    const kind = node.data('extraData')?.kind;
+    return kind === 'bridge' || kind === 'ovs-bridge';
   }
 
   /**
@@ -1435,7 +1444,7 @@ class TopologyWebviewController {
             editor: 'true'
           };
           const isStubLink =
-            this.isSpecialEndpoint(source.id()) || this.isSpecialEndpoint(target.id());
+            this.isNetworkNode(source.id()) || this.isNetworkNode(target.id());
           this.cy.add({
             group: 'edges',
             data: edgeData,

@@ -447,7 +447,7 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
   ): CyElement[] {
     const elements: CyElement[] = [];
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan'; label: string }>();
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'bridge' | 'ovs-bridge'; label: string }>();
 
     if (!parsed.topology) {
       log.warn('Parsed YAML does not contain \x27topology\x27 object.');
@@ -519,7 +519,10 @@ export class TopoViewerAdaptorClab {
             weight: '30',
             name: nodeName,
             parent: parentId || undefined,
-            topoViewerRole: nodeAnn?.icon || mergedNode.labels?.['topoViewer-role'] || 'router',
+            topoViewerRole:
+              nodeAnn?.icon ||
+              mergedNode.labels?.['topoViewer-role'] ||
+              (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'cloud' : 'router'),
             lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
             lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
@@ -591,6 +594,18 @@ export class TopoViewerAdaptorClab {
         classes: groupLabelPos,
       };
       elements.push(groupNodeEl);
+    }
+
+    // Add bridge nodes to specialNodes
+    if (parsed.topology.nodes) {
+      for (const [nodeName, nodeData] of Object.entries(parsed.topology.nodes)) {
+        if (nodeData.kind === 'bridge' || nodeData.kind === 'ovs-bridge') {
+          specialNodes.set(nodeName, {
+            type: nodeData.kind as 'bridge' | 'ovs-bridge',
+            label: nodeName
+          });
+        }
+      }
     }
 
     let linkIndex = 0;
