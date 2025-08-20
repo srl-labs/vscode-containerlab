@@ -760,28 +760,41 @@ export class TopoViewerAdaptorClab {
 
         // Only apply link state colors in viewer mode (when includeContainerData is true)
         if (opts.includeContainerData) {
-          // Check if either node is a bridge
+          // Check if either node is a special network endpoint (bridge, host, mgmt-net, macvlan)
           const sourceNodeData = parsed.topology.nodes?.[sourceNode];
           const targetNodeData = parsed.topology.nodes?.[targetNode];
-          const sourceBridge = sourceNodeData?.kind === 'bridge' || sourceNodeData?.kind === 'ovs-bridge';
-          const targetBridge = targetNodeData?.kind === 'bridge' || targetNodeData?.kind === 'ovs-bridge';
 
-          if (sourceBridge || targetBridge) {
-            // For bridge connections, only check the non-bridge side
-            if (sourceBridge && !targetBridge) {
-              // Source is bridge, check target state only
+          // Check for all types of special endpoints
+          const sourceIsSpecial =
+            sourceNodeData?.kind === 'bridge' ||
+            sourceNodeData?.kind === 'ovs-bridge' ||
+            sourceNode === 'host' ||
+            sourceNode === 'mgmt-net' ||
+            sourceNode.startsWith('macvlan:');
+
+          const targetIsSpecial =
+            targetNodeData?.kind === 'bridge' ||
+            targetNodeData?.kind === 'ovs-bridge' ||
+            targetNode === 'host' ||
+            targetNode === 'mgmt-net' ||
+            targetNode.startsWith('macvlan:');
+
+          if (sourceIsSpecial || targetIsSpecial) {
+            // For special network connections, only check the non-special side
+            if (sourceIsSpecial && !targetIsSpecial) {
+              // Source is special network, check target state only
               // Only set link state if we have actual interface data
               if (targetIfaceData?.state) {
                 edgeClass = targetIfaceData.state === 'up' ? 'link-up' : 'link-down';
               }
-            } else if (!sourceBridge && targetBridge) {
-              // Target is bridge, check source state only
+            } else if (!sourceIsSpecial && targetIsSpecial) {
+              // Target is special network, check source state only
               // Only set link state if we have actual interface data
               if (sourceIfaceData?.state) {
                 edgeClass = sourceIfaceData.state === 'up' ? 'link-up' : 'link-down';
               }
-            } else if (sourceBridge && targetBridge) {
-              // Both are bridges, assume up
+            } else if (sourceIsSpecial && targetIsSpecial) {
+              // Both are special networks, assume up
               edgeClass = 'link-up';
             }
           } else if (sourceIfaceData?.state && targetIfaceData?.state) {

@@ -876,28 +876,30 @@ class TopologyWebviewController {
             const sourceName = ele.data("source");
             const targetName = ele.data("target");
 
-            // Check if nodes are bridges
+            // Check if nodes are special network endpoints
             const sourceNode = self.cy.getElementById(sourceName);
             const targetNode = self.cy.getElementById(targetName);
-            const sourceIsBridge = sourceNode.length > 0 &&
-              (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
-            const targetIsBridge = targetNode.length > 0 &&
-              (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
 
-            // Skip menu entirely for non-bridge special endpoints (host, mgmt-net, macvlan)
-            const sourceIsOtherSpecial = self.isSpecialEndpoint(sourceName) && !sourceIsBridge;
-            const targetIsOtherSpecial = self.isSpecialEndpoint(targetName) && !targetIsBridge;
-            if (sourceIsOtherSpecial || targetIsOtherSpecial) {
-              return [];
-            }
+            // Check for all types of special network endpoints (bridge, host, mgmt-net, macvlan)
+            const sourceIsSpecialNetwork =
+              self.isSpecialEndpoint(sourceName) ||
+              (sourceNode.length > 0 &&
+                (sourceNode.data('extraData')?.kind === 'bridge' ||
+                 sourceNode.data('extraData')?.kind === 'ovs-bridge'));
+
+            const targetIsSpecialNetwork =
+              self.isSpecialEndpoint(targetName) ||
+              (targetNode.length > 0 &&
+                (targetNode.data('extraData')?.kind === 'bridge' ||
+                 targetNode.data('extraData')?.kind === 'ovs-bridge'));
 
             const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
             const targetEndpoint = ele.data("targetEndpoint") || "Port B";
 
             const commands = [];
 
-            // Add capture option for source if it's not a bridge
-            if (!sourceIsBridge) {
+            // Add capture option for source if it's not a special network
+            if (!sourceIsSpecialNetwork) {
               commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
@@ -920,8 +922,8 @@ class TopologyWebviewController {
               });
             }
 
-            // Add capture option for target if it's not a bridge
-            if (!targetIsBridge) {
+            // Add capture option for target if it's not a special network
+            if (!targetIsSpecialNetwork) {
               commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
@@ -944,8 +946,8 @@ class TopologyWebviewController {
               });
             }
 
-            // Add VNC capture option for source if it's not a bridge
-            if (!sourceIsBridge) {
+            // Add VNC capture option for source if it's not a special network
+            if (!sourceIsSpecialNetwork) {
               commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-desktop" style="font-size:1.4em;"></i>
@@ -968,8 +970,8 @@ class TopologyWebviewController {
               });
             }
 
-            // Add VNC capture option for target if it's not a bridge
-            if (!targetIsBridge) {
+            // Add VNC capture option for target if it's not a special network
+            if (!targetIsSpecialNetwork) {
               commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-desktop" style="font-size:1.4em;"></i>
