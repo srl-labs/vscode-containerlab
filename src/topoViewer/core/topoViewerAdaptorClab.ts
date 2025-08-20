@@ -522,7 +522,7 @@ export class TopoViewerAdaptorClab {
             topoViewerRole:
               nodeAnn?.icon ||
               mergedNode.labels?.['topoViewer-role'] ||
-              (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'cloud' : 'router'),
+              (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'bridge' : 'router'),
             lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
             lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {

@@ -554,7 +554,7 @@ export class ManagerViewportPanels {
       const updatedData = {
         ...currentData,
         name: newName,
-        topoViewerRole: 'cloud',
+        topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
         extraData: {
           ...currentData.extraData,
           kind: networkType
@@ -585,7 +585,7 @@ export class ManagerViewportPanels {
         ...currentData,
         id: newId,
         name: newName,
-        topoViewerRole: 'cloud',
+        topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
         extraData: {
           ...currentData.extraData,
           kind: networkType
