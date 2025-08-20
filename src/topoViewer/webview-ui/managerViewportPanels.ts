@@ -1023,7 +1023,7 @@ export class ManagerViewportPanels {
     // Create the filterable dropdown structure
     const dropdownHtml = `
       <div class="filterable-dropdown relative w-full">
-        <div class="filterable-dropdown-input-container">
+        <div class="filterable-dropdown-input-container relative">
           <input 
             type="text" 
             class="input-field w-full pr-8" 
@@ -1031,7 +1031,8 @@ export class ManagerViewportPanels {
             value="${currentValue}"
             id="${containerId}-filter-input"
           />
-          <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+          <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer" 
+             id="${containerId}-dropdown-arrow"></i>
         </div>
         <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg" 
              id="${containerId}-dropdown-menu">
@@ -1043,6 +1044,7 @@ export class ManagerViewportPanels {
 
     const filterInput = document.getElementById(`${containerId}-filter-input`) as HTMLInputElement;
     const dropdownMenu = document.getElementById(`${containerId}-dropdown-menu`);
+    const dropdownArrow = document.getElementById(`${containerId}-dropdown-arrow`);
 
     if (!filterInput || !dropdownMenu) {
       log.error(`Failed to create filterable dropdown elements for ${containerId}`);
@@ -1101,17 +1103,39 @@ export class ManagerViewportPanels {
       }
     });
 
-    // Show/hide dropdown on focus/blur
+    // Show/hide dropdown on focus
     filterInput.addEventListener('focus', () => {
       dropdownMenu.classList.remove('hidden');
     });
 
+    // Handle arrow click to toggle dropdown
+    if (dropdownArrow) {
+      dropdownArrow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dropdownMenu.classList.contains('hidden')) {
+          dropdownMenu.classList.remove('hidden');
+          filterInput.focus();
+        } else {
+          dropdownMenu.classList.add('hidden');
+        }
+      });
+    }
+
     // Close dropdown when clicking outside
+    // Use setTimeout to prevent immediate closing when clicking the arrow
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
+      // Check if click is outside the entire dropdown container
       if (!container.contains(target)) {
-        dropdownMenu.classList.add('hidden');
+        setTimeout(() => {
+          dropdownMenu.classList.add('hidden');
+        }, 0);
       }
+    });
+
+    // Prevent closing when clicking inside the dropdown menu
+    dropdownMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     // Handle keyboard navigation
