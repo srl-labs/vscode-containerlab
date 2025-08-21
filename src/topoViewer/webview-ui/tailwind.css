@@ -590,6 +590,10 @@
   height: 100% !important;
 }
 
+#cy:focus {
+  outline: none;
+}
+
 #cy-leaflet {
   position: absolute !important;
   top: 0 !important;
