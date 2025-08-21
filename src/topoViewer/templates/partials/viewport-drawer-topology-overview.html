@@ -37,6 +37,15 @@
                 if (getComputedStyle(drawer).display !== 'none') focusInput();
               }).observe(drawer, { attributes: true, attributeFilter: ['style', 'class'] });
               drawer.addEventListener('open', focusInput);
+              // CTRL/CMD + F to open overview
+              document.addEventListener('keydown', (ev) => {
+                if ((ev.ctrlKey || ev.metaKey) && ev.key && ev.key.toLowerCase() === 'f') {
+                  if (getComputedStyle(drawer).display === 'none') {
+                    drawer.style.display = 'block';
+                    focusInput();
+                  }
+                }
+              }, { passive: false });
             })();
           </script>
           <div>
