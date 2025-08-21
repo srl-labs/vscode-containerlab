@@ -127,7 +127,7 @@ export function viewportButtonsLabelEndpoint(): void {
     topoViewerState.linkEndpointVisibility = !topoViewerState.linkEndpointVisibility;
 
     const cy = topoViewerState.cy;
-    
+
     if (cy) {
       // Trigger style update if loadCytoStyle is available
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
