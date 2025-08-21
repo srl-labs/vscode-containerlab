@@ -7,6 +7,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { exportViewportAsSvg } from './utils';
 import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
+import { FilterUtils } from '../../helpers/filterUtils';
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -126,6 +127,7 @@ export function viewportButtonsLabelEndpoint(): void {
     topoViewerState.linkEndpointVisibility = !topoViewerState.linkEndpointVisibility;
 
     const cy = topoViewerState.cy;
+    
     if (cy) {
       // Trigger style update if loadCytoStyle is available
       if (typeof (globalThis as any).loadCytoStyle === 'function') {
@@ -175,13 +177,15 @@ export function viewportNodeFindEvent(): void {
     }
     const cy = topoViewerState.cy;
 
+    const filter = FilterUtils.createFilter(searchTerm);
+
     // Search for nodes by name or longname
     const matchingNodes = cy.nodes().filter((node: any) => {
       const data = node.data();
       const shortName = data.name || '';
       const longName = data.extraData?.longname || '';
-      const combined = `${shortName} ${longName}`.toLowerCase();
-      return combined.includes(searchTerm.toLowerCase());
+      const combined = `${shortName} ${longName}`;
+      return filter(combined);
     });
 
     if (matchingNodes.length > 0) {
