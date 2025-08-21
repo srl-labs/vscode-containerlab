@@ -84,7 +84,8 @@ export class ManagerShortcutDisplay {
   }
 
   private handleKeydown(e: KeyboardEvent) {
-    if (!this.shortcutEnabled || e.target !== document.body || e.repeat) return;
+    if (!this.shortcutEnabled || e.repeat) return;
+    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     const modifierKeys = ['Control', 'Shift', 'Alt', 'Meta'];
     if (modifierKeys.includes(e.key)) return; // Skip lone modifiers
     let parts: string[] = [];
