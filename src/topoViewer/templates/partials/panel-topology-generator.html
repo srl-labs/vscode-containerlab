@@ -1,0 +1,156 @@
+<!-- Topology Generator Modal -->
+<section class="panel panel-overlay bottom-10 left-20 w-[400px] max-h-[600px] overflow-y-auto overflow-x-hidden draggable-panel" 
+  id="topology-generator-modal" aria-labelledby="topology-generator-heading" style="display: none;">
+  <p class="panel-heading text-base font-bold" id="topology-generator-heading">
+    🔷 Topology Generator
+  </p>
+  <div class="p-0 pl-4 pb-2">
+    <div class="panel-block p-0">
+      <div class="px-0">
+        
+        <!-- Component Template -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Select Group</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="flex gap-1">
+                  <div class="flex-1" id="topo-gen-template-dropdown-container">
+                    <!-- Filterable dropdown will be inserted here -->
+                  </div>
+                  <button 
+                    id="topo-gen-refresh-groups" 
+                    class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[10px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)]"
+                    data-tippy-content="Loading groups..."
+                    title="Loading groups...">
+                    <i class="fas fa-sync text-[8px]"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quantity -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Quantity</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="number" class="input-field text-base w-full" id="topo-gen-quantity" 
+                  value="10" min="1" max="100" step="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layout -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Layout</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <select class="input-field text-base w-full" id="topo-gen-layout">
+                  <option value="grid">Grid</option>
+                  <option value="line">Line</option>
+                  <option value="circle">Circle</option>
+                  <option value="star">Star</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columns (only visible for Grid layout) -->
+        <div class="my-1" id="topo-gen-columns-container">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Columns</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="number" class="input-field text-base w-full" id="topo-gen-columns" 
+                  value="10" min="1" max="20" step="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spacing -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Spacing</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="number" class="input-field text-base w-full" id="topo-gen-spacing" 
+                  value="50" min="20" max="200" step="10">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1"></div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="flex justify-end space-x-2">
+                  <button class="btn btn-secondary btn-small" id="topo-gen-cancel">Cancel</button>
+                  <button class="btn btn-primary btn-small" id="topo-gen-generate">Generate</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // show/hide logic for the Topology Generator modal.
+  (function() {
+    const modal = document.getElementById('topology-generator-modal');
+    if (!modal) return;
+
+    // Open modal when floating panel dispatches this event
+    document.addEventListener('unified-topology-generator-click', function () {
+      modal.style.display = 'block';
+      const firstInput = modal.querySelector('input, select');
+      if (firstInput) setTimeout(() => firstInput.focus(), 100);
+    });
+
+    // Close via Cancel button
+    const cancelBtn = document.getElementById('topo-gen-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        modal.style.display = 'none';
+      });
+    }
+
+    // Close when clicking outside modal content
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.style.display === 'block') {
+        modal.style.display = 'none';
+      }
+    });
+  })();
+</script>

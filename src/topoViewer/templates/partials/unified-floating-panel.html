@@ -126,6 +126,13 @@
       data-tippy-content="Bulk Link Devices">
       <i class="fas fa-link text-[10px]"></i>
     </button>
+
+    <!-- Topology Generator Button -->
+    <button id="topology-generator-btn"
+      class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
+      data-tippy-content="Topology Generator">
+      <i class="fas fa-network-wired text-[10px]"></i>
+    </button>
   </div> <!-- End panel-content -->
 
   <!-- Collapse Control Section -->
@@ -403,7 +410,8 @@
 
       // Editor-only tools (only visible in editor mode)
       const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
-      const editorOnlyButtons = [addNodeBtn, addNetworkBtn, addBulkLinkBtn];
+      const topologyGeneratorBtn = document.getElementById('topology-generator-btn');
+      const editorOnlyButtons = [addNodeBtn, addNetworkBtn, addBulkLinkBtn, topologyGeneratorBtn];
       editorOnlyButtons.forEach(btn => {
         if (btn) {
           btn.style.display = isViewerMode() ? 'none' : 'flex';
@@ -622,6 +630,7 @@
     const addGroupBtn = document.getElementById('add-group-btn');
     const addTextBtn = document.getElementById('add-text-btn');
     const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
+    const topologyGeneratorBtn = document.getElementById('topology-generator-btn');
 
     if (deployBtn) {
       deployBtn.addEventListener('click', function (e) {
@@ -689,6 +698,14 @@
       addBulkLinkBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         const event = new CustomEvent('unified-add-bulk-link-click');
+        document.dispatchEvent(event);
+      });
+    }
+
+    if (topologyGeneratorBtn) {
+      topologyGeneratorBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const event = new CustomEvent('unified-topology-generator-click');
         document.dispatchEvent(event);
       });
     }
