@@ -54,11 +54,11 @@
   document.getElementById('bulk-link-cancel').addEventListener('click', () => {
     document.getElementById('panel-bulk-link').style.display = 'none';
   });
-  document.getElementById('bulk-link-apply').addEventListener('click', () => {
+  document.getElementById('bulk-link-apply').addEventListener('click', async () => {
     const source = document.getElementById('source-regex').value;
     const target = document.getElementById('target-regex').value;
     if (source && target) {
-      window.topologyWebviewController.bulkCreateLinks(source, target);
+      await window.topologyWebviewController.bulkCreateLinks(source, target);
       document.getElementById('panel-bulk-link').style.display = 'none';
     }
   });

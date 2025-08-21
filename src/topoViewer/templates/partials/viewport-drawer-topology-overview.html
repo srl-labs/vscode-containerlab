@@ -20,12 +20,34 @@
             <div class="relative">
               <input type="text" id="viewport-drawer-topology-overview-content-edit"
                 placeholder="Search for nodes ..." 
-                class="input-field pl-8 pr-3 text-sm" />
+                class="input-field pl-8 pr-3 text-sm" autofocus />
               <span class="absolute left-2 top-1/2 transform -translate-y-1/2">
                 <i class="fas fa-search" aria-hidden="true"></i>
               </span>
             </div>
           </div>
+          <script>
+            (function(){
+              const drawer = document.getElementById('viewport-drawer-topology-overview');
+              const input = document.getElementById('viewport-drawer-topology-overview-content-edit');
+              if (!drawer || !input) return;
+              const focusInput = () => setTimeout(() => { input.focus(); input.select(); }, 50);
+              if (getComputedStyle(drawer).display !== 'none') focusInput();
+              new MutationObserver(() => {
+                if (getComputedStyle(drawer).display !== 'none') focusInput();
+              }).observe(drawer, { attributes: true, attributeFilter: ['style', 'class'] });
+              drawer.addEventListener('open', focusInput);
+              // CTRL/CMD + F to open overview
+              document.addEventListener('keydown', (ev) => {
+                if ((ev.ctrlKey || ev.metaKey) && ev.key && ev.key.toLowerCase() === 'f') {
+                  if (getComputedStyle(drawer).display === 'none') {
+                    drawer.style.display = 'block';
+                    focusInput();
+                  }
+                }
+              }, { passive: false });
+            })();
+          </script>
           <div>
             <button class="btn btn-primary btn-small" onclick="viewportNodeFindEvent()">
               Search Node

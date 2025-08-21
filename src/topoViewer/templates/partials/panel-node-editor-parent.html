@@ -68,8 +68,7 @@
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
                   <div class="relative" id="panel-node-editor-parent-label-dropdown">
-                    <button class="btn btn-small inline-flex items-center font-extralight"
-                            onclick="panelNodeEditorParentToggleDropdown()">
+                    <button class="btn btn-small inline-flex items-center font-extralight">
                       <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
                       <span class="ml-2 font-extralight text-base">
                         <i class="fas fa-angle-down" aria-hidden="true"></i>
@@ -105,7 +104,10 @@
                   <label class="label text-right text-base font-semibold">Background</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
-                  <input type="color" class="input-field w-full h-8" id="panel-node-editor-parent-bg-color">
+                  <div class="flex items-center space-x-2">
+                    <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500" id="panel-node-editor-parent-bg-color">
+                    <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-bg-color-hex" maxlength="7" placeholder="#RRGGBB">
+                  </div>
                 </div>
               </div>
             </div>
@@ -136,7 +138,10 @@
                   <label class="label text-right text-base font-semibold">Text Color</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
-                  <input type="color" class="input-field w-full h-8" id="panel-node-editor-parent-text-color">
+                  <div class="flex items-center space-x-2">
+                    <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500" id="panel-node-editor-parent-text-color">
+                    <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-text-color-hex" maxlength="7" placeholder="#RRGGBB">
+                  </div>
                 </div>
               </div>
             </div>
@@ -155,7 +160,10 @@
                   <label class="label text-right text-base font-semibold">Border Color</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
-                  <input type="color" class="input-field w-full h-8" id="panel-node-editor-parent-border-color">
+                  <div class="flex items-center space-x-2">
+                    <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500" id="panel-node-editor-parent-border-color">
+                    <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-border-color-hex" maxlength="7" placeholder="#RRGGBB">
+                  </div>
                 </div>
               </div>
             </div>
@@ -220,13 +228,10 @@
               <div class="w-3/5 pl-2 pr-2">
                 <div class="flex justify-end space-x-2">
                   <button class="btn btn-danger btn-small"
-                          id="panel-node-editor-parent-delete-button"
-                          onclick="nodeParentRemoval()">Remove</button>
+                          id="panel-node-editor-parent-delete-button">Remove</button>
                   <button class="btn btn-secondary btn-small"
-                          id="panel-node-editor-parent-close-button"
-                          onclick="nodeParentPropertiesUpdateClose()">Close</button>
-                  <button class="btn btn-primary btn-small"
-                          onclick="nodeParentPropertiesUpdate()">Update</button>
+                          id="panel-node-editor-parent-close-button">Close</button>
+                  <button class="btn btn-primary btn-small">Update</button>
                 </div>
               </div>
             </div>
@@ -238,16 +243,17 @@
   </div>
 </section>
 
-<script>
-  // Handle opacity slider
-  document.getElementById('panel-node-editor-parent-bg-opacity')?.addEventListener('input', (e) => {
-    const value = e.target.value;
-    document.getElementById('panel-node-editor-parent-bg-opacity-value').textContent = value + '%';
-  });
+<style>
+  input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    padding: 0;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  input[type="color"]::-webkit-color-swatch {
+    border: none;
+  }
+</style>
 
-  // Handle border radius slider
-  document.getElementById('panel-node-editor-parent-border-radius')?.addEventListener('input', (e) => {
-    const value = e.target.value;
-    document.getElementById('panel-node-editor-parent-border-radius-value').textContent = value + 'px';
-  });
-</script>

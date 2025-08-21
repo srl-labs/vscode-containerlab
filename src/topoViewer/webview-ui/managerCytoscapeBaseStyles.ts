@@ -27,11 +27,11 @@ const cytoscapeStylesBase: any[] = [
       height: '10',
       content: 'data(name)',
       label: 'data(name)',
-      'font-size': '7px',
+      'font-size': '0.58em',
       'text-valign': 'bottom',
       'text-halign': 'center',
       'background-color': '#8F96AC',
-      'min-zoomed-font-size': '7px',
+      'min-zoomed-font-size': '0.58em',
       color: '#F5F5F5',
       'text-outline-color': '#3C3E41',
       'text-outline-width': '0.3px',
@@ -50,7 +50,7 @@ const cytoscapeStylesBase: any[] = [
       'text-outline-color': '#aaa',
       width: '10px',
       height: '10px',
-      'font-size': '8px',
+      'font-size': '0.67em',
       'z-index': '2'
     }
   },
@@ -70,7 +70,7 @@ const cytoscapeStylesBase: any[] = [
       'background-opacity': '0.2',
       color: '#EBECF0',
       'text-outline-color': '#000000',
-      'font-size': '8px',
+      'font-size': '0.67em',
       'z-index': '1'
     }
   },
@@ -133,13 +133,9 @@ const cytoscapeStylesBase: any[] = [
   },
   {
     selector: 'node:selected',
-    style: {
-      'border-width': '1.5px',
-      'border-color': '#282828',
-      'border-opacity': '0.5',
-      'background-color': '#77828C',
-      'text-outline-color': '#282828'
-    }
+  },
+  {
+    selector: 'edge:selected',
   },
   // Status indicator nodes
   {
@@ -187,7 +183,7 @@ const cytoscapeStylesBase: any[] = [
       'background-opacity': '0.2',
       color: '#EBECF0',
       'text-outline-color': '#000000',
-      'font-size': '8px',
+      'font-size': '0.67em',
       'z-index': '1'
     }
   },
@@ -196,7 +192,7 @@ const cytoscapeStylesBase: any[] = [
     selector: 'edge',
     style: {
       targetArrowShape: 'none',
-      'font-size': '5px',
+      'font-size': '0.42em',
       'source-label': 'data(sourceEndpoint)',
       'target-label': 'data(targetEndpoint)',
       'source-text-offset': 20,
@@ -244,7 +240,6 @@ const cytoscapeStylesBase: any[] = [
       'text-outline-color': '#282828'
     }
   },
-  { selector: 'edge.filtered', style: { opacity: '0.3' } },
   {
     selector: '.spf',
     style: {
@@ -288,7 +283,7 @@ const cytoscapeStylesBase: any[] = [
       shape: 'rectangle',
       width: '14',
       height: '14',
-      'font-size': '6px',
+      'font-size': '0.5em',
       content: 'data(name)',
       label: 'data(name)'
     }
@@ -397,7 +392,7 @@ const freeTextStyles = [
       'text-wrap': 'wrap',
       'text-max-width': '200px',
       // Default font properties - will be overridden by custom styles
-      'font-size': 14,
+      'font-size': '1.17em',
       'color': '#FFFFFF',
       'text-outline-color': '#000000',
       'text-outline-width': 1,
@@ -444,6 +439,11 @@ cytoscapeStylesBase.splice(insertIndex, 0, ...roleStyles, ...freeTextStyles);
  * When `theme` is "light" group nodes appear darker with higher opacity.
  */
 export function getCytoscapeStyles(theme: 'light' | 'dark') {
+  const rootStyle = window.getComputedStyle(document.documentElement);
+  const selectionColor = rootStyle.getPropertyValue('--vscode-focusBorder').trim();
+  const selectionBoxColor = rootStyle.getPropertyValue('--vscode-list-focusBackground').trim();
+  const selectionBoxBorderColor = rootStyle.getPropertyValue('--vscode-focusBorder').trim();
+
   const styles = cytoscapeStylesBase.map((def: any) => {
     const clone: any = { selector: def.selector, style: { ...(def.style || {}) } };
     if (def.selector === 'node[topoViewerRole="group"]') {
@@ -457,6 +457,37 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
         clone.style['background-opacity'] = '0.2';
       }
     }
+
+    // Theme-aware selection styling
+    if (def.selector === 'node:selected') {
+      clone.style['border-color'] = selectionColor;
+      clone.style['overlay-color'] = selectionColor;
+      clone.style['border-width'] = '3px';
+      clone.style['border-opacity'] = '1';
+      clone.style['border-style'] = 'solid';
+      clone.style['overlay-opacity'] = '0.3';
+      clone.style['overlay-padding'] = '3px';
+    }
+
+    if (def.selector === 'edge:selected') {
+      clone.style['line-color'] = selectionColor;
+      clone.style['target-arrow-color'] = selectionColor;
+      clone.style['source-arrow-color'] = selectionColor;
+      clone.style['overlay-color'] = selectionColor;
+      clone.style['overlay-opacity'] = '0.2';
+      clone.style['overlay-padding'] = '6px';
+      clone.style['width'] = '4px';
+      clone.style['opacity'] = '1';
+      clone.style['z-index'] = '10';
+    }
+
+    // Theme-aware selection box (for multi-select)
+    if (def.selector === 'core') {
+      clone.style['selection-box-color'] = selectionBoxColor;
+      clone.style['selection-box-border-color'] = selectionBoxBorderColor;
+      clone.style['selection-box-opacity'] = '0.5';
+    }
+
     return clone;
   });
 

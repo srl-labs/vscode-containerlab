@@ -1,0 +1,129 @@
+<!-- Shortcuts Panel -->
+<aside class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-100 z-[30] max-h-[calc(100vh-5rem)]" id="shortcuts-panel" style="display: none;">
+  <header class="panel-heading flex-shrink-0">
+    <i class="fas fa-keyboard mr-2"></i>Shortcuts & Interactions
+  </header>
+  
+  <div class="p-4 space-y-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0" style="max-height: calc(100vh - 8rem); scrollbar-width: thin;">
+    <!-- Viewer Mode -->
+    <section>
+      <h4 class="font-semibold text-green-600 mb-2"><i class="fas fa-eye"></i> Viewer Mode</h4>
+      <div class="space-y-1">
+        <div class="flex justify-between">
+          <span>Select node/link</span>
+          <kbd>Left Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Node actions</span>
+          <kbd>Right Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Capture packets</span>
+          <kbd>Right Click + Link</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Move nodes</span>
+          <kbd>Drag</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Quick Item Search</span>
+          <kbd>Ctrl + F</kbd>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Editor Mode -->
+    <section>
+      <h4 class="font-semibold text-blue-600 mb-2"><i class="fas fa-edit"></i> Editor Mode</h4>
+      <div class="space-y-1">
+        <div class="flex justify-between">
+          <span>Add node</span>
+          <kbd>Shift + Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Create link</span>
+          <kbd>Shift + Node</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Delete</span>
+          <kbd>Alt + Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Release from group</span>
+          <kbd>Ctrl + Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Context menu</span>
+          <kbd>Right Click</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Select all</span>
+          <kbd>Ctrl + A</kbd>
+        </div>
+        <div class="flex justify-between">
+         <span>Create group (also via selection)</span>
+          <kbd>G</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Delete selected</span>
+          <kbd>Del</kbd>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Panel Controls -->
+    <section>
+      <h4 class="font-semibold text-purple-600 mb-2"><i class="fas fa-cog"></i> Panel Controls</h4>
+      <div class="space-y-1">
+        <div class="flex justify-between">
+          <span>Close panel</span>
+          <kbd>Esc</kbd>
+        </div>
+        <div class="flex justify-between">
+          <span>Submit form</span>
+          <kbd>Enter</kbd>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Tips -->
+    <section>
+      <h4 class="font-semibold text-orange-600 mb-2"><i class="fas fa-lightbulb"></i> Tips</h4>
+      <ul class="list-disc list-inside text-secondary space-y-1">
+        <li>Use layout algorithms to auto-arrange</li>
+        <li>Box Selection with <kbd>Shift</kbd> + <kbd>Click</kbd> and press <kbd>G</kbd> to group or <kbd>Del</kbd> to delete</li>
+        <li>Double-click any item to directly edit</li>
+        <li>Export as image from context menu</li>
+      </ul>
+    </section>
+  </div>
+</aside>
+
+<script>
+window.showShortcutsModal = function() {
+  const panel = document.getElementById('shortcuts-panel');
+  if (panel) {
+    // Toggle the panel visibility
+    if (panel.style.display === 'block') {
+      panel.style.display = 'none';
+    } else {
+      // Hide other panels first
+      const aboutPanel = document.getElementById('panel-topoviewer-about');
+      if (aboutPanel) aboutPanel.style.display = 'none';
+      // Show shortcuts panel
+      panel.style.display = 'block';
+    }
+  }
+};
+(function() {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  if (isMac) {
+    document.querySelectorAll('kbd').forEach(el => {
+      let text = el.textContent;
+      text = text.replace(/Ctrl/g, 'Cmd');
+      text = text.replace(/Alt/g, 'Option');
+      el.textContent = text;
+    });
+  }
+})();
+</script>
