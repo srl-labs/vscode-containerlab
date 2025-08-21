@@ -97,7 +97,19 @@
 
 <script>
 window.showShortcutsModal = function() {
-  document.getElementById('shortcuts-panel').style.display = 'block';
+  const panel = document.getElementById('shortcuts-panel');
+  if (panel) {
+    // Toggle the panel visibility
+    if (panel.style.display === 'block') {
+      panel.style.display = 'none';
+    } else {
+      // Hide other panels first
+      const aboutPanel = document.getElementById('panel-topoviewer-about');
+      if (aboutPanel) aboutPanel.style.display = 'none';
+      // Show shortcuts panel
+      panel.style.display = 'block';
+    }
+  }
 };
 (function() {
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;

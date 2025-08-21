@@ -35,41 +35,54 @@ function getFullNodeName(nodeName: string): string {
 }
 
 /**
- * Show the About panel
+ * Toggle the About panel
  */
 export async function showPanelAbout(): Promise<void> {
   try {
-    // Remove all overlay panels first
-    const panelOverlays = document.getElementsByClassName("panel-overlay");
-    for (let i = 0; i < panelOverlays.length; i++) {
-      (panelOverlays[i] as HTMLElement).style.display = "none";
-    }
-
-    // Get environment data if available
-    let environments: any = null;
-    try {
-      if (typeof (globalThis as any).getEnvironments === 'function') {
-        environments = await (globalThis as any).getEnvironments();
-      }
-    } catch (error) {
-      log.warn(`Could not load environment data for about panel: ${error}`);
-    }
-
-    if (environments) {
-      log.debug('Environment data loaded for about panel');
-      const topoViewerVersion = environments["topoviewer-version"];
-      log.info(`TopoViewer version: ${topoViewerVersion}`);
-    }
-
-    // Show the about panel
     const aboutPanel = document.getElementById("panel-topoviewer-about");
-    if (aboutPanel) {
-      aboutPanel.style.display = "block";
-    } else {
+    if (!aboutPanel) {
       log.error('About panel element not found');
+      return;
+    }
+
+    // Check if panel is currently visible
+    if (aboutPanel.style.display === "block") {
+      // Hide the panel
+      aboutPanel.style.display = "none";
+    } else {
+      // Remove all overlay panels first
+      const panelOverlays = document.getElementsByClassName("panel-overlay");
+      for (let i = 0; i < panelOverlays.length; i++) {
+        (panelOverlays[i] as HTMLElement).style.display = "none";
+      }
+
+      // Hide shortcuts panel if open
+      const shortcutsPanel = document.getElementById('shortcuts-panel');
+      if (shortcutsPanel) {
+        shortcutsPanel.style.display = 'none';
+      }
+
+      // Get environment data if available
+      let environments: any = null;
+      try {
+        if (typeof (globalThis as any).getEnvironments === 'function') {
+          environments = await (globalThis as any).getEnvironments();
+        }
+      } catch (error) {
+        log.warn(`Could not load environment data for about panel: ${error}`);
+      }
+
+      if (environments) {
+        log.debug('Environment data loaded for about panel');
+        const topoViewerVersion = environments["topoviewer-version"];
+        log.info(`TopoViewer version: ${topoViewerVersion}`);
+      }
+
+      // Show the about panel
+      aboutPanel.style.display = "block";
     }
   } catch (error) {
-    log.error(`Error showing about panel: ${error}`);
+    log.error(`Error toggling about panel: ${error}`);
   }
 }
 
