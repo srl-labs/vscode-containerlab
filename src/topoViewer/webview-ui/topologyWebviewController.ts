@@ -199,6 +199,13 @@ class TopologyWebviewController {
 
     // Initialize Cytoscape instance
     this.cy = createConfiguredCytoscape(container);
+    const cyContainer = document.getElementById('cy') as HTMLDivElement;
+    if (cyContainer) {
+      cyContainer.tabIndex = 0;
+      cyContainer.addEventListener('mousedown', () => {
+        cyContainer.focus();
+      });
+    }
     this.registerCustomZoom();
 
     this.cy.on('tap', (event) => {
