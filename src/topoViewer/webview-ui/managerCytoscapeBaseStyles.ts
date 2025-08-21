@@ -27,11 +27,11 @@ const cytoscapeStylesBase: any[] = [
       height: '10',
       content: 'data(name)',
       label: 'data(name)',
-      'font-size': 7,
+      'font-size': '0.58em',
       'text-valign': 'bottom',
       'text-halign': 'center',
       'background-color': '#8F96AC',
-      'min-zoomed-font-size': 7,
+      'min-zoomed-font-size': '0.58em',
       color: '#F5F5F5',
       'text-outline-color': '#3C3E41',
       'text-outline-width': '0.3px',
@@ -50,7 +50,7 @@ const cytoscapeStylesBase: any[] = [
       'text-outline-color': '#aaa',
       width: '10px',
       height: '10px',
-      'font-size': 8,
+      'font-size': '0.67em',
       'z-index': '2'
     }
   },
@@ -70,7 +70,7 @@ const cytoscapeStylesBase: any[] = [
       'background-opacity': '0.2',
       color: '#EBECF0',
       'text-outline-color': '#000000',
-      'font-size': 8,
+      'font-size': '0.67em',
       'z-index': '1'
     }
   },
@@ -183,7 +183,7 @@ const cytoscapeStylesBase: any[] = [
       'background-opacity': '0.2',
       color: '#EBECF0',
       'text-outline-color': '#000000',
-      'font-size': 8,
+      'font-size': '0.67em',
       'z-index': '1'
     }
   },
@@ -192,7 +192,7 @@ const cytoscapeStylesBase: any[] = [
     selector: 'edge',
     style: {
       targetArrowShape: 'none',
-      'font-size': 5,
+      'font-size': '0.42em',
       'source-label': 'data(sourceEndpoint)',
       'target-label': 'data(targetEndpoint)',
       'source-text-offset': 20,
@@ -283,7 +283,7 @@ const cytoscapeStylesBase: any[] = [
       shape: 'rectangle',
       width: '14',
       height: '14',
-      'font-size': 6,
+      'font-size': '0.5em',
       content: 'data(name)',
       label: 'data(name)'
     }
@@ -392,7 +392,7 @@ const freeTextStyles = [
       'text-wrap': 'wrap',
       'text-max-width': '200px',
       // Default font properties - will be overridden by custom styles
-      'font-size': 14,
+      'font-size': '1.17em',
       'color': '#FFFFFF',
       'text-outline-color': '#000000',
       'text-outline-width': 1,
