@@ -447,7 +447,7 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
   ): CyElement[] {
     const elements: CyElement[] = [];
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan'; label: string }>();
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'bridge' | 'ovs-bridge'; label: string }>();
 
     if (!parsed.topology) {
       log.warn('Parsed YAML does not contain \x27topology\x27 object.');
@@ -519,7 +519,10 @@ export class TopoViewerAdaptorClab {
             weight: '30',
             name: nodeName,
             parent: parentId || undefined,
-            topoViewerRole: nodeAnn?.icon || mergedNode.labels?.['topoViewer-role'] || 'router',
+            topoViewerRole:
+              nodeAnn?.icon ||
+              mergedNode.labels?.['topoViewer-role'] ||
+              (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'bridge' : 'router'),
             lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
             lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
@@ -591,6 +594,18 @@ export class TopoViewerAdaptorClab {
         classes: groupLabelPos,
       };
       elements.push(groupNodeEl);
+    }
+
+    // Add bridge nodes to specialNodes
+    if (parsed.topology.nodes) {
+      for (const [nodeName, nodeData] of Object.entries(parsed.topology.nodes)) {
+        if (nodeData.kind === 'bridge' || nodeData.kind === 'ovs-bridge') {
+          specialNodes.set(nodeName, {
+            type: nodeData.kind as 'bridge' | 'ovs-bridge',
+            label: nodeName
+          });
+        }
+      }
     }
 
     let linkIndex = 0;
@@ -726,26 +741,71 @@ export class TopoViewerAdaptorClab {
         const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
           ? actualTargetNode
           : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
-        const sourceIfaceData = findInterfaceNode(
+        // Get interface data (might be undefined in editor mode)
+        const sourceIfaceData = opts.includeContainerData ? findInterfaceNode(
           opts.clabTreeData ?? {},
           sourceContainerName,
           sourceIface,
           clabName
-        );
-        const targetIfaceData = findInterfaceNode(
+        ) : undefined;
+        const targetIfaceData = opts.includeContainerData ? findInterfaceNode(
           opts.clabTreeData ?? {},
           targetContainerName,
           targetIface,
           clabName
-        );
+        ) : undefined;
+
         const edgeId = `Clab-Link${linkIndex}`;
         let edgeClass = '';
-        if (sourceIfaceData?.state && targetIfaceData?.state) {
-          edgeClass =
-            sourceIfaceData.state === 'up' && targetIfaceData.state === 'up'
-              ? 'link-up'
-              : 'link-down';
+
+        // Only apply link state colors in viewer mode (when includeContainerData is true)
+        if (opts.includeContainerData) {
+          // Check if either node is a special network endpoint (bridge, host, mgmt-net, macvlan)
+          const sourceNodeData = parsed.topology.nodes?.[sourceNode];
+          const targetNodeData = parsed.topology.nodes?.[targetNode];
+
+          // Check for all types of special endpoints
+          const sourceIsSpecial =
+            sourceNodeData?.kind === 'bridge' ||
+            sourceNodeData?.kind === 'ovs-bridge' ||
+            sourceNode === 'host' ||
+            sourceNode === 'mgmt-net' ||
+            sourceNode.startsWith('macvlan:');
+
+          const targetIsSpecial =
+            targetNodeData?.kind === 'bridge' ||
+            targetNodeData?.kind === 'ovs-bridge' ||
+            targetNode === 'host' ||
+            targetNode === 'mgmt-net' ||
+            targetNode.startsWith('macvlan:');
+
+          if (sourceIsSpecial || targetIsSpecial) {
+            // For special network connections, only check the non-special side
+            if (sourceIsSpecial && !targetIsSpecial) {
+              // Source is special network, check target state only
+              // Only set link state if we have actual interface data
+              if (targetIfaceData?.state) {
+                edgeClass = targetIfaceData.state === 'up' ? 'link-up' : 'link-down';
+              }
+            } else if (!sourceIsSpecial && targetIsSpecial) {
+              // Target is special network, check source state only
+              // Only set link state if we have actual interface data
+              if (sourceIfaceData?.state) {
+                edgeClass = sourceIfaceData.state === 'up' ? 'link-up' : 'link-down';
+              }
+            } else if (sourceIsSpecial && targetIsSpecial) {
+              // Both are special networks, assume up
+              edgeClass = 'link-up';
+            }
+          } else if (sourceIfaceData?.state && targetIfaceData?.state) {
+            // Normal link - both sides must be up
+            edgeClass =
+              sourceIfaceData.state === 'up' && targetIfaceData.state === 'up'
+                ? 'link-up'
+                : 'link-down';
+          }
         }
+        // In editor mode (includeContainerData = false), edgeClass remains empty string, resulting in gray links
         const edgeEl: CyElement = {
           group: 'edges',
           data: {

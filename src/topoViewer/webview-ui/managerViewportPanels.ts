@@ -204,6 +204,33 @@ export class ManagerViewportPanels {
   }
 
   /**
+   * Updates the network editor fields based on the selected network type.
+   * @param networkType - The selected network type.
+   */
+  private updateNetworkEditorFields(networkType: string): void {
+    const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
+    const interfaceLabel = Array.from(document.querySelectorAll('.label')).find(el =>
+      el.textContent === 'Interface' || el.textContent === 'Bridge Name'
+    );
+
+    if (networkType === 'bridge' || networkType === 'ovs-bridge') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Bridge Name';
+      }
+      if (interfaceInput) {
+        interfaceInput.placeholder = 'Enter bridge name';
+      }
+    } else {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.placeholder = 'Enter interface name';
+      }
+    }
+  }
+
+  /**
    * Displays the network editor panel for a cloud network node.
    * @param node - The Cytoscape node representing the network.
    */
@@ -217,9 +244,13 @@ export class ManagerViewportPanels {
 
     // Parse the node ID to extract network type and interface
     const nodeId = node.data('id') as string;
+    const nodeData = node.data();
     const parts = nodeId.split(':');
-    const networkType = parts[0] || 'host';
-    const interfaceName = parts[1] || 'eth1';
+    const networkType = nodeData.extraData?.kind || parts[0] || 'host';
+    const interfaceName =
+      networkType === 'bridge' || networkType === 'ovs-bridge'
+        ? nodeId
+        : parts[1] || 'eth1';
 
     // Set fields
     const idLabel = document.getElementById('panel-network-editor-id');
@@ -228,20 +259,38 @@ export class ManagerViewportPanels {
     }
 
     // Initialize network type filterable dropdown
-    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan'];
+    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'bridge', 'ovs-bridge'];
     this.createFilterableDropdown(
       'panel-network-type-dropdown-container',
       networkTypeOptions,
       networkType,
       (selectedValue: string) => {
         log.debug(`Network type ${selectedValue} selected`);
+        this.updateNetworkEditorFields(selectedValue);
       },
       'Search for network type...'
     );
 
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
-    if (interfaceInput) {
-      interfaceInput.value = interfaceName;
+    const interfaceLabel = document.querySelector('[for="panel-network-interface"]') ||
+                          document.querySelector('.label[class*="Interface"]') ||
+                          Array.from(document.querySelectorAll('.label')).find(el => el.textContent === 'Interface');
+
+    // Update field based on network type
+    if (networkType === 'bridge' || networkType === 'ovs-bridge') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Bridge Name';
+      }
+      if (interfaceInput) {
+        interfaceInput.value = nodeId; // For bridges, the ID is the bridge name
+      }
+    } else {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.value = interfaceName;
+      }
     }
 
     const panel = document.getElementById('panel-network-editor');
@@ -496,7 +545,8 @@ export class ManagerViewportPanels {
     // Build new ID from network type and interface
     const networkType = networkTypeInput ? networkTypeInput.value : 'host';
     const interfaceName = interfaceInput ? interfaceInput.value : 'eth1';
-    const newId = `${networkType}:${interfaceName}`;
+    const isBridgeType = networkType === 'bridge' || networkType === 'ovs-bridge';
+    const newId = isBridgeType ? interfaceName : `${networkType}:${interfaceName}`;
     const newName = newId;
 
     // If ID hasn't changed, just update the data
@@ -504,6 +554,7 @@ export class ManagerViewportPanels {
       const updatedData = {
         ...currentData,
         name: newName,
+        topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
         extraData: {
           ...currentData.extraData,
           kind: networkType
@@ -534,6 +585,7 @@ export class ManagerViewportPanels {
         ...currentData,
         id: newId,
         name: newName,
+        topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
         extraData: {
           ...currentData.extraData,
           kind: networkType
@@ -593,15 +645,25 @@ export class ManagerViewportPanels {
   /**
    * Determines if a node ID represents a special endpoint.
    * @param nodeId - The node ID to check.
-   * @returns True if the node is a special endpoint (host, mgmt-net, macvlan).
+   * @returns True if the node is a special endpoint (host, mgmt-net, macvlan, bridge, ovs-bridge).
    * @private
    */
   private isSpecialEndpoint(nodeId: string): boolean {
-    return (
-      nodeId.startsWith('host:') ||
-      nodeId.startsWith('mgmt-net:') ||
-      nodeId.startsWith('macvlan:')
-    );
+    // Check for traditional network prefixes
+    if (nodeId.startsWith('host:') ||
+        nodeId.startsWith('mgmt-net:') ||
+        nodeId.startsWith('macvlan:')) {
+      return true;
+    }
+
+    // Check if it's a bridge node by examining the node's data
+    const node = this.cy.getElementById(nodeId);
+    if (node.length > 0) {
+      const kind = node.data('extraData')?.kind;
+      return kind === 'bridge' || kind === 'ovs-bridge';
+    }
+
+    return false;
   }
 
   /**
@@ -961,7 +1023,7 @@ export class ManagerViewportPanels {
     // Create the filterable dropdown structure
     const dropdownHtml = `
       <div class="filterable-dropdown relative w-full">
-        <div class="filterable-dropdown-input-container">
+        <div class="filterable-dropdown-input-container relative">
           <input 
             type="text" 
             class="input-field w-full pr-8" 
@@ -969,7 +1031,8 @@ export class ManagerViewportPanels {
             value="${currentValue}"
             id="${containerId}-filter-input"
           />
-          <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+          <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer" 
+             id="${containerId}-dropdown-arrow"></i>
         </div>
         <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg" 
              id="${containerId}-dropdown-menu">
@@ -981,6 +1044,7 @@ export class ManagerViewportPanels {
 
     const filterInput = document.getElementById(`${containerId}-filter-input`) as HTMLInputElement;
     const dropdownMenu = document.getElementById(`${containerId}-dropdown-menu`);
+    const dropdownArrow = document.getElementById(`${containerId}-dropdown-arrow`);
 
     if (!filterInput || !dropdownMenu) {
       log.error(`Failed to create filterable dropdown elements for ${containerId}`);
@@ -1039,17 +1103,39 @@ export class ManagerViewportPanels {
       }
     });
 
-    // Show/hide dropdown on focus/blur
+    // Show/hide dropdown on focus
     filterInput.addEventListener('focus', () => {
       dropdownMenu.classList.remove('hidden');
     });
 
+    // Handle arrow click to toggle dropdown
+    if (dropdownArrow) {
+      dropdownArrow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dropdownMenu.classList.contains('hidden')) {
+          dropdownMenu.classList.remove('hidden');
+          filterInput.focus();
+        } else {
+          dropdownMenu.classList.add('hidden');
+        }
+      });
+    }
+
     // Close dropdown when clicking outside
+    // Use setTimeout to prevent immediate closing when clicking the arrow
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
+      // Check if click is outside the entire dropdown container
       if (!container.contains(target)) {
-        dropdownMenu.classList.add('hidden');
+        setTimeout(() => {
+          dropdownMenu.classList.add('hidden');
+        }, 0);
       }
+    });
+
+    // Prevent closing when clicking inside the dropdown menu
+    dropdownMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     // Handle keyboard navigation
