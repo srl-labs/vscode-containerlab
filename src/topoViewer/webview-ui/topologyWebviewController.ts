@@ -199,6 +199,13 @@ class TopologyWebviewController {
 
     // Initialize Cytoscape instance
     this.cy = createConfiguredCytoscape(container);
+    const cyContainer = document.getElementById('cy') as HTMLDivElement;
+    if (cyContainer) {
+      cyContainer.tabIndex = 0;
+      cyContainer.addEventListener('mousedown', () => {
+        cyContainer.focus();
+      });
+    }
     this.registerCustomZoom();
 
     this.cy.on('tap', (event) => {
@@ -531,7 +538,7 @@ class TopologyWebviewController {
         commands: (ele: cytoscape.Singular) => {
           const commands: any[] = [];
 
-          if (this.isSpecialEndpoint(ele.id())) {
+          if (this.isNetworkNode(ele.id())) {
             commands.push({
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-pen-to-square" style="font-size:1.5em;"></i>
@@ -760,7 +767,7 @@ class TopologyWebviewController {
         selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
           // Skip special endpoints - they don't have SSH/Shell/Logs
-          if (self.isSpecialEndpoint(ele.id())) {
+          if (self.isNetworkNode(ele.id())) {
             return [];
           }
           const commands = [
@@ -895,94 +902,127 @@ class TopologyWebviewController {
           commands: (ele: cytoscape.Singular) => {
             const sourceName = ele.data("source");
             const targetName = ele.data("target");
-            if (self.isSpecialEndpoint(sourceName) ||
-                self.isSpecialEndpoint(targetName)) {
-              return [];
-            }
+
+            // Check if nodes are special network endpoints
+            const sourceNode = self.cy.getElementById(sourceName);
+            const targetNode = self.cy.getElementById(targetName);
+
+            // Check for all types of special network endpoints (bridge, host, mgmt-net, macvlan)
+            const sourceIsSpecialNetwork =
+              self.isSpecialEndpoint(sourceName) ||
+              (sourceNode.length > 0 &&
+                (sourceNode.data('extraData')?.kind === 'bridge' ||
+                 sourceNode.data('extraData')?.kind === 'ovs-bridge'));
+
+            const targetIsSpecialNetwork =
+              self.isSpecialEndpoint(targetName) ||
+              (targetNode.length > 0 &&
+                (targetNode.data('extraData')?.kind === 'bridge' ||
+                 targetNode.data('extraData')?.kind === 'ovs-bridge'));
+
             const sourceEndpoint = ele.data("sourceEndpoint") || "Port A";
             const targetEndpoint = ele.data("targetEndpoint") || "Port B";
 
-            return [
-              {
+            const commands = [];
+
+            // Add capture option for source if it's not a special network
+            if (!sourceIsSpecialNetwork) {
+              commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">${sourceName} - ${sourceEndpoint}</span>
                         </div>`,
-              select: (ele: cytoscape.Singular) => {
-                if (!ele.isEdge()) {
-                  return;
-                }
-                // Use setTimeout to ensure this runs after any other event handlers
-                setTimeout(async () => {
-                  const nodeName = ele.data("source");
-                  const interfaceName = ele.data("sourceEndpoint") || "";
-                  if (nodeName && interfaceName) {
-                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture', { nodeName, interfaceName });
+                select: (ele: cytoscape.Singular) => {
+                  if (!ele.isEdge()) {
+                    return;
                   }
-                }, 50);
-              }
-            },
-            {
-              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                  // Use setTimeout to ensure this runs after any other event handlers
+                  setTimeout(async () => {
+                    const nodeName = ele.data("source");
+                    const interfaceName = ele.data("sourceEndpoint") || "";
+                    if (nodeName && interfaceName) {
+                      await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture', { nodeName, interfaceName });
+                    }
+                  }, 50);
+                }
+              });
+            }
+
+            // Add capture option for target if it's not a special network
+            if (!targetIsSpecialNetwork) {
+              commands.push({
+                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">${targetName} - ${targetEndpoint}</span>
                         </div>`,
-              select: (ele: cytoscape.Singular) => {
-                if (!ele.isEdge()) {
-                  return;
-                }
-                // Use setTimeout to ensure this runs after any other event handlers
-                setTimeout(async () => {
-                  const nodeName = ele.data("target");
-                  const interfaceName = ele.data("targetEndpoint") || "";
-                  if (nodeName && interfaceName) {
-                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture', { nodeName, interfaceName });
+                select: (ele: cytoscape.Singular) => {
+                  if (!ele.isEdge()) {
+                    return;
                   }
-                }, 50);
-              }
-            },
-            {
-              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                  // Use setTimeout to ensure this runs after any other event handlers
+                  setTimeout(async () => {
+                    const nodeName = ele.data("target");
+                    const interfaceName = ele.data("targetEndpoint") || "";
+                    if (nodeName && interfaceName) {
+                      await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture', { nodeName, interfaceName });
+                    }
+                  }, 50);
+                }
+              });
+            }
+
+            // Add VNC capture option for source if it's not a special network
+            if (!sourceIsSpecialNetwork) {
+              commands.push({
+                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-desktop" style="font-size:1.4em;"></i>
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.85em;">${sourceName} - ${sourceEndpoint} (VNC)</span>
                         </div>`,
-              select: (ele: cytoscape.Singular) => {
-                if (!ele.isEdge()) {
-                  return;
-                }
-                // Use setTimeout to ensure this runs after any other event handlers
-                setTimeout(async () => {
-                  const nodeName = ele.data("source");
-                  const interfaceName = ele.data("sourceEndpoint") || "";
-                  if (nodeName && interfaceName) {
-                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture-edgeshark-vnc', { nodeName, interfaceName });
+                select: (ele: cytoscape.Singular) => {
+                  if (!ele.isEdge()) {
+                    return;
                   }
-                }, 50);
-              }
-            },
-            {
-              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                  // Use setTimeout to ensure this runs after any other event handlers
+                  setTimeout(async () => {
+                    const nodeName = ele.data("source");
+                    const interfaceName = ele.data("sourceEndpoint") || "";
+                    if (nodeName && interfaceName) {
+                      await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture-edgeshark-vnc', { nodeName, interfaceName });
+                    }
+                  }, 50);
+                }
+              });
+            }
+
+            // Add VNC capture option for target if it's not a special network
+            if (!targetIsSpecialNetwork) {
+              commands.push({
+                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-desktop" style="font-size:1.4em;"></i>
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.85em;">${targetName} - ${targetEndpoint} (VNC)</span>
                         </div>`,
-              select: (ele: cytoscape.Singular) => {
-                if (!ele.isEdge()) {
-                  return;
-                }
-                // Use setTimeout to ensure this runs after any other event handlers
-                setTimeout(async () => {
-                  const nodeName = ele.data("target");
-                  const interfaceName = ele.data("targetEndpoint") || "";
-                  if (nodeName && interfaceName) {
-                    await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture-edgeshark-vnc', { nodeName, interfaceName });
+                select: (ele: cytoscape.Singular) => {
+                  if (!ele.isEdge()) {
+                    return;
                   }
-                }, 50);
-              }
-            },
+                  // Use setTimeout to ensure this runs after any other event handlers
+                  setTimeout(async () => {
+                    const nodeName = ele.data("target");
+                    const interfaceName = ele.data("targetEndpoint") || "";
+                    if (nodeName && interfaceName) {
+                      await self.messageSender.sendMessageToVscodeEndpointPost('clab-link-capture-edgeshark-vnc', { nodeName, interfaceName });
+                    }
+                  }, 50);
+                }
+              });
+            }
+
+            // Always add the details option
+            commands.push(
             {
               content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
                           <i class="fas fa-info-circle" style="font-size:1.4em;"></i>
@@ -1049,8 +1089,9 @@ class TopologyWebviewController {
                 }
               }, 50);
             }
-          }
-          ];
+          });
+
+          return commands;
         },
         menuRadius: 160, // larger radius for better readability
         fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
@@ -1245,7 +1286,7 @@ class TopologyWebviewController {
         const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
         const targetEndpoint = this.getNextEndpoint(targetNode.id());
         addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
-        if (this.isSpecialEndpoint(sourceNode.id()) || this.isSpecialEndpoint(targetNode.id())) {
+        if (this.isNetworkNode(sourceNode.id()) || this.isNetworkNode(targetNode.id())) {
           addedEdge.addClass('stub-link');
         }
       });
@@ -1316,6 +1357,15 @@ class TopologyWebviewController {
       nodeId.startsWith('mgmt-net:') ||
       nodeId.startsWith('macvlan:')
     );
+  }
+
+  private isNetworkNode(nodeId: string): boolean {
+    if (this.isSpecialEndpoint(nodeId)) {
+      return true;
+    }
+    const node = this.cy.getElementById(nodeId);
+    const kind = node.data('extraData')?.kind;
+    return kind === 'bridge' || kind === 'ovs-bridge';
   }
 
   /**
@@ -1608,7 +1658,7 @@ class TopologyWebviewController {
             editor: 'true'
           };
           const isStubLink =
-            this.isSpecialEndpoint(source.id()) || this.isSpecialEndpoint(target.id());
+            this.isNetworkNode(source.id()) || this.isNetworkNode(target.id());
           this.cy.add({
             group: 'edges',
             data: edgeData,
