@@ -88,6 +88,8 @@ export interface CloudNodeAnnotation {
     x: number;
     y: number;
   };
+  group?: string;
+  level?: string;
 }
 
 export interface NodeAnnotation {

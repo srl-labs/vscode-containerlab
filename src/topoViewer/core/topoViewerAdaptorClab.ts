@@ -649,10 +649,16 @@ export class TopoViewerAdaptorClab {
       for (const [nodeId, nodeInfo] of specialNodes) {
         // Look for saved position in annotations
         let position = { x: 0, y: 0 };
+        let parent: string | undefined;
         if (opts.annotations?.cloudNodeAnnotations) {
           const savedCloudNode = opts.annotations.cloudNodeAnnotations.find((cn: any) => cn.id === nodeId);
-          if (savedCloudNode && savedCloudNode.position) {
-            position = savedCloudNode.position;
+          if (savedCloudNode) {
+            if (savedCloudNode.position) {
+              position = savedCloudNode.position;
+            }
+            if (savedCloudNode.group && savedCloudNode.level) {
+              parent = `${savedCloudNode.group}:${savedCloudNode.level}`;
+            }
           }
         }
 
@@ -662,7 +668,7 @@ export class TopoViewerAdaptorClab {
             id: nodeId,
             weight: '30',
             name: nodeInfo.label,
-            parent: undefined,
+            parent,
             topoViewerRole: 'cloud',
             lat: '',
             lng: '',
