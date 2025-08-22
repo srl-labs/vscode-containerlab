@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 import { log } from '../logging/webviewLogger';
+import { isSpecialNodeOrBridge } from './utils';
 
 
 /**
@@ -620,7 +621,7 @@ export class ManagerViewportPanels {
 
         // Determine if edge should have stub-link class based on special endpoints
         let edgeClasses = edgeInfo.classes || [];
-        const isStubLink = this.isSpecialEndpoint(newEdgeData.source) || this.isSpecialEndpoint(newEdgeData.target);
+        const isStubLink = isSpecialNodeOrBridge(newEdgeData.source, this.cy) || isSpecialNodeOrBridge(newEdgeData.target, this.cy);
 
         // Ensure stub-link class is present for special endpoints
         if (isStubLink && !edgeClasses.includes('stub-link')) {
@@ -642,29 +643,6 @@ export class ManagerViewportPanels {
     }
   }
 
-  /**
-   * Determines if a node ID represents a special endpoint.
-   * @param nodeId - The node ID to check.
-   * @returns True if the node is a special endpoint (host, mgmt-net, macvlan, bridge, ovs-bridge).
-   * @private
-   */
-  private isSpecialEndpoint(nodeId: string): boolean {
-    // Check for traditional network prefixes
-    if (nodeId.startsWith('host:') ||
-        nodeId.startsWith('mgmt-net:') ||
-        nodeId.startsWith('macvlan:')) {
-      return true;
-    }
-
-    // Check if it's a bridge node by examining the node's data
-    const node = this.cy.getElementById(nodeId);
-    if (node.length > 0) {
-      const kind = node.data('extraData')?.kind;
-      return kind === 'bridge' || kind === 'ovs-bridge';
-    }
-
-    return false;
-  }
 
   /**
    * Updates connected edge endpoints when a node's kind changes.

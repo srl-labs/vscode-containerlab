@@ -7,31 +7,22 @@ import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabTopology } from '../types/topoViewerType';
 import { annotationsManager } from './annotationsManager';
 import { CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
-
-/**
- * Determines if a node ID represents a special endpoint.
- * @param nodeId - The node ID to check.
- * @returns True if the node is a special endpoint (host, mgmt-net, macvlan).
- */
-function isSpecialEndpoint(nodeId: string): boolean {
-  return (
-    nodeId.startsWith('host:') ||
-    nodeId.startsWith('mgmt-net:') ||
-    nodeId.startsWith('macvlan:')
-  );
-}
+import { isSpecialEndpoint } from '../webview-ui/utils';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function computeEndpointsStr(data: any): string | null {
-  if (data.sourceEndpoint && data.targetEndpoint) {
-    return `${data.source}:${data.sourceEndpoint},${data.target}:${data.targetEndpoint}`;
-  }
+  // Prefer explicit endpoints array when present, as special endpoints already correct encoded
   if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length === 2) {
     const valid = data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'));
-    return valid ? (data.endpoints as string[]).join(',') : null;
+    if (valid) {
+      return (data.endpoints as string[]).join(',');
+    }
+  }
+  if (data.sourceEndpoint && data.targetEndpoint) {
+    return `${data.source}:${data.sourceEndpoint},${data.target}:${data.targetEndpoint}`;
   }
   return null;
 }
