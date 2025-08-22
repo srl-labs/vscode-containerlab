@@ -1232,6 +1232,19 @@ topology:
             break;
           }
 
+          case 'copyElements': {
+            this.context.globalState.update('topoClipboard', payloadObj);
+            result = 'Elements copied';
+            break;
+          }
+
+          case 'getCopiedElements': {
+            const clipboard = this.context.globalState.get('topoClipboard') || [];
+            panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
+            result = 'Clipboard sent';
+            break;
+          }
+
           default: {
             error = `Unknown endpoint "${endpointName}".`;
             log.error(error);
