@@ -1,6 +1,6 @@
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 import type { GroupStyleAnnotation } from '../types/topoViewerGraph';
 import type { ManagerFreeText } from './managerFreeText';
 

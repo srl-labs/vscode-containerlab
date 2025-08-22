@@ -45,6 +45,9 @@ const editorConfig = {
   resolve: {
     extensions: ['.ts', '.js']
   },
+  externals: {
+    vscode: 'commonjs vscode'
+  },
   // Disable asset size warnings to keep the build output clean. The
   // bundled webview code is quite large but the size is acceptable for the
   // extension, so we suppress webpack's performance hints.

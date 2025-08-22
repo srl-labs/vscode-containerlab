@@ -12,7 +12,7 @@ const originalResolve = (Module as any)._resolveFilename;
   if (request === 'vscode') {
     return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
   }
-  if (request.endsWith('logging/extensionLogger')) {
+  if (request.endsWith('logging/logger')) {
     return path.join(__dirname, '..', '..', 'helpers', 'extensionLogger-stub.js');
   }
   return originalResolve.call(this, request, parent, isMain, options);

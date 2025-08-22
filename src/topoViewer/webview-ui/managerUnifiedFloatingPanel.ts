@@ -1,5 +1,5 @@
 import tippy from 'tippy.js';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import cytoscape from 'cytoscape';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';

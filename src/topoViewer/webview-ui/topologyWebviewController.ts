@@ -27,7 +27,7 @@ import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
 import type { ManagerReloadTopo } from './managerReloadTopo';
 import { ManagerShortcutDisplay } from './managerShortcutDisplay';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../core/managerRegistry';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 import { registerCyEventHandlers } from './cyEventHandlers';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
