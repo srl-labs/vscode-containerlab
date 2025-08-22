@@ -26,6 +26,7 @@ import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
 import type { ManagerZoomToFit } from './managerZoomToFit';
 import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
 import type { ManagerReloadTopo } from './managerReloadTopo';
+import { ManagerShortcutDisplay } from './managerShortcutDisplay';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../core/managerRegistry';
 import { log } from '../logging/webviewLogger';
 import { registerCyEventHandlers } from './cyEventHandlers';
@@ -33,7 +34,6 @@ import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
 import { isSpecialEndpoint, isSpecialNodeOrBridge } from './utils';
-
 
 
 
@@ -284,6 +284,8 @@ class TopologyWebviewController {
     }
     // Initialize context menu for both edit and view modes (for free text at minimum)
     this.initializeContextMenu(mode);
+
+    new ManagerShortcutDisplay();
 
     // Initiate managers and panels
     this.saveManager = new ManagerSaveTopo(this.messageSender);
@@ -1230,10 +1232,13 @@ class TopologyWebviewController {
               this.isEdgeHandlerActive = true;
               this.eh.start(node);
               break;
-            case originalEvent.altKey && (isNodeInEditMode || node.data('topoViewerRole') === 'group'):
+            case originalEvent.altKey && (isNodeInEditMode || node.data('topoViewerRole') === 'group' || node.data('topoViewerRole') === 'freeText'):
               if (node.data('topoViewerRole') === 'group') {
                 log.debug(`Alt+click on group: deleting group ${node.id()}`);
                 this.groupManager?.directGroupRemoval(node.id());
+              } else if (node.data('topoViewerRole') === 'freeText') {
+                log.debug(`Alt+click on freeText: deleting text ${node.id()}`);
+                this.freeTextManager?.removeFreeTextAnnotation(node.id());
               } else {
                 log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
                 node.remove();

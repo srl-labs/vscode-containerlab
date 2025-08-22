@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.16.3] - 2025-08-22
+
+- TopoViewer/editor:
+  - UI improvements like, better selection and delete selections, shortcuts docs
+  - Fixes
+- General:
+  - Support for networks (bridges, macvlan, mgmt, ... )
+
 ## [0.16.1-2] - 2025-08-19
 
 - TopoViewer/editor:

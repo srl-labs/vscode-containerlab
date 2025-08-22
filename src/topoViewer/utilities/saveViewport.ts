@@ -286,6 +286,13 @@ export async function saveViewport({
         y: cloudNode.position?.y || 0
       }
     };
+    if (cloudNode.parent) {
+      const parts = cloudNode.parent.split(':');
+      if (parts.length === 2) {
+        cloudNodeAnnotation.group = parts[0];
+        cloudNodeAnnotation.level = parts[1];
+      }
+    }
     annotations.cloudNodeAnnotations!.push(cloudNodeAnnotation);
   }
 

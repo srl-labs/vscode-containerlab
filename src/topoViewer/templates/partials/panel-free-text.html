@@ -1,0 +1,37 @@
+<div id="free-text-modal-backdrop" class="modal-backdrop" style="display:none;"></div>
+<div id="free-text-modal" class="modal-content" style="display:none;">
+  <div id="free-text-drag-handle" class="panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150" style="margin:0 0 8px 0;"></div>
+  <div class="p-6 pt-0">
+    <h3 id="free-text-modal-title" class="text-lg font-semibold mb-4"></h3>
+    <label for="free-text-modal-text" class="label mb-1">Text:</label>
+    <textarea id="free-text-modal-text" class="input-field w-full h-20 mb-4 resize-y"></textarea>
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="free-text-font-size" class="label mb-1">Font Size:</label>
+        <input id="free-text-font-size" type="number" min="8" max="72" class="input-field w-full" />
+      </div>
+      <div>
+        <label for="free-text-font-family" class="label mb-1">Font Family:</label>
+        <select id="free-text-font-family" class="input-field w-full"></select>
+      </div>
+      <div>
+        <label for="free-text-font-color" class="label mb-1">Text Color:</label>
+        <input id="free-text-font-color" type="color" class="input-field w-full h-8 p-1" />
+      </div>
+      <div>
+        <label for="free-text-bg-color" class="label mb-1">Background:</label>
+        <input id="free-text-bg-color" type="color" class="input-field w-full h-8 p-1" />
+      </div>
+    </div>
+    <div class="flex items-center gap-2 mb-4">
+      <button id="free-text-bold-btn" class="btn btn-small btn-outlined"><strong>B</strong></button>
+      <button id="free-text-italic-btn" class="btn btn-small btn-outlined"><em>I</em></button>
+      <button id="free-text-underline-btn" class="btn btn-small btn-outlined"><u>U</u></button>
+      <button id="free-text-transparent-btn" class="btn btn-small btn-outlined ml-auto">Transparent BG</button>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button id="free-text-cancel-btn" class="btn btn-outlined btn-small">Cancel</button>
+      <button id="free-text-ok-btn" class="btn btn-primary btn-small">OK</button>
+    </div>
+  </div>
+</div>
