@@ -1220,10 +1220,13 @@ class TopologyWebviewController {
               this.isEdgeHandlerActive = true;
               this.eh.start(node);
               break;
-            case originalEvent.altKey && (isNodeInEditMode || node.data('topoViewerRole') === 'group'):
+            case originalEvent.altKey && (isNodeInEditMode || node.data('topoViewerRole') === 'group' || node.data('topoViewerRole') === 'freeText'):
               if (node.data('topoViewerRole') === 'group') {
                 log.debug(`Alt+click on group: deleting group ${node.id()}`);
                 this.groupManager?.directGroupRemoval(node.id());
+              } else if (node.data('topoViewerRole') === 'freeText') {
+                log.debug(`Alt+click on freeText: deleting text ${node.id()}`);
+                this.freeTextManager?.removeFreeTextAnnotation(node.id());
               } else {
                 log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
                 node.remove();
