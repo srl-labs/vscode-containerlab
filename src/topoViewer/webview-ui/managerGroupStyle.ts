@@ -67,8 +67,34 @@ export class ManagerGroupStyle {
 
   public applyStyleToNode(id: string): void {
     const style = this.groupStyles.get(id);
-    const node = this.cy.getElementById(id);
-    if (!style || node.empty()) return;
+    if (!style) return;
+    
+    let node = this.cy.getElementById(id);
+    
+    // If node doesn't exist, create it (for empty groups)
+    if (node.empty()) {
+      const [groupName, level] = id.split(':');
+      if (groupName && level) {
+        const pos = this.cy.nodes().length > 0 
+          ? { x: this.cy.extent().x1 + 100, y: this.cy.extent().y1 + 100 }
+          : { x: 100, y: 100 };
+          
+        node = this.cy.add({
+          group: 'nodes',
+          data: {
+            id, name: groupName, weight: '1000', topoViewerRole: 'group',
+            extraData: { clabServerUsername: 'asad', weight: '2', name: '', 
+                        topoViewerGroup: groupName, topoViewerGroupLevel: level }
+          },
+          position: pos,
+          classes: 'empty-group'
+        });
+        log.debug(`Created missing group: ${id}`);
+      } else {
+        return;
+      }
+    }
+    
     const css: any = {};
     if (style.backgroundColor) {
       css['background-color'] = style.backgroundColor;
