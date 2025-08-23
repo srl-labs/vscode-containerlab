@@ -29,9 +29,9 @@
           <span>Actions</span>
           <i class="fas fa-angle-down ml-2 text-sm font-extralight" aria-hidden="true"></i>
         </label>
-        <div class="dropdown-menu hidden peer-checked:block left-0 w-full font-extralight text-sm z-[60] mt-1"
+        <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-72 overflow-y-auto overscroll-contain z-[60] peer-checked:block"
           id="panel-node-action-dropdown-menu">
-          <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
+          <div class="py-1 font-extralight text-sm" id="panel-node-action-dropdown-menu-dropdown-content">
             <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
               class="py-1 dropdown-item">Connect to SSH</a>
             <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
