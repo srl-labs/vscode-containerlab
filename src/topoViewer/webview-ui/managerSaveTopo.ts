@@ -5,7 +5,7 @@ import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/webviewLogger';
 import topoViewerState from '../state';
-import { isSpecialEndpoint } from './utils';
+import { isSpecialEndpoint } from '../utilities/specialNodes';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.

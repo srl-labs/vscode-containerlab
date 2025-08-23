@@ -2,7 +2,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { ManagerGroupStyle } from './managerGroupStyle';
 import { ManagerFreeText } from './managerFreeText';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
-import { isSpecialEndpoint } from './utils';
+import { isSpecialEndpoint } from '../utilities/specialNodes';
 import { log } from '../logging/webviewLogger';
 import { TopologyAnnotations } from '../types/topoViewerGraph';
 

@@ -33,7 +33,8 @@ import { registerCyEventHandlers } from './cyEventHandlers';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
-import { isSpecialEndpoint, isSpecialNodeOrBridge } from './utils';
+import { isSpecialNodeOrBridge, isSpecialEndpoint } from '../utilities/specialNodes';
+
 
 
 

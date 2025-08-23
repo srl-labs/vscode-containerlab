@@ -7,7 +7,7 @@ import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabTopology } from '../types/topoViewerType';
 import { annotationsManager } from './annotationsManager';
 import { CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
-import { isSpecialEndpoint } from '../webview-ui/utils';
+import { isSpecialEndpoint } from './specialNodes';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
