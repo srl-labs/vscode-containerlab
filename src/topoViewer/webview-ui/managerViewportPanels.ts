@@ -4,7 +4,7 @@ import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 import { log } from '../logging/webviewLogger';
-import { isSpecialNodeOrBridge } from './utils';
+import { isSpecialNodeOrBridge } from '../utilities/specialNodes';
 
 
 /**
