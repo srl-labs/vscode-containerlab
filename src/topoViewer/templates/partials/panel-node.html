@@ -1,180 +1,121 @@
 <!-- Node Properties Panel -->
-<section class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+<section
+  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
   id="panel-node" aria-labelledby="node-panel-heading" style="display: none;">
   <p class="panel-heading text-base font-bold" id="node-panel-heading">
     Node Properties
   </p>
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <!-- Node Name and Actions -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Node Name</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-name">
-                  node-name-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Actions Dropdown -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-extralight"></label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <div class="relative">
-                  <input type="checkbox" id="panel-node-action-dropdown-toggle" class="hidden peer">
-                  <label for="panel-node-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer text-sm font-extralight">
-                    <span>Actions</span>
-                    <span class="ml-2 font-extralight text-sm">
-                      <i class="fas fa-angle-down" aria-hidden="true"></i>
-                    </span>
-                  </label>
-                  <div class="dropdown-menu hidden peer-checked:block left-0 w-full font-extralight text-sm" id="panel-node-action-dropdown-menu">
-                    <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
-                      <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">Connect to SSH</a>
-                      <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">Attach Shell</a>
-                      <a onclick="nodeActionViewLogs(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">View Logs</a>
-                      <a onclick="nodeActionRemoveFromParent(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">Release From Group</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+  <!-- Node Information Section -->
+  <div class="panel-block">
+
+    <!-- Node Name -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Node Name</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-name">
+          node-name-placeholder
+        </span>
+      </div>
+    </div>
+
+    <!-- Actions Dropdown -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Actions</label>
+      <div class="w-3/5 pl-2 relative">
+        <input type="checkbox" id="panel-node-action-dropdown-toggle" class="hidden peer">
+        <label for="panel-node-action-dropdown-toggle"
+          class="btn btn-small inline-flex items-center cursor-pointer text-sm font-extralight">
+          <span>Actions</span>
+          <i class="fas fa-angle-down ml-2 text-sm font-extralight" aria-hidden="true"></i>
+        </label>
+        <div class="dropdown-menu hidden peer-checked:block left-0 w-full font-extralight text-sm z-[60] mt-1"
+          id="panel-node-action-dropdown-menu">
+          <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
+            <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+              class="py-1 dropdown-item">Connect to SSH</a>
+            <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+              class="py-1 dropdown-item">Attach Shell</a>
+            <a onclick="nodeActionViewLogs(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+              class="py-1 dropdown-item">View Logs</a>
+            <a onclick="nodeActionRemoveFromParent(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+              class="py-1 dropdown-item">Release From Group</a>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- Node Properties Section -->
+  <div class="panel-block">
 
-    <!-- Node Properties List -->
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <!-- Kind -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Kind</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-kind">
-                  node-kind-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Kind -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Kind</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-kind">
+          node-kind-placeholder
+        </span>
+      </div>
+    </div>
 
-        <!-- Image -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Image</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-image">
-                  node-image-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Image -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Image</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-image">
+          node-image-placeholder
+        </span>
+      </div>
+    </div>
 
-        <!-- State -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">State</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-state">
-                  node-state-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- State -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">State</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-state">
+          node-state-placeholder
+        </span>
+      </div>
+    </div>
 
-        <!-- Management IPv4 -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Management IPv4</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-mgmtipv4">
-                  node-mgmtipv4-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Management IPv4 -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Management IPv4</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-mgmtipv4">
+          node-mgmtipv4-placeholder
+        </span>
+      </div>
+    </div>
 
-        <!-- Management IPv6 -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Management IPv6</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-mgmtipv6">
-                  node-mgmtipv6-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Management IPv6 -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Management IPv6</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-mgmtipv6">
+          node-mgmtipv6-placeholder
+        </span>
+      </div>
+    </div>
 
-        <!-- FQDN -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">FQDN</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-fqdn">
-                  node-fqdn-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- FQDN -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">FQDN</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-fqdn">
+          node-fqdn-placeholder
+        </span>
+      </div>
+    </div>
 
-        <!-- Icon -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Icon</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-sm break-words" id="panel-node-topoviewerrole">
-                  node-topoviewerrole-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
+    <!-- Icon -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Icon</label>
+      <div class="w-3/5 pl-2">
+        <span class="text-left font-extralight text-sm break-words" id="panel-node-topoviewerrole">
+          node-topoviewerrole-placeholder
+        </span>
       </div>
     </div>
   </div>

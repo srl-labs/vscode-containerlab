@@ -1,122 +1,83 @@
 <!-- Node Editor Panel -->
-<div class="panel panel-overlay fixed bottom-10 left-20 w-[360px] z-[21] draggable-panel"
-  id="panel-node-editor" style="display: none;">
-  <p class="panel-heading text-base font-bold">
+<section
+  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[650px] overflow-y-auto overflow-x-hidden draggable-panel"
+  id="panel-node-editor" aria-labelledby="node-editor-panel-heading" style="display: none;">
+  <p class="panel-heading text-base font-bold" id="node-editor-panel-heading">
     Node Properties Editor
   </p>
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
 
-        <!-- Node Name -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Node Name</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="text" class="input-field w-full text-sm font-extralight" id="panel-node-editor-name">
-              </div>
-            </div>
+  <!-- Node Information Section -->
+  <div class="panel-block">
+    <div class="w-full">
+      <!-- Node Name -->
+      <div class="flex items-center my-1 p-0.5">
+        <label for="panel-node-editor-name" class="w-2/5 pr-1 text-right text-sm font-semibold">Node Name</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <input type="text" id="panel-node-editor-name"
+            class="input-field w-full text-sm font-extralight">
+        </div>
+      </div>
+
+      <!-- Kind Dropdown -->
+      <div class="flex items-center my-1 p-0.5">
+        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Kind</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <div id="panel-node-kind-dropdown-container" class="text-sm font-extralight w-full">
+            <!-- Filterable dropdown will be inserted here -->
           </div>
         </div>
+      </div>
 
-        <!-- Kind Dropdown -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Kind</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div id="panel-node-kind-dropdown-container" class="text-sm font-extralight">
-                  <!-- Filterable dropdown will be inserted here -->
-                </div>
-              </div>
-            </div>
+      <!-- Type Dropdown/Input -->
+      <div class="flex items-center my-1 p-0.5">
+        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Type</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <div id="panel-node-type-dropdown-container" class="text-sm font-extralight w-full" style="display: none;">
+            <!-- Filterable dropdown will be inserted here -->
+          </div>
+          <input type="text" id="panel-node-editor-type-input"
+            class="input-field w-full text-sm font-extralight"
+            style="display: none;" placeholder="Enter type">
+        </div>
+      </div>
+
+      <!-- Icon Dropdown -->
+      <div class="flex items-center my-1 p-0.5">
+        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Icon</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <div id="panel-node-topoviewerrole-dropdown-container" class="text-sm font-extralight w-full">
+            <!-- Filterable dropdown will be inserted here -->
           </div>
         </div>
+      </div>
 
-        <!-- Type Dropdown/Input -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Type</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div id="panel-node-type-dropdown-container" style="display: none;" class="text-sm font-extralight">
-                  <!-- Filterable dropdown will be inserted here -->
-                </div>
-                <input type="text" class="input-field w-full text-sm font-extralight"
-                  id="panel-node-editor-type-input" style="display: none;" placeholder="Enter type">
-              </div>
-            </div>
-          </div>
+      <!-- Image -->
+      <div class="flex items-center my-1 p-0.5">
+        <label for="panel-node-editor-image" class="w-2/5 pr-1 text-right text-sm font-semibold">Image</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <input type="text" id="panel-node-editor-image"
+            class="input-field w-full text-sm font-extralight">
         </div>
+      </div>
 
-        <!-- Icon Dropdown -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Icon</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div id="panel-node-topoviewerrole-dropdown-container" class="text-sm font-extralight">
-                  <!-- Filterable dropdown will be inserted here -->
-                </div>
-              </div>
-            </div>
-          </div>
+      <!-- Group -->
+      <div class="flex items-center my-1 p-0.5">
+        <label for="panel-node-editor-group" class="w-2/5 pr-1 text-right text-sm font-semibold">Group</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <input type="text" id="panel-node-editor-group"
+            class="input-field w-full text-sm font-extralight">
         </div>
-
-
-        <!-- Image -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Image</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="text" class="input-field w-full text-sm font-extralight" id="panel-node-editor-image">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Group -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Group</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="text" class="input-field w-full text-sm font-extralight" id="panel-node-editor-group">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Buttons -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div class="space-x-2">
-                  <button class="btn btn-primary btn-small text-sm font-extralight" id="panel-node-editor-save-button">Save</button>
-                  <button class="btn btn-outlined btn-small text-sm font-extralight" id="panel-node-editor-close-button">Close</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   </div>
-</div>
+
+  <!-- Action Buttons -->
+  <div class="panel-block">
+    <div class="w-full flex justify-end space-x-2">
+      <button id="panel-node-editor-save-button"
+        class="btn btn-primary btn-small text-sm font-extralight">Save</button>
+      <button id="panel-node-editor-close-button"
+        class="btn btn-outlined btn-small text-sm font-extralight">Close</button>
+    </div>
+  </div>
+</section>

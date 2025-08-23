@@ -1,72 +1,51 @@
 <!-- Network Editor Panel -->
-<div class="panel panel-overlay fixed bottom-10 left-20 w-[360px] max-h-[400px] overflow-y-auto overflow-x-hidden z-[21] draggable-panel" id="panel-network-editor" style="display: none;">
-  <p class="panel-heading text-base font-bold">
+<section
+  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[500px] overflow-y-auto overflow-x-hidden draggable-panel"
+  id="panel-network-editor" aria-labelledby="network-editor-panel-heading" style="display: none;">
+  <p class="panel-heading text-base font-bold" id="network-editor-panel-heading">
     Network Properties Editor
   </p>
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
 
-        <!-- Network Type -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Network Type</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div id="panel-network-type-dropdown-container" class="font-extralight">
-                  <!-- Filterable dropdown will be inserted here -->
-                </div>
-              </div>
-            </div>
+  <!-- Network Information Section -->
+  <div class="panel-block">
+    <div class="w-full">
+      <!-- Network Type -->
+      <div class="flex items-center my-1 p-0.5">
+        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Network Type</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <div id="panel-network-type-dropdown-container" class="text-sm font-extralight w-full">
+            <!-- Filterable dropdown will be inserted here -->
           </div>
         </div>
+      </div>
 
-        <!-- Interface -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Interface</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="text" class="input-field w-full font-extralight" id="panel-network-interface">
-              </div>
-            </div>
-          </div>
+      <!-- Interface -->
+      <div class="flex items-center my-1 p-0.5">
+        <label for="panel-network-interface" class="w-2/5 pr-1 text-right text-sm font-semibold">Interface</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <input type="text" id="panel-network-interface"
+            class="input-field w-full text-sm font-extralight">
         </div>
+      </div>
 
-        <!-- Id -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Id</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <label class="text-left font-extralight text-base break-words block" id="panel-network-editor-id"></label>
-              </div>
-            </div>
-          </div>
+      <!-- Id -->
+      <div class="flex items-center my-1 p-0.5">
+        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Id</label>
+        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          <span id="panel-network-editor-id"
+            class="text-left font-extralight text-sm break-words block">network-id-placeholder</span>
         </div>
-
-        <!-- Buttons -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div class="space-x-2">
-                  <button class="btn btn-primary btn-small" id="panel-network-editor-save-button">Save</button>
-                  <button class="btn btn-outlined btn-small" id="panel-network-editor-close-button">Close</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   </div>
-</div>
+
+  <!-- Action Buttons -->
+  <div class="panel-block">
+    <div class="w-full flex justify-end space-x-2">
+      <button id="panel-network-editor-save-button"
+        class="btn btn-primary btn-small text-sm font-extralight">Save</button>
+      <button id="panel-network-editor-close-button"
+        class="btn btn-outlined btn-small text-sm font-extralight">Close</button>
+    </div>
+  </div>
+</section>

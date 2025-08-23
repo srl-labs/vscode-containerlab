@@ -1,82 +1,51 @@
 <!-- Link Editor Panel -->
-<div class="panel panel-overlay fixed bottom-10 left-20 w-[360px] max-h-[400px] overflow-y-auto overflow-x-hidden z-[21] draggable-panel"
-  id="panel-link-editor" style="display: none;">
-  <p class="panel-heading text-base font-bold">
+<section
+  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[500px] overflow-y-auto overflow-x-hidden draggable-panel"
+  id="panel-link-editor" aria-labelledby="link-editor-panel-heading" style="display: none;">
+  <p class="panel-heading text-base font-bold" id="link-editor-panel-heading">
     Link Editor
   </p>
 
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
+  <!-- Link Information Section -->
+  <div class="panel-block">
 
-        <!-- Link -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Link</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div id="panel-link-editor-id" class="text-left font-extralight text-sm break-words">
-                  <!-- Dynamically populated -->
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Link Id -->
+    <div class="flex items-center my-1 p-0.5">
+      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Link</label>
+      <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <span id="panel-link-editor-id" class="text-left font-extralight text-sm break-words">
+          <!-- Dynamically populated -->
+        </span>
+      </div>
+    </div>
 
-        <!-- Source Endpoint -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Source Endpoint</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input
-                  type="text"
-                  id="panel-link-editor-source-endpoint"
-                  class="input-field w-full text-sm font-extralight h-[28px]"
-                  placeholder="e.g., eth1, e1-1">
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Source Endpoint -->
+    <div class="flex items-center my-1 p-0.5">
+      <label for="panel-link-editor-source-endpoint" class="w-2/5 pr-1 text-right text-sm font-semibold">Source
+        Endpoint</label>
+      <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <input type="text" id="panel-link-editor-source-endpoint" class="input-field text-sm font-extralight w-full"
+          placeholder="e.g., eth1, e1-1">
+      </div>
+    </div>
 
-        <!-- Target Endpoint -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-sm font-semibold">Target Endpoint</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input
-                  type="text"
-                  id="panel-link-editor-target-endpoint"
-                  class="input-field w-full text-sm font-extralight h-[28px]"
-                  placeholder="e.g., eth1, e1-1">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div class="flex justify-end space-x-2">
-                  <button id="panel-link-editor-save-button" class="btn btn-primary btn-small h-[28px] px-3 text-sm font-extralight">Save</button>
-                  <button id="panel-link-editor-close-button" class="btn btn-outlined btn-small h-[28px] px-3 text-sm font-extralight">Close</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+    <!-- Target Endpoint -->
+    <div class="flex items-center my-1 p-0.5">
+      <label for="panel-link-editor-target-endpoint" class="w-2/5 pr-1 text-right text-sm font-semibold">Target
+        Endpoint</label>
+      <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <input type="text" id="panel-link-editor-target-endpoint" class="input-field text-sm font-extralight w-full"
+          placeholder="e.g., eth1, e1-1">
       </div>
     </div>
   </div>
-</div>
+
+  <!-- Action Buttons -->
+  <div class="panel-block">
+    <div class="w-full flex justify-end space-x-2">
+      <button id="panel-link-editor-save-button" class="btn btn-primary btn-small text-sm font-extralight">Save</button>
+      <button id="panel-link-editor-close-button"
+        class="btn btn-outlined btn-small text-sm font-extralight">Close</button>
+    </div>
+  </div>
+</section>

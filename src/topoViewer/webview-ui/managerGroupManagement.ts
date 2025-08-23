@@ -392,7 +392,7 @@ export class ManagerGroupManagement {
       const closeButton = document.getElementById('panel-node-editor-parent-close-button');
       if (closeButton) closeButton.addEventListener('click', () => this.nodeParentPropertiesUpdateClose());
 
-      const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement;
+      const updateButton = document.getElementById('panel-node-editor-parent-save-button');
       if (updateButton) updateButton.addEventListener('click', () => autoUpdateGroup());
 
       // Attach dropdown toggle
