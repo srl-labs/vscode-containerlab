@@ -103,7 +103,7 @@
 @layer components {
   /* Panel helpers and form layout (DRY for editor/viewer panels) */
   .panel-sheet {
-    width: 360px;
+    width: 310px;
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -242,7 +242,8 @@
   .panel-heading, .panel-header {
     background-color: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--border);
-    padding: 0.75rem 1rem;
+    padding: 0rem 1rem 0.5rem 1rem; /* top right bottom left */
+    margin-top: -0.2rem;  /* pulls the heading up */
     font-weight: 600;
     font-size: 0.875rem;
   }
