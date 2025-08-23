@@ -9,6 +9,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 // Import Leaflet CSS for map tiles
 import 'leaflet/dist/leaflet.css';
 import 'tippy.js/dist/tippy.css';
+import tippy, { type Props as TippyProps } from 'tippy.js';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { ManagerDraggablePanels } from './managerDraggablePanels';
 import { ManagerBulkLink } from './managerBulkLink';
@@ -209,6 +210,9 @@ class TopologyWebviewController {
       });
     }
     this.registerCustomZoom();
+
+    // Speed up navbar tooltips (replace native title tooltips)
+    this.initializeNavbarTooltips();
 
     this.cy.on('tap', (event) => {
       log.debug(`Cytoscape event: ${event.type}`);
@@ -422,6 +426,35 @@ class TopologyWebviewController {
 
     // Focus the container after initialization
     document.getElementById('cy')?.focus();
+  }
+
+  /**
+   * Initialize fast tooltips for navbar buttons using Tippy.js
+   */
+  private initializeNavbarTooltips(): void {
+    const nodes = document.querySelectorAll('.btn-icon-hover-clean[title]');
+    const baseOptions: Partial<TippyProps> = {
+      delay: [50, 0], // fast show, instant hide
+      duration: [120, 80],
+      placement: 'bottom',
+      appendTo: () => document.body,
+      offset: [0, 6],
+      touch: ['hold', 400] as ['hold', number],
+      // Let VS Code theme drive colors via tippy.css defaults
+    };
+
+    nodes.forEach((el) => {
+      const ref = el as HTMLElement & { _tippy?: any };
+      const text = ref.getAttribute('title') || '';
+      if ((ref as any)._tippy) {
+        (ref as any)._tippy.destroy();
+      }
+      ref.removeAttribute('title'); // prevent native tooltip
+      if (text && !ref.getAttribute('aria-label')) {
+        ref.setAttribute('aria-label', text);
+      }
+      tippy(ref, { ...baseOptions, content: text });
+    });
   }
 
   /**
