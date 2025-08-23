@@ -28,12 +28,7 @@ function getMessageSender(): VscodeMessageSender {
   return messageSender;
 }
 
-// Build the full container name based on prefix and lab name settings
-function getFullNodeName(nodeName: string): string {
-  const prefix = topoViewerState.prefixName;
-  const labName = topoViewerState.labName;
-  return prefix === '' ? nodeName : `${prefix}-${labName}-${nodeName}`;
-}
+// Note: Node name resolution for actions now mirrors cxt-menu logic directly
 
 /**
  * Toggle the About panel
@@ -408,15 +403,22 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
  */
 export async function nodeActionConnectToSSH(): Promise<void> {
   try {
-    const nodeName = topoViewerState.selectedNode;
-    if (!nodeName) {
+    if (!topoViewerState.selectedNode) {
       log.warn('No node selected for SSH connection');
       return;
     }
+    const cy = topoViewerState.cy as any;
+    const selected = topoViewerState.selectedNode;
+    // Resolve node element by longname, name, or id (align with cxt-menu logic)
+    const nodeEl = cy?.nodes()?.toArray()?.find((ele: any) => (
+      ele?.data('extraData')?.longname === selected ||
+      ele?.data('name') === selected ||
+      ele?.id() === selected
+    ));
+    const resolvedName = nodeEl?.data('extraData')?.longname || nodeEl?.data('name') || nodeEl?.id() || selected;
     const sender = getMessageSender();
-    const containerName = getFullNodeName(nodeName);
-    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', containerName);
-    log.info(`SSH connection requested for node: ${containerName}`);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', resolvedName);
+    log.info(`SSH connection requested for node: ${resolvedName}`);
   } catch (error) {
     log.error(`nodeActionConnectToSSH failed: ${error}`);
   }
@@ -427,15 +429,21 @@ export async function nodeActionConnectToSSH(): Promise<void> {
  */
 export async function nodeActionAttachShell(): Promise<void> {
   try {
-    const nodeName = topoViewerState.selectedNode;
-    if (!nodeName) {
+    if (!topoViewerState.selectedNode) {
       log.warn('No node selected to attach shell');
       return;
     }
+    const cy = topoViewerState.cy as any;
+    const selected = topoViewerState.selectedNode;
+    const nodeEl = cy?.nodes()?.toArray()?.find((ele: any) => (
+      ele?.data('extraData')?.longname === selected ||
+      ele?.data('name') === selected ||
+      ele?.id() === selected
+    ));
+    const resolvedName = nodeEl?.data('extraData')?.longname || nodeEl?.data('name') || nodeEl?.id() || selected;
     const sender = getMessageSender();
-    const containerName = getFullNodeName(nodeName);
-    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', containerName);
-    log.info(`Attach shell requested for node: ${containerName}`);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', resolvedName);
+    log.info(`Attach shell requested for node: ${resolvedName}`);
   } catch (error) {
     log.error(`nodeActionAttachShell failed: ${error}`);
   }
@@ -446,15 +454,21 @@ export async function nodeActionAttachShell(): Promise<void> {
  */
 export async function nodeActionViewLogs(): Promise<void> {
   try {
-    const nodeName = topoViewerState.selectedNode;
-    if (!nodeName) {
+    if (!topoViewerState.selectedNode) {
       log.warn('No node selected to view logs');
       return;
     }
+    const cy = topoViewerState.cy as any;
+    const selected = topoViewerState.selectedNode;
+    const nodeEl = cy?.nodes()?.toArray()?.find((ele: any) => (
+      ele?.data('extraData')?.longname === selected ||
+      ele?.data('name') === selected ||
+      ele?.id() === selected
+    ));
+    const resolvedName = nodeEl?.data('extraData')?.longname || nodeEl?.data('name') || nodeEl?.id() || selected;
     const sender = getMessageSender();
-    const containerName = getFullNodeName(nodeName);
-    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', containerName);
-    log.info(`View logs requested for node: ${containerName}`);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', resolvedName);
+    log.info(`View logs requested for node: ${resolvedName}`);
   } catch (error) {
     log.error(`nodeActionViewLogs failed: ${error}`);
   }
