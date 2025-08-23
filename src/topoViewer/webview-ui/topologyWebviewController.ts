@@ -11,6 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import 'tippy.js/dist/tippy.css';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { ManagerDraggablePanels } from './managerDraggablePanels';
+import { ManagerBulkLink } from './managerBulkLink';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
 import { ManagerSaveTopo } from './managerSaveTopo';
@@ -1688,6 +1689,8 @@ class TopologyWebviewController {
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize draggable panels manager
   ManagerDraggablePanels.init();
+  // Initialize bulk link panel manager
+  ManagerBulkLink.init();
 
   const mode = (window as any).topoViewerMode === 'viewer' ? 'view' : 'edit';
   const controller = new TopologyWebviewController('cy', mode);
