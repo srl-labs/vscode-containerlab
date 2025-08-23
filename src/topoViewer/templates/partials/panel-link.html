@@ -1,6 +1,6 @@
 <!-- Link Properties Panel -->
 <section
-  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+  class="panel panel-overlay panel-sheet panel-lg bottom-10 left-20 draggable-panel"
   id="panel-link" aria-labelledby="link-panel-heading" style="display: none;">
   <p class="panel-heading text-base font-bold" id="link-panel-heading">
     Link Properties
@@ -10,9 +10,9 @@
   <div class="panel-block">
     <div class="w-full">
       <!-- Link Name -->
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Link Name</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">Link Name</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-name">
             link-name-placeholder
           </span>
@@ -20,9 +20,9 @@
       </div>
 
       <!-- Actions Dropdown -->
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Actions</label>
-        <div class="w-3/5 pl-2 relative">
+      <div class="form-row">
+        <label class="form-label">Actions</label>
+        <div class="form-field relative">
           <input type="checkbox" id="panel-link-action-dropdown-toggle" class="hidden peer">
           <label for="panel-link-action-dropdown-toggle"
             class="btn btn-small inline-flex items-center cursor-pointer text-sm font-extralight">
@@ -63,34 +63,34 @@
   <!-- Endpoint A Section -->
   <div class="panel-block" id="panel-link-endpoint-a">
     <div class="w-full">
-      <h3 class="text-base font-semibold tracking-wider mb-2 text-[var(--vscode-foreground)]">Endpoint A</h3>
+      <h3 class="section-title">Endpoint A</h3>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Name</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">Name</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-a-name">
             link-endpoint-a-name-placeholder
           </span>
         </div>
       </div>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">MAC address</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">MAC address</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-a-mac-address">N/A</span>
         </div>
       </div>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">MTU</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">MTU</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-a-mtu">N/A</span>
         </div>
       </div>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Type</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">Type</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-a-type">N/A</span>
         </div>
       </div>
@@ -100,34 +100,34 @@
   <!-- Endpoint B Section -->
   <div class="panel-block" id="panel-link-endpoint-b">
     <div class="w-full">
-      <h3 class="text-base font-semibold tracking-wider mb-2 text-[var(--vscode-foreground)]">Endpoint B</h3>
+      <h3 class="section-title">Endpoint B</h3>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Name</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">Name</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-b-name">
             link-endpoint-b-name-placeholder
           </span>
         </div>
       </div>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">MAC address</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">MAC address</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-b-mac-address">N/A</span>
         </div>
       </div>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">MTU</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">MTU</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-b-mtu">N/A</span>
         </div>
       </div>
 
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Type</label>
-        <div class="w-3/5 pl-2">
+      <div class="form-row">
+        <label class="form-label">Type</label>
+        <div class="form-value">
           <span class="text-left font-extralight text-sm break-words" id="panel-link-endpoint-b-type">N/A</span>
         </div>
       </div>

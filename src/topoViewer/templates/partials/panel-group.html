@@ -1,6 +1,6 @@
 <!-- Node Parent Properties Editor Panel -->
 <section
-  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[750px] overflow-y-auto overflow-x-hidden draggable-panel"
+  class="panel panel-overlay panel-sheet panel-xl bottom-10 left-20 draggable-panel"
   id="panel-node-editor-parent" aria-labelledby="group-panel-heading" style="display: none;">
   <p class="panel-heading text-base font-bold" id="group-panel-heading">
     Group Properties
@@ -9,13 +9,13 @@
   <!-- Basic Information Section -->
   <div class="panel-block">
     <div class="w-full">
-      <h3 class="text-base font-semibold tracking-wider mb-2 text-[var(--vscode-foreground)]">Basic Information</h3>
+      <h3 class="section-title">Basic Information</h3>
 
       <!-- Group Id -->
-      <div class="flex items-center my-1 p-0.5">
-        <label for="panel-node-editor-parent-graph-group-id" class="w-2/5 pr-1 text-right text-sm font-semibold">
+      <div class="form-row">
+        <label for="panel-node-editor-parent-graph-group-id" class="form-label">
           Id</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-value">
           <span id="panel-node-editor-parent-graph-group-id" class="text-sm font-extralight break-words">
             group-id-placeholder
           </span>
@@ -34,28 +34,28 @@
 
 
       <!-- Graph Group -->
-      <div class="flex items-center my-1 p-0.5">
-        <label for="panel-node-editor-parent-graph-group" class="w-2/5 pr-1 text-right text-sm font-semibold">Graph
+      <div class="form-row">
+        <label for="panel-node-editor-parent-graph-group" class="form-label">Graph
           Group</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-graph-group" type="text" class="input-field text-sm font-extralight">
         </div>
       </div>
 
       <!-- Graph Level -->
-      <div class="flex items-center my-1 p-0.5">
-        <label for="panel-node-editor-parent-graph-level" class="w-2/5 pr-1 text-right text-sm font-semibold">Graph
+      <div class="form-row">
+        <label for="panel-node-editor-parent-graph-level" class="form-label">Graph
           Level</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-graph-level" type="text" class="input-field text-sm font-extralight">
         </div>
       </div>
 
 
       <!-- Label Position -->
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Label Position</label>
-        <div class="w-3/5 pl-2 relative" id="panel-node-editor-parent-label-dropdown">
+      <div class="form-row">
+        <label class="form-label">Label Position</label>
+        <div class="form-field relative" id="panel-node-editor-parent-label-dropdown">
           <button class="btn btn-small inline-flex items-center font-extralight" aria-haspopup="true"
             aria-expanded="false">
             <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
@@ -79,13 +79,13 @@
   <!-- Visual Appearance Section -->
   <div class="panel-block">
     <div class="w-full">
-      <h3 class="text-base font-semibold mb-2 tracking-wider text-[var(--vscode-foreground)]">Visual Appearance</h3>
+      <h3 class="section-title">Visual Appearance</h3>
 
       <!-- Background Color -->
-      <div class="flex items-center my-1 p-0.5">
+      <div class="form-row">
         <label for="panel-node-editor-parent-bg-color"
-          class="w-2/5 pr-1 text-right text-sm font-semibold">Background</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+          class="form-label">Background</label>
+        <div class="form-field">
           <input id="panel-node-editor-parent-bg-color" type="color"
             class="h-8 w-8 cursor-pointer border border-gray-500">
           <input id="panel-node-editor-parent-bg-color-hex" type="text"
@@ -94,10 +94,10 @@
       </div>
 
       <!-- Background Opacity -->
-      <div class="flex items-center my-1">
-        <label for="panel-node-editor-parent-bg-opacity" class="w-2/5 pr-1 text-right text-sm font-semibold">Bg
+      <div class="form-row">
+        <label for="panel-node-editor-parent-bg-opacity" class="form-label">Bg
           Opacity</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-bg-opacity" type="range" min="0" max="100" value="20" class="flex-1">
           <span id="panel-node-editor-parent-bg-opacity-value"
             class="text-sm w-10 text-right text-sm font-extralight">20%</span>
@@ -105,10 +105,10 @@
       </div>
 
       <!-- Text Color -->
-      <div class="flex items-center my-1">
-        <label for="panel-node-editor-parent-text-color" class="w-2/5 pr-1 text-right text-sm font-semibold">Text
+      <div class="form-row">
+        <label for="panel-node-editor-parent-text-color" class="form-label">Text
           Color</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-text-color" type="color"
             class="h-8 w-8 cursor-pointer border border-gray-500">
           <input id="panel-node-editor-parent-text-color-hex" type="text"
@@ -121,13 +121,13 @@
   <!-- Border Settings Section -->
   <div class="panel-block">
     <div class="w-full">
-      <h3 class="text-base font-semibold mb-2 tracking-wider text-[var(--vscode-foreground)]">Border Settings</h3>
+      <h3 class="section-title">Border Settings</h3>
 
       <!-- Border Color -->
-      <div class="flex items-center my-1">
-        <label for="panel-node-editor-parent-border-color" class="w-2/5 pr-1 text-right text-sm font-semibold">Border
+      <div class="form-row">
+        <label for="panel-node-editor-parent-border-color" class="form-label">Border
           Color</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-border-color" type="color"
             class="h-8 w-8 cursor-pointer border border-gray-500">
           <input id="panel-node-editor-parent-border-color-hex" type="text"
@@ -136,10 +136,10 @@
       </div>
 
       <!-- Border Width -->
-      <div class="flex items-center my-1">
-        <label for="panel-node-editor-parent-border-width" class="w-2/5 pr-1 text-right text-sm font-semibold">Border
+      <div class="form-row">
+        <label for="panel-node-editor-parent-border-width" class="form-label">Border
           Width</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-border-width" type="number" step="0.1"
             class="input-field text-sm font-extralight">
         </div>
@@ -147,10 +147,10 @@
 
 
       <!-- Border Style -->
-      <div class="flex items-center my-1">
-        <label for="panel-node-editor-parent-border-style" class="w-2/5 pr-1 text-right text-sm font-semibold">Border
+      <div class="form-row">
+        <label for="panel-node-editor-parent-border-style" class="form-label">Border
           Style</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <select id="panel-node-editor-parent-border-style" class="input-field text-sm font-extralight">
             <option value="solid">Solid</option>
             <option value="dotted">Dotted</option>
@@ -161,10 +161,10 @@
       </div>
 
       <!-- Border Radius -->
-      <div class="flex items-center my-1">
-        <label for="panel-node-editor-parent-border-radius" class="w-2/5 pr-1 text-right text-sm font-semibold">Corner
+      <div class="form-row">
+        <label for="panel-node-editor-parent-border-radius" class="form-label">Corner
           Radius</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+        <div class="form-field">
           <input id="panel-node-editor-parent-border-radius" type="range" min="0" max="50" value="0" class="flex-1">
           <span id="panel-node-editor-parent-border-radius-value"
             class="text-sm w-10 text-right text-sm font-extralight">0px</span>
@@ -175,7 +175,7 @@
 
   <!-- Action Buttons -->
   <div class="panel-block">
-    <div class="w-full flex justify-end space-x-2">
+    <div class="panel-actions">
       <button id="panel-node-editor-parent-delete-button" class="btn btn-danger btn-small text-sm font-extralight">Remove</button>
       <button id="panel-node-editor-parent-save-button"   class="btn btn-primary btn-small text-sm font-extralight">Save</button>
       <button id="panel-node-editor-parent-close-button"  class="btn btn-outlined btn-small text-sm font-extralight">Close</button>

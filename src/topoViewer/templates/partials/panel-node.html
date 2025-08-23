@@ -1,6 +1,6 @@
 <!-- Node Properties Panel -->
 <section
-  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+  class="panel panel-overlay panel-sheet panel-lg bottom-10 left-20 draggable-panel"
   id="panel-node" aria-labelledby="node-panel-heading" style="display: none;">
   <p class="panel-heading text-base font-bold" id="node-panel-heading">
     Node Properties
@@ -10,9 +10,9 @@
   <div class="panel-block">
 
     <!-- Node Name -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Node Name</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">Node Name</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-name">
           node-name-placeholder
         </span>
@@ -20,9 +20,9 @@
     </div>
 
     <!-- Actions Dropdown -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Actions</label>
-      <div class="w-3/5 pl-2 relative">
+    <div class="form-row">
+      <label class="form-label">Actions</label>
+      <div class="form-field relative">
         <input type="checkbox" id="panel-node-action-dropdown-toggle" class="hidden peer">
         <label for="panel-node-action-dropdown-toggle"
           class="btn btn-small inline-flex items-center cursor-pointer text-sm font-extralight">
@@ -50,9 +50,9 @@
   <div class="panel-block">
 
     <!-- Kind -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Kind</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">Kind</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-kind">
           node-kind-placeholder
         </span>
@@ -60,9 +60,9 @@
     </div>
 
     <!-- Image -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Image</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">Image</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-image">
           node-image-placeholder
         </span>
@@ -70,9 +70,9 @@
     </div>
 
     <!-- State -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">State</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">State</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-state">
           node-state-placeholder
         </span>
@@ -80,9 +80,9 @@
     </div>
 
     <!-- Management IPv4 -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Management IPv4</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">Management IPv4</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-mgmtipv4">
           node-mgmtipv4-placeholder
         </span>
@@ -90,9 +90,9 @@
     </div>
 
     <!-- Management IPv6 -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Management IPv6</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">Management IPv6</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-mgmtipv6">
           node-mgmtipv6-placeholder
         </span>
@@ -100,9 +100,9 @@
     </div>
 
     <!-- FQDN -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">FQDN</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">FQDN</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-fqdn">
           node-fqdn-placeholder
         </span>
@@ -110,9 +110,9 @@
     </div>
 
     <!-- Icon -->
-    <div class="flex items-center my-1 p-0.5">
-      <label class="w-2/5 pr-1 text-right text-sm font-semibold">Icon</label>
-      <div class="w-3/5 pl-2">
+    <div class="form-row">
+      <label class="form-label">Icon</label>
+      <div class="form-value">
         <span class="text-left font-extralight text-sm break-words" id="panel-node-topoviewerrole">
           node-topoviewerrole-placeholder
         </span>

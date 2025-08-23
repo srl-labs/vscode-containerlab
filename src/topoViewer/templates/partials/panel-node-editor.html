@@ -1,6 +1,6 @@
 <!-- Node Editor Panel -->
 <section
-  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[650px] overflow-y-auto overflow-x-hidden draggable-panel"
+  class="panel panel-overlay panel-sheet panel-md bottom-10 left-20 draggable-panel"
   id="panel-node-editor" aria-labelledby="node-editor-panel-heading" style="display: none;">
   <p class="panel-heading text-base font-bold" id="node-editor-panel-heading">
     Node Properties Editor
@@ -10,18 +10,18 @@
   <div class="panel-block">
     <div class="w-full">
       <!-- Node Name -->
-      <div class="flex items-center my-1 p-0.5">
-        <label for="panel-node-editor-name" class="w-2/5 pr-1 text-right text-sm font-semibold">Node Name</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+      <div class="form-row">
+        <label for="panel-node-editor-name" class="form-label">Node Name</label>
+        <div class="form-field">
           <input type="text" id="panel-node-editor-name"
             class="input-field w-full text-sm font-extralight">
         </div>
       </div>
 
       <!-- Kind Dropdown -->
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Kind</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+      <div class="form-row">
+        <label class="form-label">Kind</label>
+        <div class="form-field">
           <div id="panel-node-kind-dropdown-container" class="text-sm font-extralight w-full">
             <!-- Filterable dropdown will be inserted here -->
           </div>
@@ -29,9 +29,9 @@
       </div>
 
       <!-- Type Dropdown/Input -->
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Type</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+      <div class="form-row">
+        <label class="form-label">Type</label>
+        <div class="form-field">
           <div id="panel-node-type-dropdown-container" class="text-sm font-extralight w-full" style="display: none;">
             <!-- Filterable dropdown will be inserted here -->
           </div>
@@ -42,9 +42,9 @@
       </div>
 
       <!-- Icon Dropdown -->
-      <div class="flex items-center my-1 p-0.5">
-        <label class="w-2/5 pr-1 text-right text-sm font-semibold">Icon</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+      <div class="form-row">
+        <label class="form-label">Icon</label>
+        <div class="form-field">
           <div id="panel-node-topoviewerrole-dropdown-container" class="text-sm font-extralight w-full">
             <!-- Filterable dropdown will be inserted here -->
           </div>
@@ -52,18 +52,18 @@
       </div>
 
       <!-- Image -->
-      <div class="flex items-center my-1 p-0.5">
-        <label for="panel-node-editor-image" class="w-2/5 pr-1 text-right text-sm font-semibold">Image</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+      <div class="form-row">
+        <label for="panel-node-editor-image" class="form-label">Image</label>
+        <div class="form-field">
           <input type="text" id="panel-node-editor-image"
             class="input-field w-full text-sm font-extralight">
         </div>
       </div>
 
       <!-- Group -->
-      <div class="flex items-center my-1 p-0.5">
-        <label for="panel-node-editor-group" class="w-2/5 pr-1 text-right text-sm font-semibold">Group</label>
-        <div class="w-3/5 pl-2 flex items-center space-x-2">
+      <div class="form-row">
+        <label for="panel-node-editor-group" class="form-label">Group</label>
+        <div class="form-field">
           <input type="text" id="panel-node-editor-group"
             class="input-field w-full text-sm font-extralight">
         </div>
@@ -73,7 +73,7 @@
 
   <!-- Action Buttons -->
   <div class="panel-block">
-    <div class="w-full flex justify-end space-x-2">
+    <div class="panel-actions">
       <button id="panel-node-editor-save-button"
         class="btn btn-primary btn-small text-sm font-extralight">Save</button>
       <button id="panel-node-editor-close-button"

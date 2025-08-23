@@ -101,6 +101,60 @@
 
 /* Custom component classes using Tailwind */
 @layer components {
+  /* Panel helpers and form layout (DRY for editor/viewer panels) */
+  .panel-sheet {
+    width: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .panel-sm { max-height: 500px; }
+  .panel-md { max-height: 650px; }
+  .panel-lg { max-height: 700px; }
+  .panel-xl { max-height: 750px; }
+
+  .form-row {
+    display: flex;
+    align-items: center;
+    margin: 0.25rem 0;
+    padding: 0.125rem;
+  }
+
+  .form-label {
+    width: 40%;
+    padding-right: 0.25rem;
+    text-align: right;
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600;    /* font-semibold */
+  }
+
+  .form-field {
+    width: 60%;
+    padding-left: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* space-x-2 */
+  }
+
+  .form-value {
+    width: 60%;
+    padding-left: 0.5rem;
+  }
+
+  .section-title {
+    font-size: 1rem;     /* text-base */
+    font-weight: 600;    /* font-semibold */
+    letter-spacing: 0.05em; /* tracking-wide */
+    margin-bottom: 0.5rem;  /* mb-2 */
+    color: var(--text-primary);
+  }
+
+  .panel-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem; /* space-x-2 */
+  }
   /* Button styles */
   .btn {
     display: inline-flex;
