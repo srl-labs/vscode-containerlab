@@ -242,8 +242,8 @@
   .panel-heading, .panel-header {
     background-color: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--border);
-    padding: 0rem 1rem 0.5rem 1rem; /* top right bottom left */
-    margin-top: -0.2rem;  /* pulls the heading up */
+    padding: 0rem 1rem 0.75rem 1rem; /* top right bottom left */
+    margin-top: -0.1rem;  /* pulls the heading up */
     font-weight: 600;
     font-size: 0.875rem;
   }
