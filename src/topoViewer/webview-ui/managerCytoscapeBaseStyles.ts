@@ -20,6 +20,17 @@ const cytoscapeStylesBase: any[] = [
     }
   },
   {
+    selector: 'node.empty-group',
+    style: {
+      'background-image': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjODg4IiAvPjwvc3ZnPg==',
+      'background-width': '25px',
+      'background-height': '25px',
+      'background-position-x': '50%',
+      'background-position-y': '50%',
+      'background-repeat': 'no-repeat'
+    }
+  },
+  {
     selector: 'node',
     style: {
       shape: 'rectangle',
@@ -162,13 +173,6 @@ const cytoscapeStylesBase: any[] = [
       'background-color': '#FD1C03',
       'border-width': '0.5',
       'border-color': '#AD0000'
-    }
-  },
-  {
-    selector: 'node[topoViewerRole="dummyChild"]',
-    style: {
-      width: '14',
-      height: '14'
     }
   },
   {
@@ -545,7 +549,7 @@ export default async function loadCytoStyle(
 export function extractNodeIcons(): string[] {
   const nodeTypesSet = new Set<string>();
   const regex = /node\[topoViewerRole="([^"]+)"\]/;
-  const skipList = ['dummyChild', 'group', 'freeText'];
+  const skipList = ['group', 'freeText'];
 
   for (const styleDef of cytoscapeStylesBase) {
     if (typeof styleDef.selector === 'string') {

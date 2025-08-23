@@ -85,7 +85,7 @@ export class CopyPasteManager {
     const selected = this.cy.$(':selected');
     if (selected.empty()) return null;
 
-    let nodes = selected.nodes().union(selected.nodes().descendants()).filter('[topoViewerRole != "dummyChild"]');
+    let nodes = selected.nodes().union(selected.nodes().descendants());
     nodes = nodes.union(nodes.connectedNodes().filter((n: any) => isSpecialEndpoint(n.id()) && n.edgesWith(nodes).size() > 0));
 
     const elements = nodes.union(nodes.edgesWith(nodes)).jsons();
@@ -123,7 +123,7 @@ export class CopyPasteManager {
 
     // Generate unique IDs for nodes (excluding free text nodes - they're handled separately)
     data.elements.forEach((el: any) => {
-      if (el.group === 'nodes' && el.data.topoViewerRole !== 'dummyChild' && el.data.topoViewerRole !== 'freeText') {
+      if (el.group === 'nodes' && el.data.topoViewerRole !== 'freeText') {
         const newId = this.getUniqueId(el.data.name || el.data.id, usedIds, el.data.topoViewerRole === 'group');
         idMap.set(el.data.id, newId);
         usedIds.add(newId);
@@ -276,14 +276,6 @@ export class CopyPasteManager {
       if (!edge.data('targetEndpoint')) edge.data('targetEndpoint', this.getNextEndpoint(tgt));
       edge.data('editor', 'true');
       if (isSpecialEndpoint(src) || isSpecialEndpoint(tgt)) edge.addClass('stub-link');
-    });
-
-    // Add dummy children for empty groups to stay consitent
-    // TODO: In future maybe remove this to keep code more clear?
-    added.nodes('[topoViewerRole = "group"]').forEach((group: any) => {
-      if (group.children('[topoViewerRole != "dummyChild"]').empty()) {
-        this.cy.add({ group: 'nodes', data: { id: `${group.id()}:dummyChild`, parent: group.id(), topoViewerRole: 'dummyChild' }, classes: 'dummy' });
-      }
     });
   }
 

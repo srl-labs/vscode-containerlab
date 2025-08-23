@@ -25,7 +25,6 @@ interface NodeOptions {
 
 interface CreateNewParentOptions {
   nodeToReparent?: cytoscape.NodeSingular | null;
-  createDummyChild?: boolean;
 }
 
 export class ManagerGroupManagement {
@@ -34,10 +33,26 @@ export class ManagerGroupManagement {
 
   /* eslint-disable no-unused-vars */
   constructor(cy: cytoscape.Core, groupStyleManager: ManagerGroupStyle, _mode: 'edit' | 'view' = 'view') {
-  /* eslint-enable no-unused-vars */
+    /* eslint-enable no-unused-vars */
     this.cy = cy;
     this.groupStyleManager = groupStyleManager;
     // Mode parameter kept for backwards compatibility but not used currently
+  }
+
+  /**
+   * Updates the visual state of a group based on whether it has children.
+   * Adds 'empty-group' class if childless, otherwise removes it.
+   * @param group The group node to update.
+   */
+  private updateGroupEmptyStatus(group: cytoscape.NodeSingular): void {
+    if (!group || group.removed() || group.data('topoViewerRole') !== 'group') {
+      return;
+    }
+    if (group.children().length === 0) {
+      group.addClass('empty-group');
+    } else {
+      group.removeClass('empty-group');
+    }
   }
 
   public orphaningNode(node: cytoscape.NodeSingular): void {
@@ -46,6 +61,10 @@ export class ManagerGroupManagement {
       return;
     }
     node.move({ parent: null });
+
+    // Update the parent's state now that it has one less child
+    this.updateGroupEmptyStatus(parent);
+
     if (parent.isChildless()) {
       log.info('Removing empty parent node');
       parent.remove();
@@ -53,7 +72,7 @@ export class ManagerGroupManagement {
   }
 
   public createNewParent(options: CreateNewParentOptions = {}): string {
-    const { nodeToReparent = null, createDummyChild = false } = options;
+    const { nodeToReparent = null } = options;
     let counter = 1;
     let newParentId = `groupName${this.cy.nodes().length + counter}:1`;
     while (this.cy.getElementById(newParentId).length > 0) {
@@ -91,33 +110,15 @@ export class ManagerGroupManagement {
       locked: false,
       grabbed: false,
       grabbable: true,
-      classes: ''
+      classes: 'empty-group' // Start as empty
     };
 
-    const nodesToAdd: NodeOptions[] = [parentNodeData];
-    if (createDummyChild) {
-      nodesToAdd.push({
-        group: 'nodes',
-        data: {
-          id: `${newParentId}:dummyChild`,
-          parent: newParentId,
-          topoViewerRole: 'dummyChild'
-        },
-        removed: false,
-        selected: false,
-        selectable: false,
-        locked: false,
-        position: { x: topCenterX, y: topCenterY },
-        grabbed: false,
-        grabbable: false,
-        classes: 'dummy'
-      });
-    }
+    const newParent = this.cy.add(parentNodeData);
 
-    this.cy.add(nodesToAdd);
     if (nodeToReparent) {
       nodeToReparent.move({ parent: newParentId });
       nodeToReparent.data('parent', newParentId);
+      this.updateGroupEmptyStatus(newParent); // Update status after adding child
     }
 
     // Save default style for the new group
@@ -149,6 +150,32 @@ export class ManagerGroupManagement {
 
   public initializeGroupManagement(): void {
     try {
+      // Store the parent before a node is grabbed to correctly update its status on move/remove
+      this.cy.on('grab', 'node', (event) => {
+        event.target.scratch('_oldParent', event.target.parent());
+      });
+
+      // After a node is moved, update both the old and new parent's empty status
+      this.cy.on('move', 'node', (event) => {
+        const oldParent = event.target.scratch('_oldParent');
+        const newParent = event.target.parent();
+
+        if (oldParent) {
+          this.updateGroupEmptyStatus(oldParent);
+        }
+        if (newParent.nonempty()) {
+          this.updateGroupEmptyStatus(newParent);
+        }
+      });
+
+      // After a node is removed, update its former parent's empty status
+      this.cy.on('remove', 'node', (event) => {
+        const oldParent = event.target.scratch('_oldParent');
+        if (oldParent) {
+          this.updateGroupEmptyStatus(oldParent);
+        }
+      });
+
       const isNodeInsideParent = (
         node: cytoscape.NodeSingular,
         parent: cytoscape.NodeSingular,
@@ -186,9 +213,8 @@ export class ManagerGroupManagement {
       this.cy.on('dragfree', 'node', (event: cytoscape.EventObject) => {
         const draggedNode = event.target as cytoscape.NodeSingular;
 
-        // Don't process dummy children or free text nodes being dragged
-        if (draggedNode.data('topoViewerRole') === 'dummyChild' ||
-            draggedNode.data('topoViewerRole') === 'freeText') {
+        // Don't process free text nodes being dragged
+        if (draggedNode.data('topoViewerRole') === 'freeText') {
           return;
         }
 
@@ -221,8 +247,6 @@ export class ManagerGroupManagement {
 
         let assignedParent: cytoscape.NodeSingular | null = null;
 
-        // Look for group nodes instead of just parent nodes
-        // This ensures we find groups even if they only have dummy children
         this.cy.nodes('[topoViewerRole = "group"]').forEach(parent => {
           // Skip if trying to parent to itself
           if (parent.id() === draggedNode.id()) {
@@ -260,19 +284,7 @@ export class ManagerGroupManagement {
 
           draggedNode.move({ parent: parentNode.id() });
           log.info(`${draggedNode.id()} became a child of ${parentNode.id()}`);
-
-          // Remove dummy child if there are now real children
-          const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
-          if (dummyChild.length > 0) {
-            const realChildren = parentNode.children().not(dummyChild);
-            if (realChildren.length > 0) {
-              dummyChild.remove();
-              log.debug('Dummy child removed');
-            }
-          }
         }
-
-        // Don't clean up empty groups at all - they should only be removed manually
       });
 
     } catch (error) {
@@ -576,15 +588,9 @@ export class ManagerGroupManagement {
       }
       const children = parentNode.children();
       children.forEach(child => {
-        if (child.data('topoViewerRole') !== 'dummyChild') {
-          child.move({ parent: null });
-        }
+        child.move({ parent: null });
       });
-      const dummyChild = parentNode.children('[topoViewerRole = "dummyChild"]');
       parentNode.remove();
-      if (dummyChild && !dummyChild.empty()) {
-        dummyChild.remove();
-      }
       const nodeEditorParentPanel = document.getElementById('panel-node-editor-parent');
       if (nodeEditorParentPanel) {
         nodeEditorParentPanel.style.display = 'none';
@@ -608,18 +614,10 @@ export class ManagerGroupManagement {
         return false;
       }
 
-      // Unparent all children except dummy children
+      // Unparent all children
       const children = parentNode.children();
       children.forEach(child => {
-        if (child.data('topoViewerRole') !== 'dummyChild') {
-          child.move({ parent: null });
-        }
-      });
-
-      // Remove dummy children
-      const dummyChildren = parentNode.children('[topoViewerRole = "dummyChild"]');
-      dummyChildren.forEach(dummyChild => {
-        dummyChild.remove();
+        child.move({ parent: null });
       });
 
       // Remove the parent node itself
@@ -657,31 +655,30 @@ export class ManagerGroupManagement {
   private getGroupableSelectedNodes(): cytoscape.NodeSingular[] {
     return this.cy.nodes(':selected').filter(node =>
       node.isNode() &&
-      node.data('topoViewerRole') !== 'dummyChild' &&
       node.data('topoViewerRole') !== 'freeText' &&
       node.data('topoViewerRole') !== 'group'
     ).toArray() as cytoscape.NodeSingular[];
   }
 
   private createGroupFromSelectedNodes(nodes: cytoscape.NodeSingular[]): void {
+    // Create empty group first
+    const groupId = this.createNewParent();
+    const newParent = this.cy.getElementById(groupId);
 
-  // Create empty group first (keeping original interface)
-  const groupId = this.createNewParent({
-    createDummyChild: false,
-  });
+    // Then manually add all nodes to the group
+    nodes.forEach(node => {
+      node.move({ parent: groupId });
+      node.data('parent', groupId);
+    });
 
-  // Then manually add all nodes to the group
-  nodes.forEach(node => {
-    node.move({ parent: groupId });
-    node.data('parent', groupId);
-  });
+    this.updateGroupEmptyStatus(newParent);
 
-  this.cy.nodes().unselect();
-  log.info(`Created group ${groupId} from ${nodes.length} selected nodes`);
-}
+    this.cy.nodes().unselect();
+    log.info(`Created group ${groupId} from ${nodes.length} selected nodes`);
+  }
 
   private createEmptyGroup(): void {
-    const groupId = this.createNewParent({ createDummyChild: true });
+    const groupId = this.createNewParent();
     log.info(`Created empty group ${groupId}`);
   }
 }
@@ -697,4 +694,3 @@ export class ManagerGroupManagemetn extends ManagerGroupManagement {
     super(...args);
   }
 }
-

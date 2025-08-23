@@ -53,7 +53,6 @@ describe('managerCytoscapeBaseStyles', () => {
     const icons = extractNodeIcons();
     expect(icons).to.include('router');
     expect(icons).to.include('pe');
-    expect(icons).to.not.include('dummyChild');
     expect(icons).to.not.include('group');
   });
 });
