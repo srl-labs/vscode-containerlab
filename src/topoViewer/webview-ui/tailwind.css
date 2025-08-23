@@ -349,12 +349,20 @@
   .dropdown-item {
     color: var(
       --vscode-dropdown-foreground,
-      var(--text-primary)
+      var(--text-secondary)
     );
     display: block;
+    width: 100%; /* full-width */
     padding: 0.5rem 1rem;
-    font-size: var(--vscode-font-size);
+    font-size: 0.875rem;
     cursor: pointer;
+    text-align: left; /* left-aligned */
+    background: transparent; /* neutralize default button bg */
+    border: none; /* remove default button border */
+    border-radius: 0; /* ensure flat row look */
+    -webkit-appearance: none;
+    appearance: none; /* neutralize default button look */
+    outline: none; /* rely on :focus-visible outline below */
   }
 
   .dropdown-item:hover {
@@ -362,6 +370,11 @@
       --vscode-list-hoverBackground,
       var(--bg-hover)
     );
+  }
+  
+  .dropdown-item:focus-visible {
+    outline: 2px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
   }
   
   /* High contrast fallbacks */
