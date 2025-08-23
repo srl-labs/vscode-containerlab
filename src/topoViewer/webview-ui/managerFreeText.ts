@@ -291,10 +291,10 @@ export class ManagerFreeText {
       let isTransparentBg = annotation.backgroundColor === 'transparent';
 
       const updateButtonClasses = () => {
-        boldBtn.className = `btn btn-small ${isBold ? 'btn-primary' : 'btn-outlined'}`;
-        italicBtn.className = `btn btn-small ${isItalic ? 'btn-primary' : 'btn-outlined'}`;
-        underlineBtn.className = `btn btn-small ${isUnderline ? 'btn-primary' : 'btn-outlined'}`;
-        transparentBtn.className = `btn btn-small ml-auto ${isTransparentBg ? 'btn-primary' : 'btn-outlined'}`;
+        boldBtn.className = `btn btn-small text-sm font-extralight ${isBold ? 'btn-primary' : 'btn-outlined'}`;
+        italicBtn.className = `btn btn-small text-sm font-extralight ${isItalic ? 'btn-primary' : 'btn-outlined'}`;
+        underlineBtn.className = `btn btn-small text-sm font-extralight ${isUnderline ? 'btn-primary' : 'btn-outlined'}`;
+        transparentBtn.className = `btn btn-small ml-auto text-sm font-extralight ${isTransparentBg ? 'btn-primary' : 'btn-outlined'}`;
       };
       updateButtonClasses();
 
