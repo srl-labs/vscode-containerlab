@@ -1034,7 +1034,7 @@ export class ManagerViewportPanels {
           <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer" 
              id="${containerId}-dropdown-arrow"></i>
         </div>
-        <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg" 
+        <div class="filterable-dropdown-menu dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto" 
              id="${containerId}-dropdown-menu">
         </div>
       </div>
