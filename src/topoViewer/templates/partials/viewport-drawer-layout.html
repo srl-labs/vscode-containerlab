@@ -12,8 +12,8 @@
               </p>
             </div>
             <div class="relative">
-              <select id="select-layout-algo" onchange="layoutAlgoChange(event)" 
-                      class="input-field text-sm font-extralight">
+              <!-- Keep original select hidden for existing logic -->
+              <select id="select-layout-algo" class="hidden">
                 <option>Select Layout Algorithm</option>
                 <option>Force Directed Radial</option>
                 <option>Vertical</option>
@@ -21,6 +21,23 @@
                 <option>Preset</option>
                 <option>Geo Positioning</option>
               </select>
+
+              <!-- Custom dropdown mirroring Panel Actions style -->
+              <input type="checkbox" id="viewport-layout-action-dropdown-toggle" class="hidden peer">
+              <label for="viewport-layout-action-dropdown-toggle"
+                     class="btn btn-small inline-flex items-center cursor-pointer text-sm font-extralight w-full justify-between">
+                <span id="viewport-layout-action-dropdown-label">Select Layout Algorithm</span>
+                <i class="fas fa-angle-down ml-2 text-sm font-extralight" aria-hidden="true"></i>
+              </label>
+              <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-72 overflow-y-auto overscroll-contain z-[60] peer-checked:block">
+                <div class="py-1 font-extralight text-sm" id="viewport-layout-action-dropdown-menu-dropdown-content">
+                  <a class="py-1 dropdown-item" data-value="Force Directed Radial">Force Directed Radial</a>
+                  <a class="py-1 dropdown-item" data-value="Vertical">Vertical</a>
+                  <a class="py-1 dropdown-item" data-value="Horizontal">Horizontal</a>
+                  <a class="py-1 dropdown-item" data-value="Preset">Preset</a>
+                  <a class="py-1 dropdown-item" data-value="Geo Positioning">Geo Positioning</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -140,4 +157,3 @@
         </div>
       </div>
     </div>
-

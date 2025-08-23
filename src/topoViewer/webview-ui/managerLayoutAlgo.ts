@@ -44,6 +44,13 @@ export class ManagerLayoutAlgo {
   private geoScaleFactor = 4;
   /** Last scale factor applied to elements */
   private lastGeoScale = this.geoScaleFactor;
+  /** Ensure we bind the layout dropdown only once */
+  private layoutDropdownBound = false;
+
+  constructor() {
+    // Bind dropdown after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => this.bindLayoutDropdown());
+  }
   /** Cached zoom handler so it can be removed */
   private onLeafletZoomBound = () => {
     if (this.zoomRaf !== null) window.cancelAnimationFrame(this.zoomRaf);
@@ -384,8 +391,56 @@ export class ManagerLayoutAlgo {
         }
         // Show the layout drawer
         layoutDrawer.style.display = 'block';
+        // Ensure dropdown handlers are bound when opening
+        this.bindLayoutDropdown();
       }
     }
+  }
+
+  /** Wire up the custom dropdown in the Layout drawer (no inline JS). */
+  public bindLayoutDropdown(): void {
+    if (this.layoutDropdownBound) return;
+
+    const select = document.getElementById('select-layout-algo') as HTMLSelectElement | null;
+    const labelEl = document.getElementById('viewport-layout-action-dropdown-label') as HTMLElement | null;
+    const toggle = document.getElementById('viewport-layout-action-dropdown-toggle') as HTMLInputElement | null;
+    const menu = document.getElementById('viewport-layout-action-dropdown-menu-dropdown-content');
+
+    if (!select || !labelEl || !menu) return;
+
+    // Reflect current select value in label
+    if (select.value) {
+      labelEl.textContent = select.value;
+    }
+
+    const setSelection = (value: string, evt?: Event) => {
+      if (!select || !labelEl) return;
+      select.value = value;
+      labelEl.textContent = value;
+      this.layoutAlgoChange(evt);
+      if (toggle) toggle.checked = false;
+    };
+
+    // Bind click handlers to dropdown items
+    const items = menu.querySelectorAll('a.dropdown-item');
+    items.forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const el = e.currentTarget as HTMLElement;
+        const value = el.getAttribute('data-value') || el.textContent?.trim() || '';
+        if (value) setSelection(value, e);
+      });
+    });
+
+    // Also handle changes to the hidden select (keyboard or external calls)
+    select.addEventListener('change', (e) => {
+      const v = select.value;
+      labelEl.textContent = v || 'Select Layout Algorithm';
+      this.layoutAlgoChange(e);
+    });
+
+    this.layoutDropdownBound = true;
   }
 
   public layoutAlgoChange(event?: Event): void {
