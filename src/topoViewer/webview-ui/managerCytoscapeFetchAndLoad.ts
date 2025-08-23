@@ -1,5 +1,8 @@
 // file: managerCytoscapeFetchAndLoad.ts
 import cytoscape from 'cytoscape';
+// file: managerCytoscapeFetchAndLoad.ts
+// Fetches topology data and loads it into Cytoscape.
+
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 
@@ -18,10 +21,10 @@ export interface DataItem {
 
 
 /**
- * Fetches data from a JSON file, processes it using assignMissingLatLng(),
- * and loads it into the provided Cytoscape instance.
+ * Fetch data from JSON, enrich missing coordinates, and load into Cytoscape.
  *
- * @param cy - The Cytoscape instance to update.
+ * @param cy - Cytoscape instance to update.
+ * @param messageSender - VS Code message bridge for backend calls.
  */
 export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: VscodeMessageSender): Promise<void> {
 

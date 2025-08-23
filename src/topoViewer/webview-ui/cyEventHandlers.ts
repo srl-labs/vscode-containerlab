@@ -1,3 +1,6 @@
+// file: cyEventHandlers.ts
+// Registers shared Cytoscape click event handlers.
+
 import type cytoscape from 'cytoscape';
 
 /**
@@ -15,6 +18,11 @@ export interface CyEventHandlerOptions {
   onEdgeClick?: (event: cytoscape.EventObject) => void | Promise<void>;
 }
 
+/**
+ * Attach common click handlers to a Cytoscape instance.
+ *
+ * @param options - Event handler options including callbacks.
+ */
 export function registerCyEventHandlers(options: CyEventHandlerOptions): void {
   const { cy, onCanvasClick, onNodeClick, onEdgeClick } = options;
 

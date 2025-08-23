@@ -1,4 +1,5 @@
 // file: managerViewportPanels.ts
+// Controls UI panels around the Cytoscape viewport.
 
 import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';

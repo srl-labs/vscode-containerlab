@@ -1,7 +1,8 @@
-// managerBulkLink.ts
-// Handles Bulk Link panel interactions (ported from inline HTML script)
+// file: managerBulkLink.ts
+// Handles Bulk Link panel interactions for creating multiple links.
 
 export class ManagerBulkLink {
+  /** Initialize event bindings for the bulk link panel. */
   static init(): void {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.bindEvents());
@@ -10,6 +11,7 @@ export class ManagerBulkLink {
     }
   }
 
+  /** Bind click handlers for apply and cancel buttons. */
   private static bindEvents(): void {
     const cancelBtn = document.getElementById('bulk-link-cancel');
     const applyBtn = document.getElementById('bulk-link-apply');

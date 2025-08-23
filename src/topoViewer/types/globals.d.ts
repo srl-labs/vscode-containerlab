@@ -1,3 +1,6 @@
+// file: globals.d.ts
+// Global type declarations for webview runtime.
+
 /* eslint-disable */
 import type { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
 import type { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';

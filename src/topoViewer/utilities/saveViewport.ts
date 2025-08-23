@@ -1,3 +1,6 @@
+// file: saveViewport.ts
+// Persists Cytoscape viewport and node data back to YAML files.
+
 import * as fs from 'fs';
 import * as YAML from 'yaml';
 
@@ -44,6 +47,15 @@ export interface SaveViewportParams {
   setInternalUpdate?: (_arg: boolean) => void; // eslint-disable-line no-unused-vars
 }
 
+/**
+ * Save Cytoscape viewport data back into the underlying YAML topology.
+ *
+ * @param mode - Operating mode, 'edit' or 'view'.
+ * @param yamlFilePath - Path to the topology YAML file.
+ * @param payload - JSON string of Cytoscape elements.
+ * @param adaptor - Optional adaptor providing parsed YAML.
+ * @param setInternalUpdate - Callback to mark internal updates.
+ */
 export async function saveViewport({
   mode,
   yamlFilePath,

@@ -1,3 +1,6 @@
+// file: annotationsManager.ts
+// Handles reading, writing, and manipulating topology annotations.
+
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from '../logging/logger';
@@ -18,7 +21,10 @@ export class AnnotationsManager {
   }
 
   /**
-   * Load annotations from the annotations file
+   * Load annotations from the annotations file.
+   *
+   * @param yamlFilePath - Path to the topology YAML file.
+   * @returns Parsed annotations or empty defaults.
    */
   public async loadAnnotations(yamlFilePath: string): Promise<TopologyAnnotations> {
     const annotationsPath = this.getAnnotationsFilePath(yamlFilePath);
@@ -38,8 +44,12 @@ export class AnnotationsManager {
   }
 
   /**
-   * Save annotations to the annotations file
-   */
+    * Save annotations to the annotations file.
+    *
+    * @param yamlFilePath - Path to topology YAML.
+    * @param annotations - Annotations data to persist.
+    * @returns Resolves when the file is written or removed.
+    */
   public async saveAnnotations(
     yamlFilePath: string,
     annotations: TopologyAnnotations
@@ -72,7 +82,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Add or update a free text annotation
+   * Add or update a free text annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param annotation - Annotation to add or update.
+   * @returns Updated annotation collection.
    */
   public addOrUpdateFreeTextAnnotation(
     annotations: TopologyAnnotations,
@@ -96,7 +110,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Remove a free text annotation
+   * Remove a free text annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param annotationId - ID of the annotation to remove.
+   * @returns Updated annotation collection.
    */
   public removeFreeTextAnnotation(
     annotations: TopologyAnnotations,
@@ -111,7 +129,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Add or update a group style annotation
+   * Add or update a group style annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param style - Style annotation to add or update.
+   * @returns Updated annotation collection.
    */
   public addOrUpdateGroupStyle(
     annotations: TopologyAnnotations,
@@ -130,7 +152,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Remove a group style annotation
+   * Remove a group style annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param styleId - ID of the style annotation to remove.
+   * @returns Updated annotation collection.
    */
   public removeGroupStyle(
     annotations: TopologyAnnotations,
@@ -143,7 +169,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Add or update a cloud node annotation
+   * Add or update a cloud node annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param cloudNode - Cloud node annotation to add or update.
+   * @returns Updated annotation collection.
    */
   public addOrUpdateCloudNode(
     annotations: TopologyAnnotations,
@@ -162,7 +192,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Remove a cloud node annotation
+   * Remove a cloud node annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param cloudNodeId - ID of the cloud node to remove.
+   * @returns Updated annotation collection.
    */
   public removeCloudNode(
     annotations: TopologyAnnotations,
@@ -175,7 +209,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Add or update a node annotation
+   * Add or update a node annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param node - Node annotation to add or update.
+   * @returns Updated annotation collection.
    */
   public addOrUpdateNode(
     annotations: TopologyAnnotations,
@@ -194,7 +232,11 @@ export class AnnotationsManager {
   }
 
   /**
-   * Remove a node annotation
+   * Remove a node annotation.
+   *
+   * @param annotations - Existing annotation collection.
+   * @param nodeId - ID of the node annotation to remove.
+   * @returns Updated annotation collection.
    */
   public removeNode(
     annotations: TopologyAnnotations,

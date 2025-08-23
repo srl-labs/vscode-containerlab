@@ -1,3 +1,6 @@
+// file: managerRegistry.ts
+// Provides singleton accessors for TopoViewer managers.
+
 import type cytoscape from 'cytoscape';
 import { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
 import type { ManagerGroupStyle } from '../webview-ui/managerGroupStyle';
@@ -16,6 +19,14 @@ export const labelEndpointManager = new ManagerLabelEndpoint();
 let groupManager: ManagerGroupManagement | null = null;
 let reloadTopoManager: ManagerReloadTopo | null = null;
 
+/**
+ * Retrieves a singleton instance of {@link ManagerGroupManagement}.
+ *
+ * @param cy - The Cytoscape core instance for the viewer.
+ * @param groupStyleManager - Manager controlling group styling.
+ * @param mode - Current viewer mode, either 'edit' or 'view'.
+ * @returns Shared instance of {@link ManagerGroupManagement}.
+ */
 export function getGroupManager(
   cy: cytoscape.Core,
   groupStyleManager: ManagerGroupStyle,
@@ -27,6 +38,12 @@ export function getGroupManager(
   return groupManager;
 }
 
+/**
+ * Retrieves a singleton instance of {@link ManagerReloadTopo}.
+ *
+ * @param messageSender - Webview message sender for VS Code communication.
+ * @returns Shared instance of {@link ManagerReloadTopo}.
+ */
 export function getReloadTopoManager(messageSender: VscodeMessageSender): ManagerReloadTopo {
   if (!reloadTopoManager) {
     reloadTopoManager = new ManagerReloadTopo(messageSender);

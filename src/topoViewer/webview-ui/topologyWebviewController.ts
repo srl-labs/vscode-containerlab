@@ -1,4 +1,6 @@
 // file: topologyWebviewController.ts
+// file: topologyWebviewController.ts
+// Orchestrates managers and Cytoscape interactions in the webview.
 
 import type cytoscape from 'cytoscape';
 import { createConfiguredCytoscape } from '../cytoscapeInstanceFactory';

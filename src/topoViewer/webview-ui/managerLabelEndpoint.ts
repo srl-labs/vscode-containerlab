@@ -1,4 +1,5 @@
 // file: managerLabelEndpoint.ts
+// Toggles visibility of endpoint labels on edges.
 
 import cytoscape from 'cytoscape';
 import topoViewerState from '../state';

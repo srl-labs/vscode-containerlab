@@ -1,3 +1,4 @@
+// file: types.d.ts
 // Type declarations for modules without TypeScript definitions
 
 declare module 'cytoscape-expand-collapse';

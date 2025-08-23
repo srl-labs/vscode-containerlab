@@ -1,4 +1,5 @@
 // file: managerReloadTopo.ts
+// Reloads topology data from the backend into Cytoscape.
 
 import cytoscape from 'cytoscape';
 import { fetchAndLoadData } from './managerCytoscapeFetchAndLoad';

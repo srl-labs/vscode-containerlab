@@ -1,9 +1,15 @@
+// file: nodeConfig.ts
+// Resolves effective node configuration using Containerlab inheritance rules.
+
 import { ClabTopology, ClabNode } from '../types/topoViewerType';
 
 /**
- * Applies Containerlab inheritance rules to compute the effective
- * configuration for a node. The precedence order is:
- * node -> group -> kind -> defaults.
+ * Applies Containerlab inheritance rules to compute a node's final configuration.
+ * Precedence order: node → group → kind → defaults.
+ *
+ * @param parsed - Parsed Containerlab topology.
+ * @param node - Node definition to resolve.
+ * @returns Fully merged node configuration.
  */
 export function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
   const defaults = parsed.topology?.defaults ?? {};

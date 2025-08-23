@@ -1,3 +1,6 @@
+// file: managerZoomToFit.ts
+// Provides zoom-to-fit functionality for the Cytoscape viewport.
+
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
 import topoViewerState from '../state';

@@ -1,5 +1,5 @@
-// uiHandlers.ts - UI event handlers for TopoViewer TypeScript version
-// Contains functions referenced by onclick handlers in the HTML template
+// file: uiHandlers.ts
+// UI event handlers referenced by HTML onclick attributes.
 
 // Import logger for webview
 import { log } from '../logging/logger';

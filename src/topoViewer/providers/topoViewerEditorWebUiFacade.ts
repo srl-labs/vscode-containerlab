@@ -1,3 +1,6 @@
+// file: topoViewerEditorWebUiFacade.ts
+// Facade for VS Code panel creation and messaging with the TopoViewer webview.
+
 import * as vscode from 'vscode';
 import * as path from 'path';
 
@@ -156,6 +159,7 @@ export class TopoViewerEditor {
    * to a file path, ensuring it ends with '.clab.yml'.
    *
     * @param requestedFileUri - The URI suggested by the user (e.g., from a save dialog).
+    * @returns Resolves when the template file is written.
     */
   public async createTemplateFile(requestedFileUri: vscode.Uri): Promise<void> {
     // Parse the requested file path
@@ -413,8 +417,13 @@ topology:
   }
 
   /**
-   * Creates a new webview panel or reveals the current one.
-   * @param context The extension context.
+   * Create a new webview panel or reveal the existing one.
+   *
+   * @param context - Extension context.
+   * @param fileUri - Path to the topology YAML file.
+   * @param labName - Name of the lab to open.
+   * @param viewMode - True to open in read-only mode.
+   * @returns Resolves when the panel is created or shown.
    */
   public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string, viewMode: boolean = false): Promise<void> {
     this.currentLabName = labName;
@@ -1260,14 +1269,19 @@ topology:
 
 
   /**
-   * Check if a mode switch operation is currently in progress
+   * Determine whether a mode switch is in progress.
+   *
+   * @returns True if switching between view/edit modes.
    */
   public get isModeSwitchInProgress(): boolean {
     return this.isSwitchingMode;
   }
 
   /**
-   * Check if a lab is deployed by querying containerlab
+   * Query containerlab to determine the deployment state of a lab.
+   *
+   * @param labName - Name of the lab to check.
+   * @returns The deployment state: 'deployed', 'undeployed' or 'unknown'.
    */
   public async checkDeploymentState(labName: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
@@ -1311,10 +1325,11 @@ topology:
   }
 
   /**
- * Opens the specified file (usually the created YAML template) in a split editor.
- *
- * @param filePath - The absolute path to the file.
- */
+   * Open the specified file (usually the created YAML template) in a split editor.
+   *
+   * @param filePath - Absolute path to the file.
+   * @returns Resolves when the file has been shown.
+   */
   public async openTemplateFile(filePath: string): Promise<void> {
     try {
       const document = await vscode.workspace.openTextDocument(filePath);
@@ -1352,7 +1367,9 @@ topology:
   }
 
   /**
-   * Toggle the split view with YAML editor
+   * Toggle the YAML split view beside the topology editor.
+   *
+   * @returns Resolves when the layout has been toggled.
    */
   public async toggleSplitView(): Promise<void> {
     try {

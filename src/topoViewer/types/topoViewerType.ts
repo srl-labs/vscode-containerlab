@@ -1,5 +1,5 @@
-// file: src/types/topoViewerType.ts
-
+// file: topoViewerType.ts
+// Type definitions for Containerlab topology structures.
 
 /**
  * Represents a Containerlab node definition as specified in the YAML configuration.

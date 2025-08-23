@@ -1,4 +1,6 @@
 // file: managerAddContainerlabNode.ts
+// file: managerAddContainerlabNode.ts
+// Adds new nodes and network endpoints to the topology.
 
 import cytoscape from 'cytoscape';
 import type { NodeData } from '../types/topoViewerGraph';

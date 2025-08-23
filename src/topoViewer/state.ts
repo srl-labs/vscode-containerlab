@@ -1,3 +1,6 @@
+// file: state.ts
+// Holds mutable runtime state for the TopoViewer webview.
+
 import type { TopoViewerState } from './types/topoViewerState';
 
 export const topoViewerState: TopoViewerState = {
@@ -19,6 +22,9 @@ export const topoViewerState: TopoViewerState = {
   editorEngine: null,
 };
 
+/**
+ * Reset the shared TopoViewer state to defaults.
+ */
 export function resetState(): void {
   topoViewerState.cy = null;
   topoViewerState.selectedNode = null;

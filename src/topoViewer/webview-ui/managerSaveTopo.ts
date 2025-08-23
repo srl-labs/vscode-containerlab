@@ -1,4 +1,5 @@
 // file: managerSaveTopo.ts
+// Persists topology changes back to the extension backend.
 
 import cytoscape from 'cytoscape';
 import loadCytoStyle from './managerCytoscapeBaseStyles';

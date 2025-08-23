@@ -95,6 +95,14 @@ Guideline: treat `src/topoViewer/providers/topoViewerEditorWebUiFacade.ts` as th
 - Respect dark/light modes via the provided selectors and CSS variables.
 - Keep icons and SVGs theme-aware where possible.
 
+## File Header and Documentation Style
+
+- Begin every TypeScript file with a header comment that names the file and
+  briefly states its purpose, for example:
+  `// file: topologyWebviewController.ts` followed by a one-line summary.
+- Provide JSDoc for exported functions, classes and critical methods using
+  `@param` and `@returns` annotations where applicable.
+
 ## Adding a New Feature (Checklist)
 
 1. HTML: add the view markup in the template (no inline TS-generated HTML).

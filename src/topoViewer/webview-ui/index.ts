@@ -1,3 +1,6 @@
+// file: index.ts
+// Entry point that bootstraps the TopoViewer webview.
+
 // Mode is now set from the HTML template via window.topoViewerMode
 
 import { initializeGlobalHandlers } from './uiHandlers';

@@ -1,5 +1,8 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
+// file: utils.ts
+// Utility functions for SVG handling in the webview.
+
 import { generateEncodedSVG, NodeType } from './managerSvgGenerator';
 
 /**

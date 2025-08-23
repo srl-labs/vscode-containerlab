@@ -1,4 +1,6 @@
 // file: src/topoViewer/backend/topoViewerAdaptorClab.ts
+// file: topoViewerAdaptorClab.ts
+// Adapts Containerlab YAML into TopoViewer-friendly Cytoscape data.
 
 import * as vscode from 'vscode';
 import * as path from 'path';

@@ -1,8 +1,18 @@
+// file: yamlValidator.ts
+// Validates Containerlab YAML content with basic checks.
+
 import * as vscode from 'vscode';
 import * as YAML from 'yaml';
 
 import { log } from '../logging/logger';
 
+/**
+ * Validate Containerlab YAML content with lightweight checks.
+ *
+ * @param _context - Extension context.
+ * @param yamlContent - Raw YAML string.
+ * @returns True if the YAML passes validation.
+ */
 export async function validateYamlContent(_context: vscode.ExtensionContext, yamlContent: string): Promise<boolean> {
   try {
     // Parse YAML first to check basic syntax
@@ -82,6 +92,12 @@ export async function validateYamlContent(_context: vscode.ExtensionContext, yam
   }
 }
 
+/**
+ * Inspect link endpoints to ensure referenced nodes exist.
+ *
+ * @param yamlObj - Parsed YAML object.
+ * @returns Error message for invalid links, otherwise null.
+ */
 function checkLinkReferences(yamlObj: any): string | null {
   const nodes = new Set(Object.keys(yamlObj?.topology?.nodes ?? {}));
   const invalidNodes = new Set<string>();

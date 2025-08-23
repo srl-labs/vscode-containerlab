@@ -1,3 +1,6 @@
+// file: cytoscapeInstanceFactory.ts
+// Creates Cytoscape instances with registered extensions.
+
 /**
  * Shared Cytoscape instance factory that registers common extensions and
  * applies default styling and behavior in one place.
@@ -11,6 +14,9 @@ import cytoscapeSvg from 'cytoscape-svg';
 
 let extensionsRegistered = false;
 
+/**
+ * Register Cytoscape extensions once for the shared instance.
+ */
 function registerExtensions(): void {
   if (extensionsRegistered) {
     return;
@@ -42,6 +48,13 @@ const defaultOptions: CytoscapeOptions = {
   wheelSensitivity: 0,
 };
 
+/**
+ * Create a Cytoscape instance with registered extensions and defaults.
+ *
+ * @param container - HTML element container for Cytoscape.
+ * @param options - Additional Cytoscape configuration.
+ * @returns Configured Cytoscape core instance.
+ */
 export function createConfiguredCytoscape(container: HTMLElement | undefined, options: CytoscapeOptions = {}): Core {
   registerExtensions();
   return cytoscape({

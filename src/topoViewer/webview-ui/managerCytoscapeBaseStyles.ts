@@ -1,4 +1,5 @@
 // file: managerCytoscapeBaseStyles.ts
+// Shared Cytoscape stylesheet definitions for viewer and editor.
 
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';

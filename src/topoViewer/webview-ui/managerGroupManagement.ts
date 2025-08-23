@@ -1,3 +1,6 @@
+// file: managerGroupManagement.ts
+// Manages creation and manipulation of group nodes.
+
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
 import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
@@ -28,6 +31,7 @@ interface CreateNewParentOptions {
   createDummyChild?: boolean;
 }
 
+/** Provides group creation and management utilities. */
 export class ManagerGroupManagement {
   private cy: cytoscape.Core;
   private groupStyleManager: ManagerGroupStyle;

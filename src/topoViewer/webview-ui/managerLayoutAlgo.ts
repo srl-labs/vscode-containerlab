@@ -1,3 +1,6 @@
+// file: managerLayoutAlgo.ts
+// Provides layout algorithms and geo-scaling for Cytoscape.
+
 import cytoscape from 'cytoscape';
 import topoViewerState from '../state';
 import { log } from '../logging/logger';

@@ -1,3 +1,6 @@
+// file: managerUnifiedFloatingPanel.ts
+// Manages the unified floating action panel for topology actions.
+
 import tippy from 'tippy.js';
 import { log } from '../logging/logger';
 import { VscodeMessageSender } from './managerVscodeWebview';

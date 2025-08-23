@@ -1,3 +1,6 @@
+// file: managerShortcutDisplay.ts
+// Displays recent keyboard and mouse shortcuts in the UI.
+
 import { log } from '../logging/logger';
 
 /**

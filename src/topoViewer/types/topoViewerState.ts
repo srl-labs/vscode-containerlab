@@ -1,3 +1,6 @@
+// file: topoViewerState.ts
+// Shape of the shared webview state object.
+
 import type cytoscape from 'cytoscape';
 
 export interface TopoViewerState {

@@ -1,3 +1,6 @@
+// file: topoViewerGraph.ts
+// Interfaces describing graph elements and annotations.
+
 export interface ContainerDockerExtraAttribute {
   state?: string;
   status?: string;

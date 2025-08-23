@@ -1,3 +1,6 @@
+// file: managerFreeText.ts
+// Manages free text annotations within the Cytoscape viewport.
+
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { FreeTextAnnotation } from '../types/topoViewerGraph';

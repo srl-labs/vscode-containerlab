@@ -1,5 +1,5 @@
-// managerDraggablePanels.ts
-// TypeScript port of the draggable panels manager that was previously injected via HTML.
+// file: managerDraggablePanels.ts
+// Makes overlay panels draggable within the webview.
 
 type PanelEntry = {
   element: HTMLElement;

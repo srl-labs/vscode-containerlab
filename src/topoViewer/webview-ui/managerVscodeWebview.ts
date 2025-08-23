@@ -1,4 +1,5 @@
 // file: managerVscodeWebview.ts
+// Bridges messaging between the webview and extension host.
 
 import { log } from '../logging/logger';
 

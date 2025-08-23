@@ -1,3 +1,6 @@
+// file: managerUndo.ts
+// Triggers undo operations via the VS Code backend.
+
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 

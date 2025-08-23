@@ -1,3 +1,6 @@
+// file: htmlTemplateUtils.ts
+// Builds HTML templates for TopoViewer webviews.
+
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -34,6 +37,13 @@ export interface EditorTemplateParams extends BaseTemplateParams {
 
 export type TemplateMode = 'viewer' | 'editor';
 
+/**
+ * Load HTML partial files from the specified directories.
+ *
+ * @param partialsDir - Directory containing mode-specific partials.
+ * @param sharedPartialsDir - Directory with shared partials.
+ * @returns Map of partial names to HTML content.
+ */
 function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<string, string> {
   const partials: Record<string, string> = {};
 
@@ -62,6 +72,13 @@ function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<s
   return partials;
 }
 
+/**
+ * Recursively replace partial placeholders within a template string.
+ *
+ * @param content - Template content with placeholders.
+ * @param partials - Map of partial HTML snippets.
+ * @returns Resolved template content.
+ */
 function resolvePartials(content: string, partials: Record<string, string>): string {
   return content.replace(/{{([A-Z0-9_]+)}}/g, (_, key) => {
     const replacement = partials[key];
@@ -72,6 +89,11 @@ function resolvePartials(content: string, partials: Record<string, string>): str
   });
 }
 
+/**
+ * Determine file system paths for templates and partials.
+ *
+ * @returns Resolved template and partial directories.
+ */
 function resolveTemplatePaths(): { templatePath: string; partialsDir: string; sharedPartialsDir?: string } {
   // Try multiple possible locations for the template files
   const possiblePaths = [
@@ -101,6 +123,13 @@ function resolveTemplatePaths(): { templatePath: string; partialsDir: string; sh
   throw new Error(`Template file not found. Attempted paths: ${attemptedPaths}`);
 }
 
+/**
+ * Generate the HTML template for the viewer or editor modes.
+ *
+ * @param mode - Target mode ('viewer' or 'editor').
+ * @param params - Parameters for the template.
+ * @returns Rendered HTML template.
+ */
 export function generateHtmlTemplate(
   mode: TemplateMode,
   params: ViewerTemplateParams | EditorTemplateParams
@@ -190,6 +219,17 @@ export function generateHtmlTemplate(
   return template;
 }
 
+/**
+ * Assemble the complete HTML for the TopoViewer webview.
+ *
+ * @param context - Extension context.
+ * @param panel - Target webview panel.
+ * @param mode - Viewer or editor mode.
+ * @param folderName - Folder containing topology assets.
+ * @param adaptor - Adapter supplying topology data.
+ * @param extraParams - Additional template parameters.
+ * @returns Rendered HTML string.
+ */
 export function generateWebviewHtml(
   context: vscode.ExtensionContext,
   panel: vscode.WebviewPanel,

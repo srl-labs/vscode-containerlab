@@ -1,9 +1,15 @@
+// file: managerGroupStyle.ts
+// Manages style annotations applied to Cytoscape groups.
+
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import type { GroupStyleAnnotation } from '../types/topoViewerGraph';
 import type { ManagerFreeText } from './managerFreeText';
 
+/**
+ * Handles the persistence and application of group style annotations.
+ */
 export class ManagerGroupStyle {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;

@@ -1,4 +1,5 @@
-// managerSvgGenerator.ts
+// file: managerSvgGenerator.ts
+// Generates SVG icons for different node types.
 
 // Import logger for webview
 import { log } from '../logging/logger';
