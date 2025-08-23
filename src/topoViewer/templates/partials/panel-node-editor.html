@@ -1,119 +1,122 @@
-<!-- About Panel -->
-<aside id="panel-topoviewer-about"
-  class="panel panel-overlay fixed bottom-10 right-10 w-[360px] max-h-[700px] overflow-y-auto z-[21] draggable-panel"
-  role="complementary"
-  aria-labelledby="about-heading"
-  style="display: none;"
->
-  <!-- Panel Heading -->
-  <p class="panel-heading text-base font-bold" id="about-heading">
-    About TopoViewer
+<!-- Node Editor Panel -->
+<div class="panel panel-overlay fixed bottom-10 left-20 w-[360px] z-[21] draggable-panel"
+  id="panel-node-editor" style="display: none;">
+  <p class="panel-heading text-base font-bold">
+    Node Properties Editor
   </p>
-
   <div class="p-0 pl-4 pb-2">
     <div class="panel-block p-0">
-      <div class="px-0 text-sm leading-relaxed space-y-4">
+      <div class="px-0">
 
-        <!-- Original Author -->
-        <section>
-          <p class="text-xs font-semibold uppercase tracking-wide mb-1 pt-2">Original Author</p>
-          <p class="text-sm font-light">
-            TopoViewer was originally designed and developed by
-            <strong class="font-semibold">
-              <a href="https://www.linkedin.com/in/asadarafat/"
-                 target="_blank" rel="noopener" class="link break-words">
-                Asad Arafat
-              </a>
-            </strong>.
-          </p>
-        </section>
-
-        <!-- Repositories -->
-        <section>
-          <p class="text-xs font-semibold uppercase tracking-wide mb-1">Repositories</p>
-          <div class="space-y-1 text-sm font-light">
-            <p>
-              <strong class="font-semibold">VSCode Containerlab extension:</strong>
-              <a href="https://github.com/srl-labs/vscode-containerlab/"
-                 target="_blank" rel="noopener" class="link break-words">
-                github.com/srl-labs/vscode-containerlab
-              </a>
-            </p>
-            <p>
-              <strong class="font-semibold">Original TopoViewer repo:</strong>
-              <a href="https://github.com/asadarafat/topoViewer"
-                 target="_blank" rel="noopener" class="link break-words">
-                github.com/asadarafat/topoViewer
-              </a>
-            </p>
+        <!-- Node Name -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Node Name</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="text" class="input-field w-full font-extralight" id="panel-node-editor-name">
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
 
-        <!-- Special Thanks -->
-        <section>
-          <p class="text-xs font-semibold uppercase tracking-wide mb-2">
-            Special Thanks (in chronological development flow)
-          </p>
-          <ul class="about-list text-sm font-light space-y-2 leading-relaxed">
-            <li>
-              <strong class="font-semibold">
-                <a href="https://www.linkedin.com/in/rdodin/" target="_blank" rel="noopener" class="link">Roman Dodin</a>
-              </strong>
-              <span class="opacity-80"> – Early-stage guidance</span>
-            </li>
-            <li>
-              <strong class="font-semibold">
-                <a href="https://www.linkedin.com/in/siva19susi/" target="_blank" rel="noopener" class="link">Siva Sivakumar</a>
-              </strong>
-              <span class="opacity-80"> – CSS framework integration</span>
-            </li>
-            <li>
-              <strong class="font-semibold">
-                <a href="https://www.linkedin.com/in/gatot-susilo-b073166/" target="_blank" rel="noopener" class="link">Gatot Susilo</a>
-              </strong>
-              <span class="opacity-80"> – Komodo2 integration</span>
-            </li>
-            <li>
-              <strong class="font-semibold">
-                <a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/" target="_blank" rel="noopener" class="link">Gusman Dharma Putra</a>
-              </strong>
-              <span class="opacity-80"> – Komodo2 contributions</span>
-            </li>
-            <li>
-              <strong class="font-semibold">
-                <a href="https://www.linkedin.com/in/sven-wisotzky-44788333/" target="_blank" rel="noopener" class="link">Sven Wisotzky</a>
-              </strong>
-              <span class="opacity-80"> – Full-stack optimizations</span>
-            </li>
-            <li>
-              <strong class="font-semibold">
-                <a href="https://linkedin.com/in/florian-schwarz-812a34145" target="_blank" rel="noopener" class="link">Florian Schwarz</a>
-              </strong>
-              <span class="opacity-80"> – VSCode Containerlab maintainer & contributor to the TopoViewer TypeScript rewrite</span>
-            </li>
-            <li>
-              <strong class="font-semibold">
-                <a href="https://linkedin.com/in/kaelem-chandra" target="_blank" rel="noopener" class="link">Kaelem Chandra</a>
-              </strong>
-              <span class="opacity-80"> – VSCode Containerlab maintainer & ongoing support for the TopoViewer enhancement</span>
-            </li>
-          </ul>
-        </section>
+        <!-- Kind Dropdown -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Kind</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div id="panel-node-kind-dropdown-container" class="font-extralight">
+                  <!-- Filterable dropdown will be inserted here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Type Dropdown/Input -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Type</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div id="panel-node-type-dropdown-container" style="display: none;" class="font-extralight">
+                  <!-- Filterable dropdown will be inserted here -->
+                </div>
+                <input type="text" class="input-field w-full font-extralight"
+                  id="panel-node-editor-type-input" style="display: none;" placeholder="Enter type">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Icon Dropdown -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Icon</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div id="panel-node-topoviewerrole-dropdown-container" class="font-extralight">
+                  <!-- Filterable dropdown will be inserted here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Image -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Image</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="text" class="input-field w-full font-extralight" id="panel-node-editor-image">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Group -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Group</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="text" class="input-field w-full font-extralight" id="panel-node-editor-group">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1"></div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="space-x-2">
+                  <button class="btn btn-primary btn-small" id="panel-node-editor-save-button">Save</button>
+                  <button class="btn btn-outlined btn-small" id="panel-node-editor-close-button">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>
   </div>
-</aside>
-
-<!-- Inline CSS for hanging indent -->
-<style>
-  #panel-topoviewer-about .about-list {
-    list-style-type: disc;
-    margin-left: 1.25rem;    /* position bullets */
-  }
-  #panel-topoviewer-about .about-list li {
-    padding-left: 0.5rem;    /* gap between bullet and text */
-    text-indent: -0.5rem;    /* align wrapped lines with text */
-    margin-left: 0.5rem;     /* indent entire block slightly */
-  }
-</style>
+</div>
