@@ -25,7 +25,7 @@ export class ManagerLayoutAlgo {
   /** Reference to the Cytoscape-Leaflet plugin instance. */
   public cytoscapeLeafletLeaf: any;
   /** Whether the editor is running inside VS Code. */
-  public isVscodeDeployment: boolean = window.isVscodeDeployment ?? false;
+  public isVscodeDeployment: boolean = false;
   /** Force a specific Cytoscape theme (light or dark) while active */
   public geoTheme: 'light' | 'dark' | null = null;
   /** Helper to get the Cytoscape instance from the engine or global scope */
@@ -48,8 +48,14 @@ export class ManagerLayoutAlgo {
   private layoutDropdownBound = false;
 
   constructor() {
-    // Bind dropdown after DOM is ready
-    document.addEventListener('DOMContentLoaded', () => this.bindLayoutDropdown());
+    // Initialize deployment flag safely in non-DOM environments (e.g., tests)
+    if (typeof window !== 'undefined' && typeof (window as any).isVscodeDeployment !== 'undefined') {
+      this.isVscodeDeployment = Boolean((window as any).isVscodeDeployment);
+    }
+    // Bind dropdown after DOM is ready only when document exists
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('DOMContentLoaded', () => this.bindLayoutDropdown());
+    }
   }
   /** Cached zoom handler so it can be removed */
   private onLeafletZoomBound = () => {
