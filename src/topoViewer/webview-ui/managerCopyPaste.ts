@@ -3,6 +3,18 @@ import { ManagerGroupStyle } from './managerGroupStyle';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { isSpecialEndpoint } from './utils';
 import { ManagerFreeText } from './managerFreeText';
+import { log } from '../logging/webviewLogger';
+
+// Constants for copy/paste operations
+const PASTE_OFFSET = {
+  X: 20,
+  Y: 20
+} as const;
+
+const ID_GENERATION = {
+  RADIX: 36,
+  SUBSTRING_LENGTH: 9
+} as const;
 
 export class CopyPasteManager {
   private cy: any;
@@ -100,7 +112,6 @@ export class CopyPasteManager {
       }
     });
 
-    // Apply offset and center
     if (data.originalCenter) {
       this.applyPasteOffsetAndCenter(newElements, data.originalCenter);
     }
@@ -108,7 +119,6 @@ export class CopyPasteManager {
     const added = this.cy.add(newElements);
     this.postProcess(added, idMap, data.styles);
 
-    // Handle free text annotations
     if (data.freeTextAnnotations?.length) {
       this.pasteFreeTextAnnotations(data.freeTextAnnotations, data.originalCenter);
     }
@@ -134,28 +144,35 @@ export class CopyPasteManager {
     }
   }
 
+  private _getPasteDelta(originalCenter: { x: number, y: number }): { deltaX: number, deltaY: number } | null {
+    let deltaX: number;
+    let deltaY: number;
+
+    if (this.pasteCounter === 0) {
+      // First paste: center to viewport
+      const viewport = this.cy.extent();
+      const viewportCenter = { x: (viewport.x1 + viewport.w / 2), y: (viewport.y1 + viewport.h / 2) };
+      deltaX = viewportCenter.x - originalCenter.x;
+      deltaY = viewportCenter.y - originalCenter.y;
+    } else if (this.lastPasteCenter) {
+      deltaX = this.lastPasteCenter.x + PASTE_OFFSET.X - originalCenter.x;
+      deltaY = this.lastPasteCenter.y + PASTE_OFFSET.Y - originalCenter.y;
+    } else {
+      return null;
+    }
+    return { deltaX, deltaY };
+  }
+
 
   private applyPasteOffsetAndCenter(elements: any[], originalCenter: { x: number, y: number }): void {
     const positioned = elements.filter(el => el.position);
     if (!positioned.length) return;
 
-    let deltaX: number;
-    let deltaY: number;
-
-    const viewport = this.cy.extent();
-    const viewportCenter = { x: (viewport.x1 + viewport.w / 2), y: (viewport.y1 + viewport.h / 2) };
-
-    if (this.pasteCounter === 0) {
-      // First paste: center to viewport
-      deltaX = viewportCenter.x - originalCenter.x;
-      deltaY = viewportCenter.y - originalCenter.y;
-    } else if (this.lastPasteCenter) {
-      // Subsequent pastes: offset from last paste center
-      deltaX = this.lastPasteCenter.x + 100 - originalCenter.x;
-      deltaY = this.lastPasteCenter.y - originalCenter.y;
-    } else {
+    const delta = this._getPasteDelta(originalCenter);
+    if (!delta) {
       return;
     }
+    const { deltaX, deltaY } = delta;
 
     positioned.forEach(el => {
       el.position.x += deltaX;
@@ -172,11 +189,16 @@ export class CopyPasteManager {
   }
 
   private postProcess(added: any, idMap: Map<string, string>, styles?: any[]): void {
-    try { loadCytoStyle(this.cy); } catch {
-      // Handle error
+    try { 
+      loadCytoStyle(this.cy); 
+    } catch (error) {
+      log.error(`Failed to load cytoscape styles during paste operation: ${error}`);
     }
-    try { this.groupStyleManager.getGroupStyles()?.forEach((s: any) => this.groupStyleManager.applyStyleToNode(s.id)); } catch {
-      // Handle error
+    
+    try { 
+      this.groupStyleManager.getGroupStyles()?.forEach((s: any) => this.groupStyleManager.applyStyleToNode(s.id)); 
+    } catch (error) {
+      log.error(`Failed to apply group styles during paste operation: ${error}`);
     }
 
     // Add endpoints and mark edges
@@ -195,7 +217,6 @@ export class CopyPasteManager {
       }
     });
 
-    // Apply styles
     styles?.forEach(s => {
       const newId = idMap.get(s.oldId);
       if (newId) this.groupStyleManager.updateGroupStyle(newId, s.style);
@@ -219,28 +240,13 @@ export class CopyPasteManager {
   private pasteFreeTextAnnotations(freeTextAnnotations: any[], originalCenter?: { x: number, y: number }): void {
     if (!freeTextAnnotations?.length || !originalCenter) return;
 
+    const delta = this._getPasteDelta(originalCenter);
+    if (!delta) return;
+    const { deltaX, deltaY } = delta;
+
     freeTextAnnotations.forEach(annotation => {
-      // Generate unique ID for the new annotation
-      const newId = `freeText_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newId = `freeText_${Date.now()}_${Math.random().toString(ID_GENERATION.RADIX).substr(2, ID_GENERATION.SUBSTRING_LENGTH)}`;
 
-      // Calculate position offset same as regular elements
-      let deltaX = 0;
-      let deltaY = 0;
-
-      const viewport = this.cy.extent();
-      const viewportCenter = { x: (viewport.x1 + viewport.w / 2), y: (viewport.y1 + viewport.h / 2) };
-
-      if (this.pasteCounter === 0) {
-        // First paste: center to viewport
-        deltaX = viewportCenter.x - originalCenter.x;
-        deltaY = viewportCenter.y - originalCenter.y;
-      } else if (this.lastPasteCenter) {
-        // Subsequent pastes: offset from last paste center
-        deltaX = this.lastPasteCenter.x + 100 - originalCenter.x;
-        deltaY = this.lastPasteCenter.y - originalCenter.y;
-      }
-
-      // Create new annotation with offset position
       const newAnnotation = {
         ...annotation,
         id: newId,
@@ -250,7 +256,6 @@ export class CopyPasteManager {
         }
       };
 
-      // Add the annotation using the free text manager
       this.freeTextManager.addFreeTextAnnotation(newAnnotation);
     });
   }
