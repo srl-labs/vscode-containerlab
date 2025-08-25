@@ -224,10 +224,11 @@ export class ManagerFreeText {
    */
   private async promptForTextWithFormatting(title: string, annotation: FreeTextAnnotation): Promise<FreeTextAnnotation | null> {
     return new Promise((resolve) => {
-      const backdrop = document.getElementById('free-text-modal-backdrop') as HTMLDivElement;
-      const dialog = document.getElementById('free-text-modal') as HTMLDivElement;
-      const dragHandle = document.getElementById('free-text-drag-handle') as HTMLDivElement;
-      const titleEl = document.getElementById('free-text-modal-title') as HTMLHeadingElement;
+      // Add a small delay to ensure DOM is ready
+      setTimeout(() => {
+        const dialog = document.getElementById('free-text-modal') as HTMLElement;
+        const dragHandle = dialog?.querySelector('.panel-drag-handle') as HTMLDivElement | null;
+        const titleEl = document.getElementById('free-text-modal-title') as HTMLElement;
       const textInput = document.getElementById('free-text-modal-text') as HTMLTextAreaElement;
       const fontSizeInput = document.getElementById('free-text-font-size') as HTMLInputElement;
       const fontFamilySelect = document.getElementById('free-text-font-family') as HTMLSelectElement;
@@ -240,7 +241,7 @@ export class ManagerFreeText {
       const cancelBtn = document.getElementById('free-text-cancel-btn') as HTMLButtonElement;
       const okBtn = document.getElementById('free-text-ok-btn') as HTMLButtonElement;
 
-      if (!backdrop || !dialog || !dragHandle || !titleEl || !textInput || !fontSizeInput || !fontFamilySelect || !fontColorInput || !bgColorInput || !boldBtn || !italicBtn || !underlineBtn || !transparentBtn || !cancelBtn || !okBtn) {
+      if (!dialog || !titleEl || !textInput || !fontSizeInput || !fontFamilySelect || !fontColorInput || !bgColorInput || !boldBtn || !italicBtn || !underlineBtn || !transparentBtn || !cancelBtn || !okBtn) {
         log.error('Free text modal elements not found');
         resolve(null);
         return;
@@ -253,8 +254,9 @@ export class ManagerFreeText {
       textInput.style.fontWeight = annotation.fontWeight || 'normal';
       textInput.style.fontStyle = annotation.fontStyle || 'normal';
       textInput.style.textDecoration = annotation.textDecoration || 'none';
-      textInput.style.color = annotation.fontColor || '#FFFFFF';
-      textInput.style.background = annotation.backgroundColor === 'transparent' ? 'transparent' : (annotation.backgroundColor || '#000000');
+      // Don't override the input field's color - let it use VSCode theme colors
+      // textInput.style.color = annotation.fontColor || '#FFFFFF';
+      // textInput.style.background = annotation.backgroundColor === 'transparent' ? 'transparent' : (annotation.backgroundColor || '#000000');
 
       fontSizeInput.value = String(annotation.fontSize || 14);
       fontSizeInput.oninput = () => {
@@ -345,7 +347,7 @@ export class ManagerFreeText {
         isDragging = false;
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
-        dragHandle.style.cursor = 'grab';
+        if (dragHandle) dragHandle.style.cursor = 'grab';
       };
 
       const cleanup = () => {
@@ -354,8 +356,7 @@ export class ManagerFreeText {
         dialog.style.left = '';
         dialog.style.top = '';
         dialog.style.transform = '';
-        dragHandle.style.cursor = 'grab';
-        backdrop.style.display = 'none';
+        if (dragHandle) dragHandle.style.cursor = 'grab';
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
         textInput.onkeydown = null;
@@ -371,20 +372,22 @@ export class ManagerFreeText {
         okBtn.onclick = null;
       };
 
-      dragHandle.onmousedown = (e: MouseEvent) => {
-        isDragging = true;
-        const rect = dialog.getBoundingClientRect();
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
-        dialog.style.position = 'fixed';
-        dialog.style.left = `${rect.left}px`;
-        dialog.style.top = `${rect.top}px`;
-        dialog.style.transform = 'none';
-        dragHandle.style.cursor = 'grabbing';
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        e.preventDefault();
-      };
+      if (dragHandle) {
+        dragHandle.onmousedown = (e: MouseEvent) => {
+          isDragging = true;
+          const rect = dialog.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          dialog.style.position = 'fixed';
+          dialog.style.left = `${rect.left}px`;
+          dialog.style.top = `${rect.top}px`;
+          dialog.style.transform = 'none';
+          dragHandle.style.cursor = 'grabbing';
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+          e.preventDefault();
+        };
+      }
 
       cancelBtn.onclick = () => {
         cleanup();
@@ -422,10 +425,19 @@ export class ManagerFreeText {
         }
       };
 
-      backdrop.style.display = 'block';
+      // Show and center the dialog
       dialog.style.display = 'block';
+
+      // Center the dialog on screen
+      const dialogRect = dialog.getBoundingClientRect();
+      const left = (window.innerWidth - dialogRect.width) / 2;
+      const top = (window.innerHeight - dialogRect.height) / 2;
+      dialog.style.left = `${left}px`;
+      dialog.style.top = `${top}px`;
+
       textInput.focus();
       textInput.select();
+      }, 0); // End of setTimeout
     });
   }
 
