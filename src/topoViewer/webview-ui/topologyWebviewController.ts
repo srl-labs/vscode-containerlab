@@ -19,6 +19,7 @@ import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
 import { ManagerFreeText } from './managerFreeText';
 import { ManagerGroupStyle } from './managerGroupStyle';
+import { CopyPasteManager } from './managerCopyPaste';
 import { exportViewportAsSvg } from './utils';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -32,6 +33,8 @@ import { registerCyEventHandlers } from './cyEventHandlers';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
+import { isSpecialNodeOrBridge, isSpecialEndpoint } from '../utilities/specialNodes';
+
 
 
 
@@ -60,6 +63,7 @@ class TopologyWebviewController {
   public labelEndpointManager: ManagerLabelEndpoint;
   public reloadTopoManager: ManagerReloadTopo;
   public freeTextManager?: ManagerFreeText;
+  public copyPasteManager: CopyPasteManager;
   // eslint-disable-next-line no-unused-vars
   public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => void };
   private interfaceCounters: Record<string, number> = {};
@@ -294,6 +298,9 @@ class TopologyWebviewController {
     this.groupStyleManager = new ManagerGroupStyle(this.cy, this.messageSender, this.freeTextManager);
     this.freeTextManager.setGroupStyleManager(this.groupStyleManager);
 
+    // Initialize copy paste manager
+    this.copyPasteManager = new CopyPasteManager(this.cy, this.messageSender, this.groupStyleManager, this.freeTextManager);
+
     // Load annotations after managers are created
     // We need to wait a bit for the initial layout to complete
     setTimeout(() => {
@@ -414,6 +421,12 @@ class TopologyWebviewController {
           }
         } catch (error) {
           log.error(`Error processing updateTopology message: ${error}`);
+        }
+      } else if (msg.type === 'copiedElements') {
+        const addedElements = this.copyPasteManager.performPaste(msg.data);
+        if (addedElements && addedElements.length > 0) {
+          // Save after paste operation
+          this.saveManager.viewportButtonsSaveTopo(this.cy, true);
         }
       }
     });
@@ -911,13 +924,13 @@ class TopologyWebviewController {
 
             // Check for all types of special network endpoints (bridge, host, mgmt-net, macvlan)
             const sourceIsSpecialNetwork =
-              self.isSpecialEndpoint(sourceName) ||
+              isSpecialNodeOrBridge(sourceName, self.cy) ||
               (sourceNode.length > 0 &&
                 (sourceNode.data('extraData')?.kind === 'bridge' ||
                  sourceNode.data('extraData')?.kind === 'ovs-bridge'));
 
             const targetIsSpecialNetwork =
-              self.isSpecialEndpoint(targetName) ||
+              isSpecialNodeOrBridge(targetName, self.cy) ||
               (targetNode.length > 0 &&
                 (targetNode.data('extraData')?.kind === 'bridge' ||
                  targetNode.data('extraData')?.kind === 'ovs-bridge'));
@@ -1276,6 +1289,18 @@ class TopologyWebviewController {
           this.handleSelectAll();
         } else if (event.key.toLowerCase() === 'g') {
           this.groupManager.viewportButtonsAddGroup();
+        } else if (event.ctrlKey && event.key.toLowerCase() === 'c') {
+          event.preventDefault();
+          this.copyPasteManager.handleCopy();
+        } else if (event.ctrlKey && event.key.toLowerCase() === 'v' && this.isViewportDrawerClabEditorChecked) {
+          event.preventDefault();
+          this.copyPasteManager.handlePaste();
+        } else if (event.ctrlKey && event.key.toLowerCase() === 'x' && this.isViewportDrawerClabEditorChecked) {
+          event.preventDefault();
+          this.handleCutKeyPress();
+        } else if (event.ctrlKey && event.key.toLowerCase() === 'd' && this.isViewportDrawerClabEditorChecked) {
+          event.preventDefault();
+          this.copyPasteManager.handleDuplicate();
         }
       });
 
@@ -1356,16 +1381,8 @@ class TopologyWebviewController {
 
   }
 
-  private isSpecialEndpoint(nodeId: string): boolean {
-    return (
-      nodeId.startsWith('host:') ||
-      nodeId.startsWith('mgmt-net:') ||
-      nodeId.startsWith('macvlan:')
-    );
-  }
-
   private isNetworkNode(nodeId: string): boolean {
-    if (this.isSpecialEndpoint(nodeId)) {
+    if (isSpecialNodeOrBridge(nodeId, this.cy)) {
       return true;
     }
     const node = this.cy.getElementById(nodeId);
@@ -1482,6 +1499,51 @@ class TopologyWebviewController {
   }
 
   /**
+   * Handles Ctrl+X to cut (copy then remove) selected nodes and edges
+   * @private
+   */
+  private async handleCutKeyPress(): Promise<void> {
+    // Copy current selection
+    this.copyPasteManager.handleCopy();
+
+    // Get all selected elements
+    const selectedElements = this.cy.$(':selected');
+    if (selectedElements.length === 0) {
+      return;
+    }
+
+    // Remove selected nodes
+    const selectedNodes = selectedElements.nodes();
+    selectedNodes.forEach(node => {
+      const topoViewerRole = node.data('topoViewerRole');
+
+      if (topoViewerRole === 'freeText') {
+        this.freeTextManager?.removeFreeTextAnnotation(node.id());
+      } else if (topoViewerRole === 'group') {
+        if (this.isViewportDrawerClabEditorChecked) {
+          this.groupManager?.directGroupRemoval(node.id());
+        }
+      } else {
+        const isNodeInEditMode = node.data('editor') === 'true';
+        if (this.isViewportDrawerClabEditorChecked && isNodeInEditMode) {
+          node.remove();
+        }
+      }
+    });
+
+    // Remove selected edges
+    const selectedEdges = selectedElements.edges();
+    selectedEdges.forEach(edge => {
+      if (this.isViewportDrawerClabEditorChecked) {
+        edge.remove();
+      }
+    });
+
+    // Save after cut
+    await this.saveManager.viewportButtonsSaveTopo(this.cy, true);
+  }
+
+  /**
    * Determines the next available endpoint identifier for a given node.
    * @param nodeId - The ID of the node.
    * @returns The next available endpoint string.
@@ -1493,7 +1555,7 @@ class TopologyWebviewController {
     // append an automatically generated endpoint (e.g. `eth1`). Returning an
     // empty string here ensures that the calling code stores only the node ID
     // itself as the link endpoint.
-    if (this.isSpecialEndpoint(nodeId)) {
+    if (isSpecialEndpoint(nodeId)) {
       return '';
     }
 

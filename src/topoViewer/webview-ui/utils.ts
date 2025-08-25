@@ -95,4 +95,3 @@ export function exportViewportAsSvg(cy: cytoscape.Core): void {
     log.error(`Error capturing topology: ${error}`);
   }
 }
-

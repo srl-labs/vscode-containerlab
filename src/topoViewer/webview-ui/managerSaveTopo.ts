@@ -5,6 +5,7 @@ import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import topoViewerState from '../state';
+import { isSpecialEndpoint } from '../utilities/specialNodes';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.
@@ -99,8 +100,8 @@ export class ManagerSaveTopo {
           const targetEp = edgeJson.data.targetEndpoint;
 
           // Check if source or target are special nodes (host, mgmt-net, macvlan)
-          const isSourceSpecial = sourceId.startsWith('host:') || sourceId.startsWith('mgmt-net:') || sourceId.startsWith('macvlan:');
-          const isTargetSpecial = targetId.startsWith('host:') || targetId.startsWith('mgmt-net:') || targetId.startsWith('macvlan:');
+          const isSourceSpecial = isSpecialEndpoint(sourceId);
+          const isTargetSpecial = isSpecialEndpoint(targetId);
 
           if (
             (isSourceSpecial || (typeof sourceEp === 'string' && sourceEp)) &&
