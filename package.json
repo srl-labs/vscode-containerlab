@@ -1338,7 +1338,7 @@
     "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
+    "@eslint/js": "^9.34.0",
     "@types/chai": "^5.2.2",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
