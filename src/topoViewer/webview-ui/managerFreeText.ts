@@ -139,10 +139,9 @@ export class ManagerFreeText {
 
       // Check if target is a group or parent node - prevent text addition on groups
       if (target !== this.cy) {
-        // If clicked on a group, parent node, or dummyChild, cancel text mode
+        // If clicked on a group or parent node, cancel text mode
         if (target.isParent?.() ||
-            target.data?.('topoViewerRole') === 'group' ||
-            target.data?.('topoViewerRole') === 'dummyChild') {
+            target.data?.('topoViewerRole') === 'group') {
           this.disableAddTextMode();
           log.debug('Text addition cancelled - cannot add text to groups');
           return;

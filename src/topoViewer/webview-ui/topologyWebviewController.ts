@@ -346,7 +346,7 @@ class TopologyWebviewController {
     };
 
     // Add double-click handlers for opening editors
-    this.cy.on('dblclick', 'node[topoViewerRole != "freeText"][topoViewerRole != "dummyChild"]', (event) => {
+    this.cy.on('dblclick', 'node[topoViewerRole != "freeText"]', (event) => {
       const node = event.target;
       if (node.data('topoViewerRole') === 'group') {
         this.groupManager.showGroupEditor(node);
@@ -458,7 +458,7 @@ class TopologyWebviewController {
           !sourceNode.same(targetNode) &&
           !sourceNode.isParent() &&
           !targetNode.isParent() &&
-          targetRole !== 'dummyChild'
+          targetRole !== 'group'
         );
       },
       edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => {
@@ -547,9 +547,9 @@ class TopologyWebviewController {
 
     // Only initialize other context menus in edit mode
     if (mode === 'edit') {
-      // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
+      // Context menu for regular nodes (excluding groups and freeText)
       this.cy.cxtmenu({
-        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
           const commands: any[] = [];
 
@@ -659,7 +659,7 @@ class TopologyWebviewController {
     });
 
     this.cy.cxtmenu({
-      selector: 'node:parent, node[topoViewerRole = "dummyChild"], node[topoViewerRole = "group"]',
+      selector: 'node:parent, node[topoViewerRole = "group"]',
       commands: [
         {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -675,10 +675,7 @@ class TopologyWebviewController {
               this.viewportPanels?.setNodeClicked(true);
             // inside here TS infers ele is NodeSingular
             // this.viewportPanels.panelNodeEditor(ele);
-            if (ele.data("topoViewerRole") == "dummyChild") {
-              log.debug(`Editing parent of dummyChild: ${ele.parent().first().id()}`);
-              this.groupManager.showGroupEditor(ele.parent().first().id());
-            } else if (ele.data("topoViewerRole") == "group") {
+            if (ele.data("topoViewerRole") == "group") {
               this.groupManager.showGroupEditor(ele.id());
             }
           }
@@ -694,9 +691,7 @@ class TopologyWebviewController {
               return;
             }
             let groupId: string;
-            if (ele.data("topoViewerRole") == "dummyChild") {
-              groupId = ele.parent().first().id();
-            } else if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
+            if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
               groupId = ele.id();
             } else {
               return;
@@ -777,9 +772,9 @@ class TopologyWebviewController {
     // Add radial context menu for viewer mode
     if (mode === 'view') {
       const self = this;
-      // Context menu for regular nodes (excluding groups, dummyChild, and freeText)
+      // Context menu for regular nodes (excluding groups and freeText)
       this.cy.cxtmenu({
-        selector: 'node[topoViewerRole != "group"][topoViewerRole != "dummyChild"][topoViewerRole != "freeText"]',
+        selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"]',
         commands: (ele: cytoscape.Singular) => {
           // Skip special endpoints - they don't have SSH/Shell/Logs
           if (self.isNetworkNode(ele.id())) {
@@ -1128,7 +1123,7 @@ class TopologyWebviewController {
 
       // Context menu for groups (same as in editor mode for group wheel functionality)
       this.cy.cxtmenu({
-        selector: 'node:parent, node[topoViewerRole = "dummyChild"], node[topoViewerRole = "group"]',
+        selector: 'node:parent, node[topoViewerRole = "group"]',
         commands: [
           {
             content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
@@ -1143,9 +1138,7 @@ class TopologyWebviewController {
               // Use setTimeout to ensure this runs after any other event handlers
               setTimeout(() => {
                 let groupId: string;
-                if (ele.data("topoViewerRole") == "dummyChild") {
-                  groupId = ele.parent().first().id();
-                } else if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
+                if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
                   groupId = ele.id();
                 } else {
                   return;
@@ -1167,9 +1160,7 @@ class TopologyWebviewController {
               // Use setTimeout to ensure this runs after any other event handlers
               setTimeout(() => {
                 let groupId: string;
-                if (ele.data("topoViewerRole") == "dummyChild") {
-                  groupId = ele.parent().first().id();
-                } else if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
+                if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
                   groupId = ele.id();
                 } else {
                   return;
@@ -1676,8 +1667,8 @@ class TopologyWebviewController {
   public async bulkCreateLinks(sourceFilterText: string, targetFilterText: string): Promise<void> {
     const sourceFilter = FilterUtils.createFilter(sourceFilterText);
     const targetFilter = FilterUtils.createFilter(targetFilterText);
-    const sources = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"][topoViewerRole != "dummyChild"]').filter((node) => sourceFilter(node.data('name')));
-    const targets = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"][topoViewerRole != "dummyChild"]').filter((node) => targetFilter(node.data('name')));
+    const sources = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]').filter((node) => sourceFilter(node.data('name')));
+    const targets = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]').filter((node) => targetFilter(node.data('name')));
 
     // Calculate potential links to show in confirmation
     let potentialLinks = 0;
