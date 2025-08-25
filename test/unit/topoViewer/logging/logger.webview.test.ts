@@ -5,8 +5,8 @@ import sinon from 'sinon';
 import path from 'path';
 import { describe, it, afterEach } from 'mocha';
 
-describe('webviewLogger', () => {
-  const webviewLoggerPath = path.join(
+describe('logger (webview)', () => {
+  const loggerPath = path.join(
     __dirname,
     '..',
     '..',
@@ -15,12 +15,12 @@ describe('webviewLogger', () => {
     'src',
     'topoViewer',
     'logging',
-    'webviewLogger'
+    'logger'
   );
   const originalWindow = (global as any).window;
 
   afterEach(() => {
-    delete require.cache[require.resolve(webviewLoggerPath)];
+    delete require.cache[require.resolve(loggerPath)];
     sinon.restore();
     (global as any).window = originalWindow;
   });
@@ -29,7 +29,7 @@ describe('webviewLogger', () => {
     const postMessage = sinon.spy();
     (global as any).window = { vscode: { postMessage } };
 
-    const { log } = require(webviewLoggerPath);
+    const { log } = require(loggerPath);
     log.error('boom');
 
     expect(postMessage.calledOnce).to.be.true;
@@ -44,7 +44,7 @@ describe('webviewLogger', () => {
     const postMessage = sinon.spy();
     (global as any).window = { vscode: { postMessage } };
 
-    const { log } = require(webviewLoggerPath);
+    const { log } = require(loggerPath);
     log.info({ a: 1 });
 
     const arg = postMessage.firstCall.args[0];

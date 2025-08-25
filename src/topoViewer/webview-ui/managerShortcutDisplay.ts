@@ -1,4 +1,4 @@
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 
 /**
  * Manager for displaying keyboard and mouse shortcuts.
