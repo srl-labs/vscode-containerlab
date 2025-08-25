@@ -1,5 +1,5 @@
 import cytoscape from 'cytoscape';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as YAML from 'yaml';
 
-import { log } from '../logging/extensionLogger';
+import { log } from '../logging/logger';
 
 export async function validateYamlContent(_context: vscode.ExtensionContext, yamlContent: string): Promise<boolean> {
   try {
