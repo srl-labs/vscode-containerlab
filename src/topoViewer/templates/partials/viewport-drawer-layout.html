@@ -3,10 +3,10 @@
       <div class="p-2 pb-2">
         <div class="flex flex-col">
           <div class="pb-0">
-            <label class="label text-sm font-semibold">Layout</label>
+            <label class="label text-vscode font-semibold">Layout</label>
           </div>
           <div class="pb-0">
-            <div class="mb-2 text-sm font-extralight">
+            <div class="mb-2 text-vscode">
               <p>
                 This panel allows computing new coordinates to nodes of the graph.
               </p>
@@ -25,12 +25,12 @@
               <!-- Custom dropdown mirroring Panel Actions style -->
               <input type="checkbox" id="viewport-layout-action-dropdown-toggle" class="hidden peer">
               <label for="viewport-layout-action-dropdown-toggle"
-                     class="btn btn-small inline-flex items-center cursor-pointer text-sm font-extralight w-full justify-between">
+                     class="btn btn-small inline-flex items-center cursor-pointer text-vscode w-full justify-between">
                 <span id="viewport-layout-action-dropdown-label">Select Layout Algorithm</span>
-                <i class="fas fa-angle-down ml-2 text-sm font-extralight" aria-hidden="true"></i>
+                <i class="fas fa-angle-down ml-2 text-vscode" aria-hidden="true"></i>
               </label>
               <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-72 overflow-y-auto overscroll-contain peer-checked:block">
-                <div class="py-1 font-extralight text-sm" id="viewport-layout-action-dropdown-menu-dropdown-content">
+                <div class="py-1 text-vscode" id="viewport-layout-action-dropdown-menu-dropdown-content">
                   <a class="py-1 dropdown-item" data-value="Force Directed Radial">Force Directed Radial</a>
                   <a class="py-1 dropdown-item" data-value="Vertical">Vertical</a>
                   <a class="py-1 dropdown-item" data-value="Horizontal">Horizontal</a>
@@ -47,11 +47,11 @@
       <div class="layout-algo p-2 hidden" id="viewport-drawer-force-directed">
         <div class="space-y-2">
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Link Length</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Link Length</label>
             <input id="force-directed-slider-link-lenght" class="flex-1" type="range" step="1" min="1" max="1000">
           </div>
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Node Gap</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Node Gap</label>
             <input id="force-directed-slider-node-gap" class="flex-1" type="range" step="1" min="1" max="10">
           </div>
         </div>
@@ -60,7 +60,7 @@
       <div class="layout-algo p-2 pb-2 hidden" id="viewport-drawer-force-directed-reset-start">
         <div class="flex justify-end">
           <button onclick="viewportDrawerLayoutForceDirected(event)"
-            class="btn btn-primary btn-small text-sm font-extralight">
+            class="btn btn-primary btn-small text-vscode">
             Enable
           </button>
         </div>
@@ -70,11 +70,11 @@
       <div class="layout-algo p-2 hidden" id="viewport-drawer-force-directed-radial">
         <div class="space-y-2">
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Link<br>Length</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Link<br>Length</label>
             <input id="force-directed-radial-slider-link-lenght" class="flex-1" type="range" step="1" min="1" max="500">
           </div>
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Node Gap</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Node Gap</label>
             <input id="force-directed-radial-slider-node-gap" class="flex-1" type="range" step="1" min="1" max="100">
           </div>
         </div>
@@ -83,7 +83,7 @@
       <div class="layout-algo p-2 pb-2 hidden" id="viewport-drawer-force-directed-radial-reset-start">
         <div class="flex justify-end">
           <button onclick="viewportDrawerLayoutForceDirectedRadial(event)"
-            class="btn btn-primary btn-small text-sm font-extralight">
+            class="btn btn-primary btn-small text-vscode">
             Enable
           </button>
         </div>
@@ -93,11 +93,11 @@
       <div class="layout-algo p-2 hidden" id="viewport-drawer-dc-vertical">
         <div class="space-y-2">
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Node v-Gap</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Node v-Gap</label>
             <input id="vertical-layout-slider-node-v-gap" class="flex-1" type="range" step="1" min="1" max="10">
           </div>
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Group v-Gap</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Group v-Gap</label>
             <input id="vertical-layout-slider-group-v-gap" class="flex-1" type="range" step="1" min="1" max="100">
           </div>
         </div>
@@ -106,7 +106,7 @@
       <div class="layout-algo p-2 pb-2 hidden" id="viewport-drawer-dc-vertical-reset-start">
         <div class="flex justify-end">
           <button onclick="viewportDrawerLayoutVertical(event)"
-            class="btn btn-primary btn-small text-sm font-extralight">
+            class="btn btn-primary btn-small text-vscode">
             Enable
           </button>
         </div>
@@ -116,11 +116,11 @@
       <div class="layout-algo p-2 hidden" id="viewport-drawer-dc-horizontal">
         <div class="space-y-2">
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Node h-Gap</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Node h-Gap</label>
             <input id="horizontal-layout-slider-node-h-gap" class="flex-1" type="range" step="1" min="1" max="10">
           </div>
           <div class="flex items-center">
-            <label class="label text-sm font-semibold w-24 text-right pr-3">Group h-Gap</label>
+            <label class="label text-vscode font-semibold w-24 text-right pr-3">Group h-Gap</label>
             <input id="horizontal-layout-slider-group-h-gap" class="flex-1" type="range" step="1" min="1" max="100">
           </div>
         </div>
@@ -129,7 +129,7 @@
       <div class="layout-algo p-2 pb-2 hidden" id="viewport-drawer-dc-horizontal-reset-start">
         <div class="flex justify-end">
           <button onclick="viewportDrawerLayoutHorizontal(event)"
-            class="btn btn-primary btn-small text-sm font-extralight">
+            class="btn btn-primary btn-small text-vscode">
             Enable
           </button>
         </div>
@@ -141,10 +141,10 @@
       </div>
       
       <div class="layout-algo p-2 hidden" id="viewport-drawer-geo-map">
-        <div class="text-sm font-extralight text-secondary">
+        <div class="text-vscode text-secondary">
           <div class="px-0 py-0 max-h-[100px] overflow-y-auto">
             <div class="pb-2">
-              <p class="text-sm font-semibold">
+              <p class="text-vscode font-semibold">
                 <strong>Hint:</strong><br>
               </p>
               <p>

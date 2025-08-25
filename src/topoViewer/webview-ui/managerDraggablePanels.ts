@@ -99,7 +99,7 @@ export class ManagerDraggablePanels {
     if (existing) return existing;
 
     const dragHandle = document.createElement('div');
-    dragHandle.className = 'panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150';
+    dragHandle.className = 'panel-drag-handle w-full h-[6px] bg-[var(--vscode-button-hoverBackground)] rounded-t-md cursor-grab';
     dragHandle.style.margin = '0 0 8px 0';
     panel.insertBefore(dragHandle, panel.firstChild);
     this.updateDragHandleAppearance(dragHandle);
@@ -145,17 +145,7 @@ export class ManagerDraggablePanels {
       e.stopPropagation();
     });
 
-    dragHandle.addEventListener('mouseenter', () => {
-      if (!this.isDragging && !this.isUnifiedPanelLocked()) {
-        dragHandle.style.backgroundColor = 'var(--vscode-button-hoverBackground)';
-      }
-    });
-
-    dragHandle.addEventListener('mouseleave', () => {
-      if (!this.isDragging) {
-        this.updateDragHandleAppearance(dragHandle);
-      }
-    });
+    // No hover effects - drag handle always shows its color
   }
 
   private static installGlobalListeners(): void {
@@ -182,7 +172,6 @@ export class ManagerDraggablePanels {
         const handle = this.currentPanel.querySelector('.panel-drag-handle') as HTMLElement | null;
         if (handle) {
           handle.style.cursor = 'grab';
-          handle.style.backgroundColor = '';
         }
         this.currentPanel.style.cursor = 'default';
         if (this.shouldUseSharedPosition(this.currentPanel.id)) {

@@ -3,36 +3,36 @@
   <div id="free-text-drag-handle" class="panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150" style="margin:0 0 8px 0;"></div>
   <div class="p-6 pt-0">
     <h3 id="free-text-modal-title" class="text-lg font-semibold mb-4"></h3>
-    <label for="free-text-modal-text" class="label mb-1 text-sm font-semibold">Text:</label>
+    <label for="free-text-modal-text" class="label mb-1 text-vscode font-semibold">Text:</label>
     <textarea id="free-text-modal-text" class="input-field w-full h-20 mb-4 resize-y"></textarea>
     <div class="grid grid-cols-2 gap-4 mb-4">
       <div>
-        <label for="free-text-font-size" class="label mb-1 text-sm font-semibold">Font Size:</label>
-        <input id="free-text-font-size" type="number" min="8" max="72" class="input-field w-full text-sm font-extralight" />
+        <label for="free-text-font-size" class="label mb-1 text-vscode font-semibold">Font Size:</label>
+        <input id="free-text-font-size" type="number" min="8" max="72" class="input-field w-full text-vscode" />
       </div>
       <div>
-        <label for="free-text-font-family" class="label mb-1 text-sm font-semibold">Font Family:</label>
-        <select id="free-text-font-family" class="input-field w-full text-sm font-extralight"></select>
+        <label for="free-text-font-family" class="label mb-1 text-vscode font-semibold">Font Family:</label>
+        <select id="free-text-font-family" class="input-field w-full text-vscode"></select>
       </div>
       <div>
-        <label for="free-text-font-color" class="label mb-1 text-sm font-semibold">Text Color:</label>
-        <input id="free-text-font-color" type="color" class="input-field w-full h-8 p-1 text-sm font-extralight" />
+        <label for="free-text-font-color" class="label mb-1 text-vscode font-semibold">Text Color:</label>
+        <input id="free-text-font-color" type="color" class="input-field w-full h-8 p-1 text-vscode" />
       </div>
       <div>
-        <label for="free-text-bg-color" class="label mb-1 text-sm font-semibold">Background:</label>
-        <input id="free-text-bg-color" type="color" class="input-field w-full h-8 p-1 text-sm font-extralight" />
+        <label for="free-text-bg-color" class="label mb-1 text-vscode font-semibold">Background:</label>
+        <input id="free-text-bg-color" type="color" class="input-field w-full h-8 p-1 text-vscode" />
       </div>
     </div>
     <div class="flex items-center gap-2 mb-4">
-      <!-- text-sm font-extralight applied in managerFreeText.ts -->
+      <!-- text-vscode applied in managerFreeText.ts -->
       <button id="free-text-bold-btn" class="btn btn-outlined btn-small"><strong>B</strong></button>
       <button id="free-text-italic-btn" class="btn btn-outlined btn-small"><em>I</em></button>
       <button id="free-text-underline-btn" class="btn btn-outlined btn-small"><u>U</u></button>
       <button id="free-text-transparent-btn" class="btn btn-outlined btn-small">Transparent BG</button>  
     </div>
     <div class="panel-actions mt-4">
-      <button id="free-text-ok-btn" class="btn btn-primary btn-small text-sm font-extralight">Save</button>
-      <button id="free-text-cancel-btn" class="btn btn-secondary btn-small text-sm font-extralight">Close</button>
+      <button id="free-text-ok-btn" class="btn btn-primary btn-small text-vscode">Save</button>
+      <button id="free-text-cancel-btn" class="btn btn-secondary btn-small text-vscode">Close</button>
     </div>
   </div>
 </div>

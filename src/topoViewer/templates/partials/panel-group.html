@@ -2,7 +2,7 @@
 <section
   class="panel panel-overlay panel-sheet panel-xl bottom-10 left-20 draggable-panel"
   id="panel-node-editor-parent" aria-labelledby="group-panel-heading" style="display: none;">
-  <p class="panel-heading text-base font-bold" id="group-panel-heading">
+  <p class="panel-heading text-vscode font-bold" id="group-panel-heading">
     Group Properties
   </p>
 
@@ -17,7 +17,7 @@
         <label for="panel-node-editor-parent-graph-group-id" class="form-label">
           Id</label>
         <div class="form-value">
-          <span id="panel-node-editor-parent-graph-group-id" class="text-sm font-extralight break-words">
+          <span id="panel-node-editor-parent-graph-group-id" class="text-vscode break-words">
             group-id-placeholder
           </span>
         </div>
@@ -28,7 +28,7 @@
         <label for="panel-node-editor-parent-graph-group" class="form-label">Graph
           Group</label>
         <div class="form-field">
-          <input id="panel-node-editor-parent-graph-group" type="text" class="input-field text-sm font-extralight">
+          <input id="panel-node-editor-parent-graph-group" type="text" class="input-field text-vscode">
         </div>
       </div>
 
@@ -37,7 +37,7 @@
         <label for="panel-node-editor-parent-graph-level" class="form-label">Graph
           Level</label>
         <div class="form-field">
-          <input id="panel-node-editor-parent-graph-level" type="text" class="input-field text-sm font-extralight">
+          <input id="panel-node-editor-parent-graph-level" type="text" class="input-field text-vscode">
         </div>
       </div>
 
@@ -46,13 +46,13 @@
       <div class="form-row">
         <label class="form-label">Label Position</label>
         <div class="form-field relative" id="panel-node-editor-parent-label-dropdown">
-          <button class="btn btn-small inline-flex items-center font-extralight" aria-haspopup="true"
+          <button class="btn btn-small inline-flex items-center" aria-haspopup="true"
             aria-expanded="false">
             <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
-            <i class="fas fa-angle-down ml-2 text-sm font-extralight" aria-hidden="true"></i>
+            <i class="fas fa-angle-down ml-2 text-vscode" aria-hidden="true"></i>
           </button>
           <div
-            class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-30 overflow-y-auto overscroll-contain text-sm font-extralight"
+            class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-30 overflow-y-auto overscroll-contain text-vscode"
             id="panel-node-editor-parent-label-dropdown-menu" role="menu">
             <button role="menuitem" class="dropdown-item">top-center</button>
             <button role="menuitem" class="dropdown-item">top-left</button>
@@ -81,7 +81,7 @@
           <input id="panel-node-editor-parent-bg-color" type="color"
             class="h-8 w-8 cursor-pointer border border-gray-500">
           <input id="panel-node-editor-parent-bg-color-hex" type="text"
-            class="input-field text-sm font-extralight flex-1" maxlength="7" placeholder="#RRGGBB">
+            class="input-field text-vscode flex-1" maxlength="7" placeholder="#RRGGBB">
         </div>
       </div>
 
@@ -92,7 +92,7 @@
         <div class="form-field">
           <input id="panel-node-editor-parent-bg-opacity" type="range" min="0" max="100" value="20" class="flex-1">
           <span id="panel-node-editor-parent-bg-opacity-value"
-            class="text-sm w-10 text-right text-sm font-extralight">20%</span>
+            class="text-vscode w-10 text-right text-vscode">20%</span>
         </div>
       </div>
 
@@ -104,7 +104,7 @@
           <input id="panel-node-editor-parent-text-color" type="color"
             class="h-8 w-8 cursor-pointer border border-gray-500">
           <input id="panel-node-editor-parent-text-color-hex" type="text"
-            class="input-field text-sm font-extralight flex-1" maxlength="7" placeholder="#RRGGBB">
+            class="input-field text-vscode flex-1" maxlength="7" placeholder="#RRGGBB">
         </div>
       </div>
       </details>
@@ -125,7 +125,7 @@
           <input id="panel-node-editor-parent-border-color" type="color"
             class="h-8 w-8 cursor-pointer border border-gray-500">
           <input id="panel-node-editor-parent-border-color-hex" type="text"
-            class="input-field text-sm flex-1 text-sm font-extralight" maxlength="7" placeholder="#RRGGBB">
+            class="input-field text-vscode flex-1 text-vscode" maxlength="7" placeholder="#RRGGBB">
         </div>
       </div>
 
@@ -135,7 +135,7 @@
           Width</label>
         <div class="form-field">
           <input id="panel-node-editor-parent-border-width" type="number" step="0.1"
-            class="input-field text-sm font-extralight">
+            class="input-field text-vscode">
         </div>
       </div>
 
@@ -145,7 +145,7 @@
         <label for="panel-node-editor-parent-border-style" class="form-label">Border
           Style</label>
         <div class="form-field">
-          <select id="panel-node-editor-parent-border-style" class="input-field text-sm font-extralight">
+          <select id="panel-node-editor-parent-border-style" class="input-field text-vscode">
             <option value="solid">Solid</option>
             <option value="dotted">Dotted</option>
             <option value="dashed">Dashed</option>
@@ -161,7 +161,7 @@
         <div class="form-field">
           <input id="panel-node-editor-parent-border-radius" type="range" min="0" max="50" value="0" class="flex-1">
           <span id="panel-node-editor-parent-border-radius-value"
-            class="text-sm w-10 text-right text-sm font-extralight">0px</span>
+            class="text-vscode w-10 text-right text-vscode">0px</span>
         </div>
       </div>
       </details>
@@ -171,9 +171,9 @@
   <!-- Action Buttons -->
   <div class="panel-block">
     <div class="panel-actions">
-      <button id="panel-node-editor-parent-delete-button" class="btn btn-danger btn-small text-sm font-extralight">Remove</button>
-      <button id="panel-node-editor-parent-save-button"   class="btn btn-primary btn-small text-sm font-extralight">Save</button>
-      <button id="panel-node-editor-parent-close-button"  class="btn btn-secondary btn-small text-sm font-extralight">Close</button>
+      <button id="panel-node-editor-parent-delete-button" class="btn btn-danger btn-small text-vscode">Remove</button>
+      <button id="panel-node-editor-parent-save-button"   class="btn btn-primary btn-small text-vscode">Save</button>
+      <button id="panel-node-editor-parent-close-button"  class="btn btn-secondary btn-small text-vscode">Close</button>
     </div>
   </div>
 </section>

@@ -85,7 +85,7 @@
   --diff-line-number: var(--vscode-editorLineNumber-foreground);
 
   /* Design tokens */
-  --navbar-height: 3.8rem;
+  --navbar-height: 4.5rem;
   /* Radii */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -146,7 +146,7 @@
     width: 40%;
     padding-right: 0.25rem;
     text-align: right;
-    font-size: 0.875rem; /* text-sm */
+    font-size: var(--vscode-font-size);
     font-weight: 600;    /* font-semibold */
   }
 
@@ -161,10 +161,11 @@
   .form-value {
     width: 60%;
     padding-left: 0.5rem;
+    color: var(--vscode-foreground, var(--text-primary));
   }
 
   .section-title {
-    font-size: 1rem;     /* text-base */
+    font-size: var(--vscode-font-size);
     font-weight: 600;    /* font-semibold */
     letter-spacing: 0.05em; /* tracking-wide */
     margin-bottom: 0.5rem;  /* mb-2 */
@@ -238,7 +239,7 @@
   }
 
   .btn-icon-hover-clean {
-    padding: 0.375rem; /* slimmer navbar buttons */
+    padding: 0.5rem;
     background-color: transparent;
     color: var(--text-primary);
     border: 1px solid transparent; /* enables high-contrast fallback borders */
@@ -292,10 +293,9 @@
   .panel-heading, .panel-header {
     background-color: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--border);
-    padding: 0rem 1rem 0.75rem 1rem; /* top right bottom left */
-    margin-top: -0.1rem;  /* pulls the heading up */
+    padding: 0.75rem 1rem;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: var(--vscode-font-size);
   }
   
   .panel-block {
@@ -349,12 +349,12 @@
   .dropdown-item {
     color: var(
       --vscode-dropdown-foreground,
-      var(--text-secondary)
+      var(--text-primary)
     );
     display: block;
     width: 100%; /* full-width */
     padding: 0.5rem 1rem;
-    font-size: 0.875rem;
+    font-size: var(--vscode-font-size);
     cursor: pointer;
     text-align: left; /* left-aligned */
     background: transparent; /* neutralize default button bg */
@@ -654,6 +654,19 @@
   
   .has-text-weight-bold {
     font-weight: 700;
+  }
+  
+  /* Use VSCode font sizes instead of hardcoded values */
+  .text-vscode {
+    font-size: var(--vscode-font-size) !important;
+  }
+  
+  .text-vscode-sm {
+    font-size: calc(var(--vscode-font-size) * 0.9) !important;
+  }
+  
+  .text-vscode-lg {
+    font-size: calc(var(--vscode-font-size) * 1.15) !important;
   }
   
   .has-text-weight-light {
