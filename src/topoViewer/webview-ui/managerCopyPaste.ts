@@ -3,7 +3,7 @@ import { ManagerGroupStyle } from './managerGroupStyle';
 import { ManagerFreeText } from './managerFreeText';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { isSpecialEndpoint } from '../utilities/specialNodes';
-import { log } from '../logging/webviewLogger';
+import { log } from '../logging/logger';
 import { TopologyAnnotations } from '../types/topoViewerGraph';
 
 // Constants for copy/paste operations
