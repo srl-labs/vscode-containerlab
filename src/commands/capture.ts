@@ -357,8 +357,14 @@ export async function captureEdgesharkVNC(
             };
           }
 
-          // Initial delay to ensure VNC server is ready
-          setTimeout(loadVNC, 500);
+          // Poll the VNC server until it's reachable, then load it
+          function checkVNCReady() {
+            fetch(url, { mode: 'no-cors' })
+              .then(() => loadVNC())
+              .catch(() => setTimeout(checkVNCReady, 500));
+          }
+
+          checkVNCReady();
 
           // Force a reload if the iframe doesn't load within 10 seconds
           setTimeout(() => {
