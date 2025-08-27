@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.16.5] - 2025-08-22
+
+- TopoViewer/editor:
+  - Copy/Paste Feature
+- General:
+  - Fix blank vnc
+
 ## [0.16.3] - 2025-08-22
 
 - TopoViewer/editor:
