@@ -28,12 +28,9 @@ function getMessageSender(): VscodeMessageSender {
   return messageSender;
 }
 
-// Build the full container name based on prefix and lab name settings
-function getFullNodeName(nodeName: string): string {
-  const prefix = topoViewerState.prefixName;
-  const labName = topoViewerState.labName;
-  return prefix === '' ? nodeName : `${prefix}-${labName}-${nodeName}`;
-}
+// Note: Node actions now expect a resolved node name (longname)
+// when provided from the UI (e.g., panel dropdown, cxt menu).
+// Fallback uses topoViewerState.selectedNode directly.
 
 /**
  * Toggle the About panel
@@ -406,17 +403,16 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
 /**
  * Connect to a node via SSH using VS Code backend
  */
-export async function nodeActionConnectToSSH(): Promise<void> {
+export async function nodeActionConnectToSSH(_event?: Event, resolvedNodeName?: string): Promise<void> {
   try {
-    const nodeName = topoViewerState.selectedNode;
+    const nodeName = resolvedNodeName ?? topoViewerState.selectedNode;
     if (!nodeName) {
       log.warn('No node selected for SSH connection');
       return;
     }
     const sender = getMessageSender();
-    const containerName = getFullNodeName(nodeName);
-    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', containerName);
-    log.info(`SSH connection requested for node: ${containerName}`);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
+    log.info(`SSH connection requested for node: ${nodeName}`);
   } catch (error) {
     log.error(`nodeActionConnectToSSH failed: ${error}`);
   }
@@ -425,17 +421,16 @@ export async function nodeActionConnectToSSH(): Promise<void> {
 /**
  * Attach a shell to the selected node
  */
-export async function nodeActionAttachShell(): Promise<void> {
+export async function nodeActionAttachShell(_event?: Event, resolvedNodeName?: string): Promise<void> {
   try {
-    const nodeName = topoViewerState.selectedNode;
+    const nodeName = resolvedNodeName ?? topoViewerState.selectedNode;
     if (!nodeName) {
       log.warn('No node selected to attach shell');
       return;
     }
     const sender = getMessageSender();
-    const containerName = getFullNodeName(nodeName);
-    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', containerName);
-    log.info(`Attach shell requested for node: ${containerName}`);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
+    log.info(`Attach shell requested for node: ${nodeName}`);
   } catch (error) {
     log.error(`nodeActionAttachShell failed: ${error}`);
   }
@@ -444,17 +439,16 @@ export async function nodeActionAttachShell(): Promise<void> {
 /**
  * View logs of the selected node
  */
-export async function nodeActionViewLogs(): Promise<void> {
+export async function nodeActionViewLogs(_event?: Event, resolvedNodeName?: string): Promise<void> {
   try {
-    const nodeName = topoViewerState.selectedNode;
+    const nodeName = resolvedNodeName ?? topoViewerState.selectedNode;
     if (!nodeName) {
       log.warn('No node selected to view logs');
       return;
     }
     const sender = getMessageSender();
-    const containerName = getFullNodeName(nodeName);
-    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', containerName);
-    log.info(`View logs requested for node: ${containerName}`);
+    await sender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
+    log.info(`View logs requested for node: ${nodeName}`);
   } catch (error) {
     log.error(`nodeActionViewLogs failed: ${error}`);
   }
@@ -463,8 +457,11 @@ export async function nodeActionViewLogs(): Promise<void> {
 /**
  * Remove selected node from its parent group and notify backend
  */
-export async function nodeActionRemoveFromParent(): Promise<void> {
+export async function nodeActionRemoveFromParent(_event?: Event, resolvedNodeName?: string): Promise<void> {
   try {
+    if (resolvedNodeName) {
+      topoViewerState.selectedNode = resolvedNodeName;
+    }
     if (!topoViewerState.cy || !topoViewerState.selectedNode) {
       log.warn('Cytoscape instance or selected node not available');
       return;

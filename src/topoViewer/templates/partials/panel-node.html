@@ -41,13 +41,13 @@
                   </label>
                   <div class="dropdown-menu hidden peer-checked:block left-0 w-full font-extralight text-base" id="panel-node-action-dropdown-menu">
                     <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
-                      <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+                      <a onclick="nodeActionConnectToSSH(event, document.getElementById('panel-node-name')?.textContent || undefined); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item">Connect to SSH</a>
-                      <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+                      <a onclick="nodeActionAttachShell(event, document.getElementById('panel-node-name')?.textContent || undefined); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item">Attach Shell</a>
-                      <a onclick="nodeActionViewLogs(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+                      <a onclick="nodeActionViewLogs(event, document.getElementById('panel-node-name')?.textContent || undefined); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item">View Logs</a>
-                      <a onclick="nodeActionRemoveFromParent(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
+                      <a onclick="nodeActionRemoveFromParent(event, document.getElementById('panel-node-name')?.textContent || undefined); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
                         class="py-1 dropdown-item">Release From Group</a>
                     </div>
                   </div>

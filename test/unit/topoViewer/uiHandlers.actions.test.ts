@@ -35,37 +35,22 @@ describe('uiHandlers action endpoints', () => {
     topoViewerState.labName = '';
   });
 
-  it('nodeActionConnectToSSH posts to backend', async () => {
-    topoViewerState.selectedNode = 'node1';
-    await nodeActionConnectToSSH();
+  it('nodeActionConnectToSSH posts resolved node name to backend', async () => {
+    await nodeActionConnectToSSH(undefined as any, 'clab-newlab-node1');
     expect(sendStub.calledOnceWithExactly('clab-node-connect-ssh', 'clab-newlab-node1')).to.be.true;
   });
 
-  it('nodeActionAttachShell posts to backend', async () => {
-    topoViewerState.selectedNode = 'node2';
-    await nodeActionAttachShell();
+  it('nodeActionAttachShell posts resolved node name to backend', async () => {
+    await nodeActionAttachShell(undefined as any, 'clab-newlab-node2');
     expect(sendStub.calledOnceWithExactly('clab-node-attach-shell', 'clab-newlab-node2')).to.be.true;
   });
 
-  it('nodeActionViewLogs posts to backend', async () => {
-    topoViewerState.selectedNode = 'node3';
-    await nodeActionViewLogs();
+  it('nodeActionViewLogs posts resolved node name to backend', async () => {
+    await nodeActionViewLogs(undefined as any, 'clab-newlab-node3');
     expect(sendStub.calledOnceWithExactly('clab-node-view-logs', 'clab-newlab-node3')).to.be.true;
   });
 
-  it('uses bare node name when prefix is empty', async () => {
-    topoViewerState.prefixName = '';
-    topoViewerState.selectedNode = 'node4';
-    await nodeActionConnectToSSH();
-    expect(sendStub.calledOnceWithExactly('clab-node-connect-ssh', 'node4')).to.be.true;
-  });
-
-  it('builds container name with custom prefix', async () => {
-    topoViewerState.prefixName = 'test';
-    topoViewerState.selectedNode = 'node5';
-    await nodeActionConnectToSSH();
-    expect(sendStub.calledOnceWithExactly('clab-node-connect-ssh', 'test-newlab-node5')).to.be.true;
-  });
+  // No prefix handling tests needed; UI passes resolved longname directly now.
 
   it('linkWireshark posts capture request', async () => {
     const cy = cytoscape({
