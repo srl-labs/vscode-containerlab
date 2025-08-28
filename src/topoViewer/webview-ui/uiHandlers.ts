@@ -28,9 +28,6 @@ function getMessageSender(): VscodeMessageSender {
   return messageSender;
 }
 
-// Note: Node actions now expect a resolved node name (longname)
-// when provided from the UI (e.g., panel dropdown, cxt menu).
-// Fallback uses topoViewerState.selectedNode directly.
 
 /**
  * Toggle the About panel
