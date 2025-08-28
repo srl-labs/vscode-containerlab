@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # Only run on the main repository, not on forks
+    if: github.repository == 'srl-labs/vscode-containerlab'
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Validate version
+        id: version
+        run: |
+          # Get version from package.json
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "package=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          
+          # Get version from release tag
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          TAG_VERSION="${TAG_NAME#v}"
+          echo "tag=$TAG_VERSION" >> $GITHUB_OUTPUT
+          
+          # Validate they match
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "Package.json version: $PACKAGE_VERSION"
+            echo "Release tag version: $TAG_VERSION"
+            echo ""
+            echo "Please ensure package.json version matches the release tag."
+            exit 1
+          fi
+          
+          echo "✅ Version validation passed: $PACKAGE_VERSION"
+          
+      - name: Run linter
+        run: npm run lint
+        
+      - name: Run tests
+        run: npm test
+        
+      - name: Package extension
+        run: npm run package
+          
+      - name: Upload VSIX to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            vscode-containerlab-${{ steps.version.outputs.package }}.vsix
+          fail_on_unmatched_files: true
