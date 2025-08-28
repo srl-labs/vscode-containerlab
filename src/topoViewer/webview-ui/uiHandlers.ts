@@ -401,31 +401,6 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
 }
 
 /**
- * Connect to a node via SSH using VS Code backend
- */
-// Panel node actions removed in favor of context menu
-
-/**
- * Attach a shell to the selected node
- */
-// Panel node actions removed in favor of context menu
-
-/**
- * View logs of the selected node
- */
-// Panel node actions removed in favor of context menu
-
-/**
- * Remove selected node from its parent group and notify backend
- */
-// Panel node actions removed in favor of context menu
-
-/**
- * Capture traffic on link endpoints using backend services
- */
-// Link panel actions removed; edge captures are handled via context menu
-
-/**
  * Toggle split view with YAML editor
  */
 export async function viewportButtonsToggleSplit(event?: Event): Promise<void> {
