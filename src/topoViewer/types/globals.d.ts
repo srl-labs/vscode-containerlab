@@ -40,13 +40,8 @@ declare global {
     showPanelGroupEditor?: (..._args: any[]) => void;
     // library globals
     cytoscape?: typeof import('cytoscape');
-    $?: typeof import('jquery');
-    jQuery?: typeof import('jquery');
-    _?: any;
     L?: any;
-    hljs?: any;
     tippy?: any;
-    Popper?: { createPopper: any };
     cytoscapePopper?: any;
     // environment globals
     isVscodeDeployment?: boolean;
