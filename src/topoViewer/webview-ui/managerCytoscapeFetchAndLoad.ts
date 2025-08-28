@@ -68,19 +68,28 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     cy.add(elementsToAdd);
 
-    // Determine if any node already has saved positions
+    // Determine if all nodes overlap at the same position (e.g. when no annotations exist)
     const nodes = elementsToAdd.filter((element: any) => element.group === 'nodes');
-    const hasPosLabels = nodes.some((element: any) => {
-      return element.position && element.position.x !== undefined && element.position.y !== undefined;
-    });
+    const allNodesOverlap =
+      nodes.length > 1 &&
+      nodes.every((element: any) => {
+        const pos = element.position;
+        const firstPos = nodes[0].position;
+        return (
+          pos &&
+          firstPos &&
+          pos.x === firstPos.x &&
+          pos.y === firstPos.y
+        );
+      });
 
-    // Set all node to have a editor flag.
+    // Set all nodes to have an editor flag.
     cy.nodes().data('editor', 'true');
 
-    // Choose layout based on presence of saved positions
+    // Choose layout based on whether nodes already have distinct positions
     let layout: cytoscape.Layouts;
-    if (!hasPosLabels && (window as any).topoViewerMode === 'viewer') {
-      // Use force-directed radial layout when no position labels exist in view mode
+    if (allNodesOverlap) {
+      // Use force-directed radial layout when no distinct node positions exist
       // Extract node weights based on group levels for radial layout
       const nodeWeights: Record<string, number> = {};
       cy.nodes().forEach((node) => {
