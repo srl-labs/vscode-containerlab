@@ -859,6 +859,31 @@ topology:
             break;
           }
 
+          case 'clab-interface-capture': {
+            try {
+              const data = payloadObj as { nodeName: string; interfaceName: string };
+              const iface = {
+                label: data.interfaceName,
+                parentName: data.nodeName,
+                cID: data.nodeName,
+                name: data.interfaceName,
+                type: '',
+                alias: '',
+                mac: '',
+                mtu: 0,
+                ifIndex: 0,
+                state: ''
+              } as any;
+              // Use the default capture method (same as tree view)
+              await vscode.commands.executeCommand('containerlab.interface.capture', iface);
+              result = `Capture executed for ${data.nodeName}/${data.interfaceName}`;
+            } catch (innerError) {
+              error = `Error executing capture: ${innerError}`;
+              log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
           case 'clab-link-capture': {
             try {
               const data = payloadObj as { nodeName: string; interfaceName: string };
