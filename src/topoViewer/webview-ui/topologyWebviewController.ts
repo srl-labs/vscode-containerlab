@@ -931,9 +931,27 @@ class TopologyWebviewController {
                    targetNode.data('extraData')?.kind === 'ovs-bridge'));
 
               const extra = ele.data('extraData') || {};
-              // Use just the node name without prefix for display
-              const sourceName = (extra.clabSourceLongName || sourceId).split('-').pop() || sourceId;
-              const targetName = (extra.clabTargetLongName || targetId).split('-').pop() || targetId;
+
+              // Get the display names - use the node ID from the graph (which is the short name without prefix)
+              // Fall back to removing prefix from long name if needed
+              const getDisplayName = (nodeId: string, longName: string | undefined): string => {
+                // First try to use the node ID directly (this is typically the short name)
+                const node = self.cy.getElementById(nodeId);
+                if (node.length > 0 && node.data('name')) {
+                  return node.data('name');
+                }
+
+                // If we have a long name with prefix, remove the prefix
+                if (longName && topoViewerState.prefixName && longName.startsWith(topoViewerState.prefixName + '-')) {
+                  return longName.substring(topoViewerState.prefixName.length + 1);
+                }
+
+                // Otherwise return what we have
+                return longName || nodeId;
+              };
+
+              const sourceName = getDisplayName(sourceId, extra.clabSourceLongName);
+              const targetName = getDisplayName(targetId, extra.clabTargetLongName);
 
             const sourceEndpoint = extra.clabSourcePort || ele.data("sourceEndpoint") || "Port A";
             const targetEndpoint = extra.clabTargetPort || ele.data("targetEndpoint") || "Port B";
@@ -944,7 +962,7 @@ class TopologyWebviewController {
             if (!sourceIsSpecialNetwork) {
               commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                          <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
+                          <img src="${(window as any).imagesUrl}/wireshark_bold.svg" style="width:1.4em; height:1.4em; filter: brightness(0) invert(1);" />
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">${sourceName} - ${sourceEndpoint}</span>
                         </div>`,
@@ -970,7 +988,7 @@ class TopologyWebviewController {
             if (!targetIsSpecialNetwork) {
               commands.push({
                 content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                          <i class="fas fa-network-wired" style="font-size:1.4em;"></i>
+                          <img src="${(window as any).imagesUrl}/wireshark_bold.svg" style="width:1.4em; height:1.4em; filter: brightness(0) invert(1);" />
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">${targetName} - ${targetEndpoint}</span>
                         </div>`,
