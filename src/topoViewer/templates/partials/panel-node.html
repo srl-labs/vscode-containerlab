@@ -23,39 +23,6 @@
           </div>
         </div>
 
-        <!-- Actions Dropdown -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold"></label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <div class="relative">
-                  <input type="checkbox" id="panel-node-action-dropdown-toggle" class="hidden peer">
-                  <label for="panel-node-action-dropdown-toggle" class="btn btn-small inline-flex items-center cursor-pointer">
-                    <span>Actions</span>
-                    <span class="ml-2 font-extralight text-base">
-                      <i class="fas fa-angle-down" aria-hidden="true"></i>
-                    </span>
-                  </label>
-                  <div class="dropdown-menu hidden peer-checked:block left-0 w-full font-extralight text-base" id="panel-node-action-dropdown-menu">
-                    <div class="py-1" id="panel-node-action-dropdown-menu-dropdown-content">
-                      <a onclick="nodeActionConnectToSSH(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">Connect to SSH</a>
-                      <a onclick="nodeActionAttachShell(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">Attach Shell</a>
-                      <a onclick="nodeActionViewLogs(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">View Logs</a>
-                      <a onclick="nodeActionRemoveFromParent(event); document.getElementById('panel-node-action-dropdown-toggle').checked = false;"
-                        class="py-1 dropdown-item">Release From Group</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
