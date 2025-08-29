@@ -18,6 +18,7 @@ import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
 import { ManagerViewportPanels } from './managerViewportPanels';
 import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
 import { ManagerFreeText } from './managerFreeText';
+import { ManagerNodeEditor } from './managerNodeEditor';
 import { ManagerGroupStyle } from './managerGroupStyle';
 import { CopyPasteManager } from './managerCopyPaste';
 import { exportViewportAsSvg } from './utils';
@@ -55,6 +56,7 @@ class TopologyWebviewController {
   public addNodeManager: ManagerAddContainerlabNode;
   public viewportPanels?: ManagerViewportPanels;
   public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
+  public nodeEditor?: ManagerNodeEditor;
   public groupManager: ManagerGroupManagement;
   public groupStyleManager: ManagerGroupStyle;
   /** Layout manager instance accessible by other components */
@@ -311,6 +313,8 @@ class TopologyWebviewController {
 
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+      // Always initialize enhanced node editor
+      this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
     }
 
     // Initialize unified floating panel for both modes
@@ -348,7 +352,13 @@ class TopologyWebviewController {
       } else if (node.data('topoViewerRole') === 'cloud') {
         this.viewportPanels?.panelNetworkEditor(node);
       } else {
-        this.viewportPanels?.panelNodeEditor(node);
+        // Use node editor
+        if (this.nodeEditor) {
+          this.nodeEditor.open(node);
+        } else {
+          // Fallback to standard editor if node editor not available (shouldn't happen)
+          this.viewportPanels?.panelNodeEditor(node);
+        }
       }
     });
 
@@ -559,6 +569,8 @@ class TopologyWebviewController {
               if (!ele.isNode()) {
                 return;
               }
+              // Prevent global canvas click handler from closing panels
+              this.viewportPanels?.setNodeClicked(true);
               // inside here TS infers ele is NodeSingular
                 this.viewportPanels?.panelNetworkEditor(ele);
             }
@@ -574,8 +586,12 @@ class TopologyWebviewController {
                 if (!ele.isNode()) {
                   return;
                 }
+                // Prevent global canvas click handler from closing panels
+                this.viewportPanels?.setNodeClicked(true);
                 // inside here TS infers ele is NodeSingular
-                this.viewportPanels?.panelNodeEditor(ele);
+                if (this.nodeEditor) {
+                  this.nodeEditor.open(ele);
+                }
               }
             });
           }
