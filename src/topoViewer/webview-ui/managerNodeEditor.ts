@@ -126,6 +126,43 @@ export class ManagerNodeEditor {
       return;
     }
 
+    // Mark panel interaction to prevent closing, but don't stop propagation
+    // as that breaks tabs and other interactive elements
+    this.panel.addEventListener('mousedown', () => {
+      // Mark that we clicked on the panel
+      if ((window as any).viewportPanels) {
+        (window as any).viewportPanels.setNodeClicked(true);
+      }
+    });
+
+    // Set up event delegation for delete buttons
+    this.panel.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+
+      // Check if click is on a delete button or its child (the icon)
+      const deleteBtn = target.closest('.dynamic-delete-btn');
+      if (deleteBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Get the container and entry ID from the button's data attributes
+        const containerName = deleteBtn.getAttribute('data-container');
+        const entryId = deleteBtn.getAttribute('data-entry-id');
+
+        log.debug(`Delete button clicked via delegation: ${containerName}-${entryId}`);
+
+        if (containerName && entryId) {
+          // Mark panel as clicked to prevent closing
+          if ((window as any).viewportPanels) {
+            (window as any).viewportPanels.setNodeClicked(true);
+          }
+
+          // Remove the entry
+          this.removeEntry(containerName, parseInt(entryId));
+        }
+      }
+    }, true); // Use capture phase to ensure we get the event first
+
     // Initialize tab switching
     this.setupTabSwitching();
 
@@ -209,6 +246,29 @@ export class ManagerNodeEditor {
     (window as any).addSysctlEntry = () => this.addDynamicKeyValueEntry('sysctls', 'sysctl.key', 'value');
     (window as any).addDeviceEntry = () => this.addDynamicEntry('devices', 'Device path (e.g., /dev/net/tun)');
     (window as any).addSanEntry = () => this.addDynamicEntry('sans', 'SAN (e.g., test.com or 192.168.1.1)');
+
+    // Register remove entry function globally (no longer needed with event listeners)
+    // but keeping for backward compatibility if any inline handlers remain
+    (window as any).removeEntry = (containerName: string, entryId: number) => {
+      log.debug(`Global removeEntry called: ${containerName}, ${entryId}`);
+      this.removeEntry(containerName, entryId);
+      return false; // Prevent default behavior
+    };
+  }
+
+  /**
+   * Remove a dynamic entry from the DOM (without saving)
+   */
+  private removeEntry(containerName: string, entryId: number): void {
+    log.debug(`Removing entry: ${containerName}-entry-${entryId}`);
+    const entry = document.getElementById(`${containerName}-entry-${entryId}`);
+    if (entry) {
+      entry.remove();
+      log.debug(`Entry removed from DOM`);
+      // Don't save automatically - wait for user to click Save button
+    } else {
+      log.error(`Entry not found: ${containerName}-entry-${entryId}`);
+    }
   }
 
   /**
@@ -225,13 +285,21 @@ export class ManagerNodeEditor {
     entryDiv.className = 'dynamic-entry';
     entryDiv.id = `${containerName}-entry-${count}`;
 
-    entryDiv.innerHTML = `
-      <input type="text" class="input-field" placeholder="${placeholder}" data-field="${containerName}">
-      <button onclick="this.parentElement.remove()">
-        <i class="fas fa-trash"></i>
-      </button>
-    `;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'input-field';
+    input.placeholder = placeholder;
+    input.setAttribute('data-field', containerName);
 
+    const button = document.createElement('button');
+    button.type = 'button'; // Prevent form submission
+    button.className = 'dynamic-delete-btn';
+    button.setAttribute('data-container', containerName);
+    button.setAttribute('data-entry-id', count.toString());
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+
+    entryDiv.appendChild(input);
+    entryDiv.appendChild(button);
     container.appendChild(entryDiv);
   }
 
@@ -249,14 +317,28 @@ export class ManagerNodeEditor {
     entryDiv.className = 'dynamic-entry';
     entryDiv.id = `${containerName}-entry-${count}`;
 
-    entryDiv.innerHTML = `
-      <input type="text" class="input-field" placeholder="${keyPlaceholder}" data-field="${containerName}-key">
-      <input type="text" class="input-field" placeholder="${valuePlaceholder}" data-field="${containerName}-value">
-      <button onclick="this.parentElement.remove()">
-        <i class="fas fa-trash"></i>
-      </button>
-    `;
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'input-field';
+    keyInput.placeholder = keyPlaceholder;
+    keyInput.setAttribute('data-field', `${containerName}-key`);
 
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.className = 'input-field';
+    valueInput.placeholder = valuePlaceholder;
+    valueInput.setAttribute('data-field', `${containerName}-value`);
+
+    const button = document.createElement('button');
+    button.type = 'button'; // Prevent form submission
+    button.className = 'dynamic-delete-btn';
+    button.setAttribute('data-container', containerName);
+    button.setAttribute('data-entry-id', count.toString());
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+
+    entryDiv.appendChild(keyInput);
+    entryDiv.appendChild(valueInput);
+    entryDiv.appendChild(button);
     container.appendChild(entryDiv);
   }
 
@@ -473,13 +555,22 @@ export class ManagerNodeEditor {
     entryDiv.className = 'dynamic-entry';
     entryDiv.id = `${containerName}-entry-${count}`;
 
-    entryDiv.innerHTML = `
-      <input type="text" class="input-field" placeholder="${placeholder}" data-field="${containerName}" value="${value}">
-      <button onclick="this.parentElement.remove()">
-        <i class="fas fa-trash"></i>
-      </button>
-    `;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'input-field';
+    input.placeholder = placeholder;
+    input.value = value;
+    input.setAttribute('data-field', containerName);
 
+    const button = document.createElement('button');
+    button.type = 'button'; // Prevent form submission
+    button.className = 'dynamic-delete-btn';
+    button.setAttribute('data-container', containerName);
+    button.setAttribute('data-entry-id', count.toString());
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+
+    entryDiv.appendChild(input);
+    entryDiv.appendChild(button);
     container.appendChild(entryDiv);
   }
 
@@ -497,14 +588,28 @@ export class ManagerNodeEditor {
     entryDiv.className = 'dynamic-entry';
     entryDiv.id = `${containerName}-entry-${count}`;
 
-    entryDiv.innerHTML = `
-      <input type="text" class="input-field" data-field="${containerName}-key" value="${key}">
-      <input type="text" class="input-field" data-field="${containerName}-value" value="${value}">
-      <button onclick="this.parentElement.remove()">
-        <i class="fas fa-trash"></i>
-      </button>
-    `;
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'input-field';
+    keyInput.value = key;
+    keyInput.setAttribute('data-field', `${containerName}-key`);
 
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.className = 'input-field';
+    valueInput.value = value;
+    valueInput.setAttribute('data-field', `${containerName}-value`);
+
+    const button = document.createElement('button');
+    button.type = 'button'; // Prevent form submission
+    button.className = 'dynamic-delete-btn';
+    button.setAttribute('data-container', containerName);
+    button.setAttribute('data-entry-id', count.toString());
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+
+    entryDiv.appendChild(keyInput);
+    entryDiv.appendChild(valueInput);
+    entryDiv.appendChild(button);
     container.appendChild(entryDiv);
   }
 
@@ -800,13 +905,26 @@ export class ManagerNodeEditor {
       if (license) nodeProps.license = license;
 
       const binds = this.collectDynamicEntries('binds');
-      if (binds.length > 0) nodeProps.binds = binds;
+      if (binds.length > 0) {
+        nodeProps.binds = binds;
+      } else {
+        nodeProps.binds = undefined;
+      }
 
       const env = this.collectDynamicKeyValueEntries('env');
-      if (Object.keys(env).length > 0) nodeProps.env = env;
+      if (Object.keys(env).length > 0) {
+        nodeProps.env = env;
+      } else {
+        nodeProps.env = undefined;
+      }
 
       const labels = this.collectDynamicKeyValueEntries('labels');
-      if (Object.keys(labels).length > 0) nodeProps.labels = labels;
+      if (Object.keys(labels).length > 0) {
+        nodeProps.labels = labels;
+      } else {
+        // Explicitly set to undefined to remove from YAML
+        nodeProps.labels = undefined;
+      }
 
       // Runtime properties
       const user = this.getInputValue('node-user');
@@ -819,7 +937,11 @@ export class ManagerNodeEditor {
       if (cmd) nodeProps.cmd = cmd;
 
       const exec = this.collectDynamicEntries('exec');
-      if (exec.length > 0) nodeProps.exec = exec;
+      if (exec.length > 0) {
+        nodeProps.exec = exec;
+      } else {
+        nodeProps.exec = undefined;
+      }
 
       const restartPolicy = this.getInputValue('node-restart-policy') as any;
       if (restartPolicy) nodeProps['restart-policy'] = restartPolicy;
@@ -842,16 +964,27 @@ export class ManagerNodeEditor {
       if (networkMode) nodeProps['network-mode'] = networkMode;
 
       const ports = this.collectDynamicEntries('ports');
-      if (ports.length > 0) nodeProps.ports = ports;
+      if (ports.length > 0) {
+        nodeProps.ports = ports;
+      } else {
+        nodeProps.ports = undefined;
+      }
 
       const dnsServers = this.collectDynamicEntries('dns-servers');
       if (dnsServers.length > 0) {
         nodeProps.dns = nodeProps.dns || {};
         nodeProps.dns.servers = dnsServers;
+      } else {
+        // If no DNS servers, clear the dns property entirely
+        nodeProps.dns = undefined;
       }
 
       const aliases = this.collectDynamicEntries('aliases');
-      if (aliases.length > 0) nodeProps.aliases = aliases;
+      if (aliases.length > 0) {
+        nodeProps.aliases = aliases;
+      } else {
+        nodeProps.aliases = undefined;
+      }
 
       // Advanced properties
       const memory = this.getInputValue('node-memory');
@@ -867,7 +1000,11 @@ export class ManagerNodeEditor {
       if (shmSize) nodeProps['shm-size'] = shmSize;
 
       const capAdd = this.collectDynamicEntries('cap-add');
-      if (capAdd.length > 0) nodeProps['cap-add'] = capAdd;
+      if (capAdd.length > 0) {
+        nodeProps['cap-add'] = capAdd;
+      } else {
+        nodeProps['cap-add'] = undefined;
+      }
 
       const sysctls = this.collectDynamicKeyValueEntries('sysctls');
       if (Object.keys(sysctls).length > 0) {
@@ -877,10 +1014,16 @@ export class ManagerNodeEditor {
           const numValue = parseFloat(value);
           nodeProps.sysctls![key] = isNaN(numValue) ? value : numValue;
         });
+      } else {
+        nodeProps.sysctls = undefined;
       }
 
       const devices = this.collectDynamicEntries('devices');
-      if (devices.length > 0) nodeProps.devices = devices;
+      if (devices.length > 0) {
+        nodeProps.devices = devices;
+      } else {
+        nodeProps.devices = undefined;
+      }
 
       // Certificate configuration
       if (this.getCheckboxValue('node-cert-issue')) {
@@ -894,6 +1037,9 @@ export class ManagerNodeEditor {
 
         const sans = this.collectDynamicEntries('sans');
         if (sans.length > 0) nodeProps.certificate.sans = sans;
+      } else {
+        // If cert is not enabled, remove it
+        nodeProps.certificate = undefined;
       }
 
       // Healthcheck configuration
@@ -951,8 +1097,7 @@ export class ManagerNodeEditor {
 
       log.info(`Node ${this.currentNode.id()} updated with enhanced properties`);
 
-      // Close the panel
-      this.close();
+      // Don't close the panel after saving - let user continue editing or close manually
     } catch (error) {
       log.error(`Failed to save node properties: ${error instanceof Error ? error.message : String(error)}`);
     }

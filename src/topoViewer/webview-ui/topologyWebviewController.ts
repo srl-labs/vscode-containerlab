@@ -313,6 +313,8 @@ class TopologyWebviewController {
 
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+      // Expose to window for other components to access
+      (window as any).viewportPanels = this.viewportPanels;
       // Always initialize enhanced node editor
       this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
     }
