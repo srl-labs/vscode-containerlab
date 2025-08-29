@@ -353,6 +353,7 @@ export class ManagerNodeEditor {
       return;
     }
 
+
     // Clear all dynamic entries
     this.clearAllDynamicEntries();
 
@@ -891,8 +892,11 @@ export class ManagerNodeEditor {
 
       // Configuration properties
       const startupConfig = this.getInputValue('node-startup-config');
-      if (startupConfig) nodeProps['startup-config'] = startupConfig;
+      if (startupConfig) {
+        nodeProps['startup-config'] = startupConfig;
+      }
 
+      // For checkboxes: only include if checked (true)
       if (this.getCheckboxValue('node-enforce-startup-config')) {
         nodeProps['enforce-startup-config'] = true;
       }
@@ -902,108 +906,116 @@ export class ManagerNodeEditor {
       }
 
       const license = this.getInputValue('node-license');
-      if (license) nodeProps.license = license;
+      if (license) {
+        nodeProps.license = license;
+      }
 
       const binds = this.collectDynamicEntries('binds');
       if (binds.length > 0) {
         nodeProps.binds = binds;
-      } else {
-        nodeProps.binds = undefined;
       }
 
       const env = this.collectDynamicKeyValueEntries('env');
       if (Object.keys(env).length > 0) {
         nodeProps.env = env;
-      } else {
-        nodeProps.env = undefined;
       }
 
       const labels = this.collectDynamicKeyValueEntries('labels');
       if (Object.keys(labels).length > 0) {
         nodeProps.labels = labels;
-      } else {
-        // Explicitly set to undefined to remove from YAML
-        nodeProps.labels = undefined;
       }
 
       // Runtime properties
       const user = this.getInputValue('node-user');
-      if (user) nodeProps.user = user;
+      if (user) {
+        nodeProps.user = user;
+      }
 
       const entrypoint = this.getInputValue('node-entrypoint');
-      if (entrypoint) nodeProps.entrypoint = entrypoint;
+      if (entrypoint) {
+        nodeProps.entrypoint = entrypoint;
+      }
 
       const cmd = this.getInputValue('node-cmd');
-      if (cmd) nodeProps.cmd = cmd;
+      if (cmd) {
+        nodeProps.cmd = cmd;
+      }
 
       const exec = this.collectDynamicEntries('exec');
       if (exec.length > 0) {
         nodeProps.exec = exec;
-      } else {
-        nodeProps.exec = undefined;
       }
 
       const restartPolicy = this.getInputValue('node-restart-policy') as any;
-      if (restartPolicy) nodeProps['restart-policy'] = restartPolicy;
+      if (restartPolicy) {
+        nodeProps['restart-policy'] = restartPolicy;
+      }
 
       if (this.getCheckboxValue('node-auto-remove')) {
         nodeProps['auto-remove'] = true;
       }
 
       const startupDelay = this.getInputValue('node-startup-delay');
-      if (startupDelay) nodeProps['startup-delay'] = parseInt(startupDelay);
+      if (startupDelay) {
+        nodeProps['startup-delay'] = parseInt(startupDelay);
+      }
 
       // Network properties
       const mgmtIpv4 = this.getInputValue('node-mgmt-ipv4');
-      if (mgmtIpv4) nodeProps['mgmt-ipv4'] = mgmtIpv4;
+      if (mgmtIpv4) {
+        nodeProps['mgmt-ipv4'] = mgmtIpv4;
+      }
 
       const mgmtIpv6 = this.getInputValue('node-mgmt-ipv6');
-      if (mgmtIpv6) nodeProps['mgmt-ipv6'] = mgmtIpv6;
+      if (mgmtIpv6) {
+        nodeProps['mgmt-ipv6'] = mgmtIpv6;
+      }
 
       const networkMode = this.getInputValue('node-network-mode');
-      if (networkMode) nodeProps['network-mode'] = networkMode;
+      if (networkMode) {
+        nodeProps['network-mode'] = networkMode;
+      }
 
       const ports = this.collectDynamicEntries('ports');
       if (ports.length > 0) {
         nodeProps.ports = ports;
-      } else {
-        nodeProps.ports = undefined;
       }
 
       const dnsServers = this.collectDynamicEntries('dns-servers');
       if (dnsServers.length > 0) {
         nodeProps.dns = nodeProps.dns || {};
         nodeProps.dns.servers = dnsServers;
-      } else {
-        // If no DNS servers, clear the dns property entirely
-        nodeProps.dns = undefined;
       }
 
       const aliases = this.collectDynamicEntries('aliases');
       if (aliases.length > 0) {
         nodeProps.aliases = aliases;
-      } else {
-        nodeProps.aliases = undefined;
       }
 
       // Advanced properties
       const memory = this.getInputValue('node-memory');
-      if (memory) nodeProps.memory = memory;
+      if (memory) {
+        nodeProps.memory = memory;
+      }
 
       const cpu = this.getInputValue('node-cpu');
-      if (cpu) nodeProps.cpu = parseFloat(cpu);
+      if (cpu) {
+        nodeProps.cpu = parseFloat(cpu);
+      }
 
       const cpuSet = this.getInputValue('node-cpu-set');
-      if (cpuSet) nodeProps['cpu-set'] = cpuSet;
+      if (cpuSet) {
+        nodeProps['cpu-set'] = cpuSet;
+      }
 
       const shmSize = this.getInputValue('node-shm-size');
-      if (shmSize) nodeProps['shm-size'] = shmSize;
+      if (shmSize) {
+        nodeProps['shm-size'] = shmSize;
+      }
 
       const capAdd = this.collectDynamicEntries('cap-add');
       if (capAdd.length > 0) {
         nodeProps['cap-add'] = capAdd;
-      } else {
-        nodeProps['cap-add'] = undefined;
       }
 
       const sysctls = this.collectDynamicKeyValueEntries('sysctls');
@@ -1014,15 +1026,11 @@ export class ManagerNodeEditor {
           const numValue = parseFloat(value);
           nodeProps.sysctls![key] = isNaN(numValue) ? value : numValue;
         });
-      } else {
-        nodeProps.sysctls = undefined;
       }
 
       const devices = this.collectDynamicEntries('devices');
       if (devices.length > 0) {
         nodeProps.devices = devices;
-      } else {
-        nodeProps.devices = undefined;
       }
 
       // Certificate configuration
@@ -1037,9 +1045,6 @@ export class ManagerNodeEditor {
 
         const sans = this.collectDynamicEntries('sans');
         if (sans.length > 0) nodeProps.certificate.sans = sans;
-      } else {
-        // If cert is not enabled, remove it
-        nodeProps.certificate = undefined;
       }
 
       // Healthcheck configuration
@@ -1074,20 +1079,43 @@ export class ManagerNodeEditor {
       }
 
       const imagePullPolicy = this.getInputValue('node-image-pull-policy') as any;
-      if (imagePullPolicy) nodeProps['image-pull-policy'] = imagePullPolicy;
+      if (imagePullPolicy) {
+        nodeProps['image-pull-policy'] = imagePullPolicy;
+      }
 
       const runtime = this.getInputValue('node-runtime') as any;
-      if (runtime) nodeProps.runtime = runtime;
+      if (runtime) {
+        nodeProps.runtime = runtime;
+      }
 
       // Update the node data
       const currentData = this.currentNode.data();
+
+      // Start with existing extraData to preserve properties not managed by the form
+      const updatedExtraData: any = { ...(currentData.extraData || {}) };
+
+      // List of all properties managed by the form
+      const formManagedProperties = [
+        'name', 'kind', 'type', 'image', 'startup-config', 'enforce-startup-config',
+        'suppress-startup-config', 'license', 'binds', 'env', 'labels', 'user',
+        'entrypoint', 'cmd', 'exec', 'restart-policy', 'auto-remove', 'startup-delay',
+        'mgmt-ipv4', 'mgmt-ipv6', 'network-mode', 'ports', 'dns', 'aliases',
+        'memory', 'cpu', 'cpu-set', 'shm-size', 'cap-add', 'sysctls', 'devices',
+        'certificate', 'healthcheck', 'image-pull-policy', 'runtime'
+      ];
+
+      // Remove all form-managed properties first (to handle deletions)
+      formManagedProperties.forEach(prop => {
+        delete updatedExtraData[prop];
+      });
+
+      // Then add back only the properties with values from the form
+      Object.assign(updatedExtraData, nodeProps);
+
       const updatedData = {
         ...currentData,
         name: nodeProps.name,
-        extraData: {
-          ...currentData.extraData,
-          ...nodeProps
-        }
+        extraData: updatedExtraData
       };
 
       this.currentNode.data(updatedData);
