@@ -2,7 +2,7 @@
 <div class="panel panel-overlay fixed bottom-10 left-20 w-[520px] max-h-[600px] overflow-y-auto overflow-x-hidden z-[21] draggable-panel"
   id="panel-node-editor" style="display: none;">
   
-  <p class="panel-heading text-base font-bold">
+  <p class="panel-heading font-bold">
     Node Properties Editor
   </p>
 
@@ -14,10 +14,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Node ID</label>
+                <label class="label text-right font-semibold">Node ID</label>
               </div>
               <div class="w-3/5 pl-2 pr-2">
-                <label class="text-left font-extralight text-base break-words block" id="panel-node-editor-id"></label>
+                <label class="text-left font-extralight break-words block" id="panel-node-editor-id"></label>
               </div>
             </div>
           </div>
@@ -28,15 +28,15 @@
 
   <!-- Tab Navigation -->
   <div class="flex border-b" style="border-color: var(--vscode-panel-border);">
-    <button class="tab-button px-4 py-2 text-sm font-medium focus:outline-none tab-active"
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none tab-active"
       data-tab="basic">Basic</button>
-    <button class="tab-button px-4 py-2 text-sm font-medium focus:outline-none"
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
       data-tab="config">Configuration</button>
-    <button class="tab-button px-4 py-2 text-sm font-medium focus:outline-none"
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
       data-tab="runtime">Runtime</button>
-    <button class="tab-button px-4 py-2 text-sm font-medium focus:outline-none"
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
       data-tab="network">Network</button>
-    <button class="tab-button px-4 py-2 text-sm font-medium focus:outline-none"
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
       data-tab="advanced">Advanced</button>
   </div>
 
@@ -52,7 +52,7 @@
             <div class="p-0.5">
               <div class="flex items-center">
                 <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Node Name</label>
+                  <label class="label text-right font-semibold">Node Name</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
                   <input type="text" id="node-name" class="input-field w-full">
@@ -66,7 +66,7 @@
             <div class="p-0.5">
               <div class="flex items-center">
                 <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Kind</label>
+                  <label class="label text-right font-semibold">Kind</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
                   <select id="node-kind" class="input-field w-full">
@@ -87,7 +87,7 @@
             <div class="p-0.5">
               <div class="flex items-center">
                 <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Type</label>
+                  <label class="label text-right font-semibold">Type</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
                   <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l">
@@ -101,7 +101,7 @@
             <div class="p-0.5">
               <div class="flex items-center">
                 <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Image</label>
+                  <label class="label text-right font-semibold">Image</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
                   <input type="text" id="node-image" class="input-field w-full" placeholder="e.g., ghcr.io/nokia/srlinux:latest">
@@ -115,7 +115,7 @@
             <div class="p-0.5">
               <div class="flex items-center">
                 <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Group</label>
+                  <label class="label text-right font-semibold">Group</label>
                 </div>
                 <div class="w-3/5 pl-2 pr-2">
                   <input type="text" id="node-group" class="input-field w-full" placeholder="Optional group name">
@@ -132,27 +132,27 @@
       <div class="space-y-3">
         <!-- Startup Config -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Startup Config</label>
+          <label class="block font-medium mb-1">Startup Config</label>
           <input type="text" id="node-startup-config" class="input-field w-full" placeholder="Path to config file">
           <div class="flex items-center mt-1">
             <input type="checkbox" id="node-enforce-startup-config" class="mr-2">
-            <label for="node-enforce-startup-config" class="text-sm">Enforce startup config</label>
+            <label for="node-enforce-startup-config" class="">Enforce startup config</label>
           </div>
           <div class="flex items-center mt-1">
             <input type="checkbox" id="node-suppress-startup-config" class="mr-2">
-            <label for="node-suppress-startup-config" class="text-sm">Suppress startup config</label>
+            <label for="node-suppress-startup-config" class="">Suppress startup config</label>
           </div>
         </div>
 
         <!-- License -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">License File</label>
+          <label class="block font-medium mb-1">License File</label>
           <input type="text" id="node-license" class="input-field w-full" placeholder="Path to license file">
         </div>
 
         <!-- Binds -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Bind Mounts</label>
+          <label class="block font-medium mb-1">Bind Mounts</label>
           <div id="node-binds-container" class="space-y-2">
             <!-- Dynamic bind entries will be added here -->
           </div>
@@ -163,7 +163,7 @@
 
         <!-- Environment Variables -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Environment Variables</label>
+          <label class="block font-medium mb-1">Environment Variables</label>
           <div id="node-env-container" class="space-y-2">
             <!-- Dynamic env entries will be added here -->
           </div>
@@ -174,7 +174,7 @@
 
         <!-- Labels -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Labels</label>
+          <label class="block font-medium mb-1">Labels</label>
           <div id="node-labels-container" class="space-y-2">
             <!-- Dynamic label entries will be added here -->
           </div>
@@ -190,25 +190,25 @@
       <div class="space-y-3">
         <!-- User -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">User</label>
+          <label class="block font-medium mb-1">User</label>
           <input type="text" id="node-user" class="input-field w-full" placeholder="Container user">
         </div>
 
         <!-- Entrypoint -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Entrypoint</label>
+          <label class="block font-medium mb-1">Entrypoint</label>
           <input type="text" id="node-entrypoint" class="input-field w-full" placeholder="Container entrypoint">
         </div>
 
         <!-- CMD -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Command</label>
+          <label class="block font-medium mb-1">Command</label>
           <input type="text" id="node-cmd" class="input-field w-full" placeholder="Container command">
         </div>
 
         <!-- Exec Commands -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Exec Commands</label>
+          <label class="block font-medium mb-1">Exec Commands</label>
           <div id="node-exec-container" class="space-y-2">
             <!-- Dynamic exec entries will be added here -->
           </div>
@@ -219,7 +219,7 @@
 
         <!-- Restart Policy -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Restart Policy</label>
+          <label class="block font-medium mb-1">Restart Policy</label>
           <select id="node-restart-policy" class="input-field w-full">
             <option value="">Default</option>
             <option value="no">No</option>
@@ -233,13 +233,13 @@
         <div class="form-group">
           <div class="flex items-center">
             <input type="checkbox" id="node-auto-remove" class="mr-2">
-            <label for="node-auto-remove" class="text-sm">Auto-remove container on exit</label>
+            <label for="node-auto-remove" class="">Auto-remove container on exit</label>
           </div>
         </div>
 
         <!-- Startup Delay -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Startup Delay (seconds)</label>
+          <label class="block font-medium mb-1">Startup Delay (seconds)</label>
           <input type="number" id="node-startup-delay" class="input-field w-full" min="0" placeholder="0">
         </div>
       </div>
@@ -250,19 +250,19 @@
       <div class="space-y-3">
         <!-- Management IPv4 -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Management IPv4</label>
+          <label class="block font-medium mb-1">Management IPv4</label>
           <input type="text" id="node-mgmt-ipv4" class="input-field w-full" placeholder="e.g., 172.20.20.100">
         </div>
 
         <!-- Management IPv6 -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Management IPv6</label>
+          <label class="block font-medium mb-1">Management IPv6</label>
           <input type="text" id="node-mgmt-ipv6" class="input-field w-full" placeholder="e.g., 2001:db8::100">
         </div>
 
         <!-- Network Mode -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Network Mode</label>
+          <label class="block font-medium mb-1">Network Mode</label>
           <select id="node-network-mode" class="input-field w-full">
             <option value="">Default (bridge)</option>
             <option value="host">Host</option>
@@ -272,7 +272,7 @@
 
         <!-- Ports -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Port Mappings</label>
+          <label class="block font-medium mb-1">Port Mappings</label>
           <div id="node-ports-container" class="space-y-2">
             <!-- Dynamic port entries will be added here -->
           </div>
@@ -283,7 +283,7 @@
 
         <!-- DNS Configuration -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">DNS Servers</label>
+          <label class="block font-medium mb-1">DNS Servers</label>
           <div id="node-dns-servers-container" class="space-y-2">
             <!-- Dynamic DNS server entries will be added here -->
           </div>
@@ -294,7 +294,7 @@
 
         <!-- Aliases -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Network Aliases</label>
+          <label class="block font-medium mb-1">Network Aliases</label>
           <div id="node-aliases-container" class="space-y-2">
             <!-- Dynamic alias entries will be added here -->
           </div>
@@ -310,40 +310,40 @@
       <div class="space-y-3">
         <!-- Resources Section -->
         <div class="border-b pb-3 mb-3">
-          <h3 class="text-sm font-semibold mb-2">Resource Limits</h3>
+          <h3 class="font-semibold mb-2">Resource Limits</h3>
           
           <!-- Memory -->
           <div class="form-group">
-            <label class="block text-sm font-medium mb-1">Memory Limit</label>
+            <label class="block font-medium mb-1">Memory Limit</label>
             <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
           </div>
 
           <!-- CPU -->
           <div class="form-group">
-            <label class="block text-sm font-medium mb-1">CPU Limit</label>
+            <label class="block font-medium mb-1">CPU Limit</label>
             <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0" placeholder="e.g., 1.5">
           </div>
 
           <!-- CPU Set -->
           <div class="form-group">
-            <label class="block text-sm font-medium mb-1">CPU Set</label>
+            <label class="block font-medium mb-1">CPU Set</label>
             <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
           </div>
 
           <!-- Shared Memory Size -->
           <div class="form-group">
-            <label class="block text-sm font-medium mb-1">Shared Memory Size</label>
+            <label class="block font-medium mb-1">Shared Memory Size</label>
             <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
           </div>
         </div>
 
         <!-- Capabilities Section -->
         <div class="border-b pb-3 mb-3">
-          <h3 class="text-sm font-semibold mb-2">Capabilities</h3>
+          <h3 class="font-semibold mb-2">Capabilities</h3>
           
           <!-- Cap Add -->
           <div class="form-group">
-            <label class="block text-sm font-medium mb-1">Add Capabilities</label>
+            <label class="block font-medium mb-1">Add Capabilities</label>
             <div id="node-cap-add-container" class="space-y-2">
               <!-- Dynamic capability entries will be added here -->
             </div>
@@ -355,7 +355,7 @@
 
         <!-- Sysctls Section -->
         <div class="border-b pb-3 mb-3">
-          <h3 class="text-sm font-semibold mb-2">Sysctls</h3>
+          <h3 class="font-semibold mb-2">Sysctls</h3>
           
           <div class="form-group">
             <div id="node-sysctls-container" class="space-y-2">
@@ -369,7 +369,7 @@
 
         <!-- Devices Section -->
         <div class="border-b pb-3 mb-3">
-          <h3 class="text-sm font-semibold mb-2">Devices</h3>
+          <h3 class="font-semibold mb-2">Devices</h3>
           
           <div class="form-group">
             <div id="node-devices-container" class="space-y-2">
@@ -383,18 +383,18 @@
 
         <!-- Certificate Section -->
         <div class="border-b pb-3 mb-3">
-          <h3 class="text-sm font-semibold mb-2">TLS Certificate</h3>
+          <h3 class="font-semibold mb-2">TLS Certificate</h3>
           
           <div class="form-group">
             <div class="flex items-center">
               <input type="checkbox" id="node-cert-issue" class="mr-2">
-              <label for="node-cert-issue" class="text-sm">Auto-generate TLS certificate</label>
+              <label for="node-cert-issue" class="">Auto-generate TLS certificate</label>
             </div>
           </div>
 
           <div id="cert-options" class="mt-2 hidden">
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">Key Size</label>
+              <label class="block font-medium mb-1">Key Size</label>
               <select id="node-cert-key-size" class="input-field w-full">
                 <option value="2048">2048</option>
                 <option value="4096">4096</option>
@@ -402,12 +402,12 @@
             </div>
 
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">Validity Duration</label>
+              <label class="block font-medium mb-1">Validity Duration</label>
               <input type="text" id="node-cert-validity" class="input-field w-full" placeholder="e.g., 1h, 30d, 1y">
             </div>
 
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">SANs (Subject Alternative Names)</label>
+              <label class="block font-medium mb-1">SANs (Subject Alternative Names)</label>
               <div id="node-sans-container" class="space-y-2">
                 <!-- Dynamic SAN entries will be added here -->
               </div>
@@ -420,28 +420,28 @@
 
         <!-- Healthcheck Section -->
         <div class="pb-3 mb-3">
-          <h3 class="text-sm font-semibold mb-2">Health Check</h3>
+          <h3 class="font-semibold mb-2">Health Check</h3>
           
           <div class="form-group">
-            <label class="block text-sm font-medium mb-1">Test Command</label>
+            <label class="block font-medium mb-1">Test Command</label>
             <input type="text" id="node-healthcheck-test" class="input-field w-full" placeholder="e.g., CMD-SHELL cat /etc/os-release">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">Start Period (s)</label>
+              <label class="block font-medium mb-1">Start Period (s)</label>
               <input type="number" id="node-healthcheck-start-period" class="input-field w-full" min="0" placeholder="0">
             </div>
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">Interval (s)</label>
+              <label class="block font-medium mb-1">Interval (s)</label>
               <input type="number" id="node-healthcheck-interval" class="input-field w-full" min="0" placeholder="30">
             </div>
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">Timeout (s)</label>
+              <label class="block font-medium mb-1">Timeout (s)</label>
               <input type="number" id="node-healthcheck-timeout" class="input-field w-full" min="0" placeholder="30">
             </div>
             <div class="form-group">
-              <label class="block text-sm font-medium mb-1">Retries</label>
+              <label class="block font-medium mb-1">Retries</label>
               <input type="number" id="node-healthcheck-retries" class="input-field w-full" min="0" placeholder="3">
             </div>
           </div>
@@ -449,7 +449,7 @@
 
         <!-- Image Pull Policy -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Image Pull Policy</label>
+          <label class="block font-medium mb-1">Image Pull Policy</label>
           <select id="node-image-pull-policy" class="input-field w-full">
             <option value="">Default (IfNotPresent)</option>
             <option value="IfNotPresent">If Not Present</option>
@@ -460,7 +460,7 @@
 
         <!-- Runtime -->
         <div class="form-group">
-          <label class="block text-sm font-medium mb-1">Container Runtime</label>
+          <label class="block font-medium mb-1">Container Runtime</label>
           <select id="node-runtime" class="input-field w-full">
             <option value="">Default (docker)</option>
             <option value="docker">Docker</option>
@@ -495,12 +495,29 @@
 </div>
 
 <style>
+  /* Ensure all elements use VSCode font settings */
+  #panel-node-editor {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+  
+  #panel-node-editor input,
+  #panel-node-editor select,
+  #panel-node-editor textarea,
+  #panel-node-editor button,
+  #panel-node-editor label {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+
   /* Tab button styles using VSCode theme variables */
   .tab-button {
     border-bottom: 2px solid transparent;
     background-color: transparent;
     color: var(--vscode-foreground);
     transition: all 0.2s ease;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
   }
   
   .tab-button:hover {
@@ -537,6 +554,8 @@
     cursor: pointer;
     flex-shrink: 0;
     transition: opacity 0.2s ease;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
   }
 
   .dynamic-entry button:hover {
