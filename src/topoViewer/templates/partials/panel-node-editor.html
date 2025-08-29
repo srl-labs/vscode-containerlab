@@ -1,134 +1,69 @@
 <!-- Node Editor Panel with Tabs -->
-<div class="panel panel-overlay fixed bottom-10 left-20 w-[520px] max-h-[600px] overflow-y-auto overflow-x-hidden z-[21] draggable-panel"
+<div
+  class="panel panel-overlay fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
   id="panel-node-editor" style="display: none;">
-  
+
   <p class="panel-heading font-bold">
     Node Properties Editor
   </p>
 
-  <!-- Node ID Display -->
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right font-semibold">Node ID</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <label class="text-left font-extralight break-words block" id="panel-node-editor-id"></label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Tab Navigation -->
-  <div class="flex border-b" style="border-color: var(--vscode-panel-border);">
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none tab-active"
-      data-tab="basic">Basic</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
-      data-tab="config">Configuration</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
-      data-tab="runtime">Runtime</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
-      data-tab="network">Network</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none"
-      data-tab="advanced">Advanced</button>
+  <div class="flex border-b justify-between" style="border-color: var(--vscode-panel-border);">
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none tab-active" data-tab="basic">Basic</button>
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="config">Configuration</button>
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="runtime">Runtime</button>
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="network">Network</button>
+    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="advanced">Advanced</button>
   </div>
 
   <!-- Tab Content Container -->
-  <div class="p-0 pl-4 pr-3 pb-2">
-    
+  <div class="p-2 max-h-[420px] overflow-y-auto">
+
     <!-- Basic Tab -->
-    <div class="tab-content" id="tab-basic">
-      <div class="panel-block p-0">
-        <div class="px-0">
-          <!-- Node Name -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right font-semibold">Node Name</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" id="node-name" class="input-field w-full">
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="panel-block tab-content hidden" id="tab-basic">
+      <div class="space-y-3">
+        <!-- Node Name -->
+        <div class="form-group">
+          <label class="block font-medium mb-1">Node Name</label>
+          <input type="text" id="node-name" class="input-field w-full">
+        </div>
 
-          <!-- Kind -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right font-semibold">Kind</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <select id="node-kind" class="input-field w-full">
-                    <option value="nokia_srlinux">Nokia SR Linux</option>
-                    <option value="nokia_sros">Nokia SR OS</option>
-                    <option value="arista_ceos">Arista cEOS</option>
-                    <option value="linux">Linux</option>
-                    <option value="bridge">Bridge</option>
-                    <option value="ovs-bridge">OVS Bridge</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Kind -->
+        <div class="form-group">
+          <label class="block font-medium mb-1">Kind</label>
+          <select id="node-kind" class="input-field w-full">
+            <option value="nokia_srlinux">Nokia SR Linux</option>
+            <option value="nokia_sros">Nokia SR OS</option>
+            <option value="arista_ceos">Arista cEOS</option>
+            <option value="linux">Linux</option>
+            <option value="bridge">Bridge</option>
+            <option value="ovs-bridge">OVS Bridge</option>
+          </select>
+        </div>
 
-          <!-- Type -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right font-semibold">Type</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l">
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Type -->
+        <div class="form-group">
+          <label class="block font-medium mb-1">Type</label>
+          <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l">
+        </div>
 
-          <!-- Image -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right font-semibold">Image</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" id="node-image" class="input-field w-full" placeholder="e.g., ghcr.io/nokia/srlinux:latest">
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Image -->
+        <div class="form-group">
+          <label class="block font-medium mb-1">Image</label>
+          <input type="text" id="node-image" class="input-field w-full"
+            placeholder="e.g., ghcr.io/nokia/srlinux:latest">
+        </div>
 
-          <!-- Group -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right font-semibold">Group</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" id="node-group" class="input-field w-full" placeholder="Optional group name">
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Group -->
+        <div class="form-group">
+          <label class="block font-medium mb-1">Group</label>
+          <input type="text" id="node-group" class="input-field w-full" placeholder="Optional group name">
         </div>
       </div>
     </div>
 
     <!-- Configuration Tab -->
-    <div class="tab-content hidden" id="tab-config">
+    <div class="panel-block tab-content hidden" id="tab-config">
       <div class="space-y-3">
         <!-- Startup Config -->
         <div class="form-group">
@@ -186,7 +121,7 @@
     </div>
 
     <!-- Runtime Tab -->
-    <div class="tab-content hidden" id="tab-runtime">
+    <div class="panel-block tab-content hidden" id="tab-runtime">
       <div class="space-y-3">
         <!-- User -->
         <div class="form-group">
@@ -246,7 +181,7 @@
     </div>
 
     <!-- Network Tab -->
-    <div class="tab-content hidden" id="tab-network">
+    <div class="panel-block tab-content hidden" id="tab-network">
       <div class="space-y-3">
         <!-- Management IPv4 -->
         <div class="form-group">
@@ -306,12 +241,12 @@
     </div>
 
     <!-- Advanced Tab -->
-    <div class="tab-content hidden" id="tab-advanced">
+    <div class="panel-block tab-content hidden" id="tab-advanced">
       <div class="space-y-3">
         <!-- Resources Section -->
         <div class="border-b pb-3 mb-3">
           <h3 class="font-semibold mb-2">Resource Limits</h3>
-          
+
           <!-- Memory -->
           <div class="form-group">
             <label class="block font-medium mb-1">Memory Limit</label>
@@ -340,7 +275,7 @@
         <!-- Capabilities Section -->
         <div class="border-b pb-3 mb-3">
           <h3 class="font-semibold mb-2">Capabilities</h3>
-          
+
           <!-- Cap Add -->
           <div class="form-group">
             <label class="block font-medium mb-1">Add Capabilities</label>
@@ -356,7 +291,7 @@
         <!-- Sysctls Section -->
         <div class="border-b pb-3 mb-3">
           <h3 class="font-semibold mb-2">Sysctls</h3>
-          
+
           <div class="form-group">
             <div id="node-sysctls-container" class="space-y-2">
               <!-- Dynamic sysctl entries will be added here -->
@@ -370,7 +305,7 @@
         <!-- Devices Section -->
         <div class="border-b pb-3 mb-3">
           <h3 class="font-semibold mb-2">Devices</h3>
-          
+
           <div class="form-group">
             <div id="node-devices-container" class="space-y-2">
               <!-- Dynamic device entries will be added here -->
@@ -384,7 +319,7 @@
         <!-- Certificate Section -->
         <div class="border-b pb-3 mb-3">
           <h3 class="font-semibold mb-2">TLS Certificate</h3>
-          
+
           <div class="form-group">
             <div class="flex items-center">
               <input type="checkbox" id="node-cert-issue" class="mr-2">
@@ -421,16 +356,18 @@
         <!-- Healthcheck Section -->
         <div class="pb-3 mb-3">
           <h3 class="font-semibold mb-2">Health Check</h3>
-          
+
           <div class="form-group">
             <label class="block font-medium mb-1">Test Command</label>
-            <input type="text" id="node-healthcheck-test" class="input-field w-full" placeholder="e.g., CMD-SHELL cat /etc/os-release">
+            <input type="text" id="node-healthcheck-test" class="input-field w-full"
+              placeholder="e.g., CMD-SHELL cat /etc/os-release">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div class="form-group">
               <label class="block font-medium mb-1">Start Period (s)</label>
-              <input type="number" id="node-healthcheck-start-period" class="input-field w-full" min="0" placeholder="0">
+              <input type="number" id="node-healthcheck-start-period" class="input-field w-full" min="0"
+                placeholder="0">
             </div>
             <div class="form-group">
               <label class="block font-medium mb-1">Interval (s)</label>
@@ -470,28 +407,18 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Footer with Save/Cancel buttons -->
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div class="space-x-2">
-                  <button id="panel-node-editor-save" class="btn btn-primary btn-small">Save</button>
-                  <button id="panel-node-editor-cancel" class="btn btn-outlined btn-small">Close</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+  <div class="panel-block flex items-center">
+    <div class="w-1/5 pr-1"></div>
+    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
+      <button id="panel-node-editor-save" class="btn btn-primary btn-small">Save</button>
+      <button id="panel-node-editor-cancel" class="btn btn-outlined btn-small">Close</button>
     </div>
   </div>
+
 </div>
 
 <style>
@@ -500,7 +427,7 @@
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
   }
-  
+
   #panel-node-editor input,
   #panel-node-editor select,
   #panel-node-editor textarea,
@@ -519,12 +446,12 @@
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
   }
-  
+
   .tab-button:hover {
     background-color: var(--vscode-list-hoverBackground);
     color: var(--vscode-foreground);
   }
-  
+
   .tab-button.tab-active {
     border-bottom-color: var(--vscode-activityBarBadge-background, var(--accent));
     color: var(--vscode-activityBarBadge-background, var(--accent));
@@ -561,7 +488,7 @@
   .dynamic-entry button:hover {
     opacity: 0.8;
   }
-  
+
   /* Container styles for dynamic entries */
   #node-binds-container,
   #node-env-container,
