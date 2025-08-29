@@ -301,14 +301,9 @@ class TopologyWebviewController {
     // Initialize copy paste manager
     this.copyPasteManager = new CopyPasteManager(this.cy, this.messageSender, this.groupStyleManager, this.freeTextManager);
 
-    // Load annotations after managers are created
-    // We need to wait a bit for the initial layout to complete
+    // Annotations will be loaded by managerCytoscapeFetchAndLoad after layout completes
+    // Only load group styles here since they're not loaded elsewhere
     setTimeout(() => {
-      this.freeTextManager?.loadAnnotations().then(() => {
-        log.info('Free text annotations loaded successfully');
-      }).catch((error) => {
-        log.error(`Failed to load free text annotations: ${error}`);
-      });
       this.groupStyleManager?.loadGroupStyles().catch((error) => {
         log.error(`Failed to load group style annotations: ${error}`);
       });

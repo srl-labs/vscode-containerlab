@@ -526,22 +526,15 @@ topology:
         }
       }
 
-      let treeData: Record<string, ClabLabTreeNode> | undefined = undefined;
+      // Skip initial processing - updatePanelHtmlInternal will handle it
+      // This avoids duplicate YAML processing and file writes
       if (this.isViewMode) {
         try {
-          treeData = await runningLabsProvider.discoverInspectLabs();
-          this.cacheClabTreeDataToTopoviewer = treeData;
+          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
         } catch (err) {
           log.warn(`Failed to load running lab data: ${err}`);
         }
       }
-      const cyElements = await this.adaptor.clabYamlToCytoscapeElements(yaml, treeData, this.lastYamlFilePath);
-      await this.adaptor.createFolderAndWriteJson(
-        this.context,
-        labName,                // folder below <extension>/topoViewerData/
-        cyElements,
-        yaml
-      );
     } catch (e) {
       if (!this.isViewMode) {
         vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);

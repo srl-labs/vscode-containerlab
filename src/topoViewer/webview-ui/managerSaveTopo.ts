@@ -150,7 +150,7 @@ export class ManagerSaveTopo {
       const mode = (window as any).topoViewerMode;
       let endpoint: string;
 
-      if (mode === 'view') {
+      if (mode === 'viewer') {  // FIX: Check for 'viewer' not 'view'
         // View mode uses a single endpoint and doesn't support suppress notification
         endpoint = 'topo-viewport-save';
       } else {

@@ -15,6 +15,8 @@ export class ManagerFreeText {
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
   private styleReapplyInProgress = false;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private loadInProgress = false;
+  private loadTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, groupStyleManager?: ManagerGroupStyle) {
     this.cy = cy;
@@ -588,14 +590,29 @@ export class ManagerFreeText {
   }
 
   /**
-   * Load annotations from backend
+   * Load annotations from backend with debouncing to prevent duplicate requests
    */
   public async loadAnnotations(): Promise<void> {
-    try {
-      const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-        'topo-editor-load-annotations',
-        {}
-      );
+    // If a load is already in progress, skip this request
+    if (this.loadInProgress) {
+      log.debug('Load already in progress, skipping duplicate request');
+      return;
+    }
+
+    // Clear any pending load timeout
+    if (this.loadTimeout) {
+      clearTimeout(this.loadTimeout);
+    }
+
+    // Debounce the load to prevent rapid-fire requests
+    return new Promise((resolve, reject) => {
+      this.loadTimeout = setTimeout(async () => {
+        this.loadInProgress = true;
+        try {
+          const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+            'topo-editor-load-annotations',
+            {}
+          );
 
       if (response && response.annotations) {
         // Clear existing annotations first to avoid duplicates
@@ -611,22 +628,28 @@ export class ManagerFreeText {
         annotations.forEach(annotation => {
           this.addFreeTextAnnotation(annotation);
         });
-        log.info(`Loaded ${annotations.length} free text annotations`);
+          log.info(`Loaded ${annotations.length} free text annotations`);
 
-        // Reapply styles after a delay to ensure they persist after refresh
-        setTimeout(() => {
-          this.annotationNodes.forEach((node, id) => {
-            const annotation = this.annotations.get(id);
-            if (annotation) {
-              this.applyTextNodeStyles(node, annotation);
-            }
-          });
-          log.debug('Reapplied styles to free text annotations');
-        }, 200);
+          // Reapply styles after a delay to ensure they persist after refresh
+          setTimeout(() => {
+            this.annotationNodes.forEach((node, id) => {
+              const annotation = this.annotations.get(id);
+              if (annotation) {
+                this.applyTextNodeStyles(node, annotation);
+              }
+            });
+            log.debug('Reapplied styles to free text annotations');
+          }, 200);
+        }
+        resolve();
+      } catch (error) {
+        log.error(`Failed to load annotations: ${error}`);
+        reject(error);
+      } finally {
+        this.loadInProgress = false;
       }
-    } catch (error) {
-      log.error(`Failed to load annotations: ${error}`);
-    }
+      }, 100); // 100ms debounce
+    });
   }
 
   /**

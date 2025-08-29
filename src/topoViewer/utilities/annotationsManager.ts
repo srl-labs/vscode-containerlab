@@ -8,6 +8,8 @@ import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations, CloudNod
  * Annotations are saved in a .annotations.json file alongside the .clab.yaml file.
  */
 export class AnnotationsManager {
+  private cache: Map<string, { data: TopologyAnnotations; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 1000; // 1 second cache TTL
   private getAnnotationsFilePath(yamlFilePath: string): string {
     const dir = path.dirname(yamlFilePath);
     const basename = path.basename(yamlFilePath, '.clab.yaml');
@@ -18,23 +20,37 @@ export class AnnotationsManager {
   }
 
   /**
-   * Load annotations from the annotations file
+   * Load annotations from the annotations file with caching
    */
   public async loadAnnotations(yamlFilePath: string): Promise<TopologyAnnotations> {
     const annotationsPath = this.getAnnotationsFilePath(yamlFilePath);
+
+    // Check cache first
+    const cached = this.cache.get(annotationsPath);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      log.debug(`Using cached annotations for ${annotationsPath}`);
+      return cached.data;
+    }
 
     try {
       if (await fs.promises.access(annotationsPath).then(() => true).catch(() => false)) {
         const content = await fs.promises.readFile(annotationsPath, 'utf8');
         const annotations = JSON.parse(content) as TopologyAnnotations;
         log.info(`Loaded annotations from ${annotationsPath}`);
+
+        // Update cache
+        this.cache.set(annotationsPath, { data: annotations, timestamp: Date.now() });
+
         return annotations;
       }
     } catch (error) {
       log.warn(`Failed to load annotations from ${annotationsPath}: ${error}`);
     }
 
-    return { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+    const emptyAnnotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+    // Cache empty result too
+    this.cache.set(annotationsPath, { data: emptyAnnotations, timestamp: Date.now() });
+    return emptyAnnotations;
   }
 
   /**
@@ -45,6 +61,9 @@ export class AnnotationsManager {
     annotations: TopologyAnnotations
   ): Promise<void> {
     const annotationsPath = this.getAnnotationsFilePath(yamlFilePath);
+
+    // Invalidate cache when saving
+    this.cache.delete(annotationsPath);
 
     try {
       // Only save if there are annotations, otherwise delete the file

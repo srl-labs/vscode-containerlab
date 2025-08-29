@@ -10,6 +10,8 @@ export class ManagerGroupStyle {
   private freeTextManager?: ManagerFreeText;
   private groupStyles: Map<string, GroupStyleAnnotation> = new Map();
   private saveDebounced: () => void;
+  private loadInProgress = false;
+  private loadTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, freeTextManager?: ManagerFreeText) {
     this.cy = cy;
@@ -116,18 +118,39 @@ export class ManagerGroupStyle {
   }
 
   public async loadGroupStyles(): Promise<void> {
-    try {
-      const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-load-annotations', {});
-      if (response && Array.isArray(response.groupStyles)) {
-        response.groupStyles.forEach((s: GroupStyleAnnotation) => {
-          this.groupStyles.set(s.id, s);
-          this.applyStyleToNode(s.id);
-        });
-        log.info(`Loaded ${response.groupStyles.length} group style annotations`);
-      }
-    } catch (error) {
-      log.error(`Failed to load group style annotations: ${error}`);
+    // If a load is already in progress, skip this request
+    if (this.loadInProgress) {
+      log.debug('Group styles load already in progress, skipping duplicate request');
+      return;
     }
+
+    // Clear any pending load timeout
+    if (this.loadTimeout) {
+      clearTimeout(this.loadTimeout);
+    }
+
+    // Debounce the load to prevent rapid-fire requests
+    return new Promise((resolve, reject) => {
+      this.loadTimeout = setTimeout(async () => {
+        this.loadInProgress = true;
+        try {
+          const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-load-annotations', {});
+          if (response && Array.isArray(response.groupStyles)) {
+            response.groupStyles.forEach((s: GroupStyleAnnotation) => {
+              this.groupStyles.set(s.id, s);
+              this.applyStyleToNode(s.id);
+            });
+            log.info(`Loaded ${response.groupStyles.length} group style annotations`);
+          }
+          resolve();
+        } catch (error) {
+          log.error(`Failed to load group style annotations: ${error}`);
+          reject(error);
+        } finally {
+          this.loadInProgress = false;
+        }
+      }, 100); // 100ms debounce
+    });
   }
 
   private async saveAnnotations(): Promise<void> {
