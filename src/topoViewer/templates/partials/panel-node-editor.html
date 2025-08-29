@@ -244,7 +244,7 @@
     <div class="panel-block tab-content hidden" id="tab-advanced">
       <div class="space-y-3">
         <!-- Resources Section -->
-        <div class="border-b pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="font-semibold mb-2">Resource Limits</h3>
 
           <!-- Memory -->
@@ -273,7 +273,7 @@
         </div>
 
         <!-- Capabilities Section -->
-        <div class="border-b pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="font-semibold mb-2">Capabilities</h3>
 
           <!-- Cap Add -->
@@ -289,7 +289,7 @@
         </div>
 
         <!-- Sysctls Section -->
-        <div class="border-b pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="font-semibold mb-2">Sysctls</h3>
 
           <div class="form-group">
@@ -303,7 +303,7 @@
         </div>
 
         <!-- Devices Section -->
-        <div class="border-b pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="font-semibold mb-2">Devices</h3>
 
           <div class="form-group">
@@ -317,7 +317,7 @@
         </div>
 
         <!-- Certificate Section -->
-        <div class="border-b pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="font-semibold mb-2">TLS Certificate</h3>
 
           <div class="form-group">
@@ -426,6 +426,16 @@
   #panel-node-editor {
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
+  }
+
+  /* Default: all panel-blocks get a bottom border */
+  #panel-node-editor .panel-block {
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Only the footer (direct child of .panel) should drop its bottom border */
+  #panel-node-editor>.panel-block:last-child {
+    border-bottom: 0;
   }
 
   #panel-node-editor input,
