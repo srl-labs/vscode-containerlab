@@ -83,6 +83,8 @@
   --diff-remove-bg: var(--vscode-diffEditor-removedTextBackground);
   --diff-remove-line-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground));
   --diff-line-number: var(--vscode-editorLineNumber-foreground);
+  /* Navbar height for viewport offset */
+  --navbar-height: 4.5rem;
 }
 
 @layer base {
@@ -582,12 +584,12 @@
 #cy {
   background-color: var(--vscode-editor-background);
   position: absolute !important;
-  top: 0 !important;
+  top: var(--navbar-height) !important;
   right: 0 !important;
   bottom: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: 100% !important;
+  height: calc(100% - var(--navbar-height)) !important;
 }
 
 #cy:focus {
@@ -596,10 +598,10 @@
 
 #cy-leaflet {
   position: absolute !important;
-  top: 0 !important;
+  top: var(--navbar-height) !important;
   right: 0 !important;
   bottom: 0 !important;
   left: 0 !important;
   width: 100% !important;
-  height: 100% !important;
+  height: calc(100% - var(--navbar-height)) !important;
 }
