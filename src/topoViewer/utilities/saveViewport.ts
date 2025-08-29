@@ -43,6 +43,80 @@ export async function saveViewport({
   setInternalUpdate,
 }: SaveViewportParams): Promise<void> {
   const payloadParsed: any[] = JSON.parse(payload);
+
+  // CRITICAL: In view mode, we ONLY save annotations, NEVER modify YAML
+  if (mode === 'view') {
+    log.info('View mode detected - will only save annotations, not modifying YAML');
+
+    // Load and save annotations only
+    const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+    annotations.nodeAnnotations = [];
+    annotations.cloudNodeAnnotations = [];
+
+    // Process regular nodes for annotations
+    const regularNodes = payloadParsed.filter(
+      el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' &&
+      el.data.topoViewerRole !== 'cloud' && el.data.topoViewerRole !== 'freeText' &&
+      !isSpecialEndpoint(el.data.id)
+    );
+
+    for (const node of regularNodes) {
+      const nodeAnnotation: NodeAnnotation = {
+        id: node.data.id,
+        position: {
+          x: Math.round(node.position?.x || 0),
+          y: Math.round(node.position?.y || 0)
+        },
+        icon: node.data.topoViewerRole,
+      };
+      if (node.data.lat && node.data.lng) {
+        const lat = parseFloat(node.data.lat);
+        const lng = parseFloat(node.data.lng);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          nodeAnnotation.geoCoordinates = { lat, lng };
+        }
+      }
+      if (node.data.groupLabelPos) {
+        nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
+      }
+      if (node.parent) {
+        const parts = node.parent.split(':');
+        if (parts.length === 2) {
+          nodeAnnotation.group = parts[0];
+          nodeAnnotation.level = parts[1];
+        }
+      }
+      annotations.nodeAnnotations!.push(nodeAnnotation);
+    }
+
+    // Process cloud nodes for annotations
+    const cloudNodes = payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud');
+    for (const cloudNode of cloudNodes) {
+      const cloudNodeAnnotation: CloudNodeAnnotation = {
+        id: cloudNode.data.id,
+        type: cloudNode.data.extraData?.kind || 'host',
+        label: cloudNode.data.name || cloudNode.data.id,
+        position: {
+          x: cloudNode.position?.x || 0,
+          y: cloudNode.position?.y || 0
+        }
+      };
+      if (cloudNode.parent) {
+        const parts = cloudNode.parent.split(':');
+        if (parts.length === 2) {
+          cloudNodeAnnotation.group = parts[0];
+          cloudNodeAnnotation.level = parts[1];
+        }
+      }
+      annotations.cloudNodeAnnotations!.push(cloudNodeAnnotation);
+    }
+
+    await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+    log.info('View mode: Saved annotations only - YAML file not touched');
+    return; // EXIT EARLY - NO YAML PROCESSING IN VIEW MODE
+  }
+
+  // EDIT MODE ONLY from here on
   let doc: YAML.Document.Parsed | undefined;
   if (mode === 'edit') {
     doc = adaptor?.currentClabDoc;
@@ -50,11 +124,8 @@ export async function saveViewport({
       throw new Error('No parsed Document found (adaptor.currentClabDoc is undefined).');
     }
   } else {
-    const yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
-    doc = YAML.parseDocument(yamlContent);
-    if (!doc) {
-      throw new Error('Failed to parse YAML document');
-    }
+    // This should never happen due to early return above, but keeping as safety
+    throw new Error('Invalid mode - should be edit or view');
   }
 
   const updatedKeys = new Map<string, string>();
@@ -84,14 +155,31 @@ export async function saveViewport({
         }
         const nodeMap = nodeYaml;
         const extraData = element.data.extraData || {};
-        const existingKind = (nodeMap.get('kind', true) as any)?.value;
-        const existingImage = (nodeMap.get('image', true) as any)?.value;
-        const existingType = (nodeMap.get('type', true) as any)?.value;
-        const groupName = extraData.group ?? (nodeMap.get('group', true) as any)?.value;
-        const desiredKind = extraData.kind ?? existingKind ?? element.data.topoViewerRole;
-        const desiredImage = extraData.image ?? existingImage;
-        const desiredType = extraData.type ?? existingType;
+
+        // For existing nodes, preserve what was originally in the YAML
+        // Don't add properties that were inherited from kinds/groups/defaults
+        const originalKind = (nodeMap.get('kind', true) as any)?.value;
+        const originalImage = (nodeMap.get('image', true) as any)?.value;
+        const originalType = (nodeMap.get('type', true) as any)?.value;
+        const originalGroup = (nodeMap.get('group', true) as any)?.value;
+
+        // Only update group if it was changed (extraData.group differs from original)
+        const groupName = extraData.group !== undefined && extraData.group !== originalGroup
+          ? extraData.group
+          : originalGroup;
+
+        // Calculate what would be inherited with the current group
         const inherit = resolveNodeConfig(topoObj!, { group: groupName });
+
+        // For properties, we only write them if:
+        // 1. They were already explicitly in the YAML (preserve them), OR
+        // 2. They are new/changed and different from what would be inherited
+        const desiredKind = originalKind !== undefined ? originalKind :
+          (extraData.kind && extraData.kind !== inherit.kind ? extraData.kind : undefined);
+        const desiredImage = originalImage !== undefined ? originalImage :
+          (extraData.image && extraData.image !== inherit.image ? extraData.image : undefined);
+        const desiredType = originalType !== undefined ? originalType :
+          (extraData.type && extraData.type !== inherit.type ? extraData.type : undefined);
 
         if (groupName) {
           nodeMap.set('group', doc.createNode(groupName));
@@ -238,6 +326,7 @@ export async function saveViewport({
     }
   }
 
+  // Save annotations for edit mode
   const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
   annotations.nodeAnnotations = [];
   annotations.cloudNodeAnnotations = [];
@@ -298,18 +387,23 @@ export async function saveViewport({
 
   await annotationsManager.saveAnnotations(yamlFilePath, annotations);
 
-  const updatedYamlString = doc.toString();
-  if (mode === 'edit' && setInternalUpdate) {
-    setInternalUpdate(true);
-    await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
-    await sleep(50);
-    setInternalUpdate(false);
-    log.info('Saved topology with preserved comments!');
-    log.info(doc);
-    log.info(yamlFilePath);
-  } else {
-    await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
-    log.info('Saved viewport positions and groups successfully');
-    log.info(`Updated file: ${yamlFilePath}`);
+  // Only proceed with YAML writing if we're in edit mode
+  // NEVER write YAML in view mode - this is already handled above with early return
+  if (mode === 'edit') {
+    const updatedYamlString = doc.toString();
+    if (setInternalUpdate) {
+      setInternalUpdate(true);
+      await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
+      await sleep(50);
+      setInternalUpdate(false);
+      log.info('Saved topology with preserved comments!');
+      log.info(doc);
+      log.info(yamlFilePath);
+    } else {
+      // Still in edit mode but without internal update flag
+      await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
+      log.info('Saved viewport positions and groups successfully');
+      log.info(`Updated file: ${yamlFilePath}`);
+    }
   }
 }
