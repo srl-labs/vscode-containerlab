@@ -491,21 +491,10 @@ export class ManagerViewportPanels {
       this.edgeClicked = false;
     }, { once: true });
 
-    // Build the type dropdown
+    // Build the type dropdown (handled below after wiring validation)
     const typeOptions = ['veth', 'mgmt-net', 'host', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy'];
     const extraData = edge.data('extraData') || {};
     const currentType = extraData.extType || '';
-    this.createFilterableDropdown(
-      typeDropdownContainerId,
-      typeOptions,
-      currentType || 'veth',
-      (selectedValue: string) => {
-        this.panelLinkExtendedToggleSections(selectedValue);
-      },
-      'Select link type...'
-    );
-    // Ensure section visibility matches current type
-    this.panelLinkExtendedToggleSections(currentType || 'veth');
 
     // Field elements
     const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
@@ -520,6 +509,15 @@ export class ManagerViewportPanels {
     const remoteEl = document.getElementById('panel-link-ext-remote') as HTMLInputElement | null;
     const vniEl = document.getElementById('panel-link-ext-vni') as HTMLInputElement | null;
     const udpPortEl = document.getElementById('panel-link-ext-udp-port') as HTMLInputElement | null;
+    const banner = document.getElementById('panel-link-ext-errors') as HTMLElement | null;
+    const bannerList = document.getElementById('panel-link-ext-errors-list') as HTMLElement | null;
+    const setSaveDisabled = (disabled: boolean) => {
+      const btn = document.getElementById('panel-link-extended-editor-save-button') as HTMLButtonElement | null;
+      if (!btn) return;
+      btn.disabled = disabled;
+      btn.classList.toggle('opacity-50', disabled);
+      btn.classList.toggle('cursor-not-allowed', disabled);
+    };
 
     // Prefill from extraData
     if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
@@ -533,11 +531,76 @@ export class ManagerViewportPanels {
     if (vniEl) vniEl.value = extraData.extVni != null ? String(extraData.extVni) : '';
     if (udpPortEl) udpPortEl.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
 
+    // Initial validation banner if adaptor provided errors
+    const initialErrors: string[] = Array.isArray(extraData.extValidationErrors) ? extraData.extValidationErrors : [];
+    const renderErrors = (errors: string[]) => {
+      if (!banner || !bannerList) return;
+      if (!errors.length) {
+        banner.style.display = 'none';
+        bannerList.innerHTML = '';
+        setSaveDisabled(false);
+        return;
+      }
+      banner.style.display = 'block';
+      const labels: Record<string, string> = {
+        'missing-host-interface': 'Host Interface is required for this type',
+        'missing-remote': 'Remote (VTEP IP) is required',
+        'missing-vni': 'VNI is required',
+        'missing-udp-port': 'UDP Port is required',
+        'invalid-veth-endpoints': 'veth requires two endpoints with node and interface',
+        'invalid-endpoint': 'Endpoint with node and interface is required',
+      };
+      bannerList.innerHTML = errors.map(e => `<div>• ${labels[e] || e}</div>`).join('');
+      setSaveDisabled(true);
+    };
+    renderErrors(initialErrors);
+
+    // Live validation on inputs
+    const validate = (): string[] => {
+      // Read selected type
+      const typeInput = document.getElementById(`${typeDropdownContainerId}-filter-input`) as HTMLInputElement | null;
+      const selectedType = (typeInput?.value || 'veth').trim();
+      const errs: string[] = [];
+      // Clear previous highlighting
+      [hostIfEl, remoteEl, vniEl, udpPortEl].forEach(el => { if (el) el.style.borderColor = ''; });
+      if (['mgmt-net','host','macvlan'].includes(selectedType)) {
+        const val = (hostIfEl?.value || '').trim();
+        if (!val) { errs.push('missing-host-interface'); if (hostIfEl) hostIfEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
+      }
+      if (selectedType === 'vxlan' || selectedType === 'vxlan-stitch') {
+        const r = (remoteEl?.value || '').trim();
+        const v = (vniEl?.value || '').trim();
+        const u = (udpPortEl?.value || '').trim();
+        if (!r) { errs.push('missing-remote'); if (remoteEl) remoteEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
+        if (!v) { errs.push('missing-vni'); if (vniEl) vniEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
+        if (!u) { errs.push('missing-udp-port'); if (udpPortEl) udpPortEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
+      }
+      return errs;
+    };
+
+    const attachRevalidate = (el: HTMLElement | null) => { if (!el) return; el.addEventListener('input', () => { renderErrors(validate()); }); };
+    [hostIfEl, modeEl, remoteEl, vniEl, udpPortEl, mtuEl, varsEl, labelsEl].forEach(el => attachRevalidate(el as any));
+    // Also revalidate on type change via dropdown callback
+    this.createFilterableDropdown(
+      typeDropdownContainerId,
+      typeOptions,
+      currentType || 'veth',
+      (selectedValue: string) => {
+        this.panelLinkExtendedToggleSections(selectedValue);
+        renderErrors(validate());
+      },
+      'Select link type...'
+    );
+    // Ensure section visibility matches current type
+    this.panelLinkExtendedToggleSections(currentType || 'veth');
+
     // Save button
     const freshSave = saveBtn.cloneNode(true) as HTMLElement;
     saveBtn.parentNode?.replaceChild(freshSave, saveBtn);
     freshSave.addEventListener('click', async () => {
       try {
+        const errsNow = validate();
+        if (errsNow.length) { renderErrors(errsNow); return; }
         // Read current type from dropdown input value
         const typeInput = document.getElementById(`${typeDropdownContainerId}-filter-input`) as HTMLInputElement | null;
         const selectedType = (typeInput?.value || 'veth').trim();

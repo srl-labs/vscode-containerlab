@@ -39,6 +39,12 @@
           </div>
         </div>
 
+        <!-- Validation banner (hidden by default) -->
+        <div id="panel-link-ext-errors" style="display:none;" class="my-2 p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]">
+          <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Invalid link configuration</div>
+          <div id="panel-link-ext-errors-list" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1"></div>
+        </div>
+
         <!-- Common Fields -->
         <div class="border-t border-[var(--vscode-widget-border)] my-2"></div>
         <div class="my-1">
@@ -168,4 +174,3 @@
     </div>
   </div>
 </div>
-
