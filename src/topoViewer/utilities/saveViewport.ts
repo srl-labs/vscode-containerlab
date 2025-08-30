@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as vscode from 'vscode';
 import * as YAML from 'yaml';
 
 import { log } from '../logging/logger';
@@ -648,8 +647,7 @@ export async function saveViewport({
     // Ensure links list renders with indented hyphens (block style)
     linksNode.flow = false;
 
-    const cfg = vscode.workspace.getConfiguration('containerlab.editor');
-    const linkFormat = (cfg.get('linkFormat') as 'short' | 'extended') ?? 'short';
+    // Editor no longer relies on a global linkFormat setting; format is inferred per link
 
     function buildEndpointMap(ep: CanonicalEndpoint): YAML.YAMLMap {
       const m = new YAML.YAMLMap();
@@ -686,8 +684,8 @@ export async function saveViewport({
           const yamlKey = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
           if (yamlKey && canonicalKeyToString(yamlKey) === payloadKeyStr) {
             linkFound = true;
-            // Merge into existing entry when extended mode and entry is extended
-            if (linkFormat === 'extended') {
+            // Merge into existing entry when YAML entry is extended (has type)
+            {
               const map = linkItem as YAML.YAMLMap;
               if ((map as any).has && (map as any).has('type', true)) {
                 // Apply type
@@ -762,7 +760,9 @@ export async function saveViewport({
         const newLink = new YAML.YAMLMap();
         newLink.flow = false;
 
-        if (linkFormat === 'extended') {
+        // Create new entry: choose format based on provided extended fields/type or inferred single-endpoint type
+        const wantsExtended = (extra.extType && validTypes.has(extra.extType)) || (payloadKey.type && payloadKey.type !== 'veth');
+        if (wantsExtended) {
           // Determine type and write extended structure with per-type fields (Step 7)
           newLink.set('type', doc!.createNode(chosenType));
           // Guardrails: skip creating invalid extended links

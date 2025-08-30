@@ -329,126 +329,85 @@ export class ManagerViewportPanels {
    */
   public async panelEdgeEditor(edge: cytoscape.EdgeSingular): Promise<void> {
     try {
-      // If running in Editor mode and global setting indicates extended format, use extended editor
-      const linkFormat = (window as any).linkFormat || '';
-      const isEditor = (window as any).topoViewerMode === 'editor';
-      if (isEditor && linkFormat === 'extended') {
-        const extra = edge.data('extraData') || {};
-        const yamlFormat = extra.yamlFormat || (extra.extType ? 'extended' : 'short');
-        if (yamlFormat === 'extended') {
-          await this.panelEdgeEditorExtended(edge);
-          return;
-        }
-        // else fall through to regular editor for short links
-      }
-      // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
+      // Unified editor with tabs (Basic | Extended)
       this.edgeClicked = true;
+      const overlays = document.getElementsByClassName('panel-overlay');
+      Array.from(overlays).forEach(el => (el as HTMLElement).style.display = 'none');
 
-      // 1) Hide other overlays
-      const overlays = document.getElementsByClassName("panel-overlay");
-      Array.from(overlays).forEach(el => (el as HTMLElement).style.display = "none");
-
-      // 2) Grab the static parts and initial data
-      const panelLinkEditor = document.getElementById("panel-link-editor");
-      const panelLinkEditorIdLabel = document.getElementById("panel-link-editor-id");
-      const panelLinkEditorIdLabelSrcInput = document.getElementById("panel-link-editor-source-endpoint") as HTMLInputElement | null;
-      const panelLinkEditorIdLabelTgtInput = document.getElementById("panel-link-editor-target-endpoint") as HTMLInputElement | null;
-      const panelLinkEditorIdLabelCloseBtn = document.getElementById("panel-link-editor-close-button");
-      const panelLinkEditorIdLabelSaveBtn = document.getElementById("panel-link-editor-save-button");
-
-      if (!panelLinkEditorIdLabel || !panelLinkEditor || !panelLinkEditorIdLabelSrcInput || !panelLinkEditorIdLabelTgtInput || !panelLinkEditorIdLabelCloseBtn || !panelLinkEditorIdLabelSaveBtn) {
-        log.error('panelEdgeEditor: missing required DOM elements');
+      const panel = document.getElementById('panel-link-editor');
+      const basicTab = document.getElementById('panel-link-tab-basic');
+      const extTab = document.getElementById('panel-link-tab-extended');
+      const btnBasic = document.getElementById('panel-link-tab-btn-basic');
+      const btnExt = document.getElementById('panel-link-tab-btn-extended');
+      if (!panel || !basicTab || !extTab || !btnBasic || !btnExt) {
+        log.error('panelEdgeEditor: missing unified tabbed panel elements');
         this.edgeClicked = false;
         return;
       }
-      const source = edge.data("source") as string;
-      const target = edge.data("target") as string;
-      const sourceEP = (edge.data("sourceEndpoint") as string) || "";
-      const targetEP = (edge.data("targetEndpoint") as string) || "";
 
-      // Populate inputs with current endpoint values
-      panelLinkEditorIdLabelSrcInput.value = sourceEP;
-      panelLinkEditorIdLabelTgtInput.value = targetEP;
+      const source = edge.data('source') as string;
+      const target = edge.data('target') as string;
+      const sourceEP = (edge.data('sourceEndpoint') as string) || '';
+      const targetEP = (edge.data('targetEndpoint') as string) || '';
 
-      // Helper to sync the ID label from whatever is in the inputs right now
-      const updateLabel = () => {
-        const s = panelLinkEditorIdLabelSrcInput.value.trim();
-        const t = panelLinkEditorIdLabelTgtInput.value.trim();
-        panelLinkEditorIdLabel.innerHTML =
-          `┌ ${source} :: ${s}<br>` +
-          `└ ${target} :: ${t}`;
+      // Show panel
+      (panel as HTMLElement).style.display = 'block';
+
+      // Tab selection by per-link format
+      const extra = edge.data('extraData') || {};
+      const yamlFormat = extra.yamlFormat || (extra.extType ? 'extended' : 'short');
+      const setTab = (which: 'basic' | 'extended') => {
+        (basicTab as HTMLElement).style.display = which === 'basic' ? 'block' : 'none';
+        (extTab as HTMLElement).style.display = which === 'extended' ? 'block' : 'none';
+        btnBasic.classList.toggle('tab-active', which === 'basic');
+        btnExt.classList.toggle('tab-active', which === 'extended');
       };
+      setTab(yamlFormat === 'extended' ? 'extended' : 'basic');
+      btnBasic.addEventListener('click', () => setTab('basic'));
+      btnExt.addEventListener('click', () => setTab('extended'));
 
-      // Initial label fill
-      updateLabel();
+      // Populate previews
+      const updatePreview = (el: HTMLElement | null) => { if (el) el.innerHTML = `┌ ${source} :: ${sourceEP}<br>└ ${target} :: ${targetEP}`; };
+      updatePreview(document.getElementById('panel-link-editor-id'));
+      updatePreview(document.getElementById('panel-link-extended-editor-id'));
 
-      // 3) Show the panel
-      panelLinkEditor.style.display = "block";
-
-      // 4) Re-wire Close button (one-shot)
-      const freshClose = panelLinkEditorIdLabelCloseBtn.cloneNode(true) as HTMLElement;
-      panelLinkEditorIdLabelCloseBtn.parentNode!.replaceChild(freshClose, panelLinkEditorIdLabelCloseBtn);
-      freshClose.addEventListener("click", () => {
-        panelLinkEditor.style.display = "none";
-        this.edgeClicked = false;
-      }, { once: true });
-
-      // 5) Wire real-time preview (optional but helpful)
-      panelLinkEditorIdLabelSrcInput.addEventListener("input", updateLabel);
-      panelLinkEditorIdLabelTgtInput.addEventListener("input", updateLabel);
-
-      // 6) Wire up Save button
-      if (panelLinkEditorIdLabelSaveBtn) {
-        const freshSave = panelLinkEditorIdLabelSaveBtn.cloneNode(true) as HTMLElement;
-        panelLinkEditorIdLabelSaveBtn.parentNode?.replaceChild(freshSave, panelLinkEditorIdLabelSaveBtn);
-
-        freshSave.addEventListener(
-          "click",
-          async () => {
-            try {
-              // 6a) Update edge data from inputs
-              const newSourceEP = panelLinkEditorIdLabelSrcInput.value.trim();
-              const newTargetEP = panelLinkEditorIdLabelTgtInput.value.trim();
-              edge.data({
-                sourceEndpoint: newSourceEP,
-                targetEndpoint: newTargetEP
-              });
-
-              // 6b) Persist changes (with notification)
-              await this.saveManager.viewportButtonsSaveTopo(
-                this.cy,
-                /* suppressNotification */ false
-              );
-
-              // 6c) Refresh the ID label so it shows saved values
-              if (panelLinkEditorIdLabel) {
-                panelLinkEditorIdLabel.innerHTML =
-                  `┌ ${source} :: ${newSourceEP}<br>` +
-                  `└ ${target} :: ${newTargetEP}`;
-              }
-
-              // 6d) Hide the panel
-              panelLinkEditor.style.display = "none";
-              // Reset the edgeClicked flag
-              this.edgeClicked = false;
-            } catch (saveErr) {
-              log.error(`panelEdgeEditor: error during save: ${saveErr instanceof Error ? saveErr.message : String(saveErr)}`);
-              // TODO: show user-facing notification if needed
-            }
-          },
-          { once: true }
-        );
+      // Basic tab wiring
+      const srcInputBasic = document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null;
+      const tgtInputBasic = document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null;
+      if (srcInputBasic) srcInputBasic.value = sourceEP;
+      if (tgtInputBasic) tgtInputBasic.value = targetEP;
+      const basicClose = document.getElementById('panel-link-editor-close-button');
+      if (basicClose) {
+        const freshClose = basicClose.cloneNode(true) as HTMLElement;
+        basicClose.parentNode?.replaceChild(freshClose, basicClose);
+        freshClose.addEventListener('click', () => { (panel as HTMLElement).style.display = 'none'; this.edgeClicked = false; }, { once: true });
+      }
+      const basicSave = document.getElementById('panel-link-editor-save-button');
+      if (basicSave) {
+        const freshSave = basicSave.cloneNode(true) as HTMLElement;
+        basicSave.parentNode?.replaceChild(freshSave, basicSave);
+        freshSave.addEventListener('click', async () => {
+          try {
+            const newSourceEP = (document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null)?.value?.trim() || '';
+            const newTargetEP = (document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '';
+            edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
+            await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
+            (panel as HTMLElement).style.display = 'none';
+            this.edgeClicked = false;
+          } catch (err) {
+            log.error(`panelEdgeEditor basic save error: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }, { once: true });
       }
 
-      // Reset the edgeClicked flag after a small delay to ensure the panel stays open
-      setTimeout(() => {
-        this.edgeClicked = false;
-      }, 100);
+      // Extended tab: reuse existing setup to wire fields and save
+      await this.panelEdgeEditorExtended(edge);
 
+      // Reset flag slight delay
+      setTimeout(() => { this.edgeClicked = false; }, 100);
     } catch (err) {
       log.error(`panelEdgeEditor: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
       this.edgeClicked = false;
-      // TODO: show user-facing notification if needed
     }
   }
 
@@ -463,7 +422,7 @@ export class ManagerViewportPanels {
     const overlays = document.getElementsByClassName('panel-overlay');
     Array.from(overlays).forEach(el => (el as HTMLElement).style.display = 'none');
 
-    const panel = document.getElementById('panel-link-extended-editor');
+    const panel = document.getElementById('panel-link-editor');
     const idLabel = document.getElementById('panel-link-extended-editor-id');
     const closeBtn = document.getElementById('panel-link-extended-editor-close-button');
     const saveBtn = document.getElementById('panel-link-extended-editor-save-button');

@@ -30,7 +30,6 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   defaultKind: string;
   defaultType: string;
   updateLinkEndpointsOnKindChange: boolean;
-  linkFormat?: 'short' | 'extended';
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -170,8 +169,7 @@ export function generateHtmlTemplate(
       ifacePatternMapping: '{}',
       defaultKind: 'nokia_srlinux',
       defaultType: 'ixrd1',
-      updateLinkEndpointsOnKindChange: 'true',
-      linkFormat: ''
+      updateLinkEndpointsOnKindChange: 'true'
     };
   } else {
     const editorParams = params as EditorTemplateParams;
@@ -181,8 +179,7 @@ export function generateHtmlTemplate(
       ifacePatternMapping: JSON.stringify(editorParams.ifacePatternMapping),
       defaultKind: editorParams.defaultKind,
       defaultType: editorParams.defaultType,
-      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
-      linkFormat: editorParams.linkFormat || 'short'
+      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString()
     };
   }
 
