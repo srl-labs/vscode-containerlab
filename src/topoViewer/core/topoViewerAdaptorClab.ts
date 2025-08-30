@@ -882,6 +882,30 @@ export class TopoViewerAdaptorClab {
           }
         }
         // In editor mode (includeContainerData = false), edgeClass remains empty string, resulting in gray links
+        // Per-type validation for extended links
+        const extValidationErrors: string[] = [];
+        const linkType = (linkObj && typeof linkObj.type === 'string') ? (linkObj.type as string) : '';
+        if (linkType) {
+          if (linkType === 'veth') {
+            const eps = Array.isArray(linkObj.endpoints) ? linkObj.endpoints : [];
+            const ok = eps.length >= 2 && typeof eps[0] === 'object' && typeof eps[1] === 'object' &&
+              eps[0]?.node && (eps[0]?.interface !== undefined) && eps[1]?.node && (eps[1]?.interface !== undefined);
+            if (!ok) extValidationErrors.push('invalid-veth-endpoints');
+          } else if (['mgmt-net','host','macvlan','dummy','vxlan','vxlan-stitch'].includes(linkType)) {
+            const ep = linkObj.endpoint;
+            const okEp = ep && ep.node && (ep.interface !== undefined);
+            if (!okEp) extValidationErrors.push('invalid-endpoint');
+            if (linkType === 'mgmt-net' || linkType === 'host' || linkType === 'macvlan') {
+              if (!linkObj['host-interface']) extValidationErrors.push('missing-host-interface');
+            }
+            if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
+              if (!linkObj.remote) extValidationErrors.push('missing-remote');
+              if (linkObj.vni === undefined || linkObj.vni === '') extValidationErrors.push('missing-vni');
+              if (linkObj['udp-port'] === undefined || linkObj['udp-port'] === '') extValidationErrors.push('missing-udp-port');
+            }
+          }
+        }
+
         const edgeEl: CyElement = {
           group: 'edges',
           data: {
@@ -922,6 +946,7 @@ export class TopoViewerAdaptorClab {
               extUdpPort: linkObj?.['udp-port'] ?? '',
               extSourceMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[0] === 'object') ? (linkObj.endpoints[0] as any)?.mac ?? '' : '',
               extTargetMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[1] === 'object') ? (linkObj.endpoints[1] as any)?.mac ?? '' : '',
+              extValidationErrors: extValidationErrors.length ? extValidationErrors : undefined,
             },
           },
           position: { x: 0, y: 0 },

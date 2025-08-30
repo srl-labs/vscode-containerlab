@@ -693,6 +693,15 @@ export async function saveViewport({
                 // Apply type
                 map.set('type', doc!.createNode(chosenType));
 
+                // Guardrails: required fields per type
+                const requiresHost = (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan');
+                const requiresVx = (chosenType === 'vxlan' || chosenType === 'vxlan-stitch');
+                if ((requiresHost && !extra.extHostInterface) ||
+                    (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
+                  log.warn(`Skipping write for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
+                  break;
+                }
+
                 if (chosenType === 'veth') {
                   // endpoints: two maps with optional MACs
                   const srcEp: CanonicalEndpoint = { node: data.source, iface: data.sourceEndpoint || '' };
@@ -756,6 +765,14 @@ export async function saveViewport({
         if (linkFormat === 'extended') {
           // Determine type and write extended structure with per-type fields (Step 7)
           newLink.set('type', doc!.createNode(chosenType));
+          // Guardrails: skip creating invalid extended links
+          const requiresHost = (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan');
+          const requiresVx = (chosenType === 'vxlan' || chosenType === 'vxlan-stitch');
+          if ((requiresHost && !extra.extHostInterface) ||
+              (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
+            log.warn(`Skipping creation for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
+            return; // do not add newLink
+          }
           if (chosenType === 'veth') {
             const srcEp: CanonicalEndpoint = { node: data.source, iface: data.sourceEndpoint || '' };
             const dstEp: CanonicalEndpoint = { node: data.target, iface: data.targetEndpoint || '' };
