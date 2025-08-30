@@ -260,7 +260,7 @@ export class ManagerViewportPanels {
     }
 
     // Initialize network type filterable dropdown
-    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'bridge', 'ovs-bridge'];
+    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'bridge', 'ovs-bridge'];
     this.createFilterableDropdown(
       'panel-network-type-dropdown-container',
       networkTypeOptions,
