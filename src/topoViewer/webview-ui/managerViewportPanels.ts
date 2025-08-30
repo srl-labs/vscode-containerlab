@@ -333,8 +333,13 @@ export class ManagerViewportPanels {
       const linkFormat = (window as any).linkFormat || '';
       const isEditor = (window as any).topoViewerMode === 'editor';
       if (isEditor && linkFormat === 'extended') {
-        await this.panelEdgeEditorExtended(edge);
-        return;
+        const extra = edge.data('extraData') || {};
+        const yamlFormat = extra.yamlFormat || (extra.extType ? 'extended' : 'short');
+        if (yamlFormat === 'extended') {
+          await this.panelEdgeEditorExtended(edge);
+          return;
+        }
+        // else fall through to regular editor for short links
       }
       // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
       this.edgeClicked = true;

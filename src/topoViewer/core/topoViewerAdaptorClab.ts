@@ -946,6 +946,7 @@ export class TopoViewerAdaptorClab {
               extUdpPort: linkObj?.['udp-port'] ?? '',
               extSourceMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[0] === 'object') ? (linkObj.endpoints[0] as any)?.mac ?? '' : '',
               extTargetMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[1] === 'object') ? (linkObj.endpoints[1] as any)?.mac ?? '' : '',
+              yamlFormat: (typeof (linkObj as any)?.type === 'string' && (linkObj as any).type) ? 'extended' : 'short',
               extValidationErrors: extValidationErrors.length ? extValidationErrors : undefined,
             },
           },
