@@ -377,7 +377,11 @@ export class TopoViewerAdaptorClab {
   ): { node: string; iface: string } {
     if (typeof endpoint === 'string') {
       // Special handling for macvlan endpoints
-      if (endpoint.startsWith('macvlan:')) {
+      if (
+        endpoint.startsWith('macvlan:') ||
+        endpoint.startsWith('vxlan:') ||
+        endpoint.startsWith('vxlan-stitch:')
+      ) {
         return { node: endpoint, iface: '' };
       }
 
@@ -447,7 +451,7 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
   ): CyElement[] {
     const elements: CyElement[] = [];
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'bridge' | 'ovs-bridge'; label: string }>();
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge'; label: string }>();
 
     if (!parsed.topology) {
       log.warn('Parsed YAML does not contain \x27topology\x27 object.');
@@ -634,6 +638,12 @@ export class TopoViewerAdaptorClab {
         } else if (nodeA.startsWith('macvlan:')) {
           const macvlanIface = nodeA.substring(8);
           specialNodes.set(nodeA, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
+        } else if (nodeA.startsWith('vxlan-stitch:')) {
+          const name = nodeA.substring('vxlan-stitch:'.length);
+          specialNodes.set(nodeA, { type: 'vxlan-stitch', label: `vxlan-stitch:${name}` });
+        } else if (nodeA.startsWith('vxlan:')) {
+          const name = nodeA.substring('vxlan:'.length);
+          specialNodes.set(nodeA, { type: 'vxlan', label: `vxlan:${name}` });
         }
 
         if (nodeB === 'host') {
@@ -645,6 +655,12 @@ export class TopoViewerAdaptorClab {
         } else if (nodeB.startsWith('macvlan:')) {
           const macvlanIface = nodeB.substring(8);
           specialNodes.set(nodeB, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
+        } else if (nodeB.startsWith('vxlan-stitch:')) {
+          const name = nodeB.substring('vxlan-stitch:'.length);
+          specialNodes.set(nodeB, { type: 'vxlan-stitch', label: `vxlan-stitch:${name}` });
+        } else if (nodeB.startsWith('vxlan:')) {
+          const name = nodeB.substring('vxlan:'.length);
+          specialNodes.set(nodeB, { type: 'vxlan', label: `vxlan:${name}` });
         }
       }
 
@@ -734,6 +750,10 @@ export class TopoViewerAdaptorClab {
           actualSourceNode = `mgmt-net:${sourceIface}`;
         } else if (sourceNode.startsWith('macvlan:')) {
           actualSourceNode = sourceNode;
+        } else if (sourceNode.startsWith('vxlan-stitch:')) {
+          actualSourceNode = sourceNode;
+        } else if (sourceNode.startsWith('vxlan:')) {
+          actualSourceNode = sourceNode;
         }
 
         if (targetNode === 'host') {
@@ -742,12 +762,16 @@ export class TopoViewerAdaptorClab {
           actualTargetNode = `mgmt-net:${targetIface}`;
         } else if (targetNode.startsWith('macvlan:')) {
           actualTargetNode = targetNode;
+        } else if (targetNode.startsWith('vxlan-stitch:')) {
+          actualTargetNode = targetNode;
+        } else if (targetNode.startsWith('vxlan:')) {
+          actualTargetNode = targetNode;
         }
 
-        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:'))
+        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:'))
           ? actualSourceNode
           : (fullPrefix ? `${fullPrefix}-${sourceNode}` : sourceNode);
-        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
+        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('vxlan:') || targetNode.startsWith('vxlan-stitch:'))
           ? actualTargetNode
           : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
         // Get interface data (might be undefined in editor mode)
@@ -779,14 +803,18 @@ export class TopoViewerAdaptorClab {
             sourceNodeData?.kind === 'ovs-bridge' ||
             sourceNode === 'host' ||
             sourceNode === 'mgmt-net' ||
-            sourceNode.startsWith('macvlan:');
+            sourceNode.startsWith('macvlan:') ||
+            sourceNode.startsWith('vxlan:') ||
+            sourceNode.startsWith('vxlan-stitch:');
 
           const targetIsSpecial =
             targetNodeData?.kind === 'bridge' ||
             targetNodeData?.kind === 'ovs-bridge' ||
             targetNode === 'host' ||
             targetNode === 'mgmt-net' ||
-            targetNode.startsWith('macvlan:');
+            targetNode.startsWith('macvlan:') ||
+            targetNode.startsWith('vxlan:') ||
+            targetNode.startsWith('vxlan-stitch:');
 
           if (sourceIsSpecial || targetIsSpecial) {
             // For special network connections, only check the non-special side
