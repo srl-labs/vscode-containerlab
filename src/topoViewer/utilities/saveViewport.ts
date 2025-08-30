@@ -9,23 +9,148 @@ import { annotationsManager } from './annotationsManager';
 import { CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
 import { isSpecialEndpoint } from './specialNodes';
 
+type CanonicalEndpoint = { node: string; iface: string };
+type CanonicalLinkKey = {
+  type: 'veth' | 'mgmt-net' | 'host' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | 'unknown';
+  a: CanonicalEndpoint;
+  b?: CanonicalEndpoint; // present for veth
+  // Optional, reserved for future matching refinements (Step 7)
+  hostIface?: string;
+  mode?: string;
+  vni?: string | number;
+  udpPort?: string | number;
+};
+
+function splitEndpointLike(endpoint: string | { node: string; interface?: string }): CanonicalEndpoint {
+  if (typeof endpoint === 'string') {
+    if (
+      endpoint.startsWith('macvlan:') ||
+      endpoint.startsWith('vxlan:') ||
+      endpoint.startsWith('vxlan-stitch:')
+    ) {
+      return { node: endpoint, iface: '' };
+    }
+    const parts = endpoint.split(':');
+    if (parts.length === 2) return { node: parts[0], iface: parts[1] };
+    return { node: endpoint, iface: '' };
+  }
+  if (endpoint && typeof endpoint === 'object') {
+    return { node: endpoint.node, iface: endpoint.interface ?? '' };
+  }
+  return { node: '', iface: '' };
+}
+
+function canonicalKeyToString(key: CanonicalLinkKey): string {
+  if (key.type === 'veth' && key.b) {
+    const aStr = `${key.a.node}:${key.a.iface}`;
+    const bStr = `${key.b.node}:${key.b.iface}`;
+    const [first, second] = aStr < bStr ? [aStr, bStr] : [bStr, aStr];
+    return `veth|${first}|${second}`;
+  }
+  // Single-endpoint types: only endpoint A determines identity for now
+  return `${key.type}|${key.a.node}:${key.a.iface}`;
+}
+
+function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
+  // Extended format if 'type' exists
+  const typeNode = linkItem.get('type', true) as any;
+  const typeStr = typeof typeNode?.value === 'string' ? (typeNode.value as string) : (typeof typeNode === 'string' ? typeNode : undefined);
+
+  if (typeStr) {
+    const t = typeStr as CanonicalLinkKey['type'];
+    if (t === 'veth') {
+      const eps = linkItem.get('endpoints', true);
+      if (YAML.isSeq(eps) && eps.items.length >= 2) {
+        const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+        const b = splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any));
+        return { type: 'veth', a, b };
+      }
+    }
+
+    // Single-endpoint types
+    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t)) {
+      const ep = linkItem.get('endpoint', true);
+      if (ep) {
+        const a = splitEndpointLike((ep as any)?.toJSON?.() ?? ep);
+        return { type: t as any, a };
+      }
+      // Some files may still keep endpoints list with one side special; try to derive
+      const eps = linkItem.get('endpoints', true);
+      if (YAML.isSeq(eps) && eps.items.length >= 1) {
+        const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+        const bMaybe = eps.items.length > 1 ? splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any)) : undefined;
+        // Pick non-special as canonical 'a' when available
+        const aIsSpecial = isSpecialEndpoint(`${a.node}:${a.iface}`) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
+        if (bMaybe) {
+          const bIsSpecial = isSpecialEndpoint(`${bMaybe.node}:${bMaybe.iface}`) || bMaybe.node.startsWith('macvlan:') || bMaybe.node.startsWith('vxlan:') || bMaybe.node.startsWith('vxlan-stitch:');
+          return { type: t as any, a: aIsSpecial && !bIsSpecial ? bMaybe : a };
+        }
+        return { type: t as any, a };
+      }
+    }
+  }
+
+  // Short format assumed
+  const eps = linkItem.get('endpoints', true);
+  if (YAML.isSeq(eps) && eps.items.length >= 2) {
+    const epA = String((eps.items[0] as any).value ?? eps.items[0]);
+    const epB = String((eps.items[1] as any).value ?? eps.items[1]);
+    const a = splitEndpointLike(epA);
+    const b = splitEndpointLike(epB);
+    const aIsSpecial = isSpecialEndpoint(epA) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
+    const bIsSpecial = isSpecialEndpoint(epB) || b.node.startsWith('macvlan:') || b.node.startsWith('vxlan:') || b.node.startsWith('vxlan-stitch:');
+
+    // If exactly one side special, derive single-endpoint type and pick non-special as 'a'
+    if (aIsSpecial !== bIsSpecial) {
+      const special = aIsSpecial ? a : b;
+      const nonSpecial = aIsSpecial ? b : a;
+      let type: CanonicalLinkKey['type'] = 'unknown';
+      if (special.node === 'host') type = 'host';
+      else if (special.node === 'mgmt-net') type = 'mgmt-net';
+      else if (special.node.startsWith('macvlan:')) type = 'macvlan';
+      else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
+      else if (special.node.startsWith('vxlan:')) type = 'vxlan';
+      else if (special.node.startsWith('dummy:')) type = 'dummy';
+      return { type, a: nonSpecial };
+    }
+
+    // Otherwise treat as veth and sort endpoints
+    return { type: 'veth', a, b };
+  }
+  return null;
+}
+
+function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
+  const source: string = data.source;
+  const target: string = data.target;
+  const sourceEp = data.sourceEndpoint ? `${source}:${data.sourceEndpoint}` : source;
+  const targetEp = data.targetEndpoint ? `${target}:${data.targetEndpoint}` : target;
+  const a = splitEndpointLike(sourceEp);
+  const b = splitEndpointLike(targetEp);
+  const aIsSpecial = isSpecialEndpoint(source) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
+  const bIsSpecial = isSpecialEndpoint(target) || b.node.startsWith('macvlan:') || b.node.startsWith('vxlan:') || b.node.startsWith('vxlan-stitch:');
+
+  if (aIsSpecial !== bIsSpecial) {
+    const special = aIsSpecial ? a : b;
+    const nonSpecial = aIsSpecial ? b : a;
+    let type: CanonicalLinkKey['type'] = 'unknown';
+    if (special.node === 'host') type = 'host';
+    else if (special.node === 'mgmt-net') type = 'mgmt-net';
+    else if (special.node.startsWith('macvlan:')) type = 'macvlan';
+    else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
+    else if (special.node.startsWith('vxlan:')) type = 'vxlan';
+    else if (special.node.startsWith('dummy:')) type = 'dummy';
+    return { type, a: nonSpecial };
+  }
+
+  return { type: 'veth', a, b };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function computeEndpointsStr(data: any): string | null {
-  // Prefer explicit endpoints array when present, as special endpoints already correct encoded
-  if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length === 2) {
-    const valid = data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'));
-    if (valid) {
-      return (data.endpoints as string[]).join(',');
-    }
-  }
-  if (data.sourceEndpoint && data.targetEndpoint) {
-    return `${data.source}:${data.sourceEndpoint},${data.target}:${data.targetEndpoint}`;
-  }
-  return null;
-}
+// Deprecated: computeEndpointsStr removed in favor of canonical link matching
 
 export interface SaveViewportParams {
   mode: 'edit' | 'view';
@@ -524,55 +649,45 @@ export async function saveViewport({
 
     payloadParsed.filter(el => el.group === 'edges').forEach(element => {
       const data = element.data;
-      const endpointsStr = computeEndpointsStr(data);
-      if (!endpointsStr) {
-        return;
-      }
+      const payloadKey = canonicalFromPayloadEdge(data);
+      if (!payloadKey) return;
+      const payloadKeyStr = canonicalKeyToString(payloadKey);
       let linkFound = false;
       for (const linkItem of linksNode.items) {
         if (YAML.isMap(linkItem)) {
-          // Ensure each link map uses block style (no `{}`)
           (linkItem as YAML.YAMLMap).flow = false;
-          const eps = linkItem.get('endpoints', true);
-          if (YAML.isSeq(eps)) {
-            const yamlEndpointsStr = eps.items
-              .map(item => String((item as any).value ?? item))
-              .join(',');
-            if (yamlEndpointsStr === endpointsStr) {
-              linkFound = true;
-              break;
-            }
+          const yamlKey = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
+          if (yamlKey && canonicalKeyToString(yamlKey) === payloadKeyStr) {
+            linkFound = true;
+            break;
           }
         }
       }
       if (!linkFound) {
-        const endpointsArrStr = endpointsStr;
+        // Until Step 3, write in short format only
+        const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
+        const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
         const newLink = new YAML.YAMLMap();
-        // New link map should be block style
         newLink.flow = false;
-        const endpoints = endpointsArrStr.split(',');
-        const endpointsNode = doc.createNode(endpoints) as YAML.YAMLSeq;
-        // Endpoints list should be inline with []
+        const endpointsNode = doc.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
         endpointsNode.flow = true;
         newLink.set('endpoints', endpointsNode);
         linksNode.add(newLink);
       }
     });
 
-    const payloadEdgeEndpoints = new Set(
+    const payloadEdgeKeys = new Set<string>(
       payloadParsed
         .filter(el => el.group === 'edges')
-        .map(el => computeEndpointsStr(el.data))
-        .filter((s): s is string => Boolean(s))
+        .map(el => canonicalFromPayloadEdge(el.data))
+        .filter((k): k is CanonicalLinkKey => Boolean(k))
+        .map(k => canonicalKeyToString(k))
     );
     linksNode.items = linksNode.items.filter(linkItem => {
       if (YAML.isMap(linkItem)) {
-        const endpointsNode = linkItem.get('endpoints', true);
-        if (YAML.isSeq(endpointsNode)) {
-          const endpointsStr = endpointsNode.items
-            .map(item => String((item as any).value ?? item))
-            .join(',');
-          return payloadEdgeEndpoints.has(endpointsStr);
+        const key = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
+        if (key) {
+          return payloadEdgeKeys.has(canonicalKeyToString(key));
         }
       }
       return true;
