@@ -1,7 +1,7 @@
 /**
  * Determines if a node ID represents a special endpoint.
  * @param nodeId - The node ID to check.
- * @returns True if the node is a special endpoint (host, mgmt-net, macvlan, vxlan, vxlan-stitch, bridge, ovs-bridge).
+ * @returns True if the node is a special endpoint (host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge).
  */
 export function isSpecialEndpoint(nodeId: string): boolean {
   return (
@@ -10,6 +10,7 @@ export function isSpecialEndpoint(nodeId: string): boolean {
     nodeId.startsWith('macvlan:') ||
     nodeId.startsWith('vxlan:') ||
     nodeId.startsWith('vxlan-stitch:') ||
+    nodeId.startsWith('dummy:') ||
     nodeId.startsWith('bridge:') ||
     nodeId.startsWith('ovs-bridge:')
   );
