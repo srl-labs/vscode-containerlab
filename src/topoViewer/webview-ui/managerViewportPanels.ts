@@ -353,16 +353,14 @@ export class ManagerViewportPanels {
       // Show panel
       (panel as HTMLElement).style.display = 'block';
 
-      // Tab selection by per-link format
-      const extra = edge.data('extraData') || {};
-      const yamlFormat = extra.yamlFormat || (extra.extType ? 'extended' : 'short');
+      // Tab selection: default to Basic tab
       const setTab = (which: 'basic' | 'extended') => {
         (basicTab as HTMLElement).style.display = which === 'basic' ? 'block' : 'none';
         (extTab as HTMLElement).style.display = which === 'extended' ? 'block' : 'none';
         btnBasic.classList.toggle('tab-active', which === 'basic');
         btnExt.classList.toggle('tab-active', which === 'extended');
       };
-      setTab(yamlFormat === 'extended' ? 'extended' : 'basic');
+      setTab('basic');
       btnBasic.addEventListener('click', () => setTab('basic'));
       btnExt.addEventListener('click', () => setTab('extended'));
 
