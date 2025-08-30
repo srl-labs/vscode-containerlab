@@ -329,6 +329,13 @@ export class ManagerViewportPanels {
    */
   public async panelEdgeEditor(edge: cytoscape.EdgeSingular): Promise<void> {
     try {
+      // If running in Editor mode and global setting indicates extended format, use extended editor
+      const linkFormat = (window as any).linkFormat || '';
+      const isEditor = (window as any).topoViewerMode === 'editor';
+      if (isEditor && linkFormat === 'extended') {
+        await this.panelEdgeEditorExtended(edge);
+        return;
+      }
       // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
       this.edgeClicked = true;
 
@@ -438,6 +445,179 @@ export class ManagerViewportPanels {
       this.edgeClicked = false;
       // TODO: show user-facing notification if needed
     }
+  }
+
+  /**
+   * Extended link editor panel that supports per-type extra fields and stores them under edge.data().extraData
+   */
+  private async panelEdgeEditorExtended(edge: cytoscape.EdgeSingular): Promise<void> {
+    // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
+    this.edgeClicked = true;
+
+    // Hide other overlays
+    const overlays = document.getElementsByClassName('panel-overlay');
+    Array.from(overlays).forEach(el => (el as HTMLElement).style.display = 'none');
+
+    const panel = document.getElementById('panel-link-extended-editor');
+    const idLabel = document.getElementById('panel-link-extended-editor-id');
+    const closeBtn = document.getElementById('panel-link-extended-editor-close-button');
+    const saveBtn = document.getElementById('panel-link-extended-editor-save-button');
+    const typeDropdownContainerId = 'panel-link-ext-type-dropdown-container';
+
+    if (!panel || !idLabel || !closeBtn || !saveBtn) {
+      log.error('panelEdgeEditorExtended: missing required DOM elements');
+      this.edgeClicked = false;
+      return;
+    }
+
+    // Populate link preview
+    const source = edge.data('source') as string;
+    const target = edge.data('target') as string;
+    const sourceEP = (edge.data('sourceEndpoint') as string) || '';
+    const targetEP = (edge.data('targetEndpoint') as string) || '';
+    const updateLabel = () => {
+      (idLabel as HTMLElement).innerHTML = `┌ ${source} :: ${sourceEP}<br>└ ${target} :: ${targetEP}`;
+    };
+    updateLabel();
+
+    // Show panel
+    panel.style.display = 'block';
+
+    // Close button
+    const freshClose = closeBtn.cloneNode(true) as HTMLElement;
+    closeBtn.parentNode?.replaceChild(freshClose, closeBtn);
+    freshClose.addEventListener('click', () => {
+      panel.style.display = 'none';
+      this.edgeClicked = false;
+    }, { once: true });
+
+    // Build the type dropdown
+    const typeOptions = ['veth', 'mgmt-net', 'host', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy'];
+    const extraData = edge.data('extraData') || {};
+    const currentType = extraData.extType || '';
+    this.createFilterableDropdown(
+      typeDropdownContainerId,
+      typeOptions,
+      currentType || 'veth',
+      (selectedValue: string) => {
+        this.panelLinkExtendedToggleSections(selectedValue);
+      },
+      'Select link type...'
+    );
+    // Ensure section visibility matches current type
+    this.panelLinkExtendedToggleSections(currentType || 'veth');
+
+    // Field elements
+    const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
+    const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
+    const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
+    const varsEl = document.getElementById('panel-link-ext-vars') as HTMLTextAreaElement | null;
+    const labelsEl = document.getElementById('panel-link-ext-labels') as HTMLTextAreaElement | null;
+    const varsErrEl = document.getElementById('panel-link-ext-vars-error') as HTMLElement | null;
+    const labelsErrEl = document.getElementById('panel-link-ext-labels-error') as HTMLElement | null;
+    const hostIfEl = document.getElementById('panel-link-ext-host-interface') as HTMLInputElement | null;
+    const modeEl = document.getElementById('panel-link-ext-mode') as HTMLSelectElement | null;
+    const remoteEl = document.getElementById('panel-link-ext-remote') as HTMLInputElement | null;
+    const vniEl = document.getElementById('panel-link-ext-vni') as HTMLInputElement | null;
+    const udpPortEl = document.getElementById('panel-link-ext-udp-port') as HTMLInputElement | null;
+
+    // Prefill from extraData
+    if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
+    if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
+    if (mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
+    if (varsEl) varsEl.value = extraData.extVars ? JSON.stringify(extraData.extVars, null, 2) : '';
+    if (labelsEl) labelsEl.value = extraData.extLabels ? JSON.stringify(extraData.extLabels, null, 2) : '';
+    if (hostIfEl) hostIfEl.value = extraData.extHostInterface || '';
+    if (modeEl) modeEl.value = extraData.extMode || '';
+    if (remoteEl) remoteEl.value = extraData.extRemote || '';
+    if (vniEl) vniEl.value = extraData.extVni != null ? String(extraData.extVni) : '';
+    if (udpPortEl) udpPortEl.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
+
+    // Save button
+    const freshSave = saveBtn.cloneNode(true) as HTMLElement;
+    saveBtn.parentNode?.replaceChild(freshSave, saveBtn);
+    freshSave.addEventListener('click', async () => {
+      try {
+        // Read current type from dropdown input value
+        const typeInput = document.getElementById(`${typeDropdownContainerId}-filter-input`) as HTMLInputElement | null;
+        const selectedType = (typeInput?.value || 'veth').trim();
+
+        // JSON validation
+        let parsedVars: any = undefined;
+        let parsedLabels: any = undefined;
+        if (varsErrEl) varsErrEl.style.display = 'none';
+        if (labelsErrEl) labelsErrEl.style.display = 'none';
+        if (varsEl && varsEl.value.trim() !== '') {
+          try { parsedVars = JSON.parse(varsEl.value); }
+          catch { if (varsErrEl) varsErrEl.style.display = 'block'; return; }
+        }
+        if (labelsEl && labelsEl.value.trim() !== '') {
+          try { parsedLabels = JSON.parse(labelsEl.value); }
+          catch { if (labelsErrEl) labelsErrEl.style.display = 'block'; return; }
+        }
+
+        const current = edge.data();
+        const updatedExtra = { ...(current.extraData || {}) } as any;
+
+        // Common
+        if (srcMacEl) updatedExtra.extSourceMac = srcMacEl.value.trim() || undefined;
+        if (tgtMacEl) updatedExtra.extTargetMac = tgtMacEl.value.trim() || undefined;
+        if (mtuEl) updatedExtra.extMtu = mtuEl.value ? Number(mtuEl.value) : undefined;
+        if (varsEl) updatedExtra.extVars = parsedVars;
+        if (labelsEl) updatedExtra.extLabels = parsedLabels;
+        updatedExtra.extType = selectedType;
+
+        // Clear all per-type keys first to avoid stale data
+        delete updatedExtra.extHostInterface;
+        delete updatedExtra.extMode;
+        delete updatedExtra.extRemote;
+        delete updatedExtra.extVni;
+        delete updatedExtra.extUdpPort;
+
+        // Per-type
+        if (['mgmt-net', 'host', 'macvlan'].includes(selectedType)) {
+          if (hostIfEl) updatedExtra.extHostInterface = hostIfEl.value.trim() || undefined;
+          if (selectedType === 'macvlan' && modeEl) {
+            updatedExtra.extMode = modeEl.value || undefined;
+          }
+        }
+        if (['vxlan', 'vxlan-stitch'].includes(selectedType)) {
+          if (remoteEl) updatedExtra.extRemote = remoteEl.value.trim() || undefined;
+          if (vniEl) updatedExtra.extVni = vniEl.value ? Number(vniEl.value) : undefined;
+          if (udpPortEl) updatedExtra.extUdpPort = udpPortEl.value ? Number(udpPortEl.value) : undefined;
+        }
+
+        // Apply to edge
+        edge.data({ ...current, extraData: updatedExtra });
+
+        // Persist
+        await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
+
+        // Hide panel after save
+        panel.style.display = 'none';
+        this.edgeClicked = false;
+      } catch (err) {
+        log.error(`panelEdgeEditorExtended: error during save: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }, { once: true });
+
+    // Slight delay before allowing global click to close
+    setTimeout(() => { this.edgeClicked = false; }, 100);
+  }
+
+  // Toggle visibility of per-type sections in the extended editor
+  private panelLinkExtendedToggleSections(selectedType: string): void {
+    const isHostIface = ['mgmt-net', 'host', 'macvlan'].includes(selectedType);
+    const isMacvlan = selectedType === 'macvlan';
+    const isVxlan = selectedType === 'vxlan' || selectedType === 'vxlan-stitch';
+
+    const hostIfaceSection = document.querySelector('[data-section="host-iface"]') as HTMLElement | null;
+    const macvlanModeSection = document.querySelector('[data-section="macvlan-mode"]') as HTMLElement | null;
+    const vxlanSections = document.querySelectorAll('[data-section="vxlan"]');
+
+    if (hostIfaceSection) hostIfaceSection.style.display = isHostIface ? 'block' : 'none';
+    if (macvlanModeSection) macvlanModeSection.style.display = isMacvlan ? 'block' : 'none';
+    vxlanSections.forEach(el => ((el as HTMLElement).style.display = isVxlan ? 'block' : 'none'));
   }
 
 
