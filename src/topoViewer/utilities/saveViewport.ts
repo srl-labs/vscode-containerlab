@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as vscode from 'vscode';
 import * as YAML from 'yaml';
 
 import { log } from '../logging/logger';
@@ -647,6 +648,17 @@ export async function saveViewport({
     // Ensure links list renders with indented hyphens (block style)
     linksNode.flow = false;
 
+    const cfg = vscode.workspace.getConfiguration('containerlab.editor');
+    const linkFormat = (cfg.get('linkFormat') as 'short' | 'extended') ?? 'short';
+
+    function buildEndpointMap(ep: CanonicalEndpoint): YAML.YAMLMap {
+      const m = new YAML.YAMLMap();
+      (m as any).flow = false;
+      m.set('node', doc!.createNode(ep.node));
+      if (ep.iface) m.set('interface', doc!.createNode(ep.iface));
+      return m;
+    }
+
     payloadParsed.filter(el => el.group === 'edges').forEach(element => {
       const data = element.data;
       const payloadKey = canonicalFromPayloadEdge(data);
@@ -664,14 +676,43 @@ export async function saveViewport({
         }
       }
       if (!linkFound) {
-        // Until Step 3, write in short format only
-        const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
-        const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
         const newLink = new YAML.YAMLMap();
         newLink.flow = false;
-        const endpointsNode = doc.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
-        endpointsNode.flow = true;
-        newLink.set('endpoints', endpointsNode);
+
+        if (linkFormat === 'extended') {
+          // Determine type and write extended structure
+          const inferredType = payloadKey.type;
+          newLink.set('type', doc!.createNode(inferredType === 'unknown' ? 'veth' : inferredType));
+          if (inferredType === 'veth' || inferredType === 'unknown') {
+            const srcEp: CanonicalEndpoint = { node: data.source, iface: data.sourceEndpoint || '' };
+            const dstEp: CanonicalEndpoint = { node: data.target, iface: data.targetEndpoint || '' };
+            const endpointsNode = new YAML.YAMLSeq();
+            endpointsNode.flow = false; // maps inside seq -> block style
+            endpointsNode.add(buildEndpointMap(srcEp));
+            endpointsNode.add(buildEndpointMap(dstEp));
+            newLink.set('endpoints', endpointsNode);
+          } else {
+            // Single-endpoint types
+            const single = payloadKey.a; // canonical non-special
+            newLink.set('endpoint', buildEndpointMap(single));
+
+            // host-interface if special side is host/mgmt-net/macvlan
+            const specialSide = data.source === `${single.node}:${single.iface}` ? data.target : data.source;
+            const specialStr = String(specialSide);
+            if (inferredType === 'host' || inferredType === 'mgmt-net' || inferredType === 'macvlan') {
+              const hi = specialStr.includes(':') ? specialStr.split(':')[1] : '';
+              if (hi) newLink.set('host-interface', doc!.createNode(hi));
+            }
+            // For macvlan, mode is unknown at this step; for vxlan/vxlan-stitch, remote/vni/udp-port unknown
+          }
+        } else {
+          // Short format
+          const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
+          const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
+          const endpointsNode = doc!.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
+          endpointsNode.flow = true; // inline style for short format
+          newLink.set('endpoints', endpointsNode);
+        }
         linksNode.add(newLink);
       }
     });
@@ -699,7 +740,17 @@ export async function saveViewport({
         (linkItem as YAML.YAMLMap).flow = false;
         const endpointsNode = linkItem.get('endpoints', true);
         if (YAML.isSeq(endpointsNode)) {
+          // Handle both short (scalars) and extended (maps) endpoint entries
           endpointsNode.items = endpointsNode.items.map(item => {
+            if (YAML.isMap(item)) {
+              const n = (item as YAML.YAMLMap).get('node', true) as any;
+              const nodeVal = String(n?.value ?? n ?? '');
+              const updated = updatedKeys.get(nodeVal);
+              if (updated) {
+                (item as YAML.YAMLMap).set('node', doc!.createNode(updated));
+              }
+              return item;
+            }
             let endpointStr = String((item as any).value ?? item);
             if (endpointStr.includes(':')) {
               const [nodeKey, rest] = endpointStr.split(':');
@@ -709,10 +760,23 @@ export async function saveViewport({
             } else if (updatedKeys.has(endpointStr)) {
               endpointStr = updatedKeys.get(endpointStr)!;
             }
-            return doc.createNode(endpointStr);
+            return doc!.createNode(endpointStr);
           });
-          // Ensure endpoints list renders inline with []
-          endpointsNode.flow = true;
+          // For short format preserve inline []
+          if (endpointsNode.items.every(it => !YAML.isMap(it))) {
+            endpointsNode.flow = true;
+          } else {
+            endpointsNode.flow = false;
+          }
+        }
+        const endpointSingle = linkItem.get('endpoint', true);
+        if (YAML.isMap(endpointSingle)) {
+          const n = endpointSingle.get('node', true) as any;
+          const nodeVal = String(n?.value ?? n ?? '');
+          const updated = updatedKeys.get(nodeVal);
+          if (updated) {
+            endpointSingle.set('node', doc!.createNode(updated));
+          }
         }
       }
     }
