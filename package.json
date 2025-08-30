@@ -1136,6 +1136,12 @@
     "configuration": {
       "title": "Containerlab",
       "properties": {
+        "containerlab.editor.linkFormat": {
+          "type": "string",
+          "enum": ["short", "extended"],
+          "default": "short",
+          "markdownDescription": "Controls how links are serialized when saving from TopoViewer edit mode.\n\n- `short`: writes inline endpoints, e.g. `[\"n1:e1\", \"n2:e2\"]`.\n- `extended`: writes structured links with `type`, endpoint objects, and optional fields (e.g., `mtu`, `vars`, `labels`)."
+        },
         "containerlab.sudoEnabledByDefault": {
           "type": "boolean",
           "default": false,
