@@ -383,6 +383,7 @@ topology:
         const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
         const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
         const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
+        const linkFormat = vscode.workspace.getConfiguration('containerlab.editor').get<'short' | 'extended'>('linkFormat', 'short');
 
         const editorParams: Partial<EditorTemplateParams> = {
           imageMapping,
@@ -390,6 +391,7 @@ topology:
           defaultKind,
           defaultType,
           updateLinkEndpointsOnKindChange,
+          linkFormat,
           currentLabPath: this.lastYamlFilePath,
         };
         templateParams = editorParams;
