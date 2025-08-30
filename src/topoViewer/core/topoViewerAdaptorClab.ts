@@ -453,6 +453,47 @@ export class TopoViewerAdaptorClab {
     const elements: CyElement[] = [];
     const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge'; label: string }>();
 
+    function normalizeSingleTypeToSpecialId(t: string, linkObj: any): string {
+      if (t === 'host' || t === 'mgmt-net' || t === 'macvlan') {
+        const hi = linkObj?.['host-interface'] ?? '';
+        return `${t}:${hi}`;
+      }
+      if (t === 'vxlan' || t === 'vxlan-stitch') {
+        const remote = linkObj?.remote ?? '';
+        const vni = linkObj?.vni ?? '';
+        const udp = linkObj?.['udp-port'] ?? '';
+        return `${t}:${remote}/${vni}/${udp}`;
+      }
+      if (t === 'dummy') {
+        const iface = linkObj?.endpoint?.interface ?? '';
+        return `dummy:${iface}`;
+      }
+      return '';
+    }
+
+    function normalizeLinkToTwoEndpoints(linkObj: any): { endA: any; endB: any; type?: string } | null {
+      const t = linkObj?.type as string | undefined;
+      if (t) {
+        if (t === 'veth') {
+          const a = linkObj?.endpoints?.[0];
+          const b = linkObj?.endpoints?.[1];
+          if (!a || !b) return null;
+          return { endA: a, endB: b, type: t };
+        }
+        if ([ 'host', 'mgmt-net', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch' ].includes(t)) {
+          const a = linkObj?.endpoint;
+          if (!a) return null;
+          const special = normalizeSingleTypeToSpecialId(t, linkObj);
+          return { endA: a, endB: special, type: t };
+        }
+      }
+      // Short format
+      const a = linkObj?.endpoints?.[0];
+      const b = linkObj?.endpoints?.[1];
+      if (!a || !b) return null;
+      return { endA: a, endB: b };
+    }
+
     if (!parsed.topology) {
       log.warn('Parsed YAML does not contain \x27topology\x27 object.');
       return elements;
@@ -619,11 +660,9 @@ export class TopoViewerAdaptorClab {
     if (parsed.topology.links) {
       // First pass: identify special endpoints
       for (const linkObj of parsed.topology.links) {
-        const endA = linkObj.endpoints?.[0] ?? '';
-        const endB = linkObj.endpoints?.[1] ?? '';
-        if (!endA || !endB) {
-          continue;
-        }
+        const norm = normalizeLinkToTwoEndpoints(linkObj);
+        if (!norm) continue;
+        const { endA, endB } = norm;
 
         const { node: nodeA } = this.splitEndpoint(endA);
         const { node: nodeB } = this.splitEndpoint(endB);
@@ -730,12 +769,12 @@ export class TopoViewerAdaptorClab {
 
       // Second pass: create edges
       for (const linkObj of parsed.topology.links) {
-        const endA = linkObj.endpoints?.[0] ?? '';
-        const endB = linkObj.endpoints?.[1] ?? '';
-        if (!endA || !endB) {
+        const norm = normalizeLinkToTwoEndpoints(linkObj);
+        if (!norm) {
           log.warn('Link does not have both endpoints. Skipping.');
           continue;
         }
+        const { endA, endB } = norm;
 
         const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
         const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
@@ -871,6 +910,18 @@ export class TopoViewerAdaptorClab {
               clabTargetMtu: targetIfaceData?.mtu ?? '',
               clabSourceType: sourceIfaceData?.type ?? '',
               clabTargetType: targetIfaceData?.type ?? '',
+              // Extended link fields (when present in YAML)
+              extType: linkObj?.type ?? '',
+              extMtu: linkObj?.mtu ?? '',
+              extVars: linkObj?.vars ?? undefined,
+              extLabels: linkObj?.labels ?? undefined,
+              extHostInterface: linkObj?.['host-interface'] ?? '',
+              extMode: linkObj?.mode ?? '',
+              extRemote: linkObj?.remote ?? '',
+              extVni: linkObj?.vni ?? '',
+              extUdpPort: linkObj?.['udp-port'] ?? '',
+              extSourceMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[0] === 'object') ? (linkObj.endpoints[0] as any)?.mac ?? '' : '',
+              extTargetMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[1] === 'object') ? (linkObj.endpoints[1] as any)?.mac ?? '' : '',
             },
           },
           position: { x: 0, y: 0 },
