@@ -1,198 +1,103 @@
 <!-- Network Editor Panel -->
-<div class="panel panel-overlay fixed bottom-10 left-20 w-[420px] max-h-[500px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel" id="panel-network-editor" style="display: none;">
-  <p class="panel-heading text-base font-bold">
+<div class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[500px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel" id="panel-network-editor" style="display: none;">
+  <p class="panel-heading">
     Network Editor
   </p>
   <div class="p-2 max-h-[420px] overflow-y-auto">
     <div class="panel-block">
-      <div class="px-2">
+      <div class="space-y-3">
 
         <!-- Network Type -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Network Type</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div id="panel-network-type-dropdown-container">
-                  <!-- Filterable dropdown will be inserted here -->
-                </div>
-              </div>
-            </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Network Type</label>
+          <div id="panel-network-type-dropdown-container">
+            <!-- Filterable dropdown will be inserted here -->
           </div>
         </div>
 
         <!-- Interface -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Interface</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="text" class="input-field w-full" id="panel-network-interface">
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Interface</label>
+          <input type="text" class="input-field w-full" id="panel-network-interface">
         </div>
 
         <!-- Id -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Id</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <label class="text-left font-extralight text-base break-words block" id="panel-network-editor-id"></label>
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Id</label>
+          <div class="text-left font-extralight text-base break-words" id="panel-network-editor-id"></div>
         </div>
         
         <!-- Validation Errors -->
-        <div id="panel-network-validation-errors" class="my-2 p-2 rounded bg-red-100 dark:bg-red-900 border border-red-500 text-red-700 dark:text-red-300 text-sm" style="display:none;">
-          <div class="font-semibold">Please fix the following errors:</div>
-          <ul id="panel-network-validation-errors-list" class="list-disc list-inside mt-1"></ul>
+        <div id="panel-network-validation-errors" class="p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]" style="display:none;">
+          <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Please fix the following errors:</div>
+          <ul id="panel-network-validation-errors-list" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1 list-disc list-inside"></ul>
         </div>
         
         <!-- Divider -->
-        <div class="border-t border-[var(--vscode-widget-border)] my-2"></div>
+        <div class="border-t border-[var(--vscode-widget-border)] my-3"></div>
         
         <!-- Extended Properties Section -->
-        <div class="text-xs text-gray-500 mb-2 pl-2">Extended Properties</div>
+        <div class="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Extended Properties</div>
         
         <!-- MAC Address (for single endpoint connections) -->
-        <div class="my-1" id="panel-network-mac-section">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">MAC Address</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="text" class="input-field w-full" id="panel-network-mac" placeholder="e.g., 02:42:ac:11:00:01">
-              </div>
-            </div>
-          </div>
+        <div class="form-group" id="panel-network-mac-section">
+          <label class="block vscode-label mb-1">MAC Address</label>
+          <input type="text" class="input-field w-full" id="panel-network-mac" placeholder="e.g., 02:42:ac:11:00:01">
         </div>
         
         <!-- MTU (all types) -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">MTU</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <input type="number" class="input-field w-full" id="panel-network-mtu" placeholder="1500">
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">MTU</label>
+          <input type="number" class="input-field w-full" id="panel-network-mtu" placeholder="1500">
         </div>
         
         <!-- Macvlan Mode (only for macvlan) -->
-        <div class="my-1" id="panel-network-mode-section" style="display:none;">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Mode</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <select class="input-field w-full" id="panel-network-mode">
-                  <option value="bridge">bridge (default)</option>
-                  <option value="private">private</option>
-                  <option value="vepa">vepa</option>
-                  <option value="passthru">passthru</option>
-                  <option value="source">source</option>
-                </select>
-              </div>
-            </div>
-          </div>
+        <div class="form-group" id="panel-network-mode-section" style="display:none;">
+          <label class="block vscode-label mb-1">Mode</label>
+          <select class="input-field w-full" id="panel-network-mode">
+            <option value="bridge">bridge (default)</option>
+            <option value="private">private</option>
+            <option value="vepa">vepa</option>
+            <option value="passthru">passthru</option>
+            <option value="source">source</option>
+          </select>
         </div>
         
         <!-- VXLAN fields (only for vxlan/vxlan-stitch) -->
         <div id="panel-network-vxlan-section" style="display:none;">
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Remote IP <span class="text-red-500">*</span></label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" class="input-field w-full" id="panel-network-remote" placeholder="10.0.0.1">
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Remote IP <span class="text-[var(--vscode-editorError-foreground)]">*</span></label>
+            <input type="text" class="input-field w-full" id="panel-network-remote" placeholder="10.0.0.1">
           </div>
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">VNI <span class="text-red-500">*</span></label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="number" class="input-field w-full" id="panel-network-vni" placeholder="100">
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">VNI <span class="text-[var(--vscode-editorError-foreground)]">*</span></label>
+            <input type="number" class="input-field w-full" id="panel-network-vni" placeholder="100">
           </div>
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">UDP Port <span class="text-red-500">*</span></label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="number" class="input-field w-full" id="panel-network-udp-port" placeholder="4789">
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">UDP Port <span class="text-[var(--vscode-editorError-foreground)]">*</span></label>
+            <input type="number" class="input-field w-full" id="panel-network-udp-port" placeholder="4789">
           </div>
         </div>
         
         <!-- Vars (JSON) -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-start">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Vars (JSON)</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <textarea class="input-field w-full" id="panel-network-vars" rows="2" placeholder='{"key": "value"}'></textarea>
-                <div id="panel-network-vars-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Vars (JSON)</label>
+          <textarea class="input-field w-full" id="panel-network-vars" rows="2" placeholder='{"key": "value"}'></textarea>
+          <div id="panel-network-vars-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
         </div>
         
         <!-- Labels (JSON) -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-start">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Labels (JSON)</label>
-              </div>
-              <div class="w-3/5 pl-2 pr-2">
-                <textarea class="input-field w-full" id="panel-network-labels" rows="2" placeholder='{"role": "primary"}'></textarea>
-                <div id="panel-network-labels-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Labels (JSON)</label>
+          <textarea class="input-field w-full" id="panel-network-labels" rows="2" placeholder='{"role": "primary"}'></textarea>
+          <div id="panel-network-labels-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
         </div>
 
         <!-- Buttons -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div class="space-x-2">
-                  <button class="btn btn-primary btn-small" id="panel-network-editor-save-button">Save</button>
-                  <button class="btn btn-outlined btn-small" id="panel-network-editor-close-button">Close</button>
-                </div>
-              </div>
-            </div>
+        <div class="form-group">
+          <div class="flex justify-end space-x-2">
+            <button class="btn btn-primary btn-small" id="panel-network-editor-save-button">Save</button>
+            <button class="btn btn-outlined btn-small" id="panel-network-editor-close-button">Close</button>
           </div>
         </div>
 
