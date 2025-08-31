@@ -837,12 +837,11 @@ export class ManagerViewportPanels {
             const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : ((document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
             edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
             await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
-            (panel as HTMLElement).style.display = 'none';
-            this.edgeClicked = false;
+            // Keep panel open after save
           } catch (err) {
             log.error(`panelEdgeEditor basic save error: ${err instanceof Error ? err.message : String(err)}`);
           }
-        }, { once: true });
+        }); // Removed { once: true } to allow multiple saves
       }
 
       // Extended tab: reuse existing setup to wire fields and save
@@ -1020,7 +1019,7 @@ export class ManagerViewportPanels {
     // Initial validation
     renderErrors(validate());
 
-    // Save button
+    // Save button - remove previous listeners and add new one
     const freshSave = saveBtn.cloneNode(true) as HTMLElement;
     saveBtn.parentNode?.replaceChild(freshSave, saveBtn);
     freshSave.addEventListener('click', async () => {
@@ -1056,9 +1055,9 @@ export class ManagerViewportPanels {
 
         // For non-veth links, don't modify extended properties from link editor
         if (!isVeth) {
-          // Just close the panel without changes
-          panel.style.display = 'none';
-          this.edgeClicked = false;
+          // Just save without changes for non-veth links
+          await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
+          // Keep panel open after save
           return;
         }
 
@@ -1088,13 +1087,11 @@ export class ManagerViewportPanels {
         // Persist
         await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
 
-        // Hide panel after save
-        panel.style.display = 'none';
-        this.edgeClicked = false;
+        // Keep panel open after save
       } catch (err) {
         log.error(`panelEdgeEditorExtended: error during save: ${err instanceof Error ? err.message : String(err)}`);
       }
-    }, { once: true });
+    }); // Removed { once: true } to allow multiple saves
 
     // Slight delay before allowing global click to close
     setTimeout(() => { this.edgeClicked = false; }, 100);
