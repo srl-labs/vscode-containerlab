@@ -210,7 +210,7 @@ export class ManagerViewportPanels {
    */
   private updateNetworkEditorFields(networkType: string): void {
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
-    const interfaceLabel = Array.from(document.querySelectorAll('.label')).find(el =>
+    const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
       el.textContent?.includes('Interface') || el.textContent === 'Bridge Name'
     );
 
@@ -317,9 +317,9 @@ export class ManagerViewportPanels {
     );
 
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
-    const interfaceLabel = document.querySelector('[for="panel-network-interface"]') ||
-                          document.querySelector('.label[class*="Interface"]') ||
-                          Array.from(document.querySelectorAll('.label')).find(el => el.textContent === 'Interface');
+    const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
+      el.textContent === 'Interface' || el.textContent === 'Bridge Name'
+    );
 
     // Update field based on network type
     if (networkType === 'bridge' || networkType === 'ovs-bridge') {
@@ -529,6 +529,14 @@ export class ManagerViewportPanels {
       const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
       const isVethLink = !sourceIsNetwork && !targetIsNetwork;
 
+      // Check if network nodes are bridges (which allow endpoint configuration)
+      const sourceNode = this.cy.getElementById(source);
+      const targetNode = this.cy.getElementById(target);
+      const sourceIsBridge = sourceNode.length > 0 &&
+        (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
+      const targetIsBridge = targetNode.length > 0 &&
+        (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
+
       // Show panel
       (panel as HTMLElement).style.display = 'block';
 
@@ -564,8 +572,39 @@ export class ManagerViewportPanels {
       // Basic tab wiring
       const srcInputBasic = document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null;
       const tgtInputBasic = document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null;
-      if (srcInputBasic) srcInputBasic.value = sourceEP;
-      if (tgtInputBasic) tgtInputBasic.value = targetEP;
+
+      // Handle network nodes - show network name and make readonly (except for bridges)
+      if (srcInputBasic) {
+        if (sourceIsNetwork && !sourceIsBridge) {
+          // Non-bridge network nodes: show network name, make readonly
+          srcInputBasic.value = source; // Show network name instead of empty endpoint
+          srcInputBasic.readOnly = true;
+          srcInputBasic.style.backgroundColor = 'var(--vscode-input-background)';
+          srcInputBasic.style.opacity = '0.7';
+        } else {
+          // Regular nodes or bridge nodes: allow editing
+          srcInputBasic.value = sourceEP;
+          srcInputBasic.readOnly = false;
+          srcInputBasic.style.backgroundColor = '';
+          srcInputBasic.style.opacity = '';
+        }
+      }
+
+      if (tgtInputBasic) {
+        if (targetIsNetwork && !targetIsBridge) {
+          // Non-bridge network nodes: show network name, make readonly
+          tgtInputBasic.value = target; // Show network name instead of empty endpoint
+          tgtInputBasic.readOnly = true;
+          tgtInputBasic.style.backgroundColor = 'var(--vscode-input-background)';
+          tgtInputBasic.style.opacity = '0.7';
+        } else {
+          // Regular nodes or bridge nodes: allow editing
+          tgtInputBasic.value = targetEP;
+          tgtInputBasic.readOnly = false;
+          tgtInputBasic.style.backgroundColor = '';
+          tgtInputBasic.style.opacity = '';
+        }
+      }
       const basicClose = document.getElementById('panel-link-editor-close-button');
       if (basicClose) {
         const freshClose = basicClose.cloneNode(true) as HTMLElement;
@@ -578,8 +617,9 @@ export class ManagerViewportPanels {
         basicSave.parentNode?.replaceChild(freshSave, basicSave);
         freshSave.addEventListener('click', async () => {
           try {
-            const newSourceEP = (document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null)?.value?.trim() || '';
-            const newTargetEP = (document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '';
+            // Update endpoints - allow for bridges, disallow for other network types
+            const newSourceEP = (sourceIsNetwork && !sourceIsBridge) ? '' : ((document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
+            const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : ((document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
             edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
             await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
             (panel as HTMLElement).style.display = 'none';
