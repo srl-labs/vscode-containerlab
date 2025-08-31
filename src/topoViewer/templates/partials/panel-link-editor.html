@@ -3,7 +3,7 @@
   <p class="panel-heading">Link Editor</p>
 
   <!-- Tab Navigation -->
-  <div class="panel-tabs">
+  <div class="panel-tabs" style="justify-content: flex-start;">
     <button class="panel-tab-button tab-active" id="panel-link-tab-btn-basic" data-tab="basic">Basic</button>
     <button class="panel-tab-button" id="panel-link-tab-btn-extended" data-tab="extended">Extended</button>
   </div>
@@ -17,8 +17,6 @@
         <div class="form-group">
           <label class="block vscode-label mb-1">Link</label>
           <div id="panel-link-editor-id" class="text-left font-extralight text-base break-words"></div>
-            </div>
-          </div>
         </div>
         <!-- Source Endpoint -->
         <div class="form-group">
@@ -31,7 +29,7 @@
           <input type="text" id="panel-link-editor-target-endpoint" class="input-field w-full" placeholder="e.g., eth1, e1-1">
         </div>
         <!-- Buttons -->
-        <div class="form-group">
+        <div class="form-group mt-4">
           <div class="flex justify-end space-x-2">
             <button id="panel-link-editor-save-button" class="btn btn-primary btn-small">Save</button>
             <button id="panel-link-editor-close-button" class="btn btn-outlined btn-small">Close</button>
@@ -101,7 +99,7 @@
         </div>
 
         <!-- Buttons -->
-        <div class="form-group">
+        <div class="form-group mt-4">
           <div class="flex justify-end space-x-2">
             <button id="panel-link-extended-editor-save-button" class="btn btn-primary btn-small">Save</button>
             <button id="panel-link-extended-editor-close-button" class="btn btn-outlined btn-small">Close</button>
