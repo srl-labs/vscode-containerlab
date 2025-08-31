@@ -380,7 +380,8 @@ export class TopoViewerAdaptorClab {
       if (
         endpoint.startsWith('macvlan:') ||
         endpoint.startsWith('vxlan:') ||
-        endpoint.startsWith('vxlan-stitch:')
+        endpoint.startsWith('vxlan-stitch:') ||
+        endpoint.startsWith('dummy:')
       ) {
         return { node: endpoint, iface: '' };
       }
@@ -883,10 +884,10 @@ export class TopoViewerAdaptorClab {
           actualTargetNode = `dummy:${targetIface}`;
         }
 
-        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:'))
+        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:') || sourceNode.startsWith('dummy:'))
           ? actualSourceNode
           : (fullPrefix ? `${fullPrefix}-${sourceNode}` : sourceNode);
-        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('vxlan:') || targetNode.startsWith('vxlan-stitch:'))
+        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('vxlan:') || targetNode.startsWith('vxlan-stitch:') || targetNode.startsWith('dummy:'))
           ? actualTargetNode
           : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
         // Get interface data (might be undefined in editor mode)
@@ -920,7 +921,8 @@ export class TopoViewerAdaptorClab {
             sourceNode === 'mgmt-net' ||
             sourceNode.startsWith('macvlan:') ||
             sourceNode.startsWith('vxlan:') ||
-            sourceNode.startsWith('vxlan-stitch:');
+            sourceNode.startsWith('vxlan-stitch:') ||
+            sourceNode.startsWith('dummy:');
 
           const targetIsSpecial =
             targetNodeData?.kind === 'bridge' ||
@@ -929,7 +931,8 @@ export class TopoViewerAdaptorClab {
             targetNode === 'mgmt-net' ||
             targetNode.startsWith('macvlan:') ||
             targetNode.startsWith('vxlan:') ||
-            targetNode.startsWith('vxlan-stitch:');
+            targetNode.startsWith('vxlan-stitch:') ||
+            targetNode.startsWith('dummy:');
 
           if (sourceIsSpecial || targetIsSpecial) {
             // For special network connections, only check the non-special side
@@ -990,8 +993,8 @@ export class TopoViewerAdaptorClab {
             name: edgeId,
             parent: '',
             topoViewerRole: 'link',
-            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:')) ? '' : sourceIface,
-            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:')) ? '' : targetIface,
+            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('dummy:')) ? '' : sourceIface,
+            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('dummy:')) ? '' : targetIface,
             lat: '',
             lng: '',
             source: actualSourceNode,

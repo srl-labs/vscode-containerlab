@@ -1,0 +1,6 @@
+name: step2
+topology:
+  nodes:
+    leaf1: {}
+  links:
+    - endpoints: [ dummy:eth0, leaf1:eth1 ]

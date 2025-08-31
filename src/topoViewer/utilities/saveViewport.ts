@@ -25,6 +25,7 @@ function splitEndpointLike(endpoint: string | { node: string; interface?: string
   if (typeof endpoint === 'string') {
     if (
       endpoint.startsWith('macvlan:') ||
+      endpoint.startsWith('dummy:') ||
       endpoint.startsWith('vxlan:') ||
       endpoint.startsWith('vxlan-stitch:')
     ) {
@@ -110,7 +111,7 @@ function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null 
       else if (special.node.startsWith('macvlan:')) type = 'macvlan';
       else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
       else if (special.node.startsWith('vxlan:')) type = 'vxlan';
-      else if (special.node.startsWith('dummy:')) type = 'dummy';
+      else if (special.node === 'dummy' || special.node.startsWith('dummy:')) type = 'dummy';
       return { type, a: nonSpecial };
     }
 
@@ -139,7 +140,7 @@ function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
     else if (special.node.startsWith('macvlan:')) type = 'macvlan';
     else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
     else if (special.node.startsWith('vxlan:')) type = 'vxlan';
-    else if (special.node.startsWith('dummy:')) type = 'dummy';
+    else if (special.node === 'dummy' || special.node.startsWith('dummy:')) type = 'dummy';
     return { type, a: nonSpecial };
   }
 
