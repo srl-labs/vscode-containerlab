@@ -14,6 +14,7 @@ import { runningLabsProvider } from "../../extension";
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
 import { annotationsManager } from '../utilities/annotationsManager';
+import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.
@@ -242,7 +243,7 @@ topology:
    * Internal method to update panel HTML without mode switch checks (used during panel creation)
    */
   private async updatePanelHtmlInternal(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
-    return this.updatePanelHtmlCore(panel);
+    return this.updatePanelHtmlCore(panel, true);
   }
 
   /**
@@ -282,9 +283,13 @@ topology:
   /**
    * Core implementation of updating panel HTML
    */
-  private async updatePanelHtmlCore(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
+  private async updatePanelHtmlCore(panel: vscode.WebviewPanel | undefined, isInitialLoad: boolean = false): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
+    }
+
+    if (isInitialLoad) {
+      perfMark('updatePanelHtmlCore_start');
     }
 
     const yamlFilePath = this.lastYamlFilePath;
@@ -350,6 +355,17 @@ topology:
       }
     }
 
+    // Skip expensive operations on subsequent updates if content hasn't changed meaningfully
+    if (!isInitialLoad) {
+      // Check if we really need to regenerate everything
+      const cachedYaml = this.context.workspaceState.get<string>(`cachedYaml_${folderName}`);
+      if (cachedYaml === yamlContent && !this.isViewMode) {
+        // Content hasn't changed, skip regeneration
+        log.debug('Skipping topology regeneration - content unchanged');
+        return true;
+      }
+    }
+
     const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
       updatedClabTreeDataToTopoviewer,
@@ -357,14 +373,30 @@ topology:
     );
 
     try {
-      await this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+      // Write JSON files asynchronously without waiting
+      const writePromise = this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+
+      // Don't wait for file write on initial load
+      if (isInitialLoad) {
+        writePromise.catch(err => {
+          log.error(`Background write failed: ${String(err)}`);
+        });
+      } else {
+        await writePromise;
+      }
+
+      // Cache the YAML content
+      await this.context.workspaceState.update(`cachedYaml_${folderName}`, yamlContent);
     } catch (err) {
       log.error(`Failed to write topology files: ${String(err)}`);
-      vscode.window.showErrorMessage(`Failed to write topology files: ${err}`);
+      if (!isInitialLoad) {
+        vscode.window.showErrorMessage(`Failed to write topology files: ${err}`);
+      }
       return false;
     }
 
     if (panel) {
+      perfMark('generateHtml_start');
       const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
       let templateParams: any = {};
 
@@ -404,6 +436,11 @@ topology:
         templateParams
       );
 
+      if (isInitialLoad) {
+        perfMeasure('generateHtml', 'generateHtml_start');
+        perfMeasure('updatePanelHtmlCore', 'updatePanelHtmlCore_start');
+      }
+
     } else {
       log.error('Panel is undefined');
       return false;
@@ -417,6 +454,7 @@ topology:
    * @param context The extension context.
    */
   public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string, viewMode: boolean = false): Promise<void> {
+    perfMark('createWebviewPanel_start');
     this.currentLabName = labName;
     this.isViewMode = viewMode;
 
@@ -546,7 +584,20 @@ topology:
 
 
 
-    await this.updatePanelHtmlInternal(this.currentPanel);
+    // Start loading the panel HTML immediately
+    perfMark('updatePanelHtml_start');
+    const updatePromise = this.updatePanelHtmlInternal(this.currentPanel);
+
+    // Don't block on the update for initial load
+    updatePromise
+      .then(() => {
+        perfMeasure('updatePanelHtml', 'updatePanelHtml_start');
+        perfMeasure('createWebviewPanel_total', 'createWebviewPanel_start');
+        perfSummary();
+      })
+      .catch(err => {
+        log.error(`Failed to update panel HTML: ${err}`);
+      });
 
     // Only setup file watchers and save listeners in edit mode
     if (!this.isViewMode && this.lastYamlFilePath) {

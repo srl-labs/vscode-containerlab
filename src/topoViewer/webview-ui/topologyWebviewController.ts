@@ -1,7 +1,7 @@
 // file: topologyWebviewController.ts
 
 import type cytoscape from 'cytoscape';
-import { createConfiguredCytoscape } from '../cytoscapeInstanceFactory';
+import { createConfiguredCytoscape, loadExtension } from '../cytoscapeInstanceFactory';
 
 // Import Tailwind CSS and Font Awesome
 import './tailwind.css';
@@ -30,7 +30,9 @@ import type { ManagerReloadTopo } from './managerReloadTopo';
 import { ManagerShortcutDisplay } from './managerShortcutDisplay';
 import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../core/managerRegistry';
 import { log } from '../logging/logger';
+import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { registerCyEventHandlers } from './cyEventHandlers';
+import { PerformanceMonitor } from '../utilities/performanceMonitor';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
@@ -192,6 +194,7 @@ class TopologyWebviewController {
    * @throws Will throw an error if the container element is not found.
    */
   constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
+    perfMark('topoViewer_init_start');
     const container = document.getElementById(containerId);
     if (!container) {
       throw new Error("Cytoscape container element not found");
@@ -204,7 +207,15 @@ class TopologyWebviewController {
     const theme = this.detectColorScheme();
 
     // Initialize Cytoscape instance
+    perfMark('cytoscape_create_start');
     this.cy = createConfiguredCytoscape(container);
+    perfMeasure('cytoscape_create', 'cytoscape_create_start');
+
+    // Set initial viewport to prevent flashing
+    this.cy.viewport({
+      zoom: 1,
+      pan: { x: container.clientWidth / 2, y: container.clientHeight / 2 }
+    });
     const cyContainer = document.getElementById('cy') as HTMLDivElement;
     if (cyContainer) {
       cyContainer.tabIndex = 0;
@@ -262,11 +273,38 @@ class TopologyWebviewController {
       parentSpacing: -1,
     });
 
+    perfMark('cytoscape_style_start');
     loadCytoStyle(this.cy);
-    fetchAndLoadData(this.cy, this.messageSender);
+    perfMeasure('cytoscape_style', 'cytoscape_style_start');
 
-    // Fetch and load data from the environment and update subtitle and prefix
-    (async () => {
+    perfMark('fetch_data_start');
+    fetchAndLoadData(this.cy, this.messageSender).then(() => {
+      perfMeasure('fetch_data', 'fetch_data_start');
+      perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
+
+      // Send performance data to extension
+      this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
+        metrics: PerformanceMonitor.getMeasures()
+      });
+
+      // Double-check viewport fit with animation for smoothness
+      if (this.cy.elements().length > 0 && typeof requestAnimationFrame !== 'undefined') {
+        // eslint-disable-next-line no-undef
+        requestAnimationFrame(() => {
+          this.cy.animate({
+            fit: {
+              eles: this.cy.elements(),
+              padding: 50
+            },
+            duration: 150,
+            easing: 'ease-out'
+          });
+        });
+      }
+    });
+
+    // Defer environment data loading to avoid blocking initial render
+    setTimeout(async () => {
       try {
         const result = await fetchAndLoadDataEnvironment(["clab-name", "clab-prefix"]);
         const labName = result["clab-name"] || "Unknown";
@@ -278,15 +316,16 @@ class TopologyWebviewController {
       } catch (error) {
         log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
       }
-    })();
+    }, 0);
 
     // Register events based on mode
     this.registerEvents(mode);
     if (mode === 'edit') {
-      this.initializeEdgehandles();
+      // Defer edgehandles initialization
+      setTimeout(() => this.initializeEdgehandles(), 50);
     }
-    // Initialize context menu for both edit and view modes (for free text at minimum)
-    this.initializeContextMenu(mode);
+    // Defer context menu initialization
+    setTimeout(() => this.initializeContextMenu(mode), 100);
 
     new ManagerShortcutDisplay();
 
@@ -447,7 +486,9 @@ class TopologyWebviewController {
    * Enables the edgehandles instance for creating edges.
    * @private
    */
-  private initializeEdgehandles(): void {
+  private async initializeEdgehandles(): Promise<void> {
+    // Load edgehandles extension lazily
+    await loadExtension('edgehandles');
     const edgehandlesOptions = {
       hoverDelay: 50,
       snap: false,
@@ -499,7 +540,9 @@ class TopologyWebviewController {
   /**
  * Initializes the circular context menu on nodes.
   */
-  private initializeContextMenu(mode: 'edit' | 'view' = 'edit'): void {
+  private async initializeContextMenu(mode: 'edit' | 'view' = 'edit'): Promise<void> {
+    // Load context menu extension lazily
+    await loadExtension('cxtmenu');
     const self = this;
     // Context menu for free text elements (available in both edit and view modes)
     this.cy.cxtmenu({
@@ -1818,11 +1861,14 @@ document.addEventListener('DOMContentLoaded', () => {
     controller.dispose();
   });
 
-  // After EVERYTHING is done, trigger fit-to-viewport
+  // Initial fit already happens in fetchAndLoadData, but do a final adjustment
+  // after a short delay to account for any async rendering
   setTimeout(() => {
-    controller.cy.fit(controller.cy.elements(), 120);
-    log.info('Initial fit-to-viewport triggered after full initialization');
-  }, 2000);
+    if (controller.cy.elements().length > 0) {
+      controller.cy.fit(controller.cy.elements(), 50);
+      log.debug('Final viewport adjustment completed');
+    }
+  }, 100); // Much shorter delay - just for final adjustments
 });
 
 export default TopologyWebviewController;

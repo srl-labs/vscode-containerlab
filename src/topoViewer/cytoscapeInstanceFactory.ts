@@ -3,27 +3,61 @@
  * applies default styling and behavior in one place.
  */
 import cytoscape, { Core, CytoscapeOptions } from 'cytoscape';
-import edgehandles from 'cytoscape-edgehandles';
-import cola from 'cytoscape-cola';
-import gridGuide from 'cytoscape-grid-guide';
-import cxtmenu from 'cytoscape-cxtmenu';
-import cytoscapeSvg from 'cytoscape-svg';
 
 let extensionsRegistered = false;
+let extensionPromises: Record<string, Promise<void>> = {};
 
-function registerExtensions(): void {
+// Lazy load extensions only when needed
+function registerCoreExtensions(): void {
   if (extensionsRegistered) {
     return;
   }
 
-  try { cytoscape.use(edgehandles); } catch { /* ignore */ }
-  try { cytoscape.use(cola); } catch { /* ignore */ }
-  try { cytoscape.use(gridGuide); } catch { /* ignore */ }
-  try { cytoscape.use(cxtmenu); } catch { /* ignore */ }
-  try { const leaflet = require('cytoscape-leaf'); cytoscape.use(leaflet); } catch { /* ignore */ }
-  try { cytoscape.use(cytoscapeSvg); } catch { /* ignore */ }
+  // Only register grid guide initially (needed for grid display)
+  try {
+    const gridGuide = require('cytoscape-grid-guide');
+    cytoscape.use(gridGuide);
+  } catch { /* ignore */ }
 
   extensionsRegistered = true;
+}
+
+// Lazy load other extensions asynchronously
+export async function loadExtension(name: 'edgehandles' | 'cola' | 'cxtmenu' | 'svg' | 'leaflet'): Promise<void> {
+  if (!extensionPromises[name]) {
+    extensionPromises[name] = (async () => {
+      try {
+        switch(name) {
+          case 'edgehandles': {
+            const edgehandles = await import('cytoscape-edgehandles');
+            cytoscape.use(edgehandles.default);
+            break;
+          }
+          case 'cola': {
+            const cola = await import('cytoscape-cola');
+            cytoscape.use(cola.default);
+            break;
+          }
+          case 'cxtmenu': {
+            const cxtmenu = await import('cytoscape-cxtmenu');
+            cytoscape.use(cxtmenu.default);
+            break;
+          }
+          case 'svg': {
+            const cytoscapeSvg = await import('cytoscape-svg');
+            cytoscape.use(cytoscapeSvg.default);
+            break;
+          }
+          case 'leaflet': {
+            const leaflet = await import('cytoscape-leaf');
+            cytoscape.use(leaflet.default);
+            break;
+          }
+        }
+      } catch { /* ignore */ }
+    })();
+  }
+  return extensionPromises[name];
 }
 
 const defaultOptions: CytoscapeOptions = {
@@ -40,10 +74,17 @@ const defaultOptions: CytoscapeOptions = {
   boxSelectionEnabled: true,
   selectionType: 'additive',
   wheelSensitivity: 0,
+  // Performance optimizations
+  textureOnViewport: true,
+  hideEdgesOnViewport: false,
+  hideLabelsOnViewport: false,
+  pixelRatio: 'auto',
+  motionBlur: false,
+  motionBlurOpacity: 0.2,
 };
 
 export function createConfiguredCytoscape(container: HTMLElement | undefined, options: CytoscapeOptions = {}): Core {
-  registerExtensions();
+  registerCoreExtensions();
   return cytoscape({
     container,
     ...defaultOptions,

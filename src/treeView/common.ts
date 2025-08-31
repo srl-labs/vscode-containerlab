@@ -61,6 +61,13 @@ export class ClabLabTreeNode extends vscode.TreeItem {
         this.iconPath = favorite
             ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
             : vscode.ThemeIcon.File;
+
+        // Add command to open TopoViewer on click
+        this.command = {
+            command: 'containerlab.lab.graph.topoViewer',
+            title: 'Open TopoViewer',
+            arguments: [this]
+        };
     }
 }
 
