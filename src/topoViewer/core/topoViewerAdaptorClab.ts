@@ -659,6 +659,8 @@ export class TopoViewerAdaptorClab {
     let linkIndex = 0;
     if (parsed.topology.links) {
       // First pass: identify special endpoints
+      // Additionally, collect extended properties per special network node so the Network Editor can prefill from YAML
+      const specialNodeProps: Map<string, any> = new Map();
       for (const linkObj of parsed.topology.links) {
         const norm = normalizeLinkToTwoEndpoints(linkObj);
         if (!norm) continue;
@@ -700,6 +702,57 @@ export class TopoViewerAdaptorClab {
         } else if (nodeB.startsWith('vxlan:')) {
           const name = nodeB.substring('vxlan:'.length);
           specialNodes.set(nodeB, { type: 'vxlan', label: `vxlan:${name}` });
+        }
+
+        // Collect extended properties for special endpoints so Network Editor can load them from node.extraData
+        // Determine link type (only apply for non-veth)
+        const linkType = (linkObj && typeof (linkObj as any).type === 'string') ? String((linkObj as any).type) : '';
+        if (linkType && linkType !== 'veth') {
+          // Helper to compute the special node id used in the graph for an endpoint
+          const computeSpecialId = (end: any) => {
+            const { node, iface } = this.splitEndpoint(end);
+            if (node === 'host') return `host:${iface}`;
+            if (node === 'mgmt-net') return `mgmt-net:${iface}`;
+            if (node.startsWith('macvlan:')) return node;
+            if (node.startsWith('vxlan-stitch:')) return node;
+            if (node.startsWith('vxlan:')) return node;
+            return null;
+          };
+
+          const idA = computeSpecialId(endA);
+          const idB = computeSpecialId(endB);
+
+          const baseProps: any = { extType: linkType };
+          // Common
+          if ((linkObj as any).mtu !== undefined) baseProps.extMtu = (linkObj as any).mtu;
+          if ((linkObj as any).vars !== undefined) baseProps.extVars = (linkObj as any).vars;
+          if ((linkObj as any).labels !== undefined) baseProps.extLabels = (linkObj as any).labels;
+          // Host/mgmt-net/macvlan specifics
+          if (linkType === 'host' || linkType === 'mgmt-net' || linkType === 'macvlan') {
+            if ((linkObj as any)['host-interface'] !== undefined) baseProps.extHostInterface = (linkObj as any)['host-interface'];
+            if (linkType === 'macvlan' && (linkObj as any).mode !== undefined) baseProps.extMode = (linkObj as any).mode;
+          }
+          // If endpoint has a MAC in single-endpoint schema, expose it as extMac for any non-veth type
+          const epMac = (linkObj as any)?.endpoint?.mac;
+          if (epMac !== undefined) baseProps.extMac = epMac;
+          // VXLAN specifics
+          if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
+            if ((linkObj as any).remote !== undefined) baseProps.extRemote = (linkObj as any).remote;
+            if ((linkObj as any).vni !== undefined) baseProps.extVni = (linkObj as any).vni;
+            if ((linkObj as any)['udp-port'] !== undefined) baseProps.extUdpPort = (linkObj as any)['udp-port'];
+          }
+
+          // Merge props into both sides if they are special endpoints
+          [idA, idB].forEach(id => {
+            if (!id) return;
+            const prev = specialNodeProps.get(id) || {};
+            // Shallow merge without overwriting already defined keys
+            const merged: any = { ...baseProps };
+            for (const k of Object.keys(prev)) {
+              if (prev[k] !== undefined) merged[k] = prev[k];
+            }
+            specialNodeProps.set(id, { ...prev, ...merged });
+          });
         }
       }
 
@@ -753,6 +806,8 @@ export class TopoViewerAdaptorClab {
               shortname: nodeInfo.label,
               state: '',
               weight: '3',
+              // Merge in extended properties derived from YAML links for this special endpoint
+              ...(specialNodeProps.get(nodeId) || {}),
             },
           },
           position,
@@ -920,10 +975,10 @@ export class TopoViewerAdaptorClab {
             lng: '',
             source: actualSourceNode,
             target: actualTargetNode,
-            extraData: {
-              clabServerUsername: 'asad',
-              clabSourceLongName: sourceContainerName,
-              clabTargetLongName: targetContainerName,
+          extraData: {
+            clabServerUsername: 'asad',
+            clabSourceLongName: sourceContainerName,
+            clabTargetLongName: targetContainerName,
               clabSourcePort: sourceIface,
               clabTargetPort: targetIface,
               clabSourceMacAddress: sourceIfaceData?.mac ?? '',
@@ -934,21 +989,23 @@ export class TopoViewerAdaptorClab {
               clabTargetMtu: targetIfaceData?.mtu ?? '',
               clabSourceType: sourceIfaceData?.type ?? '',
               clabTargetType: targetIfaceData?.type ?? '',
-              // Extended link fields (when present in YAML)
-              extType: linkObj?.type ?? '',
-              extMtu: linkObj?.mtu ?? '',
-              extVars: linkObj?.vars ?? undefined,
-              extLabels: linkObj?.labels ?? undefined,
-              extHostInterface: linkObj?.['host-interface'] ?? '',
-              extMode: linkObj?.mode ?? '',
-              extRemote: linkObj?.remote ?? '',
-              extVni: linkObj?.vni ?? '',
-              extUdpPort: linkObj?.['udp-port'] ?? '',
-              extSourceMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[0] === 'object') ? (linkObj.endpoints[0] as any)?.mac ?? '' : '',
-              extTargetMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[1] === 'object') ? (linkObj.endpoints[1] as any)?.mac ?? '' : '',
-              yamlFormat: (typeof (linkObj as any)?.type === 'string' && (linkObj as any).type) ? 'extended' : 'short',
-              extValidationErrors: extValidationErrors.length ? extValidationErrors : undefined,
-            },
+            // Extended link fields (when present in YAML)
+            extType: linkObj?.type ?? '',
+            extMtu: linkObj?.mtu ?? '',
+            extVars: linkObj?.vars ?? undefined,
+            extLabels: linkObj?.labels ?? undefined,
+            extHostInterface: linkObj?.['host-interface'] ?? '',
+            extMode: linkObj?.mode ?? '',
+            extRemote: linkObj?.remote ?? '',
+            extVni: linkObj?.vni ?? '',
+            extUdpPort: linkObj?.['udp-port'] ?? '',
+            extSourceMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[0] === 'object') ? (linkObj.endpoints[0] as any)?.mac ?? '' : '',
+            extTargetMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[1] === 'object') ? (linkObj.endpoints[1] as any)?.mac ?? '' : '',
+            // Single-endpoint extended schema MAC
+            extMac: (linkObj as any)?.endpoint?.mac ?? '',
+            yamlFormat: (typeof (linkObj as any)?.type === 'string' && (linkObj as any).type) ? 'extended' : 'short',
+            extValidationErrors: extValidationErrors.length ? extValidationErrors : undefined,
+          },
           },
           position: { x: 0, y: 0 },
           removed: false,

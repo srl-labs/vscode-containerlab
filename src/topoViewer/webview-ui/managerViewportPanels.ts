@@ -954,13 +954,11 @@ export class ManagerViewportPanels {
       btn.classList.toggle('cursor-not-allowed', disabled);
     };
 
-    // Prefill from extraData
+    // Prefill from extraData (use consistent keys)
     if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
     if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
-    // Only populate fields for veth links
+    // Only populate extra entry lists for veth links
     if (isVeth) {
-      if (srcMacEl) srcMacEl.value = extraData.extSrcMac || '';
-      if (tgtMacEl) tgtMacEl.value = extraData.extTgtMac || '';
       if (mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
 
       // Load vars as dynamic entries
@@ -1376,11 +1374,7 @@ export class ManagerViewportPanels {
     const edgeExtData: any = {};
 
     // Transfer all relevant extended properties
-    if (nodeExtraData.extMac !== undefined) {
-      // MAC address goes to the appropriate endpoint (source or target based on which is the network)
-      // We'll put it on the source side if the network is the source, target side if network is target
-      edgeExtData.extSourceMac = nodeExtraData.extMac;
-    }
+    if (nodeExtraData.extMac !== undefined) edgeExtData.extMac = nodeExtraData.extMac;
     if (nodeExtraData.extMtu !== undefined) edgeExtData.extMtu = nodeExtraData.extMtu;
     if (nodeExtraData.extVars !== undefined) edgeExtData.extVars = nodeExtraData.extVars;
     if (nodeExtraData.extLabels !== undefined) edgeExtData.extLabels = nodeExtraData.extLabels;

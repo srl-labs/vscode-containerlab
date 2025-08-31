@@ -755,7 +755,8 @@ export async function saveViewport({
                   const epMap = buildEndpointMap(single);
                   const containerIsSource = (single.node === data.source && (single.iface || '') === (data.sourceEndpoint || ''));
                   const selectedMac = containerIsSource ? extra.extSourceMac : extra.extTargetMac;
-                  if (selectedMac) epMap.set('mac', doc!.createNode(selectedMac)); else if ((epMap as any).has && (epMap as any).has('mac', true)) (epMap as any).delete('mac');
+                  const endpointMac = (extra.extMac !== undefined && extra.extMac !== '') ? extra.extMac : selectedMac;
+                  if (endpointMac) epMap.set('mac', doc!.createNode(endpointMac)); else if ((epMap as any).has && (epMap as any).has('mac', true)) (epMap as any).delete('mac');
                   map.set('endpoint', epMap);
                   if ((map as any).has && (map as any).has('endpoints', true)) (map as any).delete('endpoints');
 
@@ -802,6 +803,7 @@ export async function saveViewport({
           (extra.extMtu !== undefined && extra.extMtu !== null && extra.extMtu !== '') ||
           (extra.extSourceMac !== undefined && extra.extSourceMac !== null && extra.extSourceMac !== '') ||
           (extra.extTargetMac !== undefined && extra.extTargetMac !== null && extra.extTargetMac !== '') ||
+          (extra.extMac !== undefined && extra.extMac !== null && extra.extMac !== '') ||
           (extra.extHostInterface !== undefined && extra.extHostInterface !== null && extra.extHostInterface !== '') ||
           (extra.extRemote !== undefined && extra.extRemote !== null && extra.extRemote !== '') ||
           (extra.extVni !== undefined && extra.extVni !== null && extra.extVni !== '') ||
@@ -846,7 +848,8 @@ export async function saveViewport({
             // MAC for container side
             const containerIsSource = (single.node === data.source && (single.iface || '') === (data.sourceEndpoint || ''));
             const selectedMac = containerIsSource ? extra.extSourceMac : extra.extTargetMac;
-            if (selectedMac) epMap.set('mac', doc!.createNode(selectedMac));
+            const endpointMac = (extra.extMac !== undefined && extra.extMac !== '') ? extra.extMac : selectedMac;
+            if (endpointMac) epMap.set('mac', doc!.createNode(endpointMac));
             newLink.set('endpoint', epMap);
 
             // Per-type fields
