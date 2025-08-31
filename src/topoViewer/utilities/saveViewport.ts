@@ -684,10 +684,45 @@ export async function saveViewport({
           const yamlKey = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
           if (yamlKey && canonicalKeyToString(yamlKey) === payloadKeyStr) {
             linkFound = true;
-            // Merge into existing entry when YAML entry is extended (has type)
+            // Check if we need to convert from brief to extended format
+            const hasExtendedProperties =
+              (extra.extMtu !== undefined && extra.extMtu !== null && extra.extMtu !== '') ||
+              (extra.extSourceMac !== undefined && extra.extSourceMac !== null && extra.extSourceMac !== '') ||
+              (extra.extTargetMac !== undefined && extra.extTargetMac !== null && extra.extTargetMac !== '') ||
+              (extra.extHostInterface !== undefined && extra.extHostInterface !== null && extra.extHostInterface !== '') ||
+              (extra.extRemote !== undefined && extra.extRemote !== null && extra.extRemote !== '') ||
+              (extra.extVni !== undefined && extra.extVni !== null && extra.extVni !== '') ||
+              (extra.extUdpPort !== undefined && extra.extUdpPort !== null && extra.extUdpPort !== '') ||
+              (extra.extMode !== undefined && extra.extMode !== null && extra.extMode !== '') ||
+              (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) ||
+              (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0);
+
             {
               const map = linkItem as YAML.YAMLMap;
-              if ((map as any).has && (map as any).has('type', true)) {
+              // For veth links, determine if we should use brief or extended format
+              // Use brief format only if:
+              // 1. It's a veth link (implicit or explicit)
+              // 2. No extended properties are set
+              // 3. No explicit non-veth type override from UI
+              const shouldUseBriefFormat = chosenType === 'veth' && !hasExtendedProperties &&
+                                          (!extra.extType || extra.extType === 'veth');
+
+              if (shouldUseBriefFormat) {
+                // Convert to brief format
+                // Remove type field to make it brief format
+                if ((map as any).has && (map as any).has('type', true)) (map as any).delete('type');
+                const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
+                const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
+                const endpointsNode = doc!.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
+                endpointsNode.flow = true; // inline style for brief format
+                map.set('endpoints', endpointsNode);
+                // Remove all extended format fields
+                if ((map as any).has && (map as any).has('endpoint', true)) (map as any).delete('endpoint');
+                ['host-interface', 'mode', 'remote', 'vni', 'udp-port', 'mtu', 'vars', 'labels'].forEach(k => {
+                  if ((map as any).has && (map as any).has(k, true)) (map as any).delete(k);
+                });
+              } else {
+                // Use extended format
                 // Apply type
                 map.set('type', doc!.createNode(chosenType));
 
@@ -761,7 +796,25 @@ export async function saveViewport({
         newLink.flow = false;
 
         // Create new entry: choose format based on provided extended fields/type or inferred single-endpoint type
-        const wantsExtended = (extra.extType && validTypes.has(extra.extType)) || (payloadKey.type && payloadKey.type !== 'veth');
+        // Use extended format if:
+        // 1. An explicit type is set via extType, OR
+        // 2. The inferred type is not 'veth' (single-endpoint types), OR
+        // 3. Any extended properties are configured (mtu, mac addresses, vars, labels, etc.)
+        const hasExtendedProperties =
+          (extra.extMtu !== undefined && extra.extMtu !== null && extra.extMtu !== '') ||
+          (extra.extSourceMac !== undefined && extra.extSourceMac !== null && extra.extSourceMac !== '') ||
+          (extra.extTargetMac !== undefined && extra.extTargetMac !== null && extra.extTargetMac !== '') ||
+          (extra.extHostInterface !== undefined && extra.extHostInterface !== null && extra.extHostInterface !== '') ||
+          (extra.extRemote !== undefined && extra.extRemote !== null && extra.extRemote !== '') ||
+          (extra.extVni !== undefined && extra.extVni !== null && extra.extVni !== '') ||
+          (extra.extUdpPort !== undefined && extra.extUdpPort !== null && extra.extUdpPort !== '') ||
+          (extra.extMode !== undefined && extra.extMode !== null && extra.extMode !== '') ||
+          (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) ||
+          (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0);
+
+        const wantsExtended = (extra.extType && validTypes.has(extra.extType)) ||
+                             (payloadKey.type && payloadKey.type !== 'veth') ||
+                             hasExtendedProperties;
         if (wantsExtended) {
           // Determine type and write extended structure with per-type fields (Step 7)
           newLink.set('type', doc!.createNode(chosenType));
