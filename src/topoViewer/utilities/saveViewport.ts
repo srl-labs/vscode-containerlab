@@ -699,13 +699,11 @@ export async function saveViewport({
 
             {
               const map = linkItem as YAML.YAMLMap;
-              // For veth links, determine if we should use brief or extended format
-              // Use brief format only if:
-              // 1. It's a veth link (implicit or explicit)
-              // 2. No extended properties are set
-              // 3. No explicit non-veth type override from UI
-              const shouldUseBriefFormat = chosenType === 'veth' && !hasExtendedProperties &&
-                                          (!extra.extType || extra.extType === 'veth');
+              // Determine if we should use brief or extended format
+              // Use brief format when no extended properties are set
+              // ALL link types can use brief format when they don't have extended properties
+              // This includes veth, host, mgmt-net, macvlan, etc.
+              const shouldUseBriefFormat = !hasExtendedProperties;
 
               if (shouldUseBriefFormat) {
                 // Convert to brief format
@@ -812,16 +810,19 @@ export async function saveViewport({
           (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) ||
           (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0);
 
-        const wantsExtended = (extra.extType && validTypes.has(extra.extType)) ||
-                             (payloadKey.type && payloadKey.type !== 'veth') ||
-                             hasExtendedProperties;
+        // Only use extended format if there are actual extended properties
+        // Special endpoints (host:eth1, mgmt-net:x, macvlan:x) can use brief format
+        const wantsExtended = hasExtendedProperties;
         if (wantsExtended) {
           // Determine type and write extended structure with per-type fields (Step 7)
           newLink.set('type', doc!.createNode(chosenType));
           // Guardrails: skip creating invalid extended links
+          // Only check for required fields when using extended format with extended properties
           const requiresHost = (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan');
           const requiresVx = (chosenType === 'vxlan' || chosenType === 'vxlan-stitch');
-          if ((requiresHost && !extra.extHostInterface) ||
+          // For host/mgmt-net/macvlan, host-interface is only required if not already in the endpoint
+          const needsHostInterface = requiresHost && !data.source.includes(':') && !data.target.includes(':');
+          if ((needsHostInterface && !extra.extHostInterface) ||
               (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
             log.warn(`Skipping creation for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
             return; // do not add newLink

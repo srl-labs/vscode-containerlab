@@ -211,15 +211,37 @@ export class ManagerViewportPanels {
   private updateNetworkEditorFields(networkType: string): void {
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.label')).find(el =>
-      el.textContent === 'Interface' || el.textContent === 'Bridge Name'
+      el.textContent?.includes('Interface') || el.textContent === 'Bridge Name'
     );
 
+    // Update label and placeholder based on network type
     if (networkType === 'bridge' || networkType === 'ovs-bridge') {
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Bridge Name';
       }
       if (interfaceInput) {
         interfaceInput.placeholder = 'Enter bridge name';
+      }
+    } else if (networkType === 'host' || networkType === 'mgmt-net') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Host Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.placeholder = 'e.g., eth0, eth1';
+      }
+    } else if (networkType === 'macvlan') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Host Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.placeholder = 'Parent interface (e.g., eth0)';
+      }
+    } else if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.placeholder = 'VXLAN interface name';
       }
     } else {
       if (interfaceLabel) {
@@ -228,6 +250,17 @@ export class ManagerViewportPanels {
       if (interfaceInput) {
         interfaceInput.placeholder = 'Enter interface name';
       }
+    }
+
+    // Show/hide extended property sections based on type
+    const modeSection = document.getElementById('panel-network-mode-section') as HTMLElement | null;
+    const vxlanSection = document.getElementById('panel-network-vxlan-section') as HTMLElement | null;
+
+    if (modeSection) {
+      modeSection.style.display = networkType === 'macvlan' ? 'block' : 'none';
+    }
+    if (vxlanSection) {
+      vxlanSection.style.display = (networkType === 'vxlan' || networkType === 'vxlan-stitch') ? 'block' : 'none';
     }
   }
 
@@ -268,6 +301,17 @@ export class ManagerViewportPanels {
       (selectedValue: string) => {
         log.debug(`Network type ${selectedValue} selected`);
         this.updateNetworkEditorFields(selectedValue);
+
+        // Re-validate when network type changes
+        setTimeout(() => {
+          const { isValid } = validateNetworkFields();
+          const saveButton = document.getElementById('panel-network-editor-save-button') as HTMLButtonElement;
+          if (saveButton) {
+            saveButton.disabled = !isValid;
+            saveButton.classList.toggle('opacity-50', !isValid);
+            saveButton.classList.toggle('cursor-not-allowed', !isValid);
+          }
+        }, 100);
       },
       'Search for network type...'
     );
@@ -285,6 +329,20 @@ export class ManagerViewportPanels {
       if (interfaceInput) {
         interfaceInput.value = nodeId; // For bridges, the ID is the bridge name
       }
+    } else if (networkType === 'host' || networkType === 'mgmt-net') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Host Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.value = interfaceName;
+      }
+    } else if (networkType === 'macvlan') {
+      if (interfaceLabel) {
+        interfaceLabel.textContent = 'Host Interface';
+      }
+      if (interfaceInput) {
+        interfaceInput.value = interfaceName;
+      }
     } else {
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Interface';
@@ -293,6 +351,33 @@ export class ManagerViewportPanels {
         interfaceInput.value = interfaceName;
       }
     }
+
+    // Initialize extended properties from node's extraData
+    const extraData = nodeData.extraData || {};
+    const macInput = document.getElementById('panel-network-mac') as HTMLInputElement | null;
+    const mtuInput = document.getElementById('panel-network-mtu') as HTMLInputElement | null;
+    const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
+    const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
+    const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
+    const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
+    const varsInput = document.getElementById('panel-network-vars') as HTMLTextAreaElement | null;
+    const labelsInput = document.getElementById('panel-network-labels') as HTMLTextAreaElement | null;
+
+    // Set initial values
+    if (macInput) {
+      // For network nodes, we might store MAC for the network side of the connection
+      macInput.value = extraData.extMac || '';
+    }
+    if (mtuInput) mtuInput.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
+    if (modeSelect) modeSelect.value = extraData.extMode || 'bridge';
+    if (remoteInput) remoteInput.value = extraData.extRemote || '';
+    if (vniInput) vniInput.value = extraData.extVni != null ? String(extraData.extVni) : '';
+    if (udpPortInput) udpPortInput.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
+    if (varsInput) varsInput.value = extraData.extVars ? JSON.stringify(extraData.extVars, null, 2) : '';
+    if (labelsInput) labelsInput.value = extraData.extLabels ? JSON.stringify(extraData.extLabels, null, 2) : '';
+
+    // Show/hide sections based on network type
+    this.updateNetworkEditorFields(networkType);
 
     const panel = document.getElementById('panel-network-editor');
     if (panel) {
@@ -306,14 +391,103 @@ export class ManagerViewportPanels {
       });
     }
 
+    // Validation function for mandatory fields (showErrors controls visual feedback)
+    const validateNetworkFields = (showErrors = false): { isValid: boolean; errors: string[] } => {
+      const errors: string[] = [];
+      const currentNetworkType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement)?.value || networkType;
+
+      // Clear all validation styling first
+      ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'].forEach(id => {
+        document.getElementById(id)?.classList.remove('border-red-500', 'border-2');
+      });
+
+      // Hide error container by default
+      const errorContainer = document.getElementById('panel-network-validation-errors');
+      if (errorContainer && !showErrors) {
+        errorContainer.style.display = 'none';
+      }
+
+      // Validate VXLAN mandatory fields
+      if (currentNetworkType === 'vxlan' || currentNetworkType === 'vxlan-stitch') {
+        const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement;
+        const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement;
+        const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement;
+
+        if (!remoteInput?.value?.trim()) {
+          errors.push('Remote IP is required');
+          if (showErrors) remoteInput?.classList.add('border-red-500', 'border-2');
+        }
+
+        if (!vniInput?.value?.trim()) {
+          errors.push('VNI is required');
+          if (showErrors) vniInput?.classList.add('border-red-500', 'border-2');
+        }
+
+        if (!udpPortInput?.value?.trim()) {
+          errors.push('UDP Port is required');
+          if (showErrors) udpPortInput?.classList.add('border-red-500', 'border-2');
+        }
+      }
+
+      // Update error display only if showErrors is true
+      if (showErrors) {
+        const errorList = document.getElementById('panel-network-validation-errors-list');
+        if (errorContainer && errorList) {
+          if (errors.length > 0) {
+            errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+            errorContainer.style.display = 'block';
+          } else {
+            errorContainer.style.display = 'none';
+          }
+        }
+      }
+
+      return { isValid: errors.length === 0, errors };
+    };
+
+    // Add input listeners for real-time validation
+    const vxlanInputs = ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'];
+    vxlanInputs.forEach(inputId => {
+      const input = document.getElementById(inputId) as HTMLInputElement;
+      if (input) {
+        input.addEventListener('input', () => {
+          const { isValid } = validateNetworkFields();
+          const saveButton = document.getElementById('panel-network-editor-save-button') as HTMLButtonElement;
+          if (saveButton) {
+            saveButton.disabled = !isValid;
+            saveButton.classList.toggle('opacity-50', !isValid);
+            saveButton.classList.toggle('cursor-not-allowed', !isValid);
+          }
+        });
+      }
+    });
+
     const saveBtn = document.getElementById('panel-network-editor-save-button');
     if (saveBtn) {
       const newSaveBtn = saveBtn.cloneNode(true) as HTMLElement;
       saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
+
+      // Initial validation
+      const { isValid: initialValid } = validateNetworkFields();
+      (newSaveBtn as HTMLButtonElement).disabled = !initialValid;
+      newSaveBtn.classList.toggle('opacity-50', !initialValid);
+      newSaveBtn.classList.toggle('cursor-not-allowed', !initialValid);
+
       newSaveBtn.addEventListener('click', async () => {
+        const { isValid, errors } = validateNetworkFields(true); // Show errors on save attempt
+        if (!isValid) {
+          console.error('Cannot save network node:', errors);
+          return;
+        }
+
         await this.updateNetworkFromEditor(node);
         const suppressNotification = false;
         await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
+
+        // Close panel after successful save
+        if (panel) {
+          panel.style.display = 'none';
+        }
       });
     }
   }
@@ -350,11 +524,27 @@ export class ManagerViewportPanels {
       const sourceEP = (edge.data('sourceEndpoint') as string) || '';
       const targetEP = (edge.data('targetEndpoint') as string) || '';
 
+      // Determine if this is a veth link (both endpoints are regular nodes, not network nodes)
+      const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
+      const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
+      const isVethLink = !sourceIsNetwork && !targetIsNetwork;
+
       // Show panel
       (panel as HTMLElement).style.display = 'block';
 
+      // Hide Extended tab for non-veth links
+      if (!isVethLink) {
+        btnExt.style.display = 'none';
+      } else {
+        btnExt.style.display = '';
+      }
+
       // Tab selection: default to Basic tab
       const setTab = (which: 'basic' | 'extended') => {
+        // Only allow extended tab for veth links
+        if (which === 'extended' && !isVethLink) {
+          which = 'basic';
+        }
         (basicTab as HTMLElement).style.display = which === 'basic' ? 'block' : 'none';
         (extTab as HTMLElement).style.display = which === 'extended' ? 'block' : 'none';
         btnBasic.classList.toggle('tab-active', which === 'basic');
@@ -362,7 +552,9 @@ export class ManagerViewportPanels {
       };
       setTab('basic');
       btnBasic.addEventListener('click', () => setTab('basic'));
-      btnExt.addEventListener('click', () => setTab('extended'));
+      if (isVethLink) {
+        btnExt.addEventListener('click', () => setTab('extended'));
+      }
 
       // Populate previews
       const updatePreview = (el: HTMLElement | null) => { if (el) el.innerHTML = `┌ ${source} :: ${sourceEP}<br>└ ${target} :: ${targetEP}`; };
@@ -424,7 +616,6 @@ export class ManagerViewportPanels {
     const idLabel = document.getElementById('panel-link-extended-editor-id');
     const closeBtn = document.getElementById('panel-link-extended-editor-close-button');
     const saveBtn = document.getElementById('panel-link-extended-editor-save-button');
-    const typeDropdownContainerId = 'panel-link-ext-type-dropdown-container';
 
     if (!panel || !idLabel || !closeBtn || !saveBtn) {
       log.error('panelEdgeEditorExtended: missing required DOM elements');
@@ -453,10 +644,33 @@ export class ManagerViewportPanels {
       this.edgeClicked = false;
     }, { once: true });
 
-    // Build the type dropdown (handled below after wiring validation)
-    const typeOptions = ['veth', 'mgmt-net', 'host', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy'];
+    // Determine link type based on endpoints
     const extraData = edge.data('extraData') || {};
-    const currentType = extraData.extType || '';
+
+    // Helper to check if a node is special and get its type
+    const getSpecialType = (nodeId: string): string | null => {
+      if (nodeId === 'host' || nodeId.startsWith('host:')) return 'host';
+      if (nodeId === 'mgmt-net' || nodeId.startsWith('mgmt-net:')) return 'mgmt-net';
+      if (nodeId.startsWith('macvlan:')) return 'macvlan';
+      if (nodeId.startsWith('vxlan:')) return 'vxlan';
+      if (nodeId.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
+      if (nodeId.startsWith('dummy:')) return 'dummy';
+      return null;
+    };
+
+    // Determine type from endpoints
+    const sourceType = getSpecialType(source);
+    const targetType = getSpecialType(target);
+    const inferredType = sourceType || targetType || 'veth';
+
+    // Host interface is now specified in the network endpoint directly (e.g., host:eth1)
+    // Extended properties for non-veth links are configured on the network node
+
+    // Display the inferred type (read-only)
+    const typeDisplayEl = document.getElementById('panel-link-ext-type-display') as HTMLElement | null;
+    if (typeDisplayEl) {
+      typeDisplayEl.textContent = inferredType;
+    }
 
     // Field elements
     const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
@@ -466,11 +680,13 @@ export class ManagerViewportPanels {
     const labelsEl = document.getElementById('panel-link-ext-labels') as HTMLTextAreaElement | null;
     const varsErrEl = document.getElementById('panel-link-ext-vars-error') as HTMLElement | null;
     const labelsErrEl = document.getElementById('panel-link-ext-labels-error') as HTMLElement | null;
-    const hostIfEl = document.getElementById('panel-link-ext-host-interface') as HTMLInputElement | null;
-    const modeEl = document.getElementById('panel-link-ext-mode') as HTMLSelectElement | null;
-    const remoteEl = document.getElementById('panel-link-ext-remote') as HTMLInputElement | null;
-    const vniEl = document.getElementById('panel-link-ext-vni') as HTMLInputElement | null;
-    const udpPortEl = document.getElementById('panel-link-ext-udp-port') as HTMLInputElement | null;
+
+    // Show info message for non-veth links
+    const nonVethInfo = document.getElementById('panel-link-ext-non-veth-info') as HTMLElement | null;
+    const isVeth = inferredType === 'veth';
+    if (nonVethInfo) {
+      nonVethInfo.style.display = isVeth ? 'none' : 'block';
+    }
     const banner = document.getElementById('panel-link-ext-errors') as HTMLElement | null;
     const bannerList = document.getElementById('panel-link-ext-errors-list') as HTMLElement | null;
     const setSaveDisabled = (disabled: boolean) => {
@@ -484,14 +700,14 @@ export class ManagerViewportPanels {
     // Prefill from extraData
     if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
     if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
-    if (mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
-    if (varsEl) varsEl.value = extraData.extVars ? JSON.stringify(extraData.extVars, null, 2) : '';
-    if (labelsEl) labelsEl.value = extraData.extLabels ? JSON.stringify(extraData.extLabels, null, 2) : '';
-    if (hostIfEl) hostIfEl.value = extraData.extHostInterface || '';
-    if (modeEl) modeEl.value = extraData.extMode || '';
-    if (remoteEl) remoteEl.value = extraData.extRemote || '';
-    if (vniEl) vniEl.value = extraData.extVni != null ? String(extraData.extVni) : '';
-    if (udpPortEl) udpPortEl.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
+    // Only populate fields for veth links
+    if (isVeth) {
+      if (srcMacEl) srcMacEl.value = extraData.extSrcMac || '';
+      if (tgtMacEl) tgtMacEl.value = extraData.extTgtMac || '';
+      if (mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
+      if (varsEl) varsEl.value = extraData.extVars ? JSON.stringify(extraData.extVars, null, 2) : '';
+      if (labelsEl) labelsEl.value = extraData.extLabels ? JSON.stringify(extraData.extLabels, null, 2) : '';
+    }
 
     // Initial validation banner if adaptor provided errors
     const initialErrors: string[] = Array.isArray(extraData.extValidationErrors) ? extraData.extValidationErrors : [];
@@ -517,44 +733,22 @@ export class ManagerViewportPanels {
     };
     renderErrors(initialErrors);
 
-    // Live validation on inputs
+    // Live validation on inputs - only validate for veth links
     const validate = (): string[] => {
-      // Read selected type
-      const typeInput = document.getElementById(`${typeDropdownContainerId}-filter-input`) as HTMLInputElement | null;
-      const selectedType = (typeInput?.value || 'veth').trim();
       const errs: string[] = [];
-      // Clear previous highlighting
-      [hostIfEl, remoteEl, vniEl, udpPortEl].forEach(el => { if (el) el.style.borderColor = ''; });
-      if (['mgmt-net','host','macvlan'].includes(selectedType)) {
-        const val = (hostIfEl?.value || '').trim();
-        if (!val) { errs.push('missing-host-interface'); if (hostIfEl) hostIfEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
+      // For non-veth links, no validation needed in link editor
+      if (!isVeth) {
+        return errs;
       }
-      if (selectedType === 'vxlan' || selectedType === 'vxlan-stitch') {
-        const r = (remoteEl?.value || '').trim();
-        const v = (vniEl?.value || '').trim();
-        const u = (udpPortEl?.value || '').trim();
-        if (!r) { errs.push('missing-remote'); if (remoteEl) remoteEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
-        if (!v) { errs.push('missing-vni'); if (vniEl) vniEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
-        if (!u) { errs.push('missing-udp-port'); if (udpPortEl) udpPortEl.style.borderColor = 'var(--vscode-editorError-foreground)'; }
-      }
+      // For veth links, validate JSON fields if needed
       return errs;
     };
 
     const attachRevalidate = (el: HTMLElement | null) => { if (!el) return; el.addEventListener('input', () => { renderErrors(validate()); }); };
-    [hostIfEl, modeEl, remoteEl, vniEl, udpPortEl, mtuEl, varsEl, labelsEl].forEach(el => attachRevalidate(el as any));
-    // Also revalidate on type change via dropdown callback
-    this.createFilterableDropdown(
-      typeDropdownContainerId,
-      typeOptions,
-      currentType || 'veth',
-      (selectedValue: string) => {
-        this.panelLinkExtendedToggleSections(selectedValue);
-        renderErrors(validate());
-      },
-      'Select link type...'
-    );
-    // Ensure section visibility matches current type
-    this.panelLinkExtendedToggleSections(currentType || 'veth');
+    [mtuEl, varsEl, labelsEl].forEach(el => attachRevalidate(el as any));
+
+    // Initial validation
+    renderErrors(validate());
 
     // Save button
     const freshSave = saveBtn.cloneNode(true) as HTMLElement;
@@ -563,9 +757,7 @@ export class ManagerViewportPanels {
       try {
         const errsNow = validate();
         if (errsNow.length) { renderErrors(errsNow); return; }
-        // Read current type from dropdown input value
-        const typeInput = document.getElementById(`${typeDropdownContainerId}-filter-input`) as HTMLInputElement | null;
-        const selectedType = (typeInput?.value || 'veth').trim();
+        // Use the inferred type for validation (only veth links editable here)
 
         // JSON validation
         let parsedVars: any = undefined;
@@ -584,33 +776,22 @@ export class ManagerViewportPanels {
         const current = edge.data();
         const updatedExtra = { ...(current.extraData || {}) } as any;
 
-        // Common
+        // For non-veth links, don't modify extended properties from link editor
+        if (!isVeth) {
+          // Just close the panel without changes
+          panel.style.display = 'none';
+          this.edgeClicked = false;
+          return;
+        }
+
+        // For veth links, update the properties
         if (srcMacEl) updatedExtra.extSourceMac = srcMacEl.value.trim() || undefined;
         if (tgtMacEl) updatedExtra.extTargetMac = tgtMacEl.value.trim() || undefined;
         if (mtuEl) updatedExtra.extMtu = mtuEl.value ? Number(mtuEl.value) : undefined;
         if (varsEl) updatedExtra.extVars = parsedVars;
         if (labelsEl) updatedExtra.extLabels = parsedLabels;
-        updatedExtra.extType = selectedType;
 
-        // Clear all per-type keys first to avoid stale data
-        delete updatedExtra.extHostInterface;
-        delete updatedExtra.extMode;
-        delete updatedExtra.extRemote;
-        delete updatedExtra.extVni;
-        delete updatedExtra.extUdpPort;
-
-        // Per-type
-        if (['mgmt-net', 'host', 'macvlan'].includes(selectedType)) {
-          if (hostIfEl) updatedExtra.extHostInterface = hostIfEl.value.trim() || undefined;
-          if (selectedType === 'macvlan' && modeEl) {
-            updatedExtra.extMode = modeEl.value || undefined;
-          }
-        }
-        if (['vxlan', 'vxlan-stitch'].includes(selectedType)) {
-          if (remoteEl) updatedExtra.extRemote = remoteEl.value.trim() || undefined;
-          if (vniEl) updatedExtra.extVni = vniEl.value ? Number(vniEl.value) : undefined;
-          if (udpPortEl) updatedExtra.extUdpPort = udpPortEl.value ? Number(udpPortEl.value) : undefined;
-        }
+        // No per-type fields in link editor anymore - they're in network editor
 
         // Apply to edge
         edge.data({ ...current, extraData: updatedExtra });
@@ -629,22 +810,6 @@ export class ManagerViewportPanels {
     // Slight delay before allowing global click to close
     setTimeout(() => { this.edgeClicked = false; }, 100);
   }
-
-  // Toggle visibility of per-type sections in the extended editor
-  private panelLinkExtendedToggleSections(selectedType: string): void {
-    const isHostIface = ['mgmt-net', 'host', 'macvlan'].includes(selectedType);
-    const isMacvlan = selectedType === 'macvlan';
-    const isVxlan = selectedType === 'vxlan' || selectedType === 'vxlan-stitch';
-
-    const hostIfaceSection = document.querySelector('[data-section="host-iface"]') as HTMLElement | null;
-    const macvlanModeSection = document.querySelector('[data-section="macvlan-mode"]') as HTMLElement | null;
-    const vxlanSections = document.querySelectorAll('[data-section="vxlan"]');
-
-    if (hostIfaceSection) hostIfaceSection.style.display = isHostIface ? 'block' : 'none';
-    if (macvlanModeSection) macvlanModeSection.style.display = isMacvlan ? 'block' : 'none';
-    vxlanSections.forEach(el => ((el as HTMLElement).style.display = isVxlan ? 'block' : 'none'));
-  }
-
 
   /**
    * Updates the provided Cytoscape node with data from the editor panel.
@@ -743,6 +908,14 @@ export class ManagerViewportPanels {
 
     const networkTypeInput = document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement | null;
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
+    const macInput = document.getElementById('panel-network-mac') as HTMLInputElement | null;
+    const mtuInput = document.getElementById('panel-network-mtu') as HTMLInputElement | null;
+    const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
+    const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
+    const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
+    const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
+    const varsInput = document.getElementById('panel-network-vars') as HTMLTextAreaElement | null;
+    const labelsInput = document.getElementById('panel-network-labels') as HTMLTextAreaElement | null;
 
     const currentData = targetNode.data();
     const oldId = currentData.id as string;
@@ -755,6 +928,41 @@ export class ManagerViewportPanels {
     const newId = isBridgeType ? interfaceName : `${networkType}:${interfaceName}`;
     const newName = newId;
 
+    // Collect extended properties
+    const extendedData: any = { ...currentData.extraData };
+    extendedData.kind = networkType;
+
+    // Set new extended properties
+    if (macInput && macInput.value) extendedData.extMac = macInput.value;
+    if (mtuInput && mtuInput.value) extendedData.extMtu = Number(mtuInput.value);
+
+    // Parse JSON fields
+    if (varsInput && varsInput.value.trim()) {
+      try {
+        extendedData.extVars = JSON.parse(varsInput.value);
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+    if (labelsInput && labelsInput.value.trim()) {
+      try {
+        extendedData.extLabels = JSON.parse(labelsInput.value);
+      } catch {
+        // Invalid JSON, ignore
+      }
+    }
+
+    // Type-specific properties
+    if (modeSelect && modeSelect.value && networkType === 'macvlan') extendedData.extMode = modeSelect.value;
+    if (remoteInput && remoteInput.value && (networkType === 'vxlan' || networkType === 'vxlan-stitch')) extendedData.extRemote = remoteInput.value;
+    if (vniInput && vniInput.value && (networkType === 'vxlan' || networkType === 'vxlan-stitch')) extendedData.extVni = Number(vniInput.value);
+    if (udpPortInput && udpPortInput.value && (networkType === 'vxlan' || networkType === 'vxlan-stitch')) extendedData.extUdpPort = Number(udpPortInput.value);
+
+    // For host/mgmt-net/macvlan, store the host interface
+    if ((networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') && interfaceName) {
+      extendedData.extHostInterface = interfaceName;
+    }
+
     // If ID hasn't changed, just update the data
     if (oldId === newId) {
       const updatedData = {
@@ -762,11 +970,24 @@ export class ManagerViewportPanels {
         name: newName,
         topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
         extraData: {
-          ...currentData.extraData,
+          ...extendedData,
           kind: networkType
         }
       };
       targetNode.data(updatedData);
+
+      // Update connected edges with extended properties from the network node
+      targetNode.connectedEdges().forEach(edge => {
+        const edgeData = edge.data();
+        const updatedEdgeData = {
+          ...edgeData,
+          extraData: {
+            ...(edgeData.extraData || {}),
+            ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData)
+          }
+        };
+        edge.data(updatedEdgeData);
+      });
     } else {
       // ID has changed - we need to recreate the node since Cytoscape IDs are immutable
       const position = targetNode.position();
@@ -793,7 +1014,7 @@ export class ManagerViewportPanels {
         name: newName,
         topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
         extraData: {
-          ...currentData.extraData,
+          ...extendedData,
           kind: networkType
         }
       };
@@ -824,6 +1045,12 @@ export class ManagerViewportPanels {
           newEdgeData.targetName = newName;
         }
 
+        // Add extended properties from the network node to the edge
+        newEdgeData.extraData = {
+          ...(newEdgeData.extraData || {}),
+          ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData)
+        };
+
         // Determine if edge should have stub-link class based on special endpoints
         let edgeClasses = edgeInfo.classes || [];
         const isStubLink = isSpecialNodeOrBridge(newEdgeData.source, this.cy) || isSpecialNodeOrBridge(newEdgeData.target, this.cy);
@@ -841,11 +1068,47 @@ export class ManagerViewportPanels {
         });
       });
     }
+  }
 
-    const panel = document.getElementById('panel-network-editor');
-    if (panel) {
-      panel.style.display = 'none';
+  /**
+   * Gets the extended properties from a network node that should be applied to connected edges.
+   * @param networkType - The type of network node
+   * @param nodeExtraData - The extraData from the network node
+   * @returns Extended properties to apply to the edge
+   */
+  private getNetworkExtendedPropertiesForEdge(networkType: string, nodeExtraData: any): any {
+    const edgeExtData: any = {};
+
+    // Transfer all relevant extended properties
+    if (nodeExtraData.extMac !== undefined) {
+      // MAC address goes to the appropriate endpoint (source or target based on which is the network)
+      // We'll put it on the source side if the network is the source, target side if network is target
+      edgeExtData.extSourceMac = nodeExtraData.extMac;
     }
+    if (nodeExtraData.extMtu !== undefined) edgeExtData.extMtu = nodeExtraData.extMtu;
+    if (nodeExtraData.extVars !== undefined) edgeExtData.extVars = nodeExtraData.extVars;
+    if (nodeExtraData.extLabels !== undefined) edgeExtData.extLabels = nodeExtraData.extLabels;
+
+    if (networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') {
+      if (nodeExtraData.extHostInterface !== undefined) edgeExtData.extHostInterface = nodeExtraData.extHostInterface;
+    }
+
+    if (networkType === 'macvlan') {
+      if (nodeExtraData.extMode !== undefined) edgeExtData.extMode = nodeExtraData.extMode;
+    }
+
+    if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
+      if (nodeExtraData.extRemote !== undefined) edgeExtData.extRemote = nodeExtraData.extRemote;
+      if (nodeExtraData.extVni !== undefined) edgeExtData.extVni = nodeExtraData.extVni;
+      if (nodeExtraData.extUdpPort !== undefined) edgeExtData.extUdpPort = nodeExtraData.extUdpPort;
+    }
+
+    // Set the link type based on the network type
+    if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
+      edgeExtData.extType = networkType;
+    }
+
+    return edgeExtData;
   }
 
 

@@ -50,6 +50,136 @@
             </div>
           </div>
         </div>
+        
+        <!-- Validation Errors -->
+        <div id="panel-network-validation-errors" class="my-2 p-2 rounded bg-red-100 dark:bg-red-900 border border-red-500 text-red-700 dark:text-red-300 text-sm" style="display:none;">
+          <div class="font-semibold">Please fix the following errors:</div>
+          <ul id="panel-network-validation-errors-list" class="list-disc list-inside mt-1"></ul>
+        </div>
+        
+        <!-- Divider -->
+        <div class="border-t border-[var(--vscode-widget-border)] my-2"></div>
+        
+        <!-- Extended Properties Section -->
+        <div class="text-xs text-gray-500 mb-2 pl-2">Extended Properties</div>
+        
+        <!-- MAC Address (for single endpoint connections) -->
+        <div class="my-1" id="panel-network-mac-section">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">MAC Address</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="text" class="input-field w-full" id="panel-network-mac" placeholder="e.g., 02:42:ac:11:00:01">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- MTU (all types) -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">MTU</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="number" class="input-field w-full" id="panel-network-mtu" placeholder="1500">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Macvlan Mode (only for macvlan) -->
+        <div class="my-1" id="panel-network-mode-section" style="display:none;">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Mode</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <select class="input-field w-full" id="panel-network-mode">
+                  <option value="bridge">bridge (default)</option>
+                  <option value="private">private</option>
+                  <option value="vepa">vepa</option>
+                  <option value="passthru">passthru</option>
+                  <option value="source">source</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- VXLAN fields (only for vxlan/vxlan-stitch) -->
+        <div id="panel-network-vxlan-section" style="display:none;">
+          <div class="my-1">
+            <div class="p-0.5">
+              <div class="flex items-center">
+                <div class="w-2/5 pr-1">
+                  <label class="label text-right text-base font-semibold">Remote IP <span class="text-red-500">*</span></label>
+                </div>
+                <div class="w-3/5 pl-2 pr-2">
+                  <input type="text" class="input-field w-full" id="panel-network-remote" placeholder="10.0.0.1">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="my-1">
+            <div class="p-0.5">
+              <div class="flex items-center">
+                <div class="w-2/5 pr-1">
+                  <label class="label text-right text-base font-semibold">VNI <span class="text-red-500">*</span></label>
+                </div>
+                <div class="w-3/5 pl-2 pr-2">
+                  <input type="number" class="input-field w-full" id="panel-network-vni" placeholder="100">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="my-1">
+            <div class="p-0.5">
+              <div class="flex items-center">
+                <div class="w-2/5 pr-1">
+                  <label class="label text-right text-base font-semibold">UDP Port <span class="text-red-500">*</span></label>
+                </div>
+                <div class="w-3/5 pl-2 pr-2">
+                  <input type="number" class="input-field w-full" id="panel-network-udp-port" placeholder="4789">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Vars (JSON) -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-start">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Vars (JSON)</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <textarea class="input-field w-full" id="panel-network-vars" rows="2" placeholder='{"key": "value"}'></textarea>
+                <div id="panel-network-vars-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Labels (JSON) -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-start">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Labels (JSON)</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <textarea class="input-field w-full" id="panel-network-labels" rows="2" placeholder='{"role": "primary"}'></textarea>
+                <div id="panel-network-labels-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Buttons -->
         <div class="my-1">

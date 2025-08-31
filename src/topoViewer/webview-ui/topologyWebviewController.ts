@@ -1298,10 +1298,76 @@ class TopologyWebviewController {
 
         const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
         const targetEndpoint = this.getNextEndpoint(targetNode.id());
-        addedEdge.data({ sourceEndpoint, targetEndpoint, editor: 'true' });
-        if (this.isNetworkNode(sourceNode.id()) || this.isNetworkNode(targetNode.id())) {
+
+        // Prepare edge data
+        const edgeData: any = { sourceEndpoint, targetEndpoint, editor: 'true' };
+
+        // Transfer extended properties from network nodes to the edge
+        const sourceIsNetwork = this.isNetworkNode(sourceNode.id());
+        const targetIsNetwork = this.isNetworkNode(targetNode.id());
+
+        if (sourceIsNetwork || targetIsNetwork) {
           addedEdge.addClass('stub-link');
+
+          // Get the network node (could be source or target)
+          const networkNode = sourceIsNetwork ? sourceNode : targetNode;
+          const networkData = networkNode.data();
+          const networkType = networkData.extraData?.kind || networkNode.id().split(':')[0];
+
+          // Transfer extended properties from network node to edge
+          if (networkData.extraData) {
+            const extData: any = {};
+
+            // Set link type
+            if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
+              extData.extType = networkType;
+            }
+
+            // Transfer all extended properties
+            if (networkData.extraData.extMac !== undefined) {
+              // MAC address for the network side endpoint
+              if (sourceIsNetwork) {
+                extData.extSourceMac = networkData.extraData.extMac;
+              } else {
+                extData.extTargetMac = networkData.extraData.extMac;
+              }
+            }
+            if (networkData.extraData.extMtu !== undefined) {
+              extData.extMtu = networkData.extraData.extMtu;
+            }
+            if (networkData.extraData.extVars !== undefined) {
+              extData.extVars = networkData.extraData.extVars;
+            }
+            if (networkData.extraData.extLabels !== undefined) {
+              extData.extLabels = networkData.extraData.extLabels;
+            }
+
+            // Transfer host interface for host/mgmt-net/macvlan
+            if ((networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') &&
+                networkData.extraData.extHostInterface !== undefined) {
+              extData.extHostInterface = networkData.extraData.extHostInterface;
+            }
+
+            // Transfer macvlan mode
+            if (networkType === 'macvlan' && networkData.extraData.extMode !== undefined) {
+              extData.extMode = networkData.extraData.extMode;
+            }
+
+            // Transfer vxlan properties
+            if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
+              if (networkData.extraData.extRemote !== undefined) extData.extRemote = networkData.extraData.extRemote;
+              if (networkData.extraData.extVni !== undefined) extData.extVni = networkData.extraData.extVni;
+              if (networkData.extraData.extUdpPort !== undefined) extData.extUdpPort = networkData.extraData.extUdpPort;
+            }
+
+            // Add extended properties to edge data
+            if (Object.keys(extData).length > 0) {
+              edgeData.extraData = extData;
+            }
+          }
         }
+
+        addedEdge.data(edgeData);
       });
 
     } else {

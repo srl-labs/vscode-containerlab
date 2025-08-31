@@ -81,7 +81,10 @@
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-2/5 pr-1"><label class="label text-right text-base font-semibold">Type</label></div>
-              <div class="w-3/5 pl-2 pr-2"><div id="panel-link-ext-type-dropdown-container"></div></div>
+              <div class="w-3/5 pl-2 pr-2">
+                <span id="panel-link-ext-type-display" class="text-base px-2 py-1 inline-block bg-gray-100 dark:bg-gray-700 rounded">veth</span>
+                <span class="text-xs text-gray-500 ml-2">(auto-detected)</span>
+              </div>
             </div>
           </div>
         </div>
@@ -137,59 +140,11 @@
           </div>
         </div>
 
-        <!-- Per-type sections -->
-        <div class="border-t border-[var(--vscode-widget-border)] my-2"></div>
-
-        <!-- mgmt-net | host | macvlan: Host Interface -->
-        <div class="my-1" data-section="host-iface">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"><label class="label text-right text-base font-semibold">Host Interface</label></div>
-              <div class="w-3/5 pl-2 pr-2"><input type="text" id="panel-link-ext-host-interface" class="input-field w-full text-base font-extralight h-[28px]" placeholder="e.g., eth10"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- macvlan: Mode -->
-        <div class="my-1" data-section="macvlan-mode">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"><label class="label text-right text-base font-semibold">macvlan Mode</label></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <select id="panel-link-ext-mode" class="input-field w-full text-base font-extralight h-[28px]">
-                  <option value="">(default)</option>
-                  <option value="bridge">bridge</option>
-                  <option value="private">private</option>
-                  <option value="vepa">vepa</option>
-                  <option value="passthru">passthru</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- vxlan | vxlan-stitch: Remote, VNI, UDP Port -->
-        <div class="my-1" data-section="vxlan">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"><label class="label text-right text-base font-semibold">Remote</label></div>
-              <div class="w-3/5 pl-2 pr-2"><input type="text" id="panel-link-ext-remote" class="input-field w-full text-base font-extralight h-[28px]" placeholder="e.g., 192.0.2.10"></div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1" data-section="vxlan">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"><label class="label text-right text-base font-semibold">VNI</label></div>
-              <div class="w-3/5 pl-2 pr-2"><input type="number" id="panel-link-ext-vni" class="input-field w-full text-base font-extralight h-[28px]" placeholder="e.g., 10001"></div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1" data-section="vxlan">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"><label class="label text-right text-base font-semibold">UDP Port</label></div>
-              <div class="w-3/5 pl-2 pr-2"><input type="number" id="panel-link-ext-udp-port" class="input-field w-full text-base font-extralight h-[28px]" placeholder="e.g., 4789"></div>
+        <!-- Info message for non-veth links -->
+        <div class="my-1" id="panel-link-ext-non-veth-info" style="display:none;">
+          <div class="p-2 rounded bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]">
+            <div class="text-sm">
+              <span class="font-semibold">Note:</span> This link connects to a network node. Configure extended properties on the network node itself.
             </div>
           </div>
         </div>
