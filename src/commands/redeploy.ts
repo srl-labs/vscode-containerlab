@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
 import { getSelectedLabNode } from "../helpers/utils";
+import { notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
 
 export async function redeploy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
@@ -9,8 +10,18 @@ export async function redeploy(node?: ClabLabTreeNode) {
     return;
   }
 
-  const redeployCmd = new ClabCommand("redeploy", node);
-  redeployCmd.run();
+  const redeployCmd = new ClabCommand(
+    "redeploy",
+    node,
+    undefined, // spinnerMsg
+    undefined, // useTerminal
+    undefined, // terminalName
+    async () => {
+      // This callback is called when the success message appears
+      await notifyCurrentTopoViewerOfCommandSuccess('redeploy');
+    }
+  );
+  await redeployCmd.run();
 }
 
 export async function redeployCleanup(node?: ClabLabTreeNode) {
@@ -35,6 +46,16 @@ export async function redeployCleanup(node?: ClabLabTreeNode) {
     }
   }
 
-  const redeployCmd = new ClabCommand("redeploy", node);
-  redeployCmd.run(["-c"]);
+  const redeployCmd = new ClabCommand(
+    "redeploy",
+    node,
+    undefined, // spinnerMsg
+    undefined, // useTerminal
+    undefined, // terminalName
+    async () => {
+      // This callback is called when the success message appears
+      await notifyCurrentTopoViewerOfCommandSuccess('redeploy');
+    }
+  );
+  await redeployCmd.run(["-c"]);
 }

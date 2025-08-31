@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { ClabCommand } from "./clabCommand";
 import { getSelectedLabNode } from "../helpers/utils";
-import { notifyTopoViewersOfStateChange } from "./graph";
+import { notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
 
 export async function destroy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
@@ -10,11 +10,18 @@ export async function destroy(node?: ClabLabTreeNode) {
     return;
   }
 
-  const destroyCmd = new ClabCommand("destroy", node);
+  const destroyCmd = new ClabCommand(
+    "destroy",
+    node,
+    undefined, // spinnerMsg
+    undefined, // useTerminal
+    undefined, // terminalName
+    async () => {
+      // This callback is called when the success message appears
+      await notifyCurrentTopoViewerOfCommandSuccess('destroy');
+    }
+  );
   await destroyCmd.run();
-
-  // Notify active topoviewer about state change
-  await notifyTopoViewersOfLabDestruction(node);
 }
 
 export async function destroyCleanup(node?: ClabLabTreeNode) {
@@ -39,16 +46,17 @@ export async function destroyCleanup(node?: ClabLabTreeNode) {
     }
   }
 
-  const destroyCmd = new ClabCommand("destroy", node);
+  const destroyCmd = new ClabCommand(
+    "destroy",
+    node,
+    undefined, // spinnerMsg
+    undefined, // useTerminal
+    undefined, // terminalName
+    async () => {
+      // This callback is called when the success message appears
+      await notifyCurrentTopoViewerOfCommandSuccess('destroy');
+    }
+  );
   await destroyCmd.run(["-c"]);
-
-  // Notify active topoviewer about state change
-  await notifyTopoViewersOfLabDestruction(node);
 }
 
-/**
- * Notifies active topoviewers when a lab's deployment state changes
- */
-async function notifyTopoViewersOfLabDestruction(node: ClabLabTreeNode) {
-  await notifyTopoViewersOfStateChange(node.labPath.absolute, 'undeployed', false);
-}

@@ -93,6 +93,7 @@ export class Command {
     protected useSudo: boolean;
     protected spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
+    protected onSuccessCallback?: () => Promise<void>;
 
     constructor(options: CmdOptions) {
         this.command = options.command;
@@ -190,6 +191,11 @@ export class Command {
             );
 
             // If we get here, the command succeeded
+            // Call the success callback NOW, when the success message appears
+            if (this.onSuccessCallback) {
+                await this.onSuccessCallback();
+            }
+
             vscode.window
                 .showInformationMessage(this.spinnerMsg?.successMsg!, "Show Logs")
                 .then((choice) => {
@@ -198,7 +204,7 @@ export class Command {
                     }
                 });
 
-            vscode.commands.executeCommand("containerlab.refresh");
+            await vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
             const command = this.useSudo ? cmd[2] : cmd[1];
             const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;

@@ -1,10 +1,6 @@
-export async function notifyTopoViewersOfStateChange(
-  _labPath: string,
-  _deploymentState: 'deployed' | 'undeployed',
-  _isViewMode: boolean,
+export async function notifyCurrentTopoViewerOfCommandSuccess(
+  _commandType: 'deploy' | 'destroy' | 'redeploy'
 ) {
-  void _labPath;
-  void _deploymentState;
-  void _isViewMode;
+  void _commandType;
   // no-op stub
 }

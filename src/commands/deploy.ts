@@ -3,7 +3,7 @@ import { ClabCommand } from "./clabCommand";
 import * as vscode from "vscode";
 import { deployPopularLab } from "./deployPopular";
 import { getSelectedLabNode } from "../helpers/utils";
-import { notifyTopoViewersOfStateChange } from "./graph";
+import { notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
 
 export async function deploy(node?: ClabLabTreeNode) {
   node = await getSelectedLabNode(node);
@@ -11,11 +11,18 @@ export async function deploy(node?: ClabLabTreeNode) {
     return;
   }
 
-  const deployCmd = new ClabCommand("deploy", node);
+  const deployCmd = new ClabCommand(
+    "deploy",
+    node,
+    undefined, // spinnerMsg
+    undefined, // useTerminal
+    undefined, // terminalName
+    async () => {
+      // This callback is called when the success message appears
+      await notifyCurrentTopoViewerOfCommandSuccess('deploy');
+    }
+  );
   await deployCmd.run();
-
-  // Notify active topoviewer about state change
-  await notifyTopoViewersOfDeployment(node);
 }
 
 export async function deployCleanup(node?: ClabLabTreeNode) {
@@ -40,11 +47,18 @@ export async function deployCleanup(node?: ClabLabTreeNode) {
     }
   }
 
-  const deployCmd = new ClabCommand("deploy", node);
+  const deployCmd = new ClabCommand(
+    "deploy",
+    node,
+    undefined, // spinnerMsg
+    undefined, // useTerminal
+    undefined, // terminalName
+    async () => {
+      // This callback is called when the success message appears
+      await notifyCurrentTopoViewerOfCommandSuccess('deploy');
+    }
+  );
   await deployCmd.run(["-c"]);
-
-  // Notify active topoviewer about state change
-  await notifyTopoViewersOfDeployment(node);
 }
 
 export async function deploySpecificFile() {
@@ -95,9 +109,3 @@ export async function deploySpecificFile() {
   deploy(tempNode);
 }
 
-/**
- * Notifies active topoviewers when a lab is deployed
- */
-async function notifyTopoViewersOfDeployment(node: ClabLabTreeNode) {
-  await notifyTopoViewersOfStateChange(node.labPath.absolute, 'deployed', true);
-}

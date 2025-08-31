@@ -196,23 +196,32 @@ export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
 }
 
 /**
- * Notifies all active topoviewers that are viewing the specified lab path about state changes
+ * Notifies the current active topoviewer about successful command completion
+ * This should ONLY be called after a containerlab command has successfully completed
  */
-export async function notifyTopoViewersOfStateChange(labPath: string, deploymentState: 'deployed' | 'undeployed', isViewMode: boolean) {
-  const promises = Array.from(activeTopoViewers)
-    .filter(viewer => viewer.lastYamlFilePath === labPath)
-    .map(async (viewer) => {
-      viewer.deploymentState = deploymentState;
-      viewer.isViewMode = isViewMode;
+export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: 'deploy' | 'destroy' | 'redeploy') {
+  // Only notify the current active TopoViewer
+  if (!currentTopoViewer || !currentTopoViewerPanel) {
+    return;
+  }
 
-      if (viewer.currentPanel) {
-        try {
-          await viewer.updatePanelHtml(viewer.currentPanel);
-        } catch (error) {
-          console.error(`Failed to update topoviewer for ${labPath}:`, error);
-        }
-      }
-    });
+  try {
+    // Determine the new state based on the command
+    const newDeploymentState = (commandType === 'destroy') ? 'undeployed' : 'deployed';
+    const newViewMode = (commandType === 'destroy') ? false : true;
 
-  await Promise.all(promises);
+    // Update the viewer's state
+    currentTopoViewer.deploymentState = newDeploymentState;
+    currentTopoViewer.isViewMode = newViewMode;
+
+    // Force refresh the panel to reflect the new mode, bypassing any checks
+    if (currentTopoViewer.forceUpdateAfterCommand) {
+      await currentTopoViewer.forceUpdateAfterCommand(currentTopoViewerPanel);
+    } else {
+      // Fallback to regular update if the new method doesn't exist
+      await currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
+    }
+  } catch (error) {
+    console.error(`Failed to update topoviewer after ${commandType}:`, error);
+  }
 }

@@ -247,6 +247,18 @@ topology:
   }
 
   /**
+   * Force update panel HTML after command completion, bypassing all checks
+   */
+  public async forceUpdateAfterCommand(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
+    // Clear any mode switching flags that might block updates
+    this.isSwitchingMode = false;
+    this.isUpdating = false;
+
+    // Force the update
+    return this.updatePanelHtmlCore(panel, true);
+  }
+
+  /**
    * Updates the webview panel's HTML with the latest topology data.
    *
    * This method reads the YAML file, regenerates Cytoscape elements, updates JSON files,
@@ -1125,11 +1137,10 @@ topology:
                 { absolute: labPath, relative: '' }
               );
 
-              await vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
+              // Execute the command and wait for it to complete
+              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
+              vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
               result = `Lab deployment initiated for ${labPath}`;
-
-              // Refresh deployment state instead of forcing it
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error deploying lab: ${innerError}`;
               log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
@@ -1153,11 +1164,10 @@ topology:
                 { absolute: labPath, relative: '' }
               );
 
-              await vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
+              // Execute the command and wait for it to complete
+              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
+              vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
               result = `Lab destruction initiated for ${labPath}`;
-
-              // Refresh deployment state instead of forcing it
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error destroying lab: ${innerError}`;
               log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
@@ -1181,11 +1191,10 @@ topology:
                 { absolute: labPath, relative: '' }
               );
 
-              await vscode.commands.executeCommand('containerlab.lab.deploy.cleanup', tempNode);
+              // Execute the command and wait for it to complete
+              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
+              vscode.commands.executeCommand('containerlab.lab.deploy.cleanup', tempNode);
               result = `Lab deployment with cleanup initiated for ${labPath}`;
-
-              // Refresh deployment state instead of forcing it
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error deploying lab with cleanup: ${innerError}`;
               log.error(`Error deploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
@@ -1209,11 +1218,10 @@ topology:
                 { absolute: labPath, relative: '' }
               );
 
-              await vscode.commands.executeCommand('containerlab.lab.destroy.cleanup', tempNode);
+              // Execute the command and wait for it to complete
+              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
+              vscode.commands.executeCommand('containerlab.lab.destroy.cleanup', tempNode);
               result = `Lab destruction with cleanup initiated for ${labPath}`;
-
-              // Refresh deployment state instead of forcing it
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error destroying lab with cleanup: ${innerError}`;
               log.error(`Error destroying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
@@ -1237,11 +1245,9 @@ topology:
                 { absolute: labPath, relative: '' }
               );
 
-              await vscode.commands.executeCommand('containerlab.lab.redeploy', tempNode);
+              // Execute the command and wait for it to complete
+              vscode.commands.executeCommand('containerlab.lab.redeploy', tempNode);
               result = `Lab redeploy initiated for ${labPath}`;
-
-              // Refresh deployment state instead of forcing it
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error redeploying lab: ${innerError}`;
               log.error(`Error redeploying lab: ${JSON.stringify(innerError, null, 2)}`);
@@ -1265,11 +1271,9 @@ topology:
                 { absolute: labPath, relative: '' }
               );
 
-              await vscode.commands.executeCommand('containerlab.lab.redeploy.cleanup', tempNode);
+              // Execute the command and wait for it to complete
+              vscode.commands.executeCommand('containerlab.lab.redeploy.cleanup', tempNode);
               result = `Lab redeploy with cleanup initiated for ${labPath}`;
-
-              // Refresh deployment state instead of forcing it
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
             } catch (innerError) {
               error = `Error redeploying lab with cleanup: ${innerError}`;
               log.error(`Error redeploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
