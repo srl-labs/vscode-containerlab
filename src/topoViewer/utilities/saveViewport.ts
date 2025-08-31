@@ -689,6 +689,7 @@ export async function saveViewport({
               (extra.extMtu !== undefined && extra.extMtu !== null && extra.extMtu !== '') ||
               (extra.extSourceMac !== undefined && extra.extSourceMac !== null && extra.extSourceMac !== '') ||
               (extra.extTargetMac !== undefined && extra.extTargetMac !== null && extra.extTargetMac !== '') ||
+              (extra.extMac !== undefined && extra.extMac !== null && extra.extMac !== '') ||
               (extra.extHostInterface !== undefined && extra.extHostInterface !== null && extra.extHostInterface !== '') ||
               (extra.extRemote !== undefined && extra.extRemote !== null && extra.extRemote !== '') ||
               (extra.extVni !== undefined && extra.extVni !== null && extra.extVni !== '') ||

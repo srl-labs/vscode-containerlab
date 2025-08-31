@@ -492,7 +492,7 @@ export class ManagerViewportPanels {
     }
 
     // Initialize network type filterable dropdown
-    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'bridge', 'ovs-bridge'];
+    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy', 'bridge', 'ovs-bridge'];
     this.createFilterableDropdown(
       'panel-network-type-dropdown-container',
       networkTypeOptions,
@@ -553,6 +553,25 @@ export class ManagerViewportPanels {
 
     // Initialize extended properties from node's extraData
     const extraData = nodeData.extraData || {};
+    // Fallback: if adaptor didn’t seed node extraData for single-endpoint links,
+    // derive from a connected edge’s extraData to prefill the panel
+    const fallbackFromEdge = () => {
+      const edges = node.connectedEdges();
+      for (let i = 0; i < edges.length; i++) {
+        const e = edges[i];
+        const ed = e.data('extraData') || {};
+        // Prefer values that exist on the edge
+        const fb: any = {};
+        if (ed.extMac) fb.extMac = ed.extMac;
+        if (ed.extMtu !== undefined && ed.extMtu !== '') fb.extMtu = ed.extMtu;
+        if (ed.extVars) fb.extVars = ed.extVars;
+        if (ed.extLabels) fb.extLabels = ed.extLabels;
+        if (Object.keys(fb).length) return fb;
+      }
+      return {} as any;
+    };
+    const extraFallback = (!extraData.extMac && !extraData.extMtu && !extraData.extVars && !extraData.extLabels)
+      ? fallbackFromEdge() : {};
     const macInput = document.getElementById('panel-network-mac') as HTMLInputElement | null;
     const mtuInput = document.getElementById('panel-network-mtu') as HTMLInputElement | null;
     const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
@@ -569,24 +588,33 @@ export class ManagerViewportPanels {
     // Set initial values
     if (macInput) {
       // For network nodes, we might store MAC for the network side of the connection
-      macInput.value = extraData.extMac || '';
+      macInput.value = (extraData.extMac || extraFallback.extMac || '') as string;
     }
-    if (mtuInput) mtuInput.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
+    if (mtuInput) {
+      const mtuVal = (extraData.extMtu ?? extraFallback.extMtu);
+      mtuInput.value = (mtuVal != null && mtuVal !== '') ? String(mtuVal) : '';
+    }
     if (modeSelect) modeSelect.value = extraData.extMode || 'bridge';
     if (remoteInput) remoteInput.value = extraData.extRemote || '';
     if (vniInput) vniInput.value = extraData.extVni != null ? String(extraData.extVni) : '';
     if (udpPortInput) udpPortInput.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
 
     // Load vars as dynamic entries
-    if (extraData.extVars && typeof extraData.extVars === 'object') {
-      Object.entries(extraData.extVars).forEach(([key, value]) => {
+    const varsToLoad = (extraData.extVars && typeof extraData.extVars === 'object')
+      ? extraData.extVars
+      : (extraFallback.extVars && typeof extraFallback.extVars === 'object') ? extraFallback.extVars : undefined;
+    if (varsToLoad) {
+      Object.entries(varsToLoad).forEach(([key, value]) => {
         this.addNetworkKeyValueEntryWithValue('vars', key, String(value));
       });
     }
 
     // Load labels as dynamic entries
-    if (extraData.extLabels && typeof extraData.extLabels === 'object') {
-      Object.entries(extraData.extLabels).forEach(([key, value]) => {
+    const labelsToLoad = (extraData.extLabels && typeof extraData.extLabels === 'object')
+      ? extraData.extLabels
+      : (extraFallback.extLabels && typeof extraFallback.extLabels === 'object') ? extraFallback.extLabels : undefined;
+    if (labelsToLoad) {
+      Object.entries(labelsToLoad).forEach(([key, value]) => {
         this.addNetworkKeyValueEntryWithValue('labels', key, String(value));
       });
     }

@@ -451,7 +451,7 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
   ): CyElement[] {
     const elements: CyElement[] = [];
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge'; label: string }>();
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>();
 
     function normalizeSingleTypeToSpecialId(t: string, linkObj: any): string {
       if (t === 'host' || t === 'mgmt-net' || t === 'macvlan') {
@@ -685,6 +685,12 @@ export class TopoViewerAdaptorClab {
         } else if (nodeA.startsWith('vxlan:')) {
           const name = nodeA.substring('vxlan:'.length);
           specialNodes.set(nodeA, { type: 'vxlan', label: `vxlan:${name}` });
+        } else if (nodeA.startsWith('dummy:')) {
+          const name = nodeA.substring('dummy:'.length);
+          specialNodes.set(nodeA, { type: 'dummy', label: `dummy:${name}` });
+        } else if (nodeA === 'dummy') {
+          const { iface: ifaceA } = this.splitEndpoint(endA);
+          specialNodes.set(`dummy:${ifaceA}`, { type: 'dummy', label: `dummy:${ifaceA || 'dummy'}` });
         }
 
         if (nodeB === 'host') {
@@ -702,6 +708,12 @@ export class TopoViewerAdaptorClab {
         } else if (nodeB.startsWith('vxlan:')) {
           const name = nodeB.substring('vxlan:'.length);
           specialNodes.set(nodeB, { type: 'vxlan', label: `vxlan:${name}` });
+        } else if (nodeB.startsWith('dummy:')) {
+          const name = nodeB.substring('dummy:'.length);
+          specialNodes.set(nodeB, { type: 'dummy', label: `dummy:${name}` });
+        } else if (nodeB === 'dummy') {
+          const { iface: ifaceB } = this.splitEndpoint(endB);
+          specialNodes.set(`dummy:${ifaceB}`, { type: 'dummy', label: `dummy:${ifaceB || 'dummy'}` });
         }
 
         // Collect extended properties for special endpoints so Network Editor can load them from node.extraData
@@ -716,6 +728,7 @@ export class TopoViewerAdaptorClab {
             if (node.startsWith('macvlan:')) return node;
             if (node.startsWith('vxlan-stitch:')) return node;
             if (node.startsWith('vxlan:')) return node;
+            if (node.startsWith('dummy:')) return node;
             return null;
           };
 
@@ -848,6 +861,10 @@ export class TopoViewerAdaptorClab {
           actualSourceNode = sourceNode;
         } else if (sourceNode.startsWith('vxlan:')) {
           actualSourceNode = sourceNode;
+        } else if (sourceNode.startsWith('dummy:')) {
+          actualSourceNode = sourceNode;
+        } else if (sourceNode === 'dummy') {
+          actualSourceNode = `dummy:${sourceIface}`;
         }
 
         if (targetNode === 'host') {
@@ -860,6 +877,10 @@ export class TopoViewerAdaptorClab {
           actualTargetNode = targetNode;
         } else if (targetNode.startsWith('vxlan:')) {
           actualTargetNode = targetNode;
+        } else if (targetNode.startsWith('dummy:')) {
+          actualTargetNode = targetNode;
+        } else if (targetNode === 'dummy') {
+          actualTargetNode = `dummy:${targetIface}`;
         }
 
         const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:'))
