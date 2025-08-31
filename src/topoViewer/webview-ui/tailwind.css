@@ -416,6 +416,162 @@
     align-items: center;
   }
 
+  /* VSCode Theme Components - Reusable across all panels */
+  
+  /* VSCode-compliant checkbox styling */
+  .vscode-checkbox {
+    width: 18px;
+    height: 18px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--vscode-checkbox-background, var(--vscode-input-background));
+    border: 1px solid var(--vscode-checkbox-border, var(--vscode-input-border));
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    margin: 0;
+  }
+
+  .vscode-checkbox:hover {
+    background: var(--vscode-checkbox-background, var(--vscode-input-background));
+    border-color: var(--vscode-focusBorder);
+  }
+
+  .vscode-checkbox:checked {
+    background: var(--vscode-checkbox-background, var(--vscode-input-background));
+    border-color: var(--vscode-checkbox-border, var(--vscode-input-border));
+  }
+
+  .vscode-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--vscode-checkbox-foreground, var(--vscode-foreground));
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  .vscode-checkbox:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+  }
+
+  .checkbox-label {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--vscode-foreground);
+    user-select: none;
+    cursor: pointer;
+  }
+
+  /* VSCode-compliant label styling */
+  .vscode-label {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: var(--vscode-font-weight, normal);
+    color: var(--vscode-foreground);
+  }
+
+  /* Section headers */
+  .vscode-section-header {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: 600;
+    color: var(--vscode-foreground);
+  }
+
+  /* Dynamic entry styles for form inputs with delete buttons */
+  .dynamic-entry {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+    padding-right: 0.5rem;
+  }
+
+  .dynamic-entry input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dynamic-entry button,
+  .dynamic-delete-btn {
+    padding: 0.25rem 0.5rem;
+    background: transparent;
+    color: var(--vscode-errorForeground, var(--vscode-notificationsErrorIcon-foreground, #f48771));
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+
+  .dynamic-entry button:hover,
+  .dynamic-delete-btn:hover {
+    background: var(--vscode-inputValidation-errorBackground, rgba(244, 135, 113, 0.1));
+    border-color: var(--vscode-errorForeground, var(--vscode-notificationsErrorIcon-foreground, #f48771));
+  }
+
+  /* Panel tab navigation */
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    justify-content: space-between;
+  }
+
+  .panel-tab-button {
+    padding: 0.5rem 1rem;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: 500;
+    background-color: transparent;
+    color: var(--vscode-foreground);
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .panel-tab-button:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+
+  .panel-tab-button:focus {
+    outline: none;
+  }
+
+  .panel-tab-button.tab-active {
+    border-bottom-color: var(--vscode-activityBarBadge-background, var(--accent));
+    color: var(--vscode-activityBarBadge-background, var(--accent));
+    background-color: var(--vscode-tab-activeBackground);
+  }
+
+  /* Panel-specific font overrides */
+  .panel-editor {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+
+  .panel-editor .panel-heading {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: 600;
+  }
+
+  .panel-editor input,
+  .panel-editor select,
+  .panel-editor textarea,
+  .panel-editor button {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+
   /* Migrated from style.css */
   .panel-overlay {
     background-color: var(--vscode-editorWidget-background) !important;

@@ -179,7 +179,7 @@ export class ManagerNodeEditor {
    * Setup tab switching functionality
    */
   private setupTabSwitching(): void {
-    const tabButtons = this.panel?.querySelectorAll('.tab-button');
+    const tabButtons = this.panel?.querySelectorAll('.panel-tab-button');
     const tabContents = this.panel?.querySelectorAll('.tab-content');
 
     tabButtons?.forEach(button => {

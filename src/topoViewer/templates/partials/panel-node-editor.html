@@ -1,36 +1,36 @@
 <!-- Node Editor Panel with Tabs -->
 <div
-  class="panel panel-overlay fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
   id="panel-node-editor" style="display: none;">
 
-  <p class="panel-heading font-bold">
+  <p class="panel-heading">
     Node Properties Editor
   </p>
 
   <!-- Tab Navigation -->
-  <div class="flex border-b justify-between" style="border-color: var(--vscode-panel-border);">
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none tab-active" data-tab="basic">Basic</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="config">Configuration</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="runtime">Runtime</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="network">Network</button>
-    <button class="tab-button px-4 py-2 font-medium focus:outline-none" data-tab="advanced">Advanced</button>
+  <div class="panel-tabs">
+    <button class="panel-tab-button tab-active" data-tab="basic">Basic</button>
+    <button class="panel-tab-button" data-tab="config">Configuration</button>
+    <button class="panel-tab-button" data-tab="runtime">Runtime</button>
+    <button class="panel-tab-button" data-tab="network">Network</button>
+    <button class="panel-tab-button" data-tab="advanced">Advanced</button>
   </div>
 
   <!-- Tab Content Container -->
   <div class="p-2 max-h-[420px] overflow-y-auto">
 
     <!-- Basic Tab -->
-    <div class="panel-block tab-content hidden" id="tab-basic">
+    <div class="panel-block tab-content" id="tab-basic">
       <div class="space-y-3">
         <!-- Node Name -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Node Name</label>
+          <label class="block vscode-label mb-1">Node Name</label>
           <input type="text" id="node-name" class="input-field w-full">
         </div>
 
         <!-- Kind -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Kind</label>
+          <label class="block vscode-label mb-1">Kind</label>
           <select id="node-kind" class="input-field w-full">
             <option value="nokia_srlinux">Nokia SR Linux</option>
             <option value="nokia_sros">Nokia SR OS</option>
@@ -43,20 +43,20 @@
 
         <!-- Type -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Type</label>
+          <label class="block vscode-label mb-1">Type</label>
           <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l">
         </div>
 
         <!-- Image -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Image</label>
+          <label class="block vscode-label mb-1">Image</label>
           <input type="text" id="node-image" class="input-field w-full"
             placeholder="e.g., ghcr.io/nokia/srlinux:latest">
         </div>
 
         <!-- Group -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Group</label>
+          <label class="block vscode-label mb-1">Group</label>
           <input type="text" id="node-group" class="input-field w-full" placeholder="Optional group name">
         </div>
       </div>
@@ -67,27 +67,27 @@
       <div class="space-y-3">
         <!-- Startup Config -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Startup Config</label>
+          <label class="block vscode-label mb-1">Startup Config</label>
           <input type="text" id="node-startup-config" class="input-field w-full" placeholder="Path to config file">
           <div class="flex items-center mt-1">
-            <input type="checkbox" id="node-enforce-startup-config" class="mr-2">
-            <label for="node-enforce-startup-config" class="">Enforce startup config</label>
+            <input type="checkbox" id="node-enforce-startup-config" class="vscode-checkbox mr-2">
+            <label for="node-enforce-startup-config" class="checkbox-label">Enforce startup config</label>
           </div>
           <div class="flex items-center mt-1">
-            <input type="checkbox" id="node-suppress-startup-config" class="mr-2">
-            <label for="node-suppress-startup-config" class="">Suppress startup config</label>
+            <input type="checkbox" id="node-suppress-startup-config" class="vscode-checkbox mr-2">
+            <label for="node-suppress-startup-config" class="checkbox-label">Suppress startup config</label>
           </div>
         </div>
 
         <!-- License -->
         <div class="form-group">
-          <label class="block font-medium mb-1">License File</label>
+          <label class="block vscode-label mb-1">License File</label>
           <input type="text" id="node-license" class="input-field w-full" placeholder="Path to license file">
         </div>
 
         <!-- Binds -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Bind Mounts</label>
+          <label class="block vscode-label mb-1">Bind Mounts</label>
           <div id="node-binds-container" class="space-y-2">
             <!-- Dynamic bind entries will be added here -->
           </div>
@@ -98,7 +98,7 @@
 
         <!-- Environment Variables -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Environment Variables</label>
+          <label class="block vscode-label mb-1">Environment Variables</label>
           <div id="node-env-container" class="space-y-2">
             <!-- Dynamic env entries will be added here -->
           </div>
@@ -109,7 +109,7 @@
 
         <!-- Labels -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Labels</label>
+          <label class="block vscode-label mb-1">Labels</label>
           <div id="node-labels-container" class="space-y-2">
             <!-- Dynamic label entries will be added here -->
           </div>
@@ -125,25 +125,25 @@
       <div class="space-y-3">
         <!-- User -->
         <div class="form-group">
-          <label class="block font-medium mb-1">User</label>
+          <label class="block vscode-label mb-1">User</label>
           <input type="text" id="node-user" class="input-field w-full" placeholder="Container user">
         </div>
 
         <!-- Entrypoint -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Entrypoint</label>
+          <label class="block vscode-label mb-1">Entrypoint</label>
           <input type="text" id="node-entrypoint" class="input-field w-full" placeholder="Container entrypoint">
         </div>
 
         <!-- CMD -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Command</label>
+          <label class="block vscode-label mb-1">Command</label>
           <input type="text" id="node-cmd" class="input-field w-full" placeholder="Container command">
         </div>
 
         <!-- Exec Commands -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Exec Commands</label>
+          <label class="block vscode-label mb-1">Exec Commands</label>
           <div id="node-exec-container" class="space-y-2">
             <!-- Dynamic exec entries will be added here -->
           </div>
@@ -154,7 +154,7 @@
 
         <!-- Restart Policy -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Restart Policy</label>
+          <label class="block vscode-label mb-1">Restart Policy</label>
           <select id="node-restart-policy" class="input-field w-full">
             <option value="">Default</option>
             <option value="no">No</option>
@@ -167,14 +167,14 @@
         <!-- Auto Remove -->
         <div class="form-group">
           <div class="flex items-center">
-            <input type="checkbox" id="node-auto-remove" class="mr-2">
-            <label for="node-auto-remove" class="">Auto-remove container on exit</label>
+            <input type="checkbox" id="node-auto-remove" class="vscode-checkbox mr-2">
+            <label for="node-auto-remove" class="checkbox-label">Auto-remove container on exit</label>
           </div>
         </div>
 
         <!-- Startup Delay -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Startup Delay (seconds)</label>
+          <label class="block vscode-label mb-1">Startup Delay (seconds)</label>
           <input type="number" id="node-startup-delay" class="input-field w-full" min="0" placeholder="0">
         </div>
       </div>
@@ -185,19 +185,19 @@
       <div class="space-y-3">
         <!-- Management IPv4 -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Management IPv4</label>
+          <label class="block vscode-label mb-1">Management IPv4</label>
           <input type="text" id="node-mgmt-ipv4" class="input-field w-full" placeholder="e.g., 172.20.20.100">
         </div>
 
         <!-- Management IPv6 -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Management IPv6</label>
+          <label class="block vscode-label mb-1">Management IPv6</label>
           <input type="text" id="node-mgmt-ipv6" class="input-field w-full" placeholder="e.g., 2001:db8::100">
         </div>
 
         <!-- Network Mode -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Network Mode</label>
+          <label class="block vscode-label mb-1">Network Mode</label>
           <select id="node-network-mode" class="input-field w-full">
             <option value="">Default (bridge)</option>
             <option value="host">Host</option>
@@ -207,7 +207,7 @@
 
         <!-- Ports -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Port Mappings</label>
+          <label class="block vscode-label mb-1">Port Mappings</label>
           <div id="node-ports-container" class="space-y-2">
             <!-- Dynamic port entries will be added here -->
           </div>
@@ -218,7 +218,7 @@
 
         <!-- DNS Configuration -->
         <div class="form-group">
-          <label class="block font-medium mb-1">DNS Servers</label>
+          <label class="block vscode-label mb-1">DNS Servers</label>
           <div id="node-dns-servers-container" class="space-y-2">
             <!-- Dynamic DNS server entries will be added here -->
           </div>
@@ -229,7 +229,7 @@
 
         <!-- Aliases -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Network Aliases</label>
+          <label class="block vscode-label mb-1">Network Aliases</label>
           <div id="node-aliases-container" class="space-y-2">
             <!-- Dynamic alias entries will be added here -->
           </div>
@@ -245,40 +245,40 @@
       <div class="space-y-3">
         <!-- Resources Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
-          <h3 class="font-semibold mb-2">Resource Limits</h3>
+          <h3 class="vscode-section-header mb-2">Resource Limits</h3>
 
           <!-- Memory -->
           <div class="form-group">
-            <label class="block font-medium mb-1">Memory Limit</label>
+            <label class="block vscode-label mb-1">Memory Limit</label>
             <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
           </div>
 
           <!-- CPU -->
           <div class="form-group">
-            <label class="block font-medium mb-1">CPU Limit</label>
+            <label class="block vscode-label mb-1">CPU Limit</label>
             <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0" placeholder="e.g., 1.5">
           </div>
 
           <!-- CPU Set -->
           <div class="form-group">
-            <label class="block font-medium mb-1">CPU Set</label>
+            <label class="block vscode-label mb-1">CPU Set</label>
             <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
           </div>
 
           <!-- Shared Memory Size -->
           <div class="form-group">
-            <label class="block font-medium mb-1">Shared Memory Size</label>
+            <label class="block vscode-label mb-1">Shared Memory Size</label>
             <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
           </div>
         </div>
 
         <!-- Capabilities Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
-          <h3 class="font-semibold mb-2">Capabilities</h3>
+          <h3 class="vscode-section-header mb-2">Capabilities</h3>
 
           <!-- Cap Add -->
           <div class="form-group">
-            <label class="block font-medium mb-1">Add Capabilities</label>
+            <label class="block vscode-label mb-1">Add Capabilities</label>
             <div id="node-cap-add-container" class="space-y-2">
               <!-- Dynamic capability entries will be added here -->
             </div>
@@ -290,7 +290,7 @@
 
         <!-- Sysctls Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
-          <h3 class="font-semibold mb-2">Sysctls</h3>
+          <h3 class="vscode-section-header mb-2">Sysctls</h3>
 
           <div class="form-group">
             <div id="node-sysctls-container" class="space-y-2">
@@ -304,7 +304,7 @@
 
         <!-- Devices Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
-          <h3 class="font-semibold mb-2">Devices</h3>
+          <h3 class="vscode-section-header mb-2">Devices</h3>
 
           <div class="form-group">
             <div id="node-devices-container" class="space-y-2">
@@ -318,18 +318,18 @@
 
         <!-- Certificate Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
-          <h3 class="font-semibold mb-2">TLS Certificate</h3>
+          <h3 class="vscode-section-header mb-2">TLS Certificate</h3>
 
           <div class="form-group">
             <div class="flex items-center">
-              <input type="checkbox" id="node-cert-issue" class="mr-2">
-              <label for="node-cert-issue" class="">Auto-generate TLS certificate</label>
+              <input type="checkbox" id="node-cert-issue" class="vscode-checkbox mr-2">
+              <label for="node-cert-issue" class="checkbox-label">Auto-generate TLS certificate</label>
             </div>
           </div>
 
           <div id="cert-options" class="mt-2 hidden">
             <div class="form-group">
-              <label class="block font-medium mb-1">Key Size</label>
+              <label class="block vscode-label mb-1">Key Size</label>
               <select id="node-cert-key-size" class="input-field w-full">
                 <option value="2048">2048</option>
                 <option value="4096">4096</option>
@@ -337,12 +337,12 @@
             </div>
 
             <div class="form-group">
-              <label class="block font-medium mb-1">Validity Duration</label>
+              <label class="block vscode-label mb-1">Validity Duration</label>
               <input type="text" id="node-cert-validity" class="input-field w-full" placeholder="e.g., 1h, 30d, 1y">
             </div>
 
             <div class="form-group">
-              <label class="block font-medium mb-1">SANs (Subject Alternative Names)</label>
+              <label class="block vscode-label mb-1">SANs (Subject Alternative Names)</label>
               <div id="node-sans-container" class="space-y-2">
                 <!-- Dynamic SAN entries will be added here -->
               </div>
@@ -355,30 +355,30 @@
 
         <!-- Healthcheck Section -->
         <div class="pb-3 mb-3">
-          <h3 class="font-semibold mb-2">Health Check</h3>
+          <h3 class="vscode-section-header mb-2">Health Check</h3>
 
           <div class="form-group">
-            <label class="block font-medium mb-1">Test Command</label>
+            <label class="block vscode-label mb-1">Test Command</label>
             <input type="text" id="node-healthcheck-test" class="input-field w-full"
               placeholder="e.g., CMD-SHELL cat /etc/os-release">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div class="form-group">
-              <label class="block font-medium mb-1">Start Period (s)</label>
+              <label class="block vscode-label mb-1">Start Period (s)</label>
               <input type="number" id="node-healthcheck-start-period" class="input-field w-full" min="0"
                 placeholder="0">
             </div>
             <div class="form-group">
-              <label class="block font-medium mb-1">Interval (s)</label>
+              <label class="block vscode-label mb-1">Interval (s)</label>
               <input type="number" id="node-healthcheck-interval" class="input-field w-full" min="0" placeholder="30">
             </div>
             <div class="form-group">
-              <label class="block font-medium mb-1">Timeout (s)</label>
+              <label class="block vscode-label mb-1">Timeout (s)</label>
               <input type="number" id="node-healthcheck-timeout" class="input-field w-full" min="0" placeholder="30">
             </div>
             <div class="form-group">
-              <label class="block font-medium mb-1">Retries</label>
+              <label class="block vscode-label mb-1">Retries</label>
               <input type="number" id="node-healthcheck-retries" class="input-field w-full" min="0" placeholder="3">
             </div>
           </div>
@@ -386,7 +386,7 @@
 
         <!-- Image Pull Policy -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Image Pull Policy</label>
+          <label class="block vscode-label mb-1">Image Pull Policy</label>
           <select id="node-image-pull-policy" class="input-field w-full">
             <option value="">Default (IfNotPresent)</option>
             <option value="IfNotPresent">If Not Present</option>
@@ -397,7 +397,7 @@
 
         <!-- Runtime -->
         <div class="form-group">
-          <label class="block font-medium mb-1">Container Runtime</label>
+          <label class="block vscode-label mb-1">Container Runtime</label>
           <select id="node-runtime" class="input-field w-full">
             <option value="">Default (docker)</option>
             <option value="docker">Docker</option>
@@ -420,97 +420,3 @@
   </div>
 
 </div>
-
-<style>
-  /* Ensure all elements use VSCode font settings */
-  #panel-node-editor {
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-  }
-
-  /* Default: all panel-blocks get a bottom border */
-  #panel-node-editor .panel-block {
-    border-bottom: 1px solid var(--border);
-  }
-
-  /* Only the footer (direct child of .panel) should drop its bottom border */
-  #panel-node-editor>.panel-block:last-child {
-    border-bottom: 0;
-  }
-
-  #panel-node-editor input,
-  #panel-node-editor select,
-  #panel-node-editor textarea,
-  #panel-node-editor button,
-  #panel-node-editor label {
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-  }
-
-  /* Tab button styles using VSCode theme variables */
-  .tab-button {
-    border-bottom: 2px solid transparent;
-    background-color: transparent;
-    color: var(--vscode-foreground);
-    transition: all 0.2s ease;
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-  }
-
-  .tab-button:hover {
-    background-color: var(--vscode-list-hoverBackground);
-    color: var(--vscode-foreground);
-  }
-
-  .tab-button.tab-active {
-    border-bottom-color: var(--vscode-activityBarBadge-background, var(--accent));
-    color: var(--vscode-activityBarBadge-background, var(--accent));
-    background-color: var(--vscode-tab-activeBackground);
-  }
-
-  /* Dynamic entry styles with better spacing */
-  .dynamic-entry {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    width: 100%;
-    padding-right: 0.5rem;
-  }
-
-  .dynamic-entry input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .dynamic-entry button {
-    padding: 0.25rem 0.5rem;
-    background: var(--vscode-inputValidation-errorBackground, #ef4444);
-    color: var(--vscode-inputValidation-errorForeground, white);
-    border: 1px solid var(--vscode-inputValidation-errorBorder, #ef4444);
-    border-radius: 0.25rem;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: opacity 0.2s ease;
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-  }
-
-  .dynamic-entry button:hover {
-    opacity: 0.8;
-  }
-
-  /* Container styles for dynamic entries */
-  #node-binds-container,
-  #node-env-container,
-  #node-labels-container,
-  #node-exec-container,
-  #node-ports-container,
-  #node-dns-servers-container,
-  #node-aliases-container,
-  #node-cap-add-container,
-  #node-sysctls-container,
-  #node-devices-container,
-  #node-sans-container {
-    padding-right: 0.25rem;
-  }
-</style>
