@@ -77,16 +77,26 @@
           <input type="number" id="panel-link-ext-mtu" class="input-field w-full" placeholder="e.g., 1500">
         </div>
 
-        <!-- Vars / Labels (JSON) -->
+        <!-- Vars -->
         <div class="form-group">
-          <label class="block vscode-label mb-1">Vars (JSON)</label>
-          <textarea id="panel-link-ext-vars" class="input-field w-full" rows="3" placeholder='e.g., {"foo": "bar"}'></textarea>
-          <div id="panel-link-ext-vars-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
+          <label class="block vscode-label mb-1">Vars</label>
+          <div id="panel-link-ext-vars-container" class="space-y-2">
+            <!-- Dynamic var entries will be added here -->
+          </div>
+          <button class="btn btn-small mt-2" onclick="addLinkVarEntry()">
+            <i class="fas fa-plus mr-1"></i> Add Var
+          </button>
         </div>
+        
+        <!-- Labels -->
         <div class="form-group">
-          <label class="block vscode-label mb-1">Labels (JSON)</label>
-          <textarea id="panel-link-ext-labels" class="input-field w-full" rows="3" placeholder='e.g., {"role": "primary"}'></textarea>
-          <div id="panel-link-ext-labels-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
+          <label class="block vscode-label mb-1">Labels</label>
+          <div id="panel-link-ext-labels-container" class="space-y-2">
+            <!-- Dynamic label entries will be added here -->
+          </div>
+          <button class="btn btn-small mt-2" onclick="addLinkLabelEntry()">
+            <i class="fas fa-plus mr-1"></i> Add Label
+          </button>
         </div>
 
         <!-- Info message for non-veth links -->

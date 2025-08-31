@@ -79,18 +79,26 @@
           </div>
         </div>
         
-        <!-- Vars (JSON) -->
+        <!-- Vars -->
         <div class="form-group">
-          <label class="block vscode-label mb-1">Vars (JSON)</label>
-          <textarea class="input-field w-full" id="panel-network-vars" rows="2" placeholder='{"key": "value"}'></textarea>
-          <div id="panel-network-vars-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
+          <label class="block vscode-label mb-1">Vars</label>
+          <div id="panel-network-vars-container" class="space-y-2">
+            <!-- Dynamic var entries will be added here -->
+          </div>
+          <button class="btn btn-small mt-2" onclick="addNetworkVarEntry()">
+            <i class="fas fa-plus mr-1"></i> Add Var
+          </button>
         </div>
         
-        <!-- Labels (JSON) -->
+        <!-- Labels -->
         <div class="form-group">
-          <label class="block vscode-label mb-1">Labels (JSON)</label>
-          <textarea class="input-field w-full" id="panel-network-labels" rows="2" placeholder='{"role": "primary"}'></textarea>
-          <div id="panel-network-labels-error" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1" style="display:none;">Invalid JSON</div>
+          <label class="block vscode-label mb-1">Labels</label>
+          <div id="panel-network-labels-container" class="space-y-2">
+            <!-- Dynamic label entries will be added here -->
+          </div>
+          <button class="btn btn-small mt-2" onclick="addNetworkLabelEntry()">
+            <i class="fas fa-plus mr-1"></i> Add Label
+          </button>
         </div>
 
         <!-- Buttons -->

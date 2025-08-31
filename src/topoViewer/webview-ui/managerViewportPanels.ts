@@ -24,6 +24,204 @@ export class ManagerViewportPanels {
   private panelNodeEditorTopoViewerRole: string = "pe";
   private nodeSchemaData: any = null;
   private panelNodeEditorNode: cytoscape.NodeSingular | null = null;
+
+  // Dynamic entry counters for network and link editors
+  private networkDynamicEntryCounters = new Map<string, number>();
+  private linkDynamicEntryCounters = new Map<string, number>();
+
+  /**
+   * Initialize global functions for dynamic entry management
+   */
+  private initializeDynamicEntryHandlers(): void {
+    // Network Editor handlers
+    (window as any).addNetworkVarEntry = () => this.addNetworkKeyValueEntry('vars', 'key', 'value');
+    (window as any).addNetworkLabelEntry = () => this.addNetworkKeyValueEntry('labels', 'label-key', 'label-value');
+    (window as any).removeNetworkEntry = (containerName: string, entryId: number) => {
+      this.removeNetworkEntry(containerName, entryId);
+      return false;
+    };
+
+    // Link Editor handlers
+    (window as any).addLinkVarEntry = () => this.addLinkKeyValueEntry('vars', 'key', 'value');
+    (window as any).addLinkLabelEntry = () => this.addLinkKeyValueEntry('labels', 'label-key', 'label-value');
+    (window as any).removeLinkEntry = (containerName: string, entryId: number) => {
+      this.removeLinkEntry(containerName, entryId);
+      return false;
+    };
+  }
+
+  /**
+   * Add a key-value entry for Network Editor
+   */
+  private addNetworkKeyValueEntry(containerName: string, keyPlaceholder: string, valuePlaceholder: string): void {
+    const container = document.getElementById(`panel-network-${containerName}-container`);
+    if (!container) return;
+
+    const count = (this.networkDynamicEntryCounters.get(containerName) || 0) + 1;
+    this.networkDynamicEntryCounters.set(containerName, count);
+
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'dynamic-entry';
+    entryDiv.id = `network-${containerName}-entry-${count}`;
+
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'input-field';
+    keyInput.placeholder = keyPlaceholder;
+    keyInput.setAttribute('data-field', `network-${containerName}-key`);
+
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.className = 'input-field';
+    valueInput.placeholder = valuePlaceholder;
+    valueInput.setAttribute('data-field', `network-${containerName}-value`);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dynamic-delete-btn';
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.onclick = () => this.removeNetworkEntry(containerName, count);
+
+    entryDiv.appendChild(keyInput);
+    entryDiv.appendChild(valueInput);
+    entryDiv.appendChild(button);
+    container.appendChild(entryDiv);
+  }
+
+  /**
+   * Add a key-value entry with value for Network Editor
+   */
+  private addNetworkKeyValueEntryWithValue(containerName: string, key: string, value: string): void {
+    const container = document.getElementById(`panel-network-${containerName}-container`);
+    if (!container) return;
+
+    const count = (this.networkDynamicEntryCounters.get(containerName) || 0) + 1;
+    this.networkDynamicEntryCounters.set(containerName, count);
+
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'dynamic-entry';
+    entryDiv.id = `network-${containerName}-entry-${count}`;
+
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'input-field';
+    keyInput.value = key;
+    keyInput.setAttribute('data-field', `network-${containerName}-key`);
+
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.className = 'input-field';
+    valueInput.value = value;
+    valueInput.setAttribute('data-field', `network-${containerName}-value`);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dynamic-delete-btn';
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.onclick = () => this.removeNetworkEntry(containerName, count);
+
+    entryDiv.appendChild(keyInput);
+    entryDiv.appendChild(valueInput);
+    entryDiv.appendChild(button);
+    container.appendChild(entryDiv);
+  }
+
+  /**
+   * Remove a Network Editor entry
+   */
+  private removeNetworkEntry(containerName: string, entryId: number): void {
+    const entry = document.getElementById(`network-${containerName}-entry-${entryId}`);
+    if (entry) {
+      entry.remove();
+    }
+  }
+
+  /**
+   * Add a key-value entry for Link Editor
+   */
+  private addLinkKeyValueEntry(containerName: string, keyPlaceholder: string, valuePlaceholder: string): void {
+    const container = document.getElementById(`panel-link-ext-${containerName}-container`);
+    if (!container) return;
+
+    const count = (this.linkDynamicEntryCounters.get(containerName) || 0) + 1;
+    this.linkDynamicEntryCounters.set(containerName, count);
+
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'dynamic-entry';
+    entryDiv.id = `link-${containerName}-entry-${count}`;
+
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'input-field';
+    keyInput.placeholder = keyPlaceholder;
+    keyInput.setAttribute('data-field', `link-${containerName}-key`);
+
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.className = 'input-field';
+    valueInput.placeholder = valuePlaceholder;
+    valueInput.setAttribute('data-field', `link-${containerName}-value`);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dynamic-delete-btn';
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.onclick = () => this.removeLinkEntry(containerName, count);
+
+    entryDiv.appendChild(keyInput);
+    entryDiv.appendChild(valueInput);
+    entryDiv.appendChild(button);
+    container.appendChild(entryDiv);
+  }
+
+  /**
+   * Add a key-value entry with value for Link Editor
+   */
+  private addLinkKeyValueEntryWithValue(containerName: string, key: string, value: string): void {
+    const container = document.getElementById(`panel-link-ext-${containerName}-container`);
+    if (!container) return;
+
+    const count = (this.linkDynamicEntryCounters.get(containerName) || 0) + 1;
+    this.linkDynamicEntryCounters.set(containerName, count);
+
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'dynamic-entry';
+    entryDiv.id = `link-${containerName}-entry-${count}`;
+
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.className = 'input-field';
+    keyInput.value = key;
+    keyInput.setAttribute('data-field', `link-${containerName}-key`);
+
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.className = 'input-field';
+    valueInput.value = value;
+    valueInput.setAttribute('data-field', `link-${containerName}-value`);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dynamic-delete-btn';
+    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.onclick = () => this.removeLinkEntry(containerName, count);
+
+    entryDiv.appendChild(keyInput);
+    entryDiv.appendChild(valueInput);
+    entryDiv.appendChild(button);
+    container.appendChild(entryDiv);
+  }
+
+  /**
+   * Remove a Link Editor entry
+   */
+  private removeLinkEntry(containerName: string, entryId: number): void {
+    const entry = document.getElementById(`link-${containerName}-entry-${entryId}`);
+    if (entry) {
+      entry.remove();
+    }
+  }
+
   /**
    * Creates an instance of ManagerViewportPanels.
    * @param saveManager - The ManagerSaveTopo instance.
@@ -35,6 +233,7 @@ export class ManagerViewportPanels {
     ) {
       this.saveManager = saveManager;
       this.cy = cy;
+      this.initializeDynamicEntryHandlers(); // Initialize dynamic entry handlers
       this.toggleHidePanels("cy"); // Initialize the toggle for hiding panels.
     }
 
@@ -360,8 +559,12 @@ export class ManagerViewportPanels {
     const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
     const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
     const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
-    const varsInput = document.getElementById('panel-network-vars') as HTMLTextAreaElement | null;
-    const labelsInput = document.getElementById('panel-network-labels') as HTMLTextAreaElement | null;
+    // Clear and reset dynamic entry containers
+    const varsContainer = document.getElementById('panel-network-vars-container');
+    const labelsContainer = document.getElementById('panel-network-labels-container');
+    if (varsContainer) varsContainer.innerHTML = '';
+    if (labelsContainer) labelsContainer.innerHTML = '';
+    this.networkDynamicEntryCounters.clear();
 
     // Set initial values
     if (macInput) {
@@ -373,8 +576,20 @@ export class ManagerViewportPanels {
     if (remoteInput) remoteInput.value = extraData.extRemote || '';
     if (vniInput) vniInput.value = extraData.extVni != null ? String(extraData.extVni) : '';
     if (udpPortInput) udpPortInput.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
-    if (varsInput) varsInput.value = extraData.extVars ? JSON.stringify(extraData.extVars, null, 2) : '';
-    if (labelsInput) labelsInput.value = extraData.extLabels ? JSON.stringify(extraData.extLabels, null, 2) : '';
+
+    // Load vars as dynamic entries
+    if (extraData.extVars && typeof extraData.extVars === 'object') {
+      Object.entries(extraData.extVars).forEach(([key, value]) => {
+        this.addNetworkKeyValueEntryWithValue('vars', key, String(value));
+      });
+    }
+
+    // Load labels as dynamic entries
+    if (extraData.extLabels && typeof extraData.extLabels === 'object') {
+      Object.entries(extraData.extLabels).forEach(([key, value]) => {
+        this.addNetworkKeyValueEntryWithValue('labels', key, String(value));
+      });
+    }
 
     // Show/hide sections based on network type
     this.updateNetworkEditorFields(networkType);
@@ -716,10 +931,13 @@ export class ManagerViewportPanels {
     const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
     const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
     const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
-    const varsEl = document.getElementById('panel-link-ext-vars') as HTMLTextAreaElement | null;
-    const labelsEl = document.getElementById('panel-link-ext-labels') as HTMLTextAreaElement | null;
-    const varsErrEl = document.getElementById('panel-link-ext-vars-error') as HTMLElement | null;
-    const labelsErrEl = document.getElementById('panel-link-ext-labels-error') as HTMLElement | null;
+
+    // Clear and reset dynamic entry containers for link editor
+    const varsContainer = document.getElementById('panel-link-ext-vars-container');
+    const labelsContainer = document.getElementById('panel-link-ext-labels-container');
+    if (varsContainer) varsContainer.innerHTML = '';
+    if (labelsContainer) labelsContainer.innerHTML = '';
+    this.linkDynamicEntryCounters.clear();
 
     // Show info message for non-veth links
     const nonVethInfo = document.getElementById('panel-link-ext-non-veth-info') as HTMLElement | null;
@@ -745,8 +963,20 @@ export class ManagerViewportPanels {
       if (srcMacEl) srcMacEl.value = extraData.extSrcMac || '';
       if (tgtMacEl) tgtMacEl.value = extraData.extTgtMac || '';
       if (mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
-      if (varsEl) varsEl.value = extraData.extVars ? JSON.stringify(extraData.extVars, null, 2) : '';
-      if (labelsEl) labelsEl.value = extraData.extLabels ? JSON.stringify(extraData.extLabels, null, 2) : '';
+
+      // Load vars as dynamic entries
+      if (extraData.extVars && typeof extraData.extVars === 'object') {
+        Object.entries(extraData.extVars).forEach(([key, value]) => {
+          this.addLinkKeyValueEntryWithValue('vars', key, String(value));
+        });
+      }
+
+      // Load labels as dynamic entries
+      if (extraData.extLabels && typeof extraData.extLabels === 'object') {
+        Object.entries(extraData.extLabels).forEach(([key, value]) => {
+          this.addLinkKeyValueEntryWithValue('labels', key, String(value));
+        });
+      }
     }
 
     // Initial validation banner if adaptor provided errors
@@ -785,7 +1015,7 @@ export class ManagerViewportPanels {
     };
 
     const attachRevalidate = (el: HTMLElement | null) => { if (!el) return; el.addEventListener('input', () => { renderErrors(validate()); }); };
-    [mtuEl, varsEl, labelsEl].forEach(el => attachRevalidate(el as any));
+    [mtuEl].forEach(el => attachRevalidate(el as any));
 
     // Initial validation
     renderErrors(validate());
@@ -799,19 +1029,27 @@ export class ManagerViewportPanels {
         if (errsNow.length) { renderErrors(errsNow); return; }
         // Use the inferred type for validation (only veth links editable here)
 
-        // JSON validation
-        let parsedVars: any = undefined;
-        let parsedLabels: any = undefined;
-        if (varsErrEl) varsErrEl.style.display = 'none';
-        if (labelsErrEl) labelsErrEl.style.display = 'none';
-        if (varsEl && varsEl.value.trim() !== '') {
-          try { parsedVars = JSON.parse(varsEl.value); }
-          catch { if (varsErrEl) varsErrEl.style.display = 'block'; return; }
-        }
-        if (labelsEl && labelsEl.value.trim() !== '') {
-          try { parsedLabels = JSON.parse(labelsEl.value); }
-          catch { if (labelsErrEl) labelsErrEl.style.display = 'block'; return; }
-        }
+        // Collect vars from dynamic entries
+        const varsEntries = document.querySelectorAll('[id^="link-vars-entry-"]');
+        const parsedVars: Record<string, string> = {};
+        varsEntries.forEach(entry => {
+          const keyInput = entry.querySelector('[data-field="link-vars-key"]') as HTMLInputElement;
+          const valueInput = entry.querySelector('[data-field="link-vars-value"]') as HTMLInputElement;
+          if (keyInput && valueInput && keyInput.value.trim()) {
+            parsedVars[keyInput.value.trim()] = valueInput.value;
+          }
+        });
+
+        // Collect labels from dynamic entries
+        const labelsEntries = document.querySelectorAll('[id^="link-labels-entry-"]');
+        const parsedLabels: Record<string, string> = {};
+        labelsEntries.forEach(entry => {
+          const keyInput = entry.querySelector('[data-field="link-labels-key"]') as HTMLInputElement;
+          const valueInput = entry.querySelector('[data-field="link-labels-value"]') as HTMLInputElement;
+          if (keyInput && valueInput && keyInput.value.trim()) {
+            parsedLabels[keyInput.value.trim()] = valueInput.value;
+          }
+        });
 
         const current = edge.data();
         const updatedExtra = { ...(current.extraData || {}) } as any;
@@ -828,8 +1066,19 @@ export class ManagerViewportPanels {
         if (srcMacEl) updatedExtra.extSourceMac = srcMacEl.value.trim() || undefined;
         if (tgtMacEl) updatedExtra.extTargetMac = tgtMacEl.value.trim() || undefined;
         if (mtuEl) updatedExtra.extMtu = mtuEl.value ? Number(mtuEl.value) : undefined;
-        if (varsEl) updatedExtra.extVars = parsedVars;
-        if (labelsEl) updatedExtra.extLabels = parsedLabels;
+
+        // Set vars and labels only if they have entries
+        if (Object.keys(parsedVars).length > 0) {
+          updatedExtra.extVars = parsedVars;
+        } else {
+          updatedExtra.extVars = undefined;
+        }
+
+        if (Object.keys(parsedLabels).length > 0) {
+          updatedExtra.extLabels = parsedLabels;
+        } else {
+          updatedExtra.extLabels = undefined;
+        }
 
         // No per-type fields in link editor anymore - they're in network editor
 
@@ -954,8 +1203,6 @@ export class ManagerViewportPanels {
     const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
     const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
     const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
-    const varsInput = document.getElementById('panel-network-vars') as HTMLTextAreaElement | null;
-    const labelsInput = document.getElementById('panel-network-labels') as HTMLTextAreaElement | null;
 
     const currentData = targetNode.data();
     const oldId = currentData.id as string;
@@ -976,20 +1223,32 @@ export class ManagerViewportPanels {
     if (macInput && macInput.value) extendedData.extMac = macInput.value;
     if (mtuInput && mtuInput.value) extendedData.extMtu = Number(mtuInput.value);
 
-    // Parse JSON fields
-    if (varsInput && varsInput.value.trim()) {
-      try {
-        extendedData.extVars = JSON.parse(varsInput.value);
-      } catch {
-        // Invalid JSON, ignore
+    // Collect vars from dynamic entries
+    const varsEntries = document.querySelectorAll('[id^="network-vars-entry-"]');
+    const vars: Record<string, string> = {};
+    varsEntries.forEach(entry => {
+      const keyInput = entry.querySelector('[data-field="network-vars-key"]') as HTMLInputElement;
+      const valueInput = entry.querySelector('[data-field="network-vars-value"]') as HTMLInputElement;
+      if (keyInput && valueInput && keyInput.value.trim()) {
+        vars[keyInput.value.trim()] = valueInput.value;
       }
+    });
+    if (Object.keys(vars).length > 0) {
+      extendedData.extVars = vars;
     }
-    if (labelsInput && labelsInput.value.trim()) {
-      try {
-        extendedData.extLabels = JSON.parse(labelsInput.value);
-      } catch {
-        // Invalid JSON, ignore
+
+    // Collect labels from dynamic entries
+    const labelsEntries = document.querySelectorAll('[id^="network-labels-entry-"]');
+    const labels: Record<string, string> = {};
+    labelsEntries.forEach(entry => {
+      const keyInput = entry.querySelector('[data-field="network-labels-key"]') as HTMLInputElement;
+      const valueInput = entry.querySelector('[data-field="network-labels-value"]') as HTMLInputElement;
+      if (keyInput && valueInput && keyInput.value.trim()) {
+        labels[keyInput.value.trim()] = valueInput.value;
       }
+    });
+    if (Object.keys(labels).length > 0) {
+      extendedData.extLabels = labels;
     }
 
     // Type-specific properties
