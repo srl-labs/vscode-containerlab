@@ -206,6 +206,283 @@ export async function saveViewport({
           nodeMap.delete('type');
         }
 
+        // Handle all additional properties from enhanced editor
+        // Configuration properties
+        if (extraData['startup-config']) {
+          nodeMap.set('startup-config', doc.createNode(extraData['startup-config']));
+        } else if (nodeMap.has('startup-config')) {
+          nodeMap.delete('startup-config');
+        }
+
+        if (extraData['enforce-startup-config']) {
+          nodeMap.set('enforce-startup-config', doc.createNode(true));
+        } else if (nodeMap.has('enforce-startup-config')) {
+          nodeMap.delete('enforce-startup-config');
+        }
+
+        if (extraData['suppress-startup-config']) {
+          nodeMap.set('suppress-startup-config', doc.createNode(true));
+        } else if (nodeMap.has('suppress-startup-config')) {
+          nodeMap.delete('suppress-startup-config');
+        }
+
+        if (extraData.license) {
+          nodeMap.set('license', doc.createNode(extraData.license));
+        } else if (nodeMap.has('license')) {
+          nodeMap.delete('license');
+        }
+
+        if (extraData.binds && Array.isArray(extraData.binds) && extraData.binds.length > 0) {
+          nodeMap.set('binds', doc.createNode(extraData.binds));
+        } else if (nodeMap.has('binds')) {
+          nodeMap.delete('binds');
+        }
+
+        if (extraData.env && typeof extraData.env === 'object' && Object.keys(extraData.env).length > 0) {
+          nodeMap.set('env', doc.createNode(extraData.env));
+        } else if (nodeMap.has('env')) {
+          nodeMap.delete('env');
+        }
+
+        if (extraData['env-files'] && Array.isArray(extraData['env-files']) && extraData['env-files'].length > 0) {
+          nodeMap.set('env-files', doc.createNode(extraData['env-files']));
+        } else if (nodeMap.has('env-files')) {
+          nodeMap.delete('env-files');
+        }
+
+        if (extraData.labels && typeof extraData.labels === 'object' && Object.keys(extraData.labels).length > 0) {
+          nodeMap.set('labels', doc.createNode(extraData.labels));
+        } else if (nodeMap.has('labels')) {
+          nodeMap.delete('labels');
+        }
+
+        // Runtime properties
+        if (extraData.user) {
+          nodeMap.set('user', doc.createNode(extraData.user));
+        } else if (nodeMap.has('user')) {
+          nodeMap.delete('user');
+        }
+
+        if (extraData.entrypoint) {
+          nodeMap.set('entrypoint', doc.createNode(extraData.entrypoint));
+        } else if (nodeMap.has('entrypoint')) {
+          nodeMap.delete('entrypoint');
+        }
+
+        if (extraData.cmd) {
+          nodeMap.set('cmd', doc.createNode(extraData.cmd));
+        } else if (nodeMap.has('cmd')) {
+          nodeMap.delete('cmd');
+        }
+
+        if (extraData.exec && Array.isArray(extraData.exec) && extraData.exec.length > 0) {
+          nodeMap.set('exec', doc.createNode(extraData.exec));
+        } else if (nodeMap.has('exec')) {
+          nodeMap.delete('exec');
+        }
+
+        if (extraData['restart-policy']) {
+          nodeMap.set('restart-policy', doc.createNode(extraData['restart-policy']));
+        } else if (nodeMap.has('restart-policy')) {
+          nodeMap.delete('restart-policy');
+        }
+
+        if (extraData['auto-remove']) {
+          nodeMap.set('auto-remove', doc.createNode(true));
+        } else if (nodeMap.has('auto-remove')) {
+          nodeMap.delete('auto-remove');
+        }
+
+        if (extraData['startup-delay']) {
+          nodeMap.set('startup-delay', doc.createNode(extraData['startup-delay']));
+        } else if (nodeMap.has('startup-delay')) {
+          nodeMap.delete('startup-delay');
+        }
+
+        // Network properties
+        if (extraData['mgmt-ipv4']) {
+          nodeMap.set('mgmt-ipv4', doc.createNode(extraData['mgmt-ipv4']));
+        } else if (nodeMap.has('mgmt-ipv4')) {
+          nodeMap.delete('mgmt-ipv4');
+        }
+
+        if (extraData['mgmt-ipv6']) {
+          nodeMap.set('mgmt-ipv6', doc.createNode(extraData['mgmt-ipv6']));
+        } else if (nodeMap.has('mgmt-ipv6')) {
+          nodeMap.delete('mgmt-ipv6');
+        }
+
+        if (extraData['network-mode']) {
+          nodeMap.set('network-mode', doc.createNode(extraData['network-mode']));
+        } else if (nodeMap.has('network-mode')) {
+          nodeMap.delete('network-mode');
+        }
+
+        if (extraData.ports && Array.isArray(extraData.ports) && extraData.ports.length > 0) {
+          nodeMap.set('ports', doc.createNode(extraData.ports));
+        } else if (nodeMap.has('ports')) {
+          nodeMap.delete('ports');
+        }
+
+        if (extraData.dns && typeof extraData.dns === 'object') {
+          const dnsNode = new YAML.YAMLMap();
+          if (extraData.dns.servers && Array.isArray(extraData.dns.servers)) {
+            dnsNode.set('servers', doc.createNode(extraData.dns.servers));
+          }
+          if (extraData.dns.search && Array.isArray(extraData.dns.search)) {
+            dnsNode.set('search', doc.createNode(extraData.dns.search));
+          }
+          if (extraData.dns.options && Array.isArray(extraData.dns.options)) {
+            dnsNode.set('options', doc.createNode(extraData.dns.options));
+          }
+          if (dnsNode.items.length > 0) {
+            nodeMap.set('dns', dnsNode);
+          } else if (nodeMap.has('dns')) {
+            nodeMap.delete('dns');
+          }
+        } else if (nodeMap.has('dns')) {
+          nodeMap.delete('dns');
+        }
+
+        if (extraData.aliases && Array.isArray(extraData.aliases) && extraData.aliases.length > 0) {
+          nodeMap.set('aliases', doc.createNode(extraData.aliases));
+        } else if (nodeMap.has('aliases')) {
+          nodeMap.delete('aliases');
+        }
+
+        // Advanced properties
+        if (extraData.memory) {
+          nodeMap.set('memory', doc.createNode(extraData.memory));
+        } else if (nodeMap.has('memory')) {
+          nodeMap.delete('memory');
+        }
+
+        if (extraData.cpu) {
+          nodeMap.set('cpu', doc.createNode(extraData.cpu));
+        } else if (nodeMap.has('cpu')) {
+          nodeMap.delete('cpu');
+        }
+
+        if (extraData['cpu-set']) {
+          nodeMap.set('cpu-set', doc.createNode(extraData['cpu-set']));
+        } else if (nodeMap.has('cpu-set')) {
+          nodeMap.delete('cpu-set');
+        }
+
+        if (extraData['shm-size']) {
+          nodeMap.set('shm-size', doc.createNode(extraData['shm-size']));
+        } else if (nodeMap.has('shm-size')) {
+          nodeMap.delete('shm-size');
+        }
+
+        if (extraData['cap-add'] && Array.isArray(extraData['cap-add']) && extraData['cap-add'].length > 0) {
+          nodeMap.set('cap-add', doc.createNode(extraData['cap-add']));
+        } else if (nodeMap.has('cap-add')) {
+          nodeMap.delete('cap-add');
+        }
+
+        if (extraData.sysctls && typeof extraData.sysctls === 'object' && Object.keys(extraData.sysctls).length > 0) {
+          nodeMap.set('sysctls', doc.createNode(extraData.sysctls));
+        } else if (nodeMap.has('sysctls')) {
+          nodeMap.delete('sysctls');
+        }
+
+        if (extraData.devices && Array.isArray(extraData.devices) && extraData.devices.length > 0) {
+          nodeMap.set('devices', doc.createNode(extraData.devices));
+        } else if (nodeMap.has('devices')) {
+          nodeMap.delete('devices');
+        }
+
+        // Certificate configuration
+        if (extraData.certificate && typeof extraData.certificate === 'object') {
+          const certNode = new YAML.YAMLMap();
+          if (extraData.certificate.issue) {
+            certNode.set('issue', doc.createNode(true));
+          }
+          if (extraData.certificate['key-size']) {
+            certNode.set('key-size', doc.createNode(extraData.certificate['key-size']));
+          }
+          if (extraData.certificate['validity-duration']) {
+            certNode.set('validity-duration', doc.createNode(extraData.certificate['validity-duration']));
+          }
+          if (extraData.certificate.sans && Array.isArray(extraData.certificate.sans)) {
+            certNode.set('sans', doc.createNode(extraData.certificate.sans));
+          }
+          if (certNode.items.length > 0) {
+            nodeMap.set('certificate', certNode);
+          } else if (nodeMap.has('certificate')) {
+            nodeMap.delete('certificate');
+          }
+        } else if (nodeMap.has('certificate')) {
+          nodeMap.delete('certificate');
+        }
+
+        // Healthcheck configuration
+        if (extraData.healthcheck && typeof extraData.healthcheck === 'object') {
+          const hcNode = new YAML.YAMLMap();
+          if (extraData.healthcheck.test && Array.isArray(extraData.healthcheck.test)) {
+            hcNode.set('test', doc.createNode(extraData.healthcheck.test));
+          }
+          if (extraData.healthcheck['start-period']) {
+            hcNode.set('start-period', doc.createNode(extraData.healthcheck['start-period']));
+          }
+          if (extraData.healthcheck.interval) {
+            hcNode.set('interval', doc.createNode(extraData.healthcheck.interval));
+          }
+          if (extraData.healthcheck.timeout) {
+            hcNode.set('timeout', doc.createNode(extraData.healthcheck.timeout));
+          }
+          if (extraData.healthcheck.retries) {
+            hcNode.set('retries', doc.createNode(extraData.healthcheck.retries));
+          }
+          if (hcNode.items.length > 0) {
+            nodeMap.set('healthcheck', hcNode);
+          } else if (nodeMap.has('healthcheck')) {
+            nodeMap.delete('healthcheck');
+          }
+        } else if (nodeMap.has('healthcheck')) {
+          nodeMap.delete('healthcheck');
+        }
+
+        if (extraData['image-pull-policy']) {
+          nodeMap.set('image-pull-policy', doc.createNode(extraData['image-pull-policy']));
+        } else if (nodeMap.has('image-pull-policy')) {
+          nodeMap.delete('image-pull-policy');
+        }
+
+        if (extraData.runtime) {
+          nodeMap.set('runtime', doc.createNode(extraData.runtime));
+        } else if (nodeMap.has('runtime')) {
+          nodeMap.delete('runtime');
+        }
+
+        // Stages (dependencies)
+        if (extraData.stages && typeof extraData.stages === 'object' && Object.keys(extraData.stages).length > 0) {
+          const stagesNode = new YAML.YAMLMap();
+          for (const [stageName, stageConfig] of Object.entries(extraData.stages)) {
+            const stageNode = new YAML.YAMLMap();
+            const config = stageConfig as any;
+
+            if (config['wait-for'] && Array.isArray(config['wait-for'])) {
+              stageNode.set('wait-for', doc.createNode(config['wait-for']));
+            }
+            if (config.exec && Array.isArray(config.exec)) {
+              stageNode.set('exec', doc.createNode(config.exec));
+            }
+
+            if (stageNode.items.length > 0) {
+              stagesNode.set(stageName, stageNode);
+            }
+          }
+          if (stagesNode.items.length > 0) {
+            nodeMap.set('stages', stagesNode);
+          } else if (nodeMap.has('stages')) {
+            nodeMap.delete('stages');
+          }
+        } else if (nodeMap.has('stages')) {
+          nodeMap.delete('stages');
+        }
+
         const newKey = element.data.name;
         if (nodeId !== newKey) {
           yamlNodes.set(newKey, nodeMap);

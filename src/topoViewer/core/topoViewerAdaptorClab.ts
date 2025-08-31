@@ -526,6 +526,9 @@ export class TopoViewerAdaptorClab {
             lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
             lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
+              // First, include all properties from the node definition
+              ...mergedNode,
+              // Then override with specific values we want to ensure
               clabServerUsername: 'asad',
               fqdn: `${nodeName}.${clabName}.io`,
               group: mergedNode.group ?? '',
