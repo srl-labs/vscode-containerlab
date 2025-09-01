@@ -741,10 +741,7 @@ export class ManagerViewportPanels {
         const suppressNotification = false;
         await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
 
-        // Close panel after successful save
-        if (panel) {
-          panel.style.display = 'none';
-        }
+        // Panel stays open after save for continued editing
       });
     }
   }
