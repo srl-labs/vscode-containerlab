@@ -1,10 +1,13 @@
 <!-- Network Editor Panel -->
-<div class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[500px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel" id="panel-network-editor" style="display: none;">
+<div
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
+  id="panel-network-editor" style="display: none;">
   <p class="panel-heading">
     Network Editor
   </p>
-  <div class="p-2 max-h-[420px] overflow-y-auto">
-    <div class="panel-block">
+
+  <div class="panel-block">
+    <div class="p-2 max-h-[420px] overflow-y-auto">
       <div class="space-y-3">
 
         <!-- Network Type -->
@@ -26,31 +29,35 @@
           <label class="block vscode-label mb-1">Id</label>
           <div class="text-left font-extralight text-base break-words" id="panel-network-editor-id"></div>
         </div>
-        
+
         <!-- Validation Errors -->
-        <div id="panel-network-validation-errors" class="p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]" style="display:none;">
-          <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Please fix the following errors:</div>
-          <ul id="panel-network-validation-errors-list" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1 list-disc list-inside"></ul>
+        <div id="panel-network-validation-errors"
+          class="p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]"
+          style="display:none;">
+          <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Please fix the following
+            errors:</div>
+          <ul id="panel-network-validation-errors-list"
+            class="text-[var(--vscode-editorError-foreground)] text-xs mt-1 list-disc list-inside"></ul>
         </div>
-        
+
         <!-- Divider -->
         <div class="border-t border-[var(--vscode-widget-border)] my-3"></div>
-        
+
         <!-- Extended Properties Section -->
-        <div class="text-xs text-[var(--vscode-descriptionForeground)] mb-2">Extended Properties</div>
-        
+        <div class="vscode-section-header mb-2">Extended Properties</div>
+
         <!-- MAC Address (for single endpoint connections) -->
         <div class="form-group" id="panel-network-mac-section">
           <label class="block vscode-label mb-1">MAC Address</label>
           <input type="text" class="input-field w-full" id="panel-network-mac" placeholder="e.g., 02:42:ac:11:00:01">
         </div>
-        
+
         <!-- MTU (all types) -->
         <div class="form-group">
           <label class="block vscode-label mb-1">MTU</label>
           <input type="number" class="input-field w-full" id="panel-network-mtu" placeholder="1500">
         </div>
-        
+
         <!-- Macvlan Mode (only for macvlan) -->
         <div class="form-group" id="panel-network-mode-section" style="display:none;">
           <label class="block vscode-label mb-1">Mode</label>
@@ -62,23 +69,26 @@
             <option value="source">source</option>
           </select>
         </div>
-        
+
         <!-- VXLAN fields (only for vxlan/vxlan-stitch) -->
         <div id="panel-network-vxlan-section" style="display:none;">
           <div class="form-group">
-            <label class="block vscode-label mb-1">Remote IP <span class="text-[var(--vscode-editorError-foreground)]">*</span></label>
+            <label class="block vscode-label mb-1">Remote IP <span
+                class="text-[var(--vscode-editorError-foreground)]">*</span></label>
             <input type="text" class="input-field w-full" id="panel-network-remote" placeholder="10.0.0.1">
           </div>
           <div class="form-group">
-            <label class="block vscode-label mb-1">VNI <span class="text-[var(--vscode-editorError-foreground)]">*</span></label>
+            <label class="block vscode-label mb-1">VNI <span
+                class="text-[var(--vscode-editorError-foreground)]">*</span></label>
             <input type="number" class="input-field w-full" id="panel-network-vni" placeholder="100">
           </div>
           <div class="form-group">
-            <label class="block vscode-label mb-1">UDP Port <span class="text-[var(--vscode-editorError-foreground)]">*</span></label>
+            <label class="block vscode-label mb-1">UDP Port <span
+                class="text-[var(--vscode-editorError-foreground)]">*</span></label>
             <input type="number" class="input-field w-full" id="panel-network-udp-port" placeholder="4789">
           </div>
         </div>
-        
+
         <!-- Vars -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Vars</label>
@@ -89,7 +99,7 @@
             <i class="fas fa-plus mr-1"></i> Add Var
           </button>
         </div>
-        
+
         <!-- Labels -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Labels</label>
@@ -100,16 +110,15 @@
             <i class="fas fa-plus mr-1"></i> Add Label
           </button>
         </div>
-
-        <!-- Buttons -->
-        <div class="form-group">
-          <div class="flex justify-end space-x-2">
-            <button class="btn btn-primary btn-small" id="panel-network-editor-save-button">Save</button>
-            <button class="btn btn-outlined btn-small" id="panel-network-editor-close-button">Close</button>
-          </div>
-        </div>
-
       </div>
+    </div>
+  </div>
+  <!-- Footer with Save/Cancel buttons -->
+  <div class="panel-block flex items-center">
+    <div class="w-1/5 pr-1"></div>
+    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
+      <button class="btn btn-primary btn-small" id="panel-network-editor-save-button">Save</button>
+      <button class="btn btn-outlined btn-small" id="panel-network-editor-close-button">Close</button>
     </div>
   </div>
 </div>
