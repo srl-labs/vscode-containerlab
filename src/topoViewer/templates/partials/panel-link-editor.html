@@ -1,5 +1,7 @@
 <!-- Unified Link Editor Panel (Tabbed: Basic | Extended) -->
-<div class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[560px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel" id="panel-link-editor" style="display: none;">
+<div
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[560px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
+  id="panel-link-editor" style="display: none;">
   <p class="panel-heading">Link Editor</p>
 
   <!-- Tab Navigation -->
@@ -15,56 +17,65 @@
       <div class="space-y-3">
         <!-- Link preview -->
         <div class="form-group">
-          <label class="block vscode-label mb-1">Link</label>
+          <label class="block vscode-label mb-1">Link Name</label>
           <div id="panel-link-editor-id" class="text-left font-extralight text-base break-words"></div>
         </div>
         <!-- Source Endpoint -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Source Endpoint</label>
-          <input type="text" id="panel-link-editor-source-endpoint" class="input-field w-full" placeholder="e.g., eth1, e1-1">
+          <input type="text" id="panel-link-editor-source-endpoint" class="input-field w-full"
+            placeholder="e.g., eth1, e1-1">
         </div>
         <!-- Target Endpoint -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Target Endpoint</label>
-          <input type="text" id="panel-link-editor-target-endpoint" class="input-field w-full" placeholder="e.g., eth1, e1-1">
+          <input type="text" id="panel-link-editor-target-endpoint" class="input-field w-full"
+            placeholder="e.g., eth1, e1-1">
         </div>
-        
+
       </div>
     </div>
 
     <!-- Extended Tab -->
     <div class="panel-block tab-content" id="panel-link-tab-extended" style="display:none;">
       <div class="space-y-3">
-        <!-- Link preview -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Link</label>
-          <div id="panel-link-extended-editor-id" class="text-left font-extralight text-base break-words"></div>
-        </div>
+        <!-- Basic Information Section -->
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <!-- Link preview -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Link Name</label>
+            <div id="panel-link-extended-editor-id" class="text-left font-extralight text-base break-words"></div>
+          </div>
 
-        <!-- Validation banner -->
-        <div id="panel-link-ext-errors" style="display:none;" class="my-2 p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]">
-          <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Invalid link configuration</div>
-          <div id="panel-link-ext-errors-list" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1"></div>
-        </div>
+          <!-- Validation banner -->
+          <div id="panel-link-ext-errors" style="display:none;"
+            class="my-2 p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]">
+            <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Invalid link configuration
+            </div>
+            <div id="panel-link-ext-errors-list" class="text-[var(--vscode-editorError-foreground)] text-xs mt-1"></div>
+          </div>
 
-        <!-- Type dropdown -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Type</label>
-          <div>
-            <span id="panel-link-ext-type-display" class="text-base px-2 py-1 inline-block rounded" style="background-color: var(--vscode-textBlockQuote-background); border: 1px solid var(--vscode-textBlockQuote-border);">veth</span>
-            <span class="text-xs text-[var(--vscode-descriptionForeground)] ml-2">(auto-detected)</span>
+          <!-- Type dropdown -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Type</label>
+            <div>
+              <span id="panel-link-ext-type-display" class="text-base px-2 py-1 inline-block rounded"
+                style="background-color: var(--vscode-textBlockQuote-background); border: 1px solid var(--vscode-textBlockQuote-border);">veth</span>
+              <span class="text-xs text-[var(--vscode-descriptionForeground)] ml-2">(auto-detected)</span>
+            </div>
           </div>
         </div>
 
         <!-- Common fields -->
-        <div class="border-t border-[var(--vscode-widget-border)] my-3"></div>
         <div class="form-group">
           <label class="block vscode-label mb-1">Source MAC</label>
-          <input type="text" id="panel-link-ext-src-mac" class="input-field w-full" placeholder="e.g., 02:42:ac:11:00:01">
+          <input type="text" id="panel-link-ext-src-mac" class="input-field w-full"
+            placeholder="e.g., 02:42:ac:11:00:01">
         </div>
         <div class="form-group">
           <label class="block vscode-label mb-1">Target MAC</label>
-          <input type="text" id="panel-link-ext-tgt-mac" class="input-field w-full" placeholder="e.g., 02:42:ac:11:00:02">
+          <input type="text" id="panel-link-ext-tgt-mac" class="input-field w-full"
+            placeholder="e.g., 02:42:ac:11:00:02">
         </div>
         <div class="form-group">
           <label class="block vscode-label mb-1">MTU</label>
@@ -81,7 +92,7 @@
             <i class="fas fa-plus mr-1"></i> Add Var
           </button>
         </div>
-        
+
         <!-- Labels -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Labels</label>
@@ -95,18 +106,20 @@
 
         <!-- Info message for non-veth links -->
         <div class="my-1" id="panel-link-ext-non-veth-info" style="display:none;">
-          <div class="p-2 rounded bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]">
+          <div
+            class="p-2 rounded bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]">
             <div class="text-sm">
-              <span class="font-semibold">Note:</span> This link connects to a network node. Configure extended properties on the network node itself.
+              <span class="font-semibold">Note:</span> This link connects to a network node. Configure extended
+              properties on the network node itself.
             </div>
           </div>
         </div>
 
-        
+
       </div>
     </div>
   </div>
-  
+
   <!-- Footer with Save/Cancel buttons -->
   <div class="panel-block flex items-center">
     <div class="w-1/5 pr-1"></div>

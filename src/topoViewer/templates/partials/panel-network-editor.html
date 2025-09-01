@@ -9,40 +9,38 @@
   <div class="panel-block">
     <div class="p-2 max-h-[420px] overflow-y-auto">
       <div class="space-y-3">
+        <!-- Basic Information Section -->
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
 
-        <!-- Network Type -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Network Type</label>
-          <div id="panel-network-type-dropdown-container">
-            <!-- Filterable dropdown will be inserted here -->
+          <!-- Network Type -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Network Type</label>
+            <div id="panel-network-type-dropdown-container">
+              <!-- Filterable dropdown will be inserted here -->
+            </div>
+          </div>
+
+          <!-- Interface -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Interface</label>
+            <input type="text" class="input-field w-full" id="panel-network-interface">
+          </div>
+
+          <!-- Id -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Id</label>
+            <div class="text-left font-extralight text-base break-words" id="panel-network-editor-id"></div>
+          </div>
+          <!-- Validation Errors -->
+          <div id="panel-network-validation-errors"
+            class="p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]"
+            style="display:none;">
+            <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Please fix the following
+              errors:</div>
+            <ul id="panel-network-validation-errors-list"
+              class="text-[var(--vscode-editorError-foreground)] text-xs mt-1 list-disc list-inside"></ul>
           </div>
         </div>
-
-        <!-- Interface -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Interface</label>
-          <input type="text" class="input-field w-full" id="panel-network-interface">
-        </div>
-
-        <!-- Id -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Id</label>
-          <div class="text-left font-extralight text-base break-words" id="panel-network-editor-id"></div>
-        </div>
-
-        <!-- Validation Errors -->
-        <div id="panel-network-validation-errors"
-          class="p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]"
-          style="display:none;">
-          <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">Please fix the following
-            errors:</div>
-          <ul id="panel-network-validation-errors-list"
-            class="text-[var(--vscode-editorError-foreground)] text-xs mt-1 list-disc list-inside"></ul>
-        </div>
-
-        <!-- Divider -->
-        <div class="border-t border-[var(--vscode-widget-border)] my-3"></div>
-
         <!-- Extended Properties Section -->
         <div class="vscode-section-header mb-2">Extended Properties</div>
 
