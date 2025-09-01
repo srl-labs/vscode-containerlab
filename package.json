@@ -1354,7 +1354,7 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "autoprefixer": "^10.4.21",
-    "chai": "^5.2.1",
+    "chai": "^6.0.1",
     "css-loader": "^7.1.2",
     "cytoscape": "^3.33.1",
     "cytoscape-cola": "^2.5.1",
