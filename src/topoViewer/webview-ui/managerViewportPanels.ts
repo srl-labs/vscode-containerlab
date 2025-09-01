@@ -907,8 +907,9 @@ export class ManagerViewportPanels {
 
     const panel = document.getElementById('panel-link-editor');
     const idLabel = document.getElementById('panel-link-extended-editor-id');
-    const closeBtn = document.getElementById('panel-link-extended-editor-close-button');
-    const saveBtn = document.getElementById('panel-link-extended-editor-save-button');
+    // Use unified footer buttons from the link editor panel
+    const closeBtn = document.getElementById('panel-link-editor-close-button');
+    const saveBtn = document.getElementById('panel-link-editor-save-button');
 
     if (!panel || !idLabel || !closeBtn || !saveBtn) {
       log.error('panelEdgeEditorExtended: missing required DOM elements');
@@ -986,7 +987,7 @@ export class ManagerViewportPanels {
     const banner = document.getElementById('panel-link-ext-errors') as HTMLElement | null;
     const bannerList = document.getElementById('panel-link-ext-errors-list') as HTMLElement | null;
     const setSaveDisabled = (disabled: boolean) => {
-      const btn = document.getElementById('panel-link-extended-editor-save-button') as HTMLButtonElement | null;
+      const btn = document.getElementById('panel-link-editor-save-button') as HTMLButtonElement | null;
       if (!btn) return;
       btn.disabled = disabled;
       btn.classList.toggle('opacity-50', disabled);
@@ -1061,6 +1062,19 @@ export class ManagerViewportPanels {
     saveBtn.parentNode?.replaceChild(freshSave, saveBtn);
     freshSave.addEventListener('click', async () => {
       try {
+        // Also update basic endpoints using unified Save button
+        const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
+        const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
+        const sourceNode = this.cy.getElementById(source);
+        const targetNode = this.cy.getElementById(target);
+        const sourceIsBridge = sourceNode.length > 0 &&
+          (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
+        const targetIsBridge = targetNode.length > 0 &&
+          (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
+        const newSourceEP = (sourceIsNetwork && !sourceIsBridge) ? '' : ((document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
+        const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : ((document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
+        edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
+
         const errsNow = validate();
         if (errsNow.length) { renderErrors(errsNow); return; }
         // Use the inferred type for validation (only veth links editable here)
