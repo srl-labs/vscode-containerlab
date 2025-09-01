@@ -699,6 +699,11 @@
     margin-bottom: 1rem;
   }
   
+  /* Form group utility */
+  .form-group {
+    padding-bottom: 0.5rem; /* same as Tailwind pb-2 */
+  }
+  
   .control {
     position: relative;
   }

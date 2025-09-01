@@ -246,29 +246,29 @@
         <!-- Resources Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="vscode-section-header mb-2">Resource Limits</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <!-- CPU -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">CPU Limit</label>
+              <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0" placeholder="e.g., 1.5">
+            </div>
 
-          <!-- Memory -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Memory Limit</label>
-            <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
-          </div>
+            <!-- CPU Set -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">CPU Set</label>
+              <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
+            </div>
+            <!-- Memory -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">Memory Limit</label>
+              <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
+            </div>
 
-          <!-- CPU -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">CPU Limit</label>
-            <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0" placeholder="e.g., 1.5">
-          </div>
-
-          <!-- CPU Set -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">CPU Set</label>
-            <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
-          </div>
-
-          <!-- Shared Memory Size -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Shared Memory Size</label>
-            <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
+            <!-- Shared Memory Size -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">Shared Memory Size</label>
+              <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
+            </div>
           </div>
         </div>
 
@@ -354,7 +354,7 @@
         </div>
 
         <!-- Healthcheck Section -->
-        <div class="pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="vscode-section-header mb-2">Health Check</h3>
 
           <div class="form-group">
