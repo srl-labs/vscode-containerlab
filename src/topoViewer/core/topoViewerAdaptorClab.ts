@@ -466,8 +466,8 @@ export class TopoViewerAdaptorClab {
         return `${t}:${remote}/${vni}/${udp}`;
       }
       if (t === 'dummy') {
-        const iface = linkObj?.endpoint?.interface ?? '';
-        return `dummy:${iface}`;
+        // For dummy links, use just 'dummy' as ID to avoid creating new nodes when interface changes
+        return 'dummy';
       }
       return '';
     }
@@ -687,11 +687,11 @@ export class TopoViewerAdaptorClab {
           const name = nodeA.substring('vxlan:'.length);
           specialNodes.set(nodeA, { type: 'vxlan', label: `vxlan:${name}` });
         } else if (nodeA.startsWith('dummy:')) {
-          const name = nodeA.substring('dummy:'.length);
-          specialNodes.set(nodeA, { type: 'dummy', label: `dummy:${name}` });
+          // Always use consistent 'dummy' ID
+          specialNodes.set('dummy', { type: 'dummy', label: 'dummy' });
         } else if (nodeA === 'dummy') {
-          const { iface: ifaceA } = this.splitEndpoint(endA);
-          specialNodes.set(`dummy:${ifaceA}`, { type: 'dummy', label: `dummy:${ifaceA || 'dummy'}` });
+          // Use consistent 'dummy' ID regardless of interface
+          specialNodes.set('dummy', { type: 'dummy', label: 'dummy' });
         }
 
         if (nodeB === 'host') {
@@ -710,11 +710,11 @@ export class TopoViewerAdaptorClab {
           const name = nodeB.substring('vxlan:'.length);
           specialNodes.set(nodeB, { type: 'vxlan', label: `vxlan:${name}` });
         } else if (nodeB.startsWith('dummy:')) {
-          const name = nodeB.substring('dummy:'.length);
-          specialNodes.set(nodeB, { type: 'dummy', label: `dummy:${name}` });
+          // Always use consistent 'dummy' ID
+          specialNodes.set('dummy', { type: 'dummy', label: 'dummy' });
         } else if (nodeB === 'dummy') {
-          const { iface: ifaceB } = this.splitEndpoint(endB);
-          specialNodes.set(`dummy:${ifaceB}`, { type: 'dummy', label: `dummy:${ifaceB || 'dummy'}` });
+          // Use consistent 'dummy' ID regardless of interface
+          specialNodes.set('dummy', { type: 'dummy', label: 'dummy' });
         }
 
         // Collect extended properties for special endpoints so Network Editor can load them from node.extraData
@@ -863,9 +863,11 @@ export class TopoViewerAdaptorClab {
         } else if (sourceNode.startsWith('vxlan:')) {
           actualSourceNode = sourceNode;
         } else if (sourceNode.startsWith('dummy:')) {
-          actualSourceNode = sourceNode;
+          // Always use 'dummy' as the node ID
+          actualSourceNode = 'dummy';
         } else if (sourceNode === 'dummy') {
-          actualSourceNode = `dummy:${sourceIface}`;
+          // Always use 'dummy' as the node ID
+          actualSourceNode = 'dummy';
         }
 
         if (targetNode === 'host') {
@@ -879,15 +881,17 @@ export class TopoViewerAdaptorClab {
         } else if (targetNode.startsWith('vxlan:')) {
           actualTargetNode = targetNode;
         } else if (targetNode.startsWith('dummy:')) {
-          actualTargetNode = targetNode;
+          // Always use 'dummy' as the node ID
+          actualTargetNode = 'dummy';
         } else if (targetNode === 'dummy') {
-          actualTargetNode = `dummy:${targetIface}`;
+          // Always use 'dummy' as the node ID
+          actualTargetNode = 'dummy';
         }
 
-        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:') || sourceNode.startsWith('dummy:'))
+        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:') || sourceNode.startsWith('dummy:') || sourceNode === 'dummy')
           ? actualSourceNode
           : (fullPrefix ? `${fullPrefix}-${sourceNode}` : sourceNode);
-        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('vxlan:') || targetNode.startsWith('vxlan-stitch:') || targetNode.startsWith('dummy:'))
+        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('vxlan:') || targetNode.startsWith('vxlan-stitch:') || targetNode.startsWith('dummy:') || targetNode === 'dummy')
           ? actualTargetNode
           : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
         // Get interface data (might be undefined in editor mode)
@@ -922,7 +926,8 @@ export class TopoViewerAdaptorClab {
             sourceNode.startsWith('macvlan:') ||
             sourceNode.startsWith('vxlan:') ||
             sourceNode.startsWith('vxlan-stitch:') ||
-            sourceNode.startsWith('dummy:');
+            sourceNode.startsWith('dummy:') ||
+            sourceNode === 'dummy';
 
           const targetIsSpecial =
             targetNodeData?.kind === 'bridge' ||
@@ -932,7 +937,8 @@ export class TopoViewerAdaptorClab {
             targetNode.startsWith('macvlan:') ||
             targetNode.startsWith('vxlan:') ||
             targetNode.startsWith('vxlan-stitch:') ||
-            targetNode.startsWith('dummy:');
+            targetNode.startsWith('dummy:') ||
+            targetNode === 'dummy';
 
           if (sourceIsSpecial || targetIsSpecial) {
             // For special network connections, only check the non-special side
@@ -993,8 +999,8 @@ export class TopoViewerAdaptorClab {
             name: edgeId,
             parent: '',
             topoViewerRole: 'link',
-            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('dummy:')) ? '' : sourceIface,
-            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('dummy:')) ? '' : targetIface,
+            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('dummy:') || sourceNode === 'dummy') ? '' : sourceIface,
+            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('dummy:') || targetNode === 'dummy') ? '' : targetIface,
             lat: '',
             lng: '',
             source: actualSourceNode,
