@@ -199,9 +199,11 @@
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
   }
-.panel-block:last-child {
-  border-bottom: 0;
-}
+
+  /*only the footer (last direct child of .panel) removes it */
+  .panel > .panel-block:last-child {
+    border-bottom: 0;
+  }
   
   /* Dropdown styles */
   .dropdown-menu {
