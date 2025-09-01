@@ -380,8 +380,8 @@ class TopologyWebviewController {
 
     // Create capture viewport manager with the required method
     this.captureViewportManager = {
-      viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => {
-        exportViewportAsSvg(cy);
+      viewportButtonsCaptureViewportAsSvg: async (cy: cytoscape.Core) => {
+        await exportViewportAsSvg(cy);
       }
     };
 

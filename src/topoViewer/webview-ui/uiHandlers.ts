@@ -220,7 +220,7 @@ export function viewportNodeFindEvent(): void {
 /**
  * Handle capture/screenshot functionality
  */
-export function viewportDrawerCaptureFunc(event: Event): void {
+export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
   event.preventDefault();
   try {
     if (!topoViewerState.cy) {
@@ -228,7 +228,7 @@ export function viewportDrawerCaptureFunc(event: Event): void {
       return;
     }
     const cy = topoViewerState.cy;
-    exportViewportAsSvg(cy);
+    await exportViewportAsSvg(cy);
   } catch (error) {
     log.error(`Error capturing topology: ${error}`);
   }
@@ -237,14 +237,14 @@ export function viewportDrawerCaptureFunc(event: Event): void {
 /**
  * Capture viewport as SVG - called by the navbar button
  */
-export function viewportButtonsCaptureViewportAsSvg(): void {
+export async function viewportButtonsCaptureViewportAsSvg(): Promise<void> {
   try {
     if (!topoViewerState.cy) {
       log.error('Cytoscape instance not available for SVG capture');
       return;
     }
     const cy = topoViewerState.cy;
-    exportViewportAsSvg(cy);
+    await exportViewportAsSvg(cy);
     log.info('Viewport captured as SVG');
   } catch (error) {
     log.error(`Error capturing viewport as SVG: ${error}`);
