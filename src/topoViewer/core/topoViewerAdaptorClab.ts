@@ -1023,8 +1023,8 @@ export class TopoViewerAdaptorClab {
             extRemote: linkObj?.remote ?? '',
             extVni: linkObj?.vni ?? '',
             extUdpPort: linkObj?.['udp-port'] ?? '',
-            extSourceMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[0] === 'object') ? (linkObj.endpoints[0] as any)?.mac ?? '' : '',
-            extTargetMac: (Array.isArray(linkObj?.endpoints) && typeof linkObj.endpoints[1] === 'object') ? (linkObj.endpoints[1] as any)?.mac ?? '' : '',
+            extSourceMac: (typeof endA === 'object' && endA !== null) ? (endA as any)?.mac ?? '' : '',
+            extTargetMac: (typeof endB === 'object' && endB !== null) ? (endB as any)?.mac ?? '' : '',
             // Single-endpoint extended schema MAC
             extMac: (linkObj as any)?.endpoint?.mac ?? '',
             yamlFormat: (typeof (linkObj as any)?.type === 'string' && (linkObj as any).type) ? 'extended' : 'short',
