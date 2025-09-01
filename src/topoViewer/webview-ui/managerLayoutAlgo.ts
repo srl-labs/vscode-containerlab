@@ -1,6 +1,7 @@
 import cytoscape from 'cytoscape';
 import topoViewerState from '../state';
 import { log } from '../logging/logger';
+import { loadExtension } from '../cytoscapeInstanceFactory';
 
 // Use globally registered style loader to avoid duplicating implementations
 function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
@@ -435,10 +436,18 @@ export class ManagerLayoutAlgo {
     if (el) (el as HTMLElement).style.display = 'block';
   }
 
-  public viewportDrawerLayoutGeoMap(): void {
+  public async viewportDrawerLayoutGeoMap(): Promise<void> {
     const cy = this.getCy();
     if (!cy) {
       log.error('[GeoMap] No cytoscape instance found');
+      return;
+    }
+
+    // Ensure the Cytoscape-Leaflet extension is registered (post "ludicrous speed" lazy-loading change)
+    try {
+      await loadExtension('leaflet');
+    } catch (err) {
+      log.error(`[GeoMap] Failed to load leaflet extension: ${err instanceof Error ? err.message : String(err)}`);
       return;
     }
 
@@ -659,7 +668,7 @@ export class ManagerLayoutAlgo {
     log.info('[GeoMap] Geo-positioning layout initialization complete');
   }
 
-  public viewportDrawerDisableGeoMap(): void {
+  public async viewportDrawerDisableGeoMap(options?: { skipPostLayout?: boolean }): Promise<void> {
     const cy = this.getCy();
     if (!cy || !this.isGeoMapInitialized) return;
 
@@ -713,14 +722,23 @@ export class ManagerLayoutAlgo {
 
     this.applyGeoScale(false);
 
-    cy.layout({
-      name: 'cola',
-      nodeGap: 5,
-      edgeLength: 100,
-      animate: true,
-      randomize: false,
-      maxSimulationTime: 1500
-    } as any).run();
+    // Optionally start a Cola layout after disabling Geo mode, unless skipped
+    if (!options?.skipPostLayout) {
+      try {
+        await loadExtension('cola');
+      } catch (err) {
+        log.error(`[GeoMap] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      cy.layout({
+        name: 'cola',
+        nodeGap: 5,
+        edgeLength: 100,
+        animate: true,
+        randomize: false,
+        maxSimulationTime: 1500
+      } as any).run();
+    }
 
     const overlays = document.getElementsByClassName('viewport-geo-map');
     for (let i = 0; i < overlays.length; i++) {
@@ -736,13 +754,19 @@ export class ManagerLayoutAlgo {
     loadCytoStyle(cy);
   }
 
-  public viewportDrawerLayoutForceDirected(): void {
-    this.viewportDrawerDisableGeoMap();
+  public async viewportDrawerLayoutForceDirected(): Promise<void> {
+    await this.viewportDrawerDisableGeoMap();
     const cy = this.getCy();
     if (!cy) return;
 
     const edgeLen = parseFloat((document.getElementById('force-directed-slider-link-lenght') as HTMLInputElement)?.value || '1');
     const nodeGap = parseFloat((document.getElementById('force-directed-slider-node-gap') as HTMLInputElement)?.value || '1');
+
+    try {
+      await loadExtension('cola');
+    } catch (err) {
+      log.error(`[Layout] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     cy.layout({
       name: 'cola',
@@ -755,8 +779,8 @@ export class ManagerLayoutAlgo {
     } as any).run();
   }
 
-  public viewportDrawerLayoutForceDirectedRadial(): void {
-    this.viewportDrawerDisableGeoMap();
+  public async viewportDrawerLayoutForceDirectedRadial(): Promise<void> {
+    await this.viewportDrawerDisableGeoMap();
     const cy = this.getCy();
     if (!cy) return;
 
@@ -772,6 +796,12 @@ export class ManagerLayoutAlgo {
     cy.edges().forEach((edge) => {
       edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
     });
+
+    try {
+      await loadExtension('cola');
+    } catch (err) {
+      log.error(`[LayoutRadial] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     cy.layout({
       name: 'cola',
@@ -876,9 +906,12 @@ export class ManagerLayoutAlgo {
 
   public async viewportDrawerPreset(): Promise<void> {
     // Disable any active Geo map overlay and persist coordinates
-    this.viewportDrawerDisableGeoMap();
+    await this.viewportDrawerDisableGeoMap({ skipPostLayout: true });
     const cy = this.getCy();
     if (!cy) return;
+
+    // Stop any running animations/layouts (e.g., cola) to avoid overriding preset
+    try { cy.stop(); } catch { /* ignore */ }
 
     // In the JavaScript implementation this method reloaded the topology from
     // the `dataCytoMarshall.json` file. This caused freshly calculated
