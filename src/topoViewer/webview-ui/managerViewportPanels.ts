@@ -819,7 +819,7 @@ export class ManagerViewportPanels {
       }
 
       // Populate previews
-      const updatePreview = (el: HTMLElement | null) => { if (el) el.innerHTML = `┌ ${source} :: ${sourceEP}<br>└ ${target} :: ${targetEP}`; };
+      const updatePreview = (el: HTMLElement | null) => { if (el) el.innerHTML = `┌▪${source} : ${sourceEP}<br>└▪${target} : ${targetEP}`; };
       updatePreview(document.getElementById('panel-link-editor-id'));
       updatePreview(document.getElementById('panel-link-extended-editor-id'));
 
@@ -923,7 +923,7 @@ export class ManagerViewportPanels {
     const sourceEP = (edge.data('sourceEndpoint') as string) || '';
     const targetEP = (edge.data('targetEndpoint') as string) || '';
     const updateLabel = () => {
-      (idLabel as HTMLElement).innerHTML = `┌ ${source} :: ${sourceEP}<br>└ ${target} :: ${targetEP}`;
+      (idLabel as HTMLElement).innerHTML = `┌▪${source} : ${sourceEP}<br>└▪${target} : ${targetEP}`;
     };
     updateLabel();
 
