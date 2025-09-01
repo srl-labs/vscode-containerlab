@@ -412,16 +412,22 @@ export class ManagerViewportPanels {
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
       el.textContent?.includes('Interface') || el.textContent === 'Bridge Name'
     );
+    const interfaceSection = interfaceInput?.closest('.form-group') as HTMLElement | null;
 
     // Update label and placeholder based on network type
     if (networkType === 'bridge' || networkType === 'ovs-bridge') {
+      if (interfaceSection) interfaceSection.style.display = 'block';
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Bridge Name';
       }
       if (interfaceInput) {
         interfaceInput.placeholder = 'Enter bridge name';
       }
+    } else if (networkType === 'dummy') {
+      // Dummy nodes don't have interfaces
+      if (interfaceSection) interfaceSection.style.display = 'none';
     } else if (networkType === 'host' || networkType === 'mgmt-net') {
+      if (interfaceSection) interfaceSection.style.display = 'block';
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Host Interface';
       }
@@ -429,6 +435,7 @@ export class ManagerViewportPanels {
         interfaceInput.placeholder = 'e.g., eth0, eth1';
       }
     } else if (networkType === 'macvlan') {
+      if (interfaceSection) interfaceSection.style.display = 'block';
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Host Interface';
       }
@@ -436,6 +443,7 @@ export class ManagerViewportPanels {
         interfaceInput.placeholder = 'Parent interface (e.g., eth0)';
       }
     } else if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
+      if (interfaceSection) interfaceSection.style.display = 'block';
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Interface';
       }
@@ -443,6 +451,7 @@ export class ManagerViewportPanels {
         interfaceInput.placeholder = 'VXLAN interface name';
       }
     } else {
+      if (interfaceSection) interfaceSection.style.display = 'block';
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Interface';
       }
@@ -483,6 +492,8 @@ export class ManagerViewportPanels {
     const interfaceName =
       networkType === 'bridge' || networkType === 'ovs-bridge'
         ? nodeId
+        : networkType === 'dummy'
+        ? '' // Dummy nodes don't have interfaces
         : parts[1] || 'eth1';
 
     // Set fields
@@ -542,6 +553,9 @@ export class ManagerViewportPanels {
       if (interfaceInput) {
         interfaceInput.value = interfaceName;
       }
+    } else if (networkType === 'dummy') {
+      // Hide interface field for dummy nodes - handled by updateNetworkEditorFields
+      this.updateNetworkEditorFields(networkType);
     } else {
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Interface';
@@ -936,7 +950,7 @@ export class ManagerViewportPanels {
       if (nodeId.startsWith('macvlan:')) return 'macvlan';
       if (nodeId.startsWith('vxlan:')) return 'vxlan';
       if (nodeId.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
-      if (nodeId.startsWith('dummy:')) return 'dummy';
+      if (nodeId === 'dummy' || nodeId.startsWith('dummy:')) return 'dummy';
       return null;
     };
 
@@ -1235,7 +1249,8 @@ export class ManagerViewportPanels {
     const networkType = networkTypeInput ? networkTypeInput.value : 'host';
     const interfaceName = interfaceInput ? interfaceInput.value : 'eth1';
     const isBridgeType = networkType === 'bridge' || networkType === 'ovs-bridge';
-    const newId = isBridgeType ? interfaceName : `${networkType}:${interfaceName}`;
+    const isDummyType = networkType === 'dummy';
+    const newId = isBridgeType ? interfaceName : (isDummyType ? networkType : `${networkType}:${interfaceName}`);
     const newName = newId;
 
     // Collect extended properties
