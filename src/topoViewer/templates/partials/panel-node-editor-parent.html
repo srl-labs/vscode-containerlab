@@ -1,91 +1,66 @@
 <!-- Node Parent Properties Editor Panel -->
-<section class="panel panel-overlay bottom-10 left-20 w-[420px] max-h-[750px] overflow-y-auto overflow-x-hidden draggable-panel"
+<section
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
   id="panel-node-editor-parent" aria-labelledby="group-panel-heading" style="display: none;">
-  <p class="panel-heading text-base font-bold" id="group-panel-heading">
-    Group Properties
+  <p class="panel-heading" id="group-panel-heading">
+    Group Editor
   </p>
 
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
+  <div class="panel-block">
+    <div class="p-2 max-h-[420px] overflow-y-auto">
+      <div class="space-y-3">
 
         <!-- Basic Information Section -->
-        <div class="border-b border-gray-600 pb-2 mb-3">
-          <h3 class="text-sm font-bold mb-2 uppercase tracking-wider" style="color: var(--vscode-foreground);">Basic Information</h3>
-          
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="vscode-section-header mb-2">Basic Information</div>
+
           <!-- Group Id -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Id</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <label class="text-left font-extralight text-base break-words" id="panel-node-editor-parent-graph-group-id">
-                    group-id-placeholder
-                  </label>
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+          <label class="block vscode-label mb-1">Group Name</label>
+          <!-- <div class="text-left font-extralight text-base break-words" id="panel-node-editor-parent-graph-group-id">
+            group-id-placeholder
+          </div> -->
+
+          <div>
+            <span id="panel-node-editor-parent-graph-group-id" class="text-base px-2 py-1 inline-block rounded"
+              style="background-color: var(--vscode-textBlockQuote-background); border: 1px solid var(--vscode-textBlockQuote-border);">
+            </span>
           </div>
 
-          <!-- Graph Group -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Graph Group</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" class="input-field text-base w-full"
-                         id="panel-node-editor-parent-graph-group">
-                </div>
-              </div>
-            </div>
+        </div>
+
+          <!-- Group Label -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Group Label</label>
+            <input type="text" class="input-field text-base w-full" id="panel-node-editor-parent-graph-group">
           </div>
 
           <!-- Graph Level -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Graph Level</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" class="input-field text-base w-full"
-                         id="panel-node-editor-parent-graph-level">
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Graph Level</label>
+            <input type="text" class="input-field text-base w-full" id="panel-node-editor-parent-graph-level">
           </div>
 
           <!-- Label Position -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Label Position</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="relative" id="panel-node-editor-parent-label-dropdown">
-                    <button class="btn btn-small inline-flex items-center font-extralight">
-                      <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
-                      <span class="ml-2 font-extralight text-base">
-                        <i class="fas fa-angle-down" aria-hidden="true"></i>
-                      </span>
-                    </button>
-                    <div class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-30 overflow-y-auto overscroll-contain z-[60]"
-                         id="panel-node-editor-parent-label-dropdown-menu">
-                      <div class="py-1 font-extralight text-base">
-                        <a href="#" class="py-1 dropdown-item">top-center</a>
-                        <a href="#" class="py-1 dropdown-item">top-left</a>
-                        <a href="#" class="py-1 dropdown-item">top-right</a>
-                        <a href="#" class="py-1 dropdown-item">bottom-center</a>
-                        <a href="#" class="py-1 dropdown-item">bottom-left</a>
-                        <a href="#" class="py-1 dropdown-item">bottom-right</a>
-                      </div>
-                    </div>
-                  </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Label Position</label>
+            <div class="relative" id="panel-node-editor-parent-label-dropdown">
+              <button class="btn btn-small inline-flex items-center font-extralight">
+                <span id="panel-node-editor-parent-label-dropdown-button-text">Select Position</span>
+                <span class="ml-2 font-extralight text-base">
+                  <i class="fas fa-angle-down" aria-hidden="true"></i>
+                </span>
+              </button>
+              <div
+                class="dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-30 overflow-y-auto overscroll-contain z-[60]"
+                id="panel-node-editor-parent-label-dropdown-menu">
+                <div class="py-1 font-extralight text-base">
+                  <a href="#" class="py-1 dropdown-item">top-center</a>
+                  <a href="#" class="py-1 dropdown-item">top-left</a>
+                  <a href="#" class="py-1 dropdown-item">top-right</a>
+                  <a href="#" class="py-1 dropdown-item">bottom-center</a>
+                  <a href="#" class="py-1 dropdown-item">bottom-left</a>
+                  <a href="#" class="py-1 dropdown-item">bottom-right</a>
                 </div>
               </div>
             </div>
@@ -93,152 +68,93 @@
         </div>
 
         <!-- Visual Appearance Section -->
-        <div class="border-b border-gray-600 pb-2 mb-3">
-          <h3 class="text-sm font-bold mb-2 uppercase tracking-wider" style="color: var(--vscode-foreground);">Visual Appearance</h3>
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="vscode-section-header mb-2">Visual Appearance</div>
 
           <!-- Background Color -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Background</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="flex items-center space-x-2">
-                    <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500" id="panel-node-editor-parent-bg-color">
-                    <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-bg-color-hex" maxlength="7" placeholder="#RRGGBB">
-                  </div>
-                </div>
-              </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Background</label>
+            <div class="flex items-center space-x-2">
+              <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500"
+                id="panel-node-editor-parent-bg-color">
+              <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-bg-color-hex"
+                maxlength="7" placeholder="#RRGGBB">
             </div>
           </div>
 
           <!-- Background Opacity -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Bg Opacity</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="flex items-center space-x-2">
-                    <input type="range" min="0" max="100" value="20" class="flex-1" id="panel-node-editor-parent-bg-opacity">
-                    <span class="text-sm w-10 text-right" id="panel-node-editor-parent-bg-opacity-value">20%</span>
-                  </div>
-                </div>
-              </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Bg Opacity</label>
+            <div class="flex items-center space-x-2">
+              <input type="range" min="0" max="100" value="20" class="flex-1" id="panel-node-editor-parent-bg-opacity">
+              <span class="text-sm w-10 text-right" id="panel-node-editor-parent-bg-opacity-value">20%</span>
             </div>
           </div>
 
           <!-- Text Color -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Text Color</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="flex items-center space-x-2">
-                    <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500" id="panel-node-editor-parent-text-color">
-                    <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-text-color-hex" maxlength="7" placeholder="#RRGGBB">
-                  </div>
-                </div>
-              </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Text Color</label>
+            <div class="flex items-center space-x-2">
+              <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500"
+                id="panel-node-editor-parent-text-color">
+              <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-text-color-hex"
+                maxlength="7" placeholder="#RRGGBB">
             </div>
           </div>
         </div>
 
         <!-- Border Settings Section -->
-        <div class="pb-2 mb-3">
-          <h3 class="text-sm font-bold mb-2 uppercase tracking-wider" style="color: var(--vscode-foreground);">Border Settings</h3>
+        <div>
+          <div class="vscode-section-header mb-2">Border Settings</div>
 
           <!-- Border Color -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Border Color</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="flex items-center space-x-2">
-                    <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500" id="panel-node-editor-parent-border-color">
-                    <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-border-color-hex" maxlength="7" placeholder="#RRGGBB">
-                  </div>
-                </div>
-              </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Border Color</label>
+            <div class="flex items-center space-x-2">
+              <input type="color" class="input-field h-8 w-8 cursor-pointer border border-gray-500"
+                id="panel-node-editor-parent-border-color">
+              <input type="text" class="input-field text-base flex-1" id="panel-node-editor-parent-border-color-hex"
+                maxlength="7" placeholder="#RRGGBB">
             </div>
           </div>
 
           <!-- Border Width -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Border Width</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="number" step="0.1" class="input-field text-base w-full" id="panel-node-editor-parent-border-width">
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Border Width</label>
+            <input type="number" step="0.1" class="input-field text-base w-full"
+              id="panel-node-editor-parent-border-width">
           </div>
 
           <!-- Border Style -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Border Style</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <select class="input-field text-base w-full" id="panel-node-editor-parent-border-style">
-                    <option value="solid">Solid</option>
-                    <option value="dotted">Dotted</option>
-                    <option value="dashed">Dashed</option>
-                    <option value="double">Double</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Border Style</label>
+            <select class="input-field text-base w-full" id="panel-node-editor-parent-border-style">
+              <option value="solid">Solid</option>
+              <option value="dotted">Dotted</option>
+              <option value="dashed">Dashed</option>
+              <option value="double">Double</option>
+            </select>
           </div>
 
           <!-- Border Radius -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Corner Radius</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="flex items-center space-x-2">
-                    <input type="range" min="0" max="50" value="0" class="flex-1" id="panel-node-editor-parent-border-radius">
-                    <span class="text-sm w-10 text-right" id="panel-node-editor-parent-border-radius-value">0px</span>
-                  </div>
-                </div>
-              </div>
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Corner Radius</label>
+            <div class="flex items-center space-x-2">
+              <input type="range" min="0" max="50" value="0" class="flex-1" id="panel-node-editor-parent-border-radius">
+              <span class="text-sm w-10 text-right" id="panel-node-editor-parent-border-radius-value">0px</span>
             </div>
           </div>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1"></div>
-              <div class="w-3/5 pl-2 pr-2">
-                <div class="flex justify-end space-x-2">
-                  <button class="btn btn-danger btn-small"
-                          id="panel-node-editor-parent-delete-button">Remove</button>
-                  <button class="btn btn-secondary btn-small"
-                          id="panel-node-editor-parent-close-button">Close</button>
-                  <button class="btn btn-primary btn-small">Update</button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-
       </div>
+    </div>
+  </div>
+  <!-- Footer with Save/Close buttons -->
+  <div class="panel-block flex items-center">
+    <div class="w-1/5 pr-1"></div>
+    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
+      <button class="btn btn-primary btn-small" id="panel-node-editor-parent-save-button">Save</button>
+      <button class="btn btn-outlined btn-small" id="panel-node-editor-parent-close-button">Close</button>
     </div>
   </div>
 </section>
@@ -249,11 +165,12 @@
     appearance: none;
     padding: 0;
   }
+
   input[type="color"]::-webkit-color-swatch-wrapper {
     padding: 0;
   }
+
   input[type="color"]::-webkit-color-swatch {
     border: none;
   }
 </style>
-

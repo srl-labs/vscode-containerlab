@@ -2,6 +2,7 @@
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
+import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 
 
 /**
@@ -24,15 +25,7 @@ export interface DataItem {
  * @param cy - The Cytoscape instance to update.
  */
 export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: VscodeMessageSender): Promise<void> {
-
-  // // Create an instance of VscodeMessageSender
-  // let messageSender: VscodeMessageSender | undefined;
-  // try {
-  //   messageSender = new VscodeMessageSender();
-  // } catch (error) {
-  //   console.error("VS Code API not available. Running in a non-VS Code environment.", error);
-  // }
-
+  perfMark('fetchAndLoadData_start');
 
   try {
 
@@ -49,14 +42,18 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     const fetchUrl = jsonFileUrlDataCytoMarshall;
 
+    perfMark('fetch_json_start');
     const response = await fetch(fetchUrl);
     if (!response.ok) {
       throw new Error("Network response was not ok: " + response.statusText);
     }
     const elements = await response.json();
+    perfMeasure('fetch_json', 'fetch_json_start');
 
     // Process the data.
+    perfMark('process_elements_start');
     const updatedElements = assignMissingLatLng(elements);
+    perfMeasure('process_elements', 'process_elements_start');
     log.debug(`Updated Elements: ${JSON.stringify(updatedElements)}`);
 
     cy.json({ elements: [] });
@@ -87,69 +84,118 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     cy.nodes().data('editor', 'true');
 
     // Choose layout based on whether nodes already have distinct positions
+    perfMark('layout_start');
     let layout: cytoscape.Layouts;
     if (allNodesOverlap) {
-      // Use force-directed radial layout when no distinct node positions exist
-      // Extract node weights based on group levels for radial layout
-      const nodeWeights: Record<string, number> = {};
+      // Use simple grid layout for instant rendering when no positions exist
+      const nodeCount = cy.nodes().length;
+      const cols = Math.ceil(Math.sqrt(nodeCount));
+      const spacing = 120;
+      let index = 0;
+
       cy.nodes().forEach((node) => {
-        const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
-        nodeWeights[node.id()] = 1 / level;
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        node.position({
+          x: col * spacing + 100,
+          y: row * spacing + 100
+        });
+        index++;
       });
 
-      // Apply bezier curve style to edges for better radial visualization
-      cy.edges().forEach((edge) => {
-        edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
-      });
-
+      // Use preset layout to apply the calculated positions instantly
       layout = cy.layout({
-        name: 'cola',
-        fit: true,
-        nodeSpacing: 5,
-        edgeLength: (edge: cytoscape.EdgeSingular) => {
-          const s = nodeWeights[edge.source().id()] || 1;
-          const t = nodeWeights[edge.target().id()] || 1;
-          return 100 / (s + t);
-        },
-        edgeSymDiffLength: 10,
-        nodeDimensionsIncludeLabels: true,
-        animate: true,
-        maxSimulationTime: 2000,
-        avoidOverlap: true,
-        randomize: true  // Let cola handle the randomization
+        name: 'preset',
+        animate: false,
+        fit: false  // Don't fit yet, we'll do it after layout
       } as any);
     } else {
       // Respect saved positions using the preset layout
       layout = cy.layout({
         name: 'preset',
-        // Avoid animating to saved positions to prevent unnecessary re-renders
         animate: false,
-        randomize: false,
-        maxSimulationTime: 10,
-        positions: undefined, // Use the positions already set on elements
-        fit: false // Don't auto-fit to viewport, keep the specified positions
+        fit: false
       } as any);
     }
+
+    // Run layout synchronously for instant display
     layout.run();
+    perfMeasure('layout_initial', 'layout_start');
+
+    // Immediately fit viewport after layout using requestAnimationFrame for smooth rendering
+    if (cy.elements().length > 0) {
+      // Use requestAnimationFrame to ensure the browser has rendered the elements
+      if (typeof requestAnimationFrame !== 'undefined') {
+        // eslint-disable-next-line no-undef
+        requestAnimationFrame(() => {
+          cy.fit(cy.elements(), 50); // Fit with 50px padding
+          log.debug('Viewport fitted after initial render frame');
+        });
+      } else {
+        cy.fit(cy.elements(), 50);
+        log.debug('Viewport fitted immediately (no RAF available)');
+      }
+    }
 
     // Remove specific nodes by name.
     cy.filter('node[name = "topoviewer"]').remove();
     cy.filter('node[name = "TopoViewer:1"]').remove();
 
-    // Simple layout completion handler
-    layout.promiseOn('layoutstop').then(() => {
-      log.info('Layout completed');
+    // Load free text annotations immediately without waiting for layout
+    const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;
+    if (freeTextManager) {
+      freeTextManager.loadAnnotations().catch((error: any) => {
+        log.error(`Failed to load free text annotations: ${error}`);
+      });
+    }
 
-      // Load free text annotations after layout is complete (for both edit and view modes)
-      const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;
-      if (freeTextManager) {
-        freeTextManager.loadAnnotations().then(() => {
-          log.info('Free text annotations loaded');
-        }).catch((error: any) => {
-          log.error(`Failed to load free text annotations: ${error}`);
+    // Defer complex layout calculation to after initial render if needed
+    if (allNodesOverlap) {
+      // Use requestIdleCallback if available, otherwise setTimeout
+      const scheduleLayout = (callback: () => void) => {
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(callback, { timeout: 500 });
+        } else {
+          setTimeout(callback, 200);
+        }
+      };
+
+      scheduleLayout(() => {
+        // Extract node weights based on group levels for radial layout
+        const nodeWeights: Record<string, number> = {};
+        cy.nodes().forEach((node) => {
+          const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
+          nodeWeights[node.id()] = 1 / level;
         });
-      }
-    });
+
+        // Apply bezier curve style to edges for better visualization
+        cy.edges().forEach((edge) => {
+          edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
+        });
+
+        // Run improved layout in background
+        const improvedLayout = cy.layout({
+          name: 'cola',
+          fit: true,
+          nodeSpacing: 5,
+          edgeLength: (edge: cytoscape.EdgeSingular) => {
+            const s = nodeWeights[edge.source().id()] || 1;
+            const t = nodeWeights[edge.target().id()] || 1;
+            return 100 / (s + t);
+          },
+          edgeSymDiffLength: 10,
+          nodeDimensionsIncludeLabels: true,
+          animate: true,
+          animationDuration: 500,
+          maxSimulationTime: 1000,
+          avoidOverlap: true,
+          randomize: false
+        } as any);
+        improvedLayout.run();
+      });
+    }
+
+    perfMeasure('fetchAndLoadData_total', 'fetchAndLoadData_start');
 
   } catch (error) {
     log.error(`Error loading graph data from topology yaml: ${error instanceof Error ? error.message : String(error)}`);

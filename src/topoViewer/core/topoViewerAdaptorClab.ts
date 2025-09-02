@@ -377,7 +377,12 @@ export class TopoViewerAdaptorClab {
   ): { node: string; iface: string } {
     if (typeof endpoint === 'string') {
       // Special handling for macvlan endpoints
-      if (endpoint.startsWith('macvlan:')) {
+      if (
+        endpoint.startsWith('macvlan:') ||
+        endpoint.startsWith('vxlan:') ||
+        endpoint.startsWith('vxlan-stitch:') ||
+        endpoint.startsWith('dummy')
+      ) {
         return { node: endpoint, iface: '' };
       }
 
@@ -447,7 +452,57 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
   ): CyElement[] {
     const elements: CyElement[] = [];
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'bridge' | 'ovs-bridge'; label: string }>();
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>();
+    let dummyCounter = 0;
+    const dummyLinkMap = new Map<any, string>(); // Map from link object to dummy ID
+
+    function normalizeSingleTypeToSpecialId(t: string, linkObj: any): string {
+      if (t === 'host' || t === 'mgmt-net' || t === 'macvlan') {
+        const hi = linkObj?.['host-interface'] ?? '';
+        return `${t}:${hi}`;
+      }
+      if (t === 'vxlan' || t === 'vxlan-stitch') {
+        const remote = linkObj?.remote ?? '';
+        const vni = linkObj?.vni ?? '';
+        const udp = linkObj?.['udp-port'] ?? '';
+        return `${t}:${remote}/${vni}/${udp}`;
+      }
+      if (t === 'dummy') {
+        // Check if we've already assigned an ID to this link
+        if (dummyLinkMap.has(linkObj)) {
+          return dummyLinkMap.get(linkObj)!;
+        }
+        // Assign a new ID and remember it
+        dummyCounter += 1;
+        const dummyId = `dummy${dummyCounter}`;
+        dummyLinkMap.set(linkObj, dummyId);
+        return dummyId;
+      }
+      return '';
+    }
+
+    function normalizeLinkToTwoEndpoints(linkObj: any): { endA: any; endB: any; type?: string } | null {
+      const t = linkObj?.type as string | undefined;
+      if (t) {
+        if (t === 'veth') {
+          const a = linkObj?.endpoints?.[0];
+          const b = linkObj?.endpoints?.[1];
+          if (!a || !b) return null;
+          return { endA: a, endB: b, type: t };
+        }
+        if ([ 'host', 'mgmt-net', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch' ].includes(t)) {
+          const a = linkObj?.endpoint;
+          if (!a) return null;
+          const special = normalizeSingleTypeToSpecialId(t, linkObj);
+          return { endA: a, endB: special, type: t };
+        }
+      }
+      // Short format
+      const a = linkObj?.endpoints?.[0];
+      const b = linkObj?.endpoints?.[1];
+      if (!a || !b) return null;
+      return { endA: a, endB: b };
+    }
 
     if (!parsed.topology) {
       log.warn('Parsed YAML does not contain \x27topology\x27 object.');
@@ -614,12 +669,12 @@ export class TopoViewerAdaptorClab {
     let linkIndex = 0;
     if (parsed.topology.links) {
       // First pass: identify special endpoints
+      // Additionally, collect extended properties per special network node so the Network Editor can prefill from YAML
+      const specialNodeProps: Map<string, any> = new Map();
       for (const linkObj of parsed.topology.links) {
-        const endA = linkObj.endpoints?.[0] ?? '';
-        const endB = linkObj.endpoints?.[1] ?? '';
-        if (!endA || !endB) {
-          continue;
-        }
+        const norm = normalizeLinkToTwoEndpoints(linkObj);
+        if (!norm) continue;
+        const { endA, endB } = norm;
 
         const { node: nodeA } = this.splitEndpoint(endA);
         const { node: nodeB } = this.splitEndpoint(endB);
@@ -634,6 +689,14 @@ export class TopoViewerAdaptorClab {
         } else if (nodeA.startsWith('macvlan:')) {
           const macvlanIface = nodeA.substring(8);
           specialNodes.set(nodeA, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
+        } else if (nodeA.startsWith('vxlan-stitch:')) {
+          const name = nodeA.substring('vxlan-stitch:'.length);
+          specialNodes.set(nodeA, { type: 'vxlan-stitch', label: `vxlan-stitch:${name}` });
+        } else if (nodeA.startsWith('vxlan:')) {
+          const name = nodeA.substring('vxlan:'.length);
+          specialNodes.set(nodeA, { type: 'vxlan', label: `vxlan:${name}` });
+        } else if (nodeA.startsWith('dummy')) {
+          specialNodes.set(nodeA, { type: 'dummy', label: 'dummy' });
         }
 
         if (nodeB === 'host') {
@@ -645,6 +708,66 @@ export class TopoViewerAdaptorClab {
         } else if (nodeB.startsWith('macvlan:')) {
           const macvlanIface = nodeB.substring(8);
           specialNodes.set(nodeB, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
+        } else if (nodeB.startsWith('vxlan-stitch:')) {
+          const name = nodeB.substring('vxlan-stitch:'.length);
+          specialNodes.set(nodeB, { type: 'vxlan-stitch', label: `vxlan-stitch:${name}` });
+        } else if (nodeB.startsWith('vxlan:')) {
+          const name = nodeB.substring('vxlan:'.length);
+          specialNodes.set(nodeB, { type: 'vxlan', label: `vxlan:${name}` });
+        } else if (nodeB.startsWith('dummy')) {
+          specialNodes.set(nodeB, { type: 'dummy', label: 'dummy' });
+        }
+
+        // Collect extended properties for special endpoints so Network Editor can load them from node.extraData
+        // Determine link type (only apply for non-veth)
+        const linkType = (linkObj && typeof (linkObj as any).type === 'string') ? String((linkObj as any).type) : '';
+        if (linkType && linkType !== 'veth') {
+          // Helper to compute the special node id used in the graph for an endpoint
+          const computeSpecialId = (end: any) => {
+            const { node, iface } = this.splitEndpoint(end);
+            if (node === 'host') return `host:${iface}`;
+            if (node === 'mgmt-net') return `mgmt-net:${iface}`;
+            if (node.startsWith('macvlan:')) return node;
+            if (node.startsWith('vxlan-stitch:')) return node;
+            if (node.startsWith('vxlan:')) return node;
+            if (node.startsWith('dummy')) return node;
+            return null;
+          };
+
+          const idA = computeSpecialId(endA);
+          const idB = computeSpecialId(endB);
+
+          const baseProps: any = { extType: linkType };
+          // Common
+          if ((linkObj as any).mtu !== undefined) baseProps.extMtu = (linkObj as any).mtu;
+          if ((linkObj as any).vars !== undefined) baseProps.extVars = (linkObj as any).vars;
+          if ((linkObj as any).labels !== undefined) baseProps.extLabels = (linkObj as any).labels;
+          // Host/mgmt-net/macvlan specifics
+          if (linkType === 'host' || linkType === 'mgmt-net' || linkType === 'macvlan') {
+            if ((linkObj as any)['host-interface'] !== undefined) baseProps.extHostInterface = (linkObj as any)['host-interface'];
+            if (linkType === 'macvlan' && (linkObj as any).mode !== undefined) baseProps.extMode = (linkObj as any).mode;
+          }
+          // If endpoint has a MAC in single-endpoint schema, expose it as extMac for any non-veth type
+          const epMac = (linkObj as any)?.endpoint?.mac;
+          if (epMac !== undefined) baseProps.extMac = epMac;
+          // VXLAN specifics
+          if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
+            if ((linkObj as any).remote !== undefined) baseProps.extRemote = (linkObj as any).remote;
+            if ((linkObj as any).vni !== undefined) baseProps.extVni = (linkObj as any).vni;
+            if ((linkObj as any)['udp-port'] !== undefined) baseProps.extUdpPort = (linkObj as any)['udp-port'];
+          }
+
+          // Merge props into both sides if they are special endpoints
+          [idA, idB].forEach(id => {
+            if (!id) return;
+            const prev = specialNodeProps.get(id) || {};
+            // Shallow merge without overwriting already defined keys
+            const merged: any = { ...baseProps };
+            for (const k of Object.keys(prev)) {
+              if (prev[k] !== undefined) merged[k] = prev[k];
+            }
+            specialNodeProps.set(id, { ...prev, ...merged });
+          });
         }
       }
 
@@ -698,6 +821,8 @@ export class TopoViewerAdaptorClab {
               shortname: nodeInfo.label,
               state: '',
               weight: '3',
+              // Merge in extended properties derived from YAML links for this special endpoint
+              ...(specialNodeProps.get(nodeId) || {}),
             },
           },
           position,
@@ -714,12 +839,12 @@ export class TopoViewerAdaptorClab {
 
       // Second pass: create edges
       for (const linkObj of parsed.topology.links) {
-        const endA = linkObj.endpoints?.[0] ?? '';
-        const endB = linkObj.endpoints?.[1] ?? '';
-        if (!endA || !endB) {
+        const norm = normalizeLinkToTwoEndpoints(linkObj);
+        if (!norm) {
           log.warn('Link does not have both endpoints. Skipping.');
           continue;
         }
+        const { endA, endB } = norm;
 
         const { node: sourceNode, iface: sourceIface } = this.splitEndpoint(endA);
         const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
@@ -734,6 +859,12 @@ export class TopoViewerAdaptorClab {
           actualSourceNode = `mgmt-net:${sourceIface}`;
         } else if (sourceNode.startsWith('macvlan:')) {
           actualSourceNode = sourceNode;
+        } else if (sourceNode.startsWith('vxlan-stitch:')) {
+          actualSourceNode = sourceNode;
+        } else if (sourceNode.startsWith('vxlan:')) {
+          actualSourceNode = sourceNode;
+        } else if (sourceNode.startsWith('dummy')) {
+          actualSourceNode = sourceNode;
         }
 
         if (targetNode === 'host') {
@@ -742,12 +873,18 @@ export class TopoViewerAdaptorClab {
           actualTargetNode = `mgmt-net:${targetIface}`;
         } else if (targetNode.startsWith('macvlan:')) {
           actualTargetNode = targetNode;
+        } else if (targetNode.startsWith('vxlan-stitch:')) {
+          actualTargetNode = targetNode;
+        } else if (targetNode.startsWith('vxlan:')) {
+          actualTargetNode = targetNode;
+        } else if (targetNode.startsWith('dummy')) {
+          actualTargetNode = targetNode;
         }
 
-        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:'))
+        const sourceContainerName = (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('vxlan:') || sourceNode.startsWith('vxlan-stitch:') || sourceNode.startsWith('dummy'))
           ? actualSourceNode
           : (fullPrefix ? `${fullPrefix}-${sourceNode}` : sourceNode);
-        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:'))
+        const targetContainerName = (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('vxlan:') || targetNode.startsWith('vxlan-stitch:') || targetNode.startsWith('dummy'))
           ? actualTargetNode
           : (fullPrefix ? `${fullPrefix}-${targetNode}` : targetNode);
         // Get interface data (might be undefined in editor mode)
@@ -779,14 +916,20 @@ export class TopoViewerAdaptorClab {
             sourceNodeData?.kind === 'ovs-bridge' ||
             sourceNode === 'host' ||
             sourceNode === 'mgmt-net' ||
-            sourceNode.startsWith('macvlan:');
+            sourceNode.startsWith('macvlan:') ||
+            sourceNode.startsWith('vxlan:') ||
+            sourceNode.startsWith('vxlan-stitch:') ||
+            sourceNode.startsWith('dummy');
 
           const targetIsSpecial =
             targetNodeData?.kind === 'bridge' ||
             targetNodeData?.kind === 'ovs-bridge' ||
             targetNode === 'host' ||
             targetNode === 'mgmt-net' ||
-            targetNode.startsWith('macvlan:');
+            targetNode.startsWith('macvlan:') ||
+            targetNode.startsWith('vxlan:') ||
+            targetNode.startsWith('vxlan-stitch:') ||
+            targetNode.startsWith('dummy');
 
           if (sourceIsSpecial || targetIsSpecial) {
             // For special network connections, only check the non-special side
@@ -815,6 +958,30 @@ export class TopoViewerAdaptorClab {
           }
         }
         // In editor mode (includeContainerData = false), edgeClass remains empty string, resulting in gray links
+        // Per-type validation for extended links
+        const extValidationErrors: string[] = [];
+        const linkType = (linkObj && typeof linkObj.type === 'string') ? (linkObj.type as string) : '';
+        if (linkType) {
+          if (linkType === 'veth') {
+            const eps = Array.isArray(linkObj.endpoints) ? linkObj.endpoints : [];
+            const ok = eps.length >= 2 && typeof eps[0] === 'object' && typeof eps[1] === 'object' &&
+              eps[0]?.node && (eps[0]?.interface !== undefined) && eps[1]?.node && (eps[1]?.interface !== undefined);
+            if (!ok) extValidationErrors.push('invalid-veth-endpoints');
+          } else if (['mgmt-net','host','macvlan','dummy','vxlan','vxlan-stitch'].includes(linkType)) {
+            const ep = linkObj.endpoint;
+            const okEp = ep && ep.node && (ep.interface !== undefined);
+            if (!okEp) extValidationErrors.push('invalid-endpoint');
+            if (linkType === 'mgmt-net' || linkType === 'host' || linkType === 'macvlan') {
+              if (!linkObj['host-interface']) extValidationErrors.push('missing-host-interface');
+            }
+            if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
+              if (!linkObj.remote) extValidationErrors.push('missing-remote');
+              if (linkObj.vni === undefined || linkObj.vni === '') extValidationErrors.push('missing-vni');
+              if (linkObj['udp-port'] === undefined || linkObj['udp-port'] === '') extValidationErrors.push('missing-udp-port');
+            }
+          }
+        }
+
         const edgeEl: CyElement = {
           group: 'edges',
           data: {
@@ -823,16 +990,16 @@ export class TopoViewerAdaptorClab {
             name: edgeId,
             parent: '',
             topoViewerRole: 'link',
-            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:')) ? '' : sourceIface,
-            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:')) ? '' : targetIface,
+            sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('dummy')) ? '' : sourceIface,
+            targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('dummy')) ? '' : targetIface,
             lat: '',
             lng: '',
             source: actualSourceNode,
             target: actualTargetNode,
-            extraData: {
-              clabServerUsername: 'asad',
-              clabSourceLongName: sourceContainerName,
-              clabTargetLongName: targetContainerName,
+          extraData: {
+            clabServerUsername: 'asad',
+            clabSourceLongName: sourceContainerName,
+            clabTargetLongName: targetContainerName,
               clabSourcePort: sourceIface,
               clabTargetPort: targetIface,
               clabSourceMacAddress: sourceIfaceData?.mac ?? '',
@@ -843,7 +1010,23 @@ export class TopoViewerAdaptorClab {
               clabTargetMtu: targetIfaceData?.mtu ?? '',
               clabSourceType: sourceIfaceData?.type ?? '',
               clabTargetType: targetIfaceData?.type ?? '',
-            },
+            // Extended link fields (when present in YAML)
+            extType: linkObj?.type ?? '',
+            extMtu: linkObj?.mtu ?? '',
+            extVars: linkObj?.vars ?? undefined,
+            extLabels: linkObj?.labels ?? undefined,
+            extHostInterface: linkObj?.['host-interface'] ?? '',
+            extMode: linkObj?.mode ?? '',
+            extRemote: linkObj?.remote ?? '',
+            extVni: linkObj?.vni ?? '',
+            extUdpPort: linkObj?.['udp-port'] ?? '',
+            extSourceMac: (typeof endA === 'object' && endA !== null) ? (endA as any)?.mac ?? '' : '',
+            extTargetMac: (typeof endB === 'object' && endB !== null) ? (endB as any)?.mac ?? '' : '',
+            // Single-endpoint extended schema MAC
+            extMac: (linkObj as any)?.endpoint?.mac ?? '',
+            yamlFormat: (typeof (linkObj as any)?.type === 'string' && (linkObj as any).type) ? 'extended' : 'short',
+            extValidationErrors: extValidationErrors.length ? extValidationErrors : undefined,
+          },
           },
           position: { x: 0, y: 0 },
           removed: false,

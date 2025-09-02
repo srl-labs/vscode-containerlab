@@ -15,7 +15,8 @@ export class ClabCommand extends cmd.Command {
         node: ClabLabTreeNode,
         spinnerMsg?: cmd.SpinnerMsg,
         useTerminal?: boolean,
-        terminalName?: string
+        terminalName?: string,
+        onSuccess?: () => Promise<void>
     ) {
         let options: cmd.CmdOptions;
         if (useTerminal) {
@@ -42,6 +43,9 @@ export class ClabCommand extends cmd.Command {
 
         this.action = action;
         this.node = node instanceof ClabLabTreeNode ? node : undefined;
+        if (onSuccess) {
+            this.onSuccessCallback = onSuccess;
+        }
     }
 
     public async run(flags?: string[]): Promise<void> {

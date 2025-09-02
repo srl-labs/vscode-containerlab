@@ -15,8 +15,28 @@ export interface ClabNode {
 /**
  * Represents a Containerlab link definition as specified in the YAML configuration.
  */
+export interface ClabLinkEndpointMap {
+    node: string;
+    interface?: string;
+    mac?: string;
+}
+
 export interface ClabLink {
-    endpoints: [string, string];
+    // Short format
+    endpoints?: (string | ClabLinkEndpointMap)[];
+    // Extended single-endpoint
+    endpoint?: ClabLinkEndpointMap;
+    // Extended common
+    type?: 'veth' | 'host' | 'mgmt-net' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | string;
+    mtu?: number | string;
+    vars?: any;
+    labels?: any;
+    // Per-type fields
+    'host-interface'?: string;
+    mode?: string;
+    remote?: string;
+    vni?: number | string;
+    'udp-port'?: number | string;
 }
 
 /**
@@ -80,4 +100,3 @@ export interface EnvironmentJson {
 //     data: { id: string };
 //     position: { x: number; y: number };
 //   }
-

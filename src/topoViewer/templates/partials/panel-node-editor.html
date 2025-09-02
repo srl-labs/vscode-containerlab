@@ -4,7 +4,7 @@
   id="panel-node-editor" style="display: none;">
 
   <p class="panel-heading">
-    Node Properties Editor
+    Node Editor
   </p>
 
   <!-- Tab Navigation -->
@@ -16,12 +16,13 @@
     <button class="panel-tab-button" data-tab="advanced">Advanced</button>
   </div>
 
-  <!-- Tab Content Container -->
-  <div class="p-2 max-h-[420px] overflow-y-auto">
+    <!-- Tab Content Container -->
+    <div class="panel-block p-0">
+      <div class="p-2 max-h-[420px] overflow-y-auto">
 
-    <!-- Basic Tab -->
-    <div class="panel-block tab-content" id="tab-basic">
-      <div class="space-y-3">
+      <!-- Basic Tab -->
+      <div class="tab-content" id="tab-basic">
+        <div class="space-y-3">
         <!-- Node Name -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Node Name</label>
@@ -62,9 +63,9 @@
       </div>
     </div>
 
-    <!-- Configuration Tab -->
-    <div class="panel-block tab-content hidden" id="tab-config">
-      <div class="space-y-3">
+      <!-- Configuration Tab -->
+      <div class="tab-content hidden" id="tab-config">
+        <div class="space-y-3">
         <!-- Startup Config -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Startup Config</label>
@@ -120,9 +121,9 @@
       </div>
     </div>
 
-    <!-- Runtime Tab -->
-    <div class="panel-block tab-content hidden" id="tab-runtime">
-      <div class="space-y-3">
+      <!-- Runtime Tab -->
+      <div class="tab-content hidden" id="tab-runtime">
+        <div class="space-y-3">
         <!-- User -->
         <div class="form-group">
           <label class="block vscode-label mb-1">User</label>
@@ -180,9 +181,9 @@
       </div>
     </div>
 
-    <!-- Network Tab -->
-    <div class="panel-block tab-content hidden" id="tab-network">
-      <div class="space-y-3">
+      <!-- Network Tab -->
+      <div class="tab-content hidden" id="tab-network">
+        <div class="space-y-3">
         <!-- Management IPv4 -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Management IPv4</label>
@@ -240,35 +241,35 @@
       </div>
     </div>
 
-    <!-- Advanced Tab -->
-    <div class="panel-block tab-content hidden" id="tab-advanced">
-      <div class="space-y-3">
+      <!-- Advanced Tab -->
+      <div class="tab-content hidden" id="tab-advanced">
+        <div class="space-y-3">
         <!-- Resources Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="vscode-section-header mb-2">Resource Limits</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <!-- CPU -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">CPU Limit</label>
+              <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0" placeholder="e.g., 1.5">
+            </div>
 
-          <!-- Memory -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Memory Limit</label>
-            <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
-          </div>
+            <!-- CPU Set -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">CPU Set</label>
+              <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
+            </div>
+            <!-- Memory -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">Memory Limit</label>
+              <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
+            </div>
 
-          <!-- CPU -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">CPU Limit</label>
-            <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0" placeholder="e.g., 1.5">
-          </div>
-
-          <!-- CPU Set -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">CPU Set</label>
-            <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
-          </div>
-
-          <!-- Shared Memory Size -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Shared Memory Size</label>
-            <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
+            <!-- Shared Memory Size -->
+            <div class="form-group">
+              <label class="block vscode-label mb-1">Shared Memory Size</label>
+              <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
+            </div>
           </div>
         </div>
 
@@ -354,7 +355,7 @@
         </div>
 
         <!-- Healthcheck Section -->
-        <div class="pb-3 mb-3">
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
           <h3 class="vscode-section-header mb-2">Health Check</h3>
 
           <div class="form-group">
@@ -405,6 +406,7 @@
             <option value="ignite">Ignite</option>
           </select>
         </div>
+      </div>
       </div>
     </div>
 

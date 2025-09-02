@@ -199,9 +199,11 @@
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
   }
-.panel-block:last-child {
-  border-bottom: 0;
-}
+
+  /*only the footer (last direct child of .panel) removes it */
+  .panel > .panel-block:last-child {
+    border-bottom: 0;
+  }
   
   /* Dropdown styles */
   .dropdown-menu {
@@ -481,7 +483,7 @@
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
     font-weight: 600;
-    color: var(--vscode-foreground);
+    color: var(--vscode-descriptionForeground);
   }
 
   /* Dynamic entry styles for form inputs with delete buttons */
@@ -695,6 +697,11 @@
   /* Field utilities */
   .field {
     margin-bottom: 1rem;
+  }
+  
+  /* Form group utility */
+  .form-group {
+    padding-bottom: 0.5rem; /* same as Tailwind pb-2 */
   }
   
   .control {

@@ -7,7 +7,8 @@ import { FilterUtils } from "../helpers/filterUtils";
 import { execSync } from "child_process";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
-import { getCurrentTopoViewer, setCurrentTopoViewer } from "../commands/graph";
+// Mode switching imports removed - now handled by command completion callbacks
+// import { getCurrentTopoViewer, setCurrentTopoViewer } from "../commands/graph";
 
 /**
  * Interface corresponding to fields in the
@@ -152,158 +153,16 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     /**
      * Refresh the topology viewer if it's currently open.
      * This ensures the viewer stays in sync with tree data changes.
+     * NOTE: This no longer performs automatic mode switching - mode changes
+     * are only triggered by successful deploy/destroy command completion.
      */
     private async refreshTopoViewerIfOpen(): Promise<void> {
-        try {
-            const topoViewer = getCurrentTopoViewer() as any;
-
-            if (!topoViewer || !topoViewer.currentPanel || !topoViewer.lastYamlFilePath) {
-                return;
-            }
-
-            // Skip if mode switch is already in progress
-            if (topoViewer.isModeSwitchInProgress) {
-                console.log('[RunningLabsProvider]: Mode switch in progress, skipping refresh');
-                return;
-            }
-
-            const labPath = topoViewer.lastYamlFilePath;
-            const normalizedLabPath = labPath.replace(/\\/g, '/');
-
-            console.log(`[RunningLabsProvider]: Checking TopoViewer - labPath: ${labPath}, labName: ${topoViewer.currentLabName}`);
-
-            // Check if this lab is deployed by looking for it in the running labs tree
-            // We check by comparing the lab path
-            let isDeployed = false;
-            let deployedLabName = null;
-
-            // First, check if any deployed lab has this exact file path
-            for (const lab of this.treeItems) {
-                if (lab.labPath?.absolute) {
-                    const normalizedTreePath = lab.labPath.absolute.replace(/\\/g, '/');
-                    if (normalizedTreePath === normalizedLabPath) {
-                        isDeployed = true;
-                        deployedLabName = lab.name;
-                        console.log(`[RunningLabsProvider]: Found deployed lab '${deployedLabName}' with matching path`);
-                        break;
-                    }
-                }
-            }
-
-            // Also check using inspector data directly for more accuracy
-            if (!isDeployed && ins.rawInspectData) {
-                for (const [labName, labData] of Object.entries(ins.rawInspectData)) {
-                    const deployedLab = labData as any;
-                    if (deployedLab['topo-file']) {
-                        const normalizedTopoFile = deployedLab['topo-file'].replace(/\\/g, '/');
-                        if (normalizedTopoFile === normalizedLabPath) {
-                            isDeployed = true;
-                            deployedLabName = labName;
-                            console.log(`[RunningLabsProvider]: Found deployed lab '${deployedLabName}' in inspector data with matching topo-file`);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            const shouldBeViewMode = isDeployed;
-
-            console.log(`[RunningLabsProvider]: Lab at ${labPath} - deployed: ${isDeployed}, current mode: ${topoViewer.isViewMode ? 'view' : 'edit'}, should be: ${shouldBeViewMode ? 'view' : 'edit'}`);
-
-            // Determine what the lab name should be
-            let targetLabName = topoViewer.currentLabName;
-            if (isDeployed && deployedLabName) {
-                // If deployed, use the deployed name
-                targetLabName = deployedLabName;
-            } else if (!isDeployed && topoViewer.currentLabName !== path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '')) {
-                // If undeployed and current name doesn't match file name, revert to file name
-                targetLabName = path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '');
-            }
-
-            // Check if we need to update lab name or switch mode
-            const nameChanged = targetLabName !== topoViewer.currentLabName;
-            const modeChanged = shouldBeViewMode !== topoViewer.isViewMode;
-
-            if (nameChanged || modeChanged) {
-                console.log(`[RunningLabsProvider]: Changes detected - Name: ${nameChanged ? `'${topoViewer.currentLabName}' -> '${targetLabName}'` : 'no change'}, Mode: ${modeChanged ? `${topoViewer.isViewMode ? 'view' : 'edit'} -> ${shouldBeViewMode ? 'view' : 'edit'}` : 'no change'}`);
-
-                // When the lab name changes, we MUST recreate the panel because VS Code doesn't allow
-                // updating localResourceRoots on an existing panel
-                if (nameChanged) {
-                    console.log(`[RunningLabsProvider]: Lab name changed, recreating panel to update resource roots`);
-
-                    // Store the current panel and context
-                    const currentPanel = topoViewer.currentPanel;
-                    const context = topoViewer.context;
-                    const yamlPath = topoViewer.lastYamlFilePath;
-
-                    // Dispose the current panel
-                    if (currentPanel) {
-                        currentPanel.dispose();
-                    }
-
-                    // Update the lab name and mode
-                    topoViewer.currentLabName = targetLabName;
-                    topoViewer.isViewMode = shouldBeViewMode;
-                    topoViewer.deploymentState = shouldBeViewMode ? 'deployed' : 'undeployed';
-
-                    // Recreate the panel with the new lab name
-                    try {
-                        await topoViewer.createWebviewPanel(
-                            context,
-                            vscode.Uri.file(yamlPath),
-                            targetLabName,
-                            shouldBeViewMode
-                        );
-
-                        // IMPORTANT: Update the global reference after recreating the panel
-                        setCurrentTopoViewer(topoViewer);
-
-                        // Also set up disposal handler to clear the global reference
-                        if (topoViewer.currentPanel) {
-                            topoViewer.currentPanel.onDidDispose(() => {
-                                setCurrentTopoViewer(undefined);
-                            });
-                        }
-
-                        console.log(`[RunningLabsProvider]: Successfully recreated panel with new lab name '${targetLabName}' in ${shouldBeViewMode ? 'view' : 'edit'} mode`);
-                    } catch (error) {
-                        console.error(`[RunningLabsProvider]: Failed to recreate panel: ${error}`);
-                    }
-                } else if (modeChanged) {
-                    // Only mode changed, no name change - can update without recreating
-                    console.log(`[RunningLabsProvider]: MODE CHANGE ONLY! Switching from ${topoViewer.isViewMode ? 'view' : 'edit'} to ${shouldBeViewMode ? 'view' : 'edit'} mode`);
-
-                    topoViewer.isViewMode = shouldBeViewMode;
-                    topoViewer.deploymentState = shouldBeViewMode ? 'deployed' : 'undeployed';
-
-                    // Update the panel HTML to reflect the new mode
-                    const success = await topoViewer.updatePanelHtml(topoViewer.currentPanel);
-
-                    if (success) {
-                        console.log(`[RunningLabsProvider]: Successfully switched to ${shouldBeViewMode ? 'view' : 'edit'} mode`);
-
-                        // Send a message to the webview about the mode change
-                        topoViewer.currentPanel.webview.postMessage({
-                            type: 'mode-changed',
-                            mode: shouldBeViewMode ? 'view' : 'edit'
-                        });
-                    } else {
-                        console.error(`[RunningLabsProvider]: Failed to update panel HTML for mode switch`);
-                        // Revert the mode on failure
-                        topoViewer.isViewMode = !shouldBeViewMode;
-                        topoViewer.deploymentState = 'unknown';
-                    }
-                }
-            } else {
-                console.log(`[RunningLabsProvider]: No changes needed, staying in ${topoViewer.isViewMode ? 'view' : 'edit'} mode with name '${topoViewer.currentLabName}'`);
-            }
-        } catch (error) {
-            console.error("[RunningLabTreeDataProvider]:\tFailed to refresh topology viewer:", error);
-        }
+        // DISABLED: Automatic mode switching based on deployment state
+        // Mode switching is now handled exclusively by command completion callbacks
+        // in deploy.ts, destroy.ts, and redeploy.ts
+        return;
     }
 
-    // Add to ClabTreeDataProvider class
     hasChanges(): boolean {
         const now = Date.now();
 

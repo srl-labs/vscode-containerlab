@@ -4,6 +4,10 @@ import * as path from 'path';
 import { log } from './logging/logger';
 declare const __dirname: string;
 
+// Template cache for faster regeneration
+const templateCache = new Map<string, string>();
+const partialsCache = new Map<string, Record<string, string>>();
+
 export interface BaseTemplateParams {
   cssUri: string;
   jsUri: string;
@@ -35,6 +39,13 @@ export interface EditorTemplateParams extends BaseTemplateParams {
 export type TemplateMode = 'viewer' | 'editor';
 
 function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<string, string> {
+  const cacheKey = `${partialsDir}_${sharedPartialsDir}`;
+
+  // Return cached partials if available
+  if (partialsCache.has(cacheKey)) {
+    return partialsCache.get(cacheKey)!;
+  }
+
   const partials: Record<string, string> = {};
 
   // Load shared partials first
@@ -59,6 +70,8 @@ function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<s
     }
   }
 
+  // Cache the loaded partials
+  partialsCache.set(cacheKey, partials);
   return partials;
 }
 
@@ -105,6 +118,28 @@ export function generateHtmlTemplate(
   mode: TemplateMode,
   params: ViewerTemplateParams | EditorTemplateParams
 ): string {
+  // Try to use cached template for similar params
+  const cacheKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}`;
+
+  // For viewer mode, also include deployment state in cache key
+  const finalCacheKey = mode === 'viewer'
+    ? `${cacheKey}_${(params as ViewerTemplateParams).deploymentState}`
+    : cacheKey;
+
+  // Check if we have a cached version with matching dynamic params
+  const cachedBase = templateCache.get(finalCacheKey);
+  if (cachedBase) {
+    // Just update the dynamic URLs that change per session
+    return cachedBase
+      .replace(/{{jsonFileUrlDataCytoMarshall}}/g, params.jsonFileUrlDataCytoMarshall)
+      .replace(/{{jsonFileUrlDataEnvironment}}/g, params.jsonFileUrlDataEnvironment)
+      .replace(/{{schemaUri}}/g, params.schemaUri)
+      .replace(/{{cssUri}}/g, params.cssUri)
+      .replace(/{{jsUri}}/g, params.jsUri)
+      .replace(/{{jsOutDir}}/g, params.jsOutDir)
+      .replace(/{{imagesUri}}/g, params.imagesUri);
+  }
+
   const { templatePath, partialsDir, sharedPartialsDir } = resolveTemplatePaths();
 
   log.info(`allowedHostname in htmlTemplateUtils: ${params.allowedHostname}`);
@@ -169,7 +204,7 @@ export function generateHtmlTemplate(
       ifacePatternMapping: '{}',
       defaultKind: 'nokia_srlinux',
       defaultType: 'ixrd1',
-      updateLinkEndpointsOnKindChange: 'true',
+      updateLinkEndpointsOnKindChange: 'true'
     };
   } else {
     const editorParams = params as EditorTemplateParams;
@@ -179,13 +214,25 @@ export function generateHtmlTemplate(
       ifacePatternMapping: JSON.stringify(editorParams.ifacePatternMapping),
       defaultKind: editorParams.defaultKind,
       defaultType: editorParams.defaultType,
-      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
+      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString()
     };
   }
 
   for (const [key, value] of Object.entries(replacements)) {
     template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
   }
+
+  // Cache the generated template (before URL replacements for reusability)
+  const baseTemplate = template
+    .replace(params.jsonFileUrlDataCytoMarshall, '{{jsonFileUrlDataCytoMarshall}}')
+    .replace(params.jsonFileUrlDataEnvironment, '{{jsonFileUrlDataEnvironment}}')
+    .replace(params.schemaUri, '{{schemaUri}}')
+    .replace(params.cssUri, '{{cssUri}}')
+    .replace(params.jsUri, '{{jsUri}}')
+    .replace(params.jsOutDir, '{{jsOutDir}}')
+    .replace(params.imagesUri, '{{imagesUri}}');
+
+  templateCache.set(finalCacheKey, baseTemplate);
 
   return template;
 }

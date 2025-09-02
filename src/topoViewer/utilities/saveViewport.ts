@@ -9,23 +9,149 @@ import { annotationsManager } from './annotationsManager';
 import { CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
 import { isSpecialEndpoint } from './specialNodes';
 
+type CanonicalEndpoint = { node: string; iface: string };
+type CanonicalLinkKey = {
+  type: 'veth' | 'mgmt-net' | 'host' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | 'unknown';
+  a: CanonicalEndpoint;
+  b?: CanonicalEndpoint; // present for veth
+  // Optional, reserved for future matching refinements (Step 7)
+  hostIface?: string;
+  mode?: string;
+  vni?: string | number;
+  udpPort?: string | number;
+};
+
+function splitEndpointLike(endpoint: string | { node: string; interface?: string }): CanonicalEndpoint {
+  if (typeof endpoint === 'string') {
+    if (
+      endpoint.startsWith('macvlan:') ||
+      endpoint.startsWith('dummy') ||
+      endpoint.startsWith('vxlan:') ||
+      endpoint.startsWith('vxlan-stitch:')
+    ) {
+      return { node: endpoint, iface: '' };
+    }
+    const parts = endpoint.split(':');
+    if (parts.length === 2) return { node: parts[0], iface: parts[1] };
+    return { node: endpoint, iface: '' };
+  }
+  if (endpoint && typeof endpoint === 'object') {
+    return { node: endpoint.node, iface: endpoint.interface ?? '' };
+  }
+  return { node: '', iface: '' };
+}
+
+function canonicalKeyToString(key: CanonicalLinkKey): string {
+  if (key.type === 'veth' && key.b) {
+    const aStr = `${key.a.node}:${key.a.iface}`;
+    const bStr = `${key.b.node}:${key.b.iface}`;
+    const [first, second] = aStr < bStr ? [aStr, bStr] : [bStr, aStr];
+    return `veth|${first}|${second}`;
+  }
+  // Single-endpoint types: only endpoint A determines identity for now
+  return `${key.type}|${key.a.node}:${key.a.iface}`;
+}
+
+function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
+  // Extended format if 'type' exists
+  const typeNode = linkItem.get('type', true) as any;
+  const typeStr = typeof typeNode?.value === 'string' ? (typeNode.value as string) : (typeof typeNode === 'string' ? typeNode : undefined);
+
+  if (typeStr) {
+    const t = typeStr as CanonicalLinkKey['type'];
+    if (t === 'veth') {
+      const eps = linkItem.get('endpoints', true);
+      if (YAML.isSeq(eps) && eps.items.length >= 2) {
+        const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+        const b = splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any));
+        return { type: 'veth', a, b };
+      }
+    }
+
+    // Single-endpoint types
+    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t)) {
+      const ep = linkItem.get('endpoint', true);
+      if (ep) {
+        const a = splitEndpointLike((ep as any)?.toJSON?.() ?? ep);
+        return { type: t as any, a };
+      }
+      // Some files may still keep endpoints list with one side special; try to derive
+      const eps = linkItem.get('endpoints', true);
+      if (YAML.isSeq(eps) && eps.items.length >= 1) {
+        const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+        const bMaybe = eps.items.length > 1 ? splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any)) : undefined;
+        // Pick non-special as canonical 'a' when available
+        const aIsSpecial = isSpecialEndpoint(`${a.node}:${a.iface}`) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
+        if (bMaybe) {
+          const bIsSpecial = isSpecialEndpoint(`${bMaybe.node}:${bMaybe.iface}`) || bMaybe.node.startsWith('macvlan:') || bMaybe.node.startsWith('vxlan:') || bMaybe.node.startsWith('vxlan-stitch:');
+          return { type: t as any, a: aIsSpecial && !bIsSpecial ? bMaybe : a };
+        }
+        return { type: t as any, a };
+      }
+    }
+  }
+
+  // Short format assumed
+  const eps = linkItem.get('endpoints', true);
+  if (YAML.isSeq(eps) && eps.items.length >= 2) {
+    const epA = String((eps.items[0] as any).value ?? eps.items[0]);
+    const epB = String((eps.items[1] as any).value ?? eps.items[1]);
+    const a = splitEndpointLike(epA);
+    const b = splitEndpointLike(epB);
+    const aIsSpecial = isSpecialEndpoint(epA) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
+    const bIsSpecial = isSpecialEndpoint(epB) || b.node.startsWith('macvlan:') || b.node.startsWith('vxlan:') || b.node.startsWith('vxlan-stitch:');
+
+    // If exactly one side special, derive single-endpoint type and pick non-special as 'a'
+    if (aIsSpecial !== bIsSpecial) {
+      const special = aIsSpecial ? a : b;
+      const nonSpecial = aIsSpecial ? b : a;
+      let type: CanonicalLinkKey['type'] = 'unknown';
+      if (special.node === 'host') type = 'host';
+      else if (special.node === 'mgmt-net') type = 'mgmt-net';
+      else if (special.node.startsWith('macvlan:')) type = 'macvlan';
+      else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
+      else if (special.node.startsWith('vxlan:')) type = 'vxlan';
+      else if (special.node.startsWith('dummy')) type = 'dummy';
+      return { type, a: nonSpecial };
+    }
+
+    // Otherwise treat as veth and sort endpoints
+    return { type: 'veth', a, b };
+  }
+  return null;
+}
+
+function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
+  const source: string = data.source;
+  const target: string = data.target;
+  const sourceEp = data.sourceEndpoint ? `${source}:${data.sourceEndpoint}` : source;
+  const targetEp = data.targetEndpoint ? `${target}:${data.targetEndpoint}` : target;
+  const a = splitEndpointLike(sourceEp);
+  const b = splitEndpointLike(targetEp);
+  const aIsSpecial = isSpecialEndpoint(source) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
+  const bIsSpecial = isSpecialEndpoint(target) || b.node.startsWith('macvlan:') || b.node.startsWith('vxlan:') || b.node.startsWith('vxlan-stitch:');
+
+  if (aIsSpecial !== bIsSpecial) {
+    const special = aIsSpecial ? a : b;
+    const nonSpecial = aIsSpecial ? b : a;
+    let type: CanonicalLinkKey['type'] = 'unknown';
+    if (special.node === 'host') type = 'host';
+    else if (special.node === 'mgmt-net') type = 'mgmt-net';
+    else if (special.node.startsWith('macvlan:')) type = 'macvlan';
+    else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
+    else if (special.node.startsWith('vxlan:')) type = 'vxlan';
+    else if (special.node.startsWith('dummy')) type = 'dummy';
+    return { type, a: nonSpecial };
+  }
+
+  return { type: 'veth', a, b };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function computeEndpointsStr(data: any): string | null {
-  // Prefer explicit endpoints array when present, as special endpoints already correct encoded
-  if (data.endpoints && Array.isArray(data.endpoints) && data.endpoints.length === 2) {
-    const valid = data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'));
-    if (valid) {
-      return (data.endpoints as string[]).join(',');
-    }
-  }
-  if (data.sourceEndpoint && data.targetEndpoint) {
-    return `${data.source}:${data.sourceEndpoint},${data.target}:${data.targetEndpoint}`;
-  }
-  return null;
-}
+// Deprecated: computeEndpointsStr removed in favor of canonical link matching
 
 export interface SaveViewportParams {
   mode: 'edit' | 'view';
@@ -522,57 +648,260 @@ export async function saveViewport({
     // Ensure links list renders with indented hyphens (block style)
     linksNode.flow = false;
 
+    // Editor no longer relies on a global linkFormat setting; format is inferred per link
+
+    function buildEndpointMap(ep: CanonicalEndpoint): YAML.YAMLMap {
+      const m = new YAML.YAMLMap();
+      (m as any).flow = false;
+      m.set('node', doc!.createNode(ep.node));
+      if (ep.iface) m.set('interface', doc!.createNode(ep.iface));
+      return m;
+    }
+
     payloadParsed.filter(el => el.group === 'edges').forEach(element => {
       const data = element.data;
-      const endpointsStr = computeEndpointsStr(data);
-      if (!endpointsStr) {
-        return;
-      }
+      const payloadKey = canonicalFromPayloadEdge(data);
+      if (!payloadKey) return;
+      const payloadKeyStr = canonicalKeyToString(payloadKey);
       let linkFound = false;
+
+      // Step 7: determine chosen type with UI override and prepare helpers
+      const extra = (data.extraData || {}) as any;
+      const validTypes = new Set(['veth','mgmt-net','host','macvlan','vxlan','vxlan-stitch','dummy']);
+      const chosenType: CanonicalLinkKey['type'] = (extra.extType && validTypes.has(extra.extType))
+        ? (extra.extType as any)
+        : (payloadKey.type === 'unknown' ? 'veth' : payloadKey.type);
+
+      const setOrDelete = (map: YAML.YAMLMap, key: string, value: any) => {
+        if (value === undefined || value === '' || (typeof value === 'object' && value != null && Object.keys(value).length === 0)) {
+          if ((map as any).has && (map as any).has(key, true)) (map as any).delete(key);
+          return;
+        }
+        map.set(key, doc!.createNode(value));
+      };
       for (const linkItem of linksNode.items) {
         if (YAML.isMap(linkItem)) {
-          // Ensure each link map uses block style (no `{}`)
           (linkItem as YAML.YAMLMap).flow = false;
-          const eps = linkItem.get('endpoints', true);
-          if (YAML.isSeq(eps)) {
-            const yamlEndpointsStr = eps.items
-              .map(item => String((item as any).value ?? item))
-              .join(',');
-            if (yamlEndpointsStr === endpointsStr) {
-              linkFound = true;
-              break;
+          const yamlKey = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
+          if (yamlKey && canonicalKeyToString(yamlKey) === payloadKeyStr) {
+            linkFound = true;
+            // Check if we need to convert from brief to extended format
+            const hasExtendedProperties =
+              (extra.extMtu !== undefined && extra.extMtu !== null && extra.extMtu !== '') ||
+              (extra.extSourceMac !== undefined && extra.extSourceMac !== null && extra.extSourceMac !== '') ||
+              (extra.extTargetMac !== undefined && extra.extTargetMac !== null && extra.extTargetMac !== '') ||
+              (extra.extMac !== undefined && extra.extMac !== null && extra.extMac !== '') ||
+              (extra.extHostInterface !== undefined && extra.extHostInterface !== null && extra.extHostInterface !== '') ||
+              (extra.extRemote !== undefined && extra.extRemote !== null && extra.extRemote !== '') ||
+              (extra.extVni !== undefined && extra.extVni !== null && extra.extVni !== '') ||
+              (extra.extUdpPort !== undefined && extra.extUdpPort !== null && extra.extUdpPort !== '') ||
+              (extra.extMode !== undefined && extra.extMode !== null && extra.extMode !== '') ||
+              (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) ||
+              (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0);
+
+            {
+              const map = linkItem as YAML.YAMLMap;
+              // Determine if we should use brief or extended format
+              // Use brief format when no extended properties are set
+              // EXCEPTION: dummy links MUST always use extended format with single endpoint
+              const shouldUseBriefFormat = !hasExtendedProperties && chosenType !== 'dummy';
+
+              if (shouldUseBriefFormat) {
+                // Convert to brief format
+                // Remove type field to make it brief format
+                if ((map as any).has && (map as any).has('type', true)) (map as any).delete('type');
+                const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
+                const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
+                const endpointsNode = doc!.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
+                endpointsNode.flow = true; // inline style for brief format
+                map.set('endpoints', endpointsNode);
+                // Remove all extended format fields
+                if ((map as any).has && (map as any).has('endpoint', true)) (map as any).delete('endpoint');
+                ['host-interface', 'mode', 'remote', 'vni', 'udp-port', 'mtu', 'vars', 'labels'].forEach(k => {
+                  if ((map as any).has && (map as any).has(k, true)) (map as any).delete(k);
+                });
+              } else {
+                // Use extended format
+                // Apply type
+                map.set('type', doc!.createNode(chosenType));
+
+                // Guardrails: required fields per type
+                const requiresHost = (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan');
+                const requiresVx = (chosenType === 'vxlan' || chosenType === 'vxlan-stitch');
+                if ((requiresHost && !extra.extHostInterface) ||
+                    (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
+                  log.warn(`Skipping write for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
+                  break;
+                }
+
+                if (chosenType === 'veth') {
+                  // endpoints: two maps with optional MACs
+                  const srcEp: CanonicalEndpoint = { node: data.source, iface: data.sourceEndpoint || '' };
+                  const dstEp: CanonicalEndpoint = { node: data.target, iface: data.targetEndpoint || '' };
+                  const endpointsNode = new YAML.YAMLSeq();
+                  endpointsNode.flow = false;
+                  const epA = buildEndpointMap(srcEp);
+                  const epB = buildEndpointMap(dstEp);
+                  if (extra.extSourceMac) epA.set('mac', doc!.createNode(extra.extSourceMac)); else if ((epA as any).has && (epA as any).has('mac', true)) (epA as any).delete('mac');
+                  if (extra.extTargetMac) epB.set('mac', doc!.createNode(extra.extTargetMac)); else if ((epB as any).has && (epB as any).has('mac', true)) (epB as any).delete('mac');
+                  endpointsNode.add(epA);
+                  endpointsNode.add(epB);
+                  map.set('endpoints', endpointsNode);
+                  if ((map as any).has && (map as any).has('endpoint', true)) (map as any).delete('endpoint');
+                  // Clean per-type fields not relevant to veth
+                  ['host-interface','mode','remote','vni','udp-port'].forEach(k => { if ((map as any).has && (map as any).has(k, true)) (map as any).delete(k); });
+                } else {
+                  // Single-endpoint shape
+                  const single = payloadKey.a;
+                  const epMap = buildEndpointMap(single);
+                  const containerIsSource = (single.node === data.source && (single.iface || '') === (data.sourceEndpoint || ''));
+                  const selectedMac = containerIsSource ? extra.extSourceMac : extra.extTargetMac;
+                  const endpointMac = (extra.extMac !== undefined && extra.extMac !== '') ? extra.extMac : selectedMac;
+                  if (endpointMac) epMap.set('mac', doc!.createNode(endpointMac)); else if ((epMap as any).has && (epMap as any).has('mac', true)) (epMap as any).delete('mac');
+                  map.set('endpoint', epMap);
+                  if ((map as any).has && (map as any).has('endpoints', true)) (map as any).delete('endpoints');
+
+                  // Per-type optionals
+                  if (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan') {
+                    setOrDelete(map, 'host-interface', extra.extHostInterface);
+                  } else {
+                    if ((map as any).has && (map as any).has('host-interface', true)) (map as any).delete('host-interface');
+                  }
+                  if (chosenType === 'macvlan') {
+                    setOrDelete(map, 'mode', extra.extMode);
+                  } else {
+                    if ((map as any).has && (map as any).has('mode', true)) (map as any).delete('mode');
+                  }
+                  if (chosenType === 'vxlan' || chosenType === 'vxlan-stitch') {
+                    setOrDelete(map, 'remote', extra.extRemote);
+                    setOrDelete(map, 'vni', (extra.extVni !== '' ? extra.extVni : undefined));
+                    setOrDelete(map, 'udp-port', (extra.extUdpPort !== '' ? extra.extUdpPort : undefined));
+                  } else {
+                    ['remote','vni','udp-port'].forEach(k => { if ((map as any).has && (map as any).has(k, true)) (map as any).delete(k); });
+                  }
+                }
+
+                // Common
+                setOrDelete(map, 'mtu', (extra.extMtu !== '' ? extra.extMtu : undefined));
+                setOrDelete(map, 'vars', extra.extVars);
+                setOrDelete(map, 'labels', extra.extLabels);
+              }
             }
+            break;
           }
         }
       }
       if (!linkFound) {
-        const endpointsArrStr = endpointsStr;
         const newLink = new YAML.YAMLMap();
-        // New link map should be block style
         newLink.flow = false;
-        const endpoints = endpointsArrStr.split(',');
-        const endpointsNode = doc.createNode(endpoints) as YAML.YAMLSeq;
-        // Endpoints list should be inline with []
-        endpointsNode.flow = true;
-        newLink.set('endpoints', endpointsNode);
+
+        // Create new entry: choose format based on provided extended fields/type or inferred single-endpoint type
+        // Use extended format if:
+        // 1. An explicit type is set via extType, OR
+        // 2. The inferred type is not 'veth' (single-endpoint types), OR
+        // 3. Any extended properties are configured (mtu, mac addresses, vars, labels, etc.)
+        const hasExtendedProperties =
+          (extra.extMtu !== undefined && extra.extMtu !== null && extra.extMtu !== '') ||
+          (extra.extSourceMac !== undefined && extra.extSourceMac !== null && extra.extSourceMac !== '') ||
+          (extra.extTargetMac !== undefined && extra.extTargetMac !== null && extra.extTargetMac !== '') ||
+          (extra.extMac !== undefined && extra.extMac !== null && extra.extMac !== '') ||
+          (extra.extHostInterface !== undefined && extra.extHostInterface !== null && extra.extHostInterface !== '') ||
+          (extra.extRemote !== undefined && extra.extRemote !== null && extra.extRemote !== '') ||
+          (extra.extVni !== undefined && extra.extVni !== null && extra.extVni !== '') ||
+          (extra.extUdpPort !== undefined && extra.extUdpPort !== null && extra.extUdpPort !== '') ||
+          (extra.extMode !== undefined && extra.extMode !== null && extra.extMode !== '') ||
+          (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) ||
+          (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0);
+
+        // Only use extended format if there are actual extended properties
+        // EXCEPTION: dummy links MUST always use extended format with single endpoint
+        const wantsExtended = hasExtendedProperties || chosenType === 'dummy';
+        if (wantsExtended) {
+          // Determine type and write extended structure with per-type fields (Step 7)
+          newLink.set('type', doc!.createNode(chosenType));
+          // Guardrails: skip creating invalid extended links
+          // Only check for required fields when using extended format with extended properties
+          const requiresHost = (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan');
+          const requiresVx = (chosenType === 'vxlan' || chosenType === 'vxlan-stitch');
+          // For host/mgmt-net/macvlan, host-interface is only required if not already in the endpoint
+          const needsHostInterface = requiresHost && !data.source.includes(':') && !data.target.includes(':');
+          if ((needsHostInterface && !extra.extHostInterface) ||
+              (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
+            log.warn(`Skipping creation for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
+            return; // do not add newLink
+          }
+          if (chosenType === 'veth') {
+            const srcEp: CanonicalEndpoint = { node: data.source, iface: data.sourceEndpoint || '' };
+            const dstEp: CanonicalEndpoint = { node: data.target, iface: data.targetEndpoint || '' };
+            const endpointsNode = new YAML.YAMLSeq();
+            endpointsNode.flow = false; // maps inside seq -> block style
+            const epA = buildEndpointMap(srcEp);
+            const epB = buildEndpointMap(dstEp);
+            if (extra.extSourceMac) epA.set('mac', doc!.createNode(extra.extSourceMac));
+            if (extra.extTargetMac) epB.set('mac', doc!.createNode(extra.extTargetMac));
+            endpointsNode.add(epA);
+            endpointsNode.add(epB);
+            newLink.set('endpoints', endpointsNode);
+          } else {
+            // Single-endpoint types
+            const single = payloadKey.a; // canonical non-special
+            const epMap = buildEndpointMap(single);
+            // MAC for container side
+            const containerIsSource = (single.node === data.source && (single.iface || '') === (data.sourceEndpoint || ''));
+            const selectedMac = containerIsSource ? extra.extSourceMac : extra.extTargetMac;
+            const endpointMac = (extra.extMac !== undefined && extra.extMac !== '') ? extra.extMac : selectedMac;
+            if (endpointMac) epMap.set('mac', doc!.createNode(endpointMac));
+            newLink.set('endpoint', epMap);
+
+            // Per-type fields
+            if (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan') {
+              const hostIface = extra.extHostInterface || ((): string | undefined => {
+                // Derive from special side id if available (e.g., host:ethX)
+                const specialSide = data.source === `${single.node}:${single.iface}` ? data.target : data.source;
+                const specialStr = String(specialSide);
+                if (specialStr.includes(':')) return specialStr.split(':')[1];
+                return undefined;
+              })();
+              setOrDelete(newLink, 'host-interface', hostIface);
+            }
+            if (chosenType === 'macvlan') {
+              setOrDelete(newLink, 'mode', extra.extMode);
+            }
+            if (chosenType === 'vxlan' || chosenType === 'vxlan-stitch') {
+              setOrDelete(newLink, 'remote', extra.extRemote);
+              setOrDelete(newLink, 'vni', (extra.extVni !== '' ? extra.extVni : undefined));
+              setOrDelete(newLink, 'udp-port', (extra.extUdpPort !== '' ? extra.extUdpPort : undefined));
+            }
+          }
+          // Common optionals
+          setOrDelete(newLink, 'mtu', (extra.extMtu !== '' ? extra.extMtu : undefined));
+          setOrDelete(newLink, 'vars', extra.extVars);
+          setOrDelete(newLink, 'labels', extra.extLabels);
+
+        } else {
+          // Short format
+          const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
+          const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
+          const endpointsNode = doc!.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
+          endpointsNode.flow = true; // inline style for short format
+          newLink.set('endpoints', endpointsNode);
+        }
         linksNode.add(newLink);
       }
     });
 
-    const payloadEdgeEndpoints = new Set(
+    const payloadEdgeKeys = new Set<string>(
       payloadParsed
         .filter(el => el.group === 'edges')
-        .map(el => computeEndpointsStr(el.data))
-        .filter((s): s is string => Boolean(s))
+        .map(el => canonicalFromPayloadEdge(el.data))
+        .filter((k): k is CanonicalLinkKey => Boolean(k))
+        .map(k => canonicalKeyToString(k))
     );
     linksNode.items = linksNode.items.filter(linkItem => {
       if (YAML.isMap(linkItem)) {
-        const endpointsNode = linkItem.get('endpoints', true);
-        if (YAML.isSeq(endpointsNode)) {
-          const endpointsStr = endpointsNode.items
-            .map(item => String((item as any).value ?? item))
-            .join(',');
-          return payloadEdgeEndpoints.has(endpointsStr);
+        const key = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
+        if (key) {
+          return payloadEdgeKeys.has(canonicalKeyToString(key));
         }
       }
       return true;
@@ -584,7 +913,17 @@ export async function saveViewport({
         (linkItem as YAML.YAMLMap).flow = false;
         const endpointsNode = linkItem.get('endpoints', true);
         if (YAML.isSeq(endpointsNode)) {
+          // Handle both short (scalars) and extended (maps) endpoint entries
           endpointsNode.items = endpointsNode.items.map(item => {
+            if (YAML.isMap(item)) {
+              const n = (item as YAML.YAMLMap).get('node', true) as any;
+              const nodeVal = String(n?.value ?? n ?? '');
+              const updated = updatedKeys.get(nodeVal);
+              if (updated) {
+                (item as YAML.YAMLMap).set('node', doc!.createNode(updated));
+              }
+              return item;
+            }
             let endpointStr = String((item as any).value ?? item);
             if (endpointStr.includes(':')) {
               const [nodeKey, rest] = endpointStr.split(':');
@@ -594,10 +933,23 @@ export async function saveViewport({
             } else if (updatedKeys.has(endpointStr)) {
               endpointStr = updatedKeys.get(endpointStr)!;
             }
-            return doc.createNode(endpointStr);
+            return doc!.createNode(endpointStr);
           });
-          // Ensure endpoints list renders inline with []
-          endpointsNode.flow = true;
+          // For short format preserve inline []
+          if (endpointsNode.items.every(it => !YAML.isMap(it))) {
+            endpointsNode.flow = true;
+          } else {
+            endpointsNode.flow = false;
+          }
+        }
+        const endpointSingle = linkItem.get('endpoint', true);
+        if (YAML.isMap(endpointSingle)) {
+          const n = endpointSingle.get('node', true) as any;
+          const nodeVal = String(n?.value ?? n ?? '');
+          const updated = updatedKeys.get(nodeVal);
+          if (updated) {
+            endpointSingle.set('node', doc!.createNode(updated));
+          }
         }
       }
     }

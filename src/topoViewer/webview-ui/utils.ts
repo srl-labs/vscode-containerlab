@@ -1,6 +1,7 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
 import { generateEncodedSVG, NodeType } from './managerSvgGenerator';
+import { loadExtension } from '../cytoscapeInstanceFactory';
 
 /**
  * Replace PNG image elements with their original SVG versions for node icons.
@@ -72,25 +73,29 @@ export function replacePngWithSvg(svg: string): string {
  *
  * @param cy - Cytoscape core instance
  */
-export function exportViewportAsSvg(cy: cytoscape.Core): void {
+export async function exportViewportAsSvg(cy: cytoscape.Core): Promise<void> {
   try {
+    // Ensure the cytoscape-svg extension is loaded (lazy-load path)
+    await loadExtension('svg');
+
     const cyWithSvg = cy as any;
-    if (typeof cyWithSvg.svg === 'function') {
-      const exported = cyWithSvg.svg({ scale: 1, full: true });
-      const svgContent = replacePngWithSvg(exported);
-      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'topology.svg';
-      link.click();
-
-      URL.revokeObjectURL(url);
-      log.info('Topology exported as SVG');
-    } else {
+    if (typeof cyWithSvg.svg !== 'function') {
       log.error('SVG export not available - cytoscape-svg extension may not be loaded');
+      return;
     }
+
+    const exported = cyWithSvg.svg({ scale: 1, full: true });
+    const svgContent = replacePngWithSvg(exported);
+    const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'topology.svg';
+    link.click();
+
+    URL.revokeObjectURL(url);
+    log.info('Topology exported as SVG');
   } catch (error) {
     log.error(`Error capturing topology: ${error}`);
   }
