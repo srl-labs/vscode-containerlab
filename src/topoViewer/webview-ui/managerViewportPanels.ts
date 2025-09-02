@@ -1538,9 +1538,11 @@ export class ManagerViewportPanels {
    * @param options - An array of kind option strings.
    */
   private panelNodeEditorPopulateKindDropdown(options: string[]): void {
+    // Sort kinds alphabetically (no explicit ordering)
+    const sortedOptions = this.sortKindsWithNokiaTop(options);
     this.createFilterableDropdown(
       'panel-node-kind-dropdown-container',
-      options,
+      sortedOptions,
       this.panelNodeEditorKind,
       (selectedValue: string) => {
         const previousKind = this.panelNodeEditorKind;
@@ -1571,6 +1573,13 @@ export class ManagerViewportPanels {
       },
       'Search for kind...'
     );
+  }
+
+  // Group Nokia kinds on top (prefix 'nokia_'), each group sorted alphabetically
+  private sortKindsWithNokiaTop(options: string[]): string[] {
+    const nokiaKinds = options.filter(k => k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
+    const otherKinds = options.filter(k => !k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
+    return [...nokiaKinds, ...otherKinds];
   }
 
   private panelNodeEditorSetupTypeField(options: string[]): void {

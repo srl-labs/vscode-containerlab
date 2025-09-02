@@ -200,7 +200,10 @@ export class ManagerNodeEditor {
         log.warn('No kind enum found in schema; keeping existing Kind options');
         return;
       }
-      this.schemaKinds = kinds.slice();
+      // Group Nokia kinds on top (prefix 'nokia_'), each group sorted alphabetically
+      const nokiaKinds = kinds.filter(k => k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
+      const otherKinds = kinds.filter(k => !k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
+      this.schemaKinds = [...nokiaKinds, ...otherKinds];
 
       const selectEl = document.getElementById('node-kind') as HTMLSelectElement | null;
       if (!selectEl) {
