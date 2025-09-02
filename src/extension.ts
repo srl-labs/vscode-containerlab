@@ -13,6 +13,7 @@ import { WelcomePage } from './welcomePage';
 import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
+import { registerClabImageCompletion } from './yaml/imageCompletion';
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -225,6 +226,9 @@ export async function activate(context: vscode.ExtensionContext) {
     'containerlab:isLocalCaptureAllowed',
     isLocalCaptureAllowed
   );
+
+  // Language features (YAML completion)
+  registerClabImageCompletion(context);
 
   // Register commands
 
