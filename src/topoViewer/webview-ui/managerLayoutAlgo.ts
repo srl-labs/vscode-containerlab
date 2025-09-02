@@ -45,6 +45,15 @@ export class ManagerLayoutAlgo {
   private geoScaleFactor = 4;
   /** Last scale factor applied to elements */
   private lastGeoScale = this.geoScaleFactor;
+  /** Extra multiplier to make labels scale slightly larger than nodes */
+  private geoLabelScaleBias = 8;
+  /** Baseline text metrics captured when Geo mode starts */
+  private baseNodeTextOutlineWidth = 0;
+  private baseNodeTextBgPadding = 0;
+  private baseEdgeTextOutlineWidth = 0;
+  private baseEdgeTextBgPadding = 0;
+  private baseEdgeSourceTextOffset = 0;
+  private baseEdgeTargetTextOffset = 0;
   /** Cached zoom handler so it can be removed */
   private onLeafletZoomBound = () => {
     if (this.zoomRaf !== null) window.cancelAnimationFrame(this.zoomRaf);
@@ -117,11 +126,34 @@ export class ManagerLayoutAlgo {
     log.debug(`[GeoScale] apply ${enable} factor ${factor}`);
 
     if (enable) {
+      // Capture baseline label metrics once for stylesheet-based scaling
+      if (this.baseNodeTextOutlineWidth === 0 && this.baseNodeTextBgPadding === 0) {
+        const nodes = cy.nodes();
+        const edges = cy.edges();
+        const anyNode: any = nodes.nonempty() ? nodes[0] : undefined;
+        const anyEdge: any = edges.nonempty() ? edges[0] : undefined;
+        const nTow = anyNode ? parseFloat(anyNode.style('text-outline-width')) : NaN;
+        const nTbp = anyNode ? parseFloat(anyNode.style('text-background-padding')) : NaN;
+        const eTow = anyEdge ? parseFloat(anyEdge.style('text-outline-width')) : NaN;
+        const eTbp = anyEdge ? parseFloat(anyEdge.style('text-background-padding')) : NaN;
+        const eSo = anyEdge ? parseFloat(anyEdge.style('source-text-offset')) : NaN;
+        const eTo = anyEdge ? parseFloat(anyEdge.style('target-text-offset')) : NaN;
+        this.baseNodeTextOutlineWidth = isNaN(nTow) ? 0.1 : nTow;
+        this.baseNodeTextBgPadding = isNaN(nTbp) ? 0.1 : nTbp;
+        this.baseEdgeTextOutlineWidth = isNaN(eTow) ? 0.1 : eTow;
+        this.baseEdgeTextBgPadding = isNaN(eTbp) ? 0.1 : eTbp;
+        this.baseEdgeSourceTextOffset = isNaN(eSo) ? 0.1 : eSo;
+        this.baseEdgeTargetTextOffset = isNaN(eTo) ? 0.1 : eTo;
+      }
+
+      const labelFactor = factor * this.geoLabelScaleBias;
       cy.nodes().forEach((n) => {
         let origW = n.data('_origWidth');
         let origH = n.data('_origHeight');
         let origFont = n.data('_origFont');
         let origBorder = n.data('_origBorderWidth');
+        let origTextOutline = n.data('_origTextOutlineWidth');
+        let origTextBgPad = n.data('_origTextBgPadding');
         if (origW === undefined) {
           origW = n.width();
           n.data('_origWidth', origW);
@@ -131,8 +163,17 @@ export class ManagerLayoutAlgo {
           n.data('_origHeight', origH);
         }
         if (origFont === undefined) {
-          const fs = parseFloat(n.style('font-size'));
-          origFont = isNaN(fs) ? 0 : fs;
+          // Prefer rendered pixel size for reliable scaling (stylesheet may specify em)
+          let fsStr: any = (n as any).renderedStyle ? (n as any).renderedStyle('font-size') : n.style('font-size');
+          if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
+          let fsNum = parseFloat(fsStr);
+          if (isNaN(fsNum)) {
+            // Fallback: attempt to convert em to px assuming 16px base
+            const raw = n.style('font-size');
+            const rawNum = parseFloat(raw);
+            fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
+          }
+          origFont = fsNum;
           n.data('_origFont', origFont);
         }
         if (origBorder === undefined && n.data('topoViewerRole') === 'group') {
@@ -140,27 +181,49 @@ export class ManagerLayoutAlgo {
           origBorder = isNaN(bw) ? 0 : bw;
           n.data('_origBorderWidth', origBorder);
         }
+        if (origTextOutline === undefined) {
+          const tow = parseFloat(n.style('text-outline-width'));
+          origTextOutline = isNaN(tow) ? 0 : tow;
+          n.data('_origTextOutlineWidth', origTextOutline);
+        }
+        if (origTextBgPad === undefined) {
+          const tbp = parseFloat(n.style('text-background-padding'));
+          origTextBgPad = isNaN(tbp) ? 0 : tbp;
+          n.data('_origTextBgPadding', origTextBgPad);
+        }
         n.style({
           width: origW * factor,
           height: origH * factor,
-          'font-size': origFont ? `${origFont * factor}px` : n.style('font-size')
+          'font-size': origFont ? `${origFont * labelFactor}px` : n.style('font-size')
         });
         if (n.data('topoViewerRole') === 'group' && origBorder !== undefined) {
           n.style('border-width', origBorder * factor);
         }
+        // Text outline and background padding are handled via stylesheet-level scaling below
       });
       cy.edges().forEach((e) => {
         let origWidth = e.data('_origWidth');
         let origFont = e.data('_origFont');
         let origArrow = e.data('_origArrow');
+        let origTextOutline = e.data('_origTextOutlineWidth');
+        let origTextBgPad = e.data('_origTextBgPadding');
+        let origSrcOffset = e.data('_origSourceTextOffset');
+        let origTgtOffset = e.data('_origTargetTextOffset');
         if (origWidth === undefined) {
           const width = parseFloat(e.style('width'));
           origWidth = isNaN(width) ? 0 : width;
           e.data('_origWidth', origWidth);
         }
         if (origFont === undefined) {
-          const fs = parseFloat(e.style('font-size'));
-          origFont = isNaN(fs) ? 0 : fs;
+          let fsStr: any = (e as any).renderedStyle ? (e as any).renderedStyle('font-size') : e.style('font-size');
+          if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
+          let fsNum = parseFloat(fsStr);
+          if (isNaN(fsNum)) {
+            const raw = e.style('font-size');
+            const rawNum = parseFloat(raw);
+            fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
+          }
+          origFont = fsNum;
           e.data('_origFont', origFont);
         }
         if (origArrow === undefined) {
@@ -168,11 +231,32 @@ export class ManagerLayoutAlgo {
           origArrow = isNaN(arrow) ? 0 : arrow;
           e.data('_origArrow', origArrow);
         }
+        if (origTextOutline === undefined) {
+          const tow = parseFloat(e.style('text-outline-width'));
+          origTextOutline = isNaN(tow) ? 0 : tow;
+          e.data('_origTextOutlineWidth', origTextOutline);
+        }
+        if (origTextBgPad === undefined) {
+          const tbp = parseFloat(e.style('text-background-padding'));
+          origTextBgPad = isNaN(tbp) ? 0 : tbp;
+          e.data('_origTextBgPadding', origTextBgPad);
+        }
+        if (origSrcOffset === undefined) {
+          const so = parseFloat(e.style('source-text-offset'));
+          origSrcOffset = isNaN(so) ? 0 : so;
+          e.data('_origSourceTextOffset', origSrcOffset);
+        }
+        if (origTgtOffset === undefined) {
+          const to = parseFloat(e.style('target-text-offset'));
+          origTgtOffset = isNaN(to) ? 0 : to;
+          e.data('_origTargetTextOffset', origTgtOffset);
+        }
         e.style({
           width: origWidth ? origWidth * factor : e.style('width'),
-          'font-size': origFont ? `${origFont * factor}px` : e.style('font-size'),
+          'font-size': origFont ? `${origFont * labelFactor}px` : e.style('font-size'),
           'arrow-scale': origArrow ? origArrow * factor : e.style('arrow-scale')
         });
+        // Text metrics and label offsets handled via stylesheet-level scaling below
       });
       this.geoScaleApplied = true;
       this.lastGeoScale = factor;
@@ -188,10 +272,13 @@ export class ManagerLayoutAlgo {
         if (bw !== undefined && n.data('topoViewerRole') === 'group') {
           n.style('border-width', bw);
         }
+        // Reset of outline/background padding handled via stylesheet-level reset below
         n.removeData('_origWidth');
         n.removeData('_origHeight');
         n.removeData('_origFont');
         n.removeData('_origBorderWidth');
+        n.removeData('_origTextOutlineWidth');
+        n.removeData('_origTextBgPadding');
       });
       cy.edges().forEach((e) => {
         const w = e.data('_origWidth');
@@ -200,10 +287,35 @@ export class ManagerLayoutAlgo {
         if (w !== undefined) e.style('width', w);
         if (fs !== undefined && fs !== 0) e.style('font-size', `${fs}px`);
         if (ar !== undefined) e.style('arrow-scale', ar);
+        // Reset of outline/background padding and offsets via stylesheet-level reset below
         e.removeData('_origWidth');
         e.removeData('_origFont');
         e.removeData('_origArrow');
+        e.removeData('_origTextOutlineWidth');
+        e.removeData('_origTextBgPadding');
+        e.removeData('_origSourceTextOffset');
+        e.removeData('_origTargetTextOffset');
       });
+      // Reset stylesheet-level label metrics back to baseline
+      const sty = cy.style();
+      sty.selector('node')
+        .style('text-outline-width', `${this.baseNodeTextOutlineWidth}px`)
+        .style('text-background-padding', `${this.baseNodeTextBgPadding}px`);
+      sty.selector('edge')
+        .style('text-outline-width', `${this.baseEdgeTextOutlineWidth}px`)
+        .style('text-background-padding', `${this.baseEdgeTextBgPadding}px`)
+        .style('source-text-offset', this.baseEdgeSourceTextOffset)
+        .style('target-text-offset', this.baseEdgeTargetTextOffset)
+        .update();
+
+      // Clear baselines for next enable
+      this.baseNodeTextOutlineWidth = 0;
+      this.baseNodeTextBgPadding = 0;
+      this.baseEdgeTextOutlineWidth = 0;
+      this.baseEdgeTextBgPadding = 0;
+      this.baseEdgeSourceTextOffset = 0;
+      this.baseEdgeTargetTextOffset = 0;
+
       this.geoScaleApplied = false;
       this.lastGeoScale = this.geoScaleFactor;
     }
