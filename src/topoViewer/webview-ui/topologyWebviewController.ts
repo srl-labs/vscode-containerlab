@@ -21,7 +21,7 @@ import { ManagerFreeText } from './managerFreeText';
 import { ManagerNodeEditor } from './managerNodeEditor';
 import { ManagerGroupStyle } from './managerGroupStyle';
 import { CopyPasteManager } from './managerCopyPaste';
-import { exportViewportAsSvg } from './utils';
+import { viewportButtonsCaptureViewportAsSvg } from './uiHandlers';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
 import type { ManagerZoomToFit } from './managerZoomToFit';
@@ -68,8 +68,7 @@ class TopologyWebviewController {
   public reloadTopoManager: ManagerReloadTopo;
   public freeTextManager?: ManagerFreeText;
   public copyPasteManager: CopyPasteManager;
-  // eslint-disable-next-line no-unused-vars
-  public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: (cy: cytoscape.Core) => void };
+    public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: () => void };
   private interfaceCounters: Record<string, number> = {};
 
 
@@ -380,8 +379,8 @@ class TopologyWebviewController {
 
     // Create capture viewport manager with the required method
     this.captureViewportManager = {
-      viewportButtonsCaptureViewportAsSvg: async (cy: cytoscape.Core) => {
-        await exportViewportAsSvg(cy);
+      viewportButtonsCaptureViewportAsSvg: () => {
+        viewportButtonsCaptureViewportAsSvg();
       }
     };
 
@@ -430,7 +429,7 @@ class TopologyWebviewController {
     window.viewportButtonsLabelEndpoint = () =>
       this.labelEndpointManager.viewportButtonsLabelEndpoint(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () =>
-      this.captureViewportManager.viewportButtonsCaptureViewportAsSvg(this.cy);
+      this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsReloadTopo = () =>
       this.reloadTopoManager.viewportButtonsReloadTopo(this.cy);
     window.viewportButtonsSaveTopo = () =>
