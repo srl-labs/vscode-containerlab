@@ -176,6 +176,11 @@ export async function saveViewport({
 
     // Load and save annotations only
     const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+    // Preserve previously saved node positions so Geo layout doesn't overwrite XY
+    const prevNodeById = new Map<string, NodeAnnotation>();
+    for (const na of annotations.nodeAnnotations || []) {
+      if (na && typeof na.id === 'string') prevNodeById.set(na.id, na);
+    }
     annotations.nodeAnnotations = [];
     annotations.cloudNodeAnnotations = [];
 
@@ -187,14 +192,24 @@ export async function saveViewport({
     );
 
     for (const node of regularNodes) {
+      const nodeIdForAnn = node.data.name || node.data.id; // name reflects rename better
+      const isGeoActive = !!(node?.data?.geoLayoutActive);
       const nodeAnnotation: NodeAnnotation = {
-        id: node.data.name || node.data.id,  // Use name (which gets updated on rename) instead of id
-        position: {
-          x: Math.round(node.position?.x || 0),
-          y: Math.round(node.position?.y || 0)
-        },
+        id: nodeIdForAnn,
         icon: node.data.topoViewerRole,
       };
+      if (isGeoActive) {
+        // Do not write XY when Geo layout is active; preserve prior position if available
+        const prev = prevNodeById.get(nodeIdForAnn);
+        if (prev?.position) {
+          nodeAnnotation.position = { x: prev.position.x, y: prev.position.y };
+        }
+      } else {
+        nodeAnnotation.position = {
+          x: Math.round(node.position?.x || 0),
+          y: Math.round(node.position?.y || 0)
+        };
+      }
       if (node.data.lat && node.data.lng) {
         const lat = parseFloat(node.data.lat);
         const lng = parseFloat(node.data.lng);
@@ -958,6 +973,11 @@ export async function saveViewport({
 
   // Save annotations for edit mode
   const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+  // Preserve previously saved node positions so Geo layout doesn't overwrite XY
+  const prevNodeById = new Map<string, NodeAnnotation>();
+  for (const na of annotations.nodeAnnotations || []) {
+    if (na && typeof na.id === 'string') prevNodeById.set(na.id, na);
+  }
   annotations.nodeAnnotations = [];
   annotations.cloudNodeAnnotations = [];
 
@@ -965,14 +985,24 @@ export async function saveViewport({
     el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'cloud' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id)
   );
   for (const node of regularNodes) {
+    const nodeIdForAnn = node.data.name || node.data.id; // name reflects rename better
+    const isGeoActive = !!(node?.data?.geoLayoutActive);
     const nodeAnnotation: NodeAnnotation = {
-      id: node.data.name || node.data.id,  // Use name (which gets updated on rename) instead of id
-      position: {
-        x: Math.round(node.position?.x || 0),
-        y: Math.round(node.position?.y || 0)
-      },
+      id: nodeIdForAnn,
       icon: node.data.topoViewerRole,
     };
+    if (isGeoActive) {
+      // Do not write XY when Geo layout is active; preserve prior position if available
+      const prev = prevNodeById.get(nodeIdForAnn);
+      if (prev?.position) {
+        nodeAnnotation.position = { x: prev.position.x, y: prev.position.y };
+      }
+    } else {
+      nodeAnnotation.position = {
+        x: Math.round(node.position?.x || 0),
+        y: Math.round(node.position?.y || 0)
+      };
+    }
     if (node.data.lat && node.data.lng) {
       const lat = parseFloat(node.data.lat);
       const lng = parseFloat(node.data.lng);
