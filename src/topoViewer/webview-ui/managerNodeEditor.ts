@@ -2,6 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
+import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
 
 /**
@@ -179,7 +180,62 @@ export class ManagerNodeEditor {
     // Setup dynamic entry handlers
     this.setupDynamicEntryHandlers();
 
+    // Initialize static filterable dropdowns with default values
+    this.initializeStaticDropdowns();
+
     log.debug('Enhanced node editor panel initialized');
+  }
+
+  private initializeStaticDropdowns(): void {
+    // Restart Policy
+    const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
+    createFilterableDropdown(
+      'node-restart-policy-dropdown-container',
+      rpOptions,
+      'Default',
+      () => {},
+      'Search restart policy...'
+    );
+
+    // Network Mode
+    const nmOptions = ['Default', 'host', 'none'];
+    createFilterableDropdown(
+      'node-network-mode-dropdown-container',
+      nmOptions,
+      'Default',
+      () => {},
+      'Search network mode...'
+    );
+
+    // Cert key size
+    const keySizeOptions = ['2048', '4096'];
+    createFilterableDropdown(
+      'node-cert-key-size-dropdown-container',
+      keySizeOptions,
+      '2048',
+      () => {},
+      'Search key size...'
+    );
+
+    // Image pull policy
+    const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
+    createFilterableDropdown(
+      'node-image-pull-policy-dropdown-container',
+      ippOptions,
+      'Default',
+      () => {},
+      'Search pull policy...'
+    );
+
+    // Runtime
+    const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
+    createFilterableDropdown(
+      'node-runtime-dropdown-container',
+      runtimeOptions,
+      'Default',
+      () => {},
+      'Search runtime...'
+    );
   }
 
   /**
@@ -205,33 +261,19 @@ export class ManagerNodeEditor {
       const otherKinds = kinds.filter(k => !k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
       this.schemaKinds = [...nokiaKinds, ...otherKinds];
 
-      const selectEl = document.getElementById('node-kind') as HTMLSelectElement | null;
-      if (!selectEl) {
-        log.warn('Kind select element #node-kind not found');
-        return;
-      }
-      // Preserve current selection to re-apply if present in new list
-      const currentValue = selectEl.value || ((window as any).defaultKind as string | undefined) || '';
-
-      // Clear and repopulate
-      while (selectEl.firstChild) {
-        selectEl.removeChild(selectEl.firstChild);
-      }
-      this.schemaKinds.forEach(k => {
-        const opt = document.createElement('option');
-        opt.value = k;
-        opt.textContent = k;
-        selectEl.appendChild(opt);
-      });
-
-      // Re-apply selection if possible, else default
-      if (currentValue && this.schemaKinds.includes(currentValue)) {
-        selectEl.value = currentValue;
-      } else if ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind)) {
-        selectEl.value = (window as any).defaultKind;
-      } else {
-        selectEl.selectedIndex = 0;
-      }
+      const desired = ((this.currentNode?.data()?.extraData?.kind as string) || (window as any).defaultKind || '') as string;
+      const initial = desired && this.schemaKinds.includes(desired)
+        ? desired
+        : ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind)
+            ? (window as any).defaultKind
+            : (this.schemaKinds[0] || ''));
+      createFilterableDropdown(
+        'node-kind-dropdown-container',
+        this.schemaKinds,
+        initial,
+        () => {},
+        'Search for kind...'
+      );
 
       this.kindsLoaded = true;
       log.debug(`Loaded ${this.schemaKinds.length} kinds from schema`);
@@ -430,18 +472,12 @@ export class ManagerNodeEditor {
 
     // Ensure kind selection matches loaded options (fallback gracefully)
     try {
-      const selectEl = document.getElementById('node-kind') as HTMLSelectElement | null;
+      const input = document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null;
       const desired = (node.data()?.extraData?.kind as string) || (window as any).defaultKind || '';
-      if (selectEl && desired) {
-        if (this.kindsLoaded && this.schemaKinds.length > 0) {
-          if (this.schemaKinds.includes(desired)) {
-            selectEl.value = desired;
-          } else if ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind)) {
-            selectEl.value = (window as any).defaultKind;
-          } else {
-            selectEl.selectedIndex = 0;
-          }
-        }
+      if (input && desired && this.kindsLoaded && this.schemaKinds.length > 0) {
+        input.value = this.schemaKinds.includes(desired)
+          ? desired
+          : ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind) ? (window as any).defaultKind : (this.schemaKinds[0] || ''));
       }
     } catch (e) {
       log.warn(`Kind selection alignment warning: ${e instanceof Error ? e.message : String(e)}`);
@@ -495,7 +531,12 @@ export class ManagerNodeEditor {
 
     // Basic tab
     this.setInputValue('node-name', nodeData.name || node.id());
-    this.setInputValue('node-kind', extraData.kind || ((window as any).defaultKind || 'nokia_srlinux'));
+    // Kind dropdown
+    const desiredKind = extraData.kind || ((window as any).defaultKind || 'nokia_srlinux');
+    const kindInitial = (this.schemaKinds.length > 0 && this.schemaKinds.includes(desiredKind))
+      ? desiredKind
+      : (this.schemaKinds[0] || desiredKind);
+    createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, () => {}, 'Search for kind...');
     this.setInputValue('node-type', extraData.type || '');
     this.setInputValue('node-image', extraData.image || '');
     const parentNode = node.parent();
@@ -533,7 +574,9 @@ export class ManagerNodeEditor {
     this.setInputValue('node-user', extraData.user || '');
     this.setInputValue('node-entrypoint', extraData.entrypoint || '');
     this.setInputValue('node-cmd', extraData.cmd || '');
-    this.setInputValue('node-restart-policy', extraData['restart-policy'] || '');
+    const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
+    const rpInitial = extraData['restart-policy'] || 'Default';
+    createFilterableDropdown('node-restart-policy-dropdown-container', rpOptions, rpInitial, () => {}, 'Search restart policy...');
     this.setCheckboxValue('node-auto-remove', extraData['auto-remove'] || false);
     this.setInputValue('node-startup-delay', extraData['startup-delay'] || '');
 
@@ -547,7 +590,9 @@ export class ManagerNodeEditor {
     // Network tab
     this.setInputValue('node-mgmt-ipv4', extraData['mgmt-ipv4'] || '');
     this.setInputValue('node-mgmt-ipv6', extraData['mgmt-ipv6'] || '');
-    this.setInputValue('node-network-mode', extraData['network-mode'] || '');
+    const nmOptions = ['Default', 'host', 'none'];
+    const nmInitial = extraData['network-mode'] || 'Default';
+    createFilterableDropdown('node-network-mode-dropdown-container', nmOptions, nmInitial, () => {}, 'Search network mode...');
 
     // Load ports
     if (extraData.ports && Array.isArray(extraData.ports)) {
@@ -602,7 +647,9 @@ export class ManagerNodeEditor {
     // Load certificate configuration
     if (extraData.certificate) {
       this.setCheckboxValue('node-cert-issue', extraData.certificate.issue || false);
-      this.setInputValue('node-cert-key-size', extraData.certificate['key-size'] || '2048');
+      const keySizeOptions = ['2048', '4096'];
+      const keySizeInitial = String(extraData.certificate['key-size'] || '2048');
+      createFilterableDropdown('node-cert-key-size-dropdown-container', keySizeOptions, keySizeInitial, () => {}, 'Search key size...');
       this.setInputValue('node-cert-validity', extraData.certificate['validity-duration'] || '');
 
       if (extraData.certificate.sans && Array.isArray(extraData.certificate.sans)) {
@@ -622,8 +669,13 @@ export class ManagerNodeEditor {
       this.setInputValue('node-healthcheck-retries', hc.retries || '');
     }
 
-    this.setInputValue('node-image-pull-policy', extraData['image-pull-policy'] || '');
-    this.setInputValue('node-runtime', extraData.runtime || '');
+    const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
+    const ippInitial = extraData['image-pull-policy'] || 'Default';
+    createFilterableDropdown('node-image-pull-policy-dropdown-container', ippOptions, ippInitial, () => {}, 'Search pull policy...');
+
+    const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
+    const runtimeInitial = extraData.runtime || 'Default';
+    createFilterableDropdown('node-runtime-dropdown-container', runtimeOptions, runtimeInitial, () => {}, 'Search runtime...');
   }
 
   /**
@@ -969,7 +1021,7 @@ export class ManagerNodeEditor {
       // Collect all the data
       const nodeProps: NodeProperties = {
         name: this.getInputValue('node-name'),
-        kind: this.getInputValue('node-kind') || undefined,
+        kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
         type: this.getInputValue('node-type') || undefined,
         image: this.getInputValue('node-image') || undefined,
       };
@@ -1030,9 +1082,9 @@ export class ManagerNodeEditor {
         nodeProps.exec = exec;
       }
 
-      const restartPolicy = this.getInputValue('node-restart-policy') as any;
-      if (restartPolicy) {
-        nodeProps['restart-policy'] = restartPolicy;
+      const rpVal = (document.getElementById('node-restart-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (rpVal && rpVal !== 'Default') {
+        nodeProps['restart-policy'] = rpVal as any;
       }
 
       if (this.getCheckboxValue('node-auto-remove')) {
@@ -1055,9 +1107,9 @@ export class ManagerNodeEditor {
         nodeProps['mgmt-ipv6'] = mgmtIpv6;
       }
 
-      const networkMode = this.getInputValue('node-network-mode');
-      if (networkMode) {
-        nodeProps['network-mode'] = networkMode;
+      const nmVal = (document.getElementById('node-network-mode-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (nmVal && nmVal !== 'Default') {
+        nodeProps['network-mode'] = nmVal;
       }
 
       const ports = this.collectDynamicEntries('ports');
@@ -1121,7 +1173,7 @@ export class ManagerNodeEditor {
       if (this.getCheckboxValue('node-cert-issue')) {
         nodeProps.certificate = { issue: true };
 
-        const keySize = this.getInputValue('node-cert-key-size');
+        const keySize = (document.getElementById('node-cert-key-size-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
         if (keySize) nodeProps.certificate['key-size'] = parseInt(keySize);
 
         const validity = this.getInputValue('node-cert-validity');
@@ -1162,14 +1214,14 @@ export class ManagerNodeEditor {
         nodeProps.healthcheck.retries = parseInt(hcRetries);
       }
 
-      const imagePullPolicy = this.getInputValue('node-image-pull-policy') as any;
-      if (imagePullPolicy) {
-        nodeProps['image-pull-policy'] = imagePullPolicy;
+      const ippVal = (document.getElementById('node-image-pull-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (ippVal && ippVal !== 'Default') {
+        nodeProps['image-pull-policy'] = ippVal as any;
       }
 
-      const runtime = this.getInputValue('node-runtime') as any;
-      if (runtime) {
-        nodeProps.runtime = runtime;
+      const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (runtimeVal && runtimeVal !== 'Default') {
+        nodeProps.runtime = runtimeVal as any;
       }
 
       // Update the node data

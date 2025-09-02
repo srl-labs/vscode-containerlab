@@ -32,14 +32,7 @@
         <!-- Kind -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Kind</label>
-          <select id="node-kind" class="input-field w-full">
-            <option value="nokia_srlinux">Nokia SR Linux</option>
-            <option value="nokia_sros">Nokia SR OS</option>
-            <option value="arista_ceos">Arista cEOS</option>
-            <option value="linux">Linux</option>
-            <option value="bridge">Bridge</option>
-            <option value="ovs-bridge">OVS Bridge</option>
-          </select>
+          <div id="node-kind-dropdown-container"></div>
         </div>
 
         <!-- Type -->
@@ -156,13 +149,7 @@
         <!-- Restart Policy -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Restart Policy</label>
-          <select id="node-restart-policy" class="input-field w-full">
-            <option value="">Default</option>
-            <option value="no">No</option>
-            <option value="on-failure">On Failure</option>
-            <option value="always">Always</option>
-            <option value="unless-stopped">Unless Stopped</option>
-          </select>
+          <div id="node-restart-policy-dropdown-container"></div>
         </div>
 
         <!-- Auto Remove -->
@@ -199,11 +186,7 @@
         <!-- Network Mode -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Network Mode</label>
-          <select id="node-network-mode" class="input-field w-full">
-            <option value="">Default (bridge)</option>
-            <option value="host">Host</option>
-            <option value="none">None</option>
-          </select>
+          <div id="node-network-mode-dropdown-container"></div>
         </div>
 
         <!-- Ports -->
@@ -331,11 +314,8 @@
           <div id="cert-options" class="mt-2 hidden">
             <div class="form-group">
               <label class="block vscode-label mb-1">Key Size</label>
-              <select id="node-cert-key-size" class="input-field w-full">
-                <option value="2048">2048</option>
-                <option value="4096">4096</option>
-              </select>
-            </div>
+              <div id="node-cert-key-size-dropdown-container"></div>
+              </div>
 
             <div class="form-group">
               <label class="block vscode-label mb-1">Validity Duration</label>
@@ -388,23 +368,13 @@
         <!-- Image Pull Policy -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Image Pull Policy</label>
-          <select id="node-image-pull-policy" class="input-field w-full">
-            <option value="">Default (IfNotPresent)</option>
-            <option value="IfNotPresent">If Not Present</option>
-            <option value="Never">Never</option>
-            <option value="Always">Always</option>
-          </select>
+          <div id="node-image-pull-policy-dropdown-container"></div>
         </div>
 
         <!-- Runtime -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Container Runtime</label>
-          <select id="node-runtime" class="input-field w-full">
-            <option value="">Default (docker)</option>
-            <option value="docker">Docker</option>
-            <option value="podman">Podman</option>
-            <option value="ignite">Ignite</option>
-          </select>
+          <div id="node-runtime-dropdown-container"></div>
         </div>
       </div>
       </div>
