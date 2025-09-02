@@ -174,6 +174,13 @@ export function createFilterableDropdown(
   dropdownMenu.addEventListener('click', (e) => {
     e.stopPropagation();
   });
+  // Prevent scroll events from bubbling to parent panels (avoid extra scrollbar motion)
+  dropdownMenu.addEventListener('wheel', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
+  dropdownMenu.addEventListener('touchmove', (e) => {
+    e.stopPropagation();
+  }, { passive: true });
 
   // Keyboard navigation
   filterInput.addEventListener('keydown', (e) => {

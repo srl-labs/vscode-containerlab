@@ -566,7 +566,24 @@ export class ManagerNodeEditor {
 
     // Set initial type field visibility based on the kind
     this.handleKindChange(kindInitial);
-    this.setInputValue('node-image', extraData.image || '');
+    // Image dropdown: prefer docker images if provided by the extension
+    const dockerImages = (window as any).dockerImages as string[] | undefined;
+    const imageInitial = extraData.image || '';
+    if (Array.isArray(dockerImages) && dockerImages.length > 0) {
+      createFilterableDropdown('node-image-dropdown-container', dockerImages, imageInitial, () => {}, 'Search for image...');
+    } else {
+      // Fallback to plain input if docker images not available
+      const container = document.getElementById('node-image-dropdown-container');
+      if (container) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'input-field w-full';
+        input.placeholder = 'e.g., ghcr.io/nokia/srlinux:latest';
+        input.id = 'node-image-fallback-input';
+        input.value = imageInitial;
+        container.appendChild(input);
+      }
+    }
     const parentNode = node.parent();
     const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
     this.setInputValue('node-group', parentId);
@@ -1051,8 +1068,16 @@ export class ManagerNodeEditor {
         name: this.getInputValue('node-name'),
         kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
         type: this.getInputValue('node-type') || undefined,
-        image: this.getInputValue('node-image') || undefined,
       };
+      // Image from dropdown or fallback
+      const dockerImages = (window as any).dockerImages as string[] | undefined;
+      if (Array.isArray(dockerImages) && dockerImages.length > 0) {
+        const img = (document.getElementById('node-image-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+        if (img) nodeProps.image = img;
+      } else {
+        const img = (document.getElementById('node-image-fallback-input') as HTMLInputElement | null)?.value || '';
+        if (img) nodeProps.image = img;
+      }
 
       // Configuration properties
       const startupConfig = this.getInputValue('node-startup-config');

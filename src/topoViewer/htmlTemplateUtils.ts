@@ -34,6 +34,7 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   defaultKind: string;
   defaultType: string;
   updateLinkEndpointsOnKindChange: boolean;
+  dockerImages?: string[];
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -216,6 +217,8 @@ export function generateHtmlTemplate(
       defaultType: editorParams.defaultType,
       updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString()
     };
+    // Inject docker images if provided
+    (replacements as any).dockerImages = JSON.stringify(editorParams.dockerImages || []);
   }
 
   for (const [key, value] of Object.entries(replacements)) {
