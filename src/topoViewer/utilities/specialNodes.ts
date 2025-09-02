@@ -10,7 +10,7 @@ export function isSpecialEndpoint(nodeId: string): boolean {
     nodeId.startsWith('macvlan:') ||
     nodeId.startsWith('vxlan:') ||
     nodeId.startsWith('vxlan-stitch:') ||
-    nodeId === 'dummy' || nodeId.startsWith('dummy:') ||
+    nodeId.startsWith('dummy') ||
     nodeId.startsWith('bridge:') ||
     nodeId.startsWith('ovs-bridge:')
   );

@@ -30,6 +30,17 @@ export class ManagerViewportPanels {
   private linkDynamicEntryCounters = new Map<string, number>();
 
   /**
+   * Generate a unique ID for dummy network nodes (dummy1, dummy2, ...).
+   */
+  private generateUniqueDummyId(): string {
+    let counter = 1;
+    while (this.cy.getElementById(`dummy${counter}`).length > 0) {
+      counter++;
+    }
+    return `dummy${counter}`;
+  }
+
+  /**
    * Initialize global functions for dynamic entry management
    */
   private initializeDynamicEntryHandlers(): void {
@@ -948,7 +959,7 @@ export class ManagerViewportPanels {
       if (nodeId.startsWith('macvlan:')) return 'macvlan';
       if (nodeId.startsWith('vxlan:')) return 'vxlan';
       if (nodeId.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
-      if (nodeId === 'dummy' || nodeId.startsWith('dummy:')) return 'dummy';
+      if (nodeId.startsWith('dummy')) return 'dummy';
       return null;
     };
 
@@ -1261,8 +1272,12 @@ export class ManagerViewportPanels {
     const interfaceName = interfaceInput ? interfaceInput.value : 'eth1';
     const isBridgeType = networkType === 'bridge' || networkType === 'ovs-bridge';
     const isDummyType = networkType === 'dummy';
-    const newId = isBridgeType ? interfaceName : (isDummyType ? networkType : `${networkType}:${interfaceName}`);
-    const newName = newId;
+    const newId = isBridgeType
+      ? interfaceName
+      : (isDummyType
+        ? (oldId.startsWith('dummy') ? oldId : this.generateUniqueDummyId())
+        : `${networkType}:${interfaceName}`);
+    const newName = isDummyType ? 'dummy' : newId;
 
     // Collect extended properties
     const extendedData: any = { ...currentData.extraData };

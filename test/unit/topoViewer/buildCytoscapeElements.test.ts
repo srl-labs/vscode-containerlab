@@ -59,4 +59,15 @@ describe('buildCytoscapeElements delegation', () => {
     const edge = elements.find((e: any) => e.group === 'edges');
     expect(edge?.classes).to.equal('');
   });
+
+  it('assigns unique ids to multiple dummy networks', async () => {
+    const adaptor = new TopoViewerAdaptorClab();
+    const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1: {}\n  links:\n    - type: dummy\n      endpoint: node1:eth0\n    - type: dummy\n      endpoint: node1:eth1\n`;
+    const elements = await adaptor.clabYamlToCytoscapeElementsEditor(yaml);
+    const dummyNodes = elements.filter((e: any) => e.group === 'nodes' && e.data.id.startsWith('dummy'));
+    expect(dummyNodes).to.have.length(2);
+    expect(dummyNodes[0].data.name).to.equal('dummy');
+    expect(dummyNodes[1].data.name).to.equal('dummy');
+    expect(dummyNodes[0].data.id).to.not.equal(dummyNodes[1].data.id);
+  });
 });
