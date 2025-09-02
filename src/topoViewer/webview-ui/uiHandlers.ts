@@ -227,8 +227,22 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
       log.error('Cytoscape instance not available');
       return;
     }
-    const cy = topoViewerState.cy;
-    await exportViewportAsSvg(cy);
+
+    const borderZoomInput = document.getElementById('export-border-zoom') as HTMLInputElement | null;
+    const borderPaddingInput = document.getElementById('export-border-padding') as HTMLInputElement | null;
+
+    const borderZoom = borderZoomInput ? parseFloat(borderZoomInput.value) : 100;
+    const borderPadding = borderPaddingInput ? parseFloat(borderPaddingInput.value) : 0;
+
+    await exportViewportAsSvg(topoViewerState.cy, {
+      borderZoom,
+      borderPadding
+    });
+
+    const panel = document.getElementById('viewport-drawer-capture-sceenshoot');
+    if (panel) {
+      panel.style.display = 'none';
+    }
   } catch (error) {
     log.error(`Error capturing topology: ${error}`);
   }
@@ -237,18 +251,17 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
 /**
  * Capture viewport as SVG - called by the navbar button
  */
-export async function viewportButtonsCaptureViewportAsSvg(): Promise<void> {
-  try {
-    if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available for SVG capture');
-      return;
-    }
-    const cy = topoViewerState.cy;
-    await exportViewportAsSvg(cy);
-    log.info('Viewport captured as SVG');
-  } catch (error) {
-    log.error(`Error capturing viewport as SVG: ${error}`);
+export function viewportButtonsCaptureViewportAsSvg(): void {
+  const panel = document.getElementById('viewport-drawer-capture-sceenshoot');
+  if (!panel) return;
+
+  // Hide other viewport drawers
+  const drawers = document.getElementsByClassName('viewport-drawer');
+  for (let i = 0; i < drawers.length; i++) {
+    (drawers[i] as HTMLElement).style.display = 'none';
   }
+
+  panel.style.display = 'block';
 }
 
 /**
