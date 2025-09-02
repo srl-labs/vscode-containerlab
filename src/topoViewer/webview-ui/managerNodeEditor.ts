@@ -570,7 +570,8 @@ export class ManagerNodeEditor {
     const dockerImages = (window as any).dockerImages as string[] | undefined;
     const imageInitial = extraData.image || '';
     if (Array.isArray(dockerImages) && dockerImages.length > 0) {
-      createFilterableDropdown('node-image-dropdown-container', dockerImages, imageInitial, () => {}, 'Search for image...');
+      // For image field only: allow free-text input (do not force nearest match)
+      createFilterableDropdown('node-image-dropdown-container', dockerImages, imageInitial, () => {}, 'Search for image...', true);
     } else {
       // Fallback to plain input if docker images not available
       const container = document.getElementById('node-image-dropdown-container');

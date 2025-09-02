@@ -5,7 +5,8 @@ export function createFilterableDropdown(
   options: string[],
   currentValue: string,
   onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-  placeholder: string = 'Type to filter...'
+  placeholder: string = 'Type to filter...',
+  allowFreeText: boolean = false
 ): void {
   const container = document.getElementById(containerId);
   if (!container) {
@@ -66,6 +67,15 @@ export function createFilterableDropdown(
   // Commit current input: map to a valid option or revert to lastSelected
   const commitCurrentInput = () => {
     const typed = filterInput.value;
+    if (allowFreeText) {
+      // Accept the user's typed value verbatim
+      if (typed !== lastSelected) {
+        lastSelected = typed;
+        onSelect(typed);
+      }
+      // Keep typed value as-is
+      return;
+    }
     const match = findBestMatch(typed);
     if (match) {
       if (match !== lastSelected) {
@@ -73,11 +83,9 @@ export function createFilterableDropdown(
         filterInput.value = match;
         onSelect(match);
       } else {
-        // Align casing even if same logical value
         filterInput.value = match;
       }
     } else {
-      // Revert to last selected valid value
       filterInput.value = lastSelected;
     }
   };
@@ -121,6 +129,32 @@ export function createFilterableDropdown(
   // Initial population
   populateOptions(options);
 
+  // Portal behavior: render dropdown menu as a fixed overlay at the input's position
+  const originalParent = dropdownMenu.parentElement as HTMLElement;
+  const showDropdown = () => {
+    const rect = (filterInput.getBoundingClientRect?.() || { left: 0, right: 0, bottom: 0, width: originalParent.clientWidth }) as DOMRect;
+    // Move to body and position
+    if (dropdownMenu.parentElement !== document.body) {
+      document.body.appendChild(dropdownMenu);
+    }
+    dropdownMenu.style.position = 'fixed';
+    dropdownMenu.style.left = `${rect.left}px`;
+    dropdownMenu.style.top = `${rect.bottom}px`;
+    dropdownMenu.style.width = `${rect.width || originalParent.clientWidth}px`;
+    dropdownMenu.classList.remove('hidden');
+  };
+  const hideDropdown = () => {
+    dropdownMenu.classList.add('hidden');
+    // Return to original DOM to avoid leaks
+    if (dropdownMenu.parentElement === document.body) {
+      originalParent.appendChild(dropdownMenu);
+      dropdownMenu.style.position = '';
+      dropdownMenu.style.left = '';
+      dropdownMenu.style.top = '';
+      dropdownMenu.style.width = '';
+    }
+  };
+
   // Filter functionality
   filterInput.addEventListener('input', () => {
     const filterValue = filterInput.value.toLowerCase();
@@ -128,15 +162,15 @@ export function createFilterableDropdown(
       option.toLowerCase().includes(filterValue)
     );
     populateOptions(filteredOptions);
-
     if (!dropdownMenu.classList.contains('hidden')) {
-      dropdownMenu.classList.remove('hidden');
+      // Keep open and ensure position is correct
+      showDropdown();
     }
   });
 
   // Show/hide dropdown on focus
   filterInput.addEventListener('focus', () => {
-    dropdownMenu.classList.remove('hidden');
+    showDropdown();
   });
 
   // On blur (leaving the input), commit to a valid option
@@ -150,22 +184,22 @@ export function createFilterableDropdown(
     dropdownArrow.addEventListener('click', (e) => {
       e.stopPropagation();
       if (dropdownMenu.classList.contains('hidden')) {
-        dropdownMenu.classList.remove('hidden');
+        showDropdown();
         filterInput.focus();
       } else {
-        dropdownMenu.classList.add('hidden');
+        hideDropdown();
       }
     });
   }
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (not the input or the menu)
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    if (!container.contains(target)) {
+    if (!container.contains(target) && !dropdownMenu.contains(target)) {
       setTimeout(() => {
         // Ensure input maps to a valid option before hiding
         commitCurrentInput();
-        dropdownMenu.classList.add('hidden');
+        hideDropdown();
       }, 0);
     }
   });
@@ -181,6 +215,19 @@ export function createFilterableDropdown(
   dropdownMenu.addEventListener('touchmove', (e) => {
     e.stopPropagation();
   }, { passive: true });
+
+  // Reposition/close dropdown on window resize/scroll for safety
+  const onWindowResize = () => hideDropdown();
+  window.addEventListener('resize', onWindowResize);
+
+  // Cleanup listeners if container is removed later
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(filterInput)) {
+      window.removeEventListener('resize', onWindowResize);
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 
   // Keyboard navigation
   filterInput.addEventListener('keydown', (e) => {
@@ -227,6 +274,11 @@ export function createFilterableDropdown(
           dropdownMenu.classList.add('hidden');
           lastSelected = selectedValue;
           onSelect(selectedValue);
+        } else if (allowFreeText) {
+          // Accept free text on Enter
+          const typed = filterInput.value;
+          lastSelected = typed;
+          onSelect(typed);
         }
         break;
       case 'Escape':
