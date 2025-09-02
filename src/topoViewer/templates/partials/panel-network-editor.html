@@ -12,6 +12,16 @@
         <!-- Basic Information Section -->
         <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
 
+          <!-- Network Name -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Network Name</label>
+            <div>
+              <span id="panel-network-editor-id" class="text-base px-2 py-1 inline-block rounded"
+                style="background-color: var(--vscode-textBlockQuote-background); border: 1px solid var(--vscode-textBlockQuote-border);">
+              </span>
+            </div>
+          </div>
+
           <!-- Network Type -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Network Type</label>
@@ -26,11 +36,6 @@
             <input type="text" class="input-field w-full" id="panel-network-interface">
           </div>
 
-          <!-- Id -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Id</label>
-            <div class="text-left font-extralight text-base break-words" id="panel-network-editor-id"></div>
-          </div>
           <!-- Validation Errors -->
           <div id="panel-network-validation-errors"
             class="p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]"
