@@ -1,51 +1,74 @@
-    <aside id="panel-topoviewer-about" class="panel panel-overlay fixed bottom-10 right-10 w-[340px] max-h-[700px] overflow-y-auto z-[21] draggable-panel" 
+    <aside id="panel-topoviewer-about" class="panel panel-overlay fixed bottom-10 right-10 w-[380px] max-h-[700px] overflow-y-auto z-[21] draggable-panel" 
       role="complementary" aria-labelledby="about-heading" style="display: none;">
-      <header class="panel-heading text-xs" id="about-heading">
+      <header class="panel-heading text-base font-bold" id="about-heading">
         About TopoViewer
       </header>
 
-      <div class="py-2">
-        <article class="px-4 text-base max-h-[280px] overflow-y-auto">
-          <section class="mb-4">
-            <p class="mt-3"><strong>Original Author</strong></p>
-            <p class="text-sm">
-              TopoViewer was originally designed and developed by
-              <strong><a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener" class="link">Asad Arafat</a></strong>
-            </p>
+      <div class="p-4">
+        <article class="max-h-[600px] overflow-y-auto">
+          <section class="space-y-4">
+            <!-- Authors Section -->
+            <div>
+              <h3 class="text-sm font-semibold mb-2 opacity-80">Authors & Maintainers</h3>
+              <div class="text-sm space-y-1.5 pl-2">
+                <p class="font-normal">
+                  <span class="opacity-60">TopoViewer originally created by</span>
+                  <a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener" class="link font-medium">Asad Arafat</a>
+                </p>
+                <p class="font-normal">
+                  <span class="opacity-60">Integrated into VSCode by</span>
+                  <a href="https://www.linkedin.com/in/asadarafat/" target="_blank" rel="noopener" class="link font-medium">Asad Arafat</a>,
+                  <a href="https://linkedin.com/in/florian-schwarz-812a34145" target="_blank" rel="noopener" class="link font-medium">Florian Schwarz</a>,
+                  <a href="https://linkedin.com/in/kaelem-chandra" target="_blank" rel="noopener" class="link font-medium">Kaelem Chandra</a>
+                </p>
+              </div>
+            </div>
 
-            <p class="mt-3"><strong>Repositories</strong></p>
-            <ul class="list-disc list-inside">
-              <li>
-                <strong>VSCode Containerlab extension:</strong>
-                <a href="https://github.com/srl-labs/vscode-containerlab/" target="_blank" rel="noopener" class="link">
-                  github.com/srl-labs/vscode-containerlab
-                </a>
-              </li>
-              <li>
-                <strong>Original TopoViewer repo:</strong>
-                <a href="https://github.com/asadarafat/topoViewer" target="_blank" rel="noopener" class="link">
-                  github.com/asadarafat/topoViewer
-                </a>
-              </li>
-            </ul>
+            <!-- Repositories Section -->
+            <div>
+              <h3 class="text-sm font-semibold mb-2 opacity-80">Repositories</h3>
+              <div class="text-sm space-y-1.5 pl-2">
+                <div class="font-normal">
+                  <span class="opacity-60">VSCode Extension:</span>
+                  <a href="https://github.com/srl-labs/vscode-containerlab/" target="_blank" rel="noopener" class="link font-medium break-all">
+                    github.com/srl-labs/vscode-containerlab
+                  </a>
+                </div>
+                <div class="font-normal">
+                  <span class="opacity-60">Original TopoViewer:</span>
+                  <a href="https://github.com/asadarafat/topoViewer" target="_blank" rel="noopener" class="link font-medium break-all">
+                    github.com/asadarafat/topoViewer
+                  </a>
+                </div>
+              </div>
+            </div>
 
-            <p class="mt-3"><strong>Special Thanks</strong></p>
-            <ul class="list-disc list-inside">
-              <li><strong><a href="https://www.linkedin.com/in/rdodin/" target="_blank" rel="noopener" class="link">Roman
-                    Dodin</a></strong> – Early-stage guidance</li>
-              <li><strong><a href="https://www.linkedin.com/in/siva19susi/" target="_blank" rel="noopener" class="link">Siva
-                    Sivakumar</a></strong> – CSS framework integration</li>
-              <li><strong><a href="https://www.linkedin.com/in/gatot-susilo-b073166/" target="_blank" rel="noopener" class="link">Gatot
-                    Susilo</a></strong> – Komodo2 integration</li>
-              <li><strong><a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/" target="_blank"
-                    rel="noopener" class="link">Gusman Dharma Putra</a></strong> – Komodo2 contributions</li>
-              <li><strong><a href="https://www.linkedin.com/in/sven-wisotzky-44788333/" target="_blank" rel="noopener" class="link">Sven
-                    Wisotzky</a></strong> – Full-stack optimizations</li>
-              <li><strong><a href="https://linkedin.com/in/florian-schwarz-812a34145" target="_blank" rel="noopener" class="link">Florian
-                    Schwarz</a></strong> – VSCode plugin integration</li>
-              <li><strong><a href="https://linkedin.com/in/kaelem-chandra" target="_blank" rel="noopener" class="link">Kaelem
-                    Chandra</a></strong> – Plugin maintenance & support</li>
-            </ul>
+            <!-- Special Thanks Section -->
+            <div>
+              <h3 class="text-sm font-semibold mb-2 opacity-80">Special Thanks</h3>
+              <div class="text-sm space-y-1 pl-2">
+                <div class="font-normal">
+                  <a href="https://www.linkedin.com/in/rdodin/" target="_blank" rel="noopener" class="link font-medium">Roman Dodin</a>
+                  <span class="opacity-60">– Early-stage guidance</span>
+                </div>
+                <div class="font-normal">
+                  <a href="https://www.linkedin.com/in/siva19susi/" target="_blank" rel="noopener" class="link font-medium">Siva Sivakumar</a>
+                  <span class="opacity-60">– CSS framework integration</span>
+                </div>
+                <div class="font-normal">
+                  <a href="https://www.linkedin.com/in/gatot-susilo-b073166/" target="_blank" rel="noopener" class="link font-medium">Gatot Susilo</a>
+                  <span class="opacity-60">– Komodo2 integration</span>
+                </div>
+                <div class="font-normal">
+                  <a href="https://www.linkedin.com/in/gusman-dharma-putra-1b955117/" target="_blank" rel="noopener" class="link font-medium">Gusman Dharma Putra</a>
+                  <span class="opacity-60">– Komodo2 contributions</span>
+                </div>
+                <div class="font-normal">
+                  <a href="https://www.linkedin.com/in/sven-wisotzky-44788333/" target="_blank" rel="noopener" class="link font-medium">Sven Wisotzky</a>
+                  <span class="opacity-60">– Full-stack optimizations</span>
+                </div>
+              </div>
+            </div>
           </section>
         </article>
       </div>
