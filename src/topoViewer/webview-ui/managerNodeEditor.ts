@@ -109,6 +109,8 @@ export class ManagerNodeEditor {
   private currentNode: cytoscape.NodeSingular | null = null;
   private panel: HTMLElement | null = null;
   private dynamicEntryCounters: Map<string, number> = new Map();
+  private schemaKinds: string[] = [];
+  private kindsLoaded = false;
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
@@ -125,6 +127,11 @@ export class ManagerNodeEditor {
       log.error('Enhanced node editor panel not found in DOM');
       return;
     }
+
+    // Populate the Kind dropdown from the JSON schema so all kinds are available
+    this.populateKindsFromSchema().catch(err => {
+      log.error(`Failed to populate kinds from schema: ${err instanceof Error ? err.message : String(err)}`);
+    });
 
     // Mark panel interaction to prevent closing, but don't stop propagation
     // as that breaks tabs and other interactive elements
@@ -173,6 +180,61 @@ export class ManagerNodeEditor {
     this.setupDynamicEntryHandlers();
 
     log.debug('Enhanced node editor panel initialized');
+  }
+
+  /**
+   * Fetch schema and populate the Kind dropdown with all enum values
+   */
+  private async populateKindsFromSchema(): Promise<void> {
+    try {
+      const url = (window as any).schemaUrl as string | undefined;
+      if (!url) {
+        log.warn('Schema URL is undefined; keeping existing Kind options');
+        return;
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const kinds: string[] = json?.definitions?.['node-config']?.properties?.kind?.enum || [];
+      if (!Array.isArray(kinds) || kinds.length === 0) {
+        log.warn('No kind enum found in schema; keeping existing Kind options');
+        return;
+      }
+      this.schemaKinds = kinds.slice();
+
+      const selectEl = document.getElementById('node-kind') as HTMLSelectElement | null;
+      if (!selectEl) {
+        log.warn('Kind select element #node-kind not found');
+        return;
+      }
+      // Preserve current selection to re-apply if present in new list
+      const currentValue = selectEl.value || ((window as any).defaultKind as string | undefined) || '';
+
+      // Clear and repopulate
+      while (selectEl.firstChild) {
+        selectEl.removeChild(selectEl.firstChild);
+      }
+      this.schemaKinds.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = k;
+        selectEl.appendChild(opt);
+      });
+
+      // Re-apply selection if possible, else default
+      if (currentValue && this.schemaKinds.includes(currentValue)) {
+        selectEl.value = currentValue;
+      } else if ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind)) {
+        selectEl.value = (window as any).defaultKind;
+      } else {
+        selectEl.selectedIndex = 0;
+      }
+
+      this.kindsLoaded = true;
+      log.debug(`Loaded ${this.schemaKinds.length} kinds from schema`);
+    } catch (e) {
+      log.error(`populateKindsFromSchema error: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   /**
@@ -363,6 +425,25 @@ export class ManagerNodeEditor {
     // Load node data into form
     this.loadNodeData(node);
 
+    // Ensure kind selection matches loaded options (fallback gracefully)
+    try {
+      const selectEl = document.getElementById('node-kind') as HTMLSelectElement | null;
+      const desired = (node.data()?.extraData?.kind as string) || (window as any).defaultKind || '';
+      if (selectEl && desired) {
+        if (this.kindsLoaded && this.schemaKinds.length > 0) {
+          if (this.schemaKinds.includes(desired)) {
+            selectEl.value = desired;
+          } else if ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind)) {
+            selectEl.value = (window as any).defaultKind;
+          } else {
+            selectEl.selectedIndex = 0;
+          }
+        }
+      }
+    } catch (e) {
+      log.warn(`Kind selection alignment warning: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
     // Show the panel
     this.panel.style.display = 'block';
 
@@ -411,7 +492,7 @@ export class ManagerNodeEditor {
 
     // Basic tab
     this.setInputValue('node-name', nodeData.name || node.id());
-    this.setInputValue('node-kind', extraData.kind || 'nokia_srlinux');
+    this.setInputValue('node-kind', extraData.kind || ((window as any).defaultKind || 'nokia_srlinux'));
     this.setInputValue('node-type', extraData.type || '');
     this.setInputValue('node-image', extraData.image || '');
     const parentNode = node.parent();
