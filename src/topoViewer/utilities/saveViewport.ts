@@ -300,12 +300,13 @@ export async function saveViewport({
         // For properties, we only write them if:
         // 1. They were already explicitly in the YAML (preserve them), OR
         // 2. They are new/changed and different from what would be inherited
-        const desiredKind = originalKind !== undefined ? originalKind :
-          (extraData.kind && extraData.kind !== inherit.kind ? extraData.kind : undefined);
-        const desiredImage = originalImage !== undefined ? originalImage :
-          (extraData.image && extraData.image !== inherit.image ? extraData.image : undefined);
-        const desiredType = originalType !== undefined ? originalType :
-          (extraData.type && extraData.type !== inherit.type ? extraData.type : undefined);
+        // IMPORTANT: Always prefer extraData over originalKind to allow frontend changes
+        const desiredKind = extraData.kind && extraData.kind !== inherit.kind ? extraData.kind :
+          (originalKind !== undefined ? originalKind : undefined);
+        const desiredImage = extraData.image && extraData.image !== inherit.image ? extraData.image :
+          (originalImage !== undefined ? originalImage : undefined);
+        const desiredType = extraData.type && extraData.type !== inherit.type ? extraData.type :
+          (originalType !== undefined ? originalType : undefined);
 
         if (groupName) {
           nodeMap.set('group', doc.createNode(groupName));

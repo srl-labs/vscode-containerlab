@@ -120,6 +120,31 @@ export class ManagerNodeEditor {
   }
 
   /**
+   * Handle kind change and update type field visibility
+   */
+  private handleKindChange(selectedKind: string): void {
+    const typeFormGroup = document.querySelector('#node-type')?.closest('.form-group') as HTMLElement;
+
+    if (typeFormGroup) {
+      // Show type field only for Nokia kinds (nokia_srlinux, nokia_sros, nokia_srsim)
+      const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
+
+      if (isNokiaKind) {
+        typeFormGroup.style.display = 'block';
+      } else {
+        typeFormGroup.style.display = 'none';
+        // Clear the type field value when hiding
+        const typeInput = document.getElementById('node-type') as HTMLInputElement;
+        if (typeInput) {
+          typeInput.value = '';
+        }
+      }
+    }
+
+    log.debug(`Kind changed to ${selectedKind}, type field visibility: ${['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind) ? 'visible' : 'hidden'}`);
+  }
+
+  /**
    * Initialize the enhanced node editor panel
    */
   private initializePanel(): void {
@@ -271,7 +296,7 @@ export class ManagerNodeEditor {
         'node-kind-dropdown-container',
         this.schemaKinds,
         initial,
-        () => {},
+        (selectedKind: string) => this.handleKindChange(selectedKind),
         'Search for kind...'
       );
 
@@ -536,8 +561,11 @@ export class ManagerNodeEditor {
     const kindInitial = (this.schemaKinds.length > 0 && this.schemaKinds.includes(desiredKind))
       ? desiredKind
       : (this.schemaKinds[0] || desiredKind);
-    createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, () => {}, 'Search for kind...');
+    createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
     this.setInputValue('node-type', extraData.type || '');
+
+    // Set initial type field visibility based on the kind
+    this.handleKindChange(kindInitial);
     this.setInputValue('node-image', extraData.image || '');
     const parentNode = node.parent();
     const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
