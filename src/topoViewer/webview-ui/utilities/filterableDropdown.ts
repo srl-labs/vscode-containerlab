@@ -47,6 +47,41 @@ export function createFilterableDropdown(
     return;
   }
 
+  // Track last valid selected value
+  let lastSelected = currentValue ?? '';
+
+  // Utility to find the best match for a free-typed value
+  const findBestMatch = (val: string): string | null => {
+    const v = (val || '').trim().toLowerCase();
+    if (!v) return null;
+    const exact = options.find(o => o.toLowerCase() === v);
+    if (exact) return exact;
+    const starts = options.find(o => o.toLowerCase().startsWith(v));
+    if (starts) return starts;
+    const include = options.find(o => o.toLowerCase().includes(v));
+    if (include) return include;
+    return null;
+  };
+
+  // Commit current input: map to a valid option or revert to lastSelected
+  const commitCurrentInput = () => {
+    const typed = filterInput.value;
+    const match = findBestMatch(typed);
+    if (match) {
+      if (match !== lastSelected) {
+        lastSelected = match;
+        filterInput.value = match;
+        onSelect(match);
+      } else {
+        // Align casing even if same logical value
+        filterInput.value = match;
+      }
+    } else {
+      // Revert to last selected valid value
+      filterInput.value = lastSelected;
+    }
+  };
+
   // Function to populate dropdown options
   const populateOptions = (filteredOptions: string[]) => {
     dropdownMenu.innerHTML = '';
@@ -75,6 +110,7 @@ export function createFilterableDropdown(
         e.preventDefault();
         filterInput.value = option;
         dropdownMenu.classList.add('hidden');
+        lastSelected = option;
         onSelect(option);
       });
 
@@ -103,6 +139,12 @@ export function createFilterableDropdown(
     dropdownMenu.classList.remove('hidden');
   });
 
+  // On blur (leaving the input), commit to a valid option
+  filterInput.addEventListener('blur', () => {
+    // Defer to allow option click handlers to run first
+    setTimeout(() => commitCurrentInput(), 0);
+  });
+
   // Handle arrow click to toggle dropdown
   if (dropdownArrow) {
     dropdownArrow.addEventListener('click', (e) => {
@@ -121,6 +163,8 @@ export function createFilterableDropdown(
     const target = e.target as HTMLElement;
     if (!container.contains(target)) {
       setTimeout(() => {
+        // Ensure input maps to a valid option before hiding
+        commitCurrentInput();
         dropdownMenu.classList.add('hidden');
       }, 0);
     }
@@ -174,6 +218,7 @@ export function createFilterableDropdown(
           const selectedValue = items[currentIndex].textContent || '';
           filterInput.value = selectedValue;
           dropdownMenu.classList.add('hidden');
+          lastSelected = selectedValue;
           onSelect(selectedValue);
         }
         break;
