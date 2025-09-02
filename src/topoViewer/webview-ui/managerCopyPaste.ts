@@ -128,7 +128,27 @@ export class CopyPasteManager {
         idMap.set(el.data.id, newId);
         usedIds.add(newId);
 
-        const newData = { ...el.data, id: newId, name: newId.split(':')[0], label: newId.split(':')[0] };
+        // Handle name/label for different node types
+        let nodeName = newId.split(':')[0];
+        let nodeLabel = newId.split(':')[0];
+
+        // For dummy nodes, always use "dummy" as both name and label
+        if (newId.startsWith('dummy')) {
+          nodeName = 'dummy';  // Always use "dummy" as name
+          nodeLabel = 'dummy';  // Always use "dummy" as label
+        }
+        // For network-nodes with adapters, use the full ID as both name and label
+        else if (isSpecialEndpoint(newId) && newId.includes(':')) {
+          nodeName = newId;
+          nodeLabel = newId;
+        }
+
+        const newData = {
+          ...el.data,
+          id: newId,
+          name: nodeName,
+          label: nodeLabel
+        };
         if (el.data.topoViewerRole === 'group' && newData.extraData) {
           const [group, level] = newId.split(':');
           newData.extraData.topoViewerGroup = group;
@@ -165,12 +185,67 @@ export class CopyPasteManager {
   /**
    * Generates a unique ID based on the base name and existing IDs.
    * For groups, appends ":1" suffix. For regular nodes, increments numeric suffix.
+   * For network-nodes (host:eth0, macvlan:eth1, etc.), preserves the adapter suffix.
    * @param baseName - The base name to generate unique ID from.
    * @param usedIds - Set of already used IDs to avoid conflicts.
    * @param isGroup - Whether this is a group node requiring special formatting.
    * @returns A unique ID string.
    */
   private getUniqueId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
+    // Check if this is a network-node (special endpoint)
+    const isNetworkNode = isSpecialEndpoint(baseName);
+
+    if (isNetworkNode) {
+      // Handle dummy nodes (dummy1, dummy2, etc.)
+      if (baseName.startsWith('dummy')) {
+        const match = baseName.match(/^(dummy)(\d*)$/);
+        const base = match?.[1] || 'dummy';
+        let num = parseInt(match?.[2] || '1') || 1;
+        while (usedIds.has(`${base}${num}`)) num++;
+        return `${base}${num}`;
+      }
+
+      // Handle network-nodes with adapter suffix (host:eth0, macvlan:eth1, etc.)
+      if (baseName.includes(':')) {
+        const [nodeType, adapter] = baseName.split(':');
+
+        // Extract the base adapter name and number (e.g., eth0 -> eth, 0)
+        const adapterMatch = adapter.match(/^([a-zA-Z]+)(\d+)$/);
+        if (adapterMatch) {
+          const adapterBase = adapterMatch[1];
+          let adapterNum = parseInt(adapterMatch[2]);
+          let name = baseName;
+
+          // Increment the adapter number until we find an unused one
+          while (usedIds.has(name)) {
+            adapterNum++;
+            name = `${nodeType}:${adapterBase}${adapterNum}`;
+          }
+          return name;
+        } else {
+          // If adapter doesn't follow the pattern, just append a number
+          let name = baseName;
+          let counter = 1;
+          while (usedIds.has(name)) {
+            name = `${nodeType}:${adapter}${counter}`;
+            counter++;
+          }
+          return name;
+        }
+      }
+
+      // Handle other special nodes (bridge:br0, ovs-bridge:ovs0, etc.)
+      let name = baseName;
+      while (usedIds.has(name)) {
+        const match = name.match(/^(.*?)(\d*)$/);
+        const base = match?.[1] || name;
+        let num = parseInt(match?.[2] || '0') || 0;
+        name = base + (++num);
+      }
+      return name;
+    }
+
+    // Original logic for regular nodes and groups
     const match = baseName.match(/^(.*?)(\d*)$/);
     const base = match?.[1] || baseName;
     let num = parseInt(match?.[2] || '0') || 0;
@@ -272,8 +347,13 @@ export class CopyPasteManager {
     // Add endpoints and mark edges as editor-created
     added.edges().forEach((edge: any) => {
       const [src, tgt] = [edge.data('source'), edge.data('target')];
-      if (!edge.data('sourceEndpoint')) edge.data('sourceEndpoint', this.getNextEndpoint(src));
-      if (!edge.data('targetEndpoint')) edge.data('targetEndpoint', this.getNextEndpoint(tgt));
+      // Only add endpoint identifiers for regular nodes, not for special endpoints
+      if (!edge.data('sourceEndpoint')) {
+        edge.data('sourceEndpoint', isSpecialEndpoint(src) ? '' : this.getNextEndpoint(src));
+      }
+      if (!edge.data('targetEndpoint')) {
+        edge.data('targetEndpoint', isSpecialEndpoint(tgt) ? '' : this.getNextEndpoint(tgt));
+      }
       edge.data('editor', 'true');
       if (isSpecialEndpoint(src) || isSpecialEndpoint(tgt)) edge.addClass('stub-link');
     });
@@ -311,7 +391,7 @@ export class CopyPasteManager {
 
     // Handle free text annotations with position adjustment
     annotations.freeTextAnnotations?.forEach(annotation => {
-      const newId = `freeText_${Date.now()}_${Math.random().toString(ID_GENERATION.RADIX).substr(2, ID_GENERATION.SUBSTRING_LENGTH)}`;
+      const newId = `freeText_${Date.now()}_${Math.random().toString(ID_GENERATION.RADIX).substring(2, 2 + ID_GENERATION.SUBSTRING_LENGTH)}`;
       const newAnnotation = {
         ...annotation,
         id: newId,
