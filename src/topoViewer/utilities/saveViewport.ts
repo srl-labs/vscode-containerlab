@@ -188,7 +188,7 @@ export async function saveViewport({
 
     for (const node of regularNodes) {
       const nodeAnnotation: NodeAnnotation = {
-        id: node.data.id,
+        id: node.data.name || node.data.id,  // Use name (which gets updated on rename) instead of id
         position: {
           x: Math.round(node.position?.x || 0),
           y: Math.round(node.position?.y || 0)
@@ -965,7 +965,7 @@ export async function saveViewport({
   );
   for (const node of regularNodes) {
     const nodeAnnotation: NodeAnnotation = {
-      id: node.data.id,
+      id: node.data.name || node.data.id,  // Use name (which gets updated on rename) instead of id
       position: {
         x: Math.round(node.position?.x || 0),
         y: Math.round(node.position?.y || 0)

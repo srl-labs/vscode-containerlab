@@ -1215,7 +1215,7 @@ export class ManagerViewportPanels {
     targetNode.data(updatedData);
     log.debug(`Cytoscape node updated with new data: ${JSON.stringify(updatedData)}`);
 
-    // If the node’s name actually changed, update connected edges.
+    // If the node's name actually changed, update connected edges.
     if (oldName !== newName) {
       const edges = targetNode.connectedEdges();
       edges.forEach(edge => {
