@@ -35,6 +35,8 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   defaultType: string;
   updateLinkEndpointsOnKindChange: boolean;
   dockerImages?: string[];
+  customNodes: Array<{ name: string; kind: string; type?: string; image?: string }>;
+  defaultNode: string;
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -205,7 +207,9 @@ export function generateHtmlTemplate(
       ifacePatternMapping: '{}',
       defaultKind: 'nokia_srlinux',
       defaultType: 'ixrd1',
-      updateLinkEndpointsOnKindChange: 'true'
+      updateLinkEndpointsOnKindChange: 'true',
+      customNodes: '[]',
+      defaultNode: ''
     };
   } else {
     const editorParams = params as EditorTemplateParams;
@@ -215,7 +219,9 @@ export function generateHtmlTemplate(
       ifacePatternMapping: JSON.stringify(editorParams.ifacePatternMapping),
       defaultKind: editorParams.defaultKind,
       defaultType: editorParams.defaultType,
-      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString()
+      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
+      customNodes: JSON.stringify(editorParams.customNodes),
+      defaultNode: editorParams.defaultNode
     };
     // Inject docker images if provided
     (replacements as any).dockerImages = JSON.stringify(editorParams.dockerImages || []);

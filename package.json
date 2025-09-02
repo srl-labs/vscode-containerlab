@@ -1280,6 +1280,27 @@
           "default": "ixrd1",
           "markdownDescription": "The default type of the node when adding a new node in the TopoViewer edit mode."
         },
+        "containerlab.editor.customNodes": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "kind": { "type": "string" },
+              "type": { "type": "string" },
+              "image": { "type": "string" }
+            },
+            "required": ["name", "kind"],
+            "additionalProperties": true
+          },
+          "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
+        },
+        "containerlab.editor.defaultNode": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Name of the custom node template to use by default when adding nodes."
+        },
         "containerlab.editor.imageMapping": {
           "type": "object",
           "additionalProperties": {

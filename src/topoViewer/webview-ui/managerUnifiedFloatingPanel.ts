@@ -3,6 +3,7 @@ import { log } from '../logging/logger';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import cytoscape from 'cytoscape';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
+import { ManagerNodeEditor } from './managerNodeEditor';
 import { getGroupManager } from '../core/managerRegistry';
 
 /**
@@ -13,6 +14,7 @@ export class ManagerUnifiedFloatingPanel {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
   private addNodeManager: ManagerAddContainerlabNode;
+  private nodeEditor: ManagerNodeEditor | null = null;
   private isProcessing: boolean = false;
   // Refs (actions/tooltips only; UI styles live in HTML)
   private deployBtn: HTMLButtonElement | null = null;
@@ -26,10 +28,11 @@ export class ManagerUnifiedFloatingPanel {
   private addTextBtn: HTMLButtonElement | null = null;
   private addBulkLinkBtn: HTMLButtonElement | null = null;
 
-  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: ManagerAddContainerlabNode) {
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: ManagerAddContainerlabNode, nodeEditor?: ManagerNodeEditor) {
     this.cy = cy;
     this.messageSender = messageSender;
     this.addNodeManager = addNodeManager;
+    this.nodeEditor = nodeEditor || null;
     this.initializePanel();
   }
 
@@ -55,6 +58,7 @@ export class ManagerUnifiedFloatingPanel {
 
     // Set up interactions (drawer expansion via CSS)
     this.setupActionButtons();
+    this.setupAddNodeMenu();
     // Delegate mode-driven UI (viewer/editor) to HTML script
     (window as any).updateUnifiedPanelState?.();
     document.addEventListener('topo-mode-changed', () => this.updateState());
@@ -80,7 +84,6 @@ export class ManagerUnifiedFloatingPanel {
       this.deployCleanupBtn,
       this.destroyCleanupBtn,
       this.redeployCleanupBtn,
-      this.addNodeBtn,
       this.addNetworkBtn,
       this.addGroupBtn,
       this.addTextBtn,
@@ -99,7 +102,6 @@ export class ManagerUnifiedFloatingPanel {
     if (this.deployCleanupBtn) tippy(this.deployCleanupBtn, tooltipOptions);
     if (this.destroyCleanupBtn) tippy(this.destroyCleanupBtn, tooltipOptions);
     if (this.redeployCleanupBtn) tippy(this.redeployCleanupBtn, tooltipOptions);
-    if (this.addNodeBtn) tippy(this.addNodeBtn, tooltipOptions);
     if (this.addNetworkBtn) tippy(this.addNetworkBtn, tooltipOptions);
     if (this.addGroupBtn) tippy(this.addGroupBtn, tooltipOptions);
     if (this.addTextBtn) tippy(this.addTextBtn, tooltipOptions);
@@ -156,6 +158,97 @@ export class ManagerUnifiedFloatingPanel {
     document.addEventListener('unified-add-bulk-link-click', () => {
       this.handleAddBulkLink();
     });
+  }
+
+  private setupAddNodeMenu(): void {
+    if (!this.addNodeBtn) return;
+    const self = this;
+    tippy(this.addNodeBtn, {
+      trigger: 'mouseenter',
+      interactive: true,
+      appendTo: document.body,
+      placement: 'right-start',
+      delay: [100, 300], // delay show/hide to prevent flickering
+      interactiveBorder: 10, // allow mouse movement between trigger and menu
+      onShow(instance) {
+        instance.setContent(self.buildAddNodeMenu(instance));
+      },
+      theme: 'dropdown-menu',
+      content: ''
+    });
+  }
+
+  private buildAddNodeMenu(instance: any): HTMLElement {
+    const menu = document.createElement('div');
+    menu.className = 'flex flex-col';
+
+    const customNodes = (window as any).customNodes || [];
+
+    const addItem = (label: string, handler: () => void, isDefault = false) => {
+      const item = document.createElement('button');
+      item.className = 'add-node-menu-item text-left';
+      item.textContent = label;
+      if (isDefault) {
+        item.style.fontWeight = '600';
+      }
+      item.addEventListener('click', () => {
+        handler();
+        instance.hide();
+      });
+      menu.appendChild(item);
+    };
+
+    const addCustomItem = (node: any) => {
+      const item = document.createElement('div');
+      item.className = 'add-node-menu-item';
+
+      const btn = document.createElement('button');
+      btn.textContent = node.name;
+      btn.className = 'flex-1 text-left bg-transparent border-none cursor-pointer';
+      btn.style.color = 'inherit';
+      btn.style.fontFamily = 'inherit';
+      btn.style.fontSize = 'inherit';
+      btn.addEventListener('click', () => {
+        this.handleAddNodeTemplate(node);
+        instance.hide();
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.innerHTML = '×';
+      deleteBtn.className = 'add-node-delete-btn';
+      deleteBtn.title = 'Delete custom node';
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await this.handleDeleteCustomNode(node.name);
+        // Refresh the menu content after deletion
+        instance.setContent(this.buildAddNodeMenu(instance));
+      });
+
+      item.appendChild(btn);
+      item.appendChild(deleteBtn);
+      menu.appendChild(item);
+    };
+
+    const defaultName = (window as any).defaultNode;
+    addItem(defaultName ? `Default (${defaultName})` : 'Default', () => this.handleAddNode(), true);
+
+    if (customNodes.length > 0) {
+      const separator = document.createElement('div');
+      separator.className = 'add-node-menu-separator';
+      menu.appendChild(separator);
+
+      customNodes.forEach((n: any) => {
+        addCustomItem(n);
+      });
+    }
+
+    const separator2 = document.createElement('div');
+    separator2.className = 'add-node-menu-separator';
+    menu.appendChild(separator2);
+
+    addItem('New custom node…', () => this.handleCreateCustomNode());
+
+    return menu;
   }
 
   // All UI class/style updates are handled in HTML
@@ -366,42 +459,104 @@ export class ManagerUnifiedFloatingPanel {
   private handleAddNode(): void {
     log.debug('Adding new node via unified panel');
 
-    // Get viewport center for positioning
+    const defaultName = (window as any).defaultNode;
+    if (defaultName) {
+      const customNodes = (window as any).customNodes || [];
+      const tpl = customNodes.find((n: any) => n.name === defaultName);
+      if (tpl) {
+        this.handleAddNodeTemplate(tpl);
+        return;
+      }
+    }
+
+    this.addNodeAtCenter();
+
+    log.info('Added new node via unified panel');
+  }
+
+  private handleAddNodeTemplate(template: any): void {
+    this.addNodeAtCenter(template);
+  }
+
+  private addNodeAtCenter(template?: any): void {
     const extent = this.cy.extent();
     const viewportCenterX = (extent.x1 + extent.x2) / 2;
     const viewportCenterY = (extent.y1 + extent.y2) / 2;
 
-    // Create a synthetic event object for the add node manager
     const syntheticEvent: cytoscape.EventObject = {
       type: 'click',
       target: this.cy,
       cy: this.cy,
       namespace: '',
       timeStamp: Date.now(),
-      position: {
-        x: viewportCenterX,
-        y: viewportCenterY
-      },
-      renderedPosition: {
-        x: viewportCenterX,
-        y: viewportCenterY
-      },
+      position: { x: viewportCenterX, y: viewportCenterY },
+      renderedPosition: { x: viewportCenterX, y: viewportCenterY },
       originalEvent: new MouseEvent('click')
     } as cytoscape.EventObject;
 
-    // Add the node
-    this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, syntheticEvent);
+    this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, syntheticEvent, template);
 
-    // Optionally, open the node editor for the newly added node
     const newNode = this.cy.nodes().last();
-    const state = (window as any).topoViewerState;
-    if (newNode && state?.editorEngine?.viewportPanels) {
-      setTimeout(() => {
-        state.editorEngine.viewportPanels.panelNodeEditor(newNode);
-      }, 100);
+    if (newNode && this.nodeEditor) {
+      setTimeout(() => this.nodeEditor!.open(newNode), 100);
     }
+  }
 
-    log.info('Added new node via unified panel');
+  private handleCreateCustomNode(): void {
+    // Open the node editor panel without adding a node to the canvas
+    if (this.nodeEditor) {
+      // Create a temporary node data for the form
+      const tempNodeData = {
+        id: 'temp-custom-node',
+        name: 'temp-custom-node',
+        extraData: {
+          kind: window.defaultKind || 'nokia_srlinux',
+          type: window.defaultType || 'ixrd1',
+          image: ''
+        }
+      };
+
+      // Create a mock node object for the editor
+      const mockNode = {
+        id: () => 'temp-custom-node',
+        data: () => tempNodeData,
+        parent: () => ({ nonempty: () => false })
+      };
+
+      this.nodeEditor.open(mockNode as any);
+
+      // Focus on the custom node name field after a short delay
+      setTimeout(() => {
+        const input = document.getElementById('node-custom-name') as HTMLInputElement | null;
+        input?.focus();
+      }, 150);
+    } else {
+      log.error('NodeEditor not available for custom node creation');
+    }
+  }
+
+  private async handleDeleteCustomNode(nodeName: string): Promise<void> {
+    try {
+      const confirmed = window.confirm(`Delete custom node "${nodeName}"?`);
+      if (!confirmed) return;
+
+      const payload = { name: nodeName };
+      const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
+        'topo-editor-delete-custom-node',
+        payload
+      );
+
+      if (resp?.customNodes) {
+        (window as any).customNodes = resp.customNodes;
+      }
+      if (resp?.defaultNode !== undefined) {
+        (window as any).defaultNode = resp.defaultNode;
+      }
+
+      log.info(`Deleted custom node: ${nodeName}`);
+    } catch (err) {
+      log.error(`Failed to delete custom node: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   private handleAddNetwork(): void {

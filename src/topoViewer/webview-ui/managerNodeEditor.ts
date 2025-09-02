@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
 import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
+import { VscodeMessageSender } from './managerVscodeWebview';
 
 /**
  * Node properties that map to Containerlab configuration
@@ -113,10 +114,12 @@ export class ManagerNodeEditor {
   private schemaKinds: string[] = [];
   private kindsLoaded = false;
   private imageVersionMap: Map<string, string[]> = new Map();
+  private messageSender: VscodeMessageSender;
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
     this.saveManager = saveManager;
+    this.messageSender = saveManager.getMessageSender();
     this.initializePanel();
   }
 
@@ -632,7 +635,6 @@ export class ManagerNodeEditor {
       : (this.schemaKinds[0] || desiredKind);
     createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
     this.setInputValue('node-type', extraData.type || '');
-
     // Set initial type field visibility based on the kind
     this.handleKindChange(kindInitial);
 
@@ -768,9 +770,31 @@ export class ManagerNodeEditor {
         versionContainer.appendChild(versionInput);
       }
     }
+    // Add custom node name fields
+    this.setInputValue('node-custom-name', '');
+    this.setCheckboxValue('node-custom-default', false);
     const parentNode = node.parent();
     const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
     this.setInputValue('node-group', parentId);
+
+    // Hide/show Custom Node Name field based on whether this is a newly created node or temp node for custom creation
+    const customNameGroup = document.getElementById('node-custom-name-group');
+    const isNewNode = node.id().startsWith('nodeId-');
+    const isTempNode = node.id() === 'temp-custom-node';
+
+    if (customNameGroup) {
+      customNameGroup.style.display = (isNewNode || isTempNode) ? 'block' : 'none';
+    }
+
+    // Update panel heading for temp nodes (custom node creation)
+    const heading = document.getElementById('panel-node-editor-heading');
+    if (heading) {
+      if (isTempNode) {
+        heading.textContent = 'Create Custom Node Template';
+      } else {
+        heading.textContent = 'Node Editor';
+      }
+    }
 
     // Configuration tab
     this.setInputValue('node-startup-config', extraData['startup-config'] || '');
@@ -1234,6 +1258,40 @@ export class ManagerNodeEditor {
     return isValid;
   }
 
+  private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean): Promise<void> {
+    try {
+      const payload: any = {
+        name,
+        kind: nodeProps.kind || '',
+        type: nodeProps.type,
+        image: nodeProps.image,
+        setDefault
+      };
+
+      // Always save all properties from nodeProps (excluding basic ones that are already set)
+      Object.keys(nodeProps).forEach(key => {
+        if (key !== 'name' && key !== 'kind' && key !== 'type' && key !== 'image') {
+          payload[key] = nodeProps[key as keyof NodeProperties];
+        }
+      });
+
+      const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
+        'topo-editor-save-custom-node',
+        payload
+      );
+      if (resp?.customNodes) {
+        (window as any).customNodes = resp.customNodes;
+      }
+      if (resp?.defaultNode !== undefined) {
+        (window as any).defaultNode = resp.defaultNode;
+      }
+    } catch (err) {
+      log.error(
+        `Failed to save custom node template: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
   /**
    * Save the node data
    */
@@ -1247,7 +1305,7 @@ export class ManagerNodeEditor {
     }
 
     try {
-      // Collect all the data
+      // Collect all the data first
       const nodeProps: NodeProperties = {
         name: this.getInputValue('node-name'),
         kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
@@ -1471,6 +1529,29 @@ export class ManagerNodeEditor {
       const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
       if (runtimeVal && runtimeVal !== 'Default') {
         nodeProps.runtime = runtimeVal as any;
+      }
+
+      // Handle custom node saving after collecting all properties
+      const customName = this.getInputValue('node-custom-name');
+      const setDefault = this.getCheckboxValue('node-custom-default');
+      if (customName) {
+        // For temp nodes, we need to collect all the properties to save as a custom template
+        const isTempNode = this.currentNode.id() === 'temp-custom-node';
+        if (isTempNode) {
+          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault);
+          // Close the panel and return early for temp nodes
+          this.close();
+          return;
+        } else {
+          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault);
+        }
+      }
+
+      // Skip node update for temp nodes (custom node creation without canvas node)
+      const isTempNode = this.currentNode.id() === 'temp-custom-node';
+      if (isTempNode) {
+        log.info('Skipped canvas update for temp custom node creation');
+        return;
       }
 
       // Update the node data

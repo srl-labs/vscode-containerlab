@@ -12,7 +12,8 @@ export class ManagerAddContainerlabNode {
 
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
-    event: cytoscape.EventObject
+    event: cytoscape.EventObject,
+    template?: { kind: string; type?: string; image?: string }
   ): void {
     if (ManagerAddContainerlabNode.nodeCounter === 0) {
       const existingNodeIds = cy.nodes().map(node => node.id());
@@ -29,9 +30,9 @@ export class ManagerAddContainerlabNode {
     const newNodeId = `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
 
 
-    const defaultKind = window.defaultKind || 'nokia_srlinux';
+    const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-    const shouldIncludeType = nokiaKinds.includes(defaultKind);
+    const shouldIncludeType = nokiaKinds.includes(kind);
 
     const newNodeData: NodeData = {
       id: newNodeId,
@@ -44,17 +45,23 @@ export class ManagerAddContainerlabNode {
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
       extraData: {
-        kind: defaultKind,
+        kind,
         longname: '',
-        image: '',
-        ...(shouldIncludeType && { type: window.defaultType || 'ixrd1' }),
-        mgmtIpv4Address: ''
+        image: template?.image || '',
+        ...(shouldIncludeType && { type: template?.type || window.defaultType || 'ixrd1' }),
+        mgmtIpv4Address: '',
+        // Apply all template properties if available
+        ...(template && Object.fromEntries(
+          Object.entries(template).filter(([key]) =>
+            !['name', 'kind', 'type', 'image'].includes(key)
+          )
+        ))
       }
     };
 
     const imageMap = window.imageMapping || {};
-    const kind = newNodeData.extraData?.kind || 'nokia_srlinux';
-    newNodeData.extraData!.image = imageMap[kind] || '';
+    const k = newNodeData.extraData?.kind || 'nokia_srlinux';
+    newNodeData.extraData!.image = template?.image || imageMap[k] || '';
 
     const extent = cy.extent();
     let position = event.position;

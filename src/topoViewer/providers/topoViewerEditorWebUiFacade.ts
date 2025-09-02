@@ -429,6 +429,8 @@ topology:
         const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
         const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
         const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
+        const customNodes = vscode.workspace.getConfiguration('containerlab.editor').get<any[]>('customNodes', []);
+        const defaultNode = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultNode', '');
 
         // Pull cached docker images from global state for image dropdown
         const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
@@ -440,6 +442,8 @@ topology:
           defaultType,
           updateLinkEndpointsOnKindChange,
           dockerImages,
+          customNodes,
+          defaultNode,
           currentLabPath: this.lastYamlFilePath,
         };
         templateParams = editorParams;
@@ -1123,6 +1127,61 @@ topology:
             } catch (innerError) {
               error = `Error saving annotations: ${innerError}`;
               log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'topo-editor-save-custom-node': {
+            try {
+              const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+              const config = vscode.workspace.getConfiguration('containerlab.editor');
+              const customNodes = config.get<any[]>('customNodes', []);
+              const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
+              if (existingIndex >= 0) {
+                customNodes[existingIndex] = data;
+              } else {
+                customNodes.push(data);
+              }
+              await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
+              if (data.setDefault) {
+                await config.update('defaultNode', data.name, vscode.ConfigurationTarget.Global);
+              }
+              result = {
+                customNodes,
+                defaultNode: data.setDefault ? data.name : config.get('defaultNode', '')
+              };
+              log.info(`Saved custom node ${data.name}`);
+            } catch (innerError) {
+              error = `Error saving custom node: ${innerError}`;
+              log.error(`Error saving custom node: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'topo-editor-delete-custom-node': {
+            try {
+              const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+              const config = vscode.workspace.getConfiguration('containerlab.editor');
+              const customNodes = config.get<any[]>('customNodes', []);
+              const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
+              await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
+
+              // Clear default if it was the deleted node
+              const currentDefault = config.get('defaultNode', '');
+              let newDefault = currentDefault;
+              if (currentDefault === data.name) {
+                newDefault = '';
+                await config.update('defaultNode', '', vscode.ConfigurationTarget.Global);
+              }
+
+              result = {
+                customNodes: filteredNodes,
+                defaultNode: newDefault
+              };
+              log.info(`Deleted custom node ${data.name}`);
+            } catch (innerError) {
+              error = `Error deleting custom node: ${innerError}`;
+              log.error(`Error deleting custom node: ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }
