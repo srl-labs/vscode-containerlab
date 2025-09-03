@@ -5,6 +5,7 @@ import { log } from '../logging/logger';
 import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { VscodeMessageSender } from './managerVscodeWebview';
+import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 
 /**
  * Node properties that map to Containerlab configuration
@@ -637,6 +638,13 @@ export class ManagerNodeEditor {
     this.setInputValue('node-type', extraData.type || '');
     // Set initial type field visibility based on the kind
     this.handleKindChange(kindInitial);
+
+    // Icon/Role dropdown - use the actual icons from the styles
+    const nodeIcons = extractNodeIcons();
+    const iconInitial = node.data('topoViewerRole') || 'pe';
+    createFilterableDropdown('panel-node-topoviewerrole-dropdown-container', nodeIcons, iconInitial, () => {
+      // Icon will be saved when save button is clicked
+    }, 'Search for icon...');
 
     // Image dropdown: prefer docker images if provided by the extension
     const dockerImages = (window as any).dockerImages as string[] | undefined;
@@ -1590,9 +1598,13 @@ export class ManagerNodeEditor {
       // Then add back only the properties with values from the form
       Object.assign(updatedExtraData, nodeProps);
 
+      // Get the icon/role value
+      const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
+
       const updatedData = {
         ...currentData,
         name: nodeProps.name,
+        topoViewerRole: iconValue,
         extraData: updatedExtraData
       };
 
