@@ -14,6 +14,7 @@ package.json
 mochawesome-report/
 clab-*/
 *.clab.yml*
+*.clab.yaml*
 CLAUDE.md
 AGENTS.md
 patch.sh

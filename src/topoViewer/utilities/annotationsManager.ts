@@ -12,10 +12,10 @@ export class AnnotationsManager {
   private readonly CACHE_TTL = 1000; // 1 second cache TTL
   private getAnnotationsFilePath(yamlFilePath: string): string {
     const dir = path.dirname(yamlFilePath);
-    const basename = path.basename(yamlFilePath, '.clab.yaml');
-    const filename = basename.endsWith('.clab')
-      ? basename.replace(/\.clab$/, '') + '.annotations.json'
-      : basename + '.annotations.json';
+    const fullBasename = path.basename(yamlFilePath);
+
+    // Simply append .annotations.json to the full basename
+    const filename = fullBasename + '.annotations.json';
     return path.join(dir, filename);
   }
 
