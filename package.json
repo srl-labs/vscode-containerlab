@@ -1278,7 +1278,15 @@
               "kind": "nokia_srlinux",
               "type": "ixrd1",
               "image": "ghcr.io/nokia/srlinux:latest",
+              "icon": "router",
               "setDefault": true
+            },
+            {
+              "name": "Network Multitool",
+              "kind": "linux",
+              "image": "ghcr.io/srl-labs/network-multitool:latest",
+              "icon": "client",
+              "setDefault": false
             }
           ],
           "items": {
@@ -1287,7 +1295,9 @@
               "name": { "type": "string" },
               "kind": { "type": "string" },
               "type": { "type": "string" },
-              "image": { "type": "string" }
+              "image": { "type": "string" },
+              "icon": { "type": "string" },
+              "setDefault": { "type": "boolean" }
             },
             "required": ["name", "kind"],
             "additionalProperties": true

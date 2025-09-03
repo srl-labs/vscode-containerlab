@@ -13,7 +13,7 @@ export class ManagerAddContainerlabNode {
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject,
-    template?: { kind: string; type?: string; image?: string; name?: string }
+    template?: { kind: string; type?: string; image?: string; name?: string; icon?: string }
   ): void {
     if (ManagerAddContainerlabNode.nodeCounter === 0) {
       const existingNodeIds = cy.nodes().map(node => node.id());
@@ -40,7 +40,7 @@ export class ManagerAddContainerlabNode {
       weight: '30',
       name: newNodeId,
       parent: '',
-      topoViewerRole: 'pe',
+      topoViewerRole: template?.icon || 'pe',
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
@@ -55,7 +55,7 @@ export class ManagerAddContainerlabNode {
         // Apply all template properties if available
         ...(template && Object.fromEntries(
           Object.entries(template).filter(([key]) =>
-            !['name', 'kind', 'type', 'image'].includes(key)
+            !['name', 'kind', 'type', 'image', 'icon', 'setDefault'].includes(key)
           )
         ))
       }
