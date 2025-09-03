@@ -798,14 +798,20 @@ export class ManagerNodeEditor {
     const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
     this.setInputValue('node-group', parentId);
 
-    // Hide/show Custom Node Name field based on whether this is a newly created node or temp node for custom creation
+    // Hide/show fields based on whether this is a newly created node or temp node for custom creation
     const customNameGroup = document.getElementById('node-custom-name-group');
+    const nodeNameGroup = document.getElementById('node-name-group');
     const isTempNode = node.id() === 'temp-custom-node';
     const isEditNode = node.id() === 'edit-custom-node';
 
     // Only show custom name field when creating or editing custom node templates
     if (customNameGroup) {
       customNameGroup.style.display = (isTempNode || isEditNode) ? 'block' : 'none';
+    }
+
+    // Hide node name field when creating or editing custom node templates
+    if (nodeNameGroup) {
+      nodeNameGroup.style.display = (isTempNode || isEditNode) ? 'none' : 'block';
     }
 
     // Update panel heading based on mode
