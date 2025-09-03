@@ -13,7 +13,7 @@ export class ManagerAddContainerlabNode {
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject,
-    template?: { kind: string; type?: string; image?: string; name?: string; icon?: string }
+    template?: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string }
   ): void {
     if (ManagerAddContainerlabNode.nodeCounter === 0) {
       const existingNodeIds = cy.nodes().map(node => node.id());
@@ -29,6 +29,17 @@ export class ManagerAddContainerlabNode {
     ManagerAddContainerlabNode.nodeCounter++;
     const newNodeId = `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
 
+    // Generate the node name based on template baseName or default
+    let nodeName = newNodeId;
+    if (template?.baseName) {
+      // Find the next available number for this base name
+      const existingNodeNames = cy.nodes().map(node => node.data('name'));
+      let counter = 1;
+      while (existingNodeNames.includes(`${template.baseName}${counter}`)) {
+        counter++;
+      }
+      nodeName = `${template.baseName}${counter}`;
+    }
 
     const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
@@ -38,7 +49,7 @@ export class ManagerAddContainerlabNode {
       id: newNodeId,
       editor: 'true',
       weight: '30',
-      name: newNodeId,
+      name: nodeName,
       parent: '',
       topoViewerRole: template?.icon || 'pe',
       sourceEndpoint: '',
@@ -55,7 +66,7 @@ export class ManagerAddContainerlabNode {
         // Apply all template properties if available
         ...(template && Object.fromEntries(
           Object.entries(template).filter(([key]) =>
-            !['name', 'kind', 'type', 'image', 'icon', 'setDefault'].includes(key)
+            !['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'].includes(key)
           )
         ))
       }

@@ -1279,6 +1279,7 @@
               "type": "ixrd1",
               "image": "ghcr.io/nokia/srlinux:latest",
               "icon": "router",
+              "baseName": "srl",
               "setDefault": true
             },
             {
@@ -1286,6 +1287,7 @@
               "kind": "linux",
               "image": "ghcr.io/srl-labs/network-multitool:latest",
               "icon": "client",
+              "baseName": "client",
               "setDefault": false
             }
           ],
@@ -1297,6 +1299,7 @@
               "type": { "type": "string" },
               "image": { "type": "string" },
               "icon": { "type": "string" },
+              "baseName": { "type": "string" },
               "setDefault": { "type": "boolean" }
             },
             "required": ["name", "kind"],

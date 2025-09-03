@@ -711,6 +711,10 @@ export class ManagerUnifiedFloatingPanel {
         if (input) {
           input.value = customNode.name;
         }
+        const baseNameInput = document.getElementById('node-base-name') as HTMLInputElement | null;
+        if (baseNameInput && customNode.baseName) {
+          baseNameInput.value = customNode.baseName;
+        }
         const checkbox = document.getElementById('node-custom-default') as HTMLInputElement | null;
         if (checkbox && customNode.setDefault) {
           checkbox.checked = customNode.setDefault;

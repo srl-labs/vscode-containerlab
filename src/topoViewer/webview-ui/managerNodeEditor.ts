@@ -1287,12 +1287,16 @@ export class ManagerNodeEditor {
       // Get the icon/role value
       const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
 
+      // Get the base name value
+      const baseName = this.getInputValue('node-base-name') || '';
+
       const payload: any = {
         name,
         kind: nodeProps.kind || '',
         type: nodeProps.type,
         image: nodeProps.image,
         icon: iconValue,  // Add icon to the saved template
+        baseName,  // Add base name for canvas nodes
         setDefault,
         // Include the old name if we're editing an existing template
         ...(oldName && { oldName })
