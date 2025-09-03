@@ -779,14 +779,12 @@ export class ManagerNodeEditor {
 
     // Hide/show Custom Node Name field based on whether this is a newly created node or temp node for custom creation
     const customNameGroup = document.getElementById('node-custom-name-group');
-    const isNewNode = node.id().startsWith('nodeId-');
     const isTempNode = node.id() === 'temp-custom-node';
     const isEditNode = node.id() === 'edit-custom-node';
-    const fromCustomTemplate = nodeData.extraData?.fromCustomTemplate === true;
 
-    // Show custom name field for temp nodes, edit nodes, or new nodes that aren't from templates
+    // Only show custom name field when creating or editing custom node templates
     if (customNameGroup) {
-      customNameGroup.style.display = (isTempNode || isEditNode || (isNewNode && !fromCustomTemplate)) ? 'block' : 'none';
+      customNameGroup.style.display = (isTempNode || isEditNode) ? 'block' : 'none';
     }
 
     // Update panel heading based on mode

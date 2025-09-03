@@ -636,14 +636,6 @@ export class ManagerUnifiedFloatingPanel {
     } as cytoscape.EventObject;
 
     this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, syntheticEvent, template);
-
-    // Only open editor for default nodes (when no template is provided)
-    if (!template) {
-      const newNode = this.cy.nodes().last();
-      if (newNode && this.nodeEditor) {
-        setTimeout(() => this.nodeEditor!.open(newNode), 100);
-      }
-    }
   }
 
   private handleCreateCustomNode(): void {

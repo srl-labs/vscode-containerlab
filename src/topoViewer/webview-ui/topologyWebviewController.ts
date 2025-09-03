@@ -1238,7 +1238,14 @@ class TopologyWebviewController {
           const mouseEvent = event.originalEvent as MouseEvent;
           if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
             log.debug('Canvas clicked with Shift key - adding node.');
-            this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, event);
+            // Check if there's a default custom node to use
+            const defaultName = (window as any).defaultNode;
+            let template = undefined;
+            if (defaultName) {
+              const customNodes = (window as any).customNodes || [];
+              template = customNodes.find((n: any) => n.name === defaultName);
+            }
+            this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, event, template);
           }
         },
         onNodeClick: async (event) => {
