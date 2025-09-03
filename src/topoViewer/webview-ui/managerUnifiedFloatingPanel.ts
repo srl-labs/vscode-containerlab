@@ -227,7 +227,6 @@ export class ManagerUnifiedFloatingPanel {
       deleteBtn.title = 'Delete custom node';
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        log.info(`DELETE BUTTON CLICKED for node: ${node.name}`);
         await this.handleDeleteCustomNode(node.name);
         // Refresh the menu content after deletion
         instance.setContent(this.buildAddNodeMenu(instance));
@@ -505,9 +504,12 @@ export class ManagerUnifiedFloatingPanel {
 
     this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, syntheticEvent, template);
 
-    const newNode = this.cy.nodes().last();
-    if (newNode && this.nodeEditor) {
-      setTimeout(() => this.nodeEditor!.open(newNode), 100);
+    // Only open editor for default nodes (when no template is provided)
+    if (!template) {
+      const newNode = this.cy.nodes().last();
+      if (newNode && this.nodeEditor) {
+        setTimeout(() => this.nodeEditor!.open(newNode), 100);
+      }
     }
   }
 
@@ -546,18 +548,15 @@ export class ManagerUnifiedFloatingPanel {
 
   private async handleDeleteCustomNode(nodeName: string): Promise<void> {
     try {
-      log.info(`DELETE CUSTOM NODE (frontend): Starting deletion for "${nodeName}"`);
       // Note: window.confirm doesn't work in VS Code webviews
       // For now, we'll delete without confirmation
       // TODO: Implement confirmation through VS Code backend
 
       const payload = { name: nodeName };
-      log.info(`DELETE CUSTOM NODE (frontend): Sending delete request with payload: ${JSON.stringify(payload)}`);
       const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
         'topo-editor-delete-custom-node',
         payload
       );
-      log.info(`DELETE CUSTOM NODE (frontend): Received response: ${JSON.stringify(resp)}`);
 
       if (resp?.customNodes) {
         (window as any).customNodes = resp.customNodes;

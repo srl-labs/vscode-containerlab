@@ -13,7 +13,7 @@ export class ManagerAddContainerlabNode {
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject,
-    template?: { kind: string; type?: string; image?: string }
+    template?: { kind: string; type?: string; image?: string; name?: string }
   ): void {
     if (ManagerAddContainerlabNode.nodeCounter === 0) {
       const existingNodeIds = cy.nodes().map(node => node.id());
@@ -50,6 +50,8 @@ export class ManagerAddContainerlabNode {
         image: template?.image || '',
         ...(shouldIncludeType && { type: template?.type || window.defaultType || 'ixrd1' }),
         mgmtIpv4Address: '',
+        // Mark if this was created from a custom template
+        fromCustomTemplate: template?.name ? true : false,
         // Apply all template properties if available
         ...(template && Object.fromEntries(
           Object.entries(template).filter(([key]) =>

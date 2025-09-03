@@ -781,9 +781,11 @@ export class ManagerNodeEditor {
     const customNameGroup = document.getElementById('node-custom-name-group');
     const isNewNode = node.id().startsWith('nodeId-');
     const isTempNode = node.id() === 'temp-custom-node';
+    const fromCustomTemplate = nodeData.extraData?.fromCustomTemplate === true;
 
+    // Only show custom name field for temp nodes (creating new template) or new nodes that aren't from templates
     if (customNameGroup) {
-      customNameGroup.style.display = (isNewNode || isTempNode) ? 'block' : 'none';
+      customNameGroup.style.display = (isTempNode || (isNewNode && !fromCustomTemplate)) ? 'block' : 'none';
     }
 
     // Update panel heading for temp nodes (custom node creation)

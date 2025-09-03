@@ -1160,15 +1160,11 @@ topology:
 
           case 'topo-editor-delete-custom-node': {
             try {
-              log.info(`DELETE CUSTOM NODE: Starting deletion for ${JSON.stringify(payloadObj)}`);
               const data = payloadObj;
               const config = vscode.workspace.getConfiguration('containerlab.editor');
               const customNodes = config.get<any[]>('customNodes', []);
-              log.info(`DELETE CUSTOM NODE: Current nodes: ${JSON.stringify(customNodes)}`);
               const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
-              log.info(`DELETE CUSTOM NODE: Filtered nodes: ${JSON.stringify(filteredNodes)}`);
               await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
-              log.info(`DELETE CUSTOM NODE: Config updated successfully`);
 
               // Clear default if it was the deleted node
               const currentDefault = config.get('defaultNode', '');
