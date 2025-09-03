@@ -16,6 +16,7 @@ export class ManagerUnifiedFloatingPanel {
   private addNodeManager: ManagerAddContainerlabNode;
   private nodeEditor: ManagerNodeEditor | null = null;
   private isProcessing: boolean = false;
+  private addNodeMenuTippy: any = null;
   // Refs (actions/tooltips only; UI styles live in HTML)
   private deployBtn: HTMLButtonElement | null = null;
   private redeployBtn: HTMLButtonElement | null = null;
@@ -162,8 +163,15 @@ export class ManagerUnifiedFloatingPanel {
 
   private setupAddNodeMenu(): void {
     if (!this.addNodeBtn) return;
+
+    // Destroy existing tippy instance if it exists
+    if (this.addNodeMenuTippy) {
+      this.addNodeMenuTippy.destroy();
+      this.addNodeMenuTippy = null;
+    }
+
     const self = this;
-    tippy(this.addNodeBtn, {
+    this.addNodeMenuTippy = tippy(this.addNodeBtn, {
       trigger: 'mouseenter',
       interactive: true,
       appendTo: document.body,
@@ -219,6 +227,7 @@ export class ManagerUnifiedFloatingPanel {
       deleteBtn.title = 'Delete custom node';
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
+        log.info(`DELETE BUTTON CLICKED for node: ${node.name}`);
         await this.handleDeleteCustomNode(node.name);
         // Refresh the menu content after deletion
         instance.setContent(this.buildAddNodeMenu(instance));
@@ -537,20 +546,32 @@ export class ManagerUnifiedFloatingPanel {
 
   private async handleDeleteCustomNode(nodeName: string): Promise<void> {
     try {
-      const confirmed = window.confirm(`Delete custom node "${nodeName}"?`);
-      if (!confirmed) return;
+      log.info(`DELETE CUSTOM NODE (frontend): Starting deletion for "${nodeName}"`);
+      // Note: window.confirm doesn't work in VS Code webviews
+      // For now, we'll delete without confirmation
+      // TODO: Implement confirmation through VS Code backend
 
       const payload = { name: nodeName };
+      log.info(`DELETE CUSTOM NODE (frontend): Sending delete request with payload: ${JSON.stringify(payload)}`);
       const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
         'topo-editor-delete-custom-node',
         payload
       );
+      log.info(`DELETE CUSTOM NODE (frontend): Received response: ${JSON.stringify(resp)}`);
 
       if (resp?.customNodes) {
         (window as any).customNodes = resp.customNodes;
       }
       if (resp?.defaultNode !== undefined) {
         (window as any).defaultNode = resp.defaultNode;
+      }
+
+      // Recreate the add node menu to reflect the changes immediately
+      this.setupAddNodeMenu();
+
+      // If the tippy is currently visible, hide it to prevent stale content
+      if (this.addNodeMenuTippy && this.addNodeMenuTippy.state.isVisible) {
+        this.addNodeMenuTippy.hide();
       }
 
       log.info(`Deleted custom node: ${nodeName}`);
