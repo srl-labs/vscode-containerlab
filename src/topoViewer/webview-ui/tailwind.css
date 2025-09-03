@@ -359,6 +359,16 @@
   .add-node-delete-btn:hover {
     background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.15));
   }
+
+  /* Filter input styles */
+  .filter-input:focus {
+    border-color: var(--vscode-focusBorder) !important;
+    outline: none !important;
+  }
+  
+  .filterable-item {
+    transition: background-color 0.1s ease;
+  }
   
   /* Input styles */
   .input-field {
