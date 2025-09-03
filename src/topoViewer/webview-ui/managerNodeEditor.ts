@@ -641,7 +641,20 @@ export class ManagerNodeEditor {
 
     // Icon/Role dropdown - use the actual icons from the styles
     const nodeIcons = extractNodeIcons();
-    const iconInitial = node.data('topoViewerRole') || 'pe';
+
+    // Get the initial icon value - check if we're editing a custom template
+    let iconInitial = 'pe';
+    const currentNodeData = node.data();
+    if (currentNodeData.topoViewerRole && typeof currentNodeData.topoViewerRole === 'string') {
+      iconInitial = currentNodeData.topoViewerRole;
+    } else if (currentNodeData.extraData?.icon && typeof currentNodeData.extraData.icon === 'string') {
+      iconInitial = currentNodeData.extraData.icon;
+    }
+
+    // Log for debugging
+    log.debug(`Creating icon dropdown with options: ${JSON.stringify(nodeIcons)}`);
+    log.debug(`Initial icon value: ${iconInitial}`);
+
     createFilterableDropdown('panel-node-topoviewerrole-dropdown-container', nodeIcons, iconInitial, () => {
       // Icon will be saved when save button is clicked
     }, 'Search for icon...');
@@ -1271,11 +1284,15 @@ export class ManagerNodeEditor {
 
   private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
     try {
+      // Get the icon/role value
+      const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
+
       const payload: any = {
         name,
         kind: nodeProps.kind || '',
         type: nodeProps.type,
         image: nodeProps.image,
+        icon: iconValue,  // Add icon to the saved template
         setDefault,
         // Include the old name if we're editing an existing template
         ...(oldName && { oldName })

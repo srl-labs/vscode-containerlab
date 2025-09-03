@@ -645,6 +645,7 @@ export class ManagerUnifiedFloatingPanel {
       const tempNodeData = {
         id: 'temp-custom-node',
         name: 'temp-custom-node',
+        topoViewerRole: window.defaultKind === 'nokia_srlinux' ? 'router' : 'pe',  // Set router for SR Linux, pe for others
         extraData: {
           kind: window.defaultKind || 'nokia_srlinux',
           type: window.defaultType || 'ixrd1',
@@ -678,14 +679,16 @@ export class ManagerUnifiedFloatingPanel {
       const tempNodeData = {
         id: 'edit-custom-node',
         name: 'edit-custom-node',
+        topoViewerRole: customNode.icon || 'pe',  // Add icon to the node data
         extraData: {
           kind: customNode.kind,
           type: customNode.type,
           image: customNode.image,
+          icon: customNode.icon || 'pe',  // Also include icon in extraData for the editor
           // Include any other properties from the custom node
           ...Object.fromEntries(
             Object.entries(customNode).filter(([key]) =>
-              !['name', 'kind', 'type', 'image', 'setDefault'].includes(key)
+              !['name', 'kind', 'type', 'image', 'setDefault', 'icon'].includes(key)
             )
           ),
           // Mark this as editing an existing custom node
