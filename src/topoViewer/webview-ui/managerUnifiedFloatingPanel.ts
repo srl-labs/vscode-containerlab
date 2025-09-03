@@ -221,6 +221,16 @@ export class ManagerUnifiedFloatingPanel {
         instance.hide();
       });
 
+      const editBtn = document.createElement('button');
+      editBtn.innerHTML = '✎'; // Pencil icon
+      editBtn.className = 'add-node-edit-btn';
+      editBtn.title = 'Edit custom node';
+      editBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await this.handleEditCustomNode(node);
+        instance.hide();
+      });
+
       const deleteBtn = document.createElement('button');
       deleteBtn.innerHTML = '×';
       deleteBtn.className = 'add-node-delete-btn';
@@ -233,6 +243,7 @@ export class ManagerUnifiedFloatingPanel {
       });
 
       item.appendChild(btn);
+      item.appendChild(editBtn);
       item.appendChild(deleteBtn);
       menu.appendChild(item);
     };
@@ -543,6 +554,53 @@ export class ManagerUnifiedFloatingPanel {
       }, 150);
     } else {
       log.error('NodeEditor not available for custom node creation');
+    }
+  }
+
+  private handleEditCustomNode(customNode: any): void {
+    // Open the node editor panel to edit an existing custom node template
+    if (this.nodeEditor) {
+      // Create a temporary node data with the custom node's properties
+      const tempNodeData = {
+        id: 'edit-custom-node',
+        name: 'edit-custom-node',
+        extraData: {
+          kind: customNode.kind,
+          type: customNode.type,
+          image: customNode.image,
+          // Include any other properties from the custom node
+          ...Object.fromEntries(
+            Object.entries(customNode).filter(([key]) =>
+              !['name', 'kind', 'type', 'image', 'setDefault'].includes(key)
+            )
+          ),
+          // Mark this as editing an existing custom node
+          editingCustomNodeName: customNode.name
+        }
+      };
+
+      // Create a mock node object for the editor
+      const mockNode = {
+        id: () => 'edit-custom-node',
+        data: () => tempNodeData,
+        parent: () => ({ nonempty: () => false })
+      };
+
+      this.nodeEditor.open(mockNode as any);
+
+      // Pre-fill the custom node name field
+      setTimeout(() => {
+        const input = document.getElementById('node-custom-name') as HTMLInputElement | null;
+        if (input) {
+          input.value = customNode.name;
+        }
+        const checkbox = document.getElementById('node-custom-default') as HTMLInputElement | null;
+        if (checkbox && customNode.setDefault) {
+          checkbox.checked = customNode.setDefault;
+        }
+      }, 150);
+    } else {
+      log.error('NodeEditor not available for custom node editing');
     }
   }
 

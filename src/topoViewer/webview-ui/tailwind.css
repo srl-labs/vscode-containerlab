@@ -323,6 +323,7 @@
     margin: 0.25rem 0;
   }
 
+  .add-node-edit-btn,
   .add-node-delete-btn {
     opacity: 0;
     transition: opacity 0.15s ease;
@@ -333,11 +334,23 @@
     background: transparent;
     border: none;
     cursor: pointer;
+  }
+
+  .add-node-edit-btn {
+    color: var(--vscode-textLink-foreground, #3794ff);
+  }
+
+  .add-node-delete-btn {
     color: var(--vscode-errorForeground, #f48771);
   }
 
+  .add-node-menu-item:hover .add-node-edit-btn,
   .add-node-menu-item:hover .add-node-delete-btn {
     opacity: 1;
+  }
+
+  .add-node-edit-btn:hover {
+    background-color: var(--vscode-textLink-activeForeground, rgba(55, 148, 255, 0.1));
   }
 
   .add-node-delete-btn:hover {

@@ -1135,17 +1135,45 @@ topology:
             try {
               const data = payloadObj;
               const config = vscode.workspace.getConfiguration('containerlab.editor');
-              const customNodes = config.get<any[]>('customNodes', []);
-              const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
-              if (existingIndex >= 0) {
-                customNodes[existingIndex] = data;
+              let customNodes = config.get<any[]>('customNodes', []);
+
+              // If oldName is provided, we're editing an existing node
+              if (data.oldName) {
+                // Find and replace the old node
+                const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
+                if (oldIndex >= 0) {
+                  // Remove the oldName field before saving
+                  const nodeData = { ...data };
+                  delete nodeData.oldName;
+                  customNodes[oldIndex] = nodeData;
+                } else {
+                  // Old node not found, add as new
+                  const nodeData = { ...data };
+                  delete nodeData.oldName;
+                  customNodes.push(nodeData);
+                }
+
+                // If the name changed and it was the default, update the default
+                const currentDefault = config.get('defaultNode', '');
+                if (currentDefault === data.oldName) {
+                  await config.update('defaultNode', data.name, vscode.ConfigurationTarget.Global);
+                }
               } else {
-                customNodes.push(data);
+                // Creating a new node - check if name already exists
+                const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
+                if (existingIndex >= 0) {
+                  customNodes[existingIndex] = data;
+                } else {
+                  customNodes.push(data);
+                }
               }
+
               await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
+
               if (data.setDefault) {
                 await config.update('defaultNode', data.name, vscode.ConfigurationTarget.Global);
               }
+
               result = {
                 customNodes,
                 defaultNode: data.setDefault ? data.name : config.get('defaultNode', '')

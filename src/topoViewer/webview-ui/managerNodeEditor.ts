@@ -781,18 +781,21 @@ export class ManagerNodeEditor {
     const customNameGroup = document.getElementById('node-custom-name-group');
     const isNewNode = node.id().startsWith('nodeId-');
     const isTempNode = node.id() === 'temp-custom-node';
+    const isEditNode = node.id() === 'edit-custom-node';
     const fromCustomTemplate = nodeData.extraData?.fromCustomTemplate === true;
 
-    // Only show custom name field for temp nodes (creating new template) or new nodes that aren't from templates
+    // Show custom name field for temp nodes, edit nodes, or new nodes that aren't from templates
     if (customNameGroup) {
-      customNameGroup.style.display = (isTempNode || (isNewNode && !fromCustomTemplate)) ? 'block' : 'none';
+      customNameGroup.style.display = (isTempNode || isEditNode || (isNewNode && !fromCustomTemplate)) ? 'block' : 'none';
     }
 
-    // Update panel heading for temp nodes (custom node creation)
+    // Update panel heading based on mode
     const heading = document.getElementById('panel-node-editor-heading');
     if (heading) {
       if (isTempNode) {
         heading.textContent = 'Create Custom Node Template';
+      } else if (isEditNode) {
+        heading.textContent = 'Edit Custom Node Template';
       } else {
         heading.textContent = 'Node Editor';
       }
@@ -1260,14 +1263,16 @@ export class ManagerNodeEditor {
     return isValid;
   }
 
-  private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean): Promise<void> {
+  private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
     try {
       const payload: any = {
         name,
         kind: nodeProps.kind || '',
         type: nodeProps.type,
         image: nodeProps.image,
-        setDefault
+        setDefault,
+        // Include the old name if we're editing an existing template
+        ...(oldName && { oldName })
       };
 
       // Always save all properties from nodeProps (excluding basic ones that are already set)
@@ -1537,11 +1542,17 @@ export class ManagerNodeEditor {
       const customName = this.getInputValue('node-custom-name');
       const setDefault = this.getCheckboxValue('node-custom-default');
       if (customName) {
-        // For temp nodes, we need to collect all the properties to save as a custom template
+        // Check if we're editing an existing custom node
+        const currentNodeData = this.currentNode.data();
+        const editingNodeName = currentNodeData.extraData?.editingCustomNodeName;
+
+        // For temp nodes or edit nodes, save the custom template
         const isTempNode = this.currentNode.id() === 'temp-custom-node';
-        if (isTempNode) {
-          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault);
-          // Close the panel and return early for temp nodes
+        const isEditNode = this.currentNode.id() === 'edit-custom-node';
+
+        if (isTempNode || isEditNode) {
+          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault, editingNodeName);
+          // Close the panel and return early for temp/edit nodes
           this.close();
           return;
         } else {
@@ -1549,10 +1560,11 @@ export class ManagerNodeEditor {
         }
       }
 
-      // Skip node update for temp nodes (custom node creation without canvas node)
+      // Skip node update for temp nodes and edit nodes (custom node creation/editing without canvas node)
       const isTempNode = this.currentNode.id() === 'temp-custom-node';
-      if (isTempNode) {
-        log.info('Skipped canvas update for temp custom node creation');
+      const isEditNode = this.currentNode.id() === 'edit-custom-node';
+      if (isTempNode || isEditNode) {
+        log.info('Skipped canvas update for custom node template operation');
         return;
       }
 
