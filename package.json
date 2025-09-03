@@ -1322,7 +1322,7 @@
     "watch": "tsc -w -p .",
     "build:webview": "webpack --config webpack.config.js",
     "bundle": "node esbuild.config.js",
-    "package": "npm run lint && npm run bundle && vsce package --no-dependencies --allow-package-secrets npm",
+    "package": "rm -rf dist && npm run lint && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "eslint --ext .ts,.tsx .",
