@@ -309,8 +309,19 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
       const lng = node.data('lng');
       if (lat !== undefined && lng !== undefined) {
         nodeJson.data = nodeJson.data || {};
+        // Mark geo layout active so backend can skip writing XY positions
+        nodeJson.data.geoLayoutActive = !!isGeoActive;
         nodeJson.data.lat = lat.toString();
         nodeJson.data.lng = lng.toString();
+      } else {
+        // Ensure flag is present when geo is active, even if lat/lng are missing
+        if (isGeoActive) {
+          nodeJson.data = nodeJson.data || {};
+          nodeJson.data.geoLayoutActive = true;
+        } else if (nodeJson.data?.geoLayoutActive) {
+          // Clean up flag when not in geo mode
+          delete nodeJson.data.geoLayoutActive;
+        }
       }
 
       // Update parent property

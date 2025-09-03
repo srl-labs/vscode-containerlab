@@ -48,6 +48,8 @@ export class ManagerSaveTopo {
 
         if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
           nodeJson.data = nodeJson.data || {};
+          // Mark geo layout active so backend can decide how to save annotations
+          nodeJson.data.geoLayoutActive = true;
           const lat = node.data('lat');
           const lng = node.data('lng');
           if (lat !== undefined && lng !== undefined) {
@@ -61,6 +63,10 @@ export class ManagerSaveTopo {
             nodeJson.data.lat = latlng.lat.toString();
             nodeJson.data.lng = latlng.lng.toString();
           }
+        } else {
+          // Ensure flag is falsey when geo layout is not active
+          nodeJson.data = nodeJson.data || {};
+          if (nodeJson.data.geoLayoutActive) delete nodeJson.data.geoLayoutActive;
         }
 
         const parentCollection = node.parent();
