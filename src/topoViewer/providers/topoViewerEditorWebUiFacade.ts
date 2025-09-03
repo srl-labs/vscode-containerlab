@@ -355,6 +355,43 @@ topology:
         return false;
       }
 
+      // Check if the file is empty or only contains whitespace
+      if (!yamlContent.trim()) {
+        // Extract lab name from file path
+        const baseName = path.basename(yamlFilePath);
+        const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+
+        // Use the default template content
+        const defaultContent = `name: ${labNameFromFile}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
+`;
+
+        // Write the default content to the file
+        this.isInternalUpdate = true;
+        await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
+        await this.sleep(50);
+        this.isInternalUpdate = false;
+
+        yamlContent = defaultContent;
+        log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
+      }
+
       // Only validate in edit mode
       if (!this.skipInitialValidation) {
         const isValid = await this.validateYaml(yamlContent);
@@ -587,6 +624,43 @@ topology:
 
         // Read the YAML
         yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+
+        // Check if the file is empty or only contains whitespace
+        if (!yaml.trim()) {
+          // Extract lab name from file path
+          const baseName = path.basename(this.lastYamlFilePath);
+          const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+
+          // Use the default template content
+          const defaultContent = `name: ${labNameFromFile}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
+`;
+
+          // Write the default content to the file
+          this.isInternalUpdate = true;
+          await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
+          await this.sleep(50);
+          this.isInternalUpdate = false;
+
+          yaml = defaultContent;
+          log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
+        }
 
         // Validate unless explicitly skipped
         if (!this.skipInitialValidation) {
