@@ -9,7 +9,7 @@ import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, Templa
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
-import { runningLabsProvider } from "../../extension";
+import { runningLabsProvider, refreshDockerImages } from "../../extension";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
@@ -421,6 +421,8 @@ topology:
         };
         templateParams = viewerParams;
       } else {
+        // Ensure we have the latest docker images before building editor UI
+        await refreshDockerImages(this.context);
         // For editor mode, pass editor-specific parameters
         const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
         const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
@@ -428,12 +430,16 @@ topology:
         const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
         const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
 
+        // Pull cached docker images from global state for image dropdown
+        const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+
         const editorParams: Partial<EditorTemplateParams> = {
           imageMapping,
           ifacePatternMapping,
           defaultKind,
           defaultType,
           updateLinkEndpointsOnKindChange,
+          dockerImages,
           currentLabPath: this.lastYamlFilePath,
         };
         templateParams = editorParams;

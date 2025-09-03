@@ -2,6 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
+import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
 
 /**
@@ -109,11 +110,107 @@ export class ManagerNodeEditor {
   private currentNode: cytoscape.NodeSingular | null = null;
   private panel: HTMLElement | null = null;
   private dynamicEntryCounters: Map<string, number> = new Map();
+  private schemaKinds: string[] = [];
+  private kindsLoaded = false;
+  private imageVersionMap: Map<string, string[]> = new Map();
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
     this.saveManager = saveManager;
     this.initializePanel();
+  }
+
+  /**
+   * Parse docker images to extract base images and their versions
+   */
+  private parseDockerImages(dockerImages: string[]): void {
+    this.imageVersionMap.clear();
+
+    for (const image of dockerImages) {
+      // Split by colon to separate repository from tag
+      const lastColonIndex = image.lastIndexOf(':');
+      if (lastColonIndex > 0) {
+        const baseImage = image.substring(0, lastColonIndex);
+        const version = image.substring(lastColonIndex + 1);
+
+        if (!this.imageVersionMap.has(baseImage)) {
+          this.imageVersionMap.set(baseImage, []);
+        }
+        this.imageVersionMap.get(baseImage)!.push(version);
+      } else {
+        // No version tag, treat whole thing as base image with 'latest' as version
+        if (!this.imageVersionMap.has(image)) {
+          this.imageVersionMap.set(image, ['latest']);
+        }
+      }
+    }
+
+    // Sort versions for each base image
+    for (const versions of this.imageVersionMap.values()) {
+      versions.sort((a, b) => {
+        // Put 'latest' first
+        if (a === 'latest') return -1;
+        if (b === 'latest') return 1;
+        // Then sort alphanumerically
+        return b.localeCompare(a); // Reverse order to put newer versions first
+      });
+    }
+  }
+
+  /**
+   * Handle base image change and update version dropdown
+   */
+  private handleBaseImageChange(selectedBaseImage: string): void {
+    const versions = this.imageVersionMap.get(selectedBaseImage);
+
+    if (versions && versions.length > 0) {
+      // We have known versions for this image
+      createFilterableDropdown(
+        'node-version-dropdown-container',
+        versions,
+        versions[0] || 'latest',
+        () => {},
+        'Select version...',
+        true // Allow free text for custom versions
+      );
+      log.debug(`Base image changed to ${selectedBaseImage}, available versions: ${versions.join(', ')}`);
+    } else {
+      // Unknown image - allow free text version entry
+      createFilterableDropdown(
+        'node-version-dropdown-container',
+        ['latest'],
+        'latest',
+        () => {},
+        'Enter version...',
+        true // Allow free text
+      );
+      log.debug(`Base image changed to custom image ${selectedBaseImage}, allowing free text version entry`);
+    }
+  }
+
+  /**
+   * Handle kind change and update type field visibility
+   */
+  private handleKindChange(selectedKind: string): void {
+    const typeFormGroup = document.querySelector('#node-type')?.closest('.form-group') as HTMLElement;
+
+    if (typeFormGroup) {
+      // Show type field only for Nokia kinds (nokia_srlinux, nokia_sros, nokia_srsim)
+      const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
+
+      if (isNokiaKind) {
+        typeFormGroup.style.display = 'block';
+      } else {
+        typeFormGroup.style.display = 'none';
+        // Clear the type field value when hiding
+        const typeInput = document.getElementById('node-type') as HTMLInputElement;
+        if (typeInput) {
+          typeInput.value = '';
+        }
+      }
+    }
+
+    log.debug(`Kind changed to ${selectedKind}, type field visibility: ${['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind) ? 'visible' : 'hidden'}`);
   }
 
   /**
@@ -125,6 +222,11 @@ export class ManagerNodeEditor {
       log.error('Enhanced node editor panel not found in DOM');
       return;
     }
+
+    // Populate the Kind dropdown from the JSON schema so all kinds are available
+    this.populateKindsFromSchema().catch(err => {
+      log.error(`Failed to populate kinds from schema: ${err instanceof Error ? err.message : String(err)}`);
+    });
 
     // Mark panel interaction to prevent closing, but don't stop propagation
     // as that breaks tabs and other interactive elements
@@ -172,7 +274,106 @@ export class ManagerNodeEditor {
     // Setup dynamic entry handlers
     this.setupDynamicEntryHandlers();
 
+    // Initialize static filterable dropdowns with default values
+    this.initializeStaticDropdowns();
+
     log.debug('Enhanced node editor panel initialized');
+  }
+
+  private initializeStaticDropdowns(): void {
+    // Restart Policy
+    const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
+    createFilterableDropdown(
+      'node-restart-policy-dropdown-container',
+      rpOptions,
+      'Default',
+      () => {},
+      'Search restart policy...'
+    );
+
+    // Network Mode
+    const nmOptions = ['Default', 'host', 'none'];
+    createFilterableDropdown(
+      'node-network-mode-dropdown-container',
+      nmOptions,
+      'Default',
+      () => {},
+      'Search network mode...'
+    );
+
+    // Cert key size
+    const keySizeOptions = ['2048', '4096'];
+    createFilterableDropdown(
+      'node-cert-key-size-dropdown-container',
+      keySizeOptions,
+      '2048',
+      () => {},
+      'Search key size...'
+    );
+
+    // Image pull policy
+    const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
+    createFilterableDropdown(
+      'node-image-pull-policy-dropdown-container',
+      ippOptions,
+      'Default',
+      () => {},
+      'Search pull policy...'
+    );
+
+    // Runtime
+    const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
+    createFilterableDropdown(
+      'node-runtime-dropdown-container',
+      runtimeOptions,
+      'Default',
+      () => {},
+      'Search runtime...'
+    );
+  }
+
+  /**
+   * Fetch schema and populate the Kind dropdown with all enum values
+   */
+  private async populateKindsFromSchema(): Promise<void> {
+    try {
+      const url = (window as any).schemaUrl as string | undefined;
+      if (!url) {
+        log.warn('Schema URL is undefined; keeping existing Kind options');
+        return;
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const kinds: string[] = json?.definitions?.['node-config']?.properties?.kind?.enum || [];
+      if (!Array.isArray(kinds) || kinds.length === 0) {
+        log.warn('No kind enum found in schema; keeping existing Kind options');
+        return;
+      }
+      // Group Nokia kinds on top (prefix 'nokia_'), each group sorted alphabetically
+      const nokiaKinds = kinds.filter(k => k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
+      const otherKinds = kinds.filter(k => !k.startsWith('nokia_')).sort((a, b) => a.localeCompare(b));
+      this.schemaKinds = [...nokiaKinds, ...otherKinds];
+
+      const desired = ((this.currentNode?.data()?.extraData?.kind as string) || (window as any).defaultKind || '') as string;
+      const initial = desired && this.schemaKinds.includes(desired)
+        ? desired
+        : ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind)
+            ? (window as any).defaultKind
+            : (this.schemaKinds[0] || ''));
+      createFilterableDropdown(
+        'node-kind-dropdown-container',
+        this.schemaKinds,
+        initial,
+        (selectedKind: string) => this.handleKindChange(selectedKind),
+        'Search for kind...'
+      );
+
+      this.kindsLoaded = true;
+      log.debug(`Loaded ${this.schemaKinds.length} kinds from schema`);
+    } catch (e) {
+      log.error(`populateKindsFromSchema error: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   /**
@@ -363,6 +564,19 @@ export class ManagerNodeEditor {
     // Load node data into form
     this.loadNodeData(node);
 
+    // Ensure kind selection matches loaded options (fallback gracefully)
+    try {
+      const input = document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null;
+      const desired = (node.data()?.extraData?.kind as string) || (window as any).defaultKind || '';
+      if (input && desired && this.kindsLoaded && this.schemaKinds.length > 0) {
+        input.value = this.schemaKinds.includes(desired)
+          ? desired
+          : ((window as any).defaultKind && this.schemaKinds.includes((window as any).defaultKind) ? (window as any).defaultKind : (this.schemaKinds[0] || ''));
+      }
+    } catch (e) {
+      log.warn(`Kind selection alignment warning: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
     // Show the panel
     this.panel.style.display = 'block';
 
@@ -411,9 +625,149 @@ export class ManagerNodeEditor {
 
     // Basic tab
     this.setInputValue('node-name', nodeData.name || node.id());
-    this.setInputValue('node-kind', extraData.kind || 'nokia_srlinux');
+    // Kind dropdown
+    const desiredKind = extraData.kind || ((window as any).defaultKind || 'nokia_srlinux');
+    const kindInitial = (this.schemaKinds.length > 0 && this.schemaKinds.includes(desiredKind))
+      ? desiredKind
+      : (this.schemaKinds[0] || desiredKind);
+    createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
     this.setInputValue('node-type', extraData.type || '');
-    this.setInputValue('node-image', extraData.image || '');
+
+    // Set initial type field visibility based on the kind
+    this.handleKindChange(kindInitial);
+
+    // Image dropdown: prefer docker images if provided by the extension
+    const dockerImages = (window as any).dockerImages as string[] | undefined;
+    const imageInitial = extraData.image || '';
+
+    // Check if we have valid Docker images (non-empty array)
+    const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 &&
+                           dockerImages.some(img => img && img.trim() !== '');
+
+    if (hasDockerImages) {
+      // Parse docker images to extract base images and versions
+      this.parseDockerImages(dockerImages);
+
+      // Get sorted list of base images
+      const baseImages = Array.from(this.imageVersionMap.keys()).sort((a, b) => {
+        // Group images by common prefixes (e.g., ghcr.io/nokia/srlinux)
+        const aIsNokia = a.includes('nokia');
+        const bIsNokia = b.includes('nokia');
+        if (aIsNokia && !bIsNokia) return -1;
+        if (!aIsNokia && bIsNokia) return 1;
+        return a.localeCompare(b);
+      });
+
+      // Determine initial base image and version from the current image value
+      let initialBaseImage = '';
+      let initialVersion = 'latest';
+
+      if (imageInitial) {
+        const lastColonIndex = imageInitial.lastIndexOf(':');
+        if (lastColonIndex > 0) {
+          const baseImg = imageInitial.substring(0, lastColonIndex);
+          const ver = imageInitial.substring(lastColonIndex + 1);
+          if (this.imageVersionMap.has(baseImg)) {
+            initialBaseImage = baseImg;
+            initialVersion = ver;
+          }
+        }
+      }
+
+      // If no match found but we have an imageInitial value, use it as a custom image
+      if (!initialBaseImage && imageInitial) {
+        // User has a custom image not in our Docker list
+        const lastColonIndex = imageInitial.lastIndexOf(':');
+        if (lastColonIndex > 0) {
+          initialBaseImage = imageInitial.substring(0, lastColonIndex);
+          initialVersion = imageInitial.substring(lastColonIndex + 1);
+        } else {
+          initialBaseImage = imageInitial;
+          initialVersion = 'latest';
+        }
+      } else if (!initialBaseImage && baseImages.length > 0) {
+        // No initial image, use first available
+        initialBaseImage = baseImages[0];
+      }
+
+      // Create base image dropdown
+      createFilterableDropdown(
+        'node-image-dropdown-container',
+        baseImages,
+        initialBaseImage,
+        (selectedBaseImage: string) => this.handleBaseImageChange(selectedBaseImage),
+        'Search for image...',
+        true // Allow free text
+      );
+
+      // Initialize version dropdown
+      if (initialBaseImage) {
+        const versions = this.imageVersionMap.get(initialBaseImage) || ['latest'];
+        // Always preserve the actual version from YAML, even if it's not in our list
+        const versionToSelect = initialVersion || versions[0] || 'latest';
+
+        createFilterableDropdown(
+          'node-version-dropdown-container',
+          versions,
+          versionToSelect,
+          () => {},
+          'Select version...',
+          true // Allow free text for custom versions
+        );
+      } else {
+        // Create version dropdown allowing free text for custom image
+        createFilterableDropdown(
+          'node-version-dropdown-container',
+          ['latest'],
+          initialVersion || 'latest',
+          () => {},
+          'Enter version...',
+          true // Allow free text
+        );
+      }
+    } else {
+      // Fallback to plain input if docker images not available
+      const container = document.getElementById('node-image-dropdown-container');
+      if (container) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'input-field w-full';
+        input.placeholder = 'e.g., ghcr.io/nokia/srlinux';
+        input.id = 'node-image-fallback-input';
+
+        // Extract base image from initial value
+        let baseImageValue = imageInitial;
+        if (imageInitial) {
+          const lastColonIndex = imageInitial.lastIndexOf(':');
+          if (lastColonIndex > 0) {
+            baseImageValue = imageInitial.substring(0, lastColonIndex);
+          }
+        }
+        input.value = baseImageValue;
+        container.appendChild(input);
+      }
+
+      // Add version input field
+      const versionContainer = document.getElementById('node-version-dropdown-container');
+      if (versionContainer) {
+        const versionInput = document.createElement('input');
+        versionInput.type = 'text';
+        versionInput.className = 'input-field w-full';
+        versionInput.placeholder = 'e.g., latest';
+        versionInput.id = 'node-version-fallback-input';
+
+        // Extract version from initial value
+        let versionValue = 'latest';
+        if (imageInitial) {
+          const lastColonIndex = imageInitial.lastIndexOf(':');
+          if (lastColonIndex > 0) {
+            versionValue = imageInitial.substring(lastColonIndex + 1);
+          }
+        }
+        versionInput.value = versionValue;
+        versionContainer.appendChild(versionInput);
+      }
+    }
     const parentNode = node.parent();
     const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
     this.setInputValue('node-group', parentId);
@@ -449,7 +803,9 @@ export class ManagerNodeEditor {
     this.setInputValue('node-user', extraData.user || '');
     this.setInputValue('node-entrypoint', extraData.entrypoint || '');
     this.setInputValue('node-cmd', extraData.cmd || '');
-    this.setInputValue('node-restart-policy', extraData['restart-policy'] || '');
+    const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
+    const rpInitial = extraData['restart-policy'] || 'Default';
+    createFilterableDropdown('node-restart-policy-dropdown-container', rpOptions, rpInitial, () => {}, 'Search restart policy...');
     this.setCheckboxValue('node-auto-remove', extraData['auto-remove'] || false);
     this.setInputValue('node-startup-delay', extraData['startup-delay'] || '');
 
@@ -463,7 +819,9 @@ export class ManagerNodeEditor {
     // Network tab
     this.setInputValue('node-mgmt-ipv4', extraData['mgmt-ipv4'] || '');
     this.setInputValue('node-mgmt-ipv6', extraData['mgmt-ipv6'] || '');
-    this.setInputValue('node-network-mode', extraData['network-mode'] || '');
+    const nmOptions = ['Default', 'host', 'none'];
+    const nmInitial = extraData['network-mode'] || 'Default';
+    createFilterableDropdown('node-network-mode-dropdown-container', nmOptions, nmInitial, () => {}, 'Search network mode...');
 
     // Load ports
     if (extraData.ports && Array.isArray(extraData.ports)) {
@@ -518,7 +876,9 @@ export class ManagerNodeEditor {
     // Load certificate configuration
     if (extraData.certificate) {
       this.setCheckboxValue('node-cert-issue', extraData.certificate.issue || false);
-      this.setInputValue('node-cert-key-size', extraData.certificate['key-size'] || '2048');
+      const keySizeOptions = ['2048', '4096'];
+      const keySizeInitial = String(extraData.certificate['key-size'] || '2048');
+      createFilterableDropdown('node-cert-key-size-dropdown-container', keySizeOptions, keySizeInitial, () => {}, 'Search key size...');
       this.setInputValue('node-cert-validity', extraData.certificate['validity-duration'] || '');
 
       if (extraData.certificate.sans && Array.isArray(extraData.certificate.sans)) {
@@ -538,8 +898,13 @@ export class ManagerNodeEditor {
       this.setInputValue('node-healthcheck-retries', hc.retries || '');
     }
 
-    this.setInputValue('node-image-pull-policy', extraData['image-pull-policy'] || '');
-    this.setInputValue('node-runtime', extraData.runtime || '');
+    const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
+    const ippInitial = extraData['image-pull-policy'] || 'Default';
+    createFilterableDropdown('node-image-pull-policy-dropdown-container', ippOptions, ippInitial, () => {}, 'Search pull policy...');
+
+    const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
+    const runtimeInitial = extraData.runtime || 'Default';
+    createFilterableDropdown('node-runtime-dropdown-container', runtimeOptions, runtimeInitial, () => {}, 'Search runtime...');
   }
 
   /**
@@ -885,10 +1250,30 @@ export class ManagerNodeEditor {
       // Collect all the data
       const nodeProps: NodeProperties = {
         name: this.getInputValue('node-name'),
-        kind: this.getInputValue('node-kind') || undefined,
+        kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
         type: this.getInputValue('node-type') || undefined,
-        image: this.getInputValue('node-image') || undefined,
       };
+
+      // Combine base image and version to form the complete image
+      const dockerImages = (window as any).dockerImages as string[] | undefined;
+      const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 &&
+                             dockerImages.some(img => img && img.trim() !== '');
+
+      if (hasDockerImages) {
+        // Using dropdown inputs (with free text support)
+        const baseImg = (document.getElementById('node-image-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+        const version = (document.getElementById('node-version-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'latest';
+        if (baseImg) {
+          nodeProps.image = `${baseImg}:${version}`;
+        }
+      } else {
+        // Fallback plain text inputs
+        const baseImg = (document.getElementById('node-image-fallback-input') as HTMLInputElement | null)?.value || '';
+        const version = (document.getElementById('node-version-fallback-input') as HTMLInputElement | null)?.value || 'latest';
+        if (baseImg) {
+          nodeProps.image = `${baseImg}:${version}`;
+        }
+      }
 
       // Configuration properties
       const startupConfig = this.getInputValue('node-startup-config');
@@ -946,9 +1331,9 @@ export class ManagerNodeEditor {
         nodeProps.exec = exec;
       }
 
-      const restartPolicy = this.getInputValue('node-restart-policy') as any;
-      if (restartPolicy) {
-        nodeProps['restart-policy'] = restartPolicy;
+      const rpVal = (document.getElementById('node-restart-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (rpVal && rpVal !== 'Default') {
+        nodeProps['restart-policy'] = rpVal as any;
       }
 
       if (this.getCheckboxValue('node-auto-remove')) {
@@ -971,9 +1356,9 @@ export class ManagerNodeEditor {
         nodeProps['mgmt-ipv6'] = mgmtIpv6;
       }
 
-      const networkMode = this.getInputValue('node-network-mode');
-      if (networkMode) {
-        nodeProps['network-mode'] = networkMode;
+      const nmVal = (document.getElementById('node-network-mode-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (nmVal && nmVal !== 'Default') {
+        nodeProps['network-mode'] = nmVal;
       }
 
       const ports = this.collectDynamicEntries('ports');
@@ -1037,7 +1422,7 @@ export class ManagerNodeEditor {
       if (this.getCheckboxValue('node-cert-issue')) {
         nodeProps.certificate = { issue: true };
 
-        const keySize = this.getInputValue('node-cert-key-size');
+        const keySize = (document.getElementById('node-cert-key-size-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
         if (keySize) nodeProps.certificate['key-size'] = parseInt(keySize);
 
         const validity = this.getInputValue('node-cert-validity');
@@ -1078,14 +1463,14 @@ export class ManagerNodeEditor {
         nodeProps.healthcheck.retries = parseInt(hcRetries);
       }
 
-      const imagePullPolicy = this.getInputValue('node-image-pull-policy') as any;
-      if (imagePullPolicy) {
-        nodeProps['image-pull-policy'] = imagePullPolicy;
+      const ippVal = (document.getElementById('node-image-pull-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (ippVal && ippVal !== 'Default') {
+        nodeProps['image-pull-policy'] = ippVal as any;
       }
 
-      const runtime = this.getInputValue('node-runtime') as any;
-      if (runtime) {
-        nodeProps.runtime = runtime;
+      const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      if (runtimeVal && runtimeVal !== 'Default') {
+        nodeProps.runtime = runtimeVal as any;
       }
 
       // Update the node data

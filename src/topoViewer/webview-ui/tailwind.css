@@ -103,6 +103,10 @@
 
 /* Custom component classes using Tailwind */
 @layer components {
+  /* Ensure filterable dropdown menus don't propagate scroll to parents */
+  .filterable-dropdown-menu {
+    overscroll-behavior: contain;
+  }
   /* Button styles */
   .btn {
     display: inline-flex;

@@ -77,13 +77,7 @@
         "when": "workbenchState == empty"
       }
     ],
-    "iconThemes": [
-      {
-        "id": "containerlab-icons",
-        "label": "Containerlab",
-        "path": "./resources/containerlab-icon-theme.json"
-      }
-    ],
+    
     "commands": [
       {
         "command": "containerlab.refresh",

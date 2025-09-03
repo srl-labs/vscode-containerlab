@@ -13,6 +13,7 @@ import { WelcomePage } from './welcomePage';
 import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
+import { registerClabImageCompletion } from './yaml/imageCompletion';
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -29,6 +30,7 @@ export let runningLabsProvider: RunningLabTreeDataProvider;
 export let helpFeedbackProvider: HelpFeedbackProvider;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
+export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
@@ -115,6 +117,31 @@ export async function refreshGottySessions() {
   }
 }
 
+/**
+ * Refreshes the cached list of local Docker images and stores them in extension global state.
+ * The list is a unique, sorted array of strings in the form "repository:tag".
+ */
+export async function refreshDockerImages(context?: vscode.ExtensionContext): Promise<void> {
+  // Fail silently if docker is not available or any error occurs.
+  const ctx = context ?? extensionContext;
+  if (!ctx) return;
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+    const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}}"');
+    const images = (stdout || '')
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(s => s && !s.endsWith(':<none>') && !s.startsWith('<none>'));
+    const unique = Array.from(new Set(images)).sort((a, b) => a.localeCompare(b));
+    await ctx.globalState.update(DOCKER_IMAGES_STATE_KEY, unique);
+  } catch {
+    // On failure, do not prompt or log; leave cache as-is.
+    return;
+  }
+}
+
 import * as execCmdJson from '../resources/exec_cmd.json';
 import * as sshUserJson from '../resources/ssh_users.json';
 
@@ -170,6 +197,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   await refreshSshxSessions();
   await refreshGottySessions();
+  // Docker images are refreshed on TopoViewer open to avoid unnecessary calls
 
 
   localTreeView = vscode.window.createTreeView('localLabs', {
@@ -198,6 +226,9 @@ export async function activate(context: vscode.ExtensionContext) {
     'containerlab:isLocalCaptureAllowed',
     isLocalCaptureAllowed
   );
+
+  // Language features (YAML completion)
+  registerClabImageCompletion(context);
 
   // Register commands
 
