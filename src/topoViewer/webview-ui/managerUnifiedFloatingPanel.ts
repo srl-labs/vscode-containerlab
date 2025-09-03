@@ -180,6 +180,17 @@ export class ManagerUnifiedFloatingPanel {
       interactiveBorder: 10, // allow mouse movement between trigger and menu
       onShow(instance) {
         instance.setContent(self.buildAddNodeMenu(instance));
+        // Force update the background color to match current theme
+        const box = instance.popper.querySelector('.tippy-box') as HTMLElement;
+        if (box) {
+          const computedStyle = window.getComputedStyle(document.documentElement);
+          box.style.backgroundColor = computedStyle.getPropertyValue('--vscode-dropdown-background').trim() ||
+                                      computedStyle.getPropertyValue('--vscode-editor-background').trim();
+          box.style.color = computedStyle.getPropertyValue('--vscode-dropdown-foreground').trim() ||
+                           computedStyle.getPropertyValue('--vscode-editor-foreground').trim();
+          box.style.borderColor = computedStyle.getPropertyValue('--vscode-dropdown-border').trim() ||
+                                 computedStyle.getPropertyValue('--vscode-widget-border').trim();
+        }
       },
       theme: 'dropdown-menu',
       content: ''
@@ -222,7 +233,7 @@ export class ManagerUnifiedFloatingPanel {
       });
 
       const editBtn = document.createElement('button');
-      editBtn.innerHTML = '✎'; // Pencil icon
+      editBtn.innerHTML = '✎';
       editBtn.className = 'add-node-edit-btn';
       editBtn.title = 'Edit custom node';
       editBtn.addEventListener('click', async (e) => {
