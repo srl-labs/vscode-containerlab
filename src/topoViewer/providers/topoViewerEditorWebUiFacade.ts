@@ -424,13 +424,25 @@ topology:
         // Ensure we have the latest docker images before building editor UI
         await refreshDockerImages(this.context);
         // For editor mode, pass editor-specific parameters
-        const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
         const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
-        const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
-        const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
         const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
         const customNodes = vscode.workspace.getConfiguration('containerlab.editor').get<any[]>('customNodes', []);
-        const defaultNode = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultNode', '');
+
+        // Find the default custom node
+        const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
+        const defaultNode = defaultCustomNode?.name || '';
+
+        // Derive defaults from the default custom node or use fallbacks
+        const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
+        const defaultType = defaultCustomNode?.type || 'ixrd1';
+
+        // Build image mapping from custom nodes
+        const imageMapping: Record<string, string> = {};
+        customNodes.forEach((node: any) => {
+          if (node.image && node.kind) {
+            imageMapping[node.kind] = node.image;
+          }
+        });
 
         // Pull cached docker images from global state for image dropdown
         const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
@@ -1137,6 +1149,11 @@ topology:
               const config = vscode.workspace.getConfiguration('containerlab.editor');
               let customNodes = config.get<any[]>('customNodes', []);
 
+              // If setDefault is true, clear it from all other nodes
+              if (data.setDefault) {
+                customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
+              }
+
               // If oldName is provided, we're editing an existing node
               if (data.oldName) {
                 // Find and replace the old node
@@ -1152,12 +1169,6 @@ topology:
                   delete nodeData.oldName;
                   customNodes.push(nodeData);
                 }
-
-                // If the name changed and it was the default, update the default
-                const currentDefault = config.get('defaultNode', '');
-                if (currentDefault === data.oldName) {
-                  await config.update('defaultNode', data.name, vscode.ConfigurationTarget.Global);
-                }
               } else {
                 // Creating a new node - check if name already exists
                 const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
@@ -1170,13 +1181,12 @@ topology:
 
               await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
 
-              if (data.setDefault) {
-                await config.update('defaultNode', data.name, vscode.ConfigurationTarget.Global);
-              }
+              // Find the current default node
+              const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
 
               result = {
                 customNodes,
-                defaultNode: data.setDefault ? data.name : config.get('defaultNode', '')
+                defaultNode: defaultCustomNode?.name || ''
               };
               log.info(`Saved custom node ${data.name}`);
             } catch (innerError) {
@@ -1194,17 +1204,12 @@ topology:
               const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
               await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
 
-              // Clear default if it was the deleted node
-              const currentDefault = config.get('defaultNode', '');
-              let newDefault = currentDefault;
-              if (currentDefault === data.name) {
-                newDefault = '';
-                await config.update('defaultNode', '', vscode.ConfigurationTarget.Global);
-              }
+              // Find the current default node from remaining nodes
+              const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
 
               result = {
                 customNodes: filteredNodes,
-                defaultNode: newDefault
+                defaultNode: defaultCustomNode?.name || ''
               };
               log.info(`Deleted custom node ${data.name}`);
             } catch (innerError) {
