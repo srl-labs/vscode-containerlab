@@ -223,7 +223,9 @@
     z-index: 50;
     margin-top: 0.25rem;
     border-radius: 0.375rem;
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    min-width: 12rem;
+    max-width: 20rem;
   }
 
   .dropdown-button {
@@ -265,6 +267,107 @@
       --vscode-list-hoverBackground,
       var(--bg-hover)
     );
+  }
+
+  /* Tippy.js theme for add node menu */
+  .tippy-box[data-theme~='dropdown-menu'] {
+    background-color: var(--vscode-dropdown-background) !important;
+    color: var(--vscode-dropdown-foreground) !important;
+    border: 1px solid var(--vscode-dropdown-border) !important;
+    border-radius: 0.375rem;
+    box-shadow: var(--vscode-widget-shadow, 0 2px 8px rgba(0, 0, 0, 0.16));
+    padding: 0;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size, 13px);
+  }
+
+  .tippy-box[data-theme~='dropdown-menu'] .tippy-content {
+    padding: 0;
+    background: transparent !important;
+  }
+
+  .tippy-box[data-theme~='dropdown-menu'] .tippy-arrow {
+    color: var(--vscode-dropdown-background) !important;
+  }
+  
+  .tippy-box[data-theme~='dropdown-menu'] .tippy-backdrop {
+    background-color: var(--vscode-dropdown-background) !important;
+  }
+
+  /* Add node menu specific styles */
+  .add-node-menu-item {
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.15s ease;
+    color: var(--vscode-dropdown-foreground);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .add-node-menu-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+
+  .add-node-menu-item:first-child {
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+  }
+
+  .add-node-menu-item:last-child {
+    border-bottom-left-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+  }
+
+  .add-node-menu-separator {
+    height: 1px;
+    background-color: var(--vscode-widget-border, var(--vscode-dropdown-border));
+    margin: 0.25rem 0;
+  }
+
+  .add-node-edit-btn,
+  .add-node-delete-btn {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    padding: 0.25rem 0.5rem;
+    font-size: 1.125rem;
+    line-height: 1;
+    border-radius: 0.25rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .add-node-edit-btn {
+    color: var(--vscode-textLink-foreground);
+  }
+
+  .add-node-delete-btn {
+    color: var(--vscode-errorForeground);
+  }
+
+  .add-node-menu-item:hover .add-node-edit-btn,
+  .add-node-menu-item:hover .add-node-delete-btn {
+    opacity: 1;
+  }
+
+  .add-node-edit-btn:hover {
+    background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.15));
+  }
+
+  .add-node-delete-btn:hover {
+    background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.15));
+  }
+
+  /* Filter input styles */
+  .filter-input:focus {
+    border-color: var(--vscode-focusBorder) !important;
+    outline: none !important;
+  }
+  
+  .filterable-item {
+    transition: background-color 0.1s ease;
   }
   
   /* Input styles */

@@ -323,7 +323,7 @@ export class ManagerViewportPanels {
     }
 
     // Set the node name in the editor.
-    const panelNodeEditorNameInput = document.getElementById("panel-node-editor-name") as HTMLInputElement;
+    const panelNodeEditorNameInput = document.getElementById("node-name") as HTMLInputElement;
     if (panelNodeEditorNameInput) {
       panelNodeEditorNameInput.value = node.data("name");
     }
@@ -331,19 +331,18 @@ export class ManagerViewportPanels {
     // Grab extraData from the node for populating fields.
     const extraData = node.data('extraData') || {};
 
-    // Set the node image in the editor based on YAML data or fallback.
-    const panelNodeEditorImageLabel = document.getElementById('panel-node-editor-image') as HTMLInputElement;
-    if (panelNodeEditorImageLabel) {
-      panelNodeEditorImageLabel.value = extraData.image ?? '';
-    }
+    // Note: Image is handled by dropdown, not a simple input field
 
     // Set the node type in the editor.
     this.panelNodeEditorKind = extraData.kind || this.panelNodeEditorKind;
     this.panelNodeEditorType = extraData.type || '';
     this.panelNodeEditorUseDropdownForType = false;
 
+    // Set the topoViewerRole (icon)
+    this.panelNodeEditorTopoViewerRole = node.data('topoViewerRole') || 'pe';
+
     // Set the node group in the editor.
-    const panelNodeEditorGroupLabel = document.getElementById("panel-node-editor-group") as HTMLInputElement;
+    const panelNodeEditorGroupLabel = document.getElementById("node-group") as HTMLInputElement;
     if (panelNodeEditorGroupLabel) {
       const parentNode = node.parent();
       const parentLabel = parentNode.nonempty() ? (parentNode.data('name') as string) : '';
@@ -378,16 +377,21 @@ export class ManagerViewportPanels {
       const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(jsonData, `(${this.panelNodeEditorKind})`);
       this.panelNodeEditorSetupTypeField(typeOptions);
 
-      // Then call the function:
+      // Populate the icon dropdown with available options
       const nodeIcons = extractNodeIcons();
       log.debug(`Extracted node icons: ${JSON.stringify(nodeIcons)}`);
 
-      this.panelNodeEditorPopulateTopoViewerRoleDropdown(nodeIcons);
-
-
+      // Check if the container exists before attempting to populate
+      const iconContainer = document.getElementById('panel-node-topoviewerrole-dropdown-container');
+      if (!iconContainer) {
+        log.error('Icon dropdown container not found in DOM!');
+      } else {
+        log.debug(`Icon container found, populating with ${nodeIcons.length} options`);
+        this.panelNodeEditorPopulateTopoViewerRoleDropdown(nodeIcons);
+      }
 
       // Register the close button event.
-      const panelNodeEditorCloseButton = document.getElementById("panel-node-editor-close-button");
+      const panelNodeEditorCloseButton = document.getElementById("panel-node-editor-cancel");
       if (panelNodeEditorCloseButton && panelNodeEditor) {
         panelNodeEditorCloseButton.addEventListener("click", () => {
           panelNodeEditor.style.display = "none";
@@ -395,7 +399,7 @@ export class ManagerViewportPanels {
       }
 
       // Register the save button event.
-      const panelNodeEditorSaveButton = document.getElementById("panel-node-editor-save-button");
+      const panelNodeEditorSaveButton = document.getElementById("panel-node-editor-save");
       if (panelNodeEditorSaveButton) {
         // Clone to remove any existing event listeners
         const newSaveButton = panelNodeEditorSaveButton.cloneNode(true) as HTMLElement;
@@ -1172,10 +1176,10 @@ export class ManagerViewportPanels {
     const targetNode: cytoscape.NodeSingular = (node as any).length && (node as any).length > 1 ? (node as any)[0] : node;
 
     // Get the input values.
-    const nodeNameInput = document.getElementById("panel-node-editor-name") as HTMLInputElement;
-    const nodeImageInput = document.getElementById("panel-node-editor-image") as HTMLInputElement;
+    const nodeNameInput = document.getElementById("node-name") as HTMLInputElement;
+    const nodeImageInput = document.getElementById("node-image-dropdown-container-filter-input") as HTMLInputElement;
     const typeDropdownInput = document.getElementById("panel-node-type-dropdown-container-filter-input") as HTMLInputElement;
-    const typeInput = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
+    const typeInput = document.getElementById("node-type") as HTMLInputElement;
 
     // Retrieve dropdown selections.
     const kindDropdownInput = document.getElementById("panel-node-kind-dropdown-container-filter-input") as HTMLInputElement;
@@ -1585,7 +1589,7 @@ export class ManagerViewportPanels {
 
   private panelNodeEditorSetupTypeField(options: string[]): void {
     const dropdownContainer = document.getElementById("panel-node-type-dropdown-container");
-    const input = document.getElementById("panel-node-editor-type-input") as HTMLInputElement;
+    const input = document.getElementById("node-type") as HTMLInputElement;
 
     if (!dropdownContainer || !input) {
       log.error('Type input elements not found in the DOM.');

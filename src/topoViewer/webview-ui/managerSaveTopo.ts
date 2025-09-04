@@ -17,6 +17,10 @@ export class ManagerSaveTopo {
     this.messageSender = messageSender;
   }
 
+  public getMessageSender(): VscodeMessageSender {
+    return this.messageSender;
+  }
+
   /**
    * Updates node positions and sends the topology data to the backend.
    */

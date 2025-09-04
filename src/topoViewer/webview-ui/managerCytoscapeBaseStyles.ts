@@ -554,13 +554,19 @@ export function extractNodeIcons(): string[] {
   for (const styleDef of cytoscapeStylesBase) {
     if (typeof styleDef.selector === 'string') {
       const match = styleDef.selector.match(regex);
-      if (match && match[1] && !skipList.includes(match[1])) {
-        nodeTypesSet.add(match[1]);
+      if (match && match[1] && typeof match[1] === 'string' && !skipList.includes(match[1])) {
+        // Only add if it's truly a string and not an object
+        if (match[1] !== '[object Object]') {
+          nodeTypesSet.add(match[1]);
+        }
       }
     }
   }
 
-  return Array.from(nodeTypesSet).sort();
+  // Filter out any non-string values that might have snuck in
+  return Array.from(nodeTypesSet)
+    .filter(item => typeof item === 'string' && item !== '[object Object]')
+    .sort();
 }
 
 // Expose globally for external consumers

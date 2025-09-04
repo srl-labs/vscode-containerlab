@@ -12,7 +12,8 @@ export class ManagerAddContainerlabNode {
 
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
-    event: cytoscape.EventObject
+    event: cytoscape.EventObject,
+    template?: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string }
   ): void {
     if (ManagerAddContainerlabNode.nodeCounter === 0) {
       const existingNodeIds = cy.nodes().map(node => node.id());
@@ -28,33 +29,52 @@ export class ManagerAddContainerlabNode {
     ManagerAddContainerlabNode.nodeCounter++;
     const newNodeId = `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
 
+    // Generate the node name based on template baseName or default
+    let nodeName = newNodeId;
+    if (template?.baseName) {
+      // Find the next available number for this base name
+      const existingNodeNames = cy.nodes().map(node => node.data('name'));
+      let counter = 1;
+      while (existingNodeNames.includes(`${template.baseName}${counter}`)) {
+        counter++;
+      }
+      nodeName = `${template.baseName}${counter}`;
+    }
 
-    const defaultKind = window.defaultKind || 'nokia_srlinux';
+    const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-    const shouldIncludeType = nokiaKinds.includes(defaultKind);
+    const shouldIncludeType = nokiaKinds.includes(kind);
 
     const newNodeData: NodeData = {
       id: newNodeId,
       editor: 'true',
       weight: '30',
-      name: newNodeId,
+      name: nodeName,
       parent: '',
-      topoViewerRole: 'pe',
+      topoViewerRole: template?.icon || 'pe',
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
       extraData: {
-        kind: defaultKind,
+        kind,
         longname: '',
-        image: '',
-        ...(shouldIncludeType && { type: window.defaultType || 'ixrd1' }),
-        mgmtIpv4Address: ''
+        image: template?.image || '',
+        ...(shouldIncludeType && { type: template?.type || window.defaultType || 'ixrd1' }),
+        mgmtIpv4Address: '',
+        // Mark if this was created from a custom template
+        fromCustomTemplate: template?.name ? true : false,
+        // Apply all template properties if available
+        ...(template && Object.fromEntries(
+          Object.entries(template).filter(([key]) =>
+            !['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'].includes(key)
+          )
+        ))
       }
     };
 
     const imageMap = window.imageMapping || {};
-    const kind = newNodeData.extraData?.kind || 'nokia_srlinux';
-    newNodeData.extraData!.image = imageMap[kind] || '';
+    const k = newNodeData.extraData?.kind || 'nokia_srlinux';
+    newNodeData.extraData!.image = template?.image || imageMap[k] || '';
 
     const extent = cy.extent();
     let position = event.position;

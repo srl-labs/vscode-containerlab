@@ -355,6 +355,43 @@ topology:
         return false;
       }
 
+      // Check if the file is empty or only contains whitespace
+      if (!yamlContent.trim()) {
+        // Extract lab name from file path
+        const baseName = path.basename(yamlFilePath);
+        const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+
+        // Use the default template content
+        const defaultContent = `name: ${labNameFromFile}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
+`;
+
+        // Write the default content to the file
+        this.isInternalUpdate = true;
+        await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
+        await this.sleep(50);
+        this.isInternalUpdate = false;
+
+        yamlContent = defaultContent;
+        log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
+      }
+
       // Only validate in edit mode
       if (!this.skipInitialValidation) {
         const isValid = await this.validateYaml(yamlContent);
@@ -424,11 +461,25 @@ topology:
         // Ensure we have the latest docker images before building editor UI
         await refreshDockerImages(this.context);
         // For editor mode, pass editor-specific parameters
-        const imageMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('imageMapping', {});
         const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
-        const defaultKind = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultKind', 'nokia_srlinux');
-        const defaultType = vscode.workspace.getConfiguration('containerlab.editor').get<string>('defaultType', 'ixrd1');
         const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
+        const customNodes = vscode.workspace.getConfiguration('containerlab.editor').get<any[]>('customNodes', []);
+
+        // Find the default custom node
+        const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
+        const defaultNode = defaultCustomNode?.name || '';
+
+        // Derive defaults from the default custom node or use fallbacks
+        const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
+        const defaultType = defaultCustomNode?.type || 'ixrd1';
+
+        // Build image mapping from custom nodes
+        const imageMapping: Record<string, string> = {};
+        customNodes.forEach((node: any) => {
+          if (node.image && node.kind) {
+            imageMapping[node.kind] = node.image;
+          }
+        });
 
         // Pull cached docker images from global state for image dropdown
         const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
@@ -440,6 +491,8 @@ topology:
           defaultType,
           updateLinkEndpointsOnKindChange,
           dockerImages,
+          customNodes,
+          defaultNode,
           currentLabPath: this.lastYamlFilePath,
         };
         templateParams = editorParams;
@@ -571,6 +624,43 @@ topology:
 
         // Read the YAML
         yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+
+        // Check if the file is empty or only contains whitespace
+        if (!yaml.trim()) {
+          // Extract lab name from file path
+          const baseName = path.basename(this.lastYamlFilePath);
+          const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+
+          // Use the default template content
+          const defaultContent = `name: ${labNameFromFile}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
+`;
+
+          // Write the default content to the file
+          this.isInternalUpdate = true;
+          await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
+          await this.sleep(50);
+          this.isInternalUpdate = false;
+
+          yaml = defaultContent;
+          log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
+        }
 
         // Validate unless explicitly skipped
         if (!this.skipInitialValidation) {
@@ -1108,7 +1198,7 @@ topology:
 
           case 'topo-editor-save-annotations': {
             try {
-              const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+              const data = payloadObj;
               const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
               await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
                 freeTextAnnotations: data.annotations,
@@ -1123,6 +1213,82 @@ topology:
             } catch (innerError) {
               error = `Error saving annotations: ${innerError}`;
               log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'topo-editor-save-custom-node': {
+            try {
+              const data = payloadObj;
+              const config = vscode.workspace.getConfiguration('containerlab.editor');
+              let customNodes = config.get<any[]>('customNodes', []);
+
+              // If setDefault is true, clear it from all other nodes
+              if (data.setDefault) {
+                customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
+              }
+
+              // If oldName is provided, we're editing an existing node
+              if (data.oldName) {
+                // Find and replace the old node
+                const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
+                if (oldIndex >= 0) {
+                  // Remove the oldName field before saving
+                  const nodeData = { ...data };
+                  delete nodeData.oldName;
+                  customNodes[oldIndex] = nodeData;
+                } else {
+                  // Old node not found, add as new
+                  const nodeData = { ...data };
+                  delete nodeData.oldName;
+                  customNodes.push(nodeData);
+                }
+              } else {
+                // Creating a new node - check if name already exists
+                const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
+                if (existingIndex >= 0) {
+                  customNodes[existingIndex] = data;
+                } else {
+                  customNodes.push(data);
+                }
+              }
+
+              await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
+
+              // Find the current default node
+              const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
+
+              result = {
+                customNodes,
+                defaultNode: defaultCustomNode?.name || ''
+              };
+              log.info(`Saved custom node ${data.name}`);
+            } catch (innerError) {
+              error = `Error saving custom node: ${innerError}`;
+              log.error(`Error saving custom node: ${JSON.stringify(innerError, null, 2)}`);
+            }
+            break;
+          }
+
+          case 'topo-editor-delete-custom-node': {
+            try {
+              const data = payloadObj;
+              const config = vscode.workspace.getConfiguration('containerlab.editor');
+              const customNodes = config.get<any[]>('customNodes', []);
+              const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
+              await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
+
+              // Find the current default node from remaining nodes
+              const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
+
+              result = {
+                customNodes: filteredNodes,
+                defaultNode: defaultCustomNode?.name || ''
+              };
+              log.info(`Deleted custom node ${data.name}`);
+            } catch (innerError) {
+              error = `Error deleting custom node: ${innerError}`;
+              log.error(`Error deleting custom node: ${JSON.stringify(innerError, null, 2)}`);
             }
             break;
           }

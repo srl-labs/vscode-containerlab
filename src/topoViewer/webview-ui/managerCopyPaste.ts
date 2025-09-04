@@ -119,18 +119,39 @@ export class CopyPasteManager {
 
     const idMap = new Map();
     const usedIds = new Set<string>(this.cy.nodes().map((n: any) => n.id()));
+    const usedNames = new Set<string>(this.cy.nodes().map((n: any) => n.data('name')));
     const newElements: any[] = [];
 
     // Generate unique IDs for nodes (excluding free text nodes - they're handled separately)
     data.elements.forEach((el: any) => {
       if (el.group === 'nodes' && el.data.topoViewerRole !== 'freeText') {
-        const newId = this.getUniqueId(el.data.name || el.data.id, usedIds, el.data.topoViewerRole === 'group');
+        // For nodes with nodeId- prefix (custom template nodes), generate new ID and name separately
+        const isTemplateNode = el.data.id.startsWith('nodeId-');
+        let newId: string;
+        let nodeName: string;
+
+        if (isTemplateNode && el.data.name) {
+          // This is a node from a custom template - generate unique name based on existing names
+          nodeName = this.getUniqueId(el.data.name, usedNames, false);
+          // Generate a new nodeId for it
+          const existingNodeIds = Array.from(usedIds).filter(id => id.startsWith('nodeId-'));
+          const maxId = existingNodeIds
+            .map(id => parseInt(id.replace('nodeId-', ''), 10))
+            .filter(num => !isNaN(num))
+            .reduce((max, current) => Math.max(max, current), 0);
+          newId = `nodeId-${maxId + 1}`;
+        } else {
+          // Regular node - use the existing logic
+          newId = this.getUniqueId(el.data.name || el.data.id, usedIds, el.data.topoViewerRole === 'group');
+          nodeName = newId;
+        }
+
         idMap.set(el.data.id, newId);
         usedIds.add(newId);
+        usedNames.add(nodeName); // Track the name to avoid duplicates
 
         // Handle name/label for different node types
-        let nodeName = newId.split(':')[0];
-        let nodeLabel = newId.split(':')[0];
+        let nodeLabel = nodeName;
 
         // For dummy nodes, always use "dummy" as both name and label
         if (newId.startsWith('dummy')) {
@@ -246,17 +267,30 @@ export class CopyPasteManager {
     }
 
     // Original logic for regular nodes and groups
-    const match = baseName.match(/^(.*?)(\d*)$/);
+    // Use greedy match to properly extract base and number (e.g., "srl1" -> "srl" + "1")
+    const match = baseName.match(/^(.*)(\d+)$/);
     const base = match?.[1] || baseName;
-    let num = parseInt(match?.[2] || '0') || 0;
+    let num = match?.[2] ? parseInt(match[2]) : 0;
 
     if (isGroup) {
       while (usedIds.has(`${base}${num || ''}:1`)) num++;
       return `${base}${num || ''}:1`;
     } else {
-      let name = baseName;
-      while (usedIds.has(name)) name = base + (++num);
-      return name;
+      // Start with the extracted base and find the next available number
+      if (match) {
+        // If the name already has a number, find the next available one
+        while (usedIds.has(`${base}${num}`)) num++;
+        return `${base}${num}`;
+      } else {
+        // If no number in the name, start from 1
+        let name = baseName;
+        num = 1;
+        while (usedIds.has(name)) {
+          name = `${base}${num}`;
+          num++;
+        }
+        return name;
+      }
     }
   }
 

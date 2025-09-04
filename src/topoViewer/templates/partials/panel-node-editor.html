@@ -3,7 +3,7 @@
   class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
   id="panel-node-editor" style="display: none;">
 
-  <p class="panel-heading">
+  <p class="panel-heading" id="panel-node-editor-heading">
     Node Editor
   </p>
 
@@ -24,9 +24,21 @@
       <div class="tab-content" id="tab-basic">
         <div class="space-y-3">
         <!-- Node Name -->
-        <div class="form-group">
+        <div class="form-group" id="node-name-group">
           <label class="block vscode-label mb-1">Node Name</label>
           <input type="text" id="node-name" class="input-field w-full">
+        </div>
+
+        <!-- Custom Node Name -->
+        <div class="form-group" id="node-custom-name-group">
+          <label class="block vscode-label mb-1">Custom Node Name</label>
+          <input type="text" id="node-custom-name" class="input-field w-full" placeholder="Template name">
+          <label class="block vscode-label mb-1 mt-2">Base Name (for canvas)</label>
+          <input type="text" id="node-base-name" class="input-field w-full" placeholder="e.g., srl (will become srl1, srl2, etc.)">
+          <div class="flex items-center mt-1">
+            <input type="checkbox" id="node-custom-default" class="vscode-checkbox mr-2">
+            <label for="node-custom-default" class="checkbox-label">Set as default</label>
+          </div>
         </div>
 
         <!-- Kind -->
@@ -38,7 +50,8 @@
         <!-- Type -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Type</label>
-          <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l">
+          <div id="panel-node-type-dropdown-container" style="display: none;"></div>
+          <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l" style="display: block;">
         </div>
 
         <!-- Image and Version in same row -->
@@ -51,6 +64,12 @@
             <label class="block vscode-label mb-1">Version</label>
             <div id="node-version-dropdown-container"></div>
           </div>
+        </div>
+
+        <!-- Icon -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Icon</label>
+          <div id="panel-node-topoviewerrole-dropdown-container"></div>
         </div>
 
         <!-- Group -->

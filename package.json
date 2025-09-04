@@ -1270,25 +1270,42 @@
           "default": 8080,
           "description": "Port for GoTTY web terminal."
         },
-        "containerlab.editor.defaultKind": {
-          "type": "string",
-          "default": "nokia_srlinux",
-          "markdownDescription": "The default kind of the node when adding a new node in the TopoViewer edit mode."
-        },
-        "containerlab.editor.defaultType": {
-          "type": "string",
-          "default": "ixrd1",
-          "markdownDescription": "The default type of the node when adding a new node in the TopoViewer edit mode."
-        },
-        "containerlab.editor.imageMapping": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+        "containerlab.editor.customNodes": {
+          "type": "array",
+          "default": [
+            {
+              "name": "SRLinux Latest",
+              "kind": "nokia_srlinux",
+              "type": "ixrd1",
+              "image": "ghcr.io/nokia/srlinux:latest",
+              "icon": "router",
+              "baseName": "srl",
+              "setDefault": true
+            },
+            {
+              "name": "Network Multitool",
+              "kind": "linux",
+              "image": "ghcr.io/srl-labs/network-multitool:latest",
+              "icon": "client",
+              "baseName": "client",
+              "setDefault": false
+            }
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "kind": { "type": "string" },
+              "type": { "type": "string" },
+              "image": { "type": "string" },
+              "icon": { "type": "string" },
+              "baseName": { "type": "string" },
+              "setDefault": { "type": "boolean" }
+            },
+            "required": ["name", "kind"],
+            "additionalProperties": true
           },
-          "default": {
-            "nokia_srlinux": "ghcr.io/nokia/srlinux:latest"
-          },
-          "markdownDescription": "Default docker image (with tag) for each node kind when creating nodes in the TopoVIewer edit mode. Example: `{ \"nokia_srlinux\": \"ghcr.io/nokia/srlinux:latest\" }`"
+          "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
         },
         "containerlab.editor.interfacePatternMapping": {
           "type": "object",

@@ -4,6 +4,8 @@ import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
 import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 
 /**
  * Node properties that map to Containerlab configuration
@@ -113,10 +115,12 @@ export class ManagerNodeEditor {
   private schemaKinds: string[] = [];
   private kindsLoaded = false;
   private imageVersionMap: Map<string, string[]> = new Map();
+  private messageSender: VscodeMessageSender;
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
     this.saveManager = saveManager;
+    this.messageSender = saveManager.getMessageSender();
     this.initializePanel();
   }
 
@@ -632,9 +636,28 @@ export class ManagerNodeEditor {
       : (this.schemaKinds[0] || desiredKind);
     createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
     this.setInputValue('node-type', extraData.type || '');
-
     // Set initial type field visibility based on the kind
     this.handleKindChange(kindInitial);
+
+    // Icon/Role dropdown - use the actual icons from the styles
+    const nodeIcons = extractNodeIcons();
+
+    // Get the initial icon value - check if we're editing a custom template
+    let iconInitial = 'pe';
+    const currentNodeData = node.data();
+    if (currentNodeData.topoViewerRole && typeof currentNodeData.topoViewerRole === 'string') {
+      iconInitial = currentNodeData.topoViewerRole;
+    } else if (currentNodeData.extraData?.icon && typeof currentNodeData.extraData.icon === 'string') {
+      iconInitial = currentNodeData.extraData.icon;
+    }
+
+    // Log for debugging
+    log.debug(`Creating icon dropdown with options: ${JSON.stringify(nodeIcons)}`);
+    log.debug(`Initial icon value: ${iconInitial}`);
+
+    createFilterableDropdown('panel-node-topoviewerrole-dropdown-container', nodeIcons, iconInitial, () => {
+      // Icon will be saved when save button is clicked
+    }, 'Search for icon...');
 
     // Image dropdown: prefer docker images if provided by the extension
     const dockerImages = (window as any).dockerImages as string[] | undefined;
@@ -768,9 +791,40 @@ export class ManagerNodeEditor {
         versionContainer.appendChild(versionInput);
       }
     }
+    // Add custom node name fields
+    this.setInputValue('node-custom-name', '');
+    this.setCheckboxValue('node-custom-default', false);
     const parentNode = node.parent();
     const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
     this.setInputValue('node-group', parentId);
+
+    // Hide/show fields based on whether this is a newly created node or temp node for custom creation
+    const customNameGroup = document.getElementById('node-custom-name-group');
+    const nodeNameGroup = document.getElementById('node-name-group');
+    const isTempNode = node.id() === 'temp-custom-node';
+    const isEditNode = node.id() === 'edit-custom-node';
+
+    // Only show custom name field when creating or editing custom node templates
+    if (customNameGroup) {
+      customNameGroup.style.display = (isTempNode || isEditNode) ? 'block' : 'none';
+    }
+
+    // Hide node name field when creating or editing custom node templates
+    if (nodeNameGroup) {
+      nodeNameGroup.style.display = (isTempNode || isEditNode) ? 'none' : 'block';
+    }
+
+    // Update panel heading based on mode
+    const heading = document.getElementById('panel-node-editor-heading');
+    if (heading) {
+      if (isTempNode) {
+        heading.textContent = 'Create Custom Node Template';
+      } else if (isEditNode) {
+        heading.textContent = 'Edit Custom Node Template';
+      } else {
+        heading.textContent = 'Node Editor';
+      }
+    }
 
     // Configuration tab
     this.setInputValue('node-startup-config', extraData['startup-config'] || '');
@@ -1234,6 +1288,50 @@ export class ManagerNodeEditor {
     return isValid;
   }
 
+  private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
+    try {
+      // Get the icon/role value
+      const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
+
+      // Get the base name value
+      const baseName = this.getInputValue('node-base-name') || '';
+
+      const payload: any = {
+        name,
+        kind: nodeProps.kind || '',
+        type: nodeProps.type,
+        image: nodeProps.image,
+        icon: iconValue,  // Add icon to the saved template
+        baseName,  // Add base name for canvas nodes
+        setDefault,
+        // Include the old name if we're editing an existing template
+        ...(oldName && { oldName })
+      };
+
+      // Always save all properties from nodeProps (excluding basic ones that are already set)
+      Object.keys(nodeProps).forEach(key => {
+        if (key !== 'name' && key !== 'kind' && key !== 'type' && key !== 'image') {
+          payload[key] = nodeProps[key as keyof NodeProperties];
+        }
+      });
+
+      const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
+        'topo-editor-save-custom-node',
+        payload
+      );
+      if (resp?.customNodes) {
+        (window as any).customNodes = resp.customNodes;
+      }
+      if (resp?.defaultNode !== undefined) {
+        (window as any).defaultNode = resp.defaultNode;
+      }
+    } catch (err) {
+      log.error(
+        `Failed to save custom node template: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
   /**
    * Save the node data
    */
@@ -1247,7 +1345,7 @@ export class ManagerNodeEditor {
     }
 
     try {
-      // Collect all the data
+      // Collect all the data first
       const nodeProps: NodeProperties = {
         name: this.getInputValue('node-name'),
         kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
@@ -1473,6 +1571,36 @@ export class ManagerNodeEditor {
         nodeProps.runtime = runtimeVal as any;
       }
 
+      // Handle custom node saving after collecting all properties
+      const customName = this.getInputValue('node-custom-name');
+      const setDefault = this.getCheckboxValue('node-custom-default');
+      if (customName) {
+        // Check if we're editing an existing custom node
+        const currentNodeData = this.currentNode.data();
+        const editingNodeName = currentNodeData.extraData?.editingCustomNodeName;
+
+        // For temp nodes or edit nodes, save the custom template
+        const isTempNode = this.currentNode.id() === 'temp-custom-node';
+        const isEditNode = this.currentNode.id() === 'edit-custom-node';
+
+        if (isTempNode || isEditNode) {
+          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault, editingNodeName);
+          // Close the panel and return early for temp/edit nodes
+          this.close();
+          return;
+        } else {
+          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault);
+        }
+      }
+
+      // Skip node update for temp nodes and edit nodes (custom node creation/editing without canvas node)
+      const isTempNode = this.currentNode.id() === 'temp-custom-node';
+      const isEditNode = this.currentNode.id() === 'edit-custom-node';
+      if (isTempNode || isEditNode) {
+        log.info('Skipped canvas update for custom node template operation');
+        return;
+      }
+
       // Update the node data
       const currentData = this.currentNode.data();
 
@@ -1497,9 +1625,13 @@ export class ManagerNodeEditor {
       // Then add back only the properties with values from the form
       Object.assign(updatedExtraData, nodeProps);
 
+      // Get the icon/role value
+      const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
+
       const updatedData = {
         ...currentData,
         name: nodeProps.name,
+        topoViewerRole: iconValue,
         extraData: updatedExtraData
       };
 

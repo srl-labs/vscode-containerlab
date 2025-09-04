@@ -54,6 +54,8 @@ declare global {
     updateLinkEndpointsOnKindChange?: boolean;
     defaultKind?: string;
     defaultType?: string;
+    customNodes?: Array<{ name: string; kind: string; type?: string; image?: string }>;
+    defaultNode?: string;
     vscode?: { postMessage(data: unknown): void };
     topologyWebviewController?: TopologyWebviewController;
   }
