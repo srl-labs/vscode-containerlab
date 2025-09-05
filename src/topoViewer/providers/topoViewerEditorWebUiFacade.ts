@@ -1014,13 +1014,38 @@ topology:
           case 'clab-interface-capture': {
             try {
               const data = payloadObj as { nodeName: string; interfaceName: string };
+
+              // Try to resolve the interface alias to actual name if we have tree data
+              let actualInterfaceName = data.interfaceName;
+              if (runningLabsProvider) {
+                const treeData = await runningLabsProvider.discoverInspectLabs();
+                if (treeData) {
+                  // Find the interface by name or alias
+                  for (const lab of Object.values(treeData)) {
+                    const container = (lab as any).containers?.find(
+                      (c: any) => c.name === data.nodeName || c.name_short === data.nodeName
+                    );
+                    if (container && container.interfaces) {
+                      const intf = container.interfaces.find(
+                        (i: any) => i.name === data.interfaceName || i.alias === data.interfaceName
+                      );
+                      if (intf) {
+                        // Use the actual interface name, not the alias
+                        actualInterfaceName = intf.name;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
               const iface = {
-                label: data.interfaceName,
+                label: actualInterfaceName,
                 parentName: data.nodeName,
                 cID: data.nodeName,
-                name: data.interfaceName,
+                name: actualInterfaceName,
                 type: '',
-                alias: '',
+                alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
                 mac: '',
                 mtu: 0,
                 ifIndex: 0,
@@ -1028,7 +1053,7 @@ topology:
               } as any;
               // Use the default capture method (same as tree view)
               await vscode.commands.executeCommand('containerlab.interface.capture', iface);
-              result = `Capture executed for ${data.nodeName}/${data.interfaceName}`;
+              result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
             } catch (innerError) {
               error = `Error executing capture: ${innerError}`;
               log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
@@ -1039,20 +1064,45 @@ topology:
           case 'clab-link-capture': {
             try {
               const data = payloadObj as { nodeName: string; interfaceName: string };
+
+              // Try to resolve the interface alias to actual name if we have tree data
+              let actualInterfaceName = data.interfaceName;
+              if (runningLabsProvider) {
+                const treeData = await runningLabsProvider.discoverInspectLabs();
+                if (treeData) {
+                  // Find the interface by name or alias
+                  for (const lab of Object.values(treeData)) {
+                    const container = (lab as any).containers?.find(
+                      (c: any) => c.name === data.nodeName || c.name_short === data.nodeName
+                    );
+                    if (container && container.interfaces) {
+                      const intf = container.interfaces.find(
+                        (i: any) => i.name === data.interfaceName || i.alias === data.interfaceName
+                      );
+                      if (intf) {
+                        // Use the actual interface name, not the alias
+                        actualInterfaceName = intf.name;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
               const iface = {
-                label: data.interfaceName,
+                label: actualInterfaceName,
                 parentName: data.nodeName,
                 cID: data.nodeName,
-                name: data.interfaceName,
+                name: actualInterfaceName,
                 type: '',
-                alias: '',
+                alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
                 mac: '',
                 mtu: 0,
                 ifIndex: 0,
                 state: ''
               } as any;
               await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
-              result = `Capture executed for ${data.nodeName}/${data.interfaceName}`;
+              result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
             } catch (innerError) {
               error = `Error executing capture: ${innerError}`;
               log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
@@ -1063,20 +1113,45 @@ topology:
           case 'clab-link-capture-edgeshark-vnc': {
             try {
               const data = payloadObj as { nodeName: string; interfaceName: string };
+
+              // Try to resolve the interface alias to actual name if we have tree data
+              let actualInterfaceName = data.interfaceName;
+              if (runningLabsProvider) {
+                const treeData = await runningLabsProvider.discoverInspectLabs();
+                if (treeData) {
+                  // Find the interface by name or alias
+                  for (const lab of Object.values(treeData)) {
+                    const container = (lab as any).containers?.find(
+                      (c: any) => c.name === data.nodeName || c.name_short === data.nodeName
+                    );
+                    if (container && container.interfaces) {
+                      const intf = container.interfaces.find(
+                        (i: any) => i.name === data.interfaceName || i.alias === data.interfaceName
+                      );
+                      if (intf) {
+                        // Use the actual interface name, not the alias
+                        actualInterfaceName = intf.name;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
               const iface = {
-                label: data.interfaceName,
+                label: actualInterfaceName,
                 parentName: data.nodeName,
                 cID: data.nodeName,
-                name: data.interfaceName,
+                name: actualInterfaceName,
                 type: '',
-                alias: '',
+                alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
                 mac: '',
                 mtu: 0,
                 ifIndex: 0,
                 state: ''
               } as any;
               await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
-              result = `VNC capture executed for ${data.nodeName}/${data.interfaceName}`;
+              result = `VNC capture executed for ${data.nodeName}/${actualInterfaceName}`;
             } catch (innerError) {
               error = `Error executing VNC capture: ${innerError}`;
               log.error(`Error executing VNC capture: ${JSON.stringify(innerError, null, 2)}`);
