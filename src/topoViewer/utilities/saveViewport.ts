@@ -297,11 +297,7 @@ export async function saveViewport({
         const nodeMap = nodeYaml;
         const extraData = element.data.extraData || {};
 
-        // For existing nodes, preserve what was originally in the YAML
-        // Don't add properties that were inherited from kinds/groups/defaults
-        const originalKind = (nodeMap.get('kind', true) as any)?.value;
-        const originalImage = (nodeMap.get('image', true) as any)?.value;
-        const originalType = (nodeMap.get('type', true) as any)?.value;
+        // For existing nodes, get the original group to determine inheritance
         const originalGroup = (nodeMap.get('group', true) as any)?.value;
 
         // Only update group if it was changed (extraData.group differs from original)
@@ -309,19 +305,18 @@ export async function saveViewport({
           ? extraData.group
           : originalGroup;
 
-        // Calculate what would be inherited with the current group
-        const inherit = resolveNodeConfig(topoObj!, { group: groupName });
+        // Calculate what would be inherited for this node (with its kind and group)
+        const inherit = resolveNodeConfig(topoObj!, {
+          kind: extraData.kind || undefined,
+          group: groupName
+        });
 
-        // For properties, we only write them if:
-        // 1. They were already explicitly in the YAML (preserve them), OR
-        // 2. They are new/changed and different from what would be inherited
-        // IMPORTANT: Always prefer extraData over originalKind to allow frontend changes
-        const desiredKind = extraData.kind && extraData.kind !== inherit.kind ? extraData.kind :
-          (originalKind !== undefined ? originalKind : undefined);
-        const desiredImage = extraData.image && extraData.image !== inherit.image ? extraData.image :
-          (originalImage !== undefined ? originalImage : undefined);
-        const desiredType = extraData.type && extraData.type !== inherit.type ? extraData.type :
-          (originalType !== undefined ? originalType : undefined);
+        // For properties, we only write them if they differ from inherited values
+        // If a property matches what would be inherited, we remove it (deduplication)
+        // EXCEPTION: kind property is ALWAYS required and should never be removed!
+        const desiredKind = extraData.kind; // Always keep the kind - it's essential!
+        const desiredImage = (extraData.image && extraData.image !== inherit.image) ? extraData.image : undefined;
+        const desiredType = (extraData.type && extraData.type !== inherit.type) ? extraData.type : undefined;
 
         if (groupName) {
           nodeMap.set('group', doc.createNode(groupName));
@@ -329,20 +324,19 @@ export async function saveViewport({
           nodeMap.delete('group');
         }
 
-        if (desiredKind && desiredKind !== inherit.kind) {
+        if (desiredKind) {
           nodeMap.set('kind', doc.createNode(desiredKind));
-        } else {
-          nodeMap.delete('kind');
         }
+        // Never delete the kind property - it's required for inheritance to work!
 
-        if (desiredImage && desiredImage !== inherit.image) {
+        if (desiredImage) {
           nodeMap.set('image', doc.createNode(desiredImage));
         } else {
           nodeMap.delete('image');
         }
 
         const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-        if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== '' && desiredType !== inherit.type) {
+        if (nokiaKinds.includes(extraData.kind || inherit.kind) && desiredType) {
           nodeMap.set('type', doc.createNode(desiredType));
         } else {
           nodeMap.delete('type');

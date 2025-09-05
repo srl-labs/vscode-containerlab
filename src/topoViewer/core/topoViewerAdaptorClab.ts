@@ -581,17 +581,17 @@ export class TopoViewerAdaptorClab {
             lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
             lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
-              // First, include all properties from the node definition
-              ...mergedNode,
+              // Include only the original node properties, not inherited ones
+              ...nodeObj,
               // Then override with specific values we want to ensure
               clabServerUsername: 'asad',
               fqdn: `${nodeName}.${clabName}.io`,
-              group: mergedNode.group ?? '',
+              group: nodeObj?.group ?? '',
               id: nodeName,
-              image: mergedNode.image ?? '',
+              image: nodeObj?.image ?? mergedNode.image ?? '',
               index: nodeIndex.toString(),
-              kind: mergedNode.kind ?? '',
-              type: mergedNode.type ?? '',
+              kind: nodeObj?.kind ?? mergedNode.kind ?? '',
+              type: nodeObj?.type ?? mergedNode.type ?? '',
               labdir: fullPrefix ? `${fullPrefix}/` : '',
               labels: cleanedLabels,
               longname: containerData?.name ?? (fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName),
