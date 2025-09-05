@@ -1130,8 +1130,13 @@ export async function saveViewport({
                 });
 
                 if (allSame) {
-                  commonProps[prop] = firstValue;
-                  log.info(`AUTO-COMPACT: Found common property '${prop}' = '${firstValue}' for kind '${kind}'`);
+                  // Auto-append :latest tag to images without a tag when adding to kinds
+                  let valueToStore = firstValue;
+                  if (prop === 'image' && valueToStore && valueToStore.includes('/') && !valueToStore.includes(':')) {
+                    valueToStore = `${valueToStore}:latest`;
+                  }
+                  commonProps[prop] = valueToStore;
+                  log.info(`AUTO-COMPACT: Found common property '${prop}' = '${valueToStore}' for kind '${kind}'`);
                 } else {
                   log.info(`AUTO-COMPACT: Property '${prop}' not common for kind '${kind}' (not all nodes have same value)`);
                 }
@@ -1148,6 +1153,26 @@ export async function saveViewport({
         // Get existing kinds section if it exists
         let kindsNode = doc.getIn(['topology', 'kinds'], true) as YAML.YAMLMap | undefined;
 
+        // First, process existing kinds to add :latest tags to images if needed
+        if (kindsNode && YAML.isMap(kindsNode)) {
+          for (const item of kindsNode.items) {
+            const kindName = String(item.key);
+            const kindDef = item.value;
+
+            if (YAML.isMap(kindDef)) {
+              const imageNode = kindDef.get('image', true) as any;
+              const imageValue = imageNode?.value || imageNode;
+
+              if (imageValue && typeof imageValue === 'string' && imageValue.includes('/') && !imageValue.includes(':')) {
+                // Add :latest tag to existing kind image
+                kindDef.set('image', doc.createNode(`${imageValue}:latest`));
+                log.info(`AUTO-COMPACT: Updated image in existing kind '${kindName}' to '${imageValue}:latest'`);
+              }
+            }
+          }
+        }
+
+        // Process new kinds to create and update existing kinds with common properties
         if (kindsToCreate.size > 0) {
           // Get or create the kinds section
           if (!kindsNode || !YAML.isMap(kindsNode)) {
@@ -1187,64 +1212,8 @@ export async function saveViewport({
               kindDef = new YAML.YAMLMap();
               (kindDef as YAML.YAMLMap).flow = false;
               kindsNode.set(kindName, kindDef);
-            } else {
-              // For existing kind definitions, we need to carefully update:
-              // 1. Keep properties that no node has (fully inherited from kinds)
-              // 2. Keep properties that all nodes have with the same value as in kinds
-              // 3. Remove properties that some nodes override or don't match anymore
-
-              const existingKindProps = new Map<string, any>();
-              for (const item of (kindDef as YAML.YAMLMap).items) {
-                const propKey = String(item.key);
-                const propValue = (item.value as any)?.value || item.value;
-                existingKindProps.set(propKey, propValue);
-              }
-
-              // Check each existing property to see if it should be kept
-              for (const [existingProp, existingValue] of existingKindProps) {
-                let shouldKeep = false;
-
-                // Check how many nodes have this property
-                let nodesWithProp = 0;
-                let allMatch = true;
-
-                // Use the node data from nodesByKind which has the original state
-                const nodesData = nodesByKind.get(kindName);
-                if (nodesData) {
-                  for (const node of nodesData.nodes) {
-                    const nodeValue = (node.map.get(existingProp, true) as any)?.value || node.map.get(existingProp);
-                    if (nodeValue !== undefined) {
-                      nodesWithProp++;
-                      if (!deepEqual(nodeValue, existingValue)) {
-                        allMatch = false;
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                // Special handling for commonly inherited properties
-                // 'image' is typically defined in kinds and inherited by nodes
-                const commonlyInheritedProps = ['image'];
-
-                if (nodesWithProp === 0 && commonlyInheritedProps.includes(existingProp)) {
-                  // This is a commonly inherited property with no node overrides - keep it
-                  shouldKeep = true;
-                  log.info(`AUTO-COMPACT: Keeping '${existingProp}' in kind '${kindName}' (commonly inherited, no nodes have it)`);
-                } else if (nodesData && nodesWithProp === nodesData.nodes.length && allMatch) {
-                  // All nodes have it with same value - keep it (will be deduplicated)
-                  shouldKeep = true;
-                  log.info(`AUTO-COMPACT: Keeping '${existingProp}' in kind '${kindName}' (all ${nodesWithProp} nodes have same value)`);
-                }
-                // Otherwise (no nodes have it and it's not commonly inherited,
-                // or some nodes have it with different values) - remove it
-
-                if (!shouldKeep) {
-                  log.info(`AUTO-COMPACT: REMOVING '${existingProp}' from kind '${kindName}' (nodesWithProp=${nodesWithProp}, total=${nodesData?.nodes.length}, allMatch=${allMatch})`);
-                  (kindDef as YAML.YAMLMap).delete(existingProp);
-                }
-              }
             }
+            // For existing kinds, simply preserve them - they were created for a reason
 
             // Set all newly found common properties in the kind definition
             for (const [prop, value] of Object.entries(data.properties)) {
@@ -1258,18 +1227,30 @@ export async function saveViewport({
               if (YAML.isMap(nodeItem)) {
                 for (const prop of Object.keys(data.properties)) {
                   // Only remove if the value matches what's in the kind definition
-                  const nodeValue = (nodeItem.get(prop, true) as any)?.value || nodeItem.get(prop);
-                  if (deepEqual(nodeValue, data.properties[prop])) {
+                  let nodeValue = (nodeItem.get(prop, true) as any)?.value || nodeItem.get(prop);
+                  let kindValue = data.properties[prop];
+
+                  // Normalize image values for comparison
+                  if (prop === 'image') {
+                    if (nodeValue && typeof nodeValue === 'string' && nodeValue.includes('/') && !nodeValue.includes(':')) {
+                      nodeValue = `${nodeValue}:latest`;
+                    }
+                    if (kindValue && typeof kindValue === 'string' && kindValue.includes('/') && !kindValue.includes(':')) {
+                      kindValue = `${kindValue}:latest`;
+                    }
+                  }
+
+                  if (deepEqual(nodeValue, kindValue)) {
                     nodeItem.delete(prop);
                   }
                 }
               }
             }
           }
-        } else if (kindsNode && YAML.isMap(kindsNode)) {
-          // No kinds need to be created, remove the entire kinds section
-          topologyNode.delete('kinds');
         }
+        // Note: We removed the else clause that was deleting the kinds section
+        // when kindsToCreate.size === 0. This was wrong because existing kinds
+        // should be preserved even if no new kinds need to be created.
 
         // Clean up unused kinds (kinds with no nodes using them)
         if (kindsNode && YAML.isMap(kindsNode)) {
