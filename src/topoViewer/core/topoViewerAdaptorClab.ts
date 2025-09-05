@@ -581,7 +581,9 @@ export class TopoViewerAdaptorClab {
             lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
             lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
             extraData: {
-              // Include only the original node properties, not inherited ones
+              // Include merged properties (with inheritance) for the editor to show all properties
+              ...mergedNode,
+              // But preserve original node properties where they exist (to know what's overridden)
               ...nodeObj,
               // Then override with specific values we want to ensure
               clabServerUsername: 'asad',
