@@ -341,15 +341,6 @@ export class ManagerViewportPanels {
     // Set the topoViewerRole (icon)
     this.panelNodeEditorTopoViewerRole = node.data('topoViewerRole') || 'pe';
 
-    // Set the node group in the editor.
-    const panelNodeEditorGroupLabel = document.getElementById("node-group") as HTMLInputElement;
-    if (panelNodeEditorGroupLabel) {
-      const parentNode = node.parent();
-      const parentLabel = parentNode.nonempty() ? (parentNode.data('name') as string) : '';
-      log.debug(`Parent Node Label: ${parentLabel}`);
-      panelNodeEditorGroupLabel.value = parentLabel;
-    }
-
     // Display the node editor panel.
     const panelNodeEditor = document.getElementById("panel-node-editor");
     if (panelNodeEditor) {

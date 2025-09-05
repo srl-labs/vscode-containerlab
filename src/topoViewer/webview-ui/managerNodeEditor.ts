@@ -794,9 +794,6 @@ export class ManagerNodeEditor {
     // Add custom node name fields
     this.setInputValue('node-custom-name', '');
     this.setCheckboxValue('node-custom-default', false);
-    const parentNode = node.parent();
-    const parentId = parentNode.nonempty() ? parentNode[0].id() : '';
-    this.setInputValue('node-group', parentId);
 
     // Hide/show fields based on whether this is a newly created node or temp node for custom creation
     const customNameGroup = document.getElementById('node-custom-name-group');
