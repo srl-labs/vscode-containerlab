@@ -1270,6 +1270,11 @@
           "default": 8080,
           "description": "Port for GoTTY web terminal."
         },
+        "containerlab.editor.autoCompactKinds": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, automatically creates a 'kinds' section in the topology file when two or more nodes share the same kind (type and image). This helps reduce duplication in the topology definition."
+        },
         "containerlab.editor.customNodes": {
           "type": "array",
           "default": [
