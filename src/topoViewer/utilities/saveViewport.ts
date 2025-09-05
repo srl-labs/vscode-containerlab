@@ -1150,31 +1150,11 @@ export async function saveViewport({
           }
         }
 
-        // Get existing kinds section if it exists
+        // Get or create kinds section
         let kindsNode = doc.getIn(['topology', 'kinds'], true) as YAML.YAMLMap | undefined;
 
-        // First, process existing kinds to add :latest tags to images if needed
-        if (kindsNode && YAML.isMap(kindsNode)) {
-          for (const item of kindsNode.items) {
-            const kindName = String(item.key);
-            const kindDef = item.value;
-
-            if (YAML.isMap(kindDef)) {
-              const imageNode = kindDef.get('image', true) as any;
-              const imageValue = imageNode?.value || imageNode;
-
-              if (imageValue && typeof imageValue === 'string' && imageValue.includes('/') && !imageValue.includes(':')) {
-                // Add :latest tag to existing kind image
-                kindDef.set('image', doc.createNode(`${imageValue}:latest`));
-                log.info(`AUTO-COMPACT: Updated image in existing kind '${kindName}' to '${imageValue}:latest'`);
-              }
-            }
-          }
-        }
-
-        // Process new kinds to create and update existing kinds with common properties
+        // Create kinds section if we have kinds to create
         if (kindsToCreate.size > 0) {
-          // Get or create the kinds section
           if (!kindsNode || !YAML.isMap(kindsNode)) {
             kindsNode = new YAML.YAMLMap();
             kindsNode.flow = false;
@@ -1204,191 +1184,103 @@ export async function saveViewport({
             topologyNode.items = newItems;
           }
 
-          // Create/update kind definitions and remove common properties from nodes
+          // Simple: Set common properties in kinds
           for (const [kindName, data] of kindsToCreate) {
-            // Get or create kind definition
             let kindDef = kindsNode.get(kindName);
             if (!kindDef || !YAML.isMap(kindDef)) {
               kindDef = new YAML.YAMLMap();
               (kindDef as YAML.YAMLMap).flow = false;
               kindsNode.set(kindName, kindDef);
             }
-            // For existing kinds, simply preserve them - they were created for a reason
 
-            // Set all newly found common properties in the kind definition
+            // Add all common properties to the kind
             for (const [prop, value] of Object.entries(data.properties)) {
-              log.info(`AUTO-COMPACT: Adding '${prop}' = '${value}' to kind '${kindName}'`);
               (kindDef as YAML.YAMLMap).set(prop, doc.createNode(value));
+              log.info(`AUTO-COMPACT: Set '${prop}' = '${value}' in kind '${kindName}'`);
             }
 
-            // Remove these properties from individual nodes
+            // Remove common properties from nodes
             for (const nodeName of data.nodeNames) {
               const nodeItem = nodesNode.get(nodeName, true);
               if (YAML.isMap(nodeItem)) {
                 for (const prop of Object.keys(data.properties)) {
-                  // Only remove if the value matches what's in the kind definition
-                  let nodeValue = (nodeItem.get(prop, true) as any)?.value || nodeItem.get(prop);
-                  let kindValue = data.properties[prop];
-
-                  // Normalize image values for comparison
-                  if (prop === 'image') {
-                    if (nodeValue && typeof nodeValue === 'string' && nodeValue.includes('/') && !nodeValue.includes(':')) {
-                      nodeValue = `${nodeValue}:latest`;
-                    }
-                    if (kindValue && typeof kindValue === 'string' && kindValue.includes('/') && !kindValue.includes(':')) {
-                      kindValue = `${kindValue}:latest`;
-                    }
-                  }
-
-                  if (deepEqual(nodeValue, kindValue)) {
-                    nodeItem.delete(prop);
-                  }
+                  nodeItem.delete(prop);
                 }
               }
             }
           }
         }
-        // Note: We removed the else clause that was deleting the kinds section
-        // when kindsToCreate.size === 0. This was wrong because existing kinds
-        // should be preserved even if no new kinds need to be created.
 
-        // Clean up unused kinds (kinds with no nodes using them)
+        // Clean up existing kinds - remove properties that nodes don't all share
         if (kindsNode && YAML.isMap(kindsNode)) {
-          const itemsToProcess = [...kindsNode.items];
-
-          for (const item of itemsToProcess) {
-            const kindName = String(item.key);
-
-            // Only remove kinds that have no nodes using them at all
-            if (!nodesByKind.has(kindName)) {
-              kindsNode.delete(item.key);
-            }
-            // Otherwise keep the kind, even if it has no common properties to compact
-            // It may have been manually created or have properties that nodes inherit
-          }
-
-          // If kinds section is now empty, remove it entirely
-          if (kindsNode.items.length === 0) {
-            topologyNode.delete('kinds');
-          }
-        }
-
-        // Remove kind properties that are overridden by ALL nodes of that kind
-        // For example, if all linux nodes have different images, remove image from linux kind
-        if (kindsNode && YAML.isMap(kindsNode) && YAML.isMap(nodesNode)) {
           for (const kindItem of kindsNode.items) {
             const kindName = String(kindItem.key);
             const kindDef = kindItem.value;
 
-            if (YAML.isMap(kindDef)) {
-              const nodesOfThisKind = nodesByKind.get(kindName);
+            if (YAML.isMap(kindDef) && nodesByKind.has(kindName)) {
+              const nodesOfThisKind = nodesByKind.get(kindName)!;
+              const propsToRemove: string[] = [];
 
-              if (nodesOfThisKind && nodesOfThisKind.nodes.length > 0) {
-                // Check each property in the kind definition
-                const propsToRemove: string[] = [];
+              // Check each property in the kind
+              for (const kindProp of kindDef.items) {
+                const propKey = String(kindProp.key);
+                const kindPropValue = (kindProp.value as any)?.value || kindProp.value;
 
-                for (const kindProp of kindDef.items) {
-                  const propKey = String(kindProp.key);
-                  const kindPropValue = (kindProp.value as any)?.value || kindProp.value;
+                // Check if all nodes of this kind have the same value for this property
+                let allNodesSameValue = true;
+                let firstValue: any = undefined;
+                let firstValueSet = false;
 
-                  // Check if ALL nodes of this kind have this property defined
-                  // AND none of them match the kind's value
-                  let allNodesOverride = true;
-                  let atLeastOneNodeHasIt = false;
+                for (const node of nodesOfThisKind.nodes) {
+                  const nodeValue = (node.map.get(propKey, true) as any)?.value || node.map.get(propKey);
 
-                  for (const node of nodesOfThisKind.nodes) {
-                    const nodePropValue = (node.map.get(propKey, true) as any)?.value || node.map.get(propKey);
-
-                    if (nodePropValue !== undefined) {
-                      atLeastOneNodeHasIt = true;
-
-                      // Normalize image values for comparison
-                      let normalizedKindValue = kindPropValue;
-                      let normalizedNodeValue = nodePropValue;
-
-                      if (propKey === 'image') {
-                        if (kindPropValue && typeof kindPropValue === 'string' && kindPropValue.includes('/') && !kindPropValue.includes(':')) {
-                          normalizedKindValue = `${kindPropValue}:latest`;
-                        }
-                        if (nodePropValue && typeof nodePropValue === 'string' && nodePropValue.includes('/') && !nodePropValue.includes(':')) {
-                          normalizedNodeValue = `${nodePropValue}:latest`;
-                        }
-                      }
-
-                      // If any node matches the kind value, don't remove from kind
-                      if (deepEqual(normalizedNodeValue, normalizedKindValue)) {
-                        allNodesOverride = false;
-                        break;
-                      }
-                    } else {
-                      // If any node doesn't have this property, they're inheriting it
-                      allNodesOverride = false;
+                  // If node has the property
+                  if (nodeValue !== undefined) {
+                    if (!firstValueSet) {
+                      firstValue = nodeValue;
+                      firstValueSet = true;
+                    } else if (!deepEqual(firstValue, nodeValue)) {
+                      allNodesSameValue = false;
+                      break;
+                    }
+                  } else {
+                    // Node doesn't have the property, it would inherit from kind
+                    // For this to work, all nodes must either have the same value or not have it
+                    if (!firstValueSet) {
+                      firstValue = kindPropValue; // Use the kind's value as reference
+                      firstValueSet = true;
+                    } else if (!deepEqual(firstValue, kindPropValue)) {
+                      allNodesSameValue = false;
                       break;
                     }
                   }
-
-                  // If all nodes override this property with different values, mark for removal
-                  if (allNodesOverride && atLeastOneNodeHasIt) {
-                    propsToRemove.push(propKey);
-                    log.info(`AUTO-COMPACT: Will remove '${propKey}' from kind '${kindName}' as all nodes override it`);
-                  }
                 }
 
-                // Remove the properties that are overridden by all nodes
-                for (const prop of propsToRemove) {
-                  kindDef.delete(prop);
+                // If not all nodes share the same value, remove from kind
+                if (!allNodesSameValue) {
+                  propsToRemove.push(propKey);
+                  log.info(`AUTO-COMPACT: Removing '${propKey}' from kind '${kindName}' - nodes have different values`);
                 }
+              }
+
+              // Remove the properties
+              for (const prop of propsToRemove) {
+                kindDef.delete(prop);
               }
             }
           }
-        }
 
-        // IMPORTANT: Remove properties from ALL nodes that match what they inherit from kinds
-        // This runs after auto-compact to clean up any redundant properties
-        if (kindsNode && YAML.isMap(kindsNode) && YAML.isMap(nodesNode)) {
-          for (const nodeItem of nodesNode.items) {
-            const nodeName = String(nodeItem.key);
-            const nodeMap = nodeItem.value;
-
-            if (YAML.isMap(nodeMap)) {
-              const nodeKind = (nodeMap.get('kind', true) as any)?.value || nodeMap.get('kind');
-
-              if (nodeKind && kindsNode.has(nodeKind)) {
-                const kindDef = kindsNode.get(nodeKind);
-
-                if (YAML.isMap(kindDef)) {
-                  // Check each property in the kind definition
-                  for (const kindProp of kindDef.items) {
-                    const propKey = String(kindProp.key);
-                    const kindPropValue = (kindProp.value as any)?.value || kindProp.value;
-
-                    // Get the node's value for this property
-                    const nodePropValue = (nodeMap.get(propKey, true) as any)?.value || nodeMap.get(propKey);
-
-                    if (nodePropValue !== undefined) {
-                      // Normalize image values for comparison
-                      let normalizedKindValue = kindPropValue;
-                      let normalizedNodeValue = nodePropValue;
-
-                      if (propKey === 'image') {
-                        if (kindPropValue && typeof kindPropValue === 'string' && kindPropValue.includes('/') && !kindPropValue.includes(':')) {
-                          normalizedKindValue = `${kindPropValue}:latest`;
-                        }
-                        if (nodePropValue && typeof nodePropValue === 'string' && nodePropValue.includes('/') && !nodePropValue.includes(':')) {
-                          normalizedNodeValue = `${nodePropValue}:latest`;
-                        }
-                      }
-
-                      // If the node's value matches what it would inherit from the kind, remove it
-                      if (deepEqual(normalizedNodeValue, normalizedKindValue)) {
-                        nodeMap.delete(propKey);
-                        log.info(`AUTO-COMPACT: Removed '${propKey}' from node '${nodeName}' as it matches kind '${nodeKind}'`);
-                      }
-                    }
-                  }
-                }
-              }
+          // Remove empty kinds
+          for (const kindItem of [...kindsNode.items]) {
+            const kindDef = kindItem.value;
+            if (YAML.isMap(kindDef) && kindDef.items.length === 0) {
+              kindsNode.delete(kindItem.key);
             }
+          }
+
+          // Remove kinds section if empty
+          if (kindsNode.items.length === 0) {
+            topologyNode.delete('kinds');
           }
         }
       }
