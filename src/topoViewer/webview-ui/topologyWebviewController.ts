@@ -21,6 +21,7 @@ import { ManagerFreeText } from './managerFreeText';
 import { ManagerNodeEditor } from './managerNodeEditor';
 import { ManagerGroupStyle } from './managerGroupStyle';
 import { CopyPasteManager } from './managerCopyPaste';
+import { ManagerLabSettings } from './managerLabSettings';
 import { viewportButtonsCaptureViewportAsSvg } from './uiHandlers';
 import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
@@ -68,7 +69,8 @@ class TopologyWebviewController {
   public reloadTopoManager: ManagerReloadTopo;
   public freeTextManager?: ManagerFreeText;
   public copyPasteManager: CopyPasteManager;
-    public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: () => void };
+  public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: () => void };
+  public labSettingsManager?: ManagerLabSettings;
   private interfaceCounters: Record<string, number> = {};
 
 
@@ -332,6 +334,10 @@ class TopologyWebviewController {
     this.saveManager = new ManagerSaveTopo(this.messageSender);
     this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
+
+    // Initialize lab settings manager (for both edit and view modes)
+    this.labSettingsManager = new ManagerLabSettings(this.messageSender);
+    this.labSettingsManager.init();
 
     // Initialize free text and group style managers
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);

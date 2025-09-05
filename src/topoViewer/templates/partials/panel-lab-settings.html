@@ -1,0 +1,594 @@
+<!-- Lab Settings Panel with Tabs -->
+<div
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
+  id="panel-lab-settings" style="display: none;">
+
+  <p class="panel-heading" id="panel-lab-settings-heading">
+    Lab Settings
+  </p>
+
+  <!-- Tab Navigation -->
+  <div class="panel-tabs" style="justify-content: flex-start;">
+    <button class="panel-tab-button tab-active" data-tab="basic-lab">Basic</button>
+    <button class="panel-tab-button" data-tab="mgmt">Management</button>
+  </div>
+
+  <!-- Tab Content Container -->
+  <div class="panel-block p-0">
+    <div class="p-2 max-h-[420px] overflow-y-auto">
+
+      <!-- Basic Tab -->
+      <div class="tab-content" id="tab-basic-lab">
+        <div class="space-y-3">
+          <!-- Lab Name -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Lab Name</label>
+            <input type="text" id="lab-name" class="input-field w-full" placeholder="Enter lab name">
+            <small class="text-gray-500">Unique name to identify and distinguish this topology from others</small>
+          </div>
+
+          <!-- Prefix -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Container Name Prefix</label>
+            <select id="lab-prefix-type" class="input-field w-full mb-2">
+              <option value="default">Default (clab)</option>
+              <option value="custom">Custom</option>
+              <option value="no-prefix">No prefix</option>
+            </select>
+            <input type="text" id="lab-prefix-custom" class="input-field w-full" placeholder="Enter custom prefix" style="display: none;">
+            <small class="text-gray-500">Default: clab-&lt;lab-name&gt;-&lt;node-name&gt; | No prefix: &lt;node-name&gt;</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Management Network Tab -->
+      <div class="tab-content" id="tab-mgmt" style="display: none;">
+        <div class="space-y-3">
+          <!-- Network Name -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Network Name</label>
+            <input type="text" id="mgmt-network-name" class="input-field w-full" placeholder="clab">
+            <small class="text-gray-500">Docker network name (default: clab)</small>
+          </div>
+
+          <!-- IPv4 Configuration -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">IPv4 Subnet</label>
+            <select id="mgmt-ipv4-type" class="input-field w-full mb-2">
+              <option value="default">Default (172.20.20.0/24)</option>
+              <option value="auto">Auto-assign</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" id="mgmt-ipv4-subnet" class="input-field w-full" placeholder="e.g., 172.100.100.0/24" style="display: none;">
+          </div>
+
+          <!-- IPv4 Gateway -->
+          <div class="form-group" id="mgmt-ipv4-gateway-group" style="display: none;">
+            <label class="block vscode-label mb-1">IPv4 Gateway</label>
+            <input type="text" id="mgmt-ipv4-gateway" class="input-field w-full" placeholder="e.g., 172.100.100.1">
+            <small class="text-gray-500">Custom gateway IP for the management bridge</small>
+          </div>
+
+          <!-- IPv4 Range -->
+          <div class="form-group" id="mgmt-ipv4-range-group" style="display: none;">
+            <label class="block vscode-label mb-1">IPv4 Range</label>
+            <input type="text" id="mgmt-ipv4-range" class="input-field w-full" placeholder="e.g., 172.100.100.128/25">
+            <small class="text-gray-500">Limit IP allocation range within the subnet</small>
+          </div>
+
+          <!-- IPv6 Configuration -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">IPv6 Subnet</label>
+            <select id="mgmt-ipv6-type" class="input-field w-full mb-2">
+              <option value="default">Default (3fff:172:20:20::/64)</option>
+              <option value="auto">Auto-assign</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" id="mgmt-ipv6-subnet" class="input-field w-full" placeholder="e.g., 3fff:172:100:100::/80" style="display: none;">
+          </div>
+
+          <!-- IPv6 Gateway -->
+          <div class="form-group" id="mgmt-ipv6-gateway-group" style="display: none;">
+            <label class="block vscode-label mb-1">IPv6 Gateway</label>
+            <input type="text" id="mgmt-ipv6-gateway" class="input-field w-full" placeholder="e.g., 3fff:172:100:100::1">
+            <small class="text-gray-500">Custom IPv6 gateway IP for the management bridge</small>
+          </div>
+
+          <!-- MTU -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">MTU</label>
+            <input type="number" id="mgmt-mtu" class="input-field w-full" placeholder="Default: auto">
+            <small class="text-gray-500">MTU size (defaults to docker0 interface MTU)</small>
+          </div>
+
+          <!-- Bridge Name -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Bridge Name</label>
+            <input type="text" id="mgmt-bridge" class="input-field w-full" placeholder="Default: auto">
+            <small class="text-gray-500">Custom Linux bridge name (default: br-&lt;network-id&gt;)</small>
+          </div>
+
+          <!-- External Access -->
+          <div class="form-group">
+            <div class="flex items-center">
+              <input type="checkbox" id="mgmt-external-access" class="vscode-checkbox mr-2" checked>
+              <label for="mgmt-external-access" class="checkbox-label">Enable External Access</label>
+            </div>
+            <small class="text-gray-500">Allow external systems to reach lab nodes</small>
+          </div>
+
+          <!-- Bridge Driver Options -->
+          <div class="form-group">
+            <label class="block vscode-label mb-1">Bridge Driver Options</label>
+            <div id="driver-options-container" class="space-y-2">
+              <!-- Driver options will be dynamically added here -->
+            </div>
+            <button id="add-driver-option" class="btn-secondary mt-2">
+              <i class="fas fa-plus mr-1"></i> Add Option
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer with buttons -->
+  <div class="panel-block flex items-center">
+    <div class="w-1/5 pr-1"></div>
+    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
+      <button id="lab-settings-apply" class="btn btn-primary btn-small">Save</button>
+      <button id="lab-settings-cancel" class="btn btn-outlined btn-small">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Lab Settings Panel functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const panel = document.getElementById('panel-lab-settings');
+    
+    // Tab switching
+    const tabButtons = panel.querySelectorAll('.panel-tab-button');
+    const tabContents = panel.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const targetTab = button.dataset.tab;
+        
+        // Update active tab button
+        tabButtons.forEach(btn => btn.classList.remove('tab-active'));
+        button.classList.add('tab-active');
+        
+        // Show corresponding content
+        tabContents.forEach(content => {
+          if (content.id === `tab-${targetTab}`) {
+            content.style.display = 'block';
+          } else {
+            content.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // Prefix type change handler
+    const prefixType = document.getElementById('lab-prefix-type');
+    const customPrefixInput = document.getElementById('lab-prefix-custom');
+    
+    prefixType.addEventListener('change', () => {
+      if (prefixType.value === 'custom') {
+        customPrefixInput.style.display = 'block';
+      } else {
+        customPrefixInput.style.display = 'none';
+      }
+    });
+
+    // IPv4 type change handler
+    const ipv4Type = document.getElementById('mgmt-ipv4-type');
+    const ipv4Subnet = document.getElementById('mgmt-ipv4-subnet');
+    const ipv4GatewayGroup = document.getElementById('mgmt-ipv4-gateway-group');
+    const ipv4RangeGroup = document.getElementById('mgmt-ipv4-range-group');
+    
+    ipv4Type.addEventListener('change', () => {
+      if (ipv4Type.value === 'custom') {
+        ipv4Subnet.style.display = 'block';
+        ipv4GatewayGroup.style.display = 'block';
+        ipv4RangeGroup.style.display = 'block';
+      } else {
+        ipv4Subnet.style.display = 'none';
+        ipv4GatewayGroup.style.display = 'none';
+        ipv4RangeGroup.style.display = 'none';
+      }
+    });
+
+    // IPv6 type change handler
+    const ipv6Type = document.getElementById('mgmt-ipv6-type');
+    const ipv6Subnet = document.getElementById('mgmt-ipv6-subnet');
+    const ipv6GatewayGroup = document.getElementById('mgmt-ipv6-gateway-group');
+    
+    ipv6Type.addEventListener('change', () => {
+      if (ipv6Type.value === 'custom') {
+        ipv6Subnet.style.display = 'block';
+        ipv6GatewayGroup.style.display = 'block';
+      } else {
+        ipv6Subnet.style.display = 'none';
+        ipv6GatewayGroup.style.display = 'none';
+      }
+    });
+
+    // Add driver option handler
+    const addDriverOptionBtn = document.getElementById('add-driver-option');
+    const driverOptionsContainer = document.getElementById('driver-options-container');
+    
+    addDriverOptionBtn.addEventListener('click', () => {
+      const optionRow = document.createElement('div');
+      optionRow.className = 'flex gap-2 driver-option-row';
+      optionRow.innerHTML = `
+        <input type="text" class="input-field flex-1" placeholder="Option key">
+        <input type="text" class="input-field flex-1" placeholder="Option value">
+        <button class="btn-icon remove-driver-option">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      // Add remove handler
+      optionRow.querySelector('.remove-driver-option').addEventListener('click', () => {
+        optionRow.remove();
+      });
+      
+      driverOptionsContainer.appendChild(optionRow);
+    });
+
+    // Cancel button
+    document.getElementById('lab-settings-cancel').addEventListener('click', () => {
+      panel.style.display = 'none';
+    });
+
+    // Apply button
+    document.getElementById('lab-settings-apply').addEventListener('click', () => {
+      // Trigger save event
+      const event = new CustomEvent('lab-settings-apply', {
+        detail: gatherLabSettings()
+      });
+      document.dispatchEvent(event);
+      // Panel stays open after saving
+    });
+
+    // Function to gather all settings
+    function gatherLabSettings() {
+      const settings = {
+        name: document.getElementById('lab-name').value,
+        prefix: getPrefixValue()
+      };
+
+      // Management network settings - only add mgmt if we have values
+      const mgmt = {};
+      let hasMgmtSettings = false;
+      
+      const mgmtNetwork = document.getElementById('mgmt-network-name').value;
+      if (mgmtNetwork) {
+        mgmt.network = mgmtNetwork;
+        hasMgmtSettings = true;
+      }
+
+      // IPv4 settings
+      const ipv4Value = getIpv4Value();
+      if (ipv4Value) {
+        mgmt['ipv4-subnet'] = ipv4Value;
+        hasMgmtSettings = true;
+      }
+      
+      if (ipv4Type.value === 'custom') {
+        const ipv4Gw = document.getElementById('mgmt-ipv4-gateway').value;
+        if (ipv4Gw) mgmt['ipv4-gw'] = ipv4Gw;
+        
+        const ipv4Range = document.getElementById('mgmt-ipv4-range').value;
+        if (ipv4Range) mgmt['ipv4-range'] = ipv4Range;
+      }
+
+      // IPv6 settings
+      const ipv6Value = getIpv6Value();
+      if (ipv6Value) {
+        mgmt['ipv6-subnet'] = ipv6Value;
+        hasMgmtSettings = true;
+      }
+      
+      if (ipv6Type.value === 'custom') {
+        const ipv6Gw = document.getElementById('mgmt-ipv6-gateway').value;
+        if (ipv6Gw) mgmt['ipv6-gw'] = ipv6Gw;
+      }
+
+      // Other management settings
+      const mtu = document.getElementById('mgmt-mtu').value;
+      if (mtu) {
+        mgmt.mtu = parseInt(mtu);
+        hasMgmtSettings = true;
+      }
+
+      const bridge = document.getElementById('mgmt-bridge').value;
+      if (bridge) {
+        mgmt.bridge = bridge;
+        hasMgmtSettings = true;
+      }
+
+      const externalAccess = document.getElementById('mgmt-external-access').checked;
+      if (!externalAccess) {
+        mgmt['external-access'] = false;
+        hasMgmtSettings = true;
+      }
+
+      // Driver options
+      const driverOptions = {};
+      driverOptionsContainer.querySelectorAll('.driver-option-row').forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs[0].value && inputs[1].value) {
+          driverOptions[inputs[0].value] = inputs[1].value;
+        }
+      });
+      if (Object.keys(driverOptions).length > 0) {
+        mgmt['driver-opts'] = driverOptions;
+        hasMgmtSettings = true;
+      }
+
+      // Add mgmt to settings - either with values or null to trigger deletion
+      if (hasMgmtSettings) {
+        settings.mgmt = mgmt;
+      } else {
+        settings.mgmt = null; // Explicitly null to trigger deletion
+      }
+
+      return settings;
+    }
+
+    function getPrefixValue() {
+      const type = prefixType.value;
+      switch(type) {
+        case 'custom':
+          return customPrefixInput.value;
+        case 'no-prefix':
+          return '';
+        case 'default':
+          return null; // Explicitly null to trigger deletion
+        default:
+          return null; // Explicitly null to trigger deletion
+      }
+    }
+
+    function getIpv4Value() {
+      const type = ipv4Type.value;
+      switch(type) {
+        case 'auto':
+          return 'auto';
+        case 'custom':
+          return document.getElementById('mgmt-ipv4-subnet').value;
+        default:
+          return undefined; // Use default
+      }
+    }
+
+    function getIpv6Value() {
+      const type = ipv6Type.value;
+      switch(type) {
+        case 'auto':
+          return 'auto';
+        case 'custom':
+          return document.getElementById('mgmt-ipv6-subnet').value;
+        default:
+          return undefined; // Use default
+      }
+    }
+
+    // Make panel draggable
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    const heading = panel.querySelector('.panel-heading');
+    heading.style.cursor = 'move';
+
+    heading.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      const rect = panel.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      panel.style.left = (initialLeft + deltaX) + 'px';
+      panel.style.top = (initialTop + deltaY) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+  });
+
+  // Global function to show the lab settings panel
+  function showLabSettingsPanel(settings) {
+    const panel = document.getElementById('panel-lab-settings');
+    const isViewMode = (window.topoViewerMode === 'viewer') || 
+      (window.topoViewerState && window.topoViewerState.currentMode === 'viewer');
+    
+    // Populate with current settings if provided
+    if (settings) {
+      // Basic settings
+      if (settings.name) document.getElementById('lab-name').value = settings.name;
+      
+      // Handle prefix
+      if (settings.prefix !== undefined) {
+        const prefixType = document.getElementById('lab-prefix-type');
+        const customInput = document.getElementById('lab-prefix-custom');
+        
+        if (settings.prefix === '') {
+          prefixType.value = 'no-prefix';
+        } else if (settings.prefix && settings.prefix !== 'clab') {
+          prefixType.value = 'custom';
+          customInput.value = settings.prefix;
+          customInput.style.display = 'block';
+        } else {
+          prefixType.value = 'default';
+        }
+      }
+      
+      // Management network settings
+      if (settings.mgmt) {
+        if (settings.mgmt.network) {
+          document.getElementById('mgmt-network-name').value = settings.mgmt.network;
+        }
+        
+        // IPv4 settings
+        handleIpv4Settings(settings.mgmt);
+        
+        // IPv6 settings
+        handleIpv6Settings(settings.mgmt);
+        
+        // Other settings
+        if (settings.mgmt.mtu) {
+          document.getElementById('mgmt-mtu').value = settings.mgmt.mtu;
+        }
+        
+        if (settings.mgmt.bridge) {
+          document.getElementById('mgmt-bridge').value = settings.mgmt.bridge;
+        }
+        
+        if (settings.mgmt['external-access'] !== undefined) {
+          document.getElementById('mgmt-external-access').checked = settings.mgmt['external-access'];
+        }
+        
+        // Driver options
+        if (settings.mgmt['driver-opts']) {
+          populateDriverOptions(settings.mgmt['driver-opts']);
+        }
+      }
+    }
+    
+    // Handle viewer mode
+    if (isViewMode) {
+      // Disable all inputs and selects
+      panel.querySelectorAll('input, select, textarea, button.btn-secondary').forEach(element => {
+        element.disabled = true;
+        element.style.opacity = '0.6';
+        element.style.cursor = 'not-allowed';
+      });
+      
+      // Hide the save button, only show close
+      const saveBtn = document.getElementById('lab-settings-apply');
+      if (saveBtn) {
+        saveBtn.style.display = 'none';
+      }
+      
+      // Hide the add driver option button
+      const addDriverBtn = document.getElementById('add-driver-option');
+      if (addDriverBtn) {
+        addDriverBtn.style.display = 'none';
+      }
+      
+      // Hide all remove driver option buttons
+      panel.querySelectorAll('.remove-driver-option').forEach(btn => {
+        btn.style.display = 'none';
+      });
+    } else {
+      // Enable all inputs and selects in editor mode
+      panel.querySelectorAll('input, select, textarea, button.btn-secondary').forEach(element => {
+        element.disabled = false;
+        element.style.opacity = '1';
+        element.style.cursor = '';
+      });
+      
+      // Show the save button
+      const saveBtn = document.getElementById('lab-settings-apply');
+      if (saveBtn) {
+        saveBtn.style.display = '';
+      }
+      
+      // Show the add driver option button
+      const addDriverBtn = document.getElementById('add-driver-option');
+      if (addDriverBtn) {
+        addDriverBtn.style.display = '';
+      }
+    }
+    
+    panel.style.display = 'block';
+  }
+
+  function handleIpv4Settings(mgmt) {
+    const ipv4Type = document.getElementById('mgmt-ipv4-type');
+    const ipv4Subnet = document.getElementById('mgmt-ipv4-subnet');
+    const ipv4GatewayGroup = document.getElementById('mgmt-ipv4-gateway-group');
+    const ipv4RangeGroup = document.getElementById('mgmt-ipv4-range-group');
+    
+    if (mgmt['ipv4-subnet']) {
+      if (mgmt['ipv4-subnet'] === 'auto') {
+        ipv4Type.value = 'auto';
+      } else {
+        ipv4Type.value = 'custom';
+        ipv4Subnet.value = mgmt['ipv4-subnet'];
+        ipv4Subnet.style.display = 'block';
+        ipv4GatewayGroup.style.display = 'block';
+        ipv4RangeGroup.style.display = 'block';
+        
+        if (mgmt['ipv4-gw']) {
+          document.getElementById('mgmt-ipv4-gateway').value = mgmt['ipv4-gw'];
+        }
+        
+        if (mgmt['ipv4-range']) {
+          document.getElementById('mgmt-ipv4-range').value = mgmt['ipv4-range'];
+        }
+      }
+    }
+  }
+
+  function handleIpv6Settings(mgmt) {
+    const ipv6Type = document.getElementById('mgmt-ipv6-type');
+    const ipv6Subnet = document.getElementById('mgmt-ipv6-subnet');
+    const ipv6GatewayGroup = document.getElementById('mgmt-ipv6-gateway-group');
+    
+    if (mgmt['ipv6-subnet']) {
+      if (mgmt['ipv6-subnet'] === 'auto') {
+        ipv6Type.value = 'auto';
+      } else {
+        ipv6Type.value = 'custom';
+        ipv6Subnet.value = mgmt['ipv6-subnet'];
+        ipv6Subnet.style.display = 'block';
+        ipv6GatewayGroup.style.display = 'block';
+        
+        if (mgmt['ipv6-gw']) {
+          document.getElementById('mgmt-ipv6-gateway').value = mgmt['ipv6-gw'];
+        }
+      }
+    }
+  }
+
+  function populateDriverOptions(driverOpts) {
+    const container = document.getElementById('driver-options-container');
+    container.innerHTML = ''; // Clear existing
+    
+    Object.entries(driverOpts).forEach(([key, value]) => {
+      const optionRow = document.createElement('div');
+      optionRow.className = 'flex gap-2 driver-option-row';
+      optionRow.innerHTML = `
+        <input type="text" class="input-field flex-1" value="${key}">
+        <input type="text" class="input-field flex-1" value="${value}">
+        <button class="btn-icon remove-driver-option">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      optionRow.querySelector('.remove-driver-option').addEventListener('click', () => {
+        optionRow.remove();
+      });
+      
+      container.appendChild(optionRow);
+    });
+  }
+
+  // Export function to global scope
+  window.showLabSettingsPanel = showLabSettingsPanel;
+</script>

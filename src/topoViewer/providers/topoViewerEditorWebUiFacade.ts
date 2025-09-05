@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
+import * as YAML from 'yaml';
 
 import { log } from '../logging/logger';
 
@@ -841,6 +843,135 @@ topology:
           } catch (error) {
             log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(error, null, 2)}`);
           }
+          break;
+        }
+
+        case 'lab-settings-get': {
+          try {
+            // Read current YAML content
+            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+            const parsed = YAML.parse(yamlContent) as any;
+
+            // Extract lab settings
+            const settings = {
+              name: parsed.name,
+              prefix: parsed.prefix,
+              mgmt: parsed.mgmt
+            };
+
+            result = { success: true, settings };
+            log.info('Lab settings retrieved successfully');
+          } catch (error) {
+            result = { success: false, error: String(error) };
+            log.error(`Error getting lab settings: ${error}`);
+          }
+          break;
+        }
+
+        case 'lab-settings-update': {
+          try {
+            // Read current YAML content
+            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+            const doc = YAML.parseDocument(yamlContent);
+
+            // Parse payload if it's a string
+            const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
+
+            // First, update existing fields
+            if (settings.name !== undefined && settings.name !== '') {
+              doc.set('name', settings.name);
+            }
+
+            const hadPrefix = doc.has('prefix');
+            const hadMgmt = doc.has('mgmt');
+
+            // Update prefix if it already exists
+            if (settings.prefix !== undefined && hadPrefix) {
+              if (settings.prefix === null) {
+                doc.delete('prefix');
+              } else {
+                // Set prefix even if it's an empty string
+                doc.set('prefix', settings.prefix);
+              }
+            }
+
+            // Update mgmt if it already exists
+            if (settings.mgmt !== undefined && hadMgmt) {
+              if (settings.mgmt === null || (typeof settings.mgmt === 'object' && Object.keys(settings.mgmt).length === 0)) {
+                doc.delete('mgmt');
+              } else {
+                doc.set('mgmt', settings.mgmt);
+              }
+            }
+
+            // Convert to string first
+            let updatedYaml = doc.toString();
+
+            // Now handle new field insertions by string manipulation
+            // Add prefix if it's new and has a value (including empty string)
+            if (settings.prefix !== undefined && settings.prefix !== null && !hadPrefix) {
+              const lines = updatedYaml.split('\n');
+              const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+              if (nameIndex !== -1) {
+                // Insert prefix right after name
+                // For empty string, use quotes to make it valid YAML
+                const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
+                lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
+                updatedYaml = lines.join('\n');
+              }
+            }
+
+            // Add mgmt if it's new and has values
+            if (settings.mgmt !== undefined && !hadMgmt && settings.mgmt && Object.keys(settings.mgmt).length > 0) {
+              const lines = updatedYaml.split('\n');
+              // Find where to insert mgmt (after prefix if exists, otherwise after name)
+              let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
+              if (insertIndex === -1) {
+                insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+              }
+
+              if (insertIndex !== -1) {
+                // Build mgmt YAML section
+                const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
+                const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
+                // Add empty line before mgmt if needed
+                const nextLine = lines[insertIndex + 1];
+                if (nextLine && nextLine.trim() !== '') {
+                  lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
+                } else {
+                  lines.splice(insertIndex + 1, 0, ...mgmtLines);
+                }
+                updatedYaml = lines.join('\n');
+              }
+            }
+            this.isInternalUpdate = true;
+            await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
+
+            // Send the updated YAML content to the webview
+            if (this.currentPanel) {
+              this.currentPanel.webview.postMessage({
+                type: 'yaml-content-updated',
+                yamlContent: updatedYaml
+              });
+            }
+
+            result = { success: true, yamlContent: updatedYaml };
+            this.isInternalUpdate = false;
+          } catch (error) {
+            result = { success: false, error: String(error) };
+            log.error(`Error updating lab settings: ${error}`);
+            vscode.window.showErrorMessage(`Failed to update lab settings: ${error}`);
+            this.isInternalUpdate = false;
+          }
+          break;
+        }
+
+        case 'show-error-message': {
+          const data = payload as any;
+          if (data && data.message) {
+            vscode.window.showErrorMessage(data.message);
+          }
+          result = { success: true };
           break;
         }
 
