@@ -553,7 +553,7 @@ topology:
     // Otherwise, create a new webview panel.
     const panel = vscode.window.createWebviewPanel(
       this.viewType,
-      this.isViewMode ? 'containerlab Viewer (Web)' : 'containerlab Editor (Web)',
+      labName,
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
