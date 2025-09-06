@@ -29,6 +29,7 @@
     "node_modules",
     ".vscode-test",
     "test/**/*",
-    "legacy-backup/**/*"
+    "legacy-backup/**/*",
+    "labs/**/*"
   ]
 }
