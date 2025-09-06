@@ -719,8 +719,17 @@ export class ManagerNodeEditor {
     // Properties that should never be marked as inherited
     const neverInherited = ['kind', 'name', 'group'];
 
-    // Always calculate against the current topology configuration rather than
-    // relying on a potentially stale inherited list
+    // If we have the pre-calculated inherited list from the topology loader, use it
+    // This list was calculated when the topology was loaded and knows exactly which
+    // properties were not explicitly defined in the node's YAML
+    if (nodeProps.inherited && Array.isArray(nodeProps.inherited)) {
+      // Filter out properties that should never show as inherited
+      return nodeProps.inherited.filter((prop: string) => !neverInherited.includes(prop));
+    }
+
+    // Fallback: calculate inherited properties if not provided
+    // This happens when creating new nodes or in other edge cases
+    // Get the topology configuration
     if (!topology) {
       topology = {
         topology: {
@@ -757,10 +766,8 @@ export class ManagerNodeEditor {
 
     const actualInherited: string[] = [];
 
-    // Consider properties from both the node's explicit config and the inherited base
-    const allProps = new Set([...Object.keys(nodeProps), ...Object.keys(inheritBase)]);
-
-    allProps.forEach(prop => {
+    Object.keys(nodeProps).forEach(prop => {
+      // Skip properties that should never be inherited
       if (neverInherited.includes(prop)) {
         return;
       }
@@ -773,8 +780,11 @@ export class ManagerNodeEditor {
 
       // Only mark as inherited if there's actually an inherited value from the topology config
       // AND the node's value matches it (or the node doesn't have a value)
-      if (hasInheritedValue && (!hasValue || deepEqual(val, inheritedVal))) {
-        actualInherited.push(prop);
+      if (hasInheritedValue) {
+        if (!hasValue || deepEqual(val, inheritedVal)) {
+          // Either user didn't set a value, or user set a value that matches the inherited value
+          actualInherited.push(prop);
+        }
       }
       // Don't mark as inherited if there's no inherited value from topology config
     });
@@ -789,9 +799,7 @@ export class ManagerNodeEditor {
     const nodeData = node.data();
     const extraData = nodeData.extraData || {};
 
-    // Determine which properties are inherited by recalculating against the
-    // current topology so badges always reflect the latest YAML rather than
-    // any previously cached state.
+    // Compute which properties should actually show as inherited
     const actualInherited = this.computeActualInheritedProps(extraData);
 
     // Display node ID
@@ -1173,9 +1181,6 @@ export class ManagerNodeEditor {
     const runtimeInitial = extraData.runtime || 'Default';
     createFilterableDropdown('node-runtime-dropdown-container', runtimeOptions, runtimeInitial, () => {}, 'Search runtime...');
     this.markFieldInheritance('node-runtime-dropdown-container', actualInherited.includes('runtime'));
-
-    // Finally ensure all inherited badges are in sync with the computed list
-    this.updateInheritedBadges(actualInherited);
   }
 
   /**

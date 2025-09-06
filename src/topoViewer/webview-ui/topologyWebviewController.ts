@@ -448,9 +448,6 @@ class TopologyWebviewController {
     window.addEventListener('message', (event) => {
       const msg = event.data as any;
       if (msg && msg.type === 'yaml-saved') {
-        (window as any).topologyDefaults = msg.topologyDefaults || {};
-        (window as any).topologyKinds = msg.topologyKinds || {};
-        (window as any).topologyGroups = msg.topologyGroups || {};
         fetchAndLoadData(this.cy, this.messageSender);
       } else if (msg && msg.type === 'updateTopology') {
         try {
