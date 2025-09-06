@@ -719,6 +719,16 @@ export class ManagerNodeEditor {
     // Properties that should never be marked as inherited
     const neverInherited = ['kind', 'name', 'group'];
 
+    // If we have the pre-calculated inherited list from the topology loader, use it
+    // This list was calculated when the topology was loaded and knows exactly which
+    // properties were not explicitly defined in the node's YAML
+    if (nodeProps.inherited && Array.isArray(nodeProps.inherited)) {
+      // Filter out properties that should never show as inherited
+      return nodeProps.inherited.filter((prop: string) => !neverInherited.includes(prop));
+    }
+
+    // Fallback: calculate inherited properties if not provided
+    // This happens when creating new nodes or in other edge cases
     // Get the topology configuration
     if (!topology) {
       topology = {
@@ -768,14 +778,15 @@ export class ManagerNodeEditor {
       const hasValue = shouldPersist(val);
       const hasInheritedValue = shouldPersist(inheritedVal);
 
-      if (hasValue && hasInheritedValue && deepEqual(val, inheritedVal)) {
-        // User set a value that matches the inherited value
-        actualInherited.push(prop);
-      } else if (!hasValue && hasInheritedValue) {
-        // User didn't set a value but there's an inherited value
-        actualInherited.push(prop);
+      // Only mark as inherited if there's actually an inherited value from the topology config
+      // AND the node's value matches it (or the node doesn't have a value)
+      if (hasInheritedValue) {
+        if (!hasValue || deepEqual(val, inheritedVal)) {
+          // Either user didn't set a value, or user set a value that matches the inherited value
+          actualInherited.push(prop);
+        }
       }
-      // Don't mark as inherited if both are empty/undefined
+      // Don't mark as inherited if there's no inherited value from topology config
     });
 
     return actualInherited;
