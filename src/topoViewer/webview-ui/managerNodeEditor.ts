@@ -648,7 +648,7 @@ export class ManagerNodeEditor {
   /**
    * Open the enhanced node editor for a specific node
    */
-  public open(node: cytoscape.NodeSingular): void {
+  public async open(node: cytoscape.NodeSingular): Promise<void> {
     this.currentNode = node;
 
     if (!this.panel) {
@@ -656,6 +656,20 @@ export class ManagerNodeEditor {
       return;
     }
 
+    try {
+      const sender = this.saveManager.getMessageSender();
+      const freshData = await sender.sendMessageToVscodeEndpointPost(
+        'topo-editor-get-node-config',
+        { node: node.id() }
+      );
+      if (freshData && typeof freshData === 'object') {
+        node.data('extraData', freshData);
+      }
+    } catch (err) {
+      log.warn(
+        `Failed to refresh node data from YAML: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
 
     // Clear all dynamic entries
     this.clearAllDynamicEntries();
@@ -2088,6 +2102,24 @@ export class ManagerNodeEditor {
 
       // Save the topology
       await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+
+      // Reload node data from the YAML to ensure inheritance is accurate
+      try {
+        const sender = this.saveManager.getMessageSender();
+        const freshData = await sender.sendMessageToVscodeEndpointPost(
+          'topo-editor-get-node-config',
+          { node: this.currentNode.id() }
+        );
+        if (freshData && typeof freshData === 'object') {
+          this.currentNode.data('extraData', freshData);
+          this.clearAllDynamicEntries();
+          this.loadNodeData(this.currentNode);
+        }
+      } catch (err) {
+        log.warn(
+          `Failed to refresh node data from YAML after save: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
 
       log.info(`Node ${this.currentNode.id()} updated with enhanced properties`);
 

@@ -9,6 +9,7 @@ import { log } from '../logging/logger';
 
 import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
+import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
 import { runningLabsProvider, refreshDockerImages } from "../../extension";
@@ -994,6 +995,39 @@ topology:
             log.error(`Error updating lab settings: ${error}`);
             vscode.window.showErrorMessage(`Failed to update lab settings: ${error}`);
             this.isInternalUpdate = false;
+          }
+          break;
+        }
+
+        case 'topo-editor-get-node-config': {
+          try {
+            const nodeName =
+              typeof payloadObj === 'string'
+                ? payloadObj
+                : payloadObj?.node || payloadObj?.nodeName;
+            if (!nodeName) {
+              throw new Error('Node name is required');
+            }
+            if (!this.lastYamlFilePath) {
+              throw new Error('No lab YAML file loaded');
+            }
+
+            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+            const topo = YAML.parse(yamlContent) as any;
+            this.adaptor.currentClabTopo = topo;
+
+            const nodeObj = topo.topology?.nodes?.[nodeName] || {};
+            const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
+            const nodePropKeys = new Set(Object.keys(nodeObj || {}));
+            const inheritedProps = Object.keys(mergedNode).filter(
+              (k) => !nodePropKeys.has(k)
+            );
+
+            result = { ...mergedNode, inherited: inheritedProps };
+            log.info(`Node config retrieved for ${nodeName}`);
+          } catch (err) {
+            error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
+            log.error(error);
           }
           break;
         }
