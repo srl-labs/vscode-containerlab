@@ -163,7 +163,12 @@ export class TopoViewerEditor {
       const success = await this.updatePanelHtml(this.currentPanel);
       if (success) {
         if ((sendSaveAck || this.queuedSaveAck) && this.currentPanel) {
-          this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
+          this.currentPanel.webview.postMessage({
+            type: 'yaml-saved',
+            topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
+            topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
+            topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
+          });
         }
       } else {
         // updatePanelHtml returns false for various reasons, not just validation
