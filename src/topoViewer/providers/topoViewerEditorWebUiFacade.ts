@@ -84,10 +84,24 @@ export class TopoViewerEditor {
       const fileUri = vscode.Uri.file(this.lastYamlFilePath);
       this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
-      this.fileWatcher.onDidChange(() => {
+      this.fileWatcher.onDidChange(async () => {
         // Prevent feedback loop
         if (this.isInternalUpdate) {
           return;
+        }
+
+        // Check if content actually changed
+        try {
+          const currentContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+          const cachedContent = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);
+
+          // If content hasn't changed, don't do anything
+          if (cachedContent === currentContent) {
+            log.debug('File watcher: YAML content unchanged, ignoring');
+            return;
+          }
+        } catch (err) {
+          log.error(`Error checking YAML content in file watcher: ${err}`);
         }
 
         void this.triggerUpdate(false);
@@ -116,6 +130,21 @@ export class TopoViewerEditor {
   }
 
   private async handleManualSave(): Promise<void> {
+    // Read the current file content
+    try {
+      const currentContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+      const cachedContent = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);
+
+      // If the content hasn't changed, don't do anything at all
+      if (cachedContent === currentContent) {
+        log.debug('Save listener: YAML content unchanged, ignoring completely');
+        return;
+      }
+    } catch (err) {
+      log.error(`Error checking YAML content: ${err}`);
+    }
+
+    // Content has changed, proceed with normal update
     await this.triggerUpdate(true);
   }
 
