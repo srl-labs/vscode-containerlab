@@ -496,6 +496,9 @@ topology:
           customNodes,
           defaultNode,
           currentLabPath: this.lastYamlFilePath,
+          topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
+          topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
+          topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
         };
         templateParams = editorParams;
       }

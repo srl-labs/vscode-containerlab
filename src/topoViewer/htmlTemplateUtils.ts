@@ -37,6 +37,9 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   dockerImages?: string[];
   customNodes: Array<{ name: string; kind: string; type?: string; image?: string }>;
   defaultNode: string;
+  topologyDefaults?: Record<string, any>;
+  topologyKinds?: Record<string, any>;
+  topologyGroups?: Record<string, any>;
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -209,7 +212,10 @@ export function generateHtmlTemplate(
       defaultType: 'ixrd1',
       updateLinkEndpointsOnKindChange: 'true',
       customNodes: '[]',
-      defaultNode: ''
+      defaultNode: '',
+      topologyDefaults: '{}',
+      topologyKinds: '{}',
+      topologyGroups: '{}'
     };
   } else {
     const editorParams = params as EditorTemplateParams;
@@ -221,7 +227,10 @@ export function generateHtmlTemplate(
       defaultType: editorParams.defaultType,
       updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
       customNodes: JSON.stringify(editorParams.customNodes),
-      defaultNode: editorParams.defaultNode
+      defaultNode: editorParams.defaultNode,
+      topologyDefaults: JSON.stringify(editorParams.topologyDefaults || {}),
+      topologyKinds: JSON.stringify(editorParams.topologyKinds || {}),
+      topologyGroups: JSON.stringify(editorParams.topologyGroups || {})
     };
     // Inject docker images if provided
     (replacements as any).dockerImages = JSON.stringify(editorParams.dockerImages || []);
