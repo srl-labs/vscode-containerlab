@@ -76,27 +76,8 @@ export class ManagerSaveTopo {
         const parentCollection = node.parent();
         const parentId: string = parentCollection.nonempty() ? parentCollection[0].id() : '';
         nodeJson.parent = parentId;
-        if (nodeJson.data?.extraData?.labels && parentId) {
-          const parts = parentId.split(':');
-          nodeJson.data.extraData.labels['graph-group'] = parts[0] || '';
-          nodeJson.data.extraData.labels['graph-level'] = parts[1] || '';
-
-          const validLabelClasses = [
-            'top-center',
-            'top-left',
-            'top-right',
-            'bottom-center',
-            'bottom-left',
-            'bottom-right'
-          ];
-          const parentElement = cy.getElementById(parentId);
-          const classArray: string[] = parentElement.classes();
-          const validParentClasses = classArray.filter((cls: string) =>
-            validLabelClasses.includes(cls)
-          );
-          nodeJson.data.groupLabelPos =
-            validParentClasses.length > 0 ? validParentClasses[0] : '';
-        }
+        // Do not add group-related labels to the node's extraData
+        // These are UI-only properties that should not be persisted to YAML
         return nodeJson;
       });
 

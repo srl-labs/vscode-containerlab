@@ -164,9 +164,40 @@ export async function viewportButtonsReloadTopo(): Promise<void> {
 /**
  * Search for nodes in the topology
  */
+function getTopologySearchInput(): HTMLInputElement | null {
+  let searchInput = document.getElementById(
+    'viewport-drawer-topology-overview-content-edit'
+  ) as HTMLInputElement | null;
+  if (!searchInput) {
+    const container = document.getElementById(
+      'viewport-drawer-topology-overview-content'
+    );
+    if (container) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'relative';
+
+      searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.id = 'viewport-drawer-topology-overview-content-edit';
+      searchInput.placeholder = 'Search for nodes ...';
+      searchInput.className = 'input-field pl-8 pr-3 text-sm';
+
+      const icon = document.createElement('span');
+      icon.className = 'absolute left-2 top-1/2 transform -translate-y-1/2';
+      icon.innerHTML = '<i class="fas fa-search" aria-hidden="true"></i>';
+
+      wrapper.appendChild(searchInput);
+      wrapper.appendChild(icon);
+
+      container.prepend(wrapper);
+    }
+  }
+  return searchInput;
+}
+
 export function viewportNodeFindEvent(): void {
   try {
-    const searchInput = document.getElementById('viewport-drawer-topology-overview-content-edit') as HTMLInputElement;
+    const searchInput = getTopologySearchInput();
     if (!searchInput) {
       log.error('Search input element not found');
       return;

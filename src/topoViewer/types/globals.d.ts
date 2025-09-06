@@ -56,6 +56,9 @@ declare global {
     defaultType?: string;
     customNodes?: Array<{ name: string; kind: string; type?: string; image?: string }>;
     defaultNode?: string;
+    topologyDefaults?: Record<string, any>;
+    topologyKinds?: Record<string, any>;
+    topologyGroups?: Record<string, any>;
     vscode?: { postMessage(data: unknown): void };
     topologyWebviewController?: TopologyWebviewController;
   }

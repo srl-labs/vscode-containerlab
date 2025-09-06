@@ -538,6 +538,9 @@ export class TopoViewerAdaptorClab {
     if (parsed.topology.nodes) {
       for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
         const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
+        // Track which properties are inherited (not explicitly defined on the node)
+        const nodePropKeys = new Set(Object.keys(nodeObj || {}));
+        const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
         const nodeAnn = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
         const parentId = this.buildParent(mergedNode, nodeAnn);
         if (parentId) {
@@ -583,6 +586,8 @@ export class TopoViewerAdaptorClab {
             extraData: {
               // First, include all properties from the node definition
               ...mergedNode,
+              // Track inherited properties for UI indication
+              inherited: inheritedProps,
               // Then override with specific values we want to ensure
               clabServerUsername: 'asad',
               fqdn: `${nodeName}.${clabName}.io`,

@@ -11,7 +11,8 @@ export default [
       'dist/**',
       'node_modules/**',
       '.vscode-test.mjs',  // VS Code test harness
-      'legacy-backup/**'   // Legacy backup files
+      'legacy-backup/**',   // Legacy backup files
+      'labs/**'            // containerlab lab files
     ]
   },
 

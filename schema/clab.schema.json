@@ -147,6 +147,11 @@
                     "description": "Set to `true` to make the node to boot with a startup-config even if the config file is present in the lab directory",
                     "markdownDescription": "Set to `true` to [make the node to boot with a startup-config](https://containerlab.dev/manual/nodes/#enforce-startup-config) even if the config file is present in the lab directory"
                 },
+                "suppress-startup-config": {
+                    "type": "boolean",
+                    "description": "Set to `true` to prevent a startup-config file from being created (in a Zero-Touch Provisioning lab, for example)",
+                    "markdownDescription": "Set to `true` to [prevent a startup-config file from being created](https://containerlab.dev/manual/nodes/#suppress-startup-config) By default, containerlab will create a startup-config when initially creating a lab."
+                },
                 "auto-remove": {
                     "type": "boolean",
                     "description": "Set to `true` to remove the node automatically, instead of auto-restarting",
@@ -313,6 +318,47 @@
                     "type": "array",
                     "description": "list of additional network aliases for the node",
                     "markdownDescription": "list of [aliases](https://containerlab.dev/manual/nodes/#aliases) for the node",
+                    "items": {
+                        "type": "string"
+                    },
+                    "uniqueItems": true
+                },
+                "shm-size": {
+                    "type": "string",
+                    "description": "shared memory size limit allocated to the container. Supported memory suffixes (case insensitive): b, kib, kb, mib, mb, gib, gb",
+                    "markdownDescription": "[shared memory size limit](https://containerlab.dev/manual/nodes/#shm-size) allocated to the container (e.g. 256MB). Supported memory suffixes (case insensitive): b, kib, kb, mib, mb, gib, gb",
+                    "pattern": "^[0-9]+(\\.?[0-9]*)?\\s*([bB]|[kK][iI]?[bB]|[mM][iI]?[bB]|[gG][iI]?[bB])?$"
+                },
+                "cap-add": {
+                    "type": "array",
+                    "description": "list of capabilities to add to the container",
+                    "markdownDescription": "list of [capabilities](https://containerlab.dev/manual/nodes/#cap-add) to add to the container",
+                    "items": {
+                        "type": "string"
+                    },
+                    "uniqueItems": true
+                },
+                "sysctls": {
+                    "type": "object",
+                    "description": "sysctl kernel parameters to set in the container",
+                    "markdownDescription": "[sysctl kernel parameters](https://containerlab.dev/manual/nodes/#sysctls) to set in the container",
+                    "patternProperties": {
+                        ".+": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "number"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "devices": {
+                    "type": "array",
+                    "description": "list of host devices to add to the container",
+                    "markdownDescription": "list of [host devices](https://containerlab.dev/manual/nodes/#devices) to add to the container",
                     "items": {
                         "type": "string"
                     },
@@ -505,6 +551,24 @@
                             }
                         }
                     }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "kind": {
+                                "pattern": "(cisco_iol)"
+                            }
+                        },
+                        "required": ["kind"]
+                    },
+                    "then": {
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["iol","l2"]
+                            }
+                        }
+                    }
                 }
             ],
             "additionalProperties": false
@@ -611,7 +675,10 @@
                     "$ref": "#/definitions/link-endpoint"
                 },
                 "host-interface": {
-                    "$ref": "#/definitions/mtu"
+                    "$ref": "#/definitions/link-host-interface"
+                },
+                "mode": {
+                    "$ref": "#/definitions/link-macvlan-mode"
                 },
                 "mtu": {
                     "$ref": "#/definitions/mtu"
@@ -838,8 +905,14 @@
         },
         "link-host-interface": {
             "type": "string",
-            "description": "link-scoped variables used by config engine",
-            "markdownDescription": "link-scoped variables used by config engine"
+            "description": "Name of the host interface",
+            "markdownDescription": "Name of the host interface"
+        },
+        "link-macvlan-mode": {
+            "type": "string",
+            "description": "MACVLAN operating mode",
+            "markdownDescription": "MACVLAN operating mode",
+            "enum": ["private", "vepa", "bridge", "passthru", "source"]
         },
         "extras-config": {
             "type": "object",
@@ -1292,6 +1365,11 @@
                     "description": "MTU for the custom network",
                     "markdownDescription": "[MTU](https://containerlab.dev/manual/network/#mtu) in Bytes for the custom management network",
                     "$ref": "#/definitions/mtu"
+                },
+                "external-access": {
+                    "type": "boolean",
+                    "description": "controls whether the management network has external access or not",
+                    "markdownDescription": "controls whether the [management network has external access](https://containerlab.dev/manual/network/#external-access) or not"
                 }
             },
             "minProperties": 1,

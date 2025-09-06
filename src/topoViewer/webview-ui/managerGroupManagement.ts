@@ -527,9 +527,14 @@ export class ManagerGroupManagement {
         topoViewerGroup: graphGroup,
         topoViewerGroupLevel: graphLevel
       };
+      // Preserve the position and classes of the old parent node
+      const oldPosition = oldParentNode.position();
+      const oldClasses = oldParentNode.classes();
       this.cy.add({
         group: 'nodes',
-        data: { id: newParentId, name: graphGroup, topoViewerRole: 'group', extraData }
+        data: { id: newParentId, name: graphGroup, topoViewerRole: 'group', extraData },
+        position: { x: oldPosition.x, y: oldPosition.y },
+        classes: oldClasses
       });
       const newParentNode = this.cy.getElementById(newParentId);
       if (newParentNode.empty()) {

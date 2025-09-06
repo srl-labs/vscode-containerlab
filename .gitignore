@@ -18,7 +18,7 @@ clab-*/
 CLAUDE.md
 AGENTS.md
 patch.sh
-
+labs/**
 
 # Claude Flow generated files
 .claude/settings.local.json
