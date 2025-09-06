@@ -1159,12 +1159,12 @@
         "containerlab.remote.hostname": {
           "type": "string",
           "default": "",
-          "markdownDescription": "The hostname to use for connections to/from this host. Can be either DNS resolvable hostname, or an IPv4/6 address. Used for packet capture.\n\n**Note:** A configured hostname for *this session of VS Code* takes precedence. (Command palette: **Containerlab: Configure session hostname**)"
+          "markdownDescription": "Hostname or IP address for **Edgeshark packet capture** connections. Can be either DNS resolvable hostname, or an IPv4/6 address. This setting tells Edgeshark where to connect for capturing packets.\n\n**Note:** A configured hostname for *this session of VS Code* takes precedence. (Command palette: **Containerlab: Configure session hostname**)"
         },
         "containerlab.remote.packetflixPort": {
           "type": "number",
           "default": 5001,
-          "description": "Port to use for the packetflix endpoint used for packet capture."
+          "markdownDescription": "Port for the **Packetflix WebSocket endpoint** used by Edgeshark packet capture. This is where Edgeshark connects to stream captured packets."
         },
         "containerlab.drawioDefaultTheme": {
           "type": "string",
