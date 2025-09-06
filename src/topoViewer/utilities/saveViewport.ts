@@ -301,7 +301,6 @@ export async function saveViewport({
         // Don't add properties that were inherited from kinds/groups/defaults
         const originalKind = (nodeMap.get('kind', true) as any)?.value;
         const originalImage = (nodeMap.get('image', true) as any)?.value;
-        const originalType = (nodeMap.get('type', true) as any)?.value;
         const originalGroup = (nodeMap.get('group', true) as any)?.value;
 
         // Only update group if it was changed (extraData.group differs from original)
@@ -314,7 +313,9 @@ export async function saveViewport({
         const desiredKind = extraData.kind !== undefined ? extraData.kind : (originalKind !== undefined ? originalKind : undefined);
         const inherit = resolveNodeConfig(topoObj!, { group: groupName, kind: desiredKind });
         const desiredImage = extraData.image !== undefined ? extraData.image : (originalImage !== undefined ? originalImage : undefined);
-        const desiredType = extraData.type !== undefined ? extraData.type : (originalType !== undefined ? originalType : undefined);
+        // For type field: use extraData.type directly, don't fall back to original
+        // This ensures that when type is cleared in the editor (becomes undefined), it gets removed
+        const desiredType = extraData.type;
 
         if (groupName) {
           nodeMap.set('group', doc.createNode(groupName));
@@ -335,9 +336,16 @@ export async function saveViewport({
         }
 
         const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-        if (nokiaKinds.includes(desiredKind) && desiredType !== undefined && desiredType !== '' && desiredType !== inherit.type) {
-          nodeMap.set('type', doc.createNode(desiredType));
+        if (nokiaKinds.includes(desiredKind)) {
+          // Only set type if it has a value and differs from inherited
+          if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
+            nodeMap.set('type', doc.createNode(desiredType));
+          } else {
+            // Delete type if it's empty, undefined, or same as inherited
+            nodeMap.delete('type');
+          }
         } else {
+          // For non-Nokia kinds, always delete type
           nodeMap.delete('type');
         }
 
