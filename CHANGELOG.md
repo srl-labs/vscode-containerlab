@@ -1,5 +1,20 @@
 # Change Log
 
+## [0.17.0] - 2025-09-06
+
+- TopoViewer/editor:
+  - Lab settings panel for topology-wide configuration
+  - Node editor with full node property management
+  - Link editor with extended link support and properties
+  - Node templates support
+  - Kind support and inheritance from it with live badge updates
+  - UI improvements
+  - Dynamic webview panel titles using lab names
+  - Resolve interface aliases to actual names in capture commands
+  - YAML image completion improvements
+- Fixes:
+  - Fixed node search functionality when external nodes exist (#337)
+
 ## [0.16.5] - 2025-08-22
 
 - TopoViewer/editor:
