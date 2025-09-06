@@ -121,6 +121,7 @@ export class ManagerNodeEditor {
   private kindsLoaded = false;
   private imageVersionMap: Map<string, string[]> = new Map();
   private messageSender: VscodeMessageSender;
+  private nodeTypeOptions: Map<string, string[]> = new Map();
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
@@ -202,24 +203,61 @@ export class ManagerNodeEditor {
    */
   private handleKindChange(selectedKind: string): void {
     const typeFormGroup = document.querySelector('#node-type')?.closest('.form-group') as HTMLElement;
+    const typeDropdownContainer = document.getElementById('panel-node-type-dropdown-container');
+    const typeInput = document.getElementById('node-type') as HTMLInputElement;
 
     if (typeFormGroup) {
-      // Show type field only for Nokia kinds (nokia_srlinux, nokia_sros, nokia_srsim)
-      const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
+      // Get type options for the selected kind
+      const typeOptions = this.getTypeOptionsForKind(selectedKind);
 
-      if (isNokiaKind) {
+      if (typeOptions.length > 0) {
+        // Show type field with dropdown for kinds with predefined types
         typeFormGroup.style.display = 'block';
+        if (typeDropdownContainer && typeInput) {
+          typeDropdownContainer.style.display = 'block';
+          typeInput.style.display = 'none';
+
+          // Add empty option at the beginning for default/no selection
+          const typeOptionsWithEmpty = ['', ...typeOptions];
+
+          // Get current type value to preserve if possible
+          const currentType = typeInput.value || '';
+          const typeToSelect = typeOptionsWithEmpty.includes(currentType) ? currentType : '';
+
+          // Create searchable dropdown for type
+          createFilterableDropdown(
+            'panel-node-type-dropdown-container',
+            typeOptionsWithEmpty,
+            typeToSelect,
+            (selectedType: string) => {
+              // Type will be saved when save button is clicked
+              log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`);
+            },
+            'Search for type...',
+            true // Allow free text for custom types
+          );
+        }
       } else {
-        typeFormGroup.style.display = 'none';
-        // Clear the type field value when hiding
-        const typeInput = document.getElementById('node-type') as HTMLInputElement;
-        if (typeInput) {
-          typeInput.value = '';
+        // For kinds without predefined types, show regular input field
+        const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
+        if (isNokiaKind) {
+          // Still show the field for Nokia kinds even without predefined types
+          typeFormGroup.style.display = 'block';
+          if (typeDropdownContainer && typeInput) {
+            typeDropdownContainer.style.display = 'none';
+            typeInput.style.display = 'block';
+          }
+        } else {
+          // Hide for non-Nokia kinds without types
+          typeFormGroup.style.display = 'none';
+          if (typeInput) {
+            typeInput.value = '';
+          }
         }
       }
     }
 
-    log.debug(`Kind changed to ${selectedKind}, type field visibility: ${['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind) ? 'visible' : 'hidden'}`);
+    log.debug(`Kind changed to ${selectedKind}, type field visibility: ${typeFormGroup?.style.display}`);
   }
 
   /**
@@ -357,6 +395,10 @@ export class ManagerNodeEditor {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
+
+      // Extract type options for each kind from the schema
+      this.extractTypeOptionsFromSchema(json);
+
       const kinds: string[] = json?.definitions?.['node-config']?.properties?.kind?.enum || [];
       if (!Array.isArray(kinds) || kinds.length === 0) {
         log.warn('No kind enum found in schema; keeping existing Kind options');
@@ -386,6 +428,54 @@ export class ManagerNodeEditor {
     } catch (e) {
       log.error(`populateKindsFromSchema error: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }
+
+  /**
+   * Extract type options from schema for each kind
+   */
+  private extractTypeOptionsFromSchema(schema: any): void {
+    this.nodeTypeOptions.clear();
+
+    if (!schema?.definitions?.['node-config']?.allOf) {
+      return;
+    }
+
+    // Iterate through all conditional type definitions in the schema
+    for (const condition of schema.definitions['node-config'].allOf) {
+      if (condition.if?.properties?.kind?.pattern && condition.then?.properties?.type) {
+        // Extract the kind from the pattern (e.g., "(nokia_srlinux)" -> "nokia_srlinux")
+        const pattern = condition.if.properties.kind.pattern;
+        const kindMatch = pattern.match(/\(([^)]+)\)/);
+        if (kindMatch) {
+          const kind = kindMatch[1];
+          const typeProp = condition.then.properties.type;
+
+          // Extract type options from enum or anyOf
+          let typeOptions: string[] = [];
+          if (typeProp.enum) {
+            typeOptions = typeProp.enum;
+          } else if (Array.isArray(typeProp.anyOf)) {
+            for (const sub of typeProp.anyOf) {
+              if (sub.enum) {
+                typeOptions = [...typeOptions, ...sub.enum];
+              }
+            }
+          }
+
+          if (typeOptions.length > 0) {
+            this.nodeTypeOptions.set(kind, typeOptions);
+            log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Get type options for a specific kind
+   */
+  private getTypeOptionsForKind(kind: string): string[] {
+    return this.nodeTypeOptions.get(kind) || [];
   }
 
   /**
@@ -716,10 +806,20 @@ export class ManagerNodeEditor {
       : (this.schemaKinds[0] || desiredKind);
     createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
     this.markFieldInheritance('node-kind-dropdown-container', actualInherited.includes('kind'));
-    this.setInputValue('node-type', extraData.type || '');
+    // Store the type value temporarily
+    const typeValue = extraData.type || '';
+    this.setInputValue('node-type', typeValue);
     this.markFieldInheritance('node-type', actualInherited.includes('type'));
-    // Set initial type field visibility based on the kind
+    // Set initial type field visibility and dropdown based on the kind
+    // This will properly set up the dropdown if needed
     this.handleKindChange(kindInitial);
+    // After handleKindChange sets up the field, ensure the type value is selected
+    if (typeValue) {
+      const typeInput = document.getElementById('node-type') as HTMLInputElement;
+      if (typeInput) {
+        typeInput.value = typeValue;
+      }
+    }
 
     // Icon/Role dropdown - use the actual icons from the styles
     const nodeIcons = extractNodeIcons();
@@ -1181,6 +1281,23 @@ export class ManagerNodeEditor {
   }
 
   /**
+   * Get type field value from dropdown or input
+   */
+  private getTypeFieldValue(): string {
+    // First check if dropdown is visible
+    const dropdownContainer = document.getElementById('panel-node-type-dropdown-container');
+    if (dropdownContainer && dropdownContainer.style.display !== 'none') {
+      // Get value from dropdown filter input
+      const dropdownInput = document.getElementById('panel-node-type-dropdown-container-filter-input') as HTMLInputElement;
+      if (dropdownInput) {
+        return dropdownInput.value;
+      }
+    }
+    // Otherwise get from regular input
+    return this.getInputValue('node-type');
+  }
+
+  /**
    * Mark a form field as inherited or remove the indication
    */
   private markFieldInheritance(fieldId: string, inherited: boolean): void {
@@ -1605,7 +1722,7 @@ export class ManagerNodeEditor {
       const nodeProps: NodeProperties = {
         name: this.getInputValue('node-name'),
         kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
-        type: this.getInputValue('node-type') || undefined,
+        type: this.getTypeFieldValue() || undefined,
       };
 
       // Combine base image and version to form the complete image
