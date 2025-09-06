@@ -623,12 +623,83 @@ export class ManagerNodeEditor {
   }
 
   /**
+   * Determine which properties should actually be shown as inherited
+   */
+  private computeActualInheritedProps(nodeProps: any, topology?: any): string[] {
+    // Properties that should never be marked as inherited
+    const neverInherited = ['kind', 'name', 'group'];
+
+    // Get the topology configuration
+    if (!topology) {
+      topology = {
+        topology: {
+          defaults: (window as any).topologyDefaults || {},
+          kinds: (window as any).topologyKinds || {},
+          groups: (window as any).topologyGroups || {},
+        }
+      };
+    }
+
+    const kindName = nodeProps.kind;
+    const groupName = nodeProps.group;
+    const inheritBase = resolveNodeConfig(topology, { group: groupName, kind: kindName });
+
+    const shouldPersist = (val: any) => {
+      if (val === undefined) return false;
+      if (Array.isArray(val)) return val.length > 0;
+      if (val && typeof val === 'object') return Object.keys(val).length > 0;
+      return true;
+    };
+
+    const normalize = (obj: any): any => {
+      if (Array.isArray(obj)) return obj.map(normalize);
+      if (obj && typeof obj === 'object') {
+        return Object.keys(obj).sort().reduce((acc, k) => {
+          acc[k] = normalize(obj[k]);
+          return acc;
+        }, {} as any);
+      }
+      return obj;
+    };
+
+    const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+
+    const actualInherited: string[] = [];
+
+    Object.keys(nodeProps).forEach(prop => {
+      // Skip properties that should never be inherited
+      if (neverInherited.includes(prop)) {
+        return;
+      }
+
+      const val = nodeProps[prop];
+      const inheritedVal = (inheritBase as any)[prop];
+
+      const hasValue = shouldPersist(val);
+      const hasInheritedValue = shouldPersist(inheritedVal);
+
+      if (hasValue && hasInheritedValue && deepEqual(val, inheritedVal)) {
+        // User set a value that matches the inherited value
+        actualInherited.push(prop);
+      } else if (!hasValue && hasInheritedValue) {
+        // User didn't set a value but there's an inherited value
+        actualInherited.push(prop);
+      }
+      // Don't mark as inherited if both are empty/undefined
+    });
+
+    return actualInherited;
+  }
+
+  /**
    * Load node data into the form
    */
   private loadNodeData(node: cytoscape.NodeSingular): void {
     const nodeData = node.data();
     const extraData = nodeData.extraData || {};
-    const inherited = Array.isArray(extraData.inherited) ? extraData.inherited : [];
+
+    // Compute which properties should actually show as inherited
+    const actualInherited = this.computeActualInheritedProps(extraData);
 
     // Display node ID
     const idElement = document.getElementById('panel-node-editor-id');
@@ -644,9 +715,9 @@ export class ManagerNodeEditor {
       ? desiredKind
       : (this.schemaKinds[0] || desiredKind);
     createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
-    this.markFieldInheritance('node-kind-dropdown-container', inherited.includes('kind'));
+    this.markFieldInheritance('node-kind-dropdown-container', actualInherited.includes('kind'));
     this.setInputValue('node-type', extraData.type || '');
-    this.markFieldInheritance('node-type', inherited.includes('type'));
+    this.markFieldInheritance('node-type', actualInherited.includes('type'));
     // Set initial type field visibility based on the kind
     this.handleKindChange(kindInitial);
 
@@ -673,7 +744,7 @@ export class ManagerNodeEditor {
     // Image dropdown: prefer docker images if provided by the extension
     const dockerImages = (window as any).dockerImages as string[] | undefined;
     const imageInitial = extraData.image || '';
-    this.markFieldInheritance('node-image-dropdown-container', inherited.includes('image'));
+    this.markFieldInheritance('node-image-dropdown-container', actualInherited.includes('image'));
 
     // Check if we have valid Docker images (non-empty array)
     const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 &&
@@ -837,13 +908,13 @@ export class ManagerNodeEditor {
 
     // Configuration tab
     this.setInputValue('node-startup-config', extraData['startup-config'] || '');
-    this.markFieldInheritance('node-startup-config', inherited.includes('startup-config'));
+    this.markFieldInheritance('node-startup-config', actualInherited.includes('startup-config'));
     this.setCheckboxValue('node-enforce-startup-config', extraData['enforce-startup-config'] || false);
-    this.markFieldInheritance('node-enforce-startup-config', inherited.includes('enforce-startup-config'));
+    this.markFieldInheritance('node-enforce-startup-config', actualInherited.includes('enforce-startup-config'));
     this.setCheckboxValue('node-suppress-startup-config', extraData['suppress-startup-config'] || false);
-    this.markFieldInheritance('node-suppress-startup-config', inherited.includes('suppress-startup-config'));
+    this.markFieldInheritance('node-suppress-startup-config', actualInherited.includes('suppress-startup-config'));
     this.setInputValue('node-license', extraData.license || '');
-    this.markFieldInheritance('node-license', inherited.includes('license'));
+    this.markFieldInheritance('node-license', actualInherited.includes('license'));
 
     // Load binds
     if (extraData.binds && Array.isArray(extraData.binds)) {
@@ -851,7 +922,7 @@ export class ManagerNodeEditor {
         this.addDynamicEntryWithValue('binds', bind, 'Bind mount (host:container)');
       });
     }
-    this.markFieldInheritance('node-binds-container', inherited.includes('binds'));
+    this.markFieldInheritance('node-binds-container', actualInherited.includes('binds'));
 
     // Load environment variables
     if (extraData.env && typeof extraData.env === 'object') {
@@ -859,7 +930,7 @@ export class ManagerNodeEditor {
         this.addDynamicKeyValueEntryWithValue('env', key, value as string);
       });
     }
-    this.markFieldInheritance('node-env-container', inherited.includes('env'));
+    this.markFieldInheritance('node-env-container', actualInherited.includes('env'));
 
     // Load labels
     if (extraData.labels && typeof extraData.labels === 'object') {
@@ -867,23 +938,23 @@ export class ManagerNodeEditor {
         this.addDynamicKeyValueEntryWithValue('labels', key, value as string);
       });
     }
-    this.markFieldInheritance('node-labels-container', inherited.includes('labels'));
+    this.markFieldInheritance('node-labels-container', actualInherited.includes('labels'));
 
     // Runtime tab
     this.setInputValue('node-user', extraData.user || '');
-    this.markFieldInheritance('node-user', inherited.includes('user'));
+    this.markFieldInheritance('node-user', actualInherited.includes('user'));
     this.setInputValue('node-entrypoint', extraData.entrypoint || '');
-    this.markFieldInheritance('node-entrypoint', inherited.includes('entrypoint'));
+    this.markFieldInheritance('node-entrypoint', actualInherited.includes('entrypoint'));
     this.setInputValue('node-cmd', extraData.cmd || '');
-    this.markFieldInheritance('node-cmd', inherited.includes('cmd'));
+    this.markFieldInheritance('node-cmd', actualInherited.includes('cmd'));
     const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
     const rpInitial = extraData['restart-policy'] || 'Default';
     createFilterableDropdown('node-restart-policy-dropdown-container', rpOptions, rpInitial, () => {}, 'Search restart policy...');
-    this.markFieldInheritance('node-restart-policy-dropdown-container', inherited.includes('restart-policy'));
+    this.markFieldInheritance('node-restart-policy-dropdown-container', actualInherited.includes('restart-policy'));
     this.setCheckboxValue('node-auto-remove', extraData['auto-remove'] || false);
-    this.markFieldInheritance('node-auto-remove', inherited.includes('auto-remove'));
+    this.markFieldInheritance('node-auto-remove', actualInherited.includes('auto-remove'));
     this.setInputValue('node-startup-delay', extraData['startup-delay'] || '');
-    this.markFieldInheritance('node-startup-delay', inherited.includes('startup-delay'));
+    this.markFieldInheritance('node-startup-delay', actualInherited.includes('startup-delay'));
 
     // Load exec commands
     if (extraData.exec && Array.isArray(extraData.exec)) {
@@ -891,17 +962,17 @@ export class ManagerNodeEditor {
         this.addDynamicEntryWithValue('exec', cmd, 'Command to execute');
       });
     }
-    this.markFieldInheritance('node-exec-container', inherited.includes('exec'));
+    this.markFieldInheritance('node-exec-container', actualInherited.includes('exec'));
 
     // Network tab
     this.setInputValue('node-mgmt-ipv4', extraData['mgmt-ipv4'] || '');
-    this.markFieldInheritance('node-mgmt-ipv4', inherited.includes('mgmt-ipv4'));
+    this.markFieldInheritance('node-mgmt-ipv4', actualInherited.includes('mgmt-ipv4'));
     this.setInputValue('node-mgmt-ipv6', extraData['mgmt-ipv6'] || '');
-    this.markFieldInheritance('node-mgmt-ipv6', inherited.includes('mgmt-ipv6'));
+    this.markFieldInheritance('node-mgmt-ipv6', actualInherited.includes('mgmt-ipv6'));
     const nmOptions = ['Default', 'host', 'none'];
     const nmInitial = extraData['network-mode'] || 'Default';
     createFilterableDropdown('node-network-mode-dropdown-container', nmOptions, nmInitial, () => {}, 'Search network mode...');
-    this.markFieldInheritance('node-network-mode-dropdown-container', inherited.includes('network-mode'));
+    this.markFieldInheritance('node-network-mode-dropdown-container', actualInherited.includes('network-mode'));
 
     // Load ports
     if (extraData.ports && Array.isArray(extraData.ports)) {
@@ -909,7 +980,7 @@ export class ManagerNodeEditor {
         this.addDynamicEntryWithValue('ports', port, 'Host:Container');
       });
     }
-    this.markFieldInheritance('node-ports-container', inherited.includes('ports'));
+    this.markFieldInheritance('node-ports-container', actualInherited.includes('ports'));
 
     // Load DNS configuration
     if (extraData.dns) {
@@ -919,7 +990,7 @@ export class ManagerNodeEditor {
         });
       }
     }
-    this.markFieldInheritance('node-dns-servers-container', inherited.includes('dns'));
+    this.markFieldInheritance('node-dns-servers-container', actualInherited.includes('dns'));
 
     // Load aliases
     if (extraData.aliases && Array.isArray(extraData.aliases)) {
@@ -927,17 +998,17 @@ export class ManagerNodeEditor {
         this.addDynamicEntryWithValue('aliases', alias, 'Network alias');
       });
     }
-    this.markFieldInheritance('node-aliases-container', inherited.includes('aliases'));
+    this.markFieldInheritance('node-aliases-container', actualInherited.includes('aliases'));
 
     // Advanced tab
     this.setInputValue('node-memory', extraData.memory || '');
-    this.markFieldInheritance('node-memory', inherited.includes('memory'));
+    this.markFieldInheritance('node-memory', actualInherited.includes('memory'));
     this.setInputValue('node-cpu', extraData.cpu || '');
-    this.markFieldInheritance('node-cpu', inherited.includes('cpu'));
+    this.markFieldInheritance('node-cpu', actualInherited.includes('cpu'));
     this.setInputValue('node-cpu-set', extraData['cpu-set'] || '');
-    this.markFieldInheritance('node-cpu-set', inherited.includes('cpu-set'));
+    this.markFieldInheritance('node-cpu-set', actualInherited.includes('cpu-set'));
     this.setInputValue('node-shm-size', extraData['shm-size'] || '');
-    this.markFieldInheritance('node-shm-size', inherited.includes('shm-size'));
+    this.markFieldInheritance('node-shm-size', actualInherited.includes('shm-size'));
 
     // Load capabilities
     if (extraData['cap-add'] && Array.isArray(extraData['cap-add'])) {
@@ -945,7 +1016,7 @@ export class ManagerNodeEditor {
         this.addDynamicEntryWithValue('cap-add', cap, 'Capability');
       });
     }
-    this.markFieldInheritance('node-cap-add-container', inherited.includes('cap-add'));
+    this.markFieldInheritance('node-cap-add-container', actualInherited.includes('cap-add'));
 
     // Load sysctls
     if (extraData.sysctls && typeof extraData.sysctls === 'object') {
@@ -953,7 +1024,7 @@ export class ManagerNodeEditor {
         this.addDynamicKeyValueEntryWithValue('sysctls', key, String(value));
       });
     }
-    this.markFieldInheritance('node-sysctls-container', inherited.includes('sysctls'));
+    this.markFieldInheritance('node-sysctls-container', actualInherited.includes('sysctls'));
 
     // Load devices
     if (extraData.devices && Array.isArray(extraData.devices)) {
@@ -961,12 +1032,12 @@ export class ManagerNodeEditor {
         this.addDynamicEntryWithValue('devices', device, 'Device path');
       });
     }
-    this.markFieldInheritance('node-devices-container', inherited.includes('devices'));
+    this.markFieldInheritance('node-devices-container', actualInherited.includes('devices'));
 
     // Load certificate configuration
     if (extraData.certificate) {
     this.setCheckboxValue('node-cert-issue', extraData.certificate.issue || false);
-      this.markFieldInheritance('node-cert-issue', inherited.includes('certificate'));
+      this.markFieldInheritance('node-cert-issue', actualInherited.includes('certificate'));
       const keySizeOptions = ['2048', '4096'];
       const keySizeInitial = String(extraData.certificate['key-size'] || '2048');
       createFilterableDropdown('node-cert-key-size-dropdown-container', keySizeOptions, keySizeInitial, () => {}, 'Search key size...');
@@ -988,17 +1059,17 @@ export class ManagerNodeEditor {
       this.setInputValue('node-healthcheck-timeout', hc.timeout || '');
       this.setInputValue('node-healthcheck-retries', hc.retries || '');
     }
-    this.markFieldInheritance('node-healthcheck-test', inherited.includes('healthcheck'));
+    this.markFieldInheritance('node-healthcheck-test', actualInherited.includes('healthcheck'));
 
     const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
     const ippInitial = extraData['image-pull-policy'] || 'Default';
     createFilterableDropdown('node-image-pull-policy-dropdown-container', ippOptions, ippInitial, () => {}, 'Search pull policy...');
-    this.markFieldInheritance('node-image-pull-policy-dropdown-container', inherited.includes('image-pull-policy'));
+    this.markFieldInheritance('node-image-pull-policy-dropdown-container', actualInherited.includes('image-pull-policy'));
 
     const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
     const runtimeInitial = extraData.runtime || 'Default';
     createFilterableDropdown('node-runtime-dropdown-container', runtimeOptions, runtimeInitial, () => {}, 'Search runtime...');
-    this.markFieldInheritance('node-runtime-dropdown-container', inherited.includes('runtime'));
+    this.markFieldInheritance('node-runtime-dropdown-container', actualInherited.includes('runtime'));
   }
 
   /**
@@ -1128,6 +1199,59 @@ export class ManagerNodeEditor {
     } else if (badge) {
       badge.remove();
     }
+  }
+
+  /**
+   * Update all inherited badges in the UI based on the current inherited properties
+   */
+  private updateInheritedBadges(inheritedProps: string[]): void {
+    // Properties that should never show inherited badge
+    const neverInherited = ['kind', 'name', 'group'];
+
+    // Define field mappings - same as in setupInheritanceChangeListeners
+    const mappings: Array<{ fieldId: string; prop: string }> = [
+      { fieldId: 'node-kind-dropdown-container', prop: 'kind' },
+      { fieldId: 'node-type', prop: 'type' },
+      { fieldId: 'node-image-dropdown-container', prop: 'image' },
+      { fieldId: 'node-startup-config', prop: 'startup-config' },
+      { fieldId: 'node-enforce-startup-config', prop: 'enforce-startup-config' },
+      { fieldId: 'node-suppress-startup-config', prop: 'suppress-startup-config' },
+      { fieldId: 'node-license', prop: 'license' },
+      { fieldId: 'node-binds-container', prop: 'binds' },
+      { fieldId: 'node-env-container', prop: 'env' },
+      { fieldId: 'node-labels-container', prop: 'labels' },
+      { fieldId: 'node-user', prop: 'user' },
+      { fieldId: 'node-entrypoint', prop: 'entrypoint' },
+      { fieldId: 'node-cmd', prop: 'cmd' },
+      { fieldId: 'node-exec-container', prop: 'exec' },
+      { fieldId: 'node-restart-policy-dropdown-container', prop: 'restart-policy' },
+      { fieldId: 'node-auto-remove', prop: 'auto-remove' },
+      { fieldId: 'node-startup-delay', prop: 'startup-delay' },
+      { fieldId: 'node-mgmt-ipv4', prop: 'mgmt-ipv4' },
+      { fieldId: 'node-mgmt-ipv6', prop: 'mgmt-ipv6' },
+      { fieldId: 'node-network-mode-dropdown-container', prop: 'network-mode' },
+      { fieldId: 'node-ports-container', prop: 'ports' },
+      { fieldId: 'node-dns-servers-container', prop: 'dns' },
+      { fieldId: 'node-aliases-container', prop: 'aliases' },
+      { fieldId: 'node-memory', prop: 'memory' },
+      { fieldId: 'node-cpu', prop: 'cpu' },
+      { fieldId: 'node-cpu-set', prop: 'cpu-set' },
+      { fieldId: 'node-shm-size', prop: 'shm-size' },
+      { fieldId: 'node-cap-add-container', prop: 'cap-add' },
+      { fieldId: 'node-sysctls-container', prop: 'sysctls' },
+      { fieldId: 'node-devices-container', prop: 'devices' },
+      { fieldId: 'node-cert-issue', prop: 'certificate' },
+      { fieldId: 'node-healthcheck-test', prop: 'healthcheck' },
+      { fieldId: 'node-image-pull-policy-dropdown-container', prop: 'image-pull-policy' },
+      { fieldId: 'node-runtime-dropdown-container', prop: 'runtime' }
+    ];
+
+    // Update each field's inherited badge based on whether its property is in the inherited list
+    mappings.forEach(({ fieldId, prop }) => {
+      // Never show inherited badge for certain properties
+      const isInherited = !neverInherited.includes(prop) && inheritedProps.includes(prop);
+      this.markFieldInheritance(fieldId, isInherited);
+    });
   }
 
   /**
@@ -1787,12 +1911,30 @@ export class ManagerNodeEditor {
         return true;
       };
       const inheritedProps: string[] = [];
+      // Properties that should never be marked as inherited
+      const neverInherited = ['kind', 'name', 'group'];
       Object.keys(mergedNode).forEach(prop => {
+        // Skip properties that should never be inherited
+        if (neverInherited.includes(prop)) {
+          return;
+        }
         const val = (nodeProps as any)[prop];
         const inheritedVal = (inheritBase as any)[prop];
-        if (!shouldPersist(val) || deepEqual(val, inheritedVal)) {
+
+        // Only mark as inherited if:
+        // 1. The value exists and matches the inherited value, OR
+        // 2. The value doesn't exist but there IS an inherited value to inherit
+        const hasValue = shouldPersist(val);
+        const hasInheritedValue = shouldPersist(inheritedVal);
+
+        if (hasValue && deepEqual(val, inheritedVal)) {
+          // User set a value that matches the inherited value
+          inheritedProps.push(prop);
+        } else if (!hasValue && hasInheritedValue) {
+          // User didn't set a value but there's an inherited value
           inheritedProps.push(prop);
         }
+        // Don't mark as inherited if both are empty/undefined
       });
       Object.assign(updatedExtraData, mergedNode);
       updatedExtraData.inherited = inheritedProps;
@@ -1800,6 +1942,9 @@ export class ManagerNodeEditor {
       if (groupName !== undefined) {
         updatedExtraData.group = groupName;
       }
+
+      // Update the UI to reflect the new inherited status
+      this.updateInheritedBadges(inheritedProps);
 
       // Get the icon/role value
       const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
