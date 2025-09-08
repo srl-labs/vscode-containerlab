@@ -35,7 +35,7 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   defaultType: string;
   updateLinkEndpointsOnKindChange: boolean;
   dockerImages?: string[];
-  customNodes: Array<{ name: string; kind: string; type?: string; image?: string }>;
+  customNodes: Array<{ name: string; kind: string; type?: string; image?: string; setDefault?: boolean }>;
   defaultNode: string;
   topologyDefaults?: Record<string, any>;
   topologyKinds?: Record<string, any>;
@@ -125,12 +125,19 @@ export function generateHtmlTemplate(
   params: ViewerTemplateParams | EditorTemplateParams
 ): string {
   // Try to use cached template for similar params
-  const cacheKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}`;
+  const baseCacheKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}`;
 
   // For viewer mode, also include deployment state in cache key
-  const finalCacheKey = mode === 'viewer'
-    ? `${cacheKey}_${(params as ViewerTemplateParams).deploymentState}`
-    : cacheKey;
+  let finalCacheKey: string;
+  if (mode === 'viewer') {
+    finalCacheKey = `${baseCacheKey}_${(params as ViewerTemplateParams).deploymentState}`;
+  } else {
+    const editorParams = params as EditorTemplateParams;
+    const customNodesKey = editorParams.customNodes
+      .map(n => `${n.name}-${n.kind}-${n.type}-${n.image}-${n.setDefault}`)
+      .join('|');
+    finalCacheKey = `${baseCacheKey}_${customNodesKey}_${editorParams.defaultNode}`;
+  }
 
   // Check if we have a cached version with matching dynamic params
   const cachedBase = templateCache.get(finalCacheKey);
