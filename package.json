@@ -1386,7 +1386,7 @@
     "postcss-loader": "^8.1.1",
     "sinon": "^21.0.0",
     "@tailwindcss/postcss": "^4.1.11",
-    "tailwindcss": "^4.1.12",
+    "tailwindcss": "^4.1.13",
     "tippy.js": "^6.3.7",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.2",
