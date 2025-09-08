@@ -400,7 +400,7 @@ class TopologyWebviewController {
       } else {
         // Use node editor
         if (this.nodeEditor) {
-          this.nodeEditor.open(node);
+          void this.nodeEditor.open(node);
         } else {
           // Fallback to standard editor if node editor not available (shouldn't happen)
           this.viewportPanels?.panelNodeEditor(node);
@@ -640,7 +640,7 @@ class TopologyWebviewController {
                 this.viewportPanels?.setNodeClicked(true);
                 // inside here TS infers ele is NodeSingular
                 if (this.nodeEditor) {
-                  this.nodeEditor.open(ele);
+                  void this.nodeEditor.open(ele);
                 }
               }
             });

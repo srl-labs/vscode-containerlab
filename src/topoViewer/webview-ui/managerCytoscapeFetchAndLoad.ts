@@ -65,16 +65,21 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     cy.add(elementsToAdd);
 
+    // Remove placeholder nodes that may interfere with layout detection
+    cy.filter('node[name = "topoviewer"]').remove();
+    cy.filter('node[name = "TopoViewer:1"]').remove();
+
     // Determine if all nodes overlap at the same position (e.g. when no annotations exist)
-    const nodes = elementsToAdd.filter((element: any) => element.group === 'nodes');
+    const nodes = cy.nodes();
+    const firstPos = nodes.first().position();
     const allNodesOverlap =
       nodes.length > 1 &&
-      nodes.every((element: any) => {
-        const pos = element.position;
-        const firstPos = nodes[0].position;
+      nodes.every((node) => {
+        const n = node as cytoscape.NodeSingular;
+        const pos = n.position();
         return (
-          pos &&
-          firstPos &&
+          Number.isFinite(pos.x) &&
+          Number.isFinite(pos.y) &&
           pos.x === firstPos.x &&
           pos.y === firstPos.y
         );
@@ -136,10 +141,6 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
         log.debug('Viewport fitted immediately (no RAF available)');
       }
     }
-
-    // Remove specific nodes by name.
-    cy.filter('node[name = "topoviewer"]').remove();
-    cy.filter('node[name = "TopoViewer:1"]').remove();
 
     // Load free text annotations immediately without waiting for layout
     const freeTextManager = (window as any).topologyWebviewController?.freeTextManager;

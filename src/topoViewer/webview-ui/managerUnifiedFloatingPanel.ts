@@ -660,7 +660,7 @@ export class ManagerUnifiedFloatingPanel {
         parent: () => ({ nonempty: () => false })
       };
 
-      this.nodeEditor.open(mockNode as any);
+      void this.nodeEditor.open(mockNode as any);
 
       // Focus on the custom node name field after a short delay
       setTimeout(() => {
@@ -703,7 +703,7 @@ export class ManagerUnifiedFloatingPanel {
         parent: () => ({ nonempty: () => false })
       };
 
-      this.nodeEditor.open(mockNode as any);
+      void this.nodeEditor.open(mockNode as any);
 
       // Pre-fill the custom node name field
       setTimeout(() => {

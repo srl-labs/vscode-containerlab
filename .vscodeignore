@@ -35,6 +35,7 @@ test.clab.yml
 #clab files
 clab-*/
 *.clab.yml*
+labs/
 
 #others
 .claude/**

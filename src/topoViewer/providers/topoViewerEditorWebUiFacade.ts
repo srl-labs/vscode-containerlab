@@ -9,6 +9,7 @@ import { log } from '../logging/logger';
 
 import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
+import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
 import { runningLabsProvider, refreshDockerImages } from "../../extension";
@@ -84,10 +85,24 @@ export class TopoViewerEditor {
       const fileUri = vscode.Uri.file(this.lastYamlFilePath);
       this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
-      this.fileWatcher.onDidChange(() => {
+      this.fileWatcher.onDidChange(async () => {
         // Prevent feedback loop
         if (this.isInternalUpdate) {
           return;
+        }
+
+        // Check if content actually changed
+        try {
+          const currentContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+          const cachedContent = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);
+
+          // If content hasn't changed, don't do anything
+          if (cachedContent === currentContent) {
+            log.debug('File watcher: YAML content unchanged, ignoring');
+            return;
+          }
+        } catch (err) {
+          log.error(`Error checking YAML content in file watcher: ${err}`);
         }
 
         void this.triggerUpdate(false);
@@ -116,6 +131,21 @@ export class TopoViewerEditor {
   }
 
   private async handleManualSave(): Promise<void> {
+    // Read the current file content
+    try {
+      const currentContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+      const cachedContent = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);
+
+      // If the content hasn't changed, don't do anything at all
+      if (cachedContent === currentContent) {
+        log.debug('Save listener: YAML content unchanged, ignoring completely');
+        return;
+      }
+    } catch (err) {
+      log.error(`Error checking YAML content: ${err}`);
+    }
+
+    // Content has changed, proceed with normal update
     await this.triggerUpdate(true);
   }
 
@@ -496,6 +526,9 @@ topology:
           customNodes,
           defaultNode,
           currentLabPath: this.lastYamlFilePath,
+          topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
+          topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
+          topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
         };
         templateParams = editorParams;
       }
@@ -962,6 +995,39 @@ topology:
             log.error(`Error updating lab settings: ${error}`);
             vscode.window.showErrorMessage(`Failed to update lab settings: ${error}`);
             this.isInternalUpdate = false;
+          }
+          break;
+        }
+
+        case 'topo-editor-get-node-config': {
+          try {
+            const nodeName =
+              typeof payloadObj === 'string'
+                ? payloadObj
+                : payloadObj?.node || payloadObj?.nodeName;
+            if (!nodeName) {
+              throw new Error('Node name is required');
+            }
+            if (!this.lastYamlFilePath) {
+              throw new Error('No lab YAML file loaded');
+            }
+
+            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+            const topo = YAML.parse(yamlContent) as any;
+            this.adaptor.currentClabTopo = topo;
+
+            const nodeObj = topo.topology?.nodes?.[nodeName] || {};
+            const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
+            const nodePropKeys = new Set(Object.keys(nodeObj || {}));
+            const inheritedProps = Object.keys(mergedNode).filter(
+              (k) => !nodePropKeys.has(k)
+            );
+
+            result = { ...mergedNode, inherited: inheritedProps };
+            log.info(`Node config retrieved for ${nodeName}`);
+          } catch (err) {
+            error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
+            log.error(error);
           }
           break;
         }

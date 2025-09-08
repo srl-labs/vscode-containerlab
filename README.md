@@ -77,72 +77,81 @@ Note: The extension will automatically prompt to add your user to the `clab_admi
 ---
 ## Extension Settings
 
-Customize your experience under `containerlab.*` in VS Code Settings:
+Configure the extension behavior through VS Code settings (`containerlab.*`):
 
-- **`containerlab.sudoEnabledByDefault`** (boolean)
-  Whether to prepend `sudo` to containerlab commands.
-  _Default: `false`_
+### 🚀 Core Settings
 
-- **`containerlab.refreshInterval`** (number)
-  Auto-refresh interval (in ms) for the Containerlab Explorer.
-  _Default: `10000`_
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
+| `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
+| `refreshInterval` | number | `10000` | Auto-refresh interval in milliseconds |
+| `showWelcomePage` | boolean | `true` | Show welcome page on activation |
+| `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
 
-- **`containerlab.node.execCommandMapping`** (object)
-  Map a node’s `kind` to its preferred exec command (e.g. `{ "nokia_srlinux": "sr_cli" }`).
+### 🎯 Command Options
 
-- **`containerlab.node.sshUserMapping`** (object)
-  Map a node's `kind` to its preferred ssh user (e.g. `{ "nokia_srlinux": "clab" }`).
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `deploy.extraArgs` | string | `""` | Additional args for deploy/redeploy commands |
+| `destroy.extraArgs` | string | `""` | Additional args for destroy commands |
+| `extras.fcli.extraDockerArgs` | string | `""` | Additional docker args for fcli commands |
 
-- **`containerlab.editor.imageMapping`** (object)
-  Default docker image (with tag) for each node kind when adding nodes in the TopoEditor (e.g. `{ "nokia_srlinux": "ghcr.io/nokia/srlinux:latest" }`).
+### 🖥️ Node Configuration
 
-- **`containerlab.editor.interfacePatternMapping`** (object)
-  Interface name pattern for automatic link creation in the TopoEditor. Use `{n}` as the counter (e.g. `{ "nokia_srlinux": "e2np-{n}" }`).
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `node.execCommandMapping` | object | `{}` | Map node kind to exec command<br/>Example: `{ "nokia_srlinux": "sr_cli" }` |
+| `node.sshUserMapping` | object | `{}` | Map node kind to SSH user<br/>Example: `{ "nokia_srlinux": "clab" }` |
+| `node.telnetPort` | number | `5000` | Port for telnet connections |
 
-- **`containerlab.editor.updateLinkEndpointsOnKindChange`** (boolean)
-  Automatically update connected link endpoints to match the interface pattern when a node's kind changes.
+### 🎨 TopoViewer/Editor
 
-- **`containerlab.remote.hostname`** (string)
-  Hostname or IP used for remote connections (affects packet capture).
-  _Note: Session-specific hostname settings take precedence._
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `editor.customNodes` | array | See below* | Custom node templates for TopoViewer |
+| `editor.interfacePatternMapping` | object | See below** | Interface naming patterns<br/>Use `{n}` as counter |
+| `editor.updateLinkEndpointsOnKindChange` | boolean | `true` | Auto-update link endpoints on kind change |
+| `drawioDefaultTheme` | string | `nokia_modern` | Draw.io theme (`nokia_modern`, `nokia`, `grafana`) |
 
-- **`containerlab.drawioDefaultTheme`** (string)
-  Theme for Draw.io graphs. Options: `nokia_modern`, `nokia`, `grafana`.
-  _Default: `nokia_modern`_
+*Default custom nodes include SRLinux and Network Multitool templates  
+**Default patterns: `nokia_srlinux: "e1-{n}"`, `cisco_xrd: "Gi0-0-0-{n}"`, etc.
 
-- **`containerlab.runtime`** (string)
-  The container runtime to use. Options: `docker`, `podman`, `ignite`.
-  _Default: `docker`_
+### 📦 Packet Capture
 
-- **`containerlab.skipCleanupWarning`** (boolean)
-  If enabled, the extension will skip warning popups for cleanup commands (redeploy/destroy with cleanup).
-  _Default: `false`_
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `capture.preferredAction` | string | `Wireshark VNC` | Preferred capture method (`Edgeshark`, `Wireshark VNC`) |
+| `capture.wireshark.dockerImage` | string | `ghcr.io/kaelemc/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC |
+| `capture.wireshark.pullPolicy` | string | `always` | Image pull policy (`always`, `missing`, `never`) |
+| `capture.wireshark.extraDockerArgs` | string | `-e HTTP_PROXY=""`<br/>`-e http_proxy=""` | Extra docker arguments |
+| `capture.wireshark.theme` | string | `Follow VS Code theme` | Wireshark theme |
+| `capture.wireshark.stayOpenInBackground` | boolean | `true` | Keep sessions alive in background |
+| `edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
+| `remote.hostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
+| `remote.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
 
-- **`containerlab.deploy.extraArgs`** (string)
-  Additional options appended to every `containerlab deploy` or `containerlab redeploy` invocation.
-  _Default: `""`_
+### 🌐 Lab Sharing
 
-- **`containerlab.destroy.extraArgs`** (string)
-  Additional options appended to every `containerlab destroy` invocation.
-  _Default: `""`_
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `gotty.port` | number | `8080` | Port for GoTTY web terminal |
 
-- **`containerlab.remote.packetflixPort`** (number)
-  Port to use for the Packetflix endpoint when capturing traffic remotely.
-  _Default: `5001`_
-
-- **`containerlab.showWelcomePage`** (boolean)
-  Show the welcome page when the extension activates.
-  _Default: `true`_
-
-- **`containerlab.node.telnetPort`** (number)
-  Port used when telnetting into a node via `docker exec -it <node> telnet 127.0.0.1 <port>`.
-  _Default: `5000`_
-
-Example configuration:
+### Example Configuration
 
 ```json
-"containerlab.deploy.extraArgs": "--timeout 5m --max-workers 88",
-"containerlab.destroy.extraArgs": "--graceful --cleanup"
+{
+  "containerlab.deploy.extraArgs": "--timeout 5m --max-workers 88",
+  "containerlab.destroy.extraArgs": "--graceful --cleanup",
+  "containerlab.node.execCommandMapping": {
+    "nokia_srlinux": "sr_cli",
+    "arista_ceos": "Cli"
+  },
+  "containerlab.editor.interfacePatternMapping": {
+    "nokia_srlinux": "e1-{n}",
+    "cisco_xrd": "Gi0-0-0-{n}"
+  }
+}
 ```
 
 

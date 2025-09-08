@@ -5,6 +5,7 @@
  * Represents a Containerlab node definition as specified in the YAML configuration.
  */
 export interface ClabNode {
+    [key: string]: any;
     kind?: string;
     image?: string;
     type?: string;
