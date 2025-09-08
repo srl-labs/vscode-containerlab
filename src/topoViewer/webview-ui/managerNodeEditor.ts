@@ -658,9 +658,10 @@ export class ManagerNodeEditor {
 
     try {
       const sender = this.saveManager.getMessageSender();
+      const nodeName = node.data('name') || node.id();
       const freshData = await sender.sendMessageToVscodeEndpointPost(
         'topo-editor-get-node-config',
-        { node: node.id() }
+        { node: nodeName }
       );
       if (freshData && typeof freshData === 'object') {
         node.data('extraData', freshData);
@@ -2106,9 +2107,10 @@ export class ManagerNodeEditor {
       // Reload node data from the YAML to ensure inheritance is accurate
       try {
         const sender = this.saveManager.getMessageSender();
+        const nodeName = this.currentNode.data('name') || this.currentNode.id();
         const freshData = await sender.sendMessageToVscodeEndpointPost(
           'topo-editor-get-node-config',
-          { node: this.currentNode.id() }
+          { node: nodeName }
         );
         if (freshData && typeof freshData === 'object') {
           this.currentNode.data('extraData', freshData);
