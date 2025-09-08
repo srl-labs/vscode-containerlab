@@ -63,7 +63,7 @@ describe('attachShell command', () => {
 
   // Runs the docker exec command to attach when all parameters exist.
   it('attaches to a running shell session', () => {
-    const node = { cID: 'abc123', kind: 'nokia_srlinux', label: 'srl1' } as any;
+    const node = { cID: 'abc123', kind: 'nokia_srlinux', name: 'srl1' } as any;
     attachShell(node);
 
     const spy = commandStub.execCommandInTerminal as sinon.SinonSpy;
