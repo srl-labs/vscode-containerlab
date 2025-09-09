@@ -5,10 +5,10 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.17.1",
+  "version": "0.17.2",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.99.0"
   },
   "repository": {
     "type": "git",
@@ -1357,7 +1357,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.3.0",
     "@types/sinon": "^17.0.4",
-    "@types/vscode": "^1.100.0",
+    "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "@vscode/vsce": "^3.6.0",
