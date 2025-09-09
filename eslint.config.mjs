@@ -1,6 +1,7 @@
 // eslint.config.mjs  – works with ESLint 9+
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import sonarjs from 'eslint-plugin-sonarjs';
 
 export default [
   /* ─── files & globs ESLint must ignore ─────────────────────────── */
@@ -43,18 +44,22 @@ export default [
         fetch: 'readonly'
       }
     },
-    plugins: { '@typescript-eslint': tseslint.plugin },
+    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs },
     // merge the two rule-sets
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
+      ...sonarjs.configs.recommended.rules,
       // disallow any trailing whitespace
 
       'no-trailing-spaces': ['error', {
         skipBlankLines: false,    // also flag lines that are purely whitespace
         ignoreComments: false     // also flag whitespace at end of comments
       }],
-      'complexity': ['warn', { max: 15 }]
+      'complexity': ['warn', { max: 15 }],
+      'sonarjs/cognitive-complexity': ['warn', 15],
+      'sonarjs/no-identical-functions': 'warn',
+      'sonarjs/no-duplicate-string': 'warn'
 
     }
   }
