@@ -11,7 +11,6 @@ export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
 
   const containerId = node.cID;
   const containerKind = node.kind;
-  const containerLabel = node.label || "Container";
 
   if (!containerId) {
     vscode.window.showErrorMessage('No containerId for shell attach.');
@@ -22,12 +21,14 @@ export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
     return;
   }
 
+  const container = node.name || containerId
+
   const config = vscode.workspace.getConfiguration("containerlab");
   const port = (config.get("node.telnetPort") as number) || 5000;
   const runtime = config.get<string>("runtime", "docker");
 
   execCommandInTerminal(
     `${utils.getSudo()}${runtime} exec -it ${containerId} telnet 127.0.0.1 ${port}`,
-    `Telnet - ${containerLabel}`
+    `Telnet - ${container}`
   );
 }

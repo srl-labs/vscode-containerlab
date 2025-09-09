@@ -27,9 +27,9 @@ export function sshToNode(node: ClabContainerTreeNode | undefined): void {
   // Use user setting first, then default mapping, then fallback to "admin"
   const sshUser = userSshMapping?.[node.kind] || (sshUserMapping as any)[node.kind] || "admin";
 
-  const containerLabel = node.label || "Container";
+  const container = node.name || node.cID || "Container";
 
-  execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${containerLabel}`);
+  execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${container}`);
 }
 
 export function sshToLab(node: ClabLabTreeNode | undefined): void {

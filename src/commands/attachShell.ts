@@ -12,7 +12,6 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
 
   const containerId = node.cID;
   const containerKind = node.kind;
-  const containerLabel = node.label || "Container";
 
   if (!containerId) {
     vscode.window.showErrorMessage('No containerId for shell attach.');
@@ -22,6 +21,8 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
     vscode.window.showErrorMessage('No container kind for shell attach.');
     return;
   }
+
+  const container = node.name || containerId
 
   let execCmd = (execCmdMapping as any)[containerKind] || "sh";
 
@@ -33,6 +34,6 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
 
   execCommandInTerminal(
     `${utils.getSudo()}${runtime} exec -it ${containerId} ${execCmd}`,
-    `Shell - ${containerLabel}`
+    `Shell - ${container}`
   );
 }
