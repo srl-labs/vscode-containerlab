@@ -480,36 +480,9 @@ export class ManagerViewportPanels {
   }
 
   /**
-   * Displays the network editor panel for a cloud network node.
-   * @param node - The Cytoscape node representing the network.
+   * Initialize the network type dropdown and handle re-validation when the selection changes.
    */
-  public async panelNetworkEditor(node: cytoscape.NodeSingular): Promise<void> {
-    this.nodeClicked = true;
-
-    const panelOverlays = document.getElementsByClassName('panel-overlay');
-    Array.from(panelOverlays).forEach(panel => {
-      (panel as HTMLElement).style.display = 'none';
-    });
-
-    // Parse the node ID to extract network type and interface
-    const nodeId = node.data('id') as string;
-    const nodeData = node.data();
-    const parts = nodeId.split(':');
-    const networkType = nodeData.extraData?.kind || parts[0] || 'host';
-    const interfaceName =
-      networkType === 'bridge' || networkType === 'ovs-bridge'
-        ? nodeId
-        : networkType === 'dummy'
-        ? '' // Dummy nodes don't have interfaces
-        : parts[1] || 'eth1';
-
-    // Set fields
-    const idLabel = document.getElementById('panel-network-editor-id');
-    if (idLabel) {
-      idLabel.textContent = nodeId;
-    }
-
-    // Initialize network type filterable dropdown
+  private initializeNetworkTypeDropdown(networkType: string): void {
     const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy', 'bridge', 'ovs-bridge'];
     createFilterableDropdown(
       'panel-network-type-dropdown-container',
@@ -521,7 +494,7 @@ export class ManagerViewportPanels {
 
         // Re-validate when network type changes
         setTimeout(() => {
-          const { isValid } = validateNetworkFields();
+          const { isValid } = this.validateNetworkFields(selectedValue);
           const saveButton = document.getElementById('panel-network-editor-save-button') as HTMLButtonElement;
           if (saveButton) {
             saveButton.disabled = !isValid;
@@ -532,19 +505,23 @@ export class ManagerViewportPanels {
       },
       'Search for network type...'
     );
+  }
 
+  /**
+   * Configure the interface field based on the selected network type.
+   */
+  private configureInterfaceField(networkType: string, nodeId: string, interfaceName: string): void {
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
       el.textContent === 'Interface' || el.textContent === 'Bridge Name'
     );
 
-    // Update field based on network type
     if (networkType === 'bridge' || networkType === 'ovs-bridge') {
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Bridge Name';
       }
       if (interfaceInput) {
-        interfaceInput.value = nodeId; // For bridges, the ID is the bridge name
+        interfaceInput.value = nodeId;
       }
     } else if (networkType === 'host' || networkType === 'mgmt-net') {
       if (interfaceLabel) {
@@ -561,8 +538,7 @@ export class ManagerViewportPanels {
         interfaceInput.value = interfaceName;
       }
     } else if (networkType === 'dummy') {
-      // Hide interface field for dummy nodes - handled by updateNetworkEditorFields
-      this.updateNetworkEditorFields(networkType);
+      // Dummy nodes don't have interfaces
     } else {
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Interface';
@@ -571,19 +547,22 @@ export class ManagerViewportPanels {
         interfaceInput.value = interfaceName;
       }
     }
+  }
 
-    // Initialize extended properties from node's extraData
+  /**
+   * Populate extended properties for the network node editor.
+   */
+  private populateNetworkExtendedProperties(node: cytoscape.NodeSingular): void {
+    const nodeData = node.data();
     const extraData = nodeData.extraData || {};
-    // Fallback: if adaptor didn’t seed node extraData for single-endpoint links,
-    // derive from a connected edge’s extraData to prefill the panel
+
     const fallbackFromEdge = () => {
       const edges = node.connectedEdges();
       for (let i = 0; i < edges.length; i++) {
         const e = edges[i];
         const ed = e.data('extraData') || {};
-        // Prefer values that exist on the edge
         const fb: any = {};
-        if (ed.extMac) fb.extMac = ed.extMac;
+        if ( ed.extMac) fb.extMac = ed.extMac;
         if (ed.extMtu !== undefined && ed.extMtu !== '') fb.extMtu = ed.extMtu;
         if (ed.extVars) fb.extVars = ed.extVars;
         if (ed.extLabels) fb.extLabels = ed.extLabels;
@@ -593,22 +572,21 @@ export class ManagerViewportPanels {
     };
     const extraFallback = (!extraData.extMac && !extraData.extMtu && !extraData.extVars && !extraData.extLabels)
       ? fallbackFromEdge() : {};
+
     const macInput = document.getElementById('panel-network-mac') as HTMLInputElement | null;
     const mtuInput = document.getElementById('panel-network-mtu') as HTMLInputElement | null;
     const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
     const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
     const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
     const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
-    // Clear and reset dynamic entry containers
+
     const varsContainer = document.getElementById('panel-network-vars-container');
     const labelsContainer = document.getElementById('panel-network-labels-container');
     if (varsContainer) varsContainer.innerHTML = '';
     if (labelsContainer) labelsContainer.innerHTML = '';
     this.networkDynamicEntryCounters.clear();
 
-    // Set initial values
     if (macInput) {
-      // For network nodes, we might store MAC for the network side of the connection
       macInput.value = (extraData.extMac || extraFallback.extMac || '') as string;
     }
     if (mtuInput) {
@@ -620,7 +598,6 @@ export class ManagerViewportPanels {
     if (vniInput) vniInput.value = extraData.extVni != null ? String(extraData.extVni) : '';
     if (udpPortInput) udpPortInput.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
 
-    // Load vars as dynamic entries
     const varsToLoad = (extraData.extVars && typeof extraData.extVars === 'object')
       ? extraData.extVars
       : (extraFallback.extVars && typeof extraFallback.extVars === 'object') ? extraFallback.extVars : undefined;
@@ -630,7 +607,6 @@ export class ManagerViewportPanels {
       });
     }
 
-    // Load labels as dynamic entries
     const labelsToLoad = (extraData.extLabels && typeof extraData.extLabels === 'object')
       ? extraData.extLabels
       : (extraFallback.extLabels && typeof extraFallback.extLabels === 'object') ? extraFallback.extLabels : undefined;
@@ -639,83 +615,18 @@ export class ManagerViewportPanels {
         this.addNetworkKeyValueEntryWithValue('labels', key, String(value));
       });
     }
+  }
 
-    // Show/hide sections based on network type
-    this.updateNetworkEditorFields(networkType);
-
-    const panel = document.getElementById('panel-network-editor');
-    if (panel) {
-      panel.style.display = 'block';
-    }
-
-    const closeBtn = document.getElementById('panel-network-editor-close-button');
-    if (closeBtn && panel) {
-      closeBtn.addEventListener('click', () => {
-        panel.style.display = 'none';
-      });
-    }
-
-    // Validation function for mandatory fields (showErrors controls visual feedback)
-    const validateNetworkFields = (showErrors = false): { isValid: boolean; errors: string[] } => {
-      const errors: string[] = [];
-      const currentNetworkType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement)?.value || networkType;
-
-      // Clear all validation styling first
-      ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'].forEach(id => {
-        document.getElementById(id)?.classList.remove('border-red-500', 'border-2');
-      });
-
-      // Hide error container by default
-      const errorContainer = document.getElementById('panel-network-validation-errors');
-      if (errorContainer && !showErrors) {
-        errorContainer.style.display = 'none';
-      }
-
-      // Validate VXLAN mandatory fields
-      if (currentNetworkType === 'vxlan' || currentNetworkType === 'vxlan-stitch') {
-        const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement;
-        const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement;
-        const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement;
-
-        if (!remoteInput?.value?.trim()) {
-          errors.push('Remote IP is required');
-          if (showErrors) remoteInput?.classList.add('border-red-500', 'border-2');
-        }
-
-        if (!vniInput?.value?.trim()) {
-          errors.push('VNI is required');
-          if (showErrors) vniInput?.classList.add('border-red-500', 'border-2');
-        }
-
-        if (!udpPortInput?.value?.trim()) {
-          errors.push('UDP Port is required');
-          if (showErrors) udpPortInput?.classList.add('border-red-500', 'border-2');
-        }
-      }
-
-      // Update error display only if showErrors is true
-      if (showErrors) {
-        const errorList = document.getElementById('panel-network-validation-errors-list');
-        if (errorContainer && errorList) {
-          if (errors.length > 0) {
-            errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
-            errorContainer.style.display = 'block';
-          } else {
-            errorContainer.style.display = 'none';
-          }
-        }
-      }
-
-      return { isValid: errors.length === 0, errors };
-    };
-
-    // Add input listeners for real-time validation
+  /**
+   * Set up validation listeners and save button behavior for the network editor.
+   */
+  private setupNetworkValidation(networkType: string, node: cytoscape.NodeSingular): void {
     const vxlanInputs = ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'];
     vxlanInputs.forEach(inputId => {
       const input = document.getElementById(inputId) as HTMLInputElement;
       if (input) {
         input.addEventListener('input', () => {
-          const { isValid } = validateNetworkFields();
+          const { isValid } = this.validateNetworkFields(networkType);
           const saveButton = document.getElementById('panel-network-editor-save-button') as HTMLButtonElement;
           if (saveButton) {
             saveButton.disabled = !isValid;
@@ -731,14 +642,13 @@ export class ManagerViewportPanels {
       const newSaveBtn = saveBtn.cloneNode(true) as HTMLElement;
       saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
 
-      // Initial validation
-      const { isValid: initialValid } = validateNetworkFields();
+      const { isValid: initialValid } = this.validateNetworkFields(networkType);
       (newSaveBtn as HTMLButtonElement).disabled = !initialValid;
       newSaveBtn.classList.toggle('opacity-50', !initialValid);
       newSaveBtn.classList.toggle('cursor-not-allowed', !initialValid);
 
       newSaveBtn.addEventListener('click', async () => {
-        const { isValid, errors } = validateNetworkFields(true); // Show errors on save attempt
+        const { isValid, errors } = this.validateNetworkFields(networkType, true);
         if (!isValid) {
           console.error('Cannot save network node:', errors);
           return;
@@ -747,10 +657,108 @@ export class ManagerViewportPanels {
         await this.updateNetworkFromEditor(node);
         const suppressNotification = false;
         await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
-
-        // Panel stays open after save for continued editing
       });
     }
+  }
+
+  /**
+   * Validate network editor fields. When showErrors is true, highlight missing values.
+   */
+  private validateNetworkFields(networkType: string, showErrors = false): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    const currentNetworkType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement)?.value || networkType;
+
+    ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'].forEach(id => {
+      document.getElementById(id)?.classList.remove('border-red-500', 'border-2');
+    });
+
+    const errorContainer = document.getElementById('panel-network-validation-errors');
+    if (errorContainer && !showErrors) {
+      errorContainer.style.display = 'none';
+    }
+
+    if (currentNetworkType === 'vxlan' || currentNetworkType === 'vxlan-stitch') {
+      const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement;
+      const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement;
+      const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement;
+
+      if (!remoteInput?.value?.trim()) {
+        errors.push('Remote IP is required');
+        if (showErrors) remoteInput?.classList.add('border-red-500', 'border-2');
+      }
+
+      if (!vniInput?.value?.trim()) {
+        errors.push('VNI is required');
+        if (showErrors) vniInput?.classList.add('border-red-500', 'border-2');
+      }
+
+      if (!udpPortInput?.value?.trim()) {
+        errors.push('UDP Port is required');
+        if (showErrors) udpPortInput?.classList.add('border-red-500', 'border-2');
+      }
+    }
+
+    if (showErrors) {
+      const errorList = document.getElementById('panel-network-validation-errors-list');
+      if (errorContainer && errorList) {
+        if (errors.length > 0) {
+          errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+          errorContainer.style.display = 'block';
+        } else {
+          errorContainer.style.display = 'none';
+        }
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  /**
+   * Displays the network editor panel for a cloud network node.
+   * @param node - The Cytoscape node representing the network.
+   */
+  public async panelNetworkEditor(node: cytoscape.NodeSingular): Promise<void> {
+    this.nodeClicked = true;
+
+    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    Array.from(panelOverlays).forEach(panel => {
+      (panel as HTMLElement).style.display = 'none';
+    });
+
+    const nodeId = node.data('id') as string;
+    const nodeData = node.data();
+    const parts = nodeId.split(':');
+    const networkType = nodeData.extraData?.kind || parts[0] || 'host';
+    const interfaceName =
+      networkType === 'bridge' || networkType === 'ovs-bridge'
+        ? nodeId
+        : networkType === 'dummy'
+        ? ''
+        : parts[1] || 'eth1';
+
+    const idLabel = document.getElementById('panel-network-editor-id');
+    if (idLabel) {
+      idLabel.textContent = nodeId;
+    }
+
+    this.initializeNetworkTypeDropdown(networkType);
+    this.configureInterfaceField(networkType, nodeId, interfaceName);
+    this.populateNetworkExtendedProperties(node);
+    this.updateNetworkEditorFields(networkType);
+
+    const panel = document.getElementById('panel-network-editor');
+    if (panel) {
+      panel.style.display = 'block';
+    }
+
+    const closeBtn = document.getElementById('panel-network-editor-close-button');
+    if (closeBtn && panel) {
+      closeBtn.addEventListener('click', () => {
+        panel.style.display = 'none';
+      });
+    }
+
+    this.setupNetworkValidation(networkType, node);
   }
 
 

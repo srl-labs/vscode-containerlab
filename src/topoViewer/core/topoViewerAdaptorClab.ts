@@ -858,63 +858,147 @@ export class TopoViewerAdaptorClab {
       const edgeClass = opts.includeContainerData
         ? this.computeEdgeClass(sourceNode, targetNode, sourceIfaceData, targetIfaceData, topology)
         : '';
-      const extValidationErrors = this.validateExtendedLink(linkObj);
-      const edgeEl: CyElement = {
-        group: 'edges',
-        data: {
-          id: edgeId,
-          weight: '3',
-          name: edgeId,
-          parent: '',
-          topoViewerRole: 'link',
-          sourceEndpoint: (sourceNode === 'host' || sourceNode === 'mgmt-net' || sourceNode.startsWith('macvlan:') || sourceNode.startsWith('dummy')) ? '' : sourceIface,
-          targetEndpoint: (targetNode === 'host' || targetNode === 'mgmt-net' || targetNode.startsWith('macvlan:') || targetNode.startsWith('dummy')) ? '' : targetIface,
-          lat: '',
-          lng: '',
-          source: actualSourceNode,
-          target: actualTargetNode,
-          extraData: {
-            clabServerUsername: 'asad',
-            clabSourceLongName: sourceContainerName,
-            clabTargetLongName: targetContainerName,
-            clabSourcePort: sourceIface,
-            clabTargetPort: targetIface,
-            clabSourceMacAddress: sourceIfaceData?.mac ?? '',
-            clabTargetMacAddress: targetIfaceData?.mac ?? '',
-            clabSourceInterfaceState: sourceIfaceData?.state ?? '',
-            clabTargetInterfaceState: targetIfaceData?.state ?? '',
-            clabSourceMtu: sourceIfaceData?.mtu ?? '',
-            clabTargetMtu: targetIfaceData?.mtu ?? '',
-            clabSourceType: sourceIfaceData?.type ?? '',
-            clabTargetType: targetIfaceData?.type ?? '',
-            extType: linkObj?.type ?? '',
-            extMtu: linkObj?.mtu ?? '',
-            extVars: linkObj?.vars ?? undefined,
-            extLabels: linkObj?.labels ?? undefined,
-            extHostInterface: linkObj?.['host-interface'] ?? '',
-            extMode: linkObj?.mode ?? '',
-            extRemote: linkObj?.remote ?? '',
-            extVni: linkObj?.vni ?? '',
-            extUdpPort: linkObj?.['udp-port'] ?? '',
-            extSourceMac: (typeof endA === 'object' && endA !== null) ? (endA as any)?.mac ?? '' : '',
-            extTargetMac: (typeof endB === 'object' && endB !== null) ? (endB as any)?.mac ?? '' : '',
-            extMac: (linkObj as any)?.endpoint?.mac ?? '',
-            yamlFormat: (typeof (linkObj as any)?.type === 'string' && (linkObj as any).type) ? 'extended' : 'short',
-            extValidationErrors: extValidationErrors.length ? extValidationErrors : undefined,
-          },
-        },
-        position: { x: 0, y: 0 },
-        removed: false,
-        selected: false,
-        selectable: true,
-        locked: false,
-        grabbed: false,
-        grabbable: true,
-        classes: edgeClass + (specialNodes.has(actualSourceNode) || specialNodes.has(actualTargetNode) ? ' stub-link' : ''),
-      };
+      const edgeEl = this.buildEdgeElement({
+        linkObj,
+        endA,
+        endB,
+        sourceNode,
+        targetNode,
+        sourceIface,
+        targetIface,
+        actualSourceNode,
+        actualTargetNode,
+        sourceContainerName,
+        targetContainerName,
+        sourceIfaceData,
+        targetIfaceData,
+        edgeId,
+        edgeClass,
+        specialNodes,
+      });
       elements.push(edgeEl);
       linkIndex++;
     }
+  }
+
+  private shouldOmitEndpoint(node: string): boolean {
+    return (
+      node === 'host' ||
+      node === 'mgmt-net' ||
+      node.startsWith('macvlan:') ||
+      node.startsWith('dummy')
+    );
+  }
+
+  private extractEndpointMac(endpoint: unknown): string {
+    return typeof endpoint === 'object' && endpoint !== null
+      ? (endpoint as any)?.mac ?? ''
+      : '';
+  }
+
+  private buildEdgeElement(params: {
+    linkObj: any;
+    endA: any;
+    endB: any;
+    sourceNode: string;
+    targetNode: string;
+    sourceIface: string;
+    targetIface: string;
+    actualSourceNode: string;
+    actualTargetNode: string;
+    sourceContainerName: string;
+    targetContainerName: string;
+    sourceIfaceData: any;
+    targetIfaceData: any;
+    edgeId: string;
+    edgeClass: string;
+    specialNodes: Map<string, { type: string; label: string }>;
+  }): CyElement {
+    const {
+      linkObj,
+      endA,
+      endB,
+      sourceNode,
+      targetNode,
+      sourceIface,
+      targetIface,
+      actualSourceNode,
+      actualTargetNode,
+      sourceContainerName,
+      targetContainerName,
+      sourceIfaceData,
+      targetIfaceData,
+      edgeId,
+      edgeClass,
+      specialNodes,
+    } = params;
+
+    const extValidationErrors = this.validateExtendedLink(linkObj);
+    const sourceEndpoint = this.shouldOmitEndpoint(sourceNode) ? '' : sourceIface;
+    const targetEndpoint = this.shouldOmitEndpoint(targetNode) ? '' : targetIface;
+    const classes =
+      edgeClass +
+      (specialNodes.has(actualSourceNode) || specialNodes.has(actualTargetNode)
+        ? ' stub-link'
+        : '');
+    return {
+      group: 'edges',
+      data: {
+        id: edgeId,
+        weight: '3',
+        name: edgeId,
+        parent: '',
+        topoViewerRole: 'link',
+        sourceEndpoint,
+        targetEndpoint,
+        lat: '',
+        lng: '',
+        source: actualSourceNode,
+        target: actualTargetNode,
+        extraData: {
+          clabServerUsername: 'asad',
+          clabSourceLongName: sourceContainerName,
+          clabTargetLongName: targetContainerName,
+          clabSourcePort: sourceIface,
+          clabTargetPort: targetIface,
+          clabSourceMacAddress: sourceIfaceData?.mac ?? '',
+          clabTargetMacAddress: targetIfaceData?.mac ?? '',
+          clabSourceInterfaceState: sourceIfaceData?.state ?? '',
+          clabTargetInterfaceState: targetIfaceData?.state ?? '',
+          clabSourceMtu: sourceIfaceData?.mtu ?? '',
+          clabTargetMtu: targetIfaceData?.mtu ?? '',
+          clabSourceType: sourceIfaceData?.type ?? '',
+          clabTargetType: targetIfaceData?.type ?? '',
+          extType: linkObj?.type ?? '',
+          extMtu: linkObj?.mtu ?? '',
+          extVars: linkObj?.vars ?? undefined,
+          extLabels: linkObj?.labels ?? undefined,
+          extHostInterface: linkObj?.['host-interface'] ?? '',
+          extMode: linkObj?.mode ?? '',
+          extRemote: linkObj?.remote ?? '',
+          extVni: linkObj?.vni ?? '',
+          extUdpPort: linkObj?.['udp-port'] ?? '',
+          extSourceMac: this.extractEndpointMac(endA),
+          extTargetMac: this.extractEndpointMac(endB),
+          extMac: (linkObj as any)?.endpoint?.mac ?? '',
+          yamlFormat:
+            typeof (linkObj as any)?.type === 'string' && (linkObj as any).type
+              ? 'extended'
+              : 'short',
+          extValidationErrors: extValidationErrors.length
+            ? extValidationErrors
+            : undefined,
+        },
+      },
+      position: { x: 0, y: 0 },
+      removed: false,
+      selected: false,
+      selectable: true,
+      locked: false,
+      grabbed: false,
+      grabbable: true,
+      classes,
+    };
   }
 
   private buildCytoscapeElements(

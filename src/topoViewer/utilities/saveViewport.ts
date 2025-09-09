@@ -21,6 +21,17 @@ type CanonicalLinkKey = {
   udpPort?: string | number;
 };
 
+function endpointIsSpecial(ep: CanonicalEndpoint | string): boolean {
+  const epStr = typeof ep === 'string' ? ep : `${ep.node}:${ep.iface}`;
+  return (
+    isSpecialEndpoint(epStr) ||
+    epStr.startsWith('macvlan:') ||
+    epStr.startsWith('vxlan:') ||
+    epStr.startsWith('vxlan-stitch:') ||
+    epStr.startsWith('dummy')
+  );
+}
+
 function splitEndpointLike(endpoint: string | { node: string; interface?: string }): CanonicalEndpoint {
   if (typeof endpoint === 'string') {
     if (
@@ -52,56 +63,54 @@ function canonicalKeyToString(key: CanonicalLinkKey): string {
   return `${key.type}|${key.a.node}:${key.a.iface}`;
 }
 
-function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
-  // Extended format if 'type' exists
+function getTypeString(linkItem: YAML.YAMLMap): string | undefined {
   const typeNode = linkItem.get('type', true) as any;
-  const typeStr = typeof typeNode?.value === 'string' ? (typeNode.value as string) : (typeof typeNode === 'string' ? typeNode : undefined);
+  return typeof typeNode?.value === 'string'
+    ? (typeNode.value as string)
+    : typeof typeNode === 'string'
+      ? typeNode
+      : undefined;
+}
 
-  if (typeStr) {
-    const t = typeStr as CanonicalLinkKey['type'];
-    if (t === 'veth') {
-      const eps = linkItem.get('endpoints', true);
-      if (YAML.isSeq(eps) && eps.items.length >= 2) {
-        const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
-        const b = splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any));
-        return { type: 'veth', a, b };
-      }
-    }
-
-    // Single-endpoint types
-    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t)) {
-      const ep = linkItem.get('endpoint', true);
-      if (ep) {
-        const a = splitEndpointLike((ep as any)?.toJSON?.() ?? ep);
-        return { type: t as any, a };
-      }
-      // Some files may still keep endpoints list with one side special; try to derive
-      const eps = linkItem.get('endpoints', true);
-      if (YAML.isSeq(eps) && eps.items.length >= 1) {
-        const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
-        const bMaybe = eps.items.length > 1 ? splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any)) : undefined;
-        // Pick non-special as canonical 'a' when available
-        const aIsSpecial = isSpecialEndpoint(`${a.node}:${a.iface}`) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
-        if (bMaybe) {
-          const bIsSpecial = isSpecialEndpoint(`${bMaybe.node}:${bMaybe.iface}`) || bMaybe.node.startsWith('macvlan:') || bMaybe.node.startsWith('vxlan:') || bMaybe.node.startsWith('vxlan-stitch:');
-          return { type: t as any, a: aIsSpecial && !bIsSpecial ? bMaybe : a };
-        }
-        return { type: t as any, a };
-      }
-    }
+function parseExtendedVeth(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
+  const eps = linkItem.get('endpoints', true);
+  if (YAML.isSeq(eps) && eps.items.length >= 2) {
+    const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+    const b = splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any));
+    return { type: 'veth', a, b };
   }
+  return null;
+}
 
-  // Short format assumed
+function parseExtendedSingle(linkItem: YAML.YAMLMap, t: CanonicalLinkKey['type']): CanonicalLinkKey | null {
+  const ep = linkItem.get('endpoint', true);
+  if (ep) {
+    const a = splitEndpointLike((ep as any)?.toJSON?.() ?? ep);
+    return { type: t, a };
+  }
+  const eps = linkItem.get('endpoints', true);
+  if (YAML.isSeq(eps) && eps.items.length >= 1) {
+    const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+    const bMaybe = eps.items.length > 1
+      ? splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any))
+      : undefined;
+    if (bMaybe) {
+      return { type: t, a: endpointIsSpecial(a) && !endpointIsSpecial(bMaybe) ? bMaybe : a };
+    }
+    return { type: t, a };
+  }
+  return null;
+}
+
+function parseShortLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
   const eps = linkItem.get('endpoints', true);
   if (YAML.isSeq(eps) && eps.items.length >= 2) {
     const epA = String((eps.items[0] as any).value ?? eps.items[0]);
     const epB = String((eps.items[1] as any).value ?? eps.items[1]);
     const a = splitEndpointLike(epA);
     const b = splitEndpointLike(epB);
-    const aIsSpecial = isSpecialEndpoint(epA) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
-    const bIsSpecial = isSpecialEndpoint(epB) || b.node.startsWith('macvlan:') || b.node.startsWith('vxlan:') || b.node.startsWith('vxlan-stitch:');
-
-    // If exactly one side special, derive single-endpoint type and pick non-special as 'a'
+    const aIsSpecial = endpointIsSpecial(epA) || endpointIsSpecial(a);
+    const bIsSpecial = endpointIsSpecial(epB) || endpointIsSpecial(b);
     if (aIsSpecial !== bIsSpecial) {
       const special = aIsSpecial ? a : b;
       const nonSpecial = aIsSpecial ? b : a;
@@ -114,11 +123,22 @@ function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null 
       else if (special.node.startsWith('dummy')) type = 'dummy';
       return { type, a: nonSpecial };
     }
-
-    // Otherwise treat as veth and sort endpoints
     return { type: 'veth', a, b };
   }
   return null;
+}
+
+function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
+  const typeStr = getTypeString(linkItem);
+  if (typeStr) {
+    const t = typeStr as CanonicalLinkKey['type'];
+    if (t === 'veth') return parseExtendedVeth(linkItem);
+    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t)) {
+      return parseExtendedSingle(linkItem, t);
+    }
+    return null;
+  }
+  return parseShortLink(linkItem);
 }
 
 function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
@@ -157,6 +177,337 @@ function buildEndpointMap(doc: YAML.Document.Parsed, ep: CanonicalEndpoint): YAM
   m.set('node', doc.createNode(ep.node));
   if (ep.iface) m.set('interface', doc.createNode(ep.iface));
   return m;
+}
+
+async function saveAnnotationsFromPayload(payloadParsed: any[], yamlFilePath: string): Promise<void> {
+  const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+  const prevNodeById = new Map<string, NodeAnnotation>();
+  for (const na of annotations.nodeAnnotations || []) {
+    if (na && typeof na.id === 'string') prevNodeById.set(na.id, na);
+  }
+  annotations.nodeAnnotations = [];
+  annotations.cloudNodeAnnotations = [];
+
+  const regularNodes = payloadParsed.filter(
+    el =>
+      el.group === 'nodes' &&
+      el.data.topoViewerRole !== 'group' &&
+      el.data.topoViewerRole !== 'cloud' &&
+      el.data.topoViewerRole !== 'freeText' &&
+      !isSpecialEndpoint(el.data.id),
+  );
+  for (const node of regularNodes) {
+    const nodeIdForAnn = node.data.name || node.data.id;
+    const isGeoActive = !!node?.data?.geoLayoutActive;
+    const nodeAnnotation: NodeAnnotation = {
+      id: nodeIdForAnn,
+      icon: node.data.topoViewerRole,
+    };
+    if (isGeoActive) {
+      const prev = prevNodeById.get(nodeIdForAnn);
+      if (prev?.position) {
+        nodeAnnotation.position = { x: prev.position.x, y: prev.position.y };
+      }
+    } else {
+      nodeAnnotation.position = {
+        x: Math.round(node.position?.x || 0),
+        y: Math.round(node.position?.y || 0),
+      };
+    }
+    if (node.data.lat && node.data.lng) {
+      const lat = parseFloat(node.data.lat);
+      const lng = parseFloat(node.data.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        nodeAnnotation.geoCoordinates = { lat, lng };
+      }
+    }
+    if (node.data.groupLabelPos) {
+      nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
+    }
+    if (node.parent) {
+      const parts = node.parent.split(':');
+      if (parts.length === 2) {
+        nodeAnnotation.group = parts[0];
+        nodeAnnotation.level = parts[1];
+      }
+    }
+    annotations.nodeAnnotations!.push(nodeAnnotation);
+  }
+
+  const cloudNodes = payloadParsed.filter(
+    el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud',
+  );
+  for (const cloudNode of cloudNodes) {
+    const cloudNodeAnnotation: CloudNodeAnnotation = {
+      id: cloudNode.data.id,
+      type: cloudNode.data.extraData?.kind || 'host',
+      label: cloudNode.data.name || cloudNode.data.id,
+      position: {
+        x: cloudNode.position?.x || 0,
+        y: cloudNode.position?.y || 0,
+      },
+    };
+    if (cloudNode.parent) {
+      const parts = cloudNode.parent.split(':');
+      if (parts.length === 2) {
+        cloudNodeAnnotation.group = parts[0];
+        cloudNodeAnnotation.level = parts[1];
+      }
+    }
+    annotations.cloudNodeAnnotations!.push(cloudNodeAnnotation);
+  }
+
+  await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+}
+
+function updateYamlNodes(
+  payloadParsed: any[],
+  doc: YAML.Document.Parsed,
+  yamlNodes: YAML.YAMLMap,
+  topoObj: ClabTopology | undefined,
+  updatedKeys: Map<string, string>,
+): void {
+  payloadParsed
+    .filter(
+      el =>
+        el.group === 'nodes' &&
+        el.data.topoViewerRole !== 'group' &&
+        el.data.topoViewerRole !== 'freeText' &&
+        !isSpecialEndpoint(el.data.id),
+    )
+    .forEach(element => {
+      const nodeId: string = element.data.id;
+      let nodeYaml = yamlNodes.get(nodeId, true) as YAML.YAMLMap | undefined;
+      if (!nodeYaml) {
+        nodeYaml = new YAML.YAMLMap();
+        nodeYaml.flow = false;
+        yamlNodes.set(nodeId, nodeYaml);
+      }
+      const nodeMap = nodeYaml;
+      const extraData = element.data.extraData || {};
+
+      const originalKind = (nodeMap.get('kind', true) as any)?.value;
+      const originalImage = (nodeMap.get('image', true) as any)?.value;
+      const originalGroup = (nodeMap.get('group', true) as any)?.value;
+
+      const groupName =
+        extraData.group !== undefined && extraData.group !== originalGroup
+          ? extraData.group
+          : originalGroup;
+
+      const baseInherit = resolveNodeConfig(topoObj!, { group: groupName });
+      const desiredKind =
+        extraData.kind !== undefined ? extraData.kind : originalKind !== undefined ? originalKind : undefined;
+      const inherit = resolveNodeConfig(topoObj!, { group: groupName, kind: desiredKind });
+      const desiredImage =
+        extraData.image !== undefined ? extraData.image : originalImage !== undefined ? originalImage : undefined;
+      const desiredType = extraData.type;
+
+      if (groupName) nodeMap.set('group', doc.createNode(groupName));
+      else nodeMap.delete('group');
+
+      if (desiredKind && desiredKind !== baseInherit.kind) nodeMap.set('kind', doc.createNode(desiredKind));
+      else nodeMap.delete('kind');
+
+      if (desiredImage && desiredImage !== inherit.image) nodeMap.set('image', doc.createNode(desiredImage));
+      else nodeMap.delete('image');
+
+      const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+      if (nokiaKinds.includes(desiredKind)) {
+        if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
+          nodeMap.set('type', doc.createNode(desiredType));
+        } else {
+          nodeMap.delete('type');
+        }
+      } else {
+        nodeMap.delete('type');
+      }
+
+      const normalize = (obj: any): any => {
+        if (Array.isArray(obj)) return obj.map(normalize);
+        if (obj && typeof obj === 'object') {
+          return Object.keys(obj)
+            .sort()
+            .reduce((res, key) => {
+              res[key] = normalize(obj[key]);
+              return res;
+            }, {} as any);
+        }
+        return obj;
+      };
+      const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+      const shouldPersist = (val: any) => {
+        if (val === undefined) return false;
+        if (Array.isArray(val)) return val.length > 0;
+        if (val && typeof val === 'object') return Object.keys(val).length > 0;
+        return true;
+      };
+      const applyProp = (prop: string) => {
+        const val = (extraData as any)[prop];
+        const inheritedVal = (inherit as any)[prop];
+        if (shouldPersist(val) && !deepEqual(val, inheritedVal)) {
+          const node = doc.createNode(val) as any;
+          if (node && typeof node === 'object') node.flow = false;
+          nodeMap.set(prop, node);
+        } else {
+          nodeMap.delete(prop);
+        }
+      };
+
+      [
+        'startup-config',
+        'enforce-startup-config',
+        'suppress-startup-config',
+        'license',
+        'binds',
+        'env',
+        'env-files',
+        'labels',
+        'user',
+        'entrypoint',
+        'cmd',
+        'exec',
+        'restart-policy',
+        'auto-remove',
+        'startup-delay',
+        'mgmt-ipv4',
+        'mgmt-ipv6',
+        'network-mode',
+        'ports',
+        'dns',
+        'aliases',
+        'memory',
+        'cpu',
+        'cpu-set',
+        'shm-size',
+        'cap-add',
+        'sysctls',
+        'devices',
+        'certificate',
+        'healthcheck',
+        'image-pull-policy',
+        'runtime',
+        'stages',
+      ].forEach(applyProp);
+
+      const newKey = element.data.name;
+      if (nodeId !== newKey) {
+        yamlNodes.set(newKey, nodeMap);
+        yamlNodes.delete(nodeId);
+        updatedKeys.set(nodeId, newKey);
+      }
+    });
+
+  const payloadNodeIds = new Set(
+    payloadParsed
+      .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id))
+      .map(el => el.data.id),
+  );
+  for (const item of [...yamlNodes.items]) {
+    const keyStr = String(item.key);
+    if (!payloadNodeIds.has(keyStr) && ![...updatedKeys.values()].includes(keyStr)) {
+      yamlNodes.delete(item.key);
+    }
+  }
+}
+
+function updateYamlLinks(
+  payloadParsed: any[],
+  doc: YAML.Document.Parsed,
+  updatedKeys: Map<string, string>,
+): void {
+  const maybeLinksNode = doc.getIn(['topology', 'links'], true);
+  let linksNode: YAML.YAMLSeq;
+  if (YAML.isSeq(maybeLinksNode)) {
+    linksNode = maybeLinksNode;
+  } else {
+    linksNode = new YAML.YAMLSeq();
+    const topologyNode = doc.getIn(['topology'], true);
+    if (YAML.isMap(topologyNode)) {
+      topologyNode.set('links', linksNode);
+    }
+  }
+  linksNode.flow = false;
+
+  payloadParsed.filter(el => el.group === 'edges').forEach(element => processEdge(element, linksNode, doc));
+
+  const payloadEdgeKeys = new Set<string>(
+    payloadParsed
+      .filter(el => el.group === 'edges')
+      .map(el => canonicalFromPayloadEdge(el.data))
+      .filter((k): k is CanonicalLinkKey => Boolean(k))
+      .map(k => canonicalKeyToString(k)),
+  );
+
+  linksNode.items = linksNode.items.filter(linkItem => {
+    if (YAML.isMap(linkItem)) {
+      const key = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
+      if (key) {
+        return payloadEdgeKeys.has(canonicalKeyToString(key));
+      }
+    }
+    return true;
+  });
+
+  for (const linkItem of linksNode.items) {
+    if (!YAML.isMap(linkItem)) continue;
+    (linkItem as YAML.YAMLMap).flow = false;
+    const endpointsNode = linkItem.get('endpoints', true);
+    if (YAML.isSeq(endpointsNode)) {
+      endpointsNode.items = endpointsNode.items.map(item => {
+        if (YAML.isMap(item)) {
+          const n = (item as YAML.YAMLMap).get('node', true) as any;
+          const nodeVal = String(n?.value ?? n ?? '');
+          const updated = updatedKeys.get(nodeVal);
+          if (updated) {
+            (item as YAML.YAMLMap).set('node', doc.createNode(updated));
+          }
+          return item;
+        }
+        let endpointStr = String((item as any).value ?? item);
+        if (endpointStr.includes(':')) {
+          const [nodeKey, rest] = endpointStr.split(':');
+          if (updatedKeys.has(nodeKey)) {
+            endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+          }
+        } else if (updatedKeys.has(endpointStr)) {
+          endpointStr = updatedKeys.get(endpointStr)!;
+        }
+        return doc.createNode(endpointStr);
+      });
+      endpointsNode.flow = endpointsNode.items.every(it => !YAML.isMap(it));
+    }
+    const endpointSingle = linkItem.get('endpoint', true);
+    if (YAML.isMap(endpointSingle)) {
+      const n = endpointSingle.get('node', true) as any;
+      const nodeVal = String(n?.value ?? n ?? '');
+      const updated = updatedKeys.get(nodeVal);
+      if (updated) {
+        endpointSingle.set('node', doc.createNode(updated));
+      }
+    }
+  }
+}
+
+async function writeYamlFile(
+  doc: YAML.Document.Parsed,
+  yamlFilePath: string,
+  setInternalUpdate?: (_arg: boolean) => void, // eslint-disable-line no-unused-vars
+): Promise<void> {
+  const updatedYamlString = doc.toString();
+  if (setInternalUpdate) {
+    setInternalUpdate(true);
+    await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
+    await sleep(50);
+    setInternalUpdate(false);
+    log.info('Saved topology with preserved comments!');
+    log.info(doc);
+    log.info(yamlFilePath);
+  } else {
+    await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
+    log.info('Saved viewport positions and groups successfully');
+    log.info(`Updated file: ${yamlFilePath}`);
+  }
 }
 
 function determineChosenType(payloadKey: CanonicalLinkKey, extra: any): CanonicalLinkKey['type'] {
@@ -384,423 +735,30 @@ export async function saveViewport({
 }: SaveViewportParams): Promise<void> {
   const payloadParsed: any[] = JSON.parse(payload);
 
-  // CRITICAL: In view mode, we ONLY save annotations, NEVER modify YAML
   if (mode === 'view') {
     log.info('View mode detected - will only save annotations, not modifying YAML');
-
-    // Load and save annotations only
-    const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
-    // Preserve previously saved node positions so Geo layout doesn't overwrite XY
-    const prevNodeById = new Map<string, NodeAnnotation>();
-    for (const na of annotations.nodeAnnotations || []) {
-      if (na && typeof na.id === 'string') prevNodeById.set(na.id, na);
-    }
-    annotations.nodeAnnotations = [];
-    annotations.cloudNodeAnnotations = [];
-
-    // Process regular nodes for annotations
-    const regularNodes = payloadParsed.filter(
-      el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' &&
-      el.data.topoViewerRole !== 'cloud' && el.data.topoViewerRole !== 'freeText' &&
-      !isSpecialEndpoint(el.data.id)
-    );
-
-    for (const node of regularNodes) {
-      const nodeIdForAnn = node.data.name || node.data.id; // name reflects rename better
-      const isGeoActive = !!(node?.data?.geoLayoutActive);
-      const nodeAnnotation: NodeAnnotation = {
-        id: nodeIdForAnn,
-        icon: node.data.topoViewerRole,
-      };
-      if (isGeoActive) {
-        // Do not write XY when Geo layout is active; preserve prior position if available
-        const prev = prevNodeById.get(nodeIdForAnn);
-        if (prev?.position) {
-          nodeAnnotation.position = { x: prev.position.x, y: prev.position.y };
-        }
-      } else {
-        nodeAnnotation.position = {
-          x: Math.round(node.position?.x || 0),
-          y: Math.round(node.position?.y || 0)
-        };
-      }
-      if (node.data.lat && node.data.lng) {
-        const lat = parseFloat(node.data.lat);
-        const lng = parseFloat(node.data.lng);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          nodeAnnotation.geoCoordinates = { lat, lng };
-        }
-      }
-      if (node.data.groupLabelPos) {
-        nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
-      }
-      if (node.parent) {
-        const parts = node.parent.split(':');
-        if (parts.length === 2) {
-          nodeAnnotation.group = parts[0];
-          nodeAnnotation.level = parts[1];
-        }
-      }
-      annotations.nodeAnnotations!.push(nodeAnnotation);
-    }
-
-    // Process cloud nodes for annotations
-    const cloudNodes = payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud');
-    for (const cloudNode of cloudNodes) {
-      const cloudNodeAnnotation: CloudNodeAnnotation = {
-        id: cloudNode.data.id,
-        type: cloudNode.data.extraData?.kind || 'host',
-        label: cloudNode.data.name || cloudNode.data.id,
-        position: {
-          x: cloudNode.position?.x || 0,
-          y: cloudNode.position?.y || 0
-        }
-      };
-      if (cloudNode.parent) {
-        const parts = cloudNode.parent.split(':');
-        if (parts.length === 2) {
-          cloudNodeAnnotation.group = parts[0];
-          cloudNodeAnnotation.level = parts[1];
-        }
-      }
-      annotations.cloudNodeAnnotations!.push(cloudNodeAnnotation);
-    }
-
-    await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+    await saveAnnotationsFromPayload(payloadParsed, yamlFilePath);
     log.info('View mode: Saved annotations only - YAML file not touched');
-    return; // EXIT EARLY - NO YAML PROCESSING IN VIEW MODE
+    return;
   }
 
-  // EDIT MODE ONLY from here on
-  let doc: YAML.Document.Parsed | undefined;
-  if (mode === 'edit') {
-    doc = adaptor?.currentClabDoc;
-    if (!doc) {
-      throw new Error('No parsed Document found (adaptor.currentClabDoc is undefined).');
-    }
-  } else {
-    // This should never happen due to early return above, but keeping as safety
-    throw new Error('Invalid mode - should be edit or view');
+  const doc = adaptor?.currentClabDoc;
+  if (!doc) {
+    throw new Error('No parsed Document found (adaptor.currentClabDoc is undefined).');
   }
-
-  const updatedKeys = new Map<string, string>();
 
   const nodesMaybe = doc.getIn(['topology', 'nodes'], true);
   if (!YAML.isMap(nodesMaybe)) {
     throw new Error('YAML topology nodes is not a map');
   }
   const yamlNodes: YAML.YAMLMap = nodesMaybe;
-  // Ensure block style for the nodes mapping (avoid inline `{}` flow style)
   yamlNodes.flow = false;
 
-  const topoObj = mode === 'edit' ? (doc.toJS() as ClabTopology) : undefined;
+  const updatedKeys = new Map<string, string>();
+  const topoObj = doc.toJS() as ClabTopology;
+  updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys);
+  updateYamlLinks(payloadParsed, doc, updatedKeys);
 
-  payloadParsed
-    .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id))
-    .forEach(element => {
-      const nodeId: string = element.data.id;
-      let nodeYaml = yamlNodes.get(nodeId, true) as YAML.YAMLMap | undefined;
-
-      if (mode === 'edit') {
-        if (!nodeYaml) {
-          nodeYaml = new YAML.YAMLMap();
-          // Ensure new node maps are block style
-          nodeYaml.flow = false;
-          yamlNodes.set(nodeId, nodeYaml);
-        }
-        const nodeMap = nodeYaml;
-        const extraData = element.data.extraData || {};
-
-        // For existing nodes, preserve what was originally in the YAML
-        // Don't add properties that were inherited from kinds/groups/defaults
-        const originalKind = (nodeMap.get('kind', true) as any)?.value;
-        const originalImage = (nodeMap.get('image', true) as any)?.value;
-        const originalGroup = (nodeMap.get('group', true) as any)?.value;
-
-        // Only update group if it was changed (extraData.group differs from original)
-        const groupName = extraData.group !== undefined && extraData.group !== originalGroup
-          ? extraData.group
-          : originalGroup;
-
-        // Calculate what would be inherited with the current group
-        const baseInherit = resolveNodeConfig(topoObj!, { group: groupName });
-        const desiredKind = extraData.kind !== undefined ? extraData.kind : (originalKind !== undefined ? originalKind : undefined);
-        const inherit = resolveNodeConfig(topoObj!, { group: groupName, kind: desiredKind });
-        const desiredImage = extraData.image !== undefined ? extraData.image : (originalImage !== undefined ? originalImage : undefined);
-        // For type field: use extraData.type directly, don't fall back to original
-        // This ensures that when type is cleared in the editor (becomes undefined), it gets removed
-        const desiredType = extraData.type;
-
-        if (groupName) {
-          nodeMap.set('group', doc.createNode(groupName));
-        } else {
-          nodeMap.delete('group');
-        }
-
-        if (desiredKind && desiredKind !== baseInherit.kind) {
-          nodeMap.set('kind', doc.createNode(desiredKind));
-        } else {
-          nodeMap.delete('kind');
-        }
-
-        if (desiredImage && desiredImage !== inherit.image) {
-          nodeMap.set('image', doc.createNode(desiredImage));
-        } else {
-          nodeMap.delete('image');
-        }
-
-        const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-        if (nokiaKinds.includes(desiredKind)) {
-          // Only set type if it has a value and differs from inherited
-          if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
-            nodeMap.set('type', doc.createNode(desiredType));
-          } else {
-            // Delete type if it's empty, undefined, or same as inherited
-            nodeMap.delete('type');
-          }
-        } else {
-          // For non-Nokia kinds, always delete type
-          nodeMap.delete('type');
-        }
-
-        // Generic handling of additional properties with inheritance awareness
-        const normalize = (obj: any): any => {
-          if (Array.isArray(obj)) return obj.map(normalize);
-          if (obj && typeof obj === 'object') {
-            return Object.keys(obj).sort().reduce((res, key) => {
-              res[key] = normalize(obj[key]);
-              return res;
-            }, {} as any);
-          }
-          return obj;
-        };
-        const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
-        const shouldPersist = (val: any) => {
-          if (val === undefined) return false;
-          if (Array.isArray(val)) return val.length > 0;
-          if (val && typeof val === 'object') return Object.keys(val).length > 0;
-          return true;
-        };
-        const applyProp = (prop: string) => {
-          const val = (extraData as any)[prop];
-          const inheritedVal = (inherit as any)[prop];
-          if (shouldPersist(val) && !deepEqual(val, inheritedVal)) {
-            const node = doc.createNode(val) as any;
-            if (node && typeof node === 'object') node.flow = false;
-            nodeMap.set(prop, node);
-          } else {
-            nodeMap.delete(prop);
-          }
-        };
-
-        [
-          'startup-config','enforce-startup-config','suppress-startup-config','license','binds','env','env-files','labels',
-          'user','entrypoint','cmd','exec','restart-policy','auto-remove','startup-delay','mgmt-ipv4','mgmt-ipv6',
-          'network-mode','ports','dns','aliases','memory','cpu','cpu-set','shm-size','cap-add','sysctls','devices',
-          'certificate','healthcheck','image-pull-policy','runtime','stages'
-        ].forEach(applyProp);
-
-        const newKey = element.data.name;
-        if (nodeId !== newKey) {
-          yamlNodes.set(newKey, nodeMap);
-          yamlNodes.delete(nodeId);
-          updatedKeys.set(nodeId, newKey);
-        }
-      } else {
-        if (!nodeYaml) {
-          log.warn(`Node ${nodeId} not found in YAML, skipping`);
-          return;
-        }
-      }
-    });
-
-  if (mode === 'edit') {
-    const payloadNodeIds = new Set(
-      payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id)).map(el => el.data.id)
-    );
-    for (const item of [...yamlNodes.items]) {
-      const keyStr = String(item.key);
-      if (!payloadNodeIds.has(keyStr) && ![...updatedKeys.values()].includes(keyStr)) {
-        yamlNodes.delete(item.key);
-      }
-    }
-
-    const maybeLinksNode = doc.getIn(['topology', 'links'], true);
-    let linksNode: YAML.YAMLSeq;
-    if (YAML.isSeq(maybeLinksNode)) {
-      linksNode = maybeLinksNode;
-    } else {
-      linksNode = new YAML.YAMLSeq();
-      const topologyNode = doc.getIn(['topology'], true);
-      if (YAML.isMap(topologyNode)) {
-        topologyNode.set('links', linksNode);
-      }
-    }
-    // Ensure links list renders with indented hyphens (block style)
-    linksNode.flow = false;
-
-      // Editor no longer relies on a global linkFormat setting; format is inferred per link
-
-      payloadParsed.filter(el => el.group === 'edges').forEach(element => processEdge(element, linksNode, doc!));
-
-    const payloadEdgeKeys = new Set<string>(
-      payloadParsed
-        .filter(el => el.group === 'edges')
-        .map(el => canonicalFromPayloadEdge(el.data))
-        .filter((k): k is CanonicalLinkKey => Boolean(k))
-        .map(k => canonicalKeyToString(k))
-    );
-    linksNode.items = linksNode.items.filter(linkItem => {
-      if (YAML.isMap(linkItem)) {
-        const key = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
-        if (key) {
-          return payloadEdgeKeys.has(canonicalKeyToString(key));
-        }
-      }
-      return true;
-    });
-
-    for (const linkItem of linksNode.items) {
-      if (YAML.isMap(linkItem)) {
-        // Normalize to block style for link entries
-        (linkItem as YAML.YAMLMap).flow = false;
-        const endpointsNode = linkItem.get('endpoints', true);
-        if (YAML.isSeq(endpointsNode)) {
-          // Handle both short (scalars) and extended (maps) endpoint entries
-          endpointsNode.items = endpointsNode.items.map(item => {
-            if (YAML.isMap(item)) {
-              const n = (item as YAML.YAMLMap).get('node', true) as any;
-              const nodeVal = String(n?.value ?? n ?? '');
-              const updated = updatedKeys.get(nodeVal);
-              if (updated) {
-                (item as YAML.YAMLMap).set('node', doc!.createNode(updated));
-              }
-              return item;
-            }
-            let endpointStr = String((item as any).value ?? item);
-            if (endpointStr.includes(':')) {
-              const [nodeKey, rest] = endpointStr.split(':');
-              if (updatedKeys.has(nodeKey)) {
-                endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
-              }
-            } else if (updatedKeys.has(endpointStr)) {
-              endpointStr = updatedKeys.get(endpointStr)!;
-            }
-            return doc!.createNode(endpointStr);
-          });
-          // For short format preserve inline []
-          if (endpointsNode.items.every(it => !YAML.isMap(it))) {
-            endpointsNode.flow = true;
-          } else {
-            endpointsNode.flow = false;
-          }
-        }
-        const endpointSingle = linkItem.get('endpoint', true);
-        if (YAML.isMap(endpointSingle)) {
-          const n = endpointSingle.get('node', true) as any;
-          const nodeVal = String(n?.value ?? n ?? '');
-          const updated = updatedKeys.get(nodeVal);
-          if (updated) {
-            endpointSingle.set('node', doc!.createNode(updated));
-          }
-        }
-      }
-    }
-  }
-
-  // Save annotations for edit mode
-  const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
-  // Preserve previously saved node positions so Geo layout doesn't overwrite XY
-  const prevNodeById = new Map<string, NodeAnnotation>();
-  for (const na of annotations.nodeAnnotations || []) {
-    if (na && typeof na.id === 'string') prevNodeById.set(na.id, na);
-  }
-  annotations.nodeAnnotations = [];
-  annotations.cloudNodeAnnotations = [];
-
-  const regularNodes = payloadParsed.filter(
-    el => el.group === 'nodes' && el.data.topoViewerRole !== 'group' && el.data.topoViewerRole !== 'cloud' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id)
-  );
-  for (const node of regularNodes) {
-    const nodeIdForAnn = node.data.name || node.data.id; // name reflects rename better
-    const isGeoActive = !!(node?.data?.geoLayoutActive);
-    const nodeAnnotation: NodeAnnotation = {
-      id: nodeIdForAnn,
-      icon: node.data.topoViewerRole,
-    };
-    if (isGeoActive) {
-      // Do not write XY when Geo layout is active; preserve prior position if available
-      const prev = prevNodeById.get(nodeIdForAnn);
-      if (prev?.position) {
-        nodeAnnotation.position = { x: prev.position.x, y: prev.position.y };
-      }
-    } else {
-      nodeAnnotation.position = {
-        x: Math.round(node.position?.x || 0),
-        y: Math.round(node.position?.y || 0)
-      };
-    }
-    if (node.data.lat && node.data.lng) {
-      const lat = parseFloat(node.data.lat);
-      const lng = parseFloat(node.data.lng);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        nodeAnnotation.geoCoordinates = { lat, lng };
-      }
-    }
-    if (node.data.groupLabelPos) {
-      nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
-    }
-    // Add group and level if node has a parent
-    if (node.parent) {
-      const parts = node.parent.split(':');
-      if (parts.length === 2) {
-        nodeAnnotation.group = parts[0];
-        nodeAnnotation.level = parts[1];
-      }
-    }
-    annotations.nodeAnnotations!.push(nodeAnnotation);
-  }
-
-  const cloudNodes = payloadParsed.filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud');
-  for (const cloudNode of cloudNodes) {
-    const cloudNodeAnnotation: CloudNodeAnnotation = {
-      id: cloudNode.data.id,
-      type: cloudNode.data.extraData?.kind || 'host',
-      label: cloudNode.data.name || cloudNode.data.id,
-      position: {
-        x: cloudNode.position?.x || 0,
-        y: cloudNode.position?.y || 0
-      }
-    };
-    if (cloudNode.parent) {
-      const parts = cloudNode.parent.split(':');
-      if (parts.length === 2) {
-        cloudNodeAnnotation.group = parts[0];
-        cloudNodeAnnotation.level = parts[1];
-      }
-    }
-    annotations.cloudNodeAnnotations!.push(cloudNodeAnnotation);
-  }
-
-  await annotationsManager.saveAnnotations(yamlFilePath, annotations);
-
-  // Only proceed with YAML writing if we're in edit mode
-  // NEVER write YAML in view mode - this is already handled above with early return
-  if (mode === 'edit') {
-    const updatedYamlString = doc.toString();
-    if (setInternalUpdate) {
-      setInternalUpdate(true);
-      await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
-      await sleep(50);
-      setInternalUpdate(false);
-      log.info('Saved topology with preserved comments!');
-      log.info(doc);
-      log.info(yamlFilePath);
-    } else {
-      // Still in edit mode but without internal update flag
-      await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
-      log.info('Saved viewport positions and groups successfully');
-      log.info(`Updated file: ${yamlFilePath}`);
-    }
-  }
+  await saveAnnotationsFromPayload(payloadParsed, yamlFilePath);
+  await writeYamlFile(doc, yamlFilePath, setInternalUpdate);
 }
