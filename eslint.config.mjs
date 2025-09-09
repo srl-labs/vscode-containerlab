@@ -53,8 +53,11 @@ export default [
       'no-trailing-spaces': ['error', {
         skipBlankLines: false,    // also flag lines that are purely whitespace
         ignoreComments: false     // also flag whitespace at end of comments
-      }]
+      }],
+      'complexity': ['warn', { max: 100 }]
 
     }
   }
+
+  
 ];
