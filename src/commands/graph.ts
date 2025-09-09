@@ -119,6 +119,26 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
     return;
   }
 
+  // Derive the lab name for matching existing viewers
+  const labName =
+    node?.name ||
+    (labPath
+      ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '')
+      : 'Unknown Lab');
+
+  // Check if a TopoViewer for this lab is already open
+  for (const openViewer of activeTopoViewers) {
+    if (
+      openViewer.currentPanel &&
+      (openViewer.lastYamlFilePath === labPath || openViewer.currentLabName === labName)
+    ) {
+      setCurrentTopoViewer(openViewer);
+      openViewer.currentPanel.reveal();
+      vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
+      return;
+    }
+  }
+
   // 1) create a new TopoViewer
   const viewer = new TopoViewer(context);
 
@@ -126,10 +146,12 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   setCurrentTopoViewer(viewer);
 
   try {
-    // Use the node's name if available (it's the actual lab name from containerlab inspect)
-    // Otherwise derive from the file path (but this may not match the deployed name)
-    const labName = node?.name || (labPath ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '') : 'Unknown Lab');
-    await viewer.createWebviewPanel(context, labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''), labName, isViewMode);
+    await viewer.createWebviewPanel(
+      context,
+      labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''),
+      labName,
+      isViewMode
+    );
     currentTopoViewerPanel = (viewer as any).currentPanel;
 
     if (!currentTopoViewerPanel) {
@@ -137,12 +159,12 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
     }
 
     // 5) Set context so reload button can appear
-    vscode.commands.executeCommand("setContext", "isTopoviewerActive", true);
+    vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
 
     // 6) Track disposal
     currentTopoViewerPanel.onDidDispose(() => {
       setCurrentTopoViewer(undefined);
-      vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
+      vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
     });
 
   } catch (error) {
