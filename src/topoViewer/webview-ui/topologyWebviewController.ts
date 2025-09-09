@@ -895,34 +895,7 @@ class TopologyWebviewController {
                   return;
                 }
                 // Use setTimeout to ensure this runs after any other event handlers
-                setTimeout(() => {
-                  // Show node properties panel
-                  const panelOverlays = document.getElementsByClassName("panel-overlay");
-                  Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-                  const panelNode = document.getElementById("panel-node");
-                  if (panelNode) {
-                    panelNode.style.display = "block";
-                    const extraData = node.data("extraData") || {};
-                    const nameEl = document.getElementById("panel-node-name");
-                    if (nameEl) nameEl.textContent = extraData.longname || node.data("name") || node.id();
-                    const kindEl = document.getElementById("panel-node-kind");
-                    if (kindEl) kindEl.textContent = extraData.kind || "";
-                    const mgmtIpv4El = document.getElementById("panel-node-mgmtipv4");
-                    if (mgmtIpv4El) mgmtIpv4El.textContent = extraData.mgmtIpv4Address || "";
-                    const mgmtIpv6El = document.getElementById("panel-node-mgmtipv6");
-                    if (mgmtIpv6El) mgmtIpv6El.textContent = extraData.mgmtIpv6Address || "";
-                    const fqdnEl = document.getElementById("panel-node-fqdn");
-                    if (fqdnEl) fqdnEl.textContent = extraData.fqdn || "";
-                    const roleEl = document.getElementById("panel-node-topoviewerrole");
-                    if (roleEl) roleEl.textContent = node.data("topoViewerRole") || "";
-                    const stateEl = document.getElementById("panel-node-state");
-                    if (stateEl) stateEl.textContent = extraData.state || "";
-                    const imageEl = document.getElementById("panel-node-image");
-                    if (imageEl) imageEl.textContent = extraData.image || "";
-                    topoViewerState.selectedNode = extraData.longname || node.id();
-                    topoViewerState.nodeClicked = true;
-                  }
-                }, 50);
+                setTimeout(() => self.showNodePropertiesPanel(node), 50);
               }
             }
           ];
@@ -1079,69 +1052,16 @@ class TopologyWebviewController {
                           <div style="height:0.3em;"></div>
                           <span style="font-size:0.9em;">Link Properties</span>
                         </div>`,
-            select: (ele: cytoscape.Singular) => {
-              if (!ele.isEdge()) {
-                return;
+              select: (ele: cytoscape.Singular) => {
+                if (!ele.isEdge()) {
+                  return;
+                }
+                // Use setTimeout to ensure this runs after any other event handlers
+                setTimeout(() => self.showLinkPropertiesPanel(ele), 50);
               }
-              // Use setTimeout to ensure this runs after any other event handlers
-              setTimeout(() => {
-                // Show link properties panel
-                const panelOverlays = document.getElementsByClassName("panel-overlay");
-                Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = "none");
-                self.cy.edges().removeStyle("line-color");
-                if (ele.data("editor") === "true") {
-                  ele.style("line-color", "#32CD32");
-                } else {
-                  ele.style("line-color", "#0043BF");
-                }
-                const panelLink = document.getElementById("panel-link");
-                if (panelLink) {
-                  panelLink.style.display = "block";
-                  const extraData = ele.data("extraData") || {};
-                  const linkNameEl = document.getElementById("panel-link-name");
-                  if (linkNameEl) {
-                    linkNameEl.innerHTML = `┌ ${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}<br>└ ${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`;
-                  }
-                  const endpointANameEl = document.getElementById("panel-link-endpoint-a-name");
-                  if (endpointANameEl) {
-                    endpointANameEl.textContent = `${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}`;
-                  }
-                  const endpointAMacEl = document.getElementById("panel-link-endpoint-a-mac-address");
-                  if (endpointAMacEl) {
-                    endpointAMacEl.textContent = extraData.clabSourceMacAddress || "N/A";
-                  }
-                  const endpointAMtuEl = document.getElementById("panel-link-endpoint-a-mtu");
-                  if (endpointAMtuEl) {
-                    endpointAMtuEl.textContent = extraData.clabSourceMtu || "N/A";
-                  }
-                  const endpointATypeEl = document.getElementById("panel-link-endpoint-a-type");
-                  if (endpointATypeEl) {
-                    endpointATypeEl.textContent = extraData.clabSourceType || "N/A";
-                  }
-                  const endpointBNameEl = document.getElementById("panel-link-endpoint-b-name");
-                  if (endpointBNameEl) {
-                    endpointBNameEl.textContent = `${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`;
-                  }
-                  const endpointBMacEl = document.getElementById("panel-link-endpoint-b-mac-address");
-                  if (endpointBMacEl) {
-                    endpointBMacEl.textContent = extraData.clabTargetMacAddress || "N/A";
-                  }
-                  const endpointBMtuEl = document.getElementById("panel-link-endpoint-b-mtu");
-                  if (endpointBMtuEl) {
-                    endpointBMtuEl.textContent = extraData.clabTargetMtu || "N/A";
-                  }
-                  const endpointBTypeEl = document.getElementById("panel-link-endpoint-b-type");
-                  if (endpointBTypeEl) {
-                    endpointBTypeEl.textContent = extraData.clabTargetType || "N/A";
-                  }
-                  topoViewerState.selectedEdge = ele.id();
-                  topoViewerState.edgeClicked = true;
-                }
-              }, 50);
-            }
-          });
+            });
 
-          return commands;
+            return commands;
         },
         menuRadius: 110, // standard radius for fewer items
         fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
@@ -1343,87 +1263,9 @@ class TopologyWebviewController {
       });
 
       // Edge creation completion via edgehandles.
-      this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) => {
-        log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
-        log.debug(`Added edge: ${addedEdge.id()}`);
-
-        setTimeout(() => {
-          this.isEdgeHandlerActive = false;
-        }, 100);
-
-        const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
-        const targetEndpoint = this.getNextEndpoint(targetNode.id());
-
-        // Prepare edge data
-        const edgeData: any = { sourceEndpoint, targetEndpoint, editor: 'true' };
-
-        // Transfer extended properties from network nodes to the edge
-        const sourceIsNetwork = this.isNetworkNode(sourceNode.id());
-        const targetIsNetwork = this.isNetworkNode(targetNode.id());
-
-        if (sourceIsNetwork || targetIsNetwork) {
-          addedEdge.addClass('stub-link');
-
-          // Get the network node (could be source or target)
-          const networkNode = sourceIsNetwork ? sourceNode : targetNode;
-          const networkData = networkNode.data();
-          const networkType = networkData.extraData?.kind || networkNode.id().split(':')[0];
-
-          // Transfer extended properties from network node to edge
-          if (networkData.extraData) {
-            const extData: any = {};
-
-            // Set link type
-            if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
-              extData.extType = networkType;
-            }
-
-            // Transfer all extended properties
-            if (networkData.extraData.extMac !== undefined) {
-              // MAC address for the network side endpoint
-              if (sourceIsNetwork) {
-                extData.extSourceMac = networkData.extraData.extMac;
-              } else {
-                extData.extTargetMac = networkData.extraData.extMac;
-              }
-            }
-            if (networkData.extraData.extMtu !== undefined) {
-              extData.extMtu = networkData.extraData.extMtu;
-            }
-            if (networkData.extraData.extVars !== undefined) {
-              extData.extVars = networkData.extraData.extVars;
-            }
-            if (networkData.extraData.extLabels !== undefined) {
-              extData.extLabels = networkData.extraData.extLabels;
-            }
-
-            // Transfer host interface for host/mgmt-net/macvlan
-            if ((networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') &&
-                networkData.extraData.extHostInterface !== undefined) {
-              extData.extHostInterface = networkData.extraData.extHostInterface;
-            }
-
-            // Transfer macvlan mode
-            if (networkType === 'macvlan' && networkData.extraData.extMode !== undefined) {
-              extData.extMode = networkData.extraData.extMode;
-            }
-
-            // Transfer vxlan properties
-            if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
-              if (networkData.extraData.extRemote !== undefined) extData.extRemote = networkData.extraData.extRemote;
-              if (networkData.extraData.extVni !== undefined) extData.extVni = networkData.extraData.extVni;
-              if (networkData.extraData.extUdpPort !== undefined) extData.extUdpPort = networkData.extraData.extUdpPort;
-            }
-
-            // Add extended properties to edge data
-            if (Object.keys(extData).length > 0) {
-              edgeData.extraData = extData;
-            }
-          }
-        }
-
-        addedEdge.data(edgeData);
-      });
+        this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) =>
+          this.handleEdgeCreation(sourceNode, targetNode, addedEdge)
+        );
 
     } else {
       // Viewer mode - NO left-click interactions, only right-click radial menus
@@ -1483,6 +1325,124 @@ class TopologyWebviewController {
     // Drag-and-drop reparenting logic is now handled by groupManager.initializeGroupManagement()
 
 
+  }
+
+  private showNodePropertiesPanel(node: cytoscape.Singular): void {
+    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = 'none');
+    const panelNode = document.getElementById('panel-node');
+    if (!panelNode) {
+      return;
+    }
+    panelNode.style.display = 'block';
+    const extraData = node.data('extraData') || {};
+    const entries: Array<[string, string | undefined]> = [
+      ['panel-node-name', extraData.longname || node.data('name') || node.id()],
+      ['panel-node-kind', extraData.kind],
+      ['panel-node-mgmtipv4', extraData.mgmtIpv4Address],
+      ['panel-node-mgmtipv6', extraData.mgmtIpv6Address],
+      ['panel-node-fqdn', extraData.fqdn],
+      ['panel-node-topoviewerrole', node.data('topoViewerRole')],
+      ['panel-node-state', extraData.state],
+      ['panel-node-image', extraData.image]
+    ];
+    entries.forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value || '';
+    });
+    topoViewerState.selectedNode = extraData.longname || node.id();
+    topoViewerState.nodeClicked = true;
+  }
+
+  private showLinkPropertiesPanel(ele: cytoscape.Singular): void {
+    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = 'none');
+    this.cy.edges().removeStyle('line-color');
+    ele.style('line-color', ele.data('editor') === 'true' ? '#32CD32' : '#0043BF');
+    const panelLink = document.getElementById('panel-link');
+    if (!panelLink) {
+      return;
+    }
+    panelLink.style.display = 'block';
+    const extraData = ele.data('extraData') || {};
+    const linkNameEl = document.getElementById('panel-link-name');
+    if (linkNameEl) {
+      linkNameEl.innerHTML = `┌ ${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}<br>└ ${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`;
+    }
+    const entries: Array<[string, string | undefined]> = [
+      ['panel-link-endpoint-a-name', `${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}`],
+      ['panel-link-endpoint-a-mac-address', extraData.clabSourceMacAddress || 'N/A'],
+      ['panel-link-endpoint-a-mtu', extraData.clabSourceMtu || 'N/A'],
+      ['panel-link-endpoint-a-type', extraData.clabSourceType || 'N/A'],
+      ['panel-link-endpoint-b-name', `${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`],
+      ['panel-link-endpoint-b-mac-address', extraData.clabTargetMacAddress || 'N/A'],
+      ['panel-link-endpoint-b-mtu', extraData.clabTargetMtu || 'N/A'],
+      ['panel-link-endpoint-b-type', extraData.clabTargetType || 'N/A']
+    ];
+    entries.forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value || '';
+    });
+    topoViewerState.selectedEdge = ele.id();
+    topoViewerState.edgeClicked = true;
+  }
+
+  private handleEdgeCreation(sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular, addedEdge: cytoscape.EdgeSingular): void {
+    log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
+    log.debug(`Added edge: ${addedEdge.id()}`);
+    setTimeout(() => {
+      this.isEdgeHandlerActive = false;
+    }, 100);
+    const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
+    const targetEndpoint = this.getNextEndpoint(targetNode.id());
+    const edgeData: any = { sourceEndpoint, targetEndpoint, editor: 'true' };
+    this.addNetworkEdgeProperties(sourceNode, targetNode, addedEdge, edgeData);
+    addedEdge.data(edgeData);
+  }
+
+  private addNetworkEdgeProperties(sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular, addedEdge: cytoscape.EdgeSingular, edgeData: any): void {
+    const sourceIsNetwork = this.isNetworkNode(sourceNode.id());
+    const targetIsNetwork = this.isNetworkNode(targetNode.id());
+    if (!(sourceIsNetwork || targetIsNetwork)) {
+      return;
+    }
+    addedEdge.addClass('stub-link');
+    const networkNode = sourceIsNetwork ? sourceNode : targetNode;
+    const networkData = networkNode.data();
+    const networkType = networkData.extraData?.kind || networkNode.id().split(':')[0];
+    const extra = networkData.extraData || {};
+    const extData = this.collectNetworkExtraData(networkType, extra, sourceIsNetwork);
+    if (Object.keys(extData).length > 0) {
+      edgeData.extraData = extData;
+    }
+  }
+
+  private collectNetworkExtraData(networkType: string, extra: any, sourceIsNetwork: boolean): Record<string, any> {
+    const extData: Record<string, any> = {};
+    const assignIf = (key: string, value: any) => {
+      if (value !== undefined) {
+        extData[key] = value;
+      }
+    };
+    if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
+      extData.extType = networkType;
+    }
+    assignIf(sourceIsNetwork ? 'extSourceMac' : 'extTargetMac', extra.extMac);
+    assignIf('extMtu', extra.extMtu);
+    assignIf('extVars', extra.extVars);
+    assignIf('extLabels', extra.extLabels);
+    if (['host', 'mgmt-net', 'macvlan'].includes(networkType)) {
+      assignIf('extHostInterface', extra.extHostInterface);
+    }
+    if (networkType === 'macvlan') {
+      assignIf('extMode', extra.extMode);
+    }
+    if (['vxlan', 'vxlan-stitch'].includes(networkType)) {
+      assignIf('extRemote', extra.extRemote);
+      assignIf('extVni', extra.extVni);
+      assignIf('extUdpPort', extra.extUdpPort);
+    }
+    return extData;
   }
 
   private isNetworkNode(nodeId: string): boolean {

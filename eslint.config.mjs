@@ -54,7 +54,7 @@ export default [
         skipBlankLines: false,    // also flag lines that are purely whitespace
         ignoreComments: false     // also flag whitespace at end of comments
       }],
-      'complexity': ['warn', { max: 20 }]
+      'complexity': ['warn', { max: 15 }]
 
     }
   }
