@@ -301,112 +301,97 @@ export class ManagerViewportPanels {
    * Removes any overlay panels, updates editor fields with the node's data,
    * and fetches additional configuration from a JSON schema.
    *
-   * @param node - The Cytoscape node for which to show the editor.
-   * @returns A promise that resolves when the panel is configured.
-   */
+  * @param node - The Cytoscape node for which to show the editor.
+  * @returns A promise that resolves when the panel is configured.
+  */
   public async panelNodeEditor(node: cytoscape.NodeSingular): Promise<void> {
-    // mark that a node interaction occurred so global click handler doesn't immediately hide the panel
     this.nodeClicked = true;
     this.panelNodeEditorNode = node;
-    // Remove all overlay panels.
-    const panelOverlays = document.getElementsByClassName("panel-overlay");
-    Array.from(panelOverlays).forEach((panel) => {
-      (panel as HTMLElement).style.display = "none";
-    });
+    this.hidePanelOverlays();
+    this.populateNodeEditorBasics(node);
+    const panel = this.showNodeEditorPanel();
 
-    log.debug(`panelNodeEditor - node ID: ${node.data('id')}`);
-
-    // Set the node ID in the editor.
-    const panelNodeEditorIdLabel = document.getElementById("panel-node-editor-id");
-    if (panelNodeEditorIdLabel) {
-      panelNodeEditorIdLabel.textContent = node.data("id");
-    }
-
-    // Set the node name in the editor.
-    const panelNodeEditorNameInput = document.getElementById("node-name") as HTMLInputElement;
-    if (panelNodeEditorNameInput) {
-      panelNodeEditorNameInput.value = node.data("name");
-    }
-
-    // Grab extraData from the node for populating fields.
-    const extraData = node.data('extraData') || {};
-
-    // Note: Image is handled by dropdown, not a simple input field
-
-    // Set the node type in the editor.
-    this.panelNodeEditorKind = extraData.kind || this.panelNodeEditorKind;
-    this.panelNodeEditorType = extraData.type || '';
-    this.panelNodeEditorUseDropdownForType = false;
-
-    // Set the topoViewerRole (icon)
-    this.panelNodeEditorTopoViewerRole = node.data('topoViewerRole') || 'pe';
-
-    // Display the node editor panel.
-    const panelNodeEditor = document.getElementById("panel-node-editor");
-    if (panelNodeEditor) {
-      panelNodeEditor.style.display = "block";
-    }
-
-    // Fetch JSON schema.
     const url = window.schemaUrl;
     if (!url) throw new Error('Schema URL is undefined.');
     try {
-        const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const jsonData = await response.json();
-
+      const jsonData = await this.fetchNodeSchema(url);
       this.nodeSchemaData = jsonData;
-
-      // Get kind enums from the JSON schema.
-      const { kindOptions } = this.panelNodeEditorGetKindEnums(jsonData);
-      log.debug(`Kind Enum: ${JSON.stringify(kindOptions)}`);
-      // Populate the kind dropdown.
-      this.panelNodeEditorPopulateKindDropdown(kindOptions);
-
-      const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(jsonData, `(${this.panelNodeEditorKind})`);
-      this.panelNodeEditorSetupTypeField(typeOptions);
-
-      // Populate the icon dropdown with available options
-      const nodeIcons = extractNodeIcons();
-      log.debug(`Extracted node icons: ${JSON.stringify(nodeIcons)}`);
-
-      // Check if the container exists before attempting to populate
-      const iconContainer = document.getElementById('panel-node-topoviewerrole-dropdown-container');
-      if (!iconContainer) {
-        log.error('Icon dropdown container not found in DOM!');
-      } else {
-        log.debug(`Icon container found, populating with ${nodeIcons.length} options`);
-        this.panelNodeEditorPopulateTopoViewerRoleDropdown(nodeIcons);
-      }
-
-      // Register the close button event.
-      const panelNodeEditorCloseButton = document.getElementById("panel-node-editor-cancel");
-      if (panelNodeEditorCloseButton && panelNodeEditor) {
-        panelNodeEditorCloseButton.addEventListener("click", () => {
-          panelNodeEditor.style.display = "none";
-        });
-      }
-
-      // Register the save button event.
-      const panelNodeEditorSaveButton = document.getElementById("panel-node-editor-save");
-      if (panelNodeEditorSaveButton) {
-        // Clone to remove any existing event listeners
-        const newSaveButton = panelNodeEditorSaveButton.cloneNode(true) as HTMLElement;
-        panelNodeEditorSaveButton.parentNode?.replaceChild(newSaveButton, panelNodeEditorSaveButton);
-        newSaveButton.addEventListener("click", async () => {
-          await this.updateNodeFromEditor(node);
-          const suppressNotification = false;
-          await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
-        });
-      }
-
-      // Add global click handler to close dropdowns when clicking outside
+      this.populateKindAndType(jsonData);
+      this.populateIconDropdown(extractNodeIcons());
+      this.registerNodeEditorButtons(panel, node);
       this.setupDropdownCloseHandler();
     } catch (error: any) {
       log.error(`Error fetching or processing JSON data: ${error.message}`);
       throw error;
+    }
+  }
+
+  private hidePanelOverlays(): void {
+    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    Array.from(panelOverlays).forEach(panel => {
+      (panel as HTMLElement).style.display = 'none';
+    });
+  }
+
+  private populateNodeEditorBasics(node: cytoscape.NodeSingular): void {
+    log.debug(`panelNodeEditor - node ID: ${node.data('id')}`);
+    const idLabel = document.getElementById('panel-node-editor-id');
+    if (idLabel) idLabel.textContent = node.data('id');
+    const nameInput = document.getElementById('node-name') as HTMLInputElement;
+    if (nameInput) nameInput.value = node.data('name');
+    const extra = node.data('extraData') || {};
+    this.panelNodeEditorKind = extra.kind || this.panelNodeEditorKind;
+    this.panelNodeEditorType = extra.type || '';
+    this.panelNodeEditorUseDropdownForType = false;
+    this.panelNodeEditorTopoViewerRole = node.data('topoViewerRole') || 'pe';
+  }
+
+  private showNodeEditorPanel(): HTMLElement | null {
+    const panel = document.getElementById('panel-node-editor');
+    if (panel) panel.style.display = 'block';
+    return panel;
+  }
+
+  private async fetchNodeSchema(url: string): Promise<any> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  private populateKindAndType(jsonData: any): void {
+    const { kindOptions } = this.panelNodeEditorGetKindEnums(jsonData);
+    this.panelNodeEditorPopulateKindDropdown(kindOptions);
+    const typeOptions = this.panelNodeEditorGetTypeEnumsByKindPattern(jsonData, `(${this.panelNodeEditorKind})`);
+    this.panelNodeEditorSetupTypeField(typeOptions);
+  }
+
+  private populateIconDropdown(nodeIcons: string[]): void {
+    const iconContainer = document.getElementById('panel-node-topoviewerrole-dropdown-container');
+    if (!iconContainer) {
+      log.error('Icon dropdown container not found in DOM!');
+      return;
+    }
+    this.panelNodeEditorPopulateTopoViewerRoleDropdown(nodeIcons);
+  }
+
+  private registerNodeEditorButtons(panel: HTMLElement | null, node: cytoscape.NodeSingular): void {
+    const closeBtn = document.getElementById('panel-node-editor-cancel');
+    if (closeBtn && panel) {
+      closeBtn.addEventListener('click', () => {
+        panel.style.display = 'none';
+      });
+    }
+
+    const saveBtn = document.getElementById('panel-node-editor-save');
+    if (saveBtn) {
+      const newSave = saveBtn.cloneNode(true) as HTMLElement;
+      saveBtn.parentNode?.replaceChild(newSave, saveBtn);
+      newSave.addEventListener('click', async () => {
+        await this.updateNodeFromEditor(node);
+        await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+      });
     }
   }
 
@@ -943,27 +928,44 @@ export class ManagerViewportPanels {
   }
 
   private prepareExtendedFields(extraData: any, isVeth: boolean): void {
-    const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
-    const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
-    const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
+    this.resetExtendedDynamicContainers();
+    this.setNonVethInfoVisibility(isVeth);
+    this.setMacAndMtu(extraData, isVeth);
+    if (isVeth) this.populateExtendedKeyValues(extraData);
+  }
+
+  private resetExtendedDynamicContainers(): void {
     const varsContainer = document.getElementById('panel-link-ext-vars-container');
     const labelsContainer = document.getElementById('panel-link-ext-labels-container');
     if (varsContainer) varsContainer.innerHTML = '';
     if (labelsContainer) labelsContainer.innerHTML = '';
     this.linkDynamicEntryCounters.clear();
+  }
 
+  private setNonVethInfoVisibility(isVeth: boolean): void {
     const nonVethInfo = document.getElementById('panel-link-ext-non-veth-info') as HTMLElement | null;
     if (nonVethInfo) nonVethInfo.style.display = isVeth ? 'none' : 'block';
+  }
 
+  private setMacAndMtu(extraData: any, isVeth: boolean): void {
+    const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
+    const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
+    const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
     if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
     if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
     if (isVeth && mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
+  }
 
-    if (isVeth && extraData.extVars && typeof extraData.extVars === 'object') {
-      Object.entries(extraData.extVars).forEach(([k, v]) => this.addLinkKeyValueEntryWithValue('vars', k, String(v)));
+  private populateExtendedKeyValues(extraData: any): void {
+    if (extraData.extVars && typeof extraData.extVars === 'object') {
+      Object.entries(extraData.extVars).forEach(([k, v]) =>
+        this.addLinkKeyValueEntryWithValue('vars', k, String(v))
+      );
     }
-    if (isVeth && extraData.extLabels && typeof extraData.extLabels === 'object') {
-      Object.entries(extraData.extLabels).forEach(([k, v]) => this.addLinkKeyValueEntryWithValue('labels', k, String(v)));
+    if (extraData.extLabels && typeof extraData.extLabels === 'object') {
+      Object.entries(extraData.extLabels).forEach(([k, v]) =>
+        this.addLinkKeyValueEntryWithValue('labels', k, String(v))
+      );
     }
   }
 
@@ -1046,17 +1048,18 @@ export class ManagerViewportPanels {
   private updateEdgeEndpoints(edge: cytoscape.EdgeSingular): void {
     const source = edge.data('source') as string;
     const target = edge.data('target') as string;
-    const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
-    const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
-    const sourceNode = this.cy.getElementById(source);
-    const targetNode = this.cy.getElementById(target);
-    const sourceIsBridge = sourceNode.length > 0 && (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
-    const targetIsBridge = targetNode.length > 0 && (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
     const srcInput = document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null;
     const tgtInput = document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null;
-    const newSourceEP = (sourceIsNetwork && !sourceIsBridge) ? '' : (srcInput?.value?.trim() || '');
-    const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : (tgtInput?.value?.trim() || '');
+    const newSourceEP = this.shouldClearEndpoint(source) ? '' : (srcInput?.value?.trim() || '');
+    const newTargetEP = this.shouldClearEndpoint(target) ? '' : (tgtInput?.value?.trim() || '');
     edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
+  }
+
+  private shouldClearEndpoint(nodeId: string): boolean {
+    if (!isSpecialNodeOrBridge(nodeId, this.cy)) return false;
+    const node = this.cy.getElementById(nodeId);
+    const kind = node.data('extraData')?.kind;
+    return kind !== 'bridge' && kind !== 'ovs-bridge';
   }
 
   private buildLinkExtendedData(existing: any): any {
@@ -1285,34 +1288,32 @@ export class ManagerViewportPanels {
    * @returns Extended properties to apply to the edge
    */
   private getNetworkExtendedPropertiesForEdge(networkType: string, nodeExtraData: any): any {
-    const edgeExtData: any = {};
-
-    // Transfer all relevant extended properties
-    if (nodeExtraData.extMac !== undefined) edgeExtData.extMac = nodeExtraData.extMac;
-    if (nodeExtraData.extMtu !== undefined) edgeExtData.extMtu = nodeExtraData.extMtu;
-    if (nodeExtraData.extVars !== undefined) edgeExtData.extVars = nodeExtraData.extVars;
-    if (nodeExtraData.extLabels !== undefined) edgeExtData.extLabels = nodeExtraData.extLabels;
-
-    if (networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') {
-      if (nodeExtraData.extHostInterface !== undefined) edgeExtData.extHostInterface = nodeExtraData.extHostInterface;
-    }
-
-    if (networkType === 'macvlan') {
-      if (nodeExtraData.extMode !== undefined) edgeExtData.extMode = nodeExtraData.extMode;
-    }
-
-    if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
-      if (nodeExtraData.extRemote !== undefined) edgeExtData.extRemote = nodeExtraData.extRemote;
-      if (nodeExtraData.extVni !== undefined) edgeExtData.extVni = nodeExtraData.extVni;
-      if (nodeExtraData.extUdpPort !== undefined) edgeExtData.extUdpPort = nodeExtraData.extUdpPort;
-    }
-
-    // Set the link type based on the network type
+    const edgeExtData: any = this.pickCommonExtProps(nodeExtraData);
+    this.addNetworkSpecificProps(edgeExtData, networkType, nodeExtraData);
     if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
       edgeExtData.extType = networkType;
     }
-
     return edgeExtData;
+  }
+
+  private pickCommonExtProps(nodeExtraData: any): any {
+    const props = ['extMac', 'extMtu', 'extVars', 'extLabels'];
+    const result: any = {};
+    props.forEach(prop => {
+      if (nodeExtraData[prop] !== undefined) result[prop] = nodeExtraData[prop];
+    });
+    return result;
+  }
+
+  private addNetworkSpecificProps(target: any, networkType: string, nodeExtraData: any): void {
+    const copy = (prop: string) => {
+      if (nodeExtraData[prop] !== undefined) target[prop] = nodeExtraData[prop];
+    };
+    if (['host', 'mgmt-net', 'macvlan'].includes(networkType)) copy('extHostInterface');
+    if (networkType === 'macvlan') copy('extMode');
+    if (['vxlan', 'vxlan-stitch'].includes(networkType)) {
+      ['extRemote', 'extVni', 'extUdpPort'].forEach(copy);
+    }
   }
 
 
@@ -1530,43 +1531,39 @@ export class ManagerViewportPanels {
    * @returns An array of type enum strings.
    */
   private panelNodeEditorGetTypeEnumsByKindPattern(jsonData: any, pattern: string): string[] {
-    // Extract the kind from the pattern (e.g., "(nokia_srlinux)" -> "nokia_srlinux")
-    const kindMatch = pattern.match(/\(([^)]+)\)/);
-    const kind = kindMatch ? kindMatch[1] : '';
+    const kind = this.extractKindFromPattern(pattern);
+    if (!this.isNokiaKind(kind)) return [];
+    const nodeConfig = jsonData?.definitions?.['node-config'];
+    if (!nodeConfig?.allOf) return [];
 
-    // Only return type options for Nokia kinds
-    const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-    if (!nokiaKinds.includes(kind)) {
-      return [];
+    for (const condition of nodeConfig.allOf) {
+      if (!this.matchesKindPattern(condition, pattern)) continue;
+      const typeProp = condition.then?.properties?.type;
+      const enums = this.extractEnumFromTypeProp(typeProp);
+      if (enums.length) return enums;
     }
+    return [];
+  }
 
-    if (
-      jsonData &&
-      jsonData.definitions &&
-      jsonData.definitions['node-config'] &&
-      jsonData.definitions['node-config'].allOf
-    ) {
-      for (const condition of jsonData.definitions['node-config'].allOf) {
-        if (
-          condition.if &&
-          condition.if.properties &&
-          condition.if.properties.kind &&
-          condition.if.properties.kind.pattern === pattern
-        ) {
-          if (condition.then && condition.then.properties && condition.then.properties.type) {
-            const typeProp = condition.then.properties.type;
-            if (typeProp.enum) {
-              return typeProp.enum;
-            }
-            if (Array.isArray(typeProp.anyOf)) {
-              for (const sub of typeProp.anyOf) {
-                if (sub.enum) {
-                  return sub.enum;
-                }
-              }
-            }
-          }
-        }
+  private extractKindFromPattern(pattern: string): string {
+    const match = pattern.match(/\(([^)]+)\)/);
+    return match ? match[1] : '';
+  }
+
+  private isNokiaKind(kind: string): boolean {
+    return ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'].includes(kind);
+  }
+
+  private matchesKindPattern(condition: any, pattern: string): boolean {
+    return condition?.if?.properties?.kind?.pattern === pattern;
+  }
+
+  private extractEnumFromTypeProp(typeProp: any): string[] {
+    if (!typeProp) return [];
+    if (typeProp.enum) return typeProp.enum;
+    if (Array.isArray(typeProp.anyOf)) {
+      for (const sub of typeProp.anyOf) {
+        if (sub.enum) return sub.enum;
       }
     }
     return [];

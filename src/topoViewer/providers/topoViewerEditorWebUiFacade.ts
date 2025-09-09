@@ -539,53 +539,10 @@ topology:
   ): Promise<void> {
     perfMark('generateHtml_start');
     const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
-    let templateParams: any = {};
-
-    if (mode === 'viewer') {
-      const viewerParams: Partial<ViewerTemplateParams> = {
-        deploymentState: this.deploymentState,
-        viewerMode: 'viewer',
-        currentLabPath: this.lastYamlFilePath,
-      };
-      templateParams = viewerParams;
-    } else {
-      await refreshDockerImages(this.context);
-      const ifacePatternMapping = vscode.workspace
-        .getConfiguration('containerlab.editor')
-        .get<Record<string, string>>('interfacePatternMapping', {});
-      const updateLinkEndpointsOnKindChange = vscode.workspace
-        .getConfiguration('containerlab.editor')
-        .get<boolean>('updateLinkEndpointsOnKindChange', true);
-      const customNodes = vscode.workspace
-        .getConfiguration('containerlab.editor')
-        .get<any[]>('customNodes', []);
-      const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
-      const defaultNode = defaultCustomNode?.name || '';
-      const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
-      const defaultType = defaultCustomNode?.type || '';
-      const imageMapping: Record<string, string> = {};
-      customNodes.forEach((node: any) => {
-        if (node.image && node.kind) {
-          imageMapping[node.kind] = node.image;
-        }
-      });
-      const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
-      const editorParams: Partial<EditorTemplateParams> = {
-        imageMapping,
-        ifacePatternMapping,
-        defaultKind,
-        defaultType,
-        updateLinkEndpointsOnKindChange,
-        dockerImages,
-        customNodes,
-        defaultNode,
-        currentLabPath: this.lastYamlFilePath,
-        topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
-        topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
-        topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
-      };
-      templateParams = editorParams;
-    }
+    const templateParams =
+      mode === 'viewer'
+        ? this.getViewerTemplateParams()
+        : await this.getEditorTemplateParams();
 
     panel.webview.html = generateWebviewHtml(
       this.context,
@@ -600,6 +557,65 @@ topology:
       perfMeasure('generateHtml', 'generateHtml_start');
       perfMeasure('updatePanelHtmlCore', 'updatePanelHtmlCore_start');
     }
+  }
+
+  private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
+    return {
+      deploymentState: this.deploymentState,
+      viewerMode: 'viewer',
+      currentLabPath: this.lastYamlFilePath,
+    };
+  }
+
+  private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
+    await refreshDockerImages(this.context);
+    const config = vscode.workspace.getConfiguration('containerlab.editor');
+    const ifacePatternMapping = config.get<Record<string, string>>('interfacePatternMapping', {});
+    const updateLinkEndpointsOnKindChange = config.get<boolean>(
+      'updateLinkEndpointsOnKindChange',
+      true
+    );
+    const customNodes = config.get<any[]>('customNodes', []);
+    const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
+    const imageMapping = this.buildImageMapping(customNodes);
+    const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+    return {
+      imageMapping,
+      ifacePatternMapping,
+      defaultKind,
+      defaultType,
+      updateLinkEndpointsOnKindChange,
+      dockerImages,
+      customNodes,
+      defaultNode,
+      currentLabPath: this.lastYamlFilePath,
+      topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
+      topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
+      topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
+    };
+  }
+
+  private getDefaultCustomNode(customNodes: any[]): {
+    defaultNode: string;
+    defaultKind: string;
+    defaultType: string;
+  } {
+    const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
+    return {
+      defaultNode: defaultCustomNode?.name || '',
+      defaultKind: defaultCustomNode?.kind || 'nokia_srlinux',
+      defaultType: defaultCustomNode?.type || '',
+    };
+  }
+
+  private buildImageMapping(customNodes: any[]): Record<string, string> {
+    const imageMapping: Record<string, string> = {};
+    customNodes.forEach((node: any) => {
+      if (node.image && node.kind) {
+        imageMapping[node.kind] = node.image;
+      }
+    });
+    return imageMapping;
   }
 
   /**
@@ -1500,145 +1516,78 @@ topology:
 
     return { result, error };
   }
-  private async handleLabLifecycleEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
-    let result: unknown = null;
-    let error: string | null = null;
-    const labPath = payloadObj as string;
+  private async handleLabLifecycleEndpoint(
+    endpointName: string,
+    payloadObj: any
+  ): Promise<{ result: unknown; error: string | null }> {
+    const actions: Record<
+      string,
+      { command: string; resultMsg: string; errorMsg: string; noLabPath: string }
+    > = {
+      deployLab: {
+        command: 'containerlab.lab.deploy',
+        resultMsg: 'Lab deployment initiated',
+        errorMsg: 'Error deploying lab',
+        noLabPath: 'No lab path provided for deployment',
+      },
+      destroyLab: {
+        command: 'containerlab.lab.destroy',
+        resultMsg: 'Lab destruction initiated',
+        errorMsg: 'Error destroying lab',
+        noLabPath: 'No lab path provided for destruction',
+      },
+      deployLabCleanup: {
+        command: 'containerlab.lab.deploy.cleanup',
+        resultMsg: 'Lab deployment with cleanup initiated',
+        errorMsg: 'Error deploying lab with cleanup',
+        noLabPath: 'No lab path provided for deployment with cleanup',
+      },
+      destroyLabCleanup: {
+        command: 'containerlab.lab.destroy.cleanup',
+        resultMsg: 'Lab destruction with cleanup initiated',
+        errorMsg: 'Error destroying lab with cleanup',
+        noLabPath: 'No lab path provided for destruction with cleanup',
+      },
+      redeployLab: {
+        command: 'containerlab.lab.redeploy',
+        resultMsg: 'Lab redeploy initiated',
+        errorMsg: 'Error redeploying lab',
+        noLabPath: 'No lab path provided for redeploy',
+      },
+      redeployLabCleanup: {
+        command: 'containerlab.lab.redeploy.cleanup',
+        resultMsg: 'Lab redeploy with cleanup initiated',
+        errorMsg: 'Error redeploying lab with cleanup',
+        noLabPath: 'No lab path provided for redeploy with cleanup',
+      },
+    };
 
-    switch (endpointName) {
-      case 'deployLab': {
-        try {
-          if (!labPath) {
-            error = 'No lab path provided for deployment';
-            break;
-          }
-          const { ClabLabTreeNode } = await import('../../treeView/common');
-          const tempNode = new ClabLabTreeNode(
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            { absolute: labPath, relative: '' }
-          );
-          vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
-          result = `Lab deployment initiated for ${labPath}`;
-        } catch (innerError) {
-          error = `Error deploying lab: ${innerError}`;
-          log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'destroyLab': {
-        try {
-          if (!labPath) {
-            error = 'No lab path provided for destruction';
-            break;
-          }
-          const { ClabLabTreeNode } = await import('../../treeView/common');
-          const tempNode = new ClabLabTreeNode(
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            { absolute: labPath, relative: '' }
-          );
-          vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
-          result = `Lab destruction initiated for ${labPath}`;
-        } catch (innerError) {
-          error = `Error destroying lab: ${innerError}`;
-          log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'deployLabCleanup': {
-        try {
-          if (!labPath) {
-            error = 'No lab path provided for deployment with cleanup';
-            break;
-          }
-          const { ClabLabTreeNode } = await import('../../treeView/common');
-          const tempNode = new ClabLabTreeNode(
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            { absolute: labPath, relative: '' }
-          );
-          vscode.commands.executeCommand('containerlab.lab.deploy.cleanup', tempNode);
-          result = `Lab deployment with cleanup initiated for ${labPath}`;
-        } catch (innerError) {
-          error = `Error deploying lab with cleanup: ${innerError}`;
-          log.error(`Error deploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'destroyLabCleanup': {
-        try {
-          if (!labPath) {
-            error = 'No lab path provided for destruction with cleanup';
-            break;
-          }
-          const { ClabLabTreeNode } = await import('../../treeView/common');
-          const tempNode = new ClabLabTreeNode(
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            { absolute: labPath, relative: '' }
-          );
-          vscode.commands.executeCommand('containerlab.lab.destroy.cleanup', tempNode);
-          result = `Lab destruction with cleanup initiated for ${labPath}`;
-        } catch (innerError) {
-          error = `Error destroying lab with cleanup: ${innerError}`;
-          log.error(`Error destroying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'redeployLab': {
-        try {
-          if (!labPath) {
-            error = 'No lab path provided for redeploy';
-            break;
-          }
-          const { ClabLabTreeNode } = await import('../../treeView/common');
-          const tempNode = new ClabLabTreeNode(
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            { absolute: labPath, relative: '' }
-          );
-          vscode.commands.executeCommand('containerlab.lab.redeploy', tempNode);
-          result = `Lab redeploy initiated for ${labPath}`;
-        } catch (innerError) {
-          error = `Error redeploying lab: ${innerError}`;
-          log.error(`Error redeploying lab: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'redeployLabCleanup': {
-        try {
-          if (!labPath) {
-            error = 'No lab path provided for redeploy with cleanup';
-            break;
-          }
-          const { ClabLabTreeNode } = await import('../../treeView/common');
-          const tempNode = new ClabLabTreeNode(
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            { absolute: labPath, relative: '' }
-          );
-          vscode.commands.executeCommand('containerlab.lab.redeploy.cleanup', tempNode);
-          result = `Lab redeploy with cleanup initiated for ${labPath}`;
-        } catch (innerError) {
-          error = `Error redeploying lab with cleanup: ${innerError}`;
-          log.error(`Error redeploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      default: {
-        error = `Unknown endpoint "${endpointName}".`;
-        log.error(error);
-      }
+    const action = actions[endpointName];
+    if (!action) {
+      const error = `Unknown endpoint "${endpointName}".`;
+      log.error(error);
+      return { result: null, error };
     }
 
-    return { result, error };
+    const labPath = payloadObj as string;
+    if (!labPath) {
+      return { result: null, error: action.noLabPath };
+    }
+
+    try {
+      const { ClabLabTreeNode } = await import('../../treeView/common');
+      const tempNode = new ClabLabTreeNode(
+        '',
+        vscode.TreeItemCollapsibleState.None,
+        { absolute: labPath, relative: '' }
+      );
+      vscode.commands.executeCommand(action.command, tempNode);
+      return { result: `${action.resultMsg} for ${labPath}`, error: null };
+    } catch (innerError) {
+      const error = `${action.errorMsg}: ${innerError}`;
+      log.error(`${action.errorMsg}: ${JSON.stringify(innerError, null, 2)}`);
+      return { result: null, error };
+    }
   }
 
 

@@ -85,38 +85,38 @@ export class ManagerShortcutDisplay {
 
   private handleKeydown(e: KeyboardEvent) {
     if (!this.shortcutEnabled || e.repeat) return;
-    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+    const tag = (e.target as HTMLElement).tagName;
+    if (['INPUT', 'TEXTAREA'].includes(tag)) return;
     const modifierKeys = ['Control', 'Shift', 'Alt', 'Meta'];
     if (modifierKeys.includes(e.key)) return; // Skip lone modifiers
-    let parts: string[] = [];
-    if (e.ctrlKey) parts.push(this.isMac ? '⌃' : 'Ctrl');
-    if (e.shiftKey) parts.push(this.isMac ? '⇧' : 'Shift');
-    if (e.altKey) parts.push(this.isMac ? '⌥' : 'Alt');
-    if (e.metaKey) parts.push(this.isMac ? '⌘' : 'Meta');
-    let key = this.friendlyKeys[e.key] || e.key.toUpperCase();
-    parts.push(key);
-    let shortcut = parts.join(' + ');
+    const modifiers = [
+      [e.ctrlKey, this.isMac ? '⌃' : 'Ctrl'],
+      [e.shiftKey, this.isMac ? '⇧' : 'Shift'],
+      [e.altKey, this.isMac ? '⌥' : 'Alt'],
+      [e.metaKey, this.isMac ? '⌘' : 'Meta'],
+    ]
+      .filter(([pressed]) => pressed)
+      .map(([, display]) => display);
+    const key = this.friendlyKeys[e.key] || e.key.toUpperCase();
+    const shortcut = [...modifiers, key].join(' + ');
     if (shortcut) this.addInputDisplay(shortcut);
   }
 
   private handleMousedown(e: MouseEvent) {
     if (!this.shortcutEnabled) return;
-    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).tagName === 'SELECT') return;
-    let parts: string[] = [];
-    if (e.ctrlKey) parts.push(this.isMac ? '⌃' : 'Ctrl');
-    if (e.shiftKey) parts.push(this.isMac ? '⇧' : 'Shift');
-    if (e.altKey) parts.push(this.isMac ? '⌥' : 'Alt');
-    if (e.metaKey) parts.push(this.isMac ? '⌘' : 'Meta');
-    let click = '';
-    switch (e.button) {
-      case 0: click = 'Left Click'; break;
-      case 1: click = 'Middle Click'; break;
-      case 2: click = 'Right Click'; break;
-    }
-    if (click) {
-      parts.push(click);
-      let shortcut = parts.join(' + ');
-      this.addInputDisplay(shortcut);
-    }
+    const tag = (e.target as HTMLElement).tagName;
+    if (['INPUT', 'BUTTON', 'SELECT'].includes(tag)) return;
+    const modifiers = [
+      [e.ctrlKey, this.isMac ? '⌃' : 'Ctrl'],
+      [e.shiftKey, this.isMac ? '⇧' : 'Shift'],
+      [e.altKey, this.isMac ? '⌥' : 'Alt'],
+      [e.metaKey, this.isMac ? '⌘' : 'Meta'],
+    ]
+      .filter(([pressed]) => pressed)
+      .map(([, display]) => display);
+    const click = ['Left Click', 'Middle Click', 'Right Click'][e.button];
+    if (!click) return;
+    const shortcut = [...modifiers, click].join(' + ');
+    this.addInputDisplay(shortcut);
   }
 }
