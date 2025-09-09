@@ -868,138 +868,7 @@ export class ManagerNodeEditor {
     }, 'Search for icon...');
 
     // Image dropdown: prefer docker images if provided by the extension
-    const dockerImages = (window as any).dockerImages as string[] | undefined;
-    const imageInitial = extraData.image || '';
-    this.markFieldInheritance('node-image-dropdown-container', actualInherited.includes('image'));
-
-    // Check if we have valid Docker images (non-empty array)
-    const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 &&
-                           dockerImages.some(img => img && img.trim() !== '');
-
-    if (hasDockerImages) {
-      // Parse docker images to extract base images and versions
-      this.parseDockerImages(dockerImages);
-
-      // Get sorted list of base images
-      const baseImages = Array.from(this.imageVersionMap.keys()).sort((a, b) => {
-        // Group images by common prefixes (e.g., ghcr.io/nokia/srlinux)
-        const aIsNokia = a.includes('nokia');
-        const bIsNokia = b.includes('nokia');
-        if (aIsNokia && !bIsNokia) return -1;
-        if (!aIsNokia && bIsNokia) return 1;
-        return a.localeCompare(b);
-      });
-
-      // Determine initial base image and version from the current image value
-      let initialBaseImage = '';
-      let initialVersion = 'latest';
-
-      if (imageInitial) {
-        const lastColonIndex = imageInitial.lastIndexOf(':');
-        if (lastColonIndex > 0) {
-          const baseImg = imageInitial.substring(0, lastColonIndex);
-          const ver = imageInitial.substring(lastColonIndex + 1);
-          if (this.imageVersionMap.has(baseImg)) {
-            initialBaseImage = baseImg;
-            initialVersion = ver;
-          }
-        }
-      }
-
-      // If no match found but we have an imageInitial value, use it as a custom image
-      if (!initialBaseImage && imageInitial) {
-        // User has a custom image not in our Docker list
-        const lastColonIndex = imageInitial.lastIndexOf(':');
-        if (lastColonIndex > 0) {
-          initialBaseImage = imageInitial.substring(0, lastColonIndex);
-          initialVersion = imageInitial.substring(lastColonIndex + 1);
-        } else {
-          initialBaseImage = imageInitial;
-          initialVersion = 'latest';
-        }
-      } else if (!initialBaseImage && baseImages.length > 0) {
-        // No initial image, use first available
-        initialBaseImage = baseImages[0];
-      }
-
-      // Create base image dropdown
-      createFilterableDropdown(
-        'node-image-dropdown-container',
-        baseImages,
-        initialBaseImage,
-        (selectedBaseImage: string) => this.handleBaseImageChange(selectedBaseImage),
-        'Search for image...',
-        true // Allow free text
-      );
-
-      // Initialize version dropdown
-      if (initialBaseImage) {
-        const versions = this.imageVersionMap.get(initialBaseImage) || ['latest'];
-        // Always preserve the actual version from YAML, even if it's not in our list
-        const versionToSelect = initialVersion || versions[0] || 'latest';
-
-        createFilterableDropdown(
-          'node-version-dropdown-container',
-          versions,
-          versionToSelect,
-          () => {},
-          'Select version...',
-          true // Allow free text for custom versions
-        );
-      } else {
-        // Create version dropdown allowing free text for custom image
-        createFilterableDropdown(
-          'node-version-dropdown-container',
-          ['latest'],
-          initialVersion || 'latest',
-          () => {},
-          'Enter version...',
-          true // Allow free text
-        );
-      }
-    } else {
-      // Fallback to plain input if docker images not available
-      const container = document.getElementById('node-image-dropdown-container');
-      if (container) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'input-field w-full';
-        input.placeholder = 'e.g., ghcr.io/nokia/srlinux';
-        input.id = 'node-image-fallback-input';
-
-        // Extract base image from initial value
-        let baseImageValue = imageInitial;
-        if (imageInitial) {
-          const lastColonIndex = imageInitial.lastIndexOf(':');
-          if (lastColonIndex > 0) {
-            baseImageValue = imageInitial.substring(0, lastColonIndex);
-          }
-        }
-        input.value = baseImageValue;
-        container.appendChild(input);
-      }
-
-      // Add version input field
-      const versionContainer = document.getElementById('node-version-dropdown-container');
-      if (versionContainer) {
-        const versionInput = document.createElement('input');
-        versionInput.type = 'text';
-        versionInput.className = 'input-field w-full';
-        versionInput.placeholder = 'e.g., latest';
-        versionInput.id = 'node-version-fallback-input';
-
-        // Extract version from initial value
-        let versionValue = 'latest';
-        if (imageInitial) {
-          const lastColonIndex = imageInitial.lastIndexOf(':');
-          if (lastColonIndex > 0) {
-            versionValue = imageInitial.substring(lastColonIndex + 1);
-          }
-        }
-        versionInput.value = versionValue;
-        versionContainer.appendChild(versionInput);
-      }
-    }
+    this.setupImageFields(extraData, actualInherited);
     // Add custom node name fields
     this.setInputValue('node-custom-name', '');
     this.setCheckboxValue('node-custom-default', false);
@@ -1196,6 +1065,125 @@ export class ManagerNodeEditor {
     const runtimeInitial = extraData.runtime || 'Default';
     createFilterableDropdown('node-runtime-dropdown-container', runtimeOptions, runtimeInitial, () => {}, 'Search runtime...');
     this.markFieldInheritance('node-runtime-dropdown-container', actualInherited.includes('runtime'));
+  }
+
+  private setupImageFields(extraData: Record<string, any>, actualInherited: string[]): void {
+    const dockerImages = (window as any).dockerImages as string[] | undefined;
+    const imageInitial = extraData.image || '';
+    this.markFieldInheritance('node-image-dropdown-container', actualInherited.includes('image'));
+
+    const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 &&
+                           dockerImages.some(img => img && img.trim() !== '');
+
+    if (hasDockerImages) {
+      this.parseDockerImages(dockerImages);
+
+      const baseImages = Array.from(this.imageVersionMap.keys()).sort((a, b) => {
+        const aIsNokia = a.includes('nokia');
+        const bIsNokia = b.includes('nokia');
+        if (aIsNokia && !bIsNokia) return -1;
+        if (!aIsNokia && bIsNokia) return 1;
+        return a.localeCompare(b);
+      });
+
+      let initialBaseImage = '';
+      let initialVersion = 'latest';
+
+      if (imageInitial) {
+        const lastColonIndex = imageInitial.lastIndexOf(':');
+        if (lastColonIndex > 0) {
+          const baseImg = imageInitial.substring(0, lastColonIndex);
+          const ver = imageInitial.substring(lastColonIndex + 1);
+          if (this.imageVersionMap.has(baseImg)) {
+            initialBaseImage = baseImg;
+            initialVersion = ver;
+          }
+        }
+      }
+
+      if (!initialBaseImage && imageInitial) {
+        const lastColonIndex = imageInitial.lastIndexOf(':');
+        if (lastColonIndex > 0) {
+          initialBaseImage = imageInitial.substring(0, lastColonIndex);
+          initialVersion = imageInitial.substring(lastColonIndex + 1);
+        } else {
+          initialBaseImage = imageInitial;
+          initialVersion = 'latest';
+        }
+      } else if (!initialBaseImage && baseImages.length > 0) {
+        initialBaseImage = baseImages[0];
+      }
+
+      createFilterableDropdown(
+        'node-image-dropdown-container',
+        baseImages,
+        initialBaseImage,
+        (selectedBaseImage: string) => this.handleBaseImageChange(selectedBaseImage),
+        'Search for image...',
+        true
+      );
+
+      if (initialBaseImage) {
+        const versions = this.imageVersionMap.get(initialBaseImage) || ['latest'];
+        const versionToSelect = initialVersion || versions[0] || 'latest';
+
+        createFilterableDropdown(
+          'node-version-dropdown-container',
+          versions,
+          versionToSelect,
+          () => {},
+          'Select version...',
+          true
+        );
+      } else {
+        createFilterableDropdown(
+          'node-version-dropdown-container',
+          ['latest'],
+          initialVersion || 'latest',
+          () => {},
+          'Enter version...',
+          true
+        );
+      }
+    } else {
+      const container = document.getElementById('node-image-dropdown-container');
+      if (container) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'input-field w-full';
+        input.placeholder = 'e.g., ghcr.io/nokia/srlinux';
+        input.id = 'node-image-fallback-input';
+
+        let baseImageValue = imageInitial;
+        if (imageInitial) {
+          const lastColonIndex = imageInitial.lastIndexOf(':');
+          if (lastColonIndex > 0) {
+            baseImageValue = imageInitial.substring(0, lastColonIndex);
+          }
+        }
+        input.value = baseImageValue;
+        container.appendChild(input);
+      }
+
+      const versionContainer = document.getElementById('node-version-dropdown-container');
+      if (versionContainer) {
+        const versionInput = document.createElement('input');
+        versionInput.type = 'text';
+        versionInput.className = 'input-field w-full';
+        versionInput.placeholder = 'e.g., latest';
+        versionInput.id = 'node-version-fallback-input';
+
+        let versionValue = 'latest';
+        if (imageInitial) {
+          const lastColonIndex = imageInitial.lastIndexOf(':');
+          if (lastColonIndex > 0) {
+            versionValue = imageInitial.substring(lastColonIndex + 1);
+          }
+        }
+        versionInput.value = versionValue;
+        versionContainer.appendChild(versionInput);
+      }
+    }
   }
 
   /**
