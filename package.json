@@ -1348,7 +1348,7 @@
     "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-free": "^7.0.0",
+    "@fortawesome/fontawesome-free": "^7.0.1",
     "@types/chai": "^5.2.2",
     "@types/cytoscape": "^3.21.9",
     "@types/cytoscape-cxtmenu": "^3.4.4",
@@ -1358,7 +1358,7 @@
     "@types/node": "^24.3.0",
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.99.0",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.38.0",
     "@vscode/vsce": "^3.6.0",
     "ajv": "^8.17.1",
@@ -1386,11 +1386,11 @@
     "postcss-loader": "^8.1.1",
     "sinon": "^21.0.0",
     "@tailwindcss/postcss": "^4.1.11",
-    "tailwindcss": "^4.1.12",
+    "tailwindcss": "^4.1.13",
     "tippy.js": "^6.3.7",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.40.0",
+    "typescript-eslint": "^8.42.0",
     "webpack-cli": "^6.0.1",
     "yaml": "^2.8.1"
   }
