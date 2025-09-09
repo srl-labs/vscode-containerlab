@@ -59,7 +59,9 @@ export default [
       'complexity': ['warn', { max: 15 }],
       'sonarjs/cognitive-complexity': ['warn', 15],
       'sonarjs/no-identical-functions': 'warn',
-      'sonarjs/no-duplicate-string': 'warn'
+      'sonarjs/no-duplicate-string': 'warn',
+      'sonarjs/no-hardcoded-ip': 'off',
+      'sonarjs/no-alphabetical-sort': 'off'
 
     }
   }
