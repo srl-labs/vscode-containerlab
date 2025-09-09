@@ -813,33 +813,45 @@ export class ManagerNodeEditor {
   private loadNodeData(node: cytoscape.NodeSingular): void {
     const nodeData = node.data();
     const extraData = nodeData.extraData || {};
-
-    // Compute which properties should actually show as inherited
     const actualInherited = this.computeActualInheritedProps(extraData);
 
-    // Display node ID
+    this.displayNodeId(node);
+    this.loadBasicTab(node, extraData, actualInherited);
+    this.loadConfigurationTab(extraData, actualInherited);
+    this.loadRuntimeTab(extraData, actualInherited);
+    this.loadNetworkTab(extraData, actualInherited);
+    this.loadAdvancedTab(extraData, actualInherited);
+  }
+
+  private displayNodeId(node: cytoscape.NodeSingular): void {
     const idElement = document.getElementById('panel-node-editor-id');
     if (idElement) {
       idElement.textContent = node.id();
     }
+  }
 
-    // Basic tab
+  private loadBasicTab(node: cytoscape.NodeSingular, extraData: Record<string, any>, actualInherited: string[]): void {
+    const nodeData = node.data();
     this.setInputValue('node-name', nodeData.name || node.id());
-    // Kind dropdown
+
     const desiredKind = extraData.kind || ((window as any).defaultKind || 'nokia_srlinux');
-    const kindInitial = (this.schemaKinds.length > 0 && this.schemaKinds.includes(desiredKind))
-      ? desiredKind
-      : (this.schemaKinds[0] || desiredKind);
-    createFilterableDropdown('node-kind-dropdown-container', this.schemaKinds, kindInitial, (selectedKind: string) => this.handleKindChange(selectedKind), 'Search for kind...');
+    const kindInitial =
+      this.schemaKinds.length > 0 && this.schemaKinds.includes(desiredKind)
+        ? desiredKind
+        : this.schemaKinds[0] || desiredKind;
+    createFilterableDropdown(
+      'node-kind-dropdown-container',
+      this.schemaKinds,
+      kindInitial,
+      (selectedKind: string) => this.handleKindChange(selectedKind),
+      'Search for kind...',
+    );
     this.markFieldInheritance('node-kind-dropdown-container', actualInherited.includes('kind'));
-    // Store the type value temporarily
+
     const typeValue = extraData.type || '';
     this.setInputValue('node-type', typeValue);
     this.markFieldInheritance('node-type', actualInherited.includes('type'));
-    // Set initial type field visibility and dropdown based on the kind
-    // This will properly set up the dropdown if needed
     this.handleKindChange(kindInitial);
-    // After handleKindChange sets up the field, ensure the type value is selected
     if (typeValue) {
       const typeInput = document.getElementById('node-type') as HTMLInputElement;
       if (typeInput) {
@@ -847,49 +859,31 @@ export class ManagerNodeEditor {
       }
     }
 
-    // Icon/Role dropdown - use the actual icons from the styles
     const nodeIcons = extractNodeIcons();
-
-    // Get the initial icon value - check if we're editing a custom template
     let iconInitial = 'pe';
-    const currentNodeData = node.data();
-    if (currentNodeData.topoViewerRole && typeof currentNodeData.topoViewerRole === 'string') {
-      iconInitial = currentNodeData.topoViewerRole;
-    } else if (currentNodeData.extraData?.icon && typeof currentNodeData.extraData.icon === 'string') {
-      iconInitial = currentNodeData.extraData.icon;
+    if (nodeData.topoViewerRole && typeof nodeData.topoViewerRole === 'string') {
+      iconInitial = nodeData.topoViewerRole;
+    } else if (nodeData.extraData?.icon && typeof nodeData.extraData.icon === 'string') {
+      iconInitial = nodeData.extraData.icon;
     }
+    createFilterableDropdown('panel-node-topoviewerrole-dropdown-container', nodeIcons, iconInitial, () => {}, 'Search for icon...');
 
-    // Log for debugging
-    log.debug(`Creating icon dropdown with options: ${JSON.stringify(nodeIcons)}`);
-    log.debug(`Initial icon value: ${iconInitial}`);
-
-    createFilterableDropdown('panel-node-topoviewerrole-dropdown-container', nodeIcons, iconInitial, () => {
-      // Icon will be saved when save button is clicked
-    }, 'Search for icon...');
-
-    // Image dropdown: prefer docker images if provided by the extension
     this.setupImageFields(extraData, actualInherited);
-    // Add custom node name fields
     this.setInputValue('node-custom-name', '');
     this.setCheckboxValue('node-custom-default', false);
 
-    // Hide/show fields based on whether this is a newly created node or temp node for custom creation
     const customNameGroup = document.getElementById('node-custom-name-group');
     const nodeNameGroup = document.getElementById('node-name-group');
     const isTempNode = node.id() === 'temp-custom-node';
     const isEditNode = node.id() === 'edit-custom-node';
 
-    // Only show custom name field when creating or editing custom node templates
     if (customNameGroup) {
-      customNameGroup.style.display = (isTempNode || isEditNode) ? 'block' : 'none';
+      customNameGroup.style.display = isTempNode || isEditNode ? 'block' : 'none';
     }
-
-    // Hide node name field when creating or editing custom node templates
     if (nodeNameGroup) {
-      nodeNameGroup.style.display = (isTempNode || isEditNode) ? 'none' : 'block';
+      nodeNameGroup.style.display = isTempNode || isEditNode ? 'none' : 'block';
     }
 
-    // Update panel heading based on mode
     const heading = document.getElementById('panel-node-editor-heading');
     if (heading) {
       if (isTempNode) {
@@ -900,8 +894,9 @@ export class ManagerNodeEditor {
         heading.textContent = 'Node Editor';
       }
     }
+  }
 
-    // Configuration tab
+  private loadConfigurationTab(extraData: Record<string, any>, actualInherited: string[]): void {
     this.setInputValue('node-startup-config', extraData['startup-config'] || '');
     this.markFieldInheritance('node-startup-config', actualInherited.includes('startup-config'));
     this.setCheckboxValue('node-enforce-startup-config', extraData['enforce-startup-config'] || false);
@@ -911,31 +906,27 @@ export class ManagerNodeEditor {
     this.setInputValue('node-license', extraData.license || '');
     this.markFieldInheritance('node-license', actualInherited.includes('license'));
 
-    // Load binds
     if (extraData.binds && Array.isArray(extraData.binds)) {
-      extraData.binds.forEach((bind: string) => {
-        this.addDynamicEntryWithValue('binds', bind, 'Bind mount (host:container)');
-      });
+      extraData.binds.forEach((bind: string) => this.addDynamicEntryWithValue('binds', bind, 'Bind mount (host:container)'));
     }
     this.markFieldInheritance('node-binds-container', actualInherited.includes('binds'));
 
-    // Load environment variables
     if (extraData.env && typeof extraData.env === 'object') {
-      Object.entries(extraData.env).forEach(([key, value]) => {
-        this.addDynamicKeyValueEntryWithValue('env', key, value as string);
-      });
+      Object.entries(extraData.env).forEach(([key, value]) =>
+        this.addDynamicKeyValueEntryWithValue('env', key, value as string),
+      );
     }
     this.markFieldInheritance('node-env-container', actualInherited.includes('env'));
 
-    // Load labels
     if (extraData.labels && typeof extraData.labels === 'object') {
-      Object.entries(extraData.labels).forEach(([key, value]) => {
-        this.addDynamicKeyValueEntryWithValue('labels', key, value as string);
-      });
+      Object.entries(extraData.labels).forEach(([key, value]) =>
+        this.addDynamicKeyValueEntryWithValue('labels', key, value as string),
+      );
     }
     this.markFieldInheritance('node-labels-container', actualInherited.includes('labels'));
+  }
 
-    // Runtime tab
+  private loadRuntimeTab(extraData: Record<string, any>, actualInherited: string[]): void {
     this.setInputValue('node-user', extraData.user || '');
     this.markFieldInheritance('node-user', actualInherited.includes('user'));
     this.setInputValue('node-entrypoint', extraData.entrypoint || '');
@@ -951,15 +942,13 @@ export class ManagerNodeEditor {
     this.setInputValue('node-startup-delay', extraData['startup-delay'] || '');
     this.markFieldInheritance('node-startup-delay', actualInherited.includes('startup-delay'));
 
-    // Load exec commands
     if (extraData.exec && Array.isArray(extraData.exec)) {
-      extraData.exec.forEach((cmd: string) => {
-        this.addDynamicEntryWithValue('exec', cmd, 'Command to execute');
-      });
+      extraData.exec.forEach((cmd: string) => this.addDynamicEntryWithValue('exec', cmd, 'Command to execute'));
     }
     this.markFieldInheritance('node-exec-container', actualInherited.includes('exec'));
+  }
 
-    // Network tab
+  private loadNetworkTab(extraData: Record<string, any>, actualInherited: string[]): void {
     this.setInputValue('node-mgmt-ipv4', extraData['mgmt-ipv4'] || '');
     this.markFieldInheritance('node-mgmt-ipv4', actualInherited.includes('mgmt-ipv4'));
     this.setInputValue('node-mgmt-ipv6', extraData['mgmt-ipv6'] || '');
@@ -969,33 +958,23 @@ export class ManagerNodeEditor {
     createFilterableDropdown('node-network-mode-dropdown-container', nmOptions, nmInitial, () => {}, 'Search network mode...');
     this.markFieldInheritance('node-network-mode-dropdown-container', actualInherited.includes('network-mode'));
 
-    // Load ports
     if (extraData.ports && Array.isArray(extraData.ports)) {
-      extraData.ports.forEach((port: string) => {
-        this.addDynamicEntryWithValue('ports', port, 'Host:Container');
-      });
+      extraData.ports.forEach((port: string) => this.addDynamicEntryWithValue('ports', port, 'Host:Container'));
     }
     this.markFieldInheritance('node-ports-container', actualInherited.includes('ports'));
 
-    // Load DNS configuration
-    if (extraData.dns) {
-      if (extraData.dns.servers && Array.isArray(extraData.dns.servers)) {
-        extraData.dns.servers.forEach((server: string) => {
-          this.addDynamicEntryWithValue('dns-servers', server, 'DNS server IP');
-        });
-      }
+    if (extraData.dns && extraData.dns.servers && Array.isArray(extraData.dns.servers)) {
+      extraData.dns.servers.forEach((server: string) => this.addDynamicEntryWithValue('dns-servers', server, 'DNS server IP'));
     }
     this.markFieldInheritance('node-dns-servers-container', actualInherited.includes('dns'));
 
-    // Load aliases
     if (extraData.aliases && Array.isArray(extraData.aliases)) {
-      extraData.aliases.forEach((alias: string) => {
-        this.addDynamicEntryWithValue('aliases', alias, 'Network alias');
-      });
+      extraData.aliases.forEach((alias: string) => this.addDynamicEntryWithValue('aliases', alias, 'Network alias'));
     }
     this.markFieldInheritance('node-aliases-container', actualInherited.includes('aliases'));
+  }
 
-    // Advanced tab
+  private loadAdvancedTab(extraData: Record<string, any>, actualInherited: string[]): void {
     this.setInputValue('node-memory', extraData.memory || '');
     this.markFieldInheritance('node-memory', actualInherited.includes('memory'));
     this.setInputValue('node-cpu', extraData.cpu || '');
@@ -1005,47 +984,35 @@ export class ManagerNodeEditor {
     this.setInputValue('node-shm-size', extraData['shm-size'] || '');
     this.markFieldInheritance('node-shm-size', actualInherited.includes('shm-size'));
 
-    // Load capabilities
     if (extraData['cap-add'] && Array.isArray(extraData['cap-add'])) {
-      extraData['cap-add'].forEach((cap: string) => {
-        this.addDynamicEntryWithValue('cap-add', cap, 'Capability');
-      });
+      extraData['cap-add'].forEach((cap: string) => this.addDynamicEntryWithValue('cap-add', cap, 'Capability'));
     }
     this.markFieldInheritance('node-cap-add-container', actualInherited.includes('cap-add'));
 
-    // Load sysctls
     if (extraData.sysctls && typeof extraData.sysctls === 'object') {
-      Object.entries(extraData.sysctls).forEach(([key, value]) => {
-        this.addDynamicKeyValueEntryWithValue('sysctls', key, String(value));
-      });
+      Object.entries(extraData.sysctls).forEach(([key, value]) =>
+        this.addDynamicKeyValueEntryWithValue('sysctls', key, String(value)),
+      );
     }
     this.markFieldInheritance('node-sysctls-container', actualInherited.includes('sysctls'));
 
-    // Load devices
     if (extraData.devices && Array.isArray(extraData.devices)) {
-      extraData.devices.forEach((device: string) => {
-        this.addDynamicEntryWithValue('devices', device, 'Device path');
-      });
+      extraData.devices.forEach((device: string) => this.addDynamicEntryWithValue('devices', device, 'Device path'));
     }
     this.markFieldInheritance('node-devices-container', actualInherited.includes('devices'));
 
-    // Load certificate configuration
     if (extraData.certificate) {
-    this.setCheckboxValue('node-cert-issue', extraData.certificate.issue || false);
+      this.setCheckboxValue('node-cert-issue', extraData.certificate.issue || false);
       this.markFieldInheritance('node-cert-issue', actualInherited.includes('certificate'));
       const keySizeOptions = ['2048', '4096'];
       const keySizeInitial = String(extraData.certificate['key-size'] || '2048');
       createFilterableDropdown('node-cert-key-size-dropdown-container', keySizeOptions, keySizeInitial, () => {}, 'Search key size...');
       this.setInputValue('node-cert-validity', extraData.certificate['validity-duration'] || '');
-
       if (extraData.certificate.sans && Array.isArray(extraData.certificate.sans)) {
-        extraData.certificate.sans.forEach((san: string) => {
-          this.addDynamicEntryWithValue('sans', san, 'SAN');
-        });
+        extraData.certificate.sans.forEach((san: string) => this.addDynamicEntryWithValue('sans', san, 'SAN'));
       }
     }
 
-    // Load healthcheck configuration
     if (extraData.healthcheck) {
       const hc = extraData.healthcheck;
       this.setInputValue('node-healthcheck-test', hc.test ? hc.test.join(' ') : '');
@@ -1725,397 +1692,325 @@ export class ManagerNodeEditor {
   private async save(): Promise<void> {
     if (!this.currentNode) return;
 
-    // Validate form before saving
     if (!this.validateForm()) {
       log.warn('Form validation failed, cannot save');
       return;
     }
 
     try {
-      // Collect all the data first
-      const nodeProps: NodeProperties = {
-        name: this.getInputValue('node-name'),
-        kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
-        type: this.getTypeFieldValue() || undefined,
-      };
-
-      // Combine base image and version to form the complete image
-      const dockerImages = (window as any).dockerImages as string[] | undefined;
-      const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 &&
-                             dockerImages.some(img => img && img.trim() !== '');
-
-      if (hasDockerImages) {
-        // Using dropdown inputs (with free text support)
-        const baseImg = (document.getElementById('node-image-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-        const version = (document.getElementById('node-version-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'latest';
-        if (baseImg) {
-          nodeProps.image = `${baseImg}:${version}`;
-        }
-      } else {
-        // Fallback plain text inputs
-        const baseImg = (document.getElementById('node-image-fallback-input') as HTMLInputElement | null)?.value || '';
-        const version = (document.getElementById('node-version-fallback-input') as HTMLInputElement | null)?.value || 'latest';
-        if (baseImg) {
-          nodeProps.image = `${baseImg}:${version}`;
-        }
-      }
-
-      // Configuration properties
-      const startupConfig = this.getInputValue('node-startup-config');
-      if (startupConfig) {
-        nodeProps['startup-config'] = startupConfig;
-      }
-
-      // For checkboxes: only include if checked (true)
-      if (this.getCheckboxValue('node-enforce-startup-config')) {
-        nodeProps['enforce-startup-config'] = true;
-      }
-
-      if (this.getCheckboxValue('node-suppress-startup-config')) {
-        nodeProps['suppress-startup-config'] = true;
-      }
-
-      const license = this.getInputValue('node-license');
-      if (license) {
-        nodeProps.license = license;
-      }
-
-      const binds = this.collectDynamicEntries('binds');
-      if (binds.length > 0) {
-        nodeProps.binds = binds;
-      }
-
-      const env = this.collectDynamicKeyValueEntries('env');
-      if (Object.keys(env).length > 0) {
-        nodeProps.env = env;
-      }
-
-      const labels = this.collectDynamicKeyValueEntries('labels');
-      if (Object.keys(labels).length > 0) {
-        nodeProps.labels = labels;
-      }
-
-      // Runtime properties
-      const user = this.getInputValue('node-user');
-      if (user) {
-        nodeProps.user = user;
-      }
-
-      const entrypoint = this.getInputValue('node-entrypoint');
-      if (entrypoint) {
-        nodeProps.entrypoint = entrypoint;
-      }
-
-      const cmd = this.getInputValue('node-cmd');
-      if (cmd) {
-        nodeProps.cmd = cmd;
-      }
-
-      const exec = this.collectDynamicEntries('exec');
-      if (exec.length > 0) {
-        nodeProps.exec = exec;
-      }
-
-      const rpVal = (document.getElementById('node-restart-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-      if (rpVal && rpVal !== 'Default') {
-        nodeProps['restart-policy'] = rpVal as any;
-      }
-
-      if (this.getCheckboxValue('node-auto-remove')) {
-        nodeProps['auto-remove'] = true;
-      }
-
-      const startupDelay = this.getInputValue('node-startup-delay');
-      if (startupDelay) {
-        nodeProps['startup-delay'] = parseInt(startupDelay);
-      }
-
-      // Network properties
-      const mgmtIpv4 = this.getInputValue('node-mgmt-ipv4');
-      if (mgmtIpv4) {
-        nodeProps['mgmt-ipv4'] = mgmtIpv4;
-      }
-
-      const mgmtIpv6 = this.getInputValue('node-mgmt-ipv6');
-      if (mgmtIpv6) {
-        nodeProps['mgmt-ipv6'] = mgmtIpv6;
-      }
-
-      const nmVal = (document.getElementById('node-network-mode-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-      if (nmVal && nmVal !== 'Default') {
-        nodeProps['network-mode'] = nmVal;
-      }
-
-      const ports = this.collectDynamicEntries('ports');
-      if (ports.length > 0) {
-        nodeProps.ports = ports;
-      }
-
-      const dnsServers = this.collectDynamicEntries('dns-servers');
-      if (dnsServers.length > 0) {
-        nodeProps.dns = nodeProps.dns || {};
-        nodeProps.dns.servers = dnsServers;
-      }
-
-      const aliases = this.collectDynamicEntries('aliases');
-      if (aliases.length > 0) {
-        nodeProps.aliases = aliases;
-      }
-
-      // Advanced properties
-      const memory = this.getInputValue('node-memory');
-      if (memory) {
-        nodeProps.memory = memory;
-      }
-
-      const cpu = this.getInputValue('node-cpu');
-      if (cpu) {
-        nodeProps.cpu = parseFloat(cpu);
-      }
-
-      const cpuSet = this.getInputValue('node-cpu-set');
-      if (cpuSet) {
-        nodeProps['cpu-set'] = cpuSet;
-      }
-
-      const shmSize = this.getInputValue('node-shm-size');
-      if (shmSize) {
-        nodeProps['shm-size'] = shmSize;
-      }
-
-      const capAdd = this.collectDynamicEntries('cap-add');
-      if (capAdd.length > 0) {
-        nodeProps['cap-add'] = capAdd;
-      }
-
-      const sysctls = this.collectDynamicKeyValueEntries('sysctls');
-      if (Object.keys(sysctls).length > 0) {
-        nodeProps.sysctls = {};
-        Object.entries(sysctls).forEach(([key, value]) => {
-          // Try to parse as number, otherwise keep as string
-          const numValue = parseFloat(value);
-          nodeProps.sysctls![key] = isNaN(numValue) ? value : numValue;
-        });
-      }
-
-      const devices = this.collectDynamicEntries('devices');
-      if (devices.length > 0) {
-        nodeProps.devices = devices;
-      }
-
-      // Certificate configuration
-      if (this.getCheckboxValue('node-cert-issue')) {
-        nodeProps.certificate = { issue: true };
-
-        const keySize = (document.getElementById('node-cert-key-size-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-        if (keySize) nodeProps.certificate['key-size'] = parseInt(keySize);
-
-        const validity = this.getInputValue('node-cert-validity');
-        if (validity) nodeProps.certificate['validity-duration'] = validity;
-
-        const sans = this.collectDynamicEntries('sans');
-        if (sans.length > 0) nodeProps.certificate.sans = sans;
-      }
-
-      // Healthcheck configuration
-      const hcTest = this.getInputValue('node-healthcheck-test');
-      if (hcTest) {
-        nodeProps.healthcheck = nodeProps.healthcheck || {};
-        nodeProps.healthcheck.test = hcTest.split(' ');
-      }
-
-      const hcStartPeriod = this.getInputValue('node-healthcheck-start-period');
-      if (hcStartPeriod) {
-        nodeProps.healthcheck = nodeProps.healthcheck || {};
-        nodeProps.healthcheck['start-period'] = parseInt(hcStartPeriod);
-      }
-
-      const hcInterval = this.getInputValue('node-healthcheck-interval');
-      if (hcInterval) {
-        nodeProps.healthcheck = nodeProps.healthcheck || {};
-        nodeProps.healthcheck.interval = parseInt(hcInterval);
-      }
-
-      const hcTimeout = this.getInputValue('node-healthcheck-timeout');
-      if (hcTimeout) {
-        nodeProps.healthcheck = nodeProps.healthcheck || {};
-        nodeProps.healthcheck.timeout = parseInt(hcTimeout);
-      }
-
-      const hcRetries = this.getInputValue('node-healthcheck-retries');
-      if (hcRetries) {
-        nodeProps.healthcheck = nodeProps.healthcheck || {};
-        nodeProps.healthcheck.retries = parseInt(hcRetries);
-      }
-
-      const ippVal = (document.getElementById('node-image-pull-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-      if (ippVal && ippVal !== 'Default') {
-        nodeProps['image-pull-policy'] = ippVal as any;
-      }
-
-      const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-      if (runtimeVal && runtimeVal !== 'Default') {
-        nodeProps.runtime = runtimeVal as any;
-      }
-
-      // Handle custom node saving after collecting all properties
-      const customName = this.getInputValue('node-custom-name');
-      const setDefault = this.getCheckboxValue('node-custom-default');
-      if (customName) {
-        // Check if we're editing an existing custom node
-        const currentNodeData = this.currentNode.data();
-        const editingNodeName = currentNodeData.extraData?.editingCustomNodeName;
-
-        // For temp nodes or edit nodes, save the custom template
-        const isTempNode = this.currentNode.id() === 'temp-custom-node';
-        const isEditNode = this.currentNode.id() === 'edit-custom-node';
-
-        if (isTempNode || isEditNode) {
-          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault, editingNodeName);
-          // Close the panel and return early for temp/edit nodes
-          this.close();
-          return;
-        } else {
-          await this.saveCustomNodeTemplate(customName, nodeProps, setDefault);
-        }
-      }
-
-      // Skip node update for temp nodes and edit nodes (custom node creation/editing without canvas node)
-      const isTempNode = this.currentNode.id() === 'temp-custom-node';
-      const isEditNode = this.currentNode.id() === 'edit-custom-node';
-      if (isTempNode || isEditNode) {
-        log.info('Skipped canvas update for custom node template operation');
+      const nodeProps = this.collectNodeProperties();
+      const handled = await this.handleCustomNode(nodeProps);
+      if (handled || this.isCustomTemplateNode()) {
         return;
       }
-
-      // Update the node data
-      const currentData = this.currentNode.data();
-
-      // Start with existing extraData to preserve properties not managed by the form
-      const updatedExtraData: any = { ...(currentData.extraData || {}) };
-
-      // List of all properties managed by the form
-      const formManagedProperties = [
-        'name', 'kind', 'type', 'image', 'startup-config', 'enforce-startup-config',
-        'suppress-startup-config', 'license', 'binds', 'env', 'labels', 'user',
-        'entrypoint', 'cmd', 'exec', 'restart-policy', 'auto-remove', 'startup-delay',
-        'mgmt-ipv4', 'mgmt-ipv6', 'network-mode', 'ports', 'dns', 'aliases',
-        'memory', 'cpu', 'cpu-set', 'shm-size', 'cap-add', 'sysctls', 'devices',
-        'certificate', 'healthcheck', 'image-pull-policy', 'runtime', 'inherited'
-      ];
-
-      // Remove all form-managed properties first (to handle deletions)
-      formManagedProperties.forEach(prop => {
-        delete updatedExtraData[prop];
-      });
-
-      // Then add back only the properties with values from the form
-      Object.assign(updatedExtraData, nodeProps);
-
-      // Recompute inherited properties against topology defaults/kinds/groups
-      const topology: ClabTopology = {
-        topology: {
-          defaults: (window as any).topologyDefaults || {},
-          kinds: (window as any).topologyKinds || {},
-          groups: (window as any).topologyGroups || {},
-        }
-      };
-      const kindName = nodeProps.kind ?? currentData.extraData?.kind;
-      const groupName = currentData.extraData?.group;
-      const inheritBase = resolveNodeConfig(topology, { group: groupName, kind: kindName });
-      const mergedNode = resolveNodeConfig(topology, { ...nodeProps, group: groupName, kind: kindName });
-      const normalize = (obj: any): any => {
-        if (Array.isArray(obj)) return obj.map(normalize);
-        if (obj && typeof obj === 'object') {
-          return Object.keys(obj).sort().reduce((acc, k) => {
-            acc[k] = normalize(obj[k]);
-            return acc;
-          }, {} as any);
-        }
-        return obj;
-      };
-      const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
-      const shouldPersist = (val: any) => {
-        if (val === undefined) return false;
-        if (Array.isArray(val)) return val.length > 0;
-        if (val && typeof val === 'object') return Object.keys(val).length > 0;
-        return true;
-      };
-      const inheritedProps: string[] = [];
-      // Properties that should never be marked as inherited
-      const neverInherited = ['kind', 'name', 'group'];
-      Object.keys(mergedNode).forEach(prop => {
-        // Skip properties that should never be inherited
-        if (neverInherited.includes(prop)) {
-          return;
-        }
-        const val = (nodeProps as any)[prop];
-        const inheritedVal = (inheritBase as any)[prop];
-
-        // Only mark as inherited if:
-        // 1. The value exists and matches the inherited value, OR
-        // 2. The value doesn't exist but there IS an inherited value to inherit
-        const hasValue = shouldPersist(val);
-        const hasInheritedValue = shouldPersist(inheritedVal);
-
-        if (hasValue && deepEqual(val, inheritedVal)) {
-          // User set a value that matches the inherited value
-          inheritedProps.push(prop);
-        } else if (!hasValue && hasInheritedValue) {
-          // User didn't set a value but there's an inherited value
-          inheritedProps.push(prop);
-        }
-        // Don't mark as inherited if both are empty/undefined
-      });
-      Object.assign(updatedExtraData, mergedNode);
-      updatedExtraData.inherited = inheritedProps;
-      updatedExtraData.kind = kindName;
-      if (groupName !== undefined) {
-        updatedExtraData.group = groupName;
-      }
-
-      // Update the UI to reflect the new inherited status
-      this.updateInheritedBadges(inheritedProps);
-
-      // Get the icon/role value
-      const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
-
-      const updatedData = {
-        ...currentData,
-        name: nodeProps.name,
-        topoViewerRole: iconValue,
-        extraData: updatedExtraData
-      };
-
-      this.currentNode.data(updatedData);
-
-      // Save the topology
-      await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
-
-      // Reload node data from the YAML to ensure inheritance is accurate
-      try {
-        const sender = this.saveManager.getMessageSender();
-        const nodeName = this.currentNode.data('name') || this.currentNode.id();
-        const freshData = await sender.sendMessageToVscodeEndpointPost(
-          'topo-editor-get-node-config',
-          { node: nodeName }
-        );
-        if (freshData && typeof freshData === 'object') {
-          this.currentNode.data('extraData', freshData);
-          this.clearAllDynamicEntries();
-          this.loadNodeData(this.currentNode);
-        }
-      } catch (err) {
-        log.warn(
-          `Failed to refresh node data from YAML after save: ${err instanceof Error ? err.message : String(err)}`
-        );
-      }
-
-      log.info(`Node ${this.currentNode.id()} updated with enhanced properties`);
-
-      // Don't close the panel after saving - let user continue editing or close manually
+      await this.updateNode(nodeProps);
     } catch (error) {
       log.error(`Failed to save node properties: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private collectNodeProperties(): NodeProperties {
+    const nodeProps: NodeProperties = {
+      name: this.getInputValue('node-name'),
+      kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
+      type: this.getTypeFieldValue() || undefined,
+    };
+
+    this.collectImage(nodeProps);
+    this.collectConfigurationProps(nodeProps);
+    this.collectRuntimeProps(nodeProps);
+    this.collectNetworkProps(nodeProps);
+    this.collectAdvancedProps(nodeProps);
+    this.collectCertificateProps(nodeProps);
+    this.collectHealthcheckProps(nodeProps);
+
+    return nodeProps;
+  }
+
+  private collectImage(nodeProps: NodeProperties): void {
+    const dockerImages = (window as any).dockerImages as string[] | undefined;
+    const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 && dockerImages.some(img => img && img.trim() !== '');
+    if (hasDockerImages) {
+      const baseImg = (document.getElementById('node-image-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      const version = (document.getElementById('node-version-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'latest';
+      if (baseImg) {
+        nodeProps.image = `${baseImg}:${version}`;
+      }
+    } else {
+      const baseImg = (document.getElementById('node-image-fallback-input') as HTMLInputElement | null)?.value || '';
+      const version = (document.getElementById('node-version-fallback-input') as HTMLInputElement | null)?.value || 'latest';
+      if (baseImg) {
+        nodeProps.image = `${baseImg}:${version}`;
+      }
+    }
+  }
+
+  private collectConfigurationProps(nodeProps: NodeProperties): void {
+    const startupConfig = this.getInputValue('node-startup-config');
+    if (startupConfig) nodeProps['startup-config'] = startupConfig;
+
+    if (this.getCheckboxValue('node-enforce-startup-config')) {
+      nodeProps['enforce-startup-config'] = true;
+    }
+    if (this.getCheckboxValue('node-suppress-startup-config')) {
+      nodeProps['suppress-startup-config'] = true;
+    }
+
+    const license = this.getInputValue('node-license');
+    if (license) nodeProps.license = license;
+
+    const binds = this.collectDynamicEntries('binds');
+    if (binds.length > 0) nodeProps.binds = binds;
+
+    const env = this.collectDynamicKeyValueEntries('env');
+    if (Object.keys(env).length > 0) nodeProps.env = env;
+
+    const labels = this.collectDynamicKeyValueEntries('labels');
+    if (Object.keys(labels).length > 0) nodeProps.labels = labels;
+  }
+
+  private collectRuntimeProps(nodeProps: NodeProperties): void {
+    const user = this.getInputValue('node-user');
+    if (user) nodeProps.user = user;
+
+    const entrypoint = this.getInputValue('node-entrypoint');
+    if (entrypoint) nodeProps.entrypoint = entrypoint;
+
+    const cmd = this.getInputValue('node-cmd');
+    if (cmd) nodeProps.cmd = cmd;
+
+    const exec = this.collectDynamicEntries('exec');
+    if (exec.length > 0) nodeProps.exec = exec;
+
+    const rpVal = (document.getElementById('node-restart-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+    if (rpVal && rpVal !== 'Default') nodeProps['restart-policy'] = rpVal as any;
+
+    if (this.getCheckboxValue('node-auto-remove')) {
+      nodeProps['auto-remove'] = true;
+    }
+
+    const startupDelay = this.getInputValue('node-startup-delay');
+    if (startupDelay) nodeProps['startup-delay'] = parseInt(startupDelay);
+  }
+
+  private collectNetworkProps(nodeProps: NodeProperties): void {
+    const mgmtIpv4 = this.getInputValue('node-mgmt-ipv4');
+    if (mgmtIpv4) nodeProps['mgmt-ipv4'] = mgmtIpv4;
+
+    const mgmtIpv6 = this.getInputValue('node-mgmt-ipv6');
+    if (mgmtIpv6) nodeProps['mgmt-ipv6'] = mgmtIpv6;
+
+    const nmVal = (document.getElementById('node-network-mode-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+    if (nmVal && nmVal !== 'Default') nodeProps['network-mode'] = nmVal;
+
+    const ports = this.collectDynamicEntries('ports');
+    if (ports.length > 0) nodeProps.ports = ports;
+
+    const dnsServers = this.collectDynamicEntries('dns-servers');
+    if (dnsServers.length > 0) {
+      nodeProps.dns = nodeProps.dns || {};
+      nodeProps.dns.servers = dnsServers;
+    }
+
+    const aliases = this.collectDynamicEntries('aliases');
+    if (aliases.length > 0) nodeProps.aliases = aliases;
+  }
+
+  private collectAdvancedProps(nodeProps: NodeProperties): void {
+    const memory = this.getInputValue('node-memory');
+    if (memory) nodeProps.memory = memory;
+
+    const cpu = this.getInputValue('node-cpu');
+    if (cpu) nodeProps.cpu = parseFloat(cpu);
+
+    const cpuSet = this.getInputValue('node-cpu-set');
+    if (cpuSet) nodeProps['cpu-set'] = cpuSet;
+
+    const shmSize = this.getInputValue('node-shm-size');
+    if (shmSize) nodeProps['shm-size'] = shmSize;
+
+    const capAdd = this.collectDynamicEntries('cap-add');
+    if (capAdd.length > 0) nodeProps['cap-add'] = capAdd;
+
+    const sysctls = this.collectDynamicKeyValueEntries('sysctls');
+    if (Object.keys(sysctls).length > 0) {
+      nodeProps.sysctls = {};
+      Object.entries(sysctls).forEach(([key, value]) => {
+        const numValue = parseFloat(value);
+        nodeProps.sysctls![key] = isNaN(numValue) ? value : numValue;
+      });
+    }
+
+    const devices = this.collectDynamicEntries('devices');
+    if (devices.length > 0) nodeProps.devices = devices;
+  }
+
+  private collectCertificateProps(nodeProps: NodeProperties): void {
+    if (!this.getCheckboxValue('node-cert-issue')) return;
+    nodeProps.certificate = { issue: true };
+
+    const keySize = (document.getElementById('node-cert-key-size-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+    if (keySize) nodeProps.certificate['key-size'] = parseInt(keySize);
+
+    const validity = this.getInputValue('node-cert-validity');
+    if (validity) nodeProps.certificate['validity-duration'] = validity;
+
+    const sans = this.collectDynamicEntries('sans');
+    if (sans.length > 0) nodeProps.certificate.sans = sans;
+  }
+
+  private collectHealthcheckProps(nodeProps: NodeProperties): void {
+    const hcTest = this.getInputValue('node-healthcheck-test');
+    if (hcTest) {
+      nodeProps.healthcheck = nodeProps.healthcheck || {};
+      nodeProps.healthcheck.test = hcTest.split(' ');
+    }
+
+    const hcStartPeriod = this.getInputValue('node-healthcheck-start-period');
+    if (hcStartPeriod) {
+      nodeProps.healthcheck = nodeProps.healthcheck || {};
+      nodeProps.healthcheck['start-period'] = parseInt(hcStartPeriod);
+    }
+
+    const hcInterval = this.getInputValue('node-healthcheck-interval');
+    if (hcInterval) {
+      nodeProps.healthcheck = nodeProps.healthcheck || {};
+      nodeProps.healthcheck.interval = parseInt(hcInterval);
+    }
+
+    const hcTimeout = this.getInputValue('node-healthcheck-timeout');
+    if (hcTimeout) {
+      nodeProps.healthcheck = nodeProps.healthcheck || {};
+      nodeProps.healthcheck.timeout = parseInt(hcTimeout);
+    }
+
+    const hcRetries = this.getInputValue('node-healthcheck-retries');
+    if (hcRetries) {
+      nodeProps.healthcheck = nodeProps.healthcheck || {};
+      nodeProps.healthcheck.retries = parseInt(hcRetries);
+    }
+
+    const ippVal = (document.getElementById('node-image-pull-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+    if (ippVal && ippVal !== 'Default') nodeProps['image-pull-policy'] = ippVal as any;
+
+    const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+    if (runtimeVal && runtimeVal !== 'Default') nodeProps.runtime = runtimeVal as any;
+  }
+
+  private async handleCustomNode(nodeProps: NodeProperties): Promise<boolean> {
+    const customName = this.getInputValue('node-custom-name');
+    const setDefault = this.getCheckboxValue('node-custom-default');
+    if (!customName) return false;
+    const currentNodeData = this.currentNode!.data();
+    const editingNodeName = currentNodeData.extraData?.editingCustomNodeName;
+    const isTempNode = this.currentNode!.id() === 'temp-custom-node';
+    const isEditNode = this.currentNode!.id() === 'edit-custom-node';
+    if (isTempNode || isEditNode) {
+      await this.saveCustomNodeTemplate(customName, nodeProps, setDefault, editingNodeName);
+      this.close();
+      return true;
+    }
+    await this.saveCustomNodeTemplate(customName, nodeProps, setDefault);
+    return false;
+  }
+
+  private isCustomTemplateNode(): boolean {
+    const nodeId = this.currentNode?.id();
+    return nodeId === 'temp-custom-node' || nodeId === 'edit-custom-node';
+  }
+
+  private async updateNode(nodeProps: NodeProperties): Promise<void> {
+    const currentData = this.currentNode!.data();
+    const { updatedExtraData, inheritedProps } = this.mergeNodeData(nodeProps, currentData);
+    const iconValue =
+      (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value ||
+      'pe';
+    const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
+    this.currentNode!.data(updatedData);
+    await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+    await this.refreshNodeData();
+    this.updateInheritedBadges(inheritedProps);
+    log.info(`Node ${this.currentNode!.id()} updated with enhanced properties`);
+  }
+
+  private mergeNodeData(nodeProps: NodeProperties, currentData: any): { updatedExtraData: any; inheritedProps: string[] } {
+    const updatedExtraData: any = { ...(currentData.extraData || {}) };
+    const formManagedProperties = [
+      'name', 'kind', 'type', 'image', 'startup-config', 'enforce-startup-config',
+      'suppress-startup-config', 'license', 'binds', 'env', 'labels', 'user',
+      'entrypoint', 'cmd', 'exec', 'restart-policy', 'auto-remove', 'startup-delay',
+      'mgmt-ipv4', 'mgmt-ipv6', 'network-mode', 'ports', 'dns', 'aliases',
+      'memory', 'cpu', 'cpu-set', 'shm-size', 'cap-add', 'sysctls', 'devices',
+      'certificate', 'healthcheck', 'image-pull-policy', 'runtime', 'inherited'
+    ];
+    formManagedProperties.forEach(prop => { delete updatedExtraData[prop]; });
+    Object.assign(updatedExtraData, nodeProps);
+
+    const topology: ClabTopology = {
+      topology: {
+        defaults: (window as any).topologyDefaults || {},
+        kinds: (window as any).topologyKinds || {},
+        groups: (window as any).topologyGroups || {},
+      }
+    };
+    const kindName = nodeProps.kind ?? currentData.extraData?.kind;
+    const groupName = currentData.extraData?.group;
+    const inheritBase = resolveNodeConfig(topology, { group: groupName, kind: kindName });
+    const mergedNode = resolveNodeConfig(topology, { ...nodeProps, group: groupName, kind: kindName });
+    const normalize = (obj: any): any => {
+      if (Array.isArray(obj)) return obj.map(normalize);
+      if (obj && typeof obj === 'object') {
+        return Object.keys(obj).sort().reduce((acc, k) => {
+          acc[k] = normalize(obj[k]);
+          return acc;
+        }, {} as any);
+      }
+      return obj;
+    };
+    const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+    const shouldPersist = (val: any) => {
+      if (val === undefined) return false;
+      if (Array.isArray(val)) return val.length > 0;
+      if (val && typeof val === 'object') return Object.keys(val).length > 0;
+      return true;
+    };
+    const inheritedProps: string[] = [];
+    const neverInherited = ['kind', 'name', 'group'];
+    Object.keys(mergedNode).forEach(prop => {
+      if (neverInherited.includes(prop)) {
+        return;
+      }
+      const val = (nodeProps as any)[prop];
+      const inheritedVal = (inheritBase as any)[prop];
+      const hasValue = shouldPersist(val);
+      const hasInheritedValue = shouldPersist(inheritedVal);
+      if (hasValue && deepEqual(val, inheritedVal)) {
+        inheritedProps.push(prop);
+      } else if (!hasValue && hasInheritedValue) {
+        inheritedProps.push(prop);
+      }
+    });
+    Object.assign(updatedExtraData, mergedNode);
+    updatedExtraData.inherited = inheritedProps;
+    updatedExtraData.kind = kindName;
+    if (groupName !== undefined) {
+      updatedExtraData.group = groupName;
+    }
+    return { updatedExtraData, inheritedProps };
+  }
+
+  private async refreshNodeData(): Promise<void> {
+    try {
+      const sender = this.saveManager.getMessageSender();
+      const nodeName = this.currentNode!.data('name') || this.currentNode!.id();
+      const freshData = await sender.sendMessageToVscodeEndpointPost('topo-editor-get-node-config', { node: nodeName });
+      if (freshData && typeof freshData === 'object') {
+        this.currentNode!.data('extraData', freshData);
+        this.clearAllDynamicEntries();
+        this.loadNodeData(this.currentNode!);
+      }
+    } catch (err) {
+      log.warn(`Failed to refresh node data from YAML after save: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
