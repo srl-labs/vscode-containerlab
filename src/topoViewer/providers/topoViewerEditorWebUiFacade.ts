@@ -19,6 +19,17 @@ import { saveViewport } from '../utilities/saveViewport';
 import { annotationsManager } from '../utilities/annotationsManager';
 import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
 
+interface WebviewMessage {
+  type?: string;
+  requestId?: string;
+  endpointName?: string;
+  payload?: string;
+  command?: string;
+  level?: string;
+  message?: string;
+  fileLine?: string;
+}
+
 /**
  * Class representing the TopoViewer Editor Webview Panel.
  * This class is responsible for creating and managing the webview panel
@@ -327,7 +338,10 @@ topology:
   /**
    * Core implementation of updating panel HTML
    */
-  private async updatePanelHtmlCore(panel: vscode.WebviewPanel | undefined, isInitialLoad: boolean = false): Promise<boolean> {
+  private async updatePanelHtmlCore(
+    panel: vscode.WebviewPanel | undefined,
+    isInitialLoad: boolean = false
+  ): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
     }
@@ -336,65 +350,106 @@ topology:
       perfMark('updatePanelHtmlCore_start');
     }
 
-    const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.currentLabName;
-
-    let updatedClabTreeDataToTopoviewer = this.isViewMode
-      ? this.cacheClabTreeDataToTopoviewer
-      : undefined;
-    if (this.isViewMode) {
-      try {
-        updatedClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
-        this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
-      } catch (err) {
-        log.warn(`Failed to refresh running lab data: ${err}`);
-      }
-    }
+    const updatedTree = await this.getClabTreeData();
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
-    let yamlContent: string = '';
+    const yamlContent = await this.getYamlContentForUpdate();
+    if (yamlContent === undefined) {
+      return false;
+    }
 
-    // Always skip validation in view mode
-    if (this.isViewMode) {
-      log.info(`updatePanelHtml in view mode for ${folderName}`);
-      // Try to read YAML if available, but don't fail if invalid
-      if (yamlFilePath) {
-        try {
-          yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
-          log.info('Read YAML file in view mode, skipping validation');
-        } catch (err) {
-          log.warn(`Could not read YAML in view mode: ${err}`);
-        }
-      }
+    if (this.shouldSkipUpdate(yamlContent, isInitialLoad)) {
+      return true;
+    }
 
-      // If no YAML content, generate minimal one
-      if (!yamlContent) {
-        yamlContent = `name: ${this.currentLabName}\ntopology:\n  nodes: {}\n  links: []`;
-        log.info('Using minimal YAML for view mode');
-      }
-    } else {
-      // Edit mode - strict validation
-      if (!yamlFilePath) {
-        log.error('No YAML file path in edit mode');
-        return false;
-      }
+    const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
+      yamlContent,
+      updatedTree,
+      this.lastYamlFilePath
+    );
 
+    const writeOk = await this.writeTopologyFiles(
+      folderName,
+      cytoTopology,
+      yamlContent,
+      isInitialLoad
+    );
+    if (!writeOk) {
+      return false;
+    }
+
+    if (!panel) {
+      log.error('Panel is undefined');
+      return false;
+    }
+
+    await this.setPanelHtml(panel, folderName, isInitialLoad);
+    return true;
+  }
+
+  private async getClabTreeData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    if (!this.isViewMode) {
+      return undefined;
+    }
+
+    try {
+      const labs = await runningLabsProvider.discoverInspectLabs();
+      this.cacheClabTreeDataToTopoviewer = labs;
+      return labs;
+    } catch (err) {
+      log.warn(`Failed to refresh running lab data: ${err}`);
+      return this.cacheClabTreeDataToTopoviewer;
+    }
+  }
+
+  private async getYamlContentForUpdate(): Promise<string | undefined> {
+    return this.isViewMode
+      ? this.getYamlContentViewMode()
+      : this.getYamlContentEditMode();
+  }
+
+  private async getYamlContentViewMode(): Promise<string> {
+    const yamlFilePath = this.lastYamlFilePath;
+    let yamlContent = '';
+    if (yamlFilePath) {
       try {
         yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+        log.info('Read YAML file in view mode, skipping validation');
       } catch (err) {
-        log.error(`Failed to read YAML file: ${String(err)}`);
-        vscode.window.showErrorMessage(`Failed to read YAML file: ${err}`);
-        return false;
+        log.warn(`Could not read YAML in view mode: ${err}`);
       }
+    }
 
-      // Check if the file is empty or only contains whitespace
-      if (!yamlContent.trim()) {
-        // Extract lab name from file path
-        const baseName = path.basename(yamlFilePath);
-        const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+    if (!yamlContent) {
+      yamlContent = `name: ${this.currentLabName}\ntopology:\n  nodes: {}\n  links: []`;
+      log.info('Using minimal YAML for view mode');
+    }
+    return yamlContent;
+  }
 
-        // Use the default template content
-        const defaultContent = `name: ${labNameFromFile}
+  private async getYamlContentEditMode(): Promise<string | undefined> {
+    const yamlFilePath = this.lastYamlFilePath;
+    if (!yamlFilePath) {
+      log.error('No YAML file path in edit mode');
+      return undefined;
+    }
+
+    let yamlContent: string;
+    try {
+      yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+    } catch (err) {
+      log.error(`Failed to read YAML file: ${String(err)}`);
+      vscode.window.showErrorMessage(`Failed to read YAML file: ${err}`);
+      return undefined;
+    }
+
+    if (!yamlContent.trim()) {
+      const baseName = path.basename(yamlFilePath);
+      const labNameFromFile = baseName
+        .replace(/\.clab\.(yml|yaml)$/i, '')
+        .replace(/\.(yml|yaml)$/i, '');
+      const defaultContent = `name: ${labNameFromFile}
 
 topology:
   nodes:
@@ -413,51 +468,52 @@ topology:
     - endpoints: [ srl1:e1-1, srl2:e1-1 ]
     - endpoints: [ srl1:e1-2, srl2:e1-2 ]
 `;
-
-        // Write the default content to the file
-        this.isInternalUpdate = true;
-        await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
-        await this.sleep(50);
-        this.isInternalUpdate = false;
-
-        yamlContent = defaultContent;
-        log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
-      }
-
-      // Only validate in edit mode
-      if (!this.skipInitialValidation) {
-        const isValid = await this.validateYaml(yamlContent);
-        if (!isValid) {
-          log.error('YAML validation failed. Aborting updatePanelHtml.');
-          return false;
-        }
-      } else {
-        this.skipInitialValidation = false;
-      }
+      this.isInternalUpdate = true;
+      await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
+      await this.sleep(50);
+      this.isInternalUpdate = false;
+      yamlContent = defaultContent;
+      log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
     }
 
-    // Skip expensive operations on subsequent updates if content hasn't changed meaningfully
-    if (!isInitialLoad) {
-      // Check if we really need to regenerate everything
-      const cachedYaml = this.context.workspaceState.get<string>(`cachedYaml_${folderName}`);
-      if (cachedYaml === yamlContent && !this.isViewMode) {
-        // Content hasn't changed, skip regeneration
-        log.debug('Skipping topology regeneration - content unchanged');
-        return true;
+    if (!this.skipInitialValidation) {
+      const isValid = await this.validateYaml(yamlContent);
+      if (!isValid) {
+        log.error('YAML validation failed. Aborting updatePanelHtml.');
+        return undefined;
       }
+    } else {
+      this.skipInitialValidation = false;
     }
 
-    const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
-      yamlContent,
-      updatedClabTreeDataToTopoviewer,
-      this.lastYamlFilePath
-    );
+    return yamlContent;
+  }
 
+  private shouldSkipUpdate(yamlContent: string, isInitialLoad: boolean): boolean {
+    if (isInitialLoad || this.isViewMode) {
+      return false;
+    }
+    const cachedYaml = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);
+    if (cachedYaml === yamlContent) {
+      log.debug('Skipping topology regeneration - content unchanged');
+      return true;
+    }
+    return false;
+  }
+
+  private async writeTopologyFiles(
+    folderName: string,
+    cytoTopology: any,
+    yamlContent: string,
+    isInitialLoad: boolean
+  ): Promise<boolean> {
     try {
-      // Write JSON files asynchronously without waiting
-      const writePromise = this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
-
-      // Don't wait for file write on initial load
+      const writePromise = this.adaptor.createFolderAndWriteJson(
+        this.context,
+        folderName,
+        cytoTopology,
+        yamlContent
+      );
       if (isInitialLoad) {
         writePromise.catch(err => {
           log.error(`Background write failed: ${String(err)}`);
@@ -465,9 +521,8 @@ topology:
       } else {
         await writePromise;
       }
-
-      // Cache the YAML content
       await this.context.workspaceState.update(`cachedYaml_${folderName}`, yamlContent);
+      return true;
     } catch (err) {
       log.error(`Failed to write topology files: ${String(err)}`);
       if (!isInitialLoad) {
@@ -475,100 +530,94 @@ topology:
       }
       return false;
     }
+  }
 
-    if (panel) {
-      perfMark('generateHtml_start');
-      const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
-      let templateParams: any = {};
+  private async setPanelHtml(
+    panel: vscode.WebviewPanel,
+    folderName: string,
+    isInitialLoad: boolean
+  ): Promise<void> {
+    perfMark('generateHtml_start');
+    const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
+    let templateParams: any = {};
 
-      if (mode === 'viewer') {
-        // For viewer mode, pass viewer-specific parameters
-        const viewerParams: Partial<ViewerTemplateParams> = {
-          deploymentState: this.deploymentState,
-          viewerMode: 'viewer',
-          currentLabPath: this.lastYamlFilePath,
-        };
-        templateParams = viewerParams;
-      } else {
-        // Ensure we have the latest docker images before building editor UI
-        await refreshDockerImages(this.context);
-        // For editor mode, pass editor-specific parameters
-        const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
-        const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
-        const customNodes = vscode.workspace.getConfiguration('containerlab.editor').get<any[]>('customNodes', []);
-
-        // Find the default custom node
-        const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
-        const defaultNode = defaultCustomNode?.name || '';
-
-        // Derive defaults from the default custom node or use fallbacks
-        const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
-        const defaultType = defaultCustomNode?.type || '';
-
-        // Build image mapping from custom nodes
-        const imageMapping: Record<string, string> = {};
-        customNodes.forEach((node: any) => {
-          if (node.image && node.kind) {
-            imageMapping[node.kind] = node.image;
-          }
-        });
-
-        // Pull cached docker images from global state for image dropdown
-        const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
-
-        const editorParams: Partial<EditorTemplateParams> = {
-          imageMapping,
-          ifacePatternMapping,
-          defaultKind,
-          defaultType,
-          updateLinkEndpointsOnKindChange,
-          dockerImages,
-          customNodes,
-          defaultNode,
-          currentLabPath: this.lastYamlFilePath,
-          topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
-          topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
-          topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
-        };
-        templateParams = editorParams;
-      }
-
-      panel.webview.html = generateWebviewHtml(
-        this.context,
-        panel,
-        mode,
-        folderName,
-        this.adaptor,
-        templateParams
-      );
-
-      if (isInitialLoad) {
-        perfMeasure('generateHtml', 'generateHtml_start');
-        perfMeasure('updatePanelHtmlCore', 'updatePanelHtmlCore_start');
-      }
-
+    if (mode === 'viewer') {
+      const viewerParams: Partial<ViewerTemplateParams> = {
+        deploymentState: this.deploymentState,
+        viewerMode: 'viewer',
+        currentLabPath: this.lastYamlFilePath,
+      };
+      templateParams = viewerParams;
     } else {
-      log.error('Panel is undefined');
-      return false;
+      await refreshDockerImages(this.context);
+      const ifacePatternMapping = vscode.workspace
+        .getConfiguration('containerlab.editor')
+        .get<Record<string, string>>('interfacePatternMapping', {});
+      const updateLinkEndpointsOnKindChange = vscode.workspace
+        .getConfiguration('containerlab.editor')
+        .get<boolean>('updateLinkEndpointsOnKindChange', true);
+      const customNodes = vscode.workspace
+        .getConfiguration('containerlab.editor')
+        .get<any[]>('customNodes', []);
+      const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
+      const defaultNode = defaultCustomNode?.name || '';
+      const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
+      const defaultType = defaultCustomNode?.type || '';
+      const imageMapping: Record<string, string> = {};
+      customNodes.forEach((node: any) => {
+        if (node.image && node.kind) {
+          imageMapping[node.kind] = node.image;
+        }
+      });
+      const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+      const editorParams: Partial<EditorTemplateParams> = {
+        imageMapping,
+        ifacePatternMapping,
+        defaultKind,
+        defaultType,
+        updateLinkEndpointsOnKindChange,
+        dockerImages,
+        customNodes,
+        defaultNode,
+        currentLabPath: this.lastYamlFilePath,
+        topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
+        topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
+        topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
+      };
+      templateParams = editorParams;
     }
 
-    return true;
+    panel.webview.html = generateWebviewHtml(
+      this.context,
+      panel,
+      mode,
+      folderName,
+      this.adaptor,
+      templateParams
+    );
+
+    if (isInitialLoad) {
+      perfMeasure('generateHtml', 'generateHtml_start');
+      perfMeasure('updatePanelHtmlCore', 'updatePanelHtmlCore_start');
+    }
   }
 
   /**
    * Creates a new webview panel or reveals the current one.
    * @param context The extension context.
    */
-  public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string, viewMode: boolean = false): Promise<void> {
+  public async createWebviewPanel(
+    context: vscode.ExtensionContext,
+    fileUri: vscode.Uri,
+    labName: string,
+    viewMode: boolean = false
+  ): Promise<void> {
     perfMark('createWebviewPanel_start');
     this.currentLabName = labName;
     this.isViewMode = viewMode;
 
-    // Check deployment state
     this.deploymentState = await this.checkDeploymentState(labName);
     if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
-      // If we have a lastYamlFilePath and it's different from the fileUri,
-      // create a new URI from the lastYamlFilePath
       fileUri = vscode.Uri.file(this.lastYamlFilePath);
       log.info(`Using corrected file path: ${fileUri.fsPath}`);
     }
@@ -577,13 +626,11 @@ topology:
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
 
-    // If a panel already exists, reveal it.
     if (this.currentPanel) {
       this.currentPanel.reveal(column);
       return;
     }
 
-    // Otherwise, create a new webview panel.
     const panel = vscode.window.createWebviewPanel(
       this.viewType,
       labName,
@@ -591,11 +638,8 @@ topology:
       {
         enableScripts: true,
         localResourceRoots: [
-          // Dynamic data folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', labName),
-          // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-          // Schema directory for YAML validation and dropdown data.
           vscode.Uri.joinPath(this.context.extensionUri, 'schema'),
         ],
         retainContextWhenHidden: true,
@@ -612,103 +656,7 @@ topology:
     this.currentPanel = panel;
 
     try {
-      let yaml: string = '';
-
-      if (this.isViewMode) {
-        // View mode - be flexible with YAML
-        log.info(`Creating panel in view mode for lab: ${labName}`);
-
-        // Try to read YAML if we have a path
-        if (fileUri && fileUri.fsPath) {
-          try {
-            yaml = await fs.promises.readFile(fileUri.fsPath, 'utf8');
-            this.lastYamlFilePath = fileUri.fsPath;
-            log.info('Read YAML file for view mode');
-          } catch (err) {
-            log.warn(`Could not read YAML in view mode: ${err}`);
-            this.lastYamlFilePath = '';
-          }
-        }
-
-        // If no YAML, use minimal
-        if (!yaml) {
-          yaml = `name: ${labName}\ntopology:\n  nodes: {}\n  links: []`;
-          log.info('Using minimal YAML for view mode');
-        }
-
-        // Always skip validation in view mode
-        this.skipInitialValidation = true;
-      } else {
-        // Edit mode - strict handling
-        if (!fileUri || !fileUri.fsPath) {
-          throw new Error('No file URI provided for edit mode');
-        }
-
-        // Check if file exists
-        try {
-          await vscode.workspace.fs.stat(fileUri);
-          this.lastYamlFilePath = fileUri.fsPath;
-        } catch {
-          if (this.lastYamlFilePath) {
-            fileUri = vscode.Uri.file(this.lastYamlFilePath);
-            log.info(`Using cached file path: ${this.lastYamlFilePath}`);
-          } else {
-            throw new Error(`File not found: ${fileUri.fsPath}`);
-          }
-        }
-
-        // Read the YAML
-        yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
-
-        // Check if the file is empty or only contains whitespace
-        if (!yaml.trim()) {
-          // Extract lab name from file path
-          const baseName = path.basename(this.lastYamlFilePath);
-          const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-
-          // Use the default template content
-          const defaultContent = `name: ${labNameFromFile}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
-
-          // Write the default content to the file
-          this.isInternalUpdate = true;
-          await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
-          await this.sleep(50);
-          this.isInternalUpdate = false;
-
-          yaml = defaultContent;
-          log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
-        }
-
-        // Validate unless explicitly skipped
-        if (!this.skipInitialValidation) {
-          const isValid = await this.validateYaml(yaml);
-          if (!isValid) {
-            log.error('YAML validation failed. Aborting createWebviewPanel.');
-            return;
-          }
-        }
-      }
-
-      // Skip initial processing - updatePanelHtmlInternal will handle it
-      // This avoids duplicate YAML processing and file writes
+      await this.loadInitialYaml(fileUri, labName);
       if (this.isViewMode) {
         try {
           this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
@@ -720,18 +668,14 @@ topology:
       if (!this.isViewMode) {
         vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
         return;
-      } else {
-        log.warn(`Failed to load topology in view mode, continuing: ${(e as Error).message}`);
       }
+      log.warn(`Failed to load topology in view mode, continuing: ${(e as Error).message}`);
     }
 
 
 
-    // Start loading the panel HTML immediately
     perfMark('updatePanelHtml_start');
     const updatePromise = this.updatePanelHtmlInternal(this.currentPanel);
-
-    // Don't block on the update for initial load
     updatePromise
       .then(() => {
         perfMeasure('updatePanelHtml', 'updatePanelHtml_start');
@@ -742,13 +686,11 @@ topology:
         log.error(`Failed to update panel HTML: ${err}`);
       });
 
-    // Only setup file watchers and save listeners in edit mode
     if (!this.isViewMode && this.lastYamlFilePath) {
       this.setupFileWatcher();
       this.setupSaveListener();
     }
 
-    // Clean up when the panel is disposed.
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
       if (this.fileWatcher) {
@@ -761,111 +703,243 @@ topology:
       }
     }, null, context.subscriptions);
 
-    /**
-    * Interface for messages received from the webview.
-    */
-    interface WebviewMessage {
-      type?: string;
-      requestId?: string;
-      endpointName?: string;
-      payload?: string;
-      command?: string;
-      level?: string;
-      message?: string;
-      fileLine?: string;
-    }
-
-    // Listen for incoming messages from the webview.
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
-      if (!msg || typeof msg !== 'object') {
-        log.error('Invalid message received.');
-        return;
-      }
-
-      if (msg.command === 'topoViewerLog') {
-        const { level, message, fileLine } = msg;
-        const text = fileLine ? `${fileLine} - ${message}` : message;
-        switch (level) {
-          case 'error':
-            log.error(text);
-            break;
-          case 'warn':
-            log.warn(text);
-            break;
-          case 'debug':
-            log.debug(text);
-            break;
-          default:
-            log.info(text);
-        }
-        return;
-      }
-
-      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
-
-      // Process only messages of type 'POST'.
-      if (msg.type !== 'POST') {
-        log.warn(`Unrecognized message type: ${msg.type}`);
-        return;
-      }
-
-      const { requestId, endpointName, payload } = msg;
-      const payloadObj = payload ? JSON.parse(payload) : undefined;
-      if (payloadObj !== undefined) {
-        log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
-      }
-      if (!requestId || !endpointName) {
-        const missingFields = [];
-        if (!requestId) missingFields.push('requestId');
-        if (!endpointName) missingFields.push('endpointName');
-        const errorMessage = `Missing required field(s): ${missingFields.join(', ')}`;
-        log.error(errorMessage);
-        panel.webview.postMessage({
-          type: 'POST_RESPONSE',
-          requestId: requestId ?? null,
-          result: null,
-          error: errorMessage,
-        });
-        return;
-      }
-
-        let result: unknown = null;
-        let error: string | null = null;
-
-        try {
-          if (endpointName.startsWith('clab-node-')) {
-            ({ result, error } = await this.handleNodeEndpoint(endpointName, payloadObj));
-          } else if (
-            endpointName.startsWith('clab-interface-') ||
-            endpointName.startsWith('clab-link-')
-          ) {
-            ({ result, error } = await this.handleInterfaceEndpoint(endpointName, payloadObj));
-          } else if (
-            ['deployLab', 'destroyLab', 'deployLabCleanup', 'destroyLabCleanup', 'redeployLab', 'redeployLabCleanup'].includes(endpointName)
-          ) {
-            ({ result, error } = await this.handleLabLifecycleEndpoint(endpointName, payloadObj));
-          } else {
-            ({ result, error } = await this.handleGeneralEndpoint(endpointName, payload, payloadObj, panel));
-          }
-        } catch (err) {
-          error = err instanceof Error ? err.message : String(err);
-          log.error(
-            `Error processing message for endpoint "${endpointName}": ${JSON.stringify(err, null, 2)}`
-          );
-        }
-
-      log.info("########################################################### RESULT in RESPONSE");
-      log.info(`${JSON.stringify(result, null, 2)}`);
-
-      // Send the response back to the webview.
-      panel.webview.postMessage({
-        type: 'POST_RESPONSE',
-        requestId,
-        result,
-        error,
-      });
+      await this.handleWebviewMessage(msg, panel);
     });
 
+  }
+
+  private async loadInitialYaml(fileUri: vscode.Uri, labName: string): Promise<void> {
+    if (this.isViewMode) {
+      log.info(`Creating panel in view mode for lab: ${labName}`);
+      if (fileUri && fileUri.fsPath) {
+        try {
+          await fs.promises.readFile(fileUri.fsPath, 'utf8');
+          this.lastYamlFilePath = fileUri.fsPath;
+          log.info('Read YAML file for view mode');
+        } catch (err) {
+          log.warn(`Could not read YAML in view mode: ${err}`);
+          this.lastYamlFilePath = '';
+        }
+      }
+      if (!this.lastYamlFilePath) {
+        log.info('Using minimal YAML for view mode');
+      }
+      this.skipInitialValidation = true;
+    } else {
+      if (!fileUri || !fileUri.fsPath) {
+        throw new Error('No file URI provided for edit mode');
+      }
+      try {
+        await vscode.workspace.fs.stat(fileUri);
+        this.lastYamlFilePath = fileUri.fsPath;
+      } catch {
+        if (this.lastYamlFilePath) {
+          fileUri = vscode.Uri.file(this.lastYamlFilePath);
+          log.info(`Using cached file path: ${this.lastYamlFilePath}`);
+        } else {
+          throw new Error(`File not found: ${fileUri.fsPath}`);
+        }
+      }
+      let yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+      if (!yaml.trim()) {
+        const baseName = path.basename(this.lastYamlFilePath);
+        const labNameFromFile = baseName
+          .replace(/\.clab\.(yml|yaml)$/i, '')
+          .replace(/\.(yml|yaml)$/i, '');
+        const defaultContent = `name: ${labNameFromFile}\n\n` +
+`topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
+        this.isInternalUpdate = true;
+        await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
+        await this.sleep(50);
+        this.isInternalUpdate = false;
+        yaml = defaultContent;
+        log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
+      }
+      if (!this.skipInitialValidation) {
+        const isValid = await this.validateYaml(yaml);
+        if (!isValid) {
+          throw new Error('YAML validation failed. Aborting createWebviewPanel.');
+        }
+      }
+    }
+  }
+
+  private async handleWebviewMessage(msg: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    if (!msg || typeof msg !== 'object') {
+      log.error('Invalid message received.');
+      return;
+    }
+
+    if (msg.command === 'topoViewerLog') {
+      this.processLogMessage(msg);
+      return;
+    }
+
+    if (msg.type !== 'POST') {
+      log.warn(`Unrecognized message type: ${msg.type}`);
+      return;
+    }
+
+    await this.processPostMessage(msg, panel);
+  }
+
+  private processLogMessage(msg: WebviewMessage): void {
+    const { level, message, fileLine } = msg;
+    const text = fileLine ? `${fileLine} - ${message}` : message;
+    switch (level) {
+      case 'error':
+        log.error(text);
+        break;
+      case 'warn':
+        log.warn(text);
+        break;
+      case 'debug':
+        log.debug(text);
+        break;
+      default:
+        log.info(text);
+    }
+  }
+
+  private async processPostMessage(msg: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
+    const { requestId, endpointName, payload } = msg;
+    const payloadObj = payload ? JSON.parse(payload) : undefined;
+    if (payloadObj !== undefined) {
+      log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
+    }
+    if (!requestId || !endpointName) {
+      const missingFields: string[] = [];
+      if (!requestId) missingFields.push('requestId');
+      if (!endpointName) missingFields.push('endpointName');
+      const errorMessage = `Missing required field(s): ${missingFields.join(', ')}`;
+      log.error(errorMessage);
+      panel.webview.postMessage({
+        type: 'POST_RESPONSE',
+        requestId: requestId ?? null,
+        result: null,
+        error: errorMessage,
+      });
+      return;
+    }
+
+    let result: unknown = null;
+    let error: string | null = null;
+    try {
+      if (endpointName.startsWith('clab-node-')) {
+        ({ result, error } = await this.handleNodeEndpoint(endpointName, payloadObj));
+      } else if (
+        endpointName.startsWith('clab-interface-') ||
+        endpointName.startsWith('clab-link-')
+      ) {
+        ({ result, error } = await this.handleInterfaceEndpoint(endpointName, payloadObj));
+      } else if (
+        ['deployLab', 'destroyLab', 'deployLabCleanup', 'destroyLabCleanup', 'redeployLab', 'redeployLabCleanup'].includes(
+          endpointName
+        )
+      ) {
+        ({ result, error } = await this.handleLabLifecycleEndpoint(endpointName, payloadObj));
+      } else {
+        ({ result, error } = await this.handleGeneralEndpoint(endpointName, payload, payloadObj, panel));
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+      log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err, null, 2)}`);
+    }
+
+    log.info('########################################################### RESULT in RESPONSE');
+    log.info(`${JSON.stringify(result, null, 2)}`);
+    panel.webview.postMessage({
+      type: 'POST_RESPONSE',
+      requestId,
+      result,
+      error,
+    });
+  }
+
+  private async updateLabSettings(settings: any): Promise<{ success: boolean; yamlContent?: string; error?: string }> {
+    try {
+      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+      const doc = YAML.parseDocument(yamlContent);
+      const { hadPrefix, hadMgmt } = this.applyExistingSettings(doc, settings);
+      let updatedYaml = doc.toString();
+      updatedYaml = this.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
+      this.isInternalUpdate = true;
+      await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
+      if (this.currentPanel) {
+        this.currentPanel.webview.postMessage({
+          type: 'yaml-content-updated',
+          yamlContent: updatedYaml,
+        });
+      }
+      this.isInternalUpdate = false;
+      return { success: true, yamlContent: updatedYaml };
+    } catch (err) {
+      this.isInternalUpdate = false;
+      log.error(`Error updating lab settings: ${err}`);
+      vscode.window.showErrorMessage(`Failed to update lab settings: ${err}`);
+      return { success: false, error: String(err) };
+    }
+  }
+
+  private applyExistingSettings(doc: YAML.Document, settings: any): { hadPrefix: boolean; hadMgmt: boolean } {
+    if (settings.name !== undefined && settings.name !== '') {
+      doc.set('name', settings.name);
+    }
+    const hadPrefix = doc.has('prefix');
+    const hadMgmt = doc.has('mgmt');
+    if (settings.prefix !== undefined && hadPrefix) {
+      if (settings.prefix === null) {
+        doc.delete('prefix');
+      } else {
+        doc.set('prefix', settings.prefix);
+      }
+    }
+    if (settings.mgmt !== undefined && hadMgmt) {
+      if (settings.mgmt === null || (typeof settings.mgmt === 'object' && Object.keys(settings.mgmt).length === 0)) {
+        doc.delete('mgmt');
+      } else {
+        doc.set('mgmt', settings.mgmt);
+      }
+    }
+    return { hadPrefix, hadMgmt };
+  }
+
+  private insertMissingSettings(
+    updatedYaml: string,
+    settings: any,
+    hadPrefix: boolean,
+    hadMgmt: boolean
+  ): string {
+    if (settings.prefix !== undefined && settings.prefix !== null && !hadPrefix) {
+      const lines = updatedYaml.split('\n');
+      const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+      if (nameIndex !== -1) {
+        const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
+        lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
+        updatedYaml = lines.join('\n');
+      }
+    }
+    if (settings.mgmt !== undefined && !hadMgmt && settings.mgmt && Object.keys(settings.mgmt).length > 0) {
+      const lines = updatedYaml.split('\n');
+      let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
+      if (insertIndex === -1) {
+        insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+      }
+      if (insertIndex !== -1) {
+        const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
+        const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
+        const nextLine = lines[insertIndex + 1];
+        if (nextLine && nextLine.trim() !== '') {
+          lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
+        } else {
+          lines.splice(insertIndex + 1, 0, ...mgmtLines);
+        }
+        updatedYaml = lines.join('\n');
+      }
+    }
+    return updatedYaml;
   }
   private async handleGeneralEndpoint(
     endpointName: string,
@@ -924,73 +998,9 @@ topology:
         }
       },
       'lab-settings-update': async () => {
-        try {
-          const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-          const doc = YAML.parseDocument(yamlContent);
-          const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
-          if (settings.name !== undefined && settings.name !== '') {
-            doc.set('name', settings.name);
-          }
-          const hadPrefix = doc.has('prefix');
-          const hadMgmt = doc.has('mgmt');
-          if (settings.prefix !== undefined && hadPrefix) {
-            if (settings.prefix === null) {
-              doc.delete('prefix');
-            } else {
-              doc.set('prefix', settings.prefix);
-            }
-          }
-          if (settings.mgmt !== undefined && hadMgmt) {
-            if (settings.mgmt === null || (typeof settings.mgmt === 'object' && Object.keys(settings.mgmt).length === 0)) {
-              doc.delete('mgmt');
-            } else {
-              doc.set('mgmt', settings.mgmt);
-            }
-          }
-          let updatedYaml = doc.toString();
-          if (settings.prefix !== undefined && settings.prefix !== null && !hadPrefix) {
-            const lines = updatedYaml.split('\n');
-            const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-            if (nameIndex !== -1) {
-              const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
-              lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
-              updatedYaml = lines.join('\n');
-            }
-          }
-          if (settings.mgmt !== undefined && !hadMgmt && settings.mgmt && Object.keys(settings.mgmt).length > 0) {
-            const lines = updatedYaml.split('\n');
-            let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
-            if (insertIndex === -1) {
-              insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-            }
-            if (insertIndex !== -1) {
-              const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
-              const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
-              const nextLine = lines[insertIndex + 1];
-              if (nextLine && nextLine.trim() !== '') {
-                lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
-              } else {
-                lines.splice(insertIndex + 1, 0, ...mgmtLines);
-              }
-              updatedYaml = lines.join('\n');
-            }
-          }
-          this.isInternalUpdate = true;
-          await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
-          if (this.currentPanel) {
-            this.currentPanel.webview.postMessage({
-              type: 'yaml-content-updated',
-              yamlContent: updatedYaml
-            });
-          }
-          result = { success: true, yamlContent: updatedYaml };
-          this.isInternalUpdate = false;
-        } catch (err) {
-          result = { success: false, error: String(err) };
-          log.error(`Error updating lab settings: ${err}`);
-          vscode.window.showErrorMessage(`Failed to update lab settings: ${err}`);
-          this.isInternalUpdate = false;
-        }
+        const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        const res = await this.updateLabSettings(settings);
+        result = res.success ? { success: true, yamlContent: res.yamlContent } : { success: false, error: res.error };
       },
       'topo-editor-get-node-config': async () => {
         try {

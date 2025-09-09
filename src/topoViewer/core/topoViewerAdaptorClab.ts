@@ -220,58 +220,22 @@ export class TopoViewerAdaptorClab {
       return annotations;
     }
 
-    let localAnnotations = annotations ?? { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
-
-    if (!localAnnotations.nodeAnnotations) {
-      localAnnotations.nodeAnnotations = [];
-    }
+    const localAnnotations = annotations ?? { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+    localAnnotations.nodeAnnotations = localAnnotations.nodeAnnotations ?? [];
 
     let needsSave = false;
-
     for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
       const existingAnnotation = localAnnotations.nodeAnnotations.find((na: any) => na.id === nodeName);
-      if (!existingAnnotation && nodeObj?.labels) {
-        const labels = nodeObj.labels as Record<string, unknown>;
-        if (
-          labels['graph-posX'] || labels['graph-posY'] || labels['graph-icon'] ||
-          labels['graph-group'] || labels['graph-level'] || labels['graph-groupLabelPos'] ||
-          labels['graph-geoCoordinateLat'] || labels['graph-geoCoordinateLng']
-        ) {
-          const newAnnotation: any = { id: nodeName };
+      if (existingAnnotation || !nodeObj?.labels) continue;
 
-          if (labels['graph-posX'] && labels['graph-posY']) {
-            newAnnotation.position = {
-              x: parseInt(labels['graph-posX'] as string, 10) || 0,
-              y: parseInt(labels['graph-posY'] as string, 10) || 0
-            };
-          }
+      const labels = nodeObj.labels as Record<string, unknown>;
+      if (!this.nodeHasGraphLabels(labels)) continue;
 
-          if (labels['graph-icon']) {
-            newAnnotation.icon = labels['graph-icon'] as string;
-          }
-
-          if (labels['graph-group']) {
-            newAnnotation.group = labels['graph-group'] as string;
-          }
-          if (labels['graph-level']) {
-            newAnnotation.level = labels['graph-level'] as string;
-          }
-
-          if (labels['graph-groupLabelPos']) {
-            newAnnotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
-          }
-
-          if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
-            newAnnotation.geoCoordinates = {
-              lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
-              lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0
-            };
-          }
-
-          localAnnotations.nodeAnnotations.push(newAnnotation);
-          needsSave = true;
-          log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
-        }
+      const newAnnotation = this.buildAnnotationFromLabels(nodeName, labels);
+      if (newAnnotation) {
+        localAnnotations.nodeAnnotations.push(newAnnotation);
+        needsSave = true;
+        log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
       }
     }
 
@@ -281,6 +245,52 @@ export class TopoViewerAdaptorClab {
     }
 
     return localAnnotations;
+  }
+
+  private nodeHasGraphLabels(labels: Record<string, unknown>): boolean {
+    return Boolean(
+      labels['graph-posX'] ||
+      labels['graph-posY'] ||
+      labels['graph-icon'] ||
+      labels['graph-group'] ||
+      labels['graph-level'] ||
+      labels['graph-groupLabelPos'] ||
+      labels['graph-geoCoordinateLat'] ||
+      labels['graph-geoCoordinateLng']
+    );
+  }
+
+  private buildAnnotationFromLabels(nodeName: string, labels: Record<string, unknown>): any | null {
+    const annotation: any = { id: nodeName };
+
+    if (labels['graph-posX'] && labels['graph-posY']) {
+      annotation.position = {
+        x: parseInt(labels['graph-posX'] as string, 10) || 0,
+        y: parseInt(labels['graph-posY'] as string, 10) || 0,
+      };
+    }
+
+    if (labels['graph-icon']) {
+      annotation.icon = labels['graph-icon'] as string;
+    }
+    if (labels['graph-group']) {
+      annotation.group = labels['graph-group'] as string;
+    }
+    if (labels['graph-level']) {
+      annotation.level = labels['graph-level'] as string;
+    }
+    if (labels['graph-groupLabelPos']) {
+      annotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
+    }
+
+    if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
+      annotation.geoCoordinates = {
+        lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
+        lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0,
+      };
+    }
+
+    return annotation;
   }
 
 
@@ -446,83 +456,154 @@ export class TopoViewerAdaptorClab {
     if (!topology.nodes) return;
     let nodeIndex = 0;
     for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
-      const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
-      const nodePropKeys = new Set(Object.keys(nodeObj || {}));
-      const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
       const nodeAnn = opts.annotations?.nodeAnnotations?.find((na: any) => na.id === nodeName);
-      const parentId = this.buildParent(mergedNode, nodeAnn);
+      const { element, parentId } = this.buildNodeElement({
+        parsed,
+        nodeName,
+        nodeObj,
+        opts,
+        fullPrefix,
+        clabName,
+        nodeAnn,
+        nodeIndex,
+      });
       if (parentId && !parentMap.has(parentId)) {
         parentMap.set(parentId, nodeAnn?.groupLabelPos);
       }
-
-      let containerData: ClabContainerTreeNode | null = null;
-      if (opts.includeContainerData) {
-        const containerName = fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
-        containerData = findContainerNode(opts.clabTreeData ?? {}, containerName, clabName) ?? null;
-      }
-
-      const cleanedLabels = { ...(mergedNode.labels ?? {}) } as Record<string, any>;
-      delete cleanedLabels['graph-posX'];
-      delete cleanedLabels['graph-posY'];
-      delete cleanedLabels['graph-icon'];
-      delete cleanedLabels['graph-geoCoordinateLat'];
-      delete cleanedLabels['graph-geoCoordinateLng'];
-      delete cleanedLabels['graph-groupLabelPos'];
-      delete cleanedLabels['graph-group'];
-      delete cleanedLabels['graph-level'];
-
-      const nodeEl: CyElement = {
-        group: 'nodes',
-        data: {
-          id: nodeName,
-          weight: '30',
-          name: nodeName,
-          parent: parentId || undefined,
-          topoViewerRole:
-            nodeAnn?.icon ||
-            mergedNode.labels?.['topoViewer-role'] ||
-            (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'bridge' : 'router'),
-          lat: nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '',
-          lng: nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '',
-          extraData: {
-            ...mergedNode,
-            inherited: inheritedProps,
-            clabServerUsername: 'asad',
-            fqdn: `${nodeName}.${clabName}.io`,
-            group: mergedNode.group ?? '',
-            id: nodeName,
-            image: mergedNode.image ?? '',
-            index: nodeIndex.toString(),
-            kind: mergedNode.kind ?? '',
-            type: mergedNode.type ?? '',
-            labdir: fullPrefix ? `${fullPrefix}/` : '',
-            labels: cleanedLabels,
-            longname: containerData?.name ?? (fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName),
-            macAddress: '',
-            mgmtIntf: '',
-            mgmtIpv4AddressLength: 0,
-            mgmtIpv4Address: opts.includeContainerData ? `${containerData?.IPv4Address}` : '',
-            mgmtIpv6Address: opts.includeContainerData ? `${containerData?.IPv6Address}` : '',
-            mgmtIpv6AddressLength: 0,
-            mgmtNet: '',
-            name: nodeName,
-            shortname: nodeName,
-            state: opts.includeContainerData ? `${containerData?.state}` : '',
-            weight: '3',
-          },
-        },
-        position: nodeAnn?.position ? { x: nodeAnn.position.x, y: nodeAnn.position.y } : { x: 0, y: 0 },
-        removed: false,
-        selected: false,
-        selectable: true,
-        locked: false,
-        grabbed: false,
-        grabbable: true,
-        classes: '',
-      };
-      elements.push(nodeEl);
+      elements.push(element);
       nodeIndex++;
     }
+  }
+
+  private buildNodeElement(params: {
+    parsed: ClabTopology;
+    nodeName: string;
+    nodeObj: ClabNode;
+    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> };
+    fullPrefix: string;
+    clabName: string;
+    nodeAnn: any;
+    nodeIndex: number;
+  }): { element: CyElement; parentId: string | undefined } {
+    const { parsed, nodeName, nodeObj, opts, fullPrefix, clabName, nodeAnn, nodeIndex } = params;
+    const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
+    const nodePropKeys = new Set(Object.keys(nodeObj || {}));
+    const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
+    const parentId = this.buildParent(mergedNode, nodeAnn);
+    const containerData = this.getContainerData(opts, fullPrefix, nodeName, clabName);
+    const cleanedLabels = this.sanitizeLabels(mergedNode.labels);
+    const position = nodeAnn?.position ? { x: nodeAnn.position.x, y: nodeAnn.position.y } : { x: 0, y: 0 };
+    const { lat, lng } = this.getNodeLatLng(nodeAnn);
+    const extraData = this.createNodeExtraData({
+      mergedNode,
+      inheritedProps,
+      nodeName,
+      clabName,
+      nodeIndex,
+      fullPrefix,
+      containerData,
+      cleanedLabels,
+      includeContainerData: opts.includeContainerData,
+    });
+
+    const topoViewerRole =
+      nodeAnn?.icon ||
+      mergedNode.labels?.['topoViewer-role'] ||
+      (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'bridge' : 'router');
+
+    const element: CyElement = {
+      group: 'nodes',
+      data: {
+        id: nodeName,
+        weight: '30',
+        name: nodeName,
+        parent: parentId || undefined,
+        topoViewerRole,
+        lat,
+        lng,
+        extraData,
+      },
+      position,
+      removed: false,
+      selected: false,
+      selectable: true,
+      locked: false,
+      grabbed: false,
+      grabbable: true,
+      classes: '',
+    };
+
+    return { element, parentId };
+  }
+
+  private getContainerData(
+    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> },
+    fullPrefix: string,
+    nodeName: string,
+    clabName: string
+  ): ClabContainerTreeNode | null {
+    if (!opts.includeContainerData) return null;
+    const containerName = fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
+    return findContainerNode(opts.clabTreeData ?? {}, containerName, clabName) ?? null;
+  }
+
+  private sanitizeLabels(labels: Record<string, any> | undefined): Record<string, any> {
+    const cleaned = { ...(labels ?? {}) } as Record<string, any>;
+    delete cleaned['graph-posX'];
+    delete cleaned['graph-posY'];
+    delete cleaned['graph-icon'];
+    delete cleaned['graph-geoCoordinateLat'];
+    delete cleaned['graph-geoCoordinateLng'];
+    delete cleaned['graph-groupLabelPos'];
+    delete cleaned['graph-group'];
+    delete cleaned['graph-level'];
+    return cleaned;
+  }
+
+  private getNodeLatLng(nodeAnn: any): { lat: string; lng: string } {
+    const lat = nodeAnn?.geoCoordinates?.lat !== undefined ? String(nodeAnn.geoCoordinates.lat) : '';
+    const lng = nodeAnn?.geoCoordinates?.lng !== undefined ? String(nodeAnn.geoCoordinates.lng) : '';
+    return { lat, lng };
+  }
+
+  private createNodeExtraData(params: {
+    mergedNode: any;
+    inheritedProps: string[];
+    nodeName: string;
+    clabName: string;
+    nodeIndex: number;
+    fullPrefix: string;
+    containerData: ClabContainerTreeNode | null;
+    cleanedLabels: Record<string, any>;
+    includeContainerData: boolean;
+  }): any {
+    const { mergedNode, inheritedProps, nodeName, clabName, nodeIndex, fullPrefix, containerData, cleanedLabels, includeContainerData } = params;
+    return {
+      ...mergedNode,
+      inherited: inheritedProps,
+      clabServerUsername: 'asad',
+      fqdn: `${nodeName}.${clabName}.io`,
+      group: mergedNode.group ?? '',
+      id: nodeName,
+      image: mergedNode.image ?? '',
+      index: nodeIndex.toString(),
+      kind: mergedNode.kind ?? '',
+      type: mergedNode.type ?? '',
+      labdir: fullPrefix ? `${fullPrefix}/` : '',
+      labels: cleanedLabels,
+      longname: containerData?.name ?? (fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName),
+      macAddress: '',
+      mgmtIntf: '',
+      mgmtIpv4AddressLength: 0,
+      mgmtIpv4Address: includeContainerData ? `${containerData?.IPv4Address}` : '',
+      mgmtIpv6Address: includeContainerData ? `${containerData?.IPv6Address}` : '',
+      mgmtIpv6AddressLength: 0,
+      mgmtNet: '',
+      name: nodeName,
+      shortname: nodeName,
+      state: includeContainerData ? `${containerData?.state}` : '',
+      weight: '3',
+    };
   }
 
   private addGroupNodes(parentMap: Map<string, string | undefined>, elements: CyElement[]): void {
@@ -566,95 +647,109 @@ export class TopoViewerAdaptorClab {
     specialNodes: Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>;
     specialNodeProps: Map<string, any>;
   } {
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>();
+    const specialNodes = this.initSpecialNodes(parsed.topology?.nodes);
     const specialNodeProps: Map<string, any> = new Map();
+    const links = parsed.topology?.links;
+    if (!links) return { specialNodes, specialNodeProps };
 
-    const topology = parsed.topology!;
-    if (topology.nodes) {
-      for (const [nodeName, nodeData] of Object.entries(topology.nodes)) {
-        if (nodeData.kind === 'bridge' || nodeData.kind === 'ovs-bridge') {
-          specialNodes.set(nodeName, { type: nodeData.kind as any, label: nodeName });
-        }
-      }
-    }
-
-    if (!topology.links) {
-      return { specialNodes, specialNodeProps };
-    }
-
-    const register = (node: string, end: any) => {
-      if (node === 'host') {
-        const { iface } = this.splitEndpoint(end);
-        specialNodes.set(`host:${iface}`, { type: 'host', label: `host:${iface || 'host'}` });
-      } else if (node === 'mgmt-net') {
-        const { iface } = this.splitEndpoint(end);
-        specialNodes.set(`mgmt-net:${iface}`, { type: 'mgmt-net', label: `mgmt-net:${iface || 'mgmt-net'}` });
-      } else if (node.startsWith('macvlan:')) {
-        const macvlanIface = node.substring(8);
-        specialNodes.set(node, { type: 'macvlan', label: `macvlan:${macvlanIface}` });
-      } else if (node.startsWith('vxlan-stitch:')) {
-        const name = node.substring('vxlan-stitch:'.length);
-        specialNodes.set(node, { type: 'vxlan-stitch', label: `vxlan-stitch:${name}` });
-      } else if (node.startsWith('vxlan:')) {
-        const name = node.substring('vxlan:'.length);
-        specialNodes.set(node, { type: 'vxlan', label: `vxlan:${name}` });
-      } else if (node.startsWith('dummy')) {
-        specialNodes.set(node, { type: 'dummy', label: 'dummy' });
-      }
-    };
-
-    const computeSpecialId = (end: any) => {
-      const { node, iface } = this.splitEndpoint(end);
-      if (node === 'host') return `host:${iface}`;
-      if (node === 'mgmt-net') return `mgmt-net:${iface}`;
-      if (node.startsWith('macvlan:')) return node;
-      if (node.startsWith('vxlan-stitch:')) return node;
-      if (node.startsWith('vxlan:')) return node;
-      if (node.startsWith('dummy')) return node;
-      return null;
-    };
-
-    for (const linkObj of topology.links) {
+    for (const linkObj of links) {
       const norm = this.normalizeLinkToTwoEndpoints(linkObj, ctx);
       if (!norm) continue;
       const { endA, endB } = norm;
-      const { node: nodeA } = this.splitEndpoint(endA);
-      const { node: nodeB } = this.splitEndpoint(endB);
-      register(nodeA, endA);
-      register(nodeB, endB);
-
-      const linkType = (linkObj && typeof (linkObj as any).type === 'string') ? String((linkObj as any).type) : '';
-      if (linkType && linkType !== 'veth') {
-        const idA = computeSpecialId(endA);
-        const idB = computeSpecialId(endB);
-        const baseProps: any = { extType: linkType };
-        if ((linkObj as any).mtu !== undefined) baseProps.extMtu = (linkObj as any).mtu;
-        if ((linkObj as any).vars !== undefined) baseProps.extVars = (linkObj as any).vars;
-        if ((linkObj as any).labels !== undefined) baseProps.extLabels = (linkObj as any).labels;
-        if (linkType === 'host' || linkType === 'mgmt-net' || linkType === 'macvlan') {
-          if ((linkObj as any)['host-interface'] !== undefined) baseProps.extHostInterface = (linkObj as any)['host-interface'];
-          if (linkType === 'macvlan' && (linkObj as any).mode !== undefined) baseProps.extMode = (linkObj as any).mode;
-        }
-        const epMac = (linkObj as any)?.endpoint?.mac;
-        if (epMac !== undefined) baseProps.extMac = epMac;
-        if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
-          if ((linkObj as any).remote !== undefined) baseProps.extRemote = (linkObj as any).remote;
-          if ((linkObj as any).vni !== undefined) baseProps.extVni = (linkObj as any).vni;
-          if ((linkObj as any)['udp-port'] !== undefined) baseProps.extUdpPort = (linkObj as any)['udp-port'];
-        }
-        [idA, idB].forEach(id => {
-          if (!id) return;
-          const prev = specialNodeProps.get(id) || {};
-          const merged: any = { ...baseProps };
-          for (const k of Object.keys(prev)) {
-            if (prev[k] !== undefined) merged[k] = prev[k];
-          }
-          specialNodeProps.set(id, { ...prev, ...merged });
-        });
-      }
+      this.registerEndpoint(specialNodes, endA);
+      this.registerEndpoint(specialNodes, endB);
+      this.mergeSpecialNodeProps(linkObj, endA, endB, specialNodeProps);
     }
 
     return { specialNodes, specialNodeProps };
+  }
+
+  private initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }> {
+    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>();
+    if (!nodes) return specialNodes;
+    for (const [nodeName, nodeData] of Object.entries(nodes)) {
+      if (nodeData.kind === 'bridge' || nodeData.kind === 'ovs-bridge') {
+        specialNodes.set(nodeName, { type: nodeData.kind as any, label: nodeName });
+      }
+    }
+    return specialNodes;
+  }
+
+  private registerEndpoint(
+    specialNodes: Map<string, { type: string; label: string }>,
+    end: any
+  ): void {
+    const { node, iface } = this.splitEndpoint(end);
+    const info = this.determineSpecialNode(node, iface);
+    if (info) specialNodes.set(info.id, { type: info.type, label: info.label });
+  }
+
+  private determineSpecialNode(node: string, iface: string): { id: string; type: string; label: string } | null {
+    if (node === 'host') return { id: `host:${iface}`, type: 'host', label: `host:${iface || 'host'}` };
+    if (node === 'mgmt-net') return { id: `mgmt-net:${iface}`, type: 'mgmt-net', label: `mgmt-net:${iface || 'mgmt-net'}` };
+    if (node.startsWith('macvlan:')) return { id: node, type: 'macvlan', label: node };
+    if (node.startsWith('vxlan-stitch:')) return { id: node, type: 'vxlan-stitch', label: node };
+    if (node.startsWith('vxlan:')) return { id: node, type: 'vxlan', label: node };
+    if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: 'dummy' };
+    return null;
+  }
+
+  private mergeSpecialNodeProps(
+    linkObj: any,
+    endA: any,
+    endB: any,
+    specialNodeProps: Map<string, any>
+  ): void {
+    const linkType = typeof linkObj?.type === 'string' ? String(linkObj.type) : '';
+    if (!linkType || linkType === 'veth') return;
+
+    const ids = [this.getSpecialId(endA), this.getSpecialId(endB)];
+    const baseProps: any = this.buildBaseProps(linkObj, linkType);
+    ids.forEach(id => {
+      if (!id) return;
+      const prev = specialNodeProps.get(id) || {};
+      specialNodeProps.set(id, { ...prev, ...baseProps });
+    });
+  }
+
+  private getSpecialId(end: any): string | null {
+    const { node, iface } = this.splitEndpoint(end);
+    if (node === 'host') return `host:${iface}`;
+    if (node === 'mgmt-net') return `mgmt-net:${iface}`;
+    if (node.startsWith('macvlan:')) return node;
+    if (node.startsWith('vxlan-stitch:')) return node;
+    if (node.startsWith('vxlan:')) return node;
+    if (node.startsWith('dummy')) return node;
+    return null;
+  }
+
+  private buildBaseProps(linkObj: any, linkType: string): any {
+    const baseProps: any = { extType: linkType };
+    this.assignCommonLinkProps(linkObj, baseProps);
+    this.assignHostMgmtProps(linkType, linkObj, baseProps);
+    this.assignVxlanProps(linkType, linkObj, baseProps);
+    const epMac = linkObj?.endpoint?.mac;
+    if (epMac !== undefined) baseProps.extMac = epMac;
+    return baseProps;
+  }
+
+  private assignCommonLinkProps(linkObj: any, baseProps: any): void {
+    if (linkObj?.mtu !== undefined) baseProps.extMtu = linkObj.mtu;
+    if (linkObj?.vars !== undefined) baseProps.extVars = linkObj.vars;
+    if (linkObj?.labels !== undefined) baseProps.extLabels = linkObj.labels;
+  }
+
+  private assignHostMgmtProps(linkType: string, linkObj: any, baseProps: any): void {
+    if (!['host', 'mgmt-net', 'macvlan'].includes(linkType)) return;
+    if (linkObj?.['host-interface'] !== undefined) baseProps.extHostInterface = linkObj['host-interface'];
+    if (linkType === 'macvlan' && linkObj?.mode !== undefined) baseProps.extMode = linkObj.mode;
+  }
+
+  private assignVxlanProps(linkType: string, linkObj: any, baseProps: any): void {
+    if (!['vxlan', 'vxlan-stitch'].includes(linkType)) return;
+    if (linkObj?.remote !== undefined) baseProps.extRemote = linkObj.remote;
+    if (linkObj?.vni !== undefined) baseProps.extVni = linkObj.vni;
+    if (linkObj?.['udp-port'] !== undefined) baseProps.extUdpPort = linkObj['udp-port'];
   }
 
   private addCloudNodes(
@@ -755,70 +850,89 @@ export class TopoViewerAdaptorClab {
   ): string {
     const sourceNodeData = topology.nodes?.[sourceNode];
     const targetNodeData = topology.nodes?.[targetNode];
-    const sourceIsSpecial =
-      sourceNodeData?.kind === 'bridge' ||
-      sourceNodeData?.kind === 'ovs-bridge' ||
-      sourceNode === 'host' ||
-      sourceNode === 'mgmt-net' ||
-      sourceNode.startsWith('macvlan:') ||
-      sourceNode.startsWith('vxlan:') ||
-      sourceNode.startsWith('vxlan-stitch:') ||
-      sourceNode.startsWith('dummy');
-    const targetIsSpecial =
-      targetNodeData?.kind === 'bridge' ||
-      targetNodeData?.kind === 'ovs-bridge' ||
-      targetNode === 'host' ||
-      targetNode === 'mgmt-net' ||
-      targetNode.startsWith('macvlan:') ||
-      targetNode.startsWith('vxlan:') ||
-      targetNode.startsWith('vxlan-stitch:') ||
-      targetNode.startsWith('dummy');
+    const sourceIsSpecial = this.isSpecialNode(sourceNodeData, sourceNode);
+    const targetIsSpecial = this.isSpecialNode(targetNodeData, targetNode);
     if (sourceIsSpecial || targetIsSpecial) {
-      if (sourceIsSpecial && !targetIsSpecial) {
-        if (targetIfaceData?.state) {
-          return targetIfaceData.state === 'up' ? 'link-up' : 'link-down';
-        }
-      } else if (!sourceIsSpecial && targetIsSpecial) {
-        if (sourceIfaceData?.state) {
-          return sourceIfaceData.state === 'up' ? 'link-up' : 'link-down';
-        }
-      } else {
-        return 'link-up';
-      }
-    } else if (sourceIfaceData?.state && targetIfaceData?.state) {
+      return this.edgeClassForSpecial(sourceIsSpecial, targetIsSpecial, sourceIfaceData, targetIfaceData);
+    }
+    if (sourceIfaceData?.state && targetIfaceData?.state) {
       return sourceIfaceData.state === 'up' && targetIfaceData.state === 'up' ? 'link-up' : 'link-down';
     }
     return '';
   }
 
+  private isSpecialNode(nodeData: ClabNode | undefined, nodeName: string): boolean {
+    return (
+      nodeData?.kind === 'bridge' ||
+      nodeData?.kind === 'ovs-bridge' ||
+      nodeName === 'host' ||
+      nodeName === 'mgmt-net' ||
+      nodeName.startsWith('macvlan:') ||
+      nodeName.startsWith('vxlan:') ||
+      nodeName.startsWith('vxlan-stitch:') ||
+      nodeName.startsWith('dummy')
+    );
+  }
+
+  private edgeClassForSpecial(
+    sourceIsSpecial: boolean,
+    targetIsSpecial: boolean,
+    sourceIfaceData: any | undefined,
+    targetIfaceData: any | undefined
+  ): string {
+    if (sourceIsSpecial && !targetIsSpecial) {
+      return this.classFromState(targetIfaceData);
+    }
+    if (!sourceIsSpecial && targetIsSpecial) {
+      return this.classFromState(sourceIfaceData);
+    }
+    return 'link-up';
+  }
+
+  private classFromState(ifaceData: any | undefined): string {
+    if (!ifaceData?.state) return '';
+    return ifaceData.state === 'up' ? 'link-up' : 'link-down';
+  }
+
   private validateExtendedLink(linkObj: any): string[] {
+    const linkType = typeof linkObj?.type === 'string' ? linkObj.type : '';
+    if (!linkType) return [];
+
+    if (linkType === 'veth') {
+      return this.validateVethLink(linkObj);
+    }
+
+    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(linkType)) {
+      return this.validateSpecialLink(linkType, linkObj);
+    }
+
+    return [];
+  }
+
+  private validateVethLink(linkObj: any): string[] {
+    const eps = Array.isArray(linkObj.endpoints) ? linkObj.endpoints : [];
+    const ok =
+      eps.length >= 2 &&
+      typeof eps[0] === 'object' &&
+      typeof eps[1] === 'object' &&
+      eps[0]?.node &&
+      eps[0]?.interface !== undefined &&
+      eps[1]?.node &&
+      eps[1]?.interface !== undefined;
+    return ok ? [] : ['invalid-veth-endpoints'];
+  }
+
+  private validateSpecialLink(linkType: string, linkObj: any): string[] {
     const errors: string[] = [];
-    const linkType = (linkObj && typeof linkObj.type === 'string') ? (linkObj.type as string) : '';
-    if (linkType) {
-      if (linkType === 'veth') {
-        const eps = Array.isArray(linkObj.endpoints) ? linkObj.endpoints : [];
-        const ok =
-          eps.length >= 2 &&
-          typeof eps[0] === 'object' &&
-          typeof eps[1] === 'object' &&
-          eps[0]?.node &&
-          (eps[0]?.interface !== undefined) &&
-          eps[1]?.node &&
-          (eps[1]?.interface !== undefined);
-        if (!ok) errors.push('invalid-veth-endpoints');
-      } else if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(linkType)) {
-        const ep = linkObj.endpoint;
-        const okEp = ep && ep.node && (ep.interface !== undefined);
-        if (!okEp) errors.push('invalid-endpoint');
-        if (linkType === 'mgmt-net' || linkType === 'host' || linkType === 'macvlan') {
-          if (!linkObj['host-interface']) errors.push('missing-host-interface');
-        }
-        if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
-          if (!linkObj.remote) errors.push('missing-remote');
-          if (linkObj.vni === undefined || linkObj.vni === '') errors.push('missing-vni');
-          if (linkObj['udp-port'] === undefined || linkObj['udp-port'] === '') errors.push('missing-udp-port');
-        }
-      }
+    const ep = linkObj.endpoint;
+    if (!(ep && ep.node && ep.interface !== undefined)) errors.push('invalid-endpoint');
+    if (['mgmt-net', 'host', 'macvlan'].includes(linkType) && !linkObj['host-interface']) {
+      errors.push('missing-host-interface');
+    }
+    if (['vxlan', 'vxlan-stitch'].includes(linkType)) {
+      if (!linkObj.remote) errors.push('missing-remote');
+      if (linkObj.vni === undefined || linkObj.vni === '') errors.push('missing-vni');
+      if (linkObj['udp-port'] === undefined || linkObj['udp-port'] === '') errors.push('missing-udp-port');
     }
     return errors;
   }
@@ -933,14 +1047,23 @@ export class TopoViewerAdaptorClab {
       specialNodes,
     } = params;
 
-    const extValidationErrors = this.validateExtendedLink(linkObj);
     const sourceEndpoint = this.shouldOmitEndpoint(sourceNode) ? '' : sourceIface;
     const targetEndpoint = this.shouldOmitEndpoint(targetNode) ? '' : targetIface;
-    const classes =
-      edgeClass +
-      (specialNodes.has(actualSourceNode) || specialNodes.has(actualTargetNode)
-        ? ' stub-link'
-        : '');
+    const classes = this.buildEdgeClasses(edgeClass, specialNodes, actualSourceNode, actualTargetNode);
+    const extValidationErrors = this.validateExtendedLink(linkObj);
+    const extraData = this.buildEdgeExtraData({
+      linkObj,
+      endA,
+      endB,
+      sourceContainerName,
+      targetContainerName,
+      sourceIface,
+      targetIface,
+      sourceIfaceData,
+      targetIfaceData,
+      extValidationErrors,
+    });
+
     return {
       group: 'edges',
       data: {
@@ -955,40 +1078,7 @@ export class TopoViewerAdaptorClab {
         lng: '',
         source: actualSourceNode,
         target: actualTargetNode,
-        extraData: {
-          clabServerUsername: 'asad',
-          clabSourceLongName: sourceContainerName,
-          clabTargetLongName: targetContainerName,
-          clabSourcePort: sourceIface,
-          clabTargetPort: targetIface,
-          clabSourceMacAddress: sourceIfaceData?.mac ?? '',
-          clabTargetMacAddress: targetIfaceData?.mac ?? '',
-          clabSourceInterfaceState: sourceIfaceData?.state ?? '',
-          clabTargetInterfaceState: targetIfaceData?.state ?? '',
-          clabSourceMtu: sourceIfaceData?.mtu ?? '',
-          clabTargetMtu: targetIfaceData?.mtu ?? '',
-          clabSourceType: sourceIfaceData?.type ?? '',
-          clabTargetType: targetIfaceData?.type ?? '',
-          extType: linkObj?.type ?? '',
-          extMtu: linkObj?.mtu ?? '',
-          extVars: linkObj?.vars ?? undefined,
-          extLabels: linkObj?.labels ?? undefined,
-          extHostInterface: linkObj?.['host-interface'] ?? '',
-          extMode: linkObj?.mode ?? '',
-          extRemote: linkObj?.remote ?? '',
-          extVni: linkObj?.vni ?? '',
-          extUdpPort: linkObj?.['udp-port'] ?? '',
-          extSourceMac: this.extractEndpointMac(endA),
-          extTargetMac: this.extractEndpointMac(endB),
-          extMac: (linkObj as any)?.endpoint?.mac ?? '',
-          yamlFormat:
-            typeof (linkObj as any)?.type === 'string' && (linkObj as any).type
-              ? 'extended'
-              : 'short',
-          extValidationErrors: extValidationErrors.length
-            ? extValidationErrors
-            : undefined,
-        },
+        extraData,
       },
       position: { x: 0, y: 0 },
       removed: false,
@@ -998,6 +1088,116 @@ export class TopoViewerAdaptorClab {
       grabbed: false,
       grabbable: true,
       classes,
+    };
+  }
+
+  private buildEdgeClasses(
+    edgeClass: string,
+    specialNodes: Map<string, { type: string; label: string }>,
+    actualSourceNode: string,
+    actualTargetNode: string
+  ): string {
+    const stub =
+      specialNodes.has(actualSourceNode) || specialNodes.has(actualTargetNode)
+        ? ' stub-link'
+        : '';
+    return edgeClass + stub;
+  }
+
+  private buildEdgeExtraData(params: {
+    linkObj: any;
+    endA: any;
+    endB: any;
+    sourceContainerName: string;
+    targetContainerName: string;
+    sourceIface: string;
+    targetIface: string;
+    sourceIfaceData: any;
+    targetIfaceData: any;
+    extValidationErrors: string[];
+  }): any {
+    const {
+      linkObj,
+      endA,
+      endB,
+      sourceContainerName,
+      targetContainerName,
+      sourceIface,
+      targetIface,
+      sourceIfaceData,
+      targetIfaceData,
+      extValidationErrors,
+    } = params;
+
+    const yamlFormat = typeof linkObj?.type === 'string' && linkObj.type ? 'extended' : 'short';
+    const extErrors = extValidationErrors.length ? extValidationErrors : undefined;
+
+    const clabInfo = this.createClabInfo({
+      sourceContainerName,
+      targetContainerName,
+      sourceIface,
+      targetIface,
+      sourceIfaceData,
+      targetIfaceData,
+    });
+
+    const extInfo = this.createExtInfo({ linkObj, endA, endB });
+
+    return { ...clabInfo, ...extInfo, yamlFormat, extValidationErrors: extErrors };
+  }
+
+  private createClabInfo(params: {
+    sourceContainerName: string;
+    targetContainerName: string;
+    sourceIface: string;
+    targetIface: string;
+    sourceIfaceData: any;
+    targetIfaceData: any;
+  }): any {
+    const { sourceContainerName, targetContainerName, sourceIface, targetIface, sourceIfaceData, targetIfaceData } = params;
+    return {
+      clabServerUsername: 'asad',
+      clabSourceLongName: sourceContainerName,
+      clabTargetLongName: targetContainerName,
+      clabSourcePort: sourceIface,
+      clabTargetPort: targetIface,
+      clabSourceMacAddress: sourceIfaceData?.mac ?? '',
+      clabTargetMacAddress: targetIfaceData?.mac ?? '',
+      clabSourceInterfaceState: sourceIfaceData?.state ?? '',
+      clabTargetInterfaceState: targetIfaceData?.state ?? '',
+      clabSourceMtu: sourceIfaceData?.mtu ?? '',
+      clabTargetMtu: targetIfaceData?.mtu ?? '',
+      clabSourceType: sourceIfaceData?.type ?? '',
+      clabTargetType: targetIfaceData?.type ?? '',
+    };
+  }
+
+  private createExtInfo(params: { linkObj: any; endA: any; endB: any }): any {
+    const { linkObj, endA, endB } = params;
+    const base = this.extractExtLinkProps(linkObj);
+    const macs = this.extractExtMacs(linkObj, endA, endB);
+    return { ...base, ...macs };
+  }
+
+  private extractExtLinkProps(linkObj: any): any {
+    return {
+      extType: linkObj?.type ?? '',
+      extMtu: linkObj?.mtu ?? '',
+      extVars: linkObj?.vars ?? undefined,
+      extLabels: linkObj?.labels ?? undefined,
+      extHostInterface: linkObj?.['host-interface'] ?? '',
+      extMode: linkObj?.mode ?? '',
+      extRemote: linkObj?.remote ?? '',
+      extVni: linkObj?.vni ?? '',
+      extUdpPort: linkObj?.['udp-port'] ?? '',
+    };
+  }
+
+  private extractExtMacs(linkObj: any, endA: any, endB: any): any {
+    return {
+      extSourceMac: this.extractEndpointMac(endA),
+      extTargetMac: this.extractEndpointMac(endB),
+      extMac: (linkObj as any)?.endpoint?.mac ?? '',
     };
   }
 
