@@ -648,7 +648,7 @@ export class ManagerUnifiedFloatingPanel {
         topoViewerRole: window.defaultKind === 'nokia_srlinux' ? 'router' : 'pe',  // Set router for SR Linux, pe for others
         extraData: {
           kind: window.defaultKind || 'nokia_srlinux',
-          type: window.defaultType || 'ixrd1',
+          type: window.defaultType || '',
           image: ''
         }
       };

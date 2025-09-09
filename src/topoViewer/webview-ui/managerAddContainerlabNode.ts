@@ -45,6 +45,8 @@ export class ManagerAddContainerlabNode {
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
     const shouldIncludeType = nokiaKinds.includes(kind);
 
+    const type = template ? template.type : window.defaultType || 'ixrd1';
+
     const newNodeData: NodeData = {
       id: newNodeId,
       editor: 'true',
@@ -59,7 +61,7 @@ export class ManagerAddContainerlabNode {
         kind,
         longname: '',
         image: template?.image || '',
-        ...(shouldIncludeType && { type: template?.type || window.defaultType || 'ixrd1' }),
+        ...(shouldIncludeType && type ? { type } : {}),
         mgmtIpv4Address: '',
         // Mark if this was created from a custom template
         fromCustomTemplate: template?.name ? true : false,

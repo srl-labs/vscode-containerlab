@@ -503,7 +503,7 @@ topology:
 
         // Derive defaults from the default custom node or use fallbacks
         const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
-        const defaultType = defaultCustomNode?.type || 'ixrd1';
+        const defaultType = defaultCustomNode?.type || '';
 
         // Build image mapping from custom nodes
         const imageMapping: Record<string, string> = {};
