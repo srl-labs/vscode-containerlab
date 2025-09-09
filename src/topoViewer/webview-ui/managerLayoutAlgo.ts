@@ -115,6 +115,132 @@ export class ManagerLayoutAlgo {
     this.applyGeoScale(true, factor);
   };
 
+  private captureBaseTextMetrics(cy: cytoscape.Core): void {
+    if (this.baseNodeTextOutlineWidth !== 0 || this.baseNodeTextBgPadding !== 0) return;
+
+    const nodes = cy.nodes();
+    const edges = cy.edges();
+    const anyNode: any = nodes.nonempty() ? nodes[0] : undefined;
+    const anyEdge: any = edges.nonempty() ? edges[0] : undefined;
+    const nTow = anyNode ? parseFloat(anyNode.style('text-outline-width')) : NaN;
+    const nTbp = anyNode ? parseFloat(anyNode.style('text-background-padding')) : NaN;
+    const eTow = anyEdge ? parseFloat(anyEdge.style('text-outline-width')) : NaN;
+    const eTbp = anyEdge ? parseFloat(anyEdge.style('text-background-padding')) : NaN;
+    const eSo = anyEdge ? parseFloat(anyEdge.style('source-text-offset')) : NaN;
+    const eTo = anyEdge ? parseFloat(anyEdge.style('target-text-offset')) : NaN;
+
+    this.baseNodeTextOutlineWidth = isNaN(nTow) ? 0.1 : nTow;
+    this.baseNodeTextBgPadding = isNaN(nTbp) ? 0.1 : nTbp;
+    this.baseEdgeTextOutlineWidth = isNaN(eTow) ? 0.1 : eTow;
+    this.baseEdgeTextBgPadding = isNaN(eTbp) ? 0.1 : eTbp;
+    this.baseEdgeSourceTextOffset = isNaN(eSo) ? 0.1 : eSo;
+    this.baseEdgeTargetTextOffset = isNaN(eTo) ? 0.1 : eTo;
+  }
+
+  private ensureNumericData(
+    ele: cytoscape.NodeSingular | cytoscape.EdgeSingular,
+    dataKey: string,
+    styleKey: string,
+    fallback = 0
+  ): number {
+    let val = ele.data(dataKey);
+    if (val === undefined) {
+      const parsed = parseFloat(ele.style(styleKey));
+      val = isNaN(parsed) ? fallback : parsed;
+      ele.data(dataKey, val);
+    }
+    return val;
+  }
+
+  private ensureFontSize(
+    ele: cytoscape.NodeSingular | cytoscape.EdgeSingular,
+    dataKey: string
+  ): number {
+    let size = ele.data(dataKey);
+    if (size !== undefined) return size;
+
+    let fsStr: any = (ele as any).renderedStyle ? (ele as any).renderedStyle('font-size') : ele.style('font-size');
+    if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
+    let fsNum = parseFloat(fsStr);
+    if (isNaN(fsNum)) {
+      const raw = ele.style('font-size');
+      const rawNum = parseFloat(raw);
+      fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
+    }
+    ele.data(dataKey, fsNum);
+    return fsNum;
+  }
+
+  private scaleNode(n: cytoscape.NodeSingular, factor: number, labelFactor: number): void {
+    const origW = this.ensureNumericData(n, '_origWidth', 'width');
+    const origH = this.ensureNumericData(n, '_origHeight', 'height');
+    const origFont = this.ensureFontSize(n, '_origFont');
+    this.ensureNumericData(n, '_origTextOutlineWidth', 'text-outline-width');
+    this.ensureNumericData(n, '_origTextBgPadding', 'text-background-padding');
+    let origBorder: number | undefined;
+    if (n.data('topoViewerRole') === 'group') {
+      origBorder = this.ensureNumericData(n, '_origBorderWidth', 'border-width');
+    }
+
+    n.style({
+      width: origW * factor,
+      height: origH * factor,
+      'font-size': `${origFont * labelFactor}px`
+    });
+    if (origBorder !== undefined) {
+      n.style('border-width', origBorder * factor);
+    }
+  }
+
+  private scaleEdge(e: cytoscape.EdgeSingular, factor: number, labelFactor: number): void {
+    const origWidth = this.ensureNumericData(e, '_origWidth', 'width');
+    const origFont = this.ensureFontSize(e, '_origFont');
+    const origArrow = this.ensureNumericData(e, '_origArrow', 'arrow-scale');
+    this.ensureNumericData(e, '_origTextOutlineWidth', 'text-outline-width');
+    this.ensureNumericData(e, '_origTextBgPadding', 'text-background-padding');
+    this.ensureNumericData(e, '_origSourceTextOffset', 'source-text-offset');
+    this.ensureNumericData(e, '_origTargetTextOffset', 'target-text-offset');
+
+    if (origWidth) e.style('width', origWidth * factor);
+    if (origFont) e.style('font-size', `${origFont * labelFactor}px`);
+    if (origArrow) e.style('arrow-scale', origArrow * factor);
+  }
+
+  private resetNode(n: cytoscape.NodeSingular): void {
+    const w = n.data('_origWidth');
+    const h = n.data('_origHeight');
+    const fs = n.data('_origFont');
+    const bw = n.data('_origBorderWidth');
+    if (w !== undefined) n.style('width', w);
+    if (h !== undefined) n.style('height', h);
+    if (fs !== undefined && fs !== 0) n.style('font-size', `${fs}px`);
+    if (bw !== undefined && n.data('topoViewerRole') === 'group') {
+      n.style('border-width', bw);
+    }
+    n.removeData('_origWidth');
+    n.removeData('_origHeight');
+    n.removeData('_origFont');
+    n.removeData('_origBorderWidth');
+    n.removeData('_origTextOutlineWidth');
+    n.removeData('_origTextBgPadding');
+  }
+
+  private resetEdge(e: cytoscape.EdgeSingular): void {
+    const w = e.data('_origWidth');
+    const fs = e.data('_origFont');
+    const ar = e.data('_origArrow');
+    if (w !== undefined) e.style('width', w);
+    if (fs !== undefined && fs !== 0) e.style('font-size', `${fs}px`);
+    if (ar !== undefined) e.style('arrow-scale', ar);
+    e.removeData('_origWidth');
+    e.removeData('_origFont');
+    e.removeData('_origArrow');
+    e.removeData('_origTextOutlineWidth');
+    e.removeData('_origTextBgPadding');
+    e.removeData('_origSourceTextOffset');
+    e.removeData('_origTargetTextOffset');
+  }
+
   /**
    * Increase node, label and edge sizes fourfold when the Geo map is active.
    * Original styles are restored when the map is disabled.
@@ -125,190 +251,46 @@ export class ManagerLayoutAlgo {
 
     log.debug(`[GeoScale] apply ${enable} factor ${factor}`);
 
-    if (enable) {
-      // Capture baseline label metrics once for stylesheet-based scaling
-      if (this.baseNodeTextOutlineWidth === 0 && this.baseNodeTextBgPadding === 0) {
-        const nodes = cy.nodes();
-        const edges = cy.edges();
-        const anyNode: any = nodes.nonempty() ? nodes[0] : undefined;
-        const anyEdge: any = edges.nonempty() ? edges[0] : undefined;
-        const nTow = anyNode ? parseFloat(anyNode.style('text-outline-width')) : NaN;
-        const nTbp = anyNode ? parseFloat(anyNode.style('text-background-padding')) : NaN;
-        const eTow = anyEdge ? parseFloat(anyEdge.style('text-outline-width')) : NaN;
-        const eTbp = anyEdge ? parseFloat(anyEdge.style('text-background-padding')) : NaN;
-        const eSo = anyEdge ? parseFloat(anyEdge.style('source-text-offset')) : NaN;
-        const eTo = anyEdge ? parseFloat(anyEdge.style('target-text-offset')) : NaN;
-        this.baseNodeTextOutlineWidth = isNaN(nTow) ? 0.1 : nTow;
-        this.baseNodeTextBgPadding = isNaN(nTbp) ? 0.1 : nTbp;
-        this.baseEdgeTextOutlineWidth = isNaN(eTow) ? 0.1 : eTow;
-        this.baseEdgeTextBgPadding = isNaN(eTbp) ? 0.1 : eTbp;
-        this.baseEdgeSourceTextOffset = isNaN(eSo) ? 0.1 : eSo;
-        this.baseEdgeTargetTextOffset = isNaN(eTo) ? 0.1 : eTo;
-      }
+    const labelFactor = factor * this.geoLabelScaleBias;
 
-      const labelFactor = factor * this.geoLabelScaleBias;
-      cy.nodes().forEach((n) => {
-        let origW = n.data('_origWidth');
-        let origH = n.data('_origHeight');
-        let origFont = n.data('_origFont');
-        let origBorder = n.data('_origBorderWidth');
-        let origTextOutline = n.data('_origTextOutlineWidth');
-        let origTextBgPad = n.data('_origTextBgPadding');
-        if (origW === undefined) {
-          origW = n.width();
-          n.data('_origWidth', origW);
-        }
-        if (origH === undefined) {
-          origH = n.height();
-          n.data('_origHeight', origH);
-        }
-        if (origFont === undefined) {
-          // Prefer rendered pixel size for reliable scaling (stylesheet may specify em)
-          let fsStr: any = (n as any).renderedStyle ? (n as any).renderedStyle('font-size') : n.style('font-size');
-          if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
-          let fsNum = parseFloat(fsStr);
-          if (isNaN(fsNum)) {
-            // Fallback: attempt to convert em to px assuming 16px base
-            const raw = n.style('font-size');
-            const rawNum = parseFloat(raw);
-            fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
-          }
-          origFont = fsNum;
-          n.data('_origFont', origFont);
-        }
-        if (origBorder === undefined && n.data('topoViewerRole') === 'group') {
-          const bw = parseFloat(n.style('border-width'));
-          origBorder = isNaN(bw) ? 0 : bw;
-          n.data('_origBorderWidth', origBorder);
-        }
-        if (origTextOutline === undefined) {
-          const tow = parseFloat(n.style('text-outline-width'));
-          origTextOutline = isNaN(tow) ? 0 : tow;
-          n.data('_origTextOutlineWidth', origTextOutline);
-        }
-        if (origTextBgPad === undefined) {
-          const tbp = parseFloat(n.style('text-background-padding'));
-          origTextBgPad = isNaN(tbp) ? 0 : tbp;
-          n.data('_origTextBgPadding', origTextBgPad);
-        }
-        n.style({
-          width: origW * factor,
-          height: origH * factor,
-          'font-size': origFont ? `${origFont * labelFactor}px` : n.style('font-size')
-        });
-        if (n.data('topoViewerRole') === 'group' && origBorder !== undefined) {
-          n.style('border-width', origBorder * factor);
-        }
-        // Text outline and background padding are handled via stylesheet-level scaling below
-      });
-      cy.edges().forEach((e) => {
-        let origWidth = e.data('_origWidth');
-        let origFont = e.data('_origFont');
-        let origArrow = e.data('_origArrow');
-        let origTextOutline = e.data('_origTextOutlineWidth');
-        let origTextBgPad = e.data('_origTextBgPadding');
-        let origSrcOffset = e.data('_origSourceTextOffset');
-        let origTgtOffset = e.data('_origTargetTextOffset');
-        if (origWidth === undefined) {
-          const width = parseFloat(e.style('width'));
-          origWidth = isNaN(width) ? 0 : width;
-          e.data('_origWidth', origWidth);
-        }
-        if (origFont === undefined) {
-          let fsStr: any = (e as any).renderedStyle ? (e as any).renderedStyle('font-size') : e.style('font-size');
-          if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
-          let fsNum = parseFloat(fsStr);
-          if (isNaN(fsNum)) {
-            const raw = e.style('font-size');
-            const rawNum = parseFloat(raw);
-            fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
-          }
-          origFont = fsNum;
-          e.data('_origFont', origFont);
-        }
-        if (origArrow === undefined) {
-          const arrow = parseFloat(e.style('arrow-scale'));
-          origArrow = isNaN(arrow) ? 0 : arrow;
-          e.data('_origArrow', origArrow);
-        }
-        if (origTextOutline === undefined) {
-          const tow = parseFloat(e.style('text-outline-width'));
-          origTextOutline = isNaN(tow) ? 0 : tow;
-          e.data('_origTextOutlineWidth', origTextOutline);
-        }
-        if (origTextBgPad === undefined) {
-          const tbp = parseFloat(e.style('text-background-padding'));
-          origTextBgPad = isNaN(tbp) ? 0 : tbp;
-          e.data('_origTextBgPadding', origTextBgPad);
-        }
-        if (origSrcOffset === undefined) {
-          const so = parseFloat(e.style('source-text-offset'));
-          origSrcOffset = isNaN(so) ? 0 : so;
-          e.data('_origSourceTextOffset', origSrcOffset);
-        }
-        if (origTgtOffset === undefined) {
-          const to = parseFloat(e.style('target-text-offset'));
-          origTgtOffset = isNaN(to) ? 0 : to;
-          e.data('_origTargetTextOffset', origTgtOffset);
-        }
-        e.style({
-          width: origWidth ? origWidth * factor : e.style('width'),
-          'font-size': origFont ? `${origFont * labelFactor}px` : e.style('font-size'),
-          'arrow-scale': origArrow ? origArrow * factor : e.style('arrow-scale')
-        });
-        // Text metrics and label offsets handled via stylesheet-level scaling below
-      });
+    if (enable) {
+      this.captureBaseTextMetrics(cy);
+
+      cy.nodes().forEach((n) => this.scaleNode(n, factor, labelFactor));
+      cy.edges().forEach((e) => this.scaleEdge(e, factor, labelFactor));
+
+      const sty = cy.style();
+      sty
+        .selector('node')
+        .style('text-outline-width', `${this.baseNodeTextOutlineWidth * labelFactor}px`)
+        .style('text-background-padding', `${this.baseNodeTextBgPadding * labelFactor}px`);
+      sty
+        .selector('edge')
+        .style('text-outline-width', `${this.baseEdgeTextOutlineWidth * labelFactor}px`)
+        .style('text-background-padding', `${this.baseEdgeTextBgPadding * labelFactor}px`)
+        .style('source-text-offset', this.baseEdgeSourceTextOffset * factor)
+        .style('target-text-offset', this.baseEdgeTargetTextOffset * factor)
+        .update();
+
       this.geoScaleApplied = true;
       this.lastGeoScale = factor;
-    } else if (!enable && this.geoScaleApplied) {
-      cy.nodes().forEach((n) => {
-        const w = n.data('_origWidth');
-        const h = n.data('_origHeight');
-        const fs = n.data('_origFont');
-        const bw = n.data('_origBorderWidth');
-        if (w !== undefined) n.style('width', w);
-        if (h !== undefined) n.style('height', h);
-        if (fs !== undefined && fs !== 0) n.style('font-size', `${fs}px`);
-        if (bw !== undefined && n.data('topoViewerRole') === 'group') {
-          n.style('border-width', bw);
-        }
-        // Reset of outline/background padding handled via stylesheet-level reset below
-        n.removeData('_origWidth');
-        n.removeData('_origHeight');
-        n.removeData('_origFont');
-        n.removeData('_origBorderWidth');
-        n.removeData('_origTextOutlineWidth');
-        n.removeData('_origTextBgPadding');
-      });
-      cy.edges().forEach((e) => {
-        const w = e.data('_origWidth');
-        const fs = e.data('_origFont');
-        const ar = e.data('_origArrow');
-        if (w !== undefined) e.style('width', w);
-        if (fs !== undefined && fs !== 0) e.style('font-size', `${fs}px`);
-        if (ar !== undefined) e.style('arrow-scale', ar);
-        // Reset of outline/background padding and offsets via stylesheet-level reset below
-        e.removeData('_origWidth');
-        e.removeData('_origFont');
-        e.removeData('_origArrow');
-        e.removeData('_origTextOutlineWidth');
-        e.removeData('_origTextBgPadding');
-        e.removeData('_origSourceTextOffset');
-        e.removeData('_origTargetTextOffset');
-      });
-      // Reset stylesheet-level label metrics back to baseline
+    } else if (this.geoScaleApplied) {
+      cy.nodes().forEach((n) => this.resetNode(n));
+      cy.edges().forEach((e) => this.resetEdge(e));
+
       const sty = cy.style();
-      sty.selector('node')
+      sty
+        .selector('node')
         .style('text-outline-width', `${this.baseNodeTextOutlineWidth}px`)
         .style('text-background-padding', `${this.baseNodeTextBgPadding}px`);
-      sty.selector('edge')
+      sty
+        .selector('edge')
         .style('text-outline-width', `${this.baseEdgeTextOutlineWidth}px`)
         .style('text-background-padding', `${this.baseEdgeTextBgPadding}px`)
         .style('source-text-offset', this.baseEdgeSourceTextOffset)
         .style('target-text-offset', this.baseEdgeTargetTextOffset)
         .update();
 
-      // Clear baselines for next enable
       this.baseNodeTextOutlineWidth = 0;
       this.baseNodeTextBgPadding = 0;
       this.baseEdgeTextOutlineWidth = 0;

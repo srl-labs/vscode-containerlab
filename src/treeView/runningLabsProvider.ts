@@ -483,110 +483,9 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         const labs: Record<string, c.ClabLabTreeNode> = {};
 
         allContainers.forEach((container: c.ClabJSON) => {
-            // Use absLabPath if available, otherwise normalize labPath as fallback
             const normPath = container.absLabPath || utils.normalizeLabPath(container.labPath);
-
             if (!labs[normPath]) {
-                // This is the first container we see for this lab path
-                const label = `${container.lab_name} (${container.owner})`;
-
-                const labPathObj: c.LabPath = {
-                    absolute: normPath,
-                    // Use relative path from the container data if possible, else calculate
-                    relative: utils.getRelativeFolderPath(normPath) // Or use a calculated relative path
-                };
-
-                // Filter the flat list to get all containers for *this specific lab path*
-                const containersForThisLab = allContainers.filter(
-                    (c: c.ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
-                );
-
-                // Discover the container nodes for this lab using the filtered list
-                const discoveredContainers: c.ClabContainerTreeNode[] =
-                    this.discoverContainers(containersForThisLab, labPathObj.absolute); // Pass filtered list
-
-                // Determine lab icon based on container states and health
-                let runningCount = 0;
-                let unhealthyCount = 0;
-                for (const c of discoveredContainers) {
-                    if (c.state === "running") {
-                        runningCount++;
-                        // Check if container is unhealthy based on status
-                        const status = c.status?.toLowerCase() || "";
-                        if (status.includes("health: starting") || status.includes("unhealthy")) {
-                            unhealthyCount++;
-                        }
-                    }
-                }
-
-                let icon: string;
-                if (runningCount === 0 && discoveredContainers.length > 0) {
-                    icon = c.CtrStateIcons.STOPPED;  // All containers stopped
-                } else if (runningCount === discoveredContainers.length && unhealthyCount === 0) {
-                    icon = c.CtrStateIcons.RUNNING;  // All containers running and healthy
-                } else if (runningCount === discoveredContainers.length && unhealthyCount > 0) {
-                    icon = c.CtrStateIcons.PARTIAL;  // All running but some unhealthy
-                } else if (discoveredContainers.length > 0) {
-                    icon = c.CtrStateIcons.PARTIAL;  // Some running, some stopped
-                } else {
-                    icon = c.CtrStateIcons.STOPPED;  // Default if no containers somehow
-                }
-
-                const isFav = favoriteLabs.has(normPath);
-                const contextVal = isFav
-                    ? "containerlabLabDeployedFavorite"
-                    : "containerlabLabDeployed";
-                const sshxLink = sshxSessions.get(container.lab_name);
-                const gottyLink = gottySessions.get(container.lab_name);
-
-                // Create label with sharing indicator if SSHX or GoTTY session exists
-                let labLabel = label;
-                if (sshxLink || gottyLink) {
-                    labLabel = `🔗 ${label}`; // Add link emoji to indicate sharing
-                }
-
-                const labNode = new c.ClabLabTreeNode(
-                    labLabel, // Use modified label with sharing indicator
-                    vscode.TreeItemCollapsibleState.Collapsed,
-                    labPathObj,
-                    container.lab_name,
-                    container.owner,
-                    discoveredContainers,
-                    contextVal,
-                    isFav,
-                    sshxLink,
-                    gottyLink
-                );
-
-                if (sshxLink) {
-                    labNode.sshxNode = new c.ClabSshxLinkTreeNode(container.lab_name, sshxLink);
-                    // Add sharing indicator to description instead of replacing icon
-                    labNode.description = `${labPathObj.relative} (Shared)`;
-                    // Set command for easy access to copy link
-                    labNode.command = {
-                        command: 'containerlab.lab.sshx.copyLink',
-                        title: 'Copy SSHX link',
-                        arguments: [sshxLink]
-                    };
-                } else if (gottyLink) {
-                    labNode.gottyNode = new c.ClabGottyLinkTreeNode(container.lab_name, gottyLink);
-                    // Add sharing indicator to description instead of replacing icon
-                    labNode.description = `${labPathObj.relative} (Shared)`;
-                    // Set command for easy access to copy link
-                    labNode.command = {
-                        command: 'containerlab.lab.gotty.copyLink',
-                        title: 'Copy GoTTY link',
-                        arguments: [gottyLink]
-                    };
-                } else {
-                    labNode.description = labPathObj.relative; // Show relative path
-                }
-
-                // Keep the original state icon (don't replace with sharing icon)
-                const iconUri = this.getResourceUri(icon);
-                labNode.iconPath = { light: iconUri, dark: iconUri };
-
-                labs[normPath] = labNode;
+                labs[normPath] = this.createLabNode(container, allContainers, normPath);
             }
         });
 
@@ -594,6 +493,97 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         this.labsCache.inspect = { data: labs, timestamp: Date.now(), rawDataHash: currentDataHash };
         return labs;
+    }
+
+    private createLabNode(container: c.ClabJSON, allContainers: c.ClabJSON[], normPath: string): c.ClabLabTreeNode {
+        const label = `${container.lab_name} (${container.owner})`;
+        const labPathObj: c.LabPath = {
+            absolute: normPath,
+            relative: utils.getRelativeFolderPath(normPath)
+        };
+        const containersForThisLab = allContainers.filter(
+            (c: c.ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
+        );
+        const discoveredContainers = this.discoverContainers(containersForThisLab, labPathObj.absolute);
+        const { running, unhealthy } = this.getContainerHealth(discoveredContainers);
+        const icon = this.determineIcon(discoveredContainers.length, running, unhealthy);
+        const isFav = favoriteLabs.has(normPath);
+        const contextVal = isFav ? "containerlabLabDeployedFavorite" : "containerlabLabDeployed";
+        const sshxLink = sshxSessions.get(container.lab_name);
+        const gottyLink = gottySessions.get(container.lab_name);
+        let labLabel = label;
+        if (sshxLink || gottyLink) {
+            labLabel = `🔗 ${label}`;
+        }
+        const labNode = new c.ClabLabTreeNode(
+            labLabel,
+            vscode.TreeItemCollapsibleState.Collapsed,
+            labPathObj,
+            container.lab_name,
+            container.owner,
+            discoveredContainers,
+            contextVal,
+            isFav,
+            sshxLink,
+            gottyLink
+        );
+        this.decorateSharing(labNode, labPathObj.relative, sshxLink, gottyLink);
+        const iconUri = this.getResourceUri(icon);
+        labNode.iconPath = { light: iconUri, dark: iconUri };
+        return labNode;
+    }
+
+    private getContainerHealth(containers: c.ClabContainerTreeNode[]): { running: number; unhealthy: number } {
+        let running = 0;
+        let unhealthy = 0;
+        for (const ctr of containers) {
+            if (ctr.state === "running") {
+                running++;
+                const status = ctr.status?.toLowerCase() || "";
+                if (status.includes("health: starting") || status.includes("unhealthy")) {
+                    unhealthy++;
+                }
+            }
+        }
+        return { running, unhealthy };
+    }
+
+    private determineIcon(total: number, running: number, unhealthy: number): string {
+        if (running === 0 && total > 0) {
+            return c.CtrStateIcons.STOPPED;
+        }
+        if (running === total && unhealthy === 0) {
+            return c.CtrStateIcons.RUNNING;
+        }
+        if (running === total && unhealthy > 0) {
+            return c.CtrStateIcons.PARTIAL;
+        }
+        if (total > 0) {
+            return c.CtrStateIcons.PARTIAL;
+        }
+        return c.CtrStateIcons.STOPPED;
+    }
+
+    private decorateSharing(labNode: c.ClabLabTreeNode, relativePath: string, sshxLink?: string, gottyLink?: string) {
+        if (sshxLink) {
+            labNode.sshxNode = new c.ClabSshxLinkTreeNode(labNode.name!, sshxLink);
+            labNode.description = `${relativePath} (Shared)`;
+            labNode.command = {
+                command: 'containerlab.lab.sshx.copyLink',
+                title: 'Copy SSHX link',
+                arguments: [sshxLink]
+            };
+        } else if (gottyLink) {
+            labNode.gottyNode = new c.ClabGottyLinkTreeNode(labNode.name!, gottyLink);
+            labNode.description = `${relativePath} (Shared)`;
+            labNode.command = {
+                command: 'containerlab.lab.gotty.copyLink',
+                title: 'Copy GoTTY link',
+                arguments: [gottyLink]
+            };
+        } else {
+            labNode.description = relativePath;
+        }
     }
 
     private async getInspectData(): Promise<any> {

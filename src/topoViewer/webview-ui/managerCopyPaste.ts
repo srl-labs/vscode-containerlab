@@ -213,61 +213,60 @@ export class CopyPasteManager {
    * @returns A unique ID string.
    */
   private getUniqueId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
-    // Check if this is a network-node (special endpoint)
-    const isNetworkNode = isSpecialEndpoint(baseName);
-
-    if (isNetworkNode) {
-      // Handle dummy nodes (dummy1, dummy2, etc.)
+    if (isSpecialEndpoint(baseName)) {
       if (baseName.startsWith('dummy')) {
-        const match = baseName.match(/^(dummy)(\d*)$/);
-        const base = match?.[1] || 'dummy';
-        let num = parseInt(match?.[2] || '1') || 1;
-        while (usedIds.has(`${base}${num}`)) num++;
-        return `${base}${num}`;
+        return this.generateDummyId(baseName, usedIds);
       }
-
-      // Handle network-nodes with adapter suffix (host:eth0, macvlan:eth1, etc.)
       if (baseName.includes(':')) {
-        const [nodeType, adapter] = baseName.split(':');
-
-        // Extract the base adapter name and number (e.g., eth0 -> eth, 0)
-        const adapterMatch = adapter.match(/^([a-zA-Z]+)(\d+)$/);
-        if (adapterMatch) {
-          const adapterBase = adapterMatch[1];
-          let adapterNum = parseInt(adapterMatch[2]);
-          let name = baseName;
-
-          // Increment the adapter number until we find an unused one
-          while (usedIds.has(name)) {
-            adapterNum++;
-            name = `${nodeType}:${adapterBase}${adapterNum}`;
-          }
-          return name;
-        } else {
-          // If adapter doesn't follow the pattern, just append a number
-          let name = baseName;
-          let counter = 1;
-          while (usedIds.has(name)) {
-            name = `${nodeType}:${adapter}${counter}`;
-            counter++;
-          }
-          return name;
-        }
+        return this.generateAdapterNodeId(baseName, usedIds);
       }
+      return this.generateSpecialNodeId(baseName, usedIds);
+    }
+    return this.generateRegularNodeId(baseName, usedIds, isGroup);
+  }
 
-      // Handle other special nodes (bridge:br0, ovs-bridge:ovs0, etc.)
+  private generateDummyId(baseName: string, usedIds: Set<string>): string {
+    const match = baseName.match(/^(dummy)(\d*)$/);
+    const base = match?.[1] || 'dummy';
+    let num = parseInt(match?.[2] || '1') || 1;
+    while (usedIds.has(`${base}${num}`)) num++;
+    return `${base}${num}`;
+  }
+
+  private generateAdapterNodeId(baseName: string, usedIds: Set<string>): string {
+    const [nodeType, adapter] = baseName.split(':');
+    const adapterMatch = adapter.match(/^([a-zA-Z]+)(\d+)$/);
+    if (adapterMatch) {
+      const adapterBase = adapterMatch[1];
+      let adapterNum = parseInt(adapterMatch[2]);
       let name = baseName;
       while (usedIds.has(name)) {
-        const match = name.match(/^(.*?)(\d*)$/);
-        const base = match?.[1] || name;
-        let num = parseInt(match?.[2] || '0') || 0;
-        name = base + (++num);
+        adapterNum++;
+        name = `${nodeType}:${adapterBase}${adapterNum}`;
       }
       return name;
     }
+    let name = baseName;
+    let counter = 1;
+    while (usedIds.has(name)) {
+      name = `${nodeType}:${adapter}${counter}`;
+      counter++;
+    }
+    return name;
+  }
 
-    // Original logic for regular nodes and groups
-    // Use greedy match to properly extract base and number (e.g., "srl1" -> "srl" + "1")
+  private generateSpecialNodeId(baseName: string, usedIds: Set<string>): string {
+    let name = baseName;
+    while (usedIds.has(name)) {
+      const match = name.match(/^(.*?)(\d*)$/);
+      const base = match?.[1] || name;
+      let num = parseInt(match?.[2] || '0') || 0;
+      name = base + (++num);
+    }
+    return name;
+  }
+
+  private generateRegularNodeId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
     const match = baseName.match(/^(.*)(\d+)$/);
     const base = match?.[1] || baseName;
     let num = match?.[2] ? parseInt(match[2]) : 0;
@@ -275,23 +274,18 @@ export class CopyPasteManager {
     if (isGroup) {
       while (usedIds.has(`${base}${num || ''}:1`)) num++;
       return `${base}${num || ''}:1`;
-    } else {
-      // Start with the extracted base and find the next available number
-      if (match) {
-        // If the name already has a number, find the next available one
-        while (usedIds.has(`${base}${num}`)) num++;
-        return `${base}${num}`;
-      } else {
-        // If no number in the name, start from 1
-        let name = baseName;
-        num = 1;
-        while (usedIds.has(name)) {
-          name = `${base}${num}`;
-          num++;
-        }
-        return name;
-      }
     }
+    if (match) {
+      while (usedIds.has(`${base}${num}`)) num++;
+      return `${base}${num}`;
+    }
+    let name = baseName;
+    num = 1;
+    while (usedIds.has(name)) {
+      name = `${base}${num}`;
+      num++;
+    }
+    return name;
   }
 
   /**

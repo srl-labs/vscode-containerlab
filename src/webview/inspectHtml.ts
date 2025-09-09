@@ -15,6 +15,31 @@ function stateToClass(state: string): string {
   }
 }
 
+function firstTruthy<T>(...values: (T | undefined | null | "")[]): T | "" {
+  for (const v of values) {
+    if (v) {
+      return v;
+    }
+  }
+  return "";
+}
+
+function buildPortsHtml(
+  ports: any[],
+  containerName: string,
+  containerId: string
+): string {
+  if (Array.isArray(ports) && ports.length > 0) {
+    return ports
+      .map((p: any) => {
+        const portId = `port-${containerId}-${p.port}-${p.protocol}`;
+        return `<a href="#" class="port-link" data-container-name="${containerName}" data-container-id="${containerId}" data-port="${p.port}" data-protocol="${p.protocol}" id="${portId}">${p.port}/${p.protocol}</a>`;
+      })
+      .join(', ');
+  }
+  return '-';
+}
+
 export function getInspectHtml(
   webview: vscode.Webview,
   containers: any[],
@@ -41,51 +66,38 @@ export function getInspectHtml(
   // Build tables
   let allTables = "";
   for (const [labName, arr] of Object.entries(grouped)) {
-      let rows = arr.map((ctr) => {
-        // Extract container name - handle both formats
-        const containerName = ctr.name ||
-                            (ctr.Names && Array.isArray(ctr.Names) ? ctr.Names[0] : '') ||
-                            ctr.Labels?.['clab-node-longname'] ||
-                            '';
+    const rows = arr
+      .map((ctr) => {
+        const containerName = firstTruthy(
+          ctr.name,
+          Array.isArray(ctr.Names) ? ctr.Names[0] : "",
+          ctr.Labels?.["clab-node-longname"]
+        );
 
-        // Extract state
-        const state = ctr.state || ctr.State || '';
+        const state = firstTruthy(ctr.state, ctr.State);
         const cls = stateToClass(state);
 
-        // Extract other fields with fallbacks
-        const kind = ctr.kind || ctr.Labels?.['clab-node-kind'] || '';
-        const type = ctr.node_type || ctr.Labels?.['clab-node-type'] || '';
-        const image = ctr.image || ctr.Image || '';
-        const pid = ctr.Pid ?? '';
-        const net = ctr.network_name || ctr.NetworkName || '';
-        const status = ctr.status || ctr.Status || '';
-        const owner = ctr.Labels?.['clab-owner'] || '';
+        const kind = firstTruthy(ctr.kind, ctr.Labels?.["clab-node-kind"]);
+        const type = firstTruthy(ctr.node_type, ctr.Labels?.["clab-node-type"]);
+        const image = firstTruthy(ctr.image, ctr.Image);
+        const pid = ctr.Pid ?? "";
+        const net = firstTruthy(ctr.network_name, ctr.NetworkName);
+        const status = firstTruthy(ctr.status, ctr.Status);
+        const owner = ctr.Labels?.["clab-owner"] || "";
 
-        // Extract IP addresses - handle both formats
-        const ipv4 = ctr.ipv4_address ||
-                    ctr.NetworkSettings?.IPv4addr ||
-                    ctr.NetworkSettings?.ipv4_address ||
-                    '';
-        const ipv6 = ctr.ipv6_address ||
-                    ctr.NetworkSettings?.IPv6addr ||
-                    ctr.NetworkSettings?.ipv6_address ||
-                    '';
+        const ipv4 = firstTruthy(
+          ctr.ipv4_address,
+          ctr.NetworkSettings?.IPv4addr,
+          ctr.NetworkSettings?.ipv4_address
+        );
+        const ipv6 = firstTruthy(
+          ctr.ipv6_address,
+          ctr.NetworkSettings?.IPv6addr,
+          ctr.NetworkSettings?.ipv6_address
+        );
 
-        // Extract container ID for port links
-        const containerId = ctr.ID || ctr.id || ctr.ShortID || '';
-
-        // Format ports as clickable links
-        let portsHtml = '';
-        if (ctr.Ports && Array.isArray(ctr.Ports) && ctr.Ports.length > 0) {
-          const portLinks = ctr.Ports.map((p: any) => {
-            // Generate a unique ID for this port link
-            const portId = `port-${containerId}-${p.port}-${p.protocol}`;
-            return `<a href="#" class="port-link" data-container-name="${containerName}" data-container-id="${containerId}" data-port="${p.port}" data-protocol="${p.protocol}" id="${portId}">${p.port}/${p.protocol}</a>`;
-          }).join(', ');
-          portsHtml = portLinks;
-        } else {
-          portsHtml = '-';
-        }
+        const containerId = firstTruthy(ctr.ID, ctr.id, ctr.ShortID);
+        const portsHtml = buildPortsHtml(ctr.Ports, containerName, containerId);
 
         return `
           <tr data-node-name="${containerName.toLowerCase()}">
@@ -103,9 +115,10 @@ export function getInspectHtml(
             <td>${portsHtml}</td>
           </tr>
         `;
-      }).join("");
+      })
+      .join("");
 
-      allTables += `
+    allTables += `
         <section class="lab-section" data-lab-name="${labName.toLowerCase()}">
         <h2>${labName}</h2>
         <div class="table-container">

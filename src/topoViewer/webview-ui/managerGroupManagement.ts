@@ -27,6 +27,34 @@ interface CreateNewParentOptions {
   nodeToReparent?: cytoscape.NodeSingular | null;
 }
 
+interface GroupEditorElements {
+  groupIdEl: HTMLElement | null;
+  groupEl: HTMLInputElement | null;
+  levelEl: HTMLInputElement | null;
+  labelButtonEl: HTMLElement | null;
+  bgColorEl: HTMLInputElement | null;
+  bgOpacityEl: HTMLInputElement | null;
+  borderColorEl: HTMLInputElement | null;
+  borderWidthEl: HTMLInputElement | null;
+  borderStyleEl: HTMLSelectElement | null;
+  borderRadiusEl: HTMLInputElement | null;
+  textColorEl: HTMLInputElement | null;
+}
+
+interface ParentEditorInputs {
+  parentIdEl: HTMLElement;
+  groupInputEl: HTMLInputElement;
+  levelInputEl: HTMLInputElement;
+  labelPositionEl: HTMLElement;
+  bgColorEl: HTMLInputElement | null;
+  bgOpacityEl: HTMLInputElement | null;
+  borderColorEl: HTMLInputElement | null;
+  borderWidthEl: HTMLInputElement | null;
+  borderStyleEl: HTMLSelectElement | null;
+  borderRadiusEl: HTMLInputElement | null;
+  textColorEl: HTMLInputElement | null;
+}
+
 export class ManagerGroupManagement {
   private cy: cytoscape.Core;
   private groupStyleManager: ManagerGroupStyle;
@@ -294,126 +322,158 @@ export class ManagerGroupManagement {
 
   public showGroupEditor(nodeOrId: cytoscape.NodeSingular | string): void {
     try {
-      const panel = document.getElementById('panel-node-editor-parent');
-      if (!panel) {
-        log.warn('Group editor panel element not found');
-        return;
-      }
-      panel.style.display = 'block';
-
-      const node = typeof nodeOrId === 'string' ? this.cy.getElementById(nodeOrId) : nodeOrId;
-      if (node.empty()) {
-        log.warn('Group node not found');
-        return;
-      }
-
-      const currentParentId = node.id();
-      const groupIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
-      const groupEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
-      const levelEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
-      const labelButtonEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
-      const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
-      const bgOpacityEl = document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement;
-      const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
-      const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
-      const borderStyleEl = document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement;
-      const borderRadiusEl = document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement;
-      const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
-
-      if (groupIdEl) groupIdEl.textContent = currentParentId;
-      if (groupEl) groupEl.value = currentParentId.split(':')[0];
-      if (levelEl) levelEl.value = currentParentId.split(':')[1];
-      if (labelButtonEl) {
-        const labelClasses = [
-          'top-center',
-          'top-left',
-          'top-right',
-          'bottom-center',
-          'bottom-left',
-          'bottom-right'
-        ];
-        const currentClass = labelClasses.find(cls => node.hasClass(cls));
-        labelButtonEl.textContent = currentClass || 'Select Position';
-      }
-
-      const style = this.groupStyleManager.getStyle(currentParentId);
-
-      if (bgColorEl) bgColorEl.value = style?.backgroundColor || '#d9d9d9';
-      if (bgOpacityEl) {
-        const opacity = style?.backgroundOpacity ?? 20;
-        bgOpacityEl.value = opacity.toString();
-        const opacityValueEl = document.getElementById('panel-node-editor-parent-bg-opacity-value');
-        if (opacityValueEl) opacityValueEl.textContent = opacity + '%';
-      }
-      if (borderColorEl) borderColorEl.value = style?.borderColor || '#dddddd';
-      if (borderWidthEl) borderWidthEl.value = style?.borderWidth?.toString() || '0.5';
-      if (borderStyleEl) borderStyleEl.value = style?.borderStyle || 'solid';
-      if (borderRadiusEl) {
-        const radius = style?.borderRadius ?? 0;
-        borderRadiusEl.value = radius.toString();
-        const radiusValueEl = document.getElementById('panel-node-editor-parent-border-radius-value');
-        if (radiusValueEl) radiusValueEl.textContent = radius + 'px';
-      }
-      if (textColorEl) textColorEl.value = style?.color || '#ebecf0';
-
-      // Attach event listeners for auto-update
-      const autoUpdateGroup = () => this.nodeParentPropertiesUpdate();
-
-      // Format range display values
-      const formatRangeValue = (el: HTMLInputElement, value: string) => {
-        if (el.id.includes('opacity')) return value + '%';
-        if (el.dataset.unit) return value + el.dataset.unit;
-        return value + 'px';
-      };
-
-      // Attach listeners to all relevant inputs
-      panel.querySelectorAll('input[type="range"], input[type="number"], input[type="color"], input[type="text"][id$="-hex"], select').forEach(el => {
-        const inputEl = el as HTMLInputElement | HTMLSelectElement;
-        const isRange = inputEl instanceof HTMLInputElement && inputEl.type === 'range';
-        const isColor = inputEl instanceof HTMLInputElement && inputEl.type === 'color';
-        const isHex = inputEl instanceof HTMLInputElement && inputEl.type === 'text' && inputEl.id.endsWith('-hex');
-        const eventType = isRange || isColor || isHex ? 'input' : 'change';
-
-        const onChange = () => {
-          if (isRange) {
-            const valueEl = panel.querySelector('#' + inputEl.id + '-value') as HTMLElement;
-            if (valueEl) valueEl.textContent = formatRangeValue(inputEl, inputEl.value);
-          } else if (isColor) {
-            const hexId = inputEl.id.replace('-color', '-color-hex');
-            const hex = document.getElementById(hexId) as HTMLInputElement;
-            if (hex) hex.value = inputEl.value;
-          } else if (isHex) {
-            const val = inputEl.value.toUpperCase();
-            if (/^#[0-9A-F]{6}$/.test(val)) {
-              const colorId = inputEl.id.replace('-hex', '');
-              const color = document.getElementById(colorId) as HTMLInputElement;
-              if (color) color.value = val;
-            }
-          }
-          autoUpdateGroup();
-        };
-
-        inputEl.addEventListener(eventType, onChange);
-        if (isRange || isColor) onChange(); // Initial update
-      });
-
-      // Attach button click handlers
-      const deleteButton = document.getElementById('panel-node-editor-parent-delete-button');
-      if (deleteButton) deleteButton.addEventListener('click', () => this.nodeParentRemoval());
-
-      const closeButton = document.getElementById('panel-node-editor-parent-close-button');
-      if (closeButton) closeButton.addEventListener('click', () => this.nodeParentPropertiesUpdateClose());
-
-      const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement;
-      if (updateButton) updateButton.addEventListener('click', () => autoUpdateGroup());
-
-      // Attach dropdown toggle
-      const dropdownButton = panel.querySelector('#panel-node-editor-parent-label-dropdown button');
-      if (dropdownButton) dropdownButton.addEventListener('click', () => this.panelNodeEditorParentToggleDropdown());
-
+      const panel = this.getGroupEditorPanel();
+      const node = this.resolveGroupNode(nodeOrId);
+      if (!panel || !node) return;
+      const elements = this.getGroupEditorElements();
+      this.populateGroupEditorFields(node, elements);
+      this.attachGroupEditorListeners(panel, () => this.nodeParentPropertiesUpdate());
     } catch (error) {
       log.error(`showGroupEditor failed: ${error}`);
     }
+  }
+
+  private getGroupEditorPanel(): HTMLElement | null {
+    const panel = document.getElementById('panel-node-editor-parent');
+    if (!panel) {
+      log.warn('Group editor panel element not found');
+      return null;
+    }
+    panel.style.display = 'block';
+    return panel;
+  }
+
+  private resolveGroupNode(nodeOrId: cytoscape.NodeSingular | string): cytoscape.NodeSingular | null {
+    const node = typeof nodeOrId === 'string' ? this.cy.getElementById(nodeOrId) : nodeOrId;
+    if (node.empty()) {
+      log.warn('Group node not found');
+      return null;
+    }
+    return node;
+  }
+
+  private getGroupEditorElements(): GroupEditorElements {
+    return {
+      groupIdEl: document.getElementById('panel-node-editor-parent-graph-group-id'),
+      groupEl: document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement,
+      levelEl: document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement,
+      labelButtonEl: document.getElementById('panel-node-editor-parent-label-dropdown-button-text'),
+      bgColorEl: document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement,
+      bgOpacityEl: document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement,
+      borderColorEl: document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement,
+      borderWidthEl: document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement,
+      borderStyleEl: document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement,
+      borderRadiusEl: document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement,
+      textColorEl: document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement
+    };
+  }
+
+  private setText(el: HTMLElement | null, text: string): void {
+    if (el) el.textContent = text;
+  }
+
+  private setValue(el: HTMLInputElement | HTMLSelectElement | null, value: string): void {
+    if (el) el.value = value;
+  }
+
+  private setLabelButton(node: cytoscape.NodeSingular, labelButtonEl: HTMLElement | null): void {
+    if (!labelButtonEl) return;
+    const labelClasses = ['top-center', 'top-left', 'top-right', 'bottom-center', 'bottom-left', 'bottom-right'];
+    const currentClass = labelClasses.find(cls => node.hasClass(cls));
+    labelButtonEl.textContent = currentClass || 'Select Position';
+  }
+
+  private populateGroupEditorFields(node: cytoscape.NodeSingular, ui: GroupEditorElements): void {
+    const currentParentId = node.id();
+    this.setText(ui.groupIdEl, currentParentId);
+    this.setValue(ui.groupEl, currentParentId.split(':')[0]);
+    this.setValue(ui.levelEl, currentParentId.split(':')[1]);
+
+    this.setLabelButton(node, ui.labelButtonEl);
+
+    const style = this.groupStyleManager.getStyle(currentParentId);
+    this.setValue(ui.bgColorEl, style?.backgroundColor || '#d9d9d9');
+
+    if (ui.bgOpacityEl) {
+      const opacity = style?.backgroundOpacity ?? 20;
+      ui.bgOpacityEl.value = opacity.toString();
+      const opacityValueEl = document.getElementById('panel-node-editor-parent-bg-opacity-value');
+      this.setText(opacityValueEl, opacity + '%');
+    }
+
+    this.setValue(ui.borderColorEl, style?.borderColor || '#dddddd');
+    this.setValue(ui.borderWidthEl, style?.borderWidth?.toString() || '0.5');
+    if (ui.borderStyleEl) ui.borderStyleEl.value = style?.borderStyle || 'solid';
+
+    if (ui.borderRadiusEl) {
+      const radius = style?.borderRadius ?? 0;
+      ui.borderRadiusEl.value = radius.toString();
+      const radiusValueEl = document.getElementById('panel-node-editor-parent-border-radius-value');
+      this.setText(radiusValueEl, radius + 'px');
+    }
+
+    this.setValue(ui.textColorEl, style?.color || '#ebecf0');
+  }
+
+  private attachGroupEditorListeners(panel: HTMLElement, autoUpdateGroup: () => void): void {
+    this.attachInputListeners(panel, autoUpdateGroup);
+
+    const deleteButton = document.getElementById('panel-node-editor-parent-delete-button');
+    if (deleteButton) deleteButton.addEventListener('click', () => this.nodeParentRemoval());
+
+    const closeButton = document.getElementById('panel-node-editor-parent-close-button');
+    if (closeButton) closeButton.addEventListener('click', () => this.nodeParentPropertiesUpdateClose());
+
+    const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement | null;
+    if (updateButton) updateButton.addEventListener('click', autoUpdateGroup);
+
+    const dropdownButton = panel.querySelector('#panel-node-editor-parent-label-dropdown button');
+    if (dropdownButton) dropdownButton.addEventListener('click', () => this.panelNodeEditorParentToggleDropdown());
+  }
+
+  private attachInputListeners(panel: HTMLElement, autoUpdateGroup: () => void): void {
+    const inputs = panel.querySelectorAll(
+      'input[type="range"], input[type="number"], input[type="color"], input[type="text"][id$="-hex"], select'
+    );
+    inputs.forEach(el => {
+      const inputEl = el as HTMLInputElement | HTMLSelectElement;
+      const eventType = this.getInputEventType(inputEl);
+      const onChange = () => {
+        this.updateInputValue(inputEl, panel);
+        autoUpdateGroup();
+      };
+      inputEl.addEventListener(eventType, onChange);
+      if (eventType === 'input') onChange();
+    });
+  }
+
+  private getInputEventType(inputEl: HTMLInputElement | HTMLSelectElement): 'input' | 'change' {
+    const isRange = inputEl instanceof HTMLInputElement && inputEl.type === 'range';
+    const isColor = inputEl instanceof HTMLInputElement && inputEl.type === 'color';
+    const isHex = inputEl instanceof HTMLInputElement && inputEl.type === 'text' && inputEl.id.endsWith('-hex');
+    return isRange || isColor || isHex ? 'input' : 'change';
+  }
+
+  private updateInputValue(inputEl: HTMLInputElement | HTMLSelectElement, panel: HTMLElement): void {
+    if (inputEl instanceof HTMLInputElement && inputEl.type === 'range') {
+      const valueEl = panel.querySelector('#' + inputEl.id + '-value') as HTMLElement;
+      this.setText(valueEl, this.formatRangeValue(inputEl));
+    } else if (inputEl instanceof HTMLInputElement && inputEl.type === 'color') {
+      const hex = document.getElementById(inputEl.id.replace('-color', '-color-hex')) as HTMLInputElement | null;
+      if (hex) hex.value = inputEl.value;
+    } else if (inputEl instanceof HTMLInputElement && inputEl.type === 'text' && inputEl.id.endsWith('-hex')) {
+      const val = inputEl.value.toUpperCase();
+      if (/^#[0-9A-F]{6}$/.test(val)) {
+        const color = document.getElementById(inputEl.id.replace('-hex', '')) as HTMLInputElement | null;
+        if (color) color.value = val;
+      }
+    }
+  }
+
+  private formatRangeValue(el: HTMLInputElement): string {
+    if (el.id.includes('opacity')) return el.value + '%';
+    if (el.dataset.unit) return el.value + el.dataset.unit;
+    return el.value + 'px';
   }
 
   public panelNodeEditorParentToggleDropdown(): void {
@@ -442,34 +502,115 @@ export class ManagerGroupManagement {
     menu.classList.toggle('hidden');
   }
 
+  private getParentEditorInputs(): ParentEditorInputs {
+    const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
+    const groupInputEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement | null;
+    const levelInputEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement | null;
+    const labelPositionEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
+    if (!parentIdEl || !groupInputEl || !levelInputEl || !labelPositionEl) {
+      const errorMsg = 'One or more required UI elements were not found.';
+      acquireVsCodeApi().window.showWarningMessage(errorMsg);
+      throw new Error(errorMsg);
+    }
+    return {
+      parentIdEl,
+      groupInputEl,
+      levelInputEl,
+      labelPositionEl,
+      bgColorEl: document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement | null,
+      bgOpacityEl: document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement | null,
+      borderColorEl: document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement | null,
+      borderWidthEl: document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement | null,
+      borderStyleEl: document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement | null,
+      borderRadiusEl: document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement | null,
+      textColorEl: document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement | null
+    };
+  }
+
+  private getNumericValue(el: HTMLInputElement | null): number | undefined {
+    if (!el || !el.value) return undefined;
+    return parseFloat(el.value);
+  }
+
+  private buildParentStyle(id: string, inputs: ParentEditorInputs) {
+    return {
+      id,
+      backgroundColor: inputs.bgColorEl?.value,
+      backgroundOpacity: this.getNumericValue(inputs.bgOpacityEl),
+      borderColor: inputs.borderColorEl?.value,
+      borderWidth: this.getNumericValue(inputs.borderWidthEl),
+      borderStyle: inputs.borderStyleEl?.value as 'solid' | 'dotted' | 'dashed' | 'double' | undefined,
+      borderRadius: this.getNumericValue(inputs.borderRadiusEl),
+      color: inputs.textColorEl?.value
+    };
+  }
+
+  private updateLabelPositionClass(node: cytoscape.NodeSingular, labelPos: string): void {
+    const validLabelClasses = ['top-center', 'top-left', 'top-right', 'bottom-center', 'bottom-left', 'bottom-right'];
+    validLabelClasses.forEach(cls => node.removeClass(cls));
+    if (validLabelClasses.includes(labelPos)) {
+      node.addClass(labelPos);
+      log.debug(`Applied label position '${labelPos}' to node: ${node.id()}`);
+    }
+  }
+
+  private ensureUniqueParentId(newParentId: string): void {
+    if (!this.cy.getElementById(newParentId).empty()) {
+      throw new Error(`A node with the new parent ID "${newParentId}" already exists.`);
+    }
+  }
+
+  private replaceParentNode(
+    oldParentNode: cytoscape.NodeSingular,
+    oldParentId: string,
+    newParentId: string,
+    graphGroup: string,
+    graphLevel: string,
+    style: any,
+    labelPos: string
+  ): void {
+    const extraData: ParentNodeExtraData = {
+      clabServerUsername: 'asad',
+      weight: '2',
+      name: '',
+      topoViewerGroup: graphGroup,
+      topoViewerGroupLevel: graphLevel
+    };
+    const oldPosition = oldParentNode.position();
+    const oldClasses = oldParentNode.classes();
+    this.cy.add({
+      group: 'nodes',
+      data: { id: newParentId, name: graphGroup, topoViewerRole: 'group', extraData },
+      position: { x: oldPosition.x, y: oldPosition.y },
+      classes: oldClasses
+    });
+    const newParentNode = this.cy.getElementById(newParentId);
+    const childNodes = oldParentNode.children();
+    childNodes.forEach(childNode => {
+      childNode.data('parent', newParentId);
+      childNode.move({ parent: newParentId });
+      log.debug(`Updated child node: ${childNode.id()}`);
+    });
+    oldParentNode.remove();
+    if (labelPos && labelPos !== 'select position') {
+      this.updateLabelPositionClass(newParentNode, labelPos);
+    }
+    this.groupStyleManager.updateGroupStyle(newParentId, style);
+    this.groupStyleManager.removeGroupStyle(oldParentId);
+  }
+
   public async nodeParentPropertiesUpdate(): Promise<void> {
     try {
-      const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
-      const groupInputEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement;
-      const levelInputEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement;
-      const labelPositionEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
-      const bgColorEl = document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement;
-      const bgOpacityEl = document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement;
-      const borderColorEl = document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement;
-      const borderWidthEl = document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement;
-      const borderStyleEl = document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement;
-      const borderRadiusEl = document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement;
-      const textColorEl = document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement;
-      if (!parentIdEl || !groupInputEl || !levelInputEl || !labelPositionEl) {
-        const errorMsg = 'One or more required UI elements were not found.';
-        acquireVsCodeApi().window.showWarningMessage(errorMsg);
-        throw new Error(errorMsg);
-      }
-      const parentNodeId = parentIdEl.textContent?.trim() || '';
-      if (!parentNodeId) {
-        throw new Error('The parent node ID is empty.');
-      }
+      const inputs = this.getParentEditorInputs();
+      const parentNodeId = inputs.parentIdEl.textContent?.trim() || '';
+      if (!parentNodeId) throw new Error('The parent node ID is empty.');
       const oldParentNode = this.cy.getElementById(parentNodeId);
       if (oldParentNode.empty()) {
         throw new Error(`Parent node with ID "${parentNodeId}" not found in the Cytoscape instance.`);
       }
-      const graphGroup = groupInputEl.value.trim();
-      const graphLevel = levelInputEl.value.trim();
+
+      const graphGroup = inputs.groupInputEl.value.trim();
+      const graphLevel = inputs.levelInputEl.value.trim();
       if (!graphGroup || !graphLevel) {
         await sendMessageToVscodeEndpointPost('clab-show-vscode-message', {
           type: 'warning',
@@ -477,84 +618,23 @@ export class ManagerGroupManagement {
         });
         throw new Error('Graph group or graph level input is empty.');
       }
+
       const newParentId = `${graphGroup}:${graphLevel}`;
-      const groupLabelPosition = labelPositionEl.textContent?.trim().toLowerCase() || '';
-      const validLabelClasses = [
-        'top-center',
-        'top-left',
-        'top-right',
-        'bottom-center',
-        'bottom-left',
-        'bottom-right'
-      ];
-      const updateLabelPositionClass = (node: cytoscape.NodeSingular, labelPos: string): void => {
-        validLabelClasses.forEach(cls => {
-          if (node.hasClass(cls)) {
-            node.removeClass(cls);
-          }
-        });
-        if (validLabelClasses.includes(labelPos)) {
-          node.addClass(labelPos);
-          log.debug(`Applied label position '${labelPos}' to node: ${node.id()}`);
-        }
-      };
-      const style = {
-        id: newParentId,
-        backgroundColor: bgColorEl?.value,
-        backgroundOpacity: bgOpacityEl?.value ? parseFloat(bgOpacityEl.value) : undefined,
-        borderColor: borderColorEl?.value,
-        borderWidth: borderWidthEl?.value ? parseFloat(borderWidthEl.value) : undefined,
-        borderStyle: borderStyleEl?.value as 'solid' | 'dotted' | 'dashed' | 'double' | undefined,
-        borderRadius: borderRadiusEl?.value ? parseFloat(borderRadiusEl.value) : undefined,
-        color: textColorEl?.value
-      };
+      const labelPos = inputs.labelPositionEl.textContent?.trim().toLowerCase() || '';
+      const style = this.buildParentStyle(newParentId, inputs);
 
       if (parentNodeId === newParentId) {
-        if (groupLabelPosition && groupLabelPosition !== 'select position') {
-          updateLabelPositionClass(oldParentNode, groupLabelPosition);
+        if (labelPos && labelPos !== 'select position') {
+          this.updateLabelPositionClass(oldParentNode, labelPos);
         }
         this.groupStyleManager.updateGroupStyle(parentNodeId, style);
         log.debug(`No parent node update needed. Parent remains: ${parentNodeId}`);
         return;
       }
-      if (!this.cy.getElementById(newParentId).empty()) {
-        throw new Error(`A node with the new parent ID "${newParentId}" already exists.`);
-      }
-      const extraData: ParentNodeExtraData = {
-        clabServerUsername: 'asad',
-        weight: '2',
-        name: '',
-        topoViewerGroup: graphGroup,
-        topoViewerGroupLevel: graphLevel
-      };
-      // Preserve the position and classes of the old parent node
-      const oldPosition = oldParentNode.position();
-      const oldClasses = oldParentNode.classes();
-      this.cy.add({
-        group: 'nodes',
-        data: { id: newParentId, name: graphGroup, topoViewerRole: 'group', extraData },
-        position: { x: oldPosition.x, y: oldPosition.y },
-        classes: oldClasses
-      });
-      const newParentNode = this.cy.getElementById(newParentId);
-      if (newParentNode.empty()) {
-        throw new Error(`New parent node with ID "${newParentId}" could not be created.`);
-      }
-      const childNodes = oldParentNode.children();
-      childNodes.forEach(childNode => {
-        childNode.data('parent', newParentId);
-        childNode.move({ parent: newParentId });
-        log.debug(`Updated child node: ${childNode.id()}`);
-      });
-      oldParentNode.remove();
-      parentIdEl.textContent = newParentId;
-      if (groupLabelPosition && groupLabelPosition !== 'select position') {
-        updateLabelPositionClass(newParentNode, groupLabelPosition);
-      }
-      this.groupStyleManager.updateGroupStyle(newParentId, style);
-      if (parentNodeId !== newParentId) {
-        this.groupStyleManager.removeGroupStyle(parentNodeId);
-      }
+
+      this.ensureUniqueParentId(newParentId);
+      this.replaceParentNode(oldParentNode, parentNodeId, newParentId, graphGroup, graphLevel, style, labelPos);
+      inputs.parentIdEl.textContent = newParentId;
       log.info(`Parent node updated successfully. New parent ID: ${newParentId}`);
     } catch (error) {
       log.error(`Error in nodeParentPropertiesUpdate: ${error}`);

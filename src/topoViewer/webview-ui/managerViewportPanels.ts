@@ -411,9 +411,9 @@ export class ManagerViewportPanels {
   }
 
   /**
-   * Updates the network editor fields based on the selected network type.
-   * @param networkType - The selected network type.
-   */
+  * Updates the network editor fields based on the selected network type.
+  * @param networkType - The selected network type.
+  */
   private updateNetworkEditorFields(networkType: string): void {
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
@@ -421,62 +421,34 @@ export class ManagerViewportPanels {
     );
     const interfaceSection = interfaceInput?.closest('.form-group') as HTMLElement | null;
 
-    // Update label and placeholder based on network type
-    if (networkType === 'bridge' || networkType === 'ovs-bridge') {
-      if (interfaceSection) interfaceSection.style.display = 'block';
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Bridge Name';
-      }
-      if (interfaceInput) {
-        interfaceInput.placeholder = 'Enter bridge name';
-      }
-    } else if (networkType === 'dummy') {
-      // Dummy nodes don't have interfaces
-      if (interfaceSection) interfaceSection.style.display = 'none';
-    } else if (networkType === 'host' || networkType === 'mgmt-net') {
-      if (interfaceSection) interfaceSection.style.display = 'block';
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Host Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.placeholder = 'e.g., eth0, eth1';
-      }
-    } else if (networkType === 'macvlan') {
-      if (interfaceSection) interfaceSection.style.display = 'block';
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Host Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.placeholder = 'Parent interface (e.g., eth0)';
-      }
-    } else if (networkType === 'vxlan' || networkType === 'vxlan-stitch') {
-      if (interfaceSection) interfaceSection.style.display = 'block';
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.placeholder = 'VXLAN interface name';
-      }
-    } else {
-      if (interfaceSection) interfaceSection.style.display = 'block';
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.placeholder = 'Enter interface name';
-      }
-    }
+    const cfg = this.getInterfaceFieldConfig(networkType);
+    if (interfaceSection) interfaceSection.style.display = cfg.showInterface ? 'block' : 'none';
+    if (interfaceLabel) interfaceLabel.textContent = cfg.label;
+    if (interfaceInput) interfaceInput.placeholder = cfg.placeholder;
 
-    // Show/hide extended property sections based on type
+    this.toggleExtendedSections(networkType);
+  }
+
+  private getInterfaceFieldConfig(networkType: string): { label: string; placeholder: string; showInterface: boolean } {
+    const base = { label: 'Interface', placeholder: 'Enter interface name', showInterface: true };
+    const map: Record<string, Partial<typeof base>> = {
+      bridge: { label: 'Bridge Name', placeholder: 'Enter bridge name' },
+      'ovs-bridge': { label: 'Bridge Name', placeholder: 'Enter bridge name' },
+      dummy: { showInterface: false },
+      host: { label: 'Host Interface', placeholder: 'e.g., eth0, eth1' },
+      'mgmt-net': { label: 'Host Interface', placeholder: 'e.g., eth0, eth1' },
+      macvlan: { label: 'Host Interface', placeholder: 'Parent interface (e.g., eth0)' },
+      vxlan: { label: 'Interface', placeholder: 'VXLAN interface name' },
+      'vxlan-stitch': { label: 'Interface', placeholder: 'VXLAN interface name' }
+    };
+    return { ...base, ...(map[networkType] || {}) };
+  }
+
+  private toggleExtendedSections(networkType: string): void {
     const modeSection = document.getElementById('panel-network-mode-section') as HTMLElement | null;
     const vxlanSection = document.getElementById('panel-network-vxlan-section') as HTMLElement | null;
-
-    if (modeSection) {
-      modeSection.style.display = networkType === 'macvlan' ? 'block' : 'none';
-    }
-    if (vxlanSection) {
-      vxlanSection.style.display = (networkType === 'vxlan' || networkType === 'vxlan-stitch') ? 'block' : 'none';
-    }
+    if (modeSection) modeSection.style.display = networkType === 'macvlan' ? 'block' : 'none';
+    if (vxlanSection) vxlanSection.style.display = ['vxlan', 'vxlan-stitch'].includes(networkType) ? 'block' : 'none';
   }
 
   /**
@@ -553,68 +525,56 @@ export class ManagerViewportPanels {
    * Populate extended properties for the network node editor.
    */
   private populateNetworkExtendedProperties(node: cytoscape.NodeSingular): void {
-    const nodeData = node.data();
-    const extraData = nodeData.extraData || {};
+    const extraData = node.data().extraData || {};
+    const extraFallback = this.getNetworkExtraFallback(node, extraData);
 
-    const fallbackFromEdge = () => {
-      const edges = node.connectedEdges();
-      for (let i = 0; i < edges.length; i++) {
-        const e = edges[i];
-        const ed = e.data('extraData') || {};
-        const fb: any = {};
-        if ( ed.extMac) fb.extMac = ed.extMac;
-        if (ed.extMtu !== undefined && ed.extMtu !== '') fb.extMtu = ed.extMtu;
-        if (ed.extVars) fb.extVars = ed.extVars;
-        if (ed.extLabels) fb.extLabels = ed.extLabels;
-        if (Object.keys(fb).length) return fb;
-      }
-      return {} as any;
-    };
-    const extraFallback = (!extraData.extMac && !extraData.extMtu && !extraData.extVars && !extraData.extLabels)
-      ? fallbackFromEdge() : {};
+    this.resetNetworkDynamicEntries();
 
-    const macInput = document.getElementById('panel-network-mac') as HTMLInputElement | null;
-    const mtuInput = document.getElementById('panel-network-mtu') as HTMLInputElement | null;
+    this.setInputValue('panel-network-mac', extraData.extMac ?? extraFallback.extMac);
+    this.setInputValue('panel-network-mtu', extraData.extMtu ?? extraFallback.extMtu);
     const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
-    const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
-    const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
-    const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
+    if (modeSelect) modeSelect.value = extraData.extMode || 'bridge';
+    this.setInputValue('panel-network-remote', extraData.extRemote);
+    this.setInputValue('panel-network-vni', extraData.extVni);
+    this.setInputValue('panel-network-udp-port', extraData.extUdpPort);
 
+    this.loadNetworkDynamicEntries('vars', extraData.extVars || extraFallback.extVars);
+    this.loadNetworkDynamicEntries('labels', extraData.extLabels || extraFallback.extLabels);
+  }
+
+  private getNetworkExtraFallback(node: cytoscape.NodeSingular, extraData: any): any {
+    if (extraData.extMac || extraData.extMtu || extraData.extVars || extraData.extLabels) return {};
+    const edges = node.connectedEdges();
+    for (const e of edges) {
+      const ed = e.data('extraData') || {};
+      const fb: any = {};
+      if (ed.extMac) fb.extMac = ed.extMac;
+      if (ed.extMtu !== undefined && ed.extMtu !== '') fb.extMtu = ed.extMtu;
+      if (ed.extVars) fb.extVars = ed.extVars;
+      if (ed.extLabels) fb.extLabels = ed.extLabels;
+      if (Object.keys(fb).length) return fb;
+    }
+    return {};
+  }
+
+  private setInputValue(id: string, value: any): void {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    if (input) input.value = value != null ? String(value) : '';
+  }
+
+  private resetNetworkDynamicEntries(): void {
     const varsContainer = document.getElementById('panel-network-vars-container');
     const labelsContainer = document.getElementById('panel-network-labels-container');
     if (varsContainer) varsContainer.innerHTML = '';
     if (labelsContainer) labelsContainer.innerHTML = '';
     this.networkDynamicEntryCounters.clear();
+  }
 
-    if (macInput) {
-      macInput.value = (extraData.extMac || extraFallback.extMac || '') as string;
-    }
-    if (mtuInput) {
-      const mtuVal = (extraData.extMtu ?? extraFallback.extMtu);
-      mtuInput.value = (mtuVal != null && mtuVal !== '') ? String(mtuVal) : '';
-    }
-    if (modeSelect) modeSelect.value = extraData.extMode || 'bridge';
-    if (remoteInput) remoteInput.value = extraData.extRemote || '';
-    if (vniInput) vniInput.value = extraData.extVni != null ? String(extraData.extVni) : '';
-    if (udpPortInput) udpPortInput.value = extraData.extUdpPort != null ? String(extraData.extUdpPort) : '';
-
-    const varsToLoad = (extraData.extVars && typeof extraData.extVars === 'object')
-      ? extraData.extVars
-      : (extraFallback.extVars && typeof extraFallback.extVars === 'object') ? extraFallback.extVars : undefined;
-    if (varsToLoad) {
-      Object.entries(varsToLoad).forEach(([key, value]) => {
-        this.addNetworkKeyValueEntryWithValue('vars', key, String(value));
-      });
-    }
-
-    const labelsToLoad = (extraData.extLabels && typeof extraData.extLabels === 'object')
-      ? extraData.extLabels
-      : (extraFallback.extLabels && typeof extraFallback.extLabels === 'object') ? extraFallback.extLabels : undefined;
-    if (labelsToLoad) {
-      Object.entries(labelsToLoad).forEach(([key, value]) => {
-        this.addNetworkKeyValueEntryWithValue('labels', key, String(value));
-      });
-    }
+  private loadNetworkDynamicEntries(type: 'vars' | 'labels', data?: Record<string, any>): void {
+    if (!data || typeof data !== 'object') return;
+    Object.entries(data).forEach(([key, value]) => {
+      this.addNetworkKeyValueEntryWithValue(type, key, String(value));
+    });
   }
 
   /**
@@ -665,52 +625,52 @@ export class ManagerViewportPanels {
    * Validate network editor fields. When showErrors is true, highlight missing values.
    */
   private validateNetworkFields(networkType: string, showErrors = false): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    const currentNetworkType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement)?.value || networkType;
+    const currentType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement)?.value || networkType;
+    this.clearNetworkValidationStyles();
+    const errors = this.collectNetworkErrors(currentType, showErrors);
+    if (showErrors) this.displayNetworkValidationErrors(errors); else this.hideNetworkValidationErrors();
+    return { isValid: errors.length === 0, errors };
+  }
 
+  private clearNetworkValidationStyles(): void {
     ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'].forEach(id => {
       document.getElementById(id)?.classList.remove('border-red-500', 'border-2');
     });
+  }
 
+  private collectNetworkErrors(currentType: string, showErrors: boolean): string[] {
+    if (!['vxlan', 'vxlan-stitch'].includes(currentType)) return [];
+    const fields = [
+      { id: 'panel-network-remote', msg: 'Remote IP is required' },
+      { id: 'panel-network-vni', msg: 'VNI is required' },
+      { id: 'panel-network-udp-port', msg: 'UDP Port is required' }
+    ];
+    const errors: string[] = [];
+    fields.forEach(({ id, msg }) => {
+      const el = document.getElementById(id) as HTMLInputElement;
+      if (!el?.value?.trim()) {
+        errors.push(msg);
+        if (showErrors) el?.classList.add('border-red-500', 'border-2');
+      }
+    });
+    return errors;
+  }
+
+  private displayNetworkValidationErrors(errors: string[]): void {
     const errorContainer = document.getElementById('panel-network-validation-errors');
-    if (errorContainer && !showErrors) {
+    const errorList = document.getElementById('panel-network-validation-errors-list');
+    if (!errorContainer || !errorList) return;
+    if (errors.length > 0) {
+      errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+      errorContainer.style.display = 'block';
+    } else {
       errorContainer.style.display = 'none';
     }
+  }
 
-    if (currentNetworkType === 'vxlan' || currentNetworkType === 'vxlan-stitch') {
-      const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement;
-      const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement;
-      const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement;
-
-      if (!remoteInput?.value?.trim()) {
-        errors.push('Remote IP is required');
-        if (showErrors) remoteInput?.classList.add('border-red-500', 'border-2');
-      }
-
-      if (!vniInput?.value?.trim()) {
-        errors.push('VNI is required');
-        if (showErrors) vniInput?.classList.add('border-red-500', 'border-2');
-      }
-
-      if (!udpPortInput?.value?.trim()) {
-        errors.push('UDP Port is required');
-        if (showErrors) udpPortInput?.classList.add('border-red-500', 'border-2');
-      }
-    }
-
-    if (showErrors) {
-      const errorList = document.getElementById('panel-network-validation-errors-list');
-      if (errorContainer && errorList) {
-        if (errors.length > 0) {
-          errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
-          errorContainer.style.display = 'block';
-        } else {
-          errorContainer.style.display = 'none';
-        }
-      }
-    }
-
-    return { isValid: errors.length === 0, errors };
+  private hideNetworkValidationErrors(): void {
+    const errorContainer = document.getElementById('panel-network-validation-errors');
+    if (errorContainer) errorContainer.style.display = 'none';
   }
 
   /**
@@ -772,136 +732,18 @@ export class ManagerViewportPanels {
    */
   public async panelEdgeEditor(edge: cytoscape.EdgeSingular): Promise<void> {
     try {
-      // Unified editor with tabs (Basic | Extended)
       this.edgeClicked = true;
-      const overlays = document.getElementsByClassName('panel-overlay');
-      Array.from(overlays).forEach(el => (el as HTMLElement).style.display = 'none');
+      this.hideAllPanels();
+      const elems = this.getEdgeEditorElements();
+      if (!elems) { this.edgeClicked = false; return; }
 
-      const panel = document.getElementById('panel-link-editor');
-      const basicTab = document.getElementById('panel-link-tab-basic');
-      const extTab = document.getElementById('panel-link-tab-extended');
-      const btnBasic = document.getElementById('panel-link-tab-btn-basic');
-      const btnExt = document.getElementById('panel-link-tab-btn-extended');
-      if (!panel || !basicTab || !extTab || !btnBasic || !btnExt) {
-        log.error('panelEdgeEditor: missing unified tabbed panel elements');
-        this.edgeClicked = false;
-        return;
-      }
+      const ctx = this.getEdgeContext(edge);
+      this.showEdgePanel(elems.panel, ctx.isVethLink, elems.btnExt);
+      this.setupEdgeTabs(elems, ctx.isVethLink);
+      this.populateEdgePreviews(edge);
+      this.setupBasicTab(edge, ctx, elems.panel);
 
-      const source = edge.data('source') as string;
-      const target = edge.data('target') as string;
-      const sourceEP = (edge.data('sourceEndpoint') as string) || '';
-      const targetEP = (edge.data('targetEndpoint') as string) || '';
-
-      // Determine if this is a veth link (both endpoints are regular nodes, not network nodes)
-      const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
-      const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
-      const isVethLink = !sourceIsNetwork && !targetIsNetwork;
-
-      // Check if network nodes are bridges (which allow endpoint configuration)
-      const sourceNode = this.cy.getElementById(source);
-      const targetNode = this.cy.getElementById(target);
-      const sourceIsBridge = sourceNode.length > 0 &&
-        (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
-      const targetIsBridge = targetNode.length > 0 &&
-        (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
-
-      // Show panel
-      (panel as HTMLElement).style.display = 'block';
-
-      // Hide Extended tab for non-veth links
-      if (!isVethLink) {
-        btnExt.style.display = 'none';
-      } else {
-        btnExt.style.display = '';
-      }
-
-      // Tab selection: default to Basic tab
-      const setTab = (which: 'basic' | 'extended') => {
-        // Only allow extended tab for veth links
-        if (which === 'extended' && !isVethLink) {
-          which = 'basic';
-        }
-        (basicTab as HTMLElement).style.display = which === 'basic' ? 'block' : 'none';
-        (extTab as HTMLElement).style.display = which === 'extended' ? 'block' : 'none';
-        btnBasic.classList.toggle('tab-active', which === 'basic');
-        btnExt.classList.toggle('tab-active', which === 'extended');
-      };
-      setTab('basic');
-      btnBasic.addEventListener('click', () => setTab('basic'));
-      if (isVethLink) {
-        btnExt.addEventListener('click', () => setTab('extended'));
-      }
-
-      // Populate previews
-      const updatePreview = (el: HTMLElement | null) => { if (el) el.innerHTML = `┌▪${source} : ${sourceEP}<br>└▪${target} : ${targetEP}`; };
-      updatePreview(document.getElementById('panel-link-editor-id'));
-      updatePreview(document.getElementById('panel-link-extended-editor-id'));
-
-      // Basic tab wiring
-      const srcInputBasic = document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null;
-      const tgtInputBasic = document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null;
-
-      // Handle network nodes - show network name and make readonly (except for bridges)
-      if (srcInputBasic) {
-        if (sourceIsNetwork && !sourceIsBridge) {
-          // Non-bridge network nodes: show network name, make readonly
-          srcInputBasic.value = source; // Show network name instead of empty endpoint
-          srcInputBasic.readOnly = true;
-          srcInputBasic.style.backgroundColor = 'var(--vscode-input-background)';
-          srcInputBasic.style.opacity = '0.7';
-        } else {
-          // Regular nodes or bridge nodes: allow editing
-          srcInputBasic.value = sourceEP;
-          srcInputBasic.readOnly = false;
-          srcInputBasic.style.backgroundColor = '';
-          srcInputBasic.style.opacity = '';
-        }
-      }
-
-      if (tgtInputBasic) {
-        if (targetIsNetwork && !targetIsBridge) {
-          // Non-bridge network nodes: show network name, make readonly
-          tgtInputBasic.value = target; // Show network name instead of empty endpoint
-          tgtInputBasic.readOnly = true;
-          tgtInputBasic.style.backgroundColor = 'var(--vscode-input-background)';
-          tgtInputBasic.style.opacity = '0.7';
-        } else {
-          // Regular nodes or bridge nodes: allow editing
-          tgtInputBasic.value = targetEP;
-          tgtInputBasic.readOnly = false;
-          tgtInputBasic.style.backgroundColor = '';
-          tgtInputBasic.style.opacity = '';
-        }
-      }
-      const basicClose = document.getElementById('panel-link-editor-close-button');
-      if (basicClose) {
-        const freshClose = basicClose.cloneNode(true) as HTMLElement;
-        basicClose.parentNode?.replaceChild(freshClose, basicClose);
-        freshClose.addEventListener('click', () => { (panel as HTMLElement).style.display = 'none'; this.edgeClicked = false; }, { once: true });
-      }
-      const basicSave = document.getElementById('panel-link-editor-save-button');
-      if (basicSave) {
-        const freshSave = basicSave.cloneNode(true) as HTMLElement;
-        basicSave.parentNode?.replaceChild(freshSave, basicSave);
-        freshSave.addEventListener('click', async () => {
-          try {
-            // Update endpoints - allow for bridges, disallow for other network types
-            const newSourceEP = (sourceIsNetwork && !sourceIsBridge) ? '' : ((document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
-            const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : ((document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
-            edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
-            await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
-            // Keep panel open after save
-          } catch (err) {
-            log.error(`panelEdgeEditor basic save error: ${err instanceof Error ? err.message : String(err)}`);
-          }
-        }); // Removed { once: true } to allow multiple saves
-      }
-
-      // Extended tab: reuse existing setup to wire fields and save
       await this.panelEdgeEditorExtended(edge);
-
-      // Reset flag slight delay
       setTimeout(() => { this.edgeClicked = false; }, 100);
     } catch (err) {
       log.error(`panelEdgeEditor: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
@@ -909,96 +751,223 @@ export class ManagerViewportPanels {
     }
   }
 
-  /**
-   * Extended link editor panel that supports per-type extra fields and stores them under edge.data().extraData
-   */
-  private async panelEdgeEditorExtended(edge: cytoscape.EdgeSingular): Promise<void> {
-    // Mark that an edge interaction occurred so global click handler doesn't immediately hide the panel
-    this.edgeClicked = true;
-
-    // Hide other overlays
+  private hideAllPanels(): void {
     const overlays = document.getElementsByClassName('panel-overlay');
     Array.from(overlays).forEach(el => (el as HTMLElement).style.display = 'none');
+  }
 
-    const panel = document.getElementById('panel-link-editor');
-    const idLabel = document.getElementById('panel-link-extended-editor-id');
-    // Use unified footer buttons from the link editor panel
-    const closeBtn = document.getElementById('panel-link-editor-close-button');
-    const saveBtn = document.getElementById('panel-link-editor-save-button');
-
-    if (!panel || !idLabel || !closeBtn || !saveBtn) {
-      log.error('panelEdgeEditorExtended: missing required DOM elements');
-      this.edgeClicked = false;
-      return;
+  private getEdgeEditorElements(): { panel: HTMLElement; basicTab: HTMLElement; extTab: HTMLElement; btnBasic: HTMLElement; btnExt: HTMLElement } | null {
+    const panel = document.getElementById('panel-link-editor') as HTMLElement | null;
+    const basicTab = document.getElementById('panel-link-tab-basic') as HTMLElement | null;
+    const extTab = document.getElementById('panel-link-tab-extended') as HTMLElement | null;
+    const btnBasic = document.getElementById('panel-link-tab-btn-basic') as HTMLElement | null;
+    const btnExt = document.getElementById('panel-link-tab-btn-extended') as HTMLElement | null;
+    if (!panel || !basicTab || !extTab || !btnBasic || !btnExt) {
+      log.error('panelEdgeEditor: missing unified tabbed panel elements');
+      return null;
     }
+    return { panel, basicTab, extTab, btnBasic, btnExt };
+  }
 
-    // Populate link preview
+  private getEdgeContext(edge: cytoscape.EdgeSingular) {
     const source = edge.data('source') as string;
     const target = edge.data('target') as string;
     const sourceEP = (edge.data('sourceEndpoint') as string) || '';
     const targetEP = (edge.data('targetEndpoint') as string) || '';
-    const updateLabel = () => {
-      (idLabel as HTMLElement).innerHTML = `┌▪${source} : ${sourceEP}<br>└▪${target} : ${targetEP}`;
-    };
-    updateLabel();
+    const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
+    const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
+    const isVethLink = !sourceIsNetwork && !targetIsNetwork;
+    const sourceNode = this.cy.getElementById(source);
+    const targetNode = this.cy.getElementById(target);
+    const sourceIsBridge = sourceNode.length > 0 && (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
+    const targetIsBridge = targetNode.length > 0 && (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
+    return { source, target, sourceEP, targetEP, sourceIsNetwork, targetIsNetwork, isVethLink, sourceIsBridge, targetIsBridge };
+  }
 
-    // Show panel
+  private showEdgePanel(panel: HTMLElement, isVethLink: boolean, btnExt: HTMLElement): void {
     panel.style.display = 'block';
+    btnExt.style.display = isVethLink ? '' : 'none';
+  }
 
-    // Close button
+  private setupEdgeTabs(elems: { panel: HTMLElement; basicTab: HTMLElement; extTab: HTMLElement; btnBasic: HTMLElement; btnExt: HTMLElement }, isVethLink: boolean): void {
+    const { basicTab, extTab, btnBasic, btnExt } = elems;
+    const setTab = (which: 'basic' | 'extended') => {
+      if (which === 'extended' && !isVethLink) which = 'basic';
+      basicTab.style.display = which === 'basic' ? 'block' : 'none';
+      extTab.style.display = which === 'extended' ? 'block' : 'none';
+      btnBasic.classList.toggle('tab-active', which === 'basic');
+      btnExt.classList.toggle('tab-active', which === 'extended');
+    };
+    setTab('basic');
+    btnBasic.addEventListener('click', () => setTab('basic'));
+    if (isVethLink) btnExt.addEventListener('click', () => setTab('extended'));
+  }
+
+  private populateEdgePreviews(edge: cytoscape.EdgeSingular): void {
+    const source = edge.data('source') as string;
+    const target = edge.data('target') as string;
+    const sourceEP = (edge.data('sourceEndpoint') as string) || '';
+    const targetEP = (edge.data('targetEndpoint') as string) || '';
+    const updatePreview = (el: HTMLElement | null) => { if (el) el.innerHTML = `┌▪${source} : ${sourceEP}<br>└▪${target} : ${targetEP}`; };
+    updatePreview(document.getElementById('panel-link-editor-id'));
+    updatePreview(document.getElementById('panel-link-extended-editor-id'));
+  }
+
+  private setupBasicTab(edge: cytoscape.EdgeSingular, ctx: any, panel: HTMLElement): void {
+    const srcInput = document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null;
+    const tgtInput = document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null;
+    this.configureEndpointInput(srcInput, ctx.sourceIsNetwork, ctx.sourceIsBridge, ctx.sourceEP, ctx.source);
+    this.configureEndpointInput(tgtInput, ctx.targetIsNetwork, ctx.targetIsBridge, ctx.targetEP, ctx.target);
+    this.setupBasicTabButtons(panel, edge, ctx, srcInput, tgtInput);
+  }
+
+  private configureEndpointInput(
+    input: HTMLInputElement | null,
+    isNetwork: boolean,
+    isBridge: boolean,
+    endpoint: string,
+    networkName: string
+  ): void {
+    if (!input) return;
+    if (isNetwork && !isBridge) {
+      input.value = networkName;
+      input.readOnly = true;
+      input.style.backgroundColor = 'var(--vscode-input-background)';
+      input.style.opacity = '0.7';
+    } else {
+      input.value = endpoint;
+      input.readOnly = false;
+      input.style.backgroundColor = '';
+      input.style.opacity = '';
+    }
+  }
+
+  private setupBasicTabButtons(panel: HTMLElement, edge: cytoscape.EdgeSingular, ctx: any, srcInput: HTMLInputElement | null, tgtInput: HTMLInputElement | null): void {
+    const basicClose = document.getElementById('panel-link-editor-close-button');
+    if (basicClose) {
+      const freshClose = basicClose.cloneNode(true) as HTMLElement;
+      basicClose.parentNode?.replaceChild(freshClose, basicClose);
+      freshClose.addEventListener('click', () => { panel.style.display = 'none'; this.edgeClicked = false; }, { once: true });
+    }
+    const basicSave = document.getElementById('panel-link-editor-save-button');
+    if (basicSave) {
+      const freshSave = basicSave.cloneNode(true) as HTMLElement;
+      basicSave.parentNode?.replaceChild(freshSave, basicSave);
+      freshSave.addEventListener('click', async () => {
+        try {
+          const newSourceEP = (ctx.sourceIsNetwork && !ctx.sourceIsBridge) ? '' : (srcInput?.value?.trim() || '');
+          const newTargetEP = (ctx.targetIsNetwork && !ctx.targetIsBridge) ? '' : (tgtInput?.value?.trim() || '');
+          edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
+          await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+        } catch (err) {
+          log.error(`panelEdgeEditor basic save error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      });
+    }
+  }
+
+  /**
+   * Extended link editor panel that supports per-type extra fields and stores them under edge.data().extraData
+   */
+  private async panelEdgeEditorExtended(edge: cytoscape.EdgeSingular): Promise<void> {
+    this.edgeClicked = true;
+    this.hideAllPanels();
+
+    const elements = this.getExtendedEditorElements();
+    if (!elements) { this.edgeClicked = false; return; }
+    const { panel, idLabel, closeBtn, saveBtn } = elements;
+
+    const source = edge.data('source') as string;
+    const target = edge.data('target') as string;
+    const sourceEP = (edge.data('sourceEndpoint') as string) || '';
+    const targetEP = (edge.data('targetEndpoint') as string) || '';
+    this.updateExtendedPreview(idLabel, source, target, sourceEP, targetEP);
+    panel.style.display = 'block';
+    this.setupExtendedClose(panel, closeBtn);
+
+    const extraData = edge.data('extraData') || {};
+    const ctx = this.inferLinkContext(source, target);
+    this.prepareExtendedFields(extraData, ctx.isVeth);
+    const renderErrors = (errors: string[]) => this.renderExtendedErrors(errors);
+    const validate = (): string[] => this.validateExtendedInputs(ctx.isVeth);
+    renderErrors(validate());
+    this.attachExtendedValidators(validate, renderErrors);
+
+    const freshSave = saveBtn.cloneNode(true) as HTMLElement;
+    saveBtn.parentNode?.replaceChild(freshSave, saveBtn);
+    freshSave.addEventListener('click', async () => {
+      await this.handleExtendedSave(edge, ctx, validate, renderErrors);
+    });
+
+    setTimeout(() => { this.edgeClicked = false; }, 100);
+  }
+
+  private getExtendedEditorElements(): { panel: HTMLElement; idLabel: HTMLElement; closeBtn: HTMLElement; saveBtn: HTMLElement } | null {
+    const panel = document.getElementById('panel-link-editor') as HTMLElement | null;
+    const idLabel = document.getElementById('panel-link-extended-editor-id') as HTMLElement | null;
+    const closeBtn = document.getElementById('panel-link-editor-close-button') as HTMLElement | null;
+    const saveBtn = document.getElementById('panel-link-editor-save-button') as HTMLElement | null;
+    if (!panel || !idLabel || !closeBtn || !saveBtn) {
+      log.error('panelEdgeEditorExtended: missing required DOM elements');
+      return null;
+    }
+    return { panel, idLabel, closeBtn, saveBtn };
+  }
+
+  private updateExtendedPreview(labelEl: HTMLElement, source: string, target: string, sourceEP: string, targetEP: string): void {
+    labelEl.innerHTML = `┌▪${source} : ${sourceEP}<br>└▪${target} : ${targetEP}`;
+  }
+
+  private setupExtendedClose(panel: HTMLElement, closeBtn: HTMLElement): void {
     const freshClose = closeBtn.cloneNode(true) as HTMLElement;
     closeBtn.parentNode?.replaceChild(freshClose, closeBtn);
-    freshClose.addEventListener('click', () => {
-      panel.style.display = 'none';
-      this.edgeClicked = false;
-    }, { once: true });
+    freshClose.addEventListener('click', () => { panel.style.display = 'none'; this.edgeClicked = false; }, { once: true });
+  }
 
-    // Determine link type based on endpoints
-    const extraData = edge.data('extraData') || {};
-
-    // Helper to check if a node is special and get its type
-    const getSpecialType = (nodeId: string): string | null => {
-      if (nodeId === 'host' || nodeId.startsWith('host:')) return 'host';
-      if (nodeId === 'mgmt-net' || nodeId.startsWith('mgmt-net:')) return 'mgmt-net';
-      if (nodeId.startsWith('macvlan:')) return 'macvlan';
-      if (nodeId.startsWith('vxlan:')) return 'vxlan';
-      if (nodeId.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
-      if (nodeId.startsWith('dummy')) return 'dummy';
+  private inferLinkContext(source: string, target: string): { inferredType: string; isVeth: boolean } {
+    const special = (id: string): string | null => {
+      if (id === 'host' || id.startsWith('host:')) return 'host';
+      if (id === 'mgmt-net' || id.startsWith('mgmt-net:')) return 'mgmt-net';
+      if (id.startsWith('macvlan:')) return 'macvlan';
+      if (id.startsWith('vxlan:')) return 'vxlan';
+      if (id.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
+      if (id.startsWith('dummy')) return 'dummy';
       return null;
     };
-
-    // Determine type from endpoints
-    const sourceType = getSpecialType(source);
-    const targetType = getSpecialType(target);
+    const sourceType = special(source);
+    const targetType = special(target);
     const inferredType = sourceType || targetType || 'veth';
-
-    // Host interface is now specified in the network endpoint directly (e.g., host:eth1)
-    // Extended properties for non-veth links are configured on the network node
-
-    // Display the inferred type (read-only)
     const typeDisplayEl = document.getElementById('panel-link-ext-type-display') as HTMLElement | null;
-    if (typeDisplayEl) {
-      typeDisplayEl.textContent = inferredType;
-    }
+    if (typeDisplayEl) typeDisplayEl.textContent = inferredType;
+    return { inferredType, isVeth: inferredType === 'veth' };
+  }
 
-    // Field elements
+  private prepareExtendedFields(extraData: any, isVeth: boolean): void {
     const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
     const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
     const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
-
-    // Clear and reset dynamic entry containers for link editor
     const varsContainer = document.getElementById('panel-link-ext-vars-container');
     const labelsContainer = document.getElementById('panel-link-ext-labels-container');
     if (varsContainer) varsContainer.innerHTML = '';
     if (labelsContainer) labelsContainer.innerHTML = '';
     this.linkDynamicEntryCounters.clear();
 
-    // Show info message for non-veth links
     const nonVethInfo = document.getElementById('panel-link-ext-non-veth-info') as HTMLElement | null;
-    const isVeth = inferredType === 'veth';
-    if (nonVethInfo) {
-      nonVethInfo.style.display = isVeth ? 'none' : 'block';
+    if (nonVethInfo) nonVethInfo.style.display = isVeth ? 'none' : 'block';
+
+    if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
+    if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
+    if (isVeth && mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
+
+    if (isVeth && extraData.extVars && typeof extraData.extVars === 'object') {
+      Object.entries(extraData.extVars).forEach(([k, v]) => this.addLinkKeyValueEntryWithValue('vars', k, String(v)));
     }
+    if (isVeth && extraData.extLabels && typeof extraData.extLabels === 'object') {
+      Object.entries(extraData.extLabels).forEach(([k, v]) => this.addLinkKeyValueEntryWithValue('labels', k, String(v)));
+    }
+  }
+
+  private renderExtendedErrors(errors: string[]): void {
     const banner = document.getElementById('panel-link-ext-errors') as HTMLElement | null;
     const bannerList = document.getElementById('panel-link-ext-errors-list') as HTMLElement | null;
     const setSaveDisabled = (disabled: boolean) => {
@@ -1008,159 +977,101 @@ export class ManagerViewportPanels {
       btn.classList.toggle('opacity-50', disabled);
       btn.classList.toggle('cursor-not-allowed', disabled);
     };
-
-    // Prefill from extraData (use consistent keys)
-    if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
-    if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
-    // Only populate extra entry lists for veth links
-    if (isVeth) {
-      if (mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
-
-      // Load vars as dynamic entries
-      if (extraData.extVars && typeof extraData.extVars === 'object') {
-        Object.entries(extraData.extVars).forEach(([key, value]) => {
-          this.addLinkKeyValueEntryWithValue('vars', key, String(value));
-        });
-      }
-
-      // Load labels as dynamic entries
-      if (extraData.extLabels && typeof extraData.extLabels === 'object') {
-        Object.entries(extraData.extLabels).forEach(([key, value]) => {
-          this.addLinkKeyValueEntryWithValue('labels', key, String(value));
-        });
-      }
+    if (!banner || !bannerList) return;
+    if (!errors.length) {
+      banner.style.display = 'none';
+      bannerList.innerHTML = '';
+      setSaveDisabled(false);
+      return;
     }
+    banner.style.display = 'block';
+    const labels: Record<string, string> = {
+      'missing-host-interface': 'Host Interface is required for this type',
+      'missing-remote': 'Remote (VTEP IP) is required',
+      'missing-vni': 'VNI is required',
+      'missing-udp-port': 'UDP Port is required',
+      'invalid-veth-endpoints': 'veth requires two endpoints with node and interface',
+      'invalid-endpoint': 'Endpoint with node and interface is required',
+    };
+    bannerList.innerHTML = errors.map(e => `• ${labels[e] || e}`).join('<br>');
+    setSaveDisabled(true);
+  }
 
-    // Initial validation banner if adaptor provided errors
-    const initialErrors: string[] = Array.isArray(extraData.extValidationErrors) ? extraData.extValidationErrors : [];
-    const renderErrors = (errors: string[]) => {
-      if (!banner || !bannerList) return;
-      if (!errors.length) {
-        banner.style.display = 'none';
-        bannerList.innerHTML = '';
-        setSaveDisabled(false);
+  private validateExtendedInputs(isVeth: boolean): string[] {
+    if (!isVeth) return [];
+    return [];
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  private attachExtendedValidators(validate: () => string[], renderErrors: (errors: string[]) => void): void {
+    const mtuEl = document.getElementById('panel-link-ext-mtu');
+    const attach = (el: HTMLElement | null) => { if (!el) return; el.addEventListener('input', () => renderErrors(validate())); };
+    attach(mtuEl as HTMLElement);
+  }
+
+  private collectDynamicEntries(prefix: string): Record<string, string> {
+    const entries = document.querySelectorAll(`[id^="${prefix}-entry-"]`);
+    const parsed: Record<string, string> = {};
+    entries.forEach(entry => {
+      const keyInput = entry.querySelector(`[data-field="${prefix}-key"]`) as HTMLInputElement;
+      const valueInput = entry.querySelector(`[data-field="${prefix}-value"]`) as HTMLInputElement;
+      if (keyInput && valueInput && keyInput.value.trim()) {
+        parsed[keyInput.value.trim()] = valueInput.value;
+      }
+    });
+    return parsed;
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  private async handleExtendedSave(edge: cytoscape.EdgeSingular, ctx: { inferredType: string; isVeth: boolean }, validate: () => string[], renderErrors: (errors: string[]) => void): Promise<void> {
+    try {
+      this.updateEdgeEndpoints(edge);
+      const errsNow = validate();
+      if (errsNow.length) { renderErrors(errsNow); return; }
+
+      const current = edge.data();
+      if (!ctx.isVeth) {
+        await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
         return;
       }
-      banner.style.display = 'block';
-      const labels: Record<string, string> = {
-        'missing-host-interface': 'Host Interface is required for this type',
-        'missing-remote': 'Remote (VTEP IP) is required',
-        'missing-vni': 'VNI is required',
-        'missing-udp-port': 'UDP Port is required',
-        'invalid-veth-endpoints': 'veth requires two endpoints with node and interface',
-        'invalid-endpoint': 'Endpoint with node and interface is required',
-      };
-      bannerList.innerHTML = errors.map(e => `<div>• ${labels[e] || e}</div>`).join('');
-      setSaveDisabled(true);
-    };
-    renderErrors(initialErrors);
 
-    // Live validation on inputs - only validate for veth links
-    const validate = (): string[] => {
-      const errs: string[] = [];
-      // For non-veth links, no validation needed in link editor
-      if (!isVeth) {
-        return errs;
-      }
-      // For veth links, validate JSON fields if needed
-      return errs;
-    };
+      const updatedExtra = this.buildLinkExtendedData(current.extraData || {});
+      edge.data({ ...current, extraData: updatedExtra });
+      await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+    } catch (err) {
+      log.error(`panelEdgeEditorExtended: error during save: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
-    const attachRevalidate = (el: HTMLElement | null) => { if (!el) return; el.addEventListener('input', () => { renderErrors(validate()); }); };
-    [mtuEl].forEach(el => attachRevalidate(el as any));
+  private updateEdgeEndpoints(edge: cytoscape.EdgeSingular): void {
+    const source = edge.data('source') as string;
+    const target = edge.data('target') as string;
+    const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
+    const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
+    const sourceNode = this.cy.getElementById(source);
+    const targetNode = this.cy.getElementById(target);
+    const sourceIsBridge = sourceNode.length > 0 && (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
+    const targetIsBridge = targetNode.length > 0 && (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
+    const srcInput = document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null;
+    const tgtInput = document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null;
+    const newSourceEP = (sourceIsNetwork && !sourceIsBridge) ? '' : (srcInput?.value?.trim() || '');
+    const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : (tgtInput?.value?.trim() || '');
+    edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
+  }
 
-    // Initial validation
-    renderErrors(validate());
-
-    // Save button - remove previous listeners and add new one
-    const freshSave = saveBtn.cloneNode(true) as HTMLElement;
-    saveBtn.parentNode?.replaceChild(freshSave, saveBtn);
-    freshSave.addEventListener('click', async () => {
-      try {
-        // Also update basic endpoints using unified Save button
-        const sourceIsNetwork = isSpecialNodeOrBridge(source, this.cy);
-        const targetIsNetwork = isSpecialNodeOrBridge(target, this.cy);
-        const sourceNode = this.cy.getElementById(source);
-        const targetNode = this.cy.getElementById(target);
-        const sourceIsBridge = sourceNode.length > 0 &&
-          (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
-        const targetIsBridge = targetNode.length > 0 &&
-          (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
-        const newSourceEP = (sourceIsNetwork && !sourceIsBridge) ? '' : ((document.getElementById('panel-link-editor-source-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
-        const newTargetEP = (targetIsNetwork && !targetIsBridge) ? '' : ((document.getElementById('panel-link-editor-target-endpoint') as HTMLInputElement | null)?.value?.trim() || '');
-        edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
-
-        const errsNow = validate();
-        if (errsNow.length) { renderErrors(errsNow); return; }
-        // Use the inferred type for validation (only veth links editable here)
-
-        // Collect vars from dynamic entries
-        const varsEntries = document.querySelectorAll('[id^="link-vars-entry-"]');
-        const parsedVars: Record<string, string> = {};
-        varsEntries.forEach(entry => {
-          const keyInput = entry.querySelector('[data-field="link-vars-key"]') as HTMLInputElement;
-          const valueInput = entry.querySelector('[data-field="link-vars-value"]') as HTMLInputElement;
-          if (keyInput && valueInput && keyInput.value.trim()) {
-            parsedVars[keyInput.value.trim()] = valueInput.value;
-          }
-        });
-
-        // Collect labels from dynamic entries
-        const labelsEntries = document.querySelectorAll('[id^="link-labels-entry-"]');
-        const parsedLabels: Record<string, string> = {};
-        labelsEntries.forEach(entry => {
-          const keyInput = entry.querySelector('[data-field="link-labels-key"]') as HTMLInputElement;
-          const valueInput = entry.querySelector('[data-field="link-labels-value"]') as HTMLInputElement;
-          if (keyInput && valueInput && keyInput.value.trim()) {
-            parsedLabels[keyInput.value.trim()] = valueInput.value;
-          }
-        });
-
-        const current = edge.data();
-        const updatedExtra = { ...(current.extraData || {}) } as any;
-
-        // For non-veth links, don't modify extended properties from link editor
-        if (!isVeth) {
-          // Just save without changes for non-veth links
-          await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
-          // Keep panel open after save
-          return;
-        }
-
-        // For veth links, update the properties
-        if (srcMacEl) updatedExtra.extSourceMac = srcMacEl.value.trim() || undefined;
-        if (tgtMacEl) updatedExtra.extTargetMac = tgtMacEl.value.trim() || undefined;
-        if (mtuEl) updatedExtra.extMtu = mtuEl.value ? Number(mtuEl.value) : undefined;
-
-        // Set vars and labels only if they have entries
-        if (Object.keys(parsedVars).length > 0) {
-          updatedExtra.extVars = parsedVars;
-        } else {
-          updatedExtra.extVars = undefined;
-        }
-
-        if (Object.keys(parsedLabels).length > 0) {
-          updatedExtra.extLabels = parsedLabels;
-        } else {
-          updatedExtra.extLabels = undefined;
-        }
-
-        // No per-type fields in link editor anymore - they're in network editor
-
-        // Apply to edge
-        edge.data({ ...current, extraData: updatedExtra });
-
-        // Persist
-        await this.saveManager.viewportButtonsSaveTopo(this.cy, /* suppressNotification */ false);
-
-        // Keep panel open after save
-      } catch (err) {
-        log.error(`panelEdgeEditorExtended: error during save: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }); // Removed { once: true } to allow multiple saves
-
-    // Slight delay before allowing global click to close
-    setTimeout(() => { this.edgeClicked = false; }, 100);
+  private buildLinkExtendedData(existing: any): any {
+    const updated = { ...existing } as any;
+    const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
+    const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
+    const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
+    if (srcMacEl) updated.extSourceMac = srcMacEl.value.trim() || undefined;
+    if (tgtMacEl) updated.extTargetMac = tgtMacEl.value.trim() || undefined;
+    if (mtuEl) updated.extMtu = mtuEl.value ? Number(mtuEl.value) : undefined;
+    const vars = this.collectDynamicEntries('link-vars');
+    const labels = this.collectDynamicEntries('link-labels');
+    updated.extVars = Object.keys(vars).length ? vars : undefined;
+    updated.extLabels = Object.keys(labels).length ? labels : undefined;
+    return updated;
   }
 
   /**
@@ -1256,185 +1167,115 @@ export class ManagerViewportPanels {
    * @param node - The Cytoscape node representing the network.
    */
   public async updateNetworkFromEditor(node: cytoscape.NodeSingular): Promise<void> {
-    const targetNode: cytoscape.NodeSingular = (node as any).length && (node as any).length > 1 ? (node as any)[0] : node;
-
-    const networkTypeInput = document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement | null;
-    const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
-    const macInput = document.getElementById('panel-network-mac') as HTMLInputElement | null;
-    const mtuInput = document.getElementById('panel-network-mtu') as HTMLInputElement | null;
-    const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
-    const remoteInput = document.getElementById('panel-network-remote') as HTMLInputElement | null;
-    const vniInput = document.getElementById('panel-network-vni') as HTMLInputElement | null;
-    const udpPortInput = document.getElementById('panel-network-udp-port') as HTMLInputElement | null;
-
+    const targetNode = this.ensureSingleNode(node);
+    const inputs = this.getNetworkEditorInputs();
     const currentData = targetNode.data();
+    const idInfo = this.buildNetworkIdentifiers(currentData, inputs.networkType, inputs.interfaceName);
+    const extendedData = this.buildNetworkExtendedData(inputs, currentData.extraData || {});
+
+    if (idInfo.oldId === idInfo.newId) {
+      this.applyNetworkDataSameId(targetNode, currentData, idInfo.newName, inputs.networkType, extendedData);
+    } else {
+      this.recreateNetworkNode(targetNode, currentData, idInfo, inputs.networkType, extendedData);
+    }
+  }
+
+  private ensureSingleNode(node: cytoscape.NodeSingular): cytoscape.NodeSingular {
+    return (node as any).length && (node as any).length > 1 ? (node as any)[0] : node;
+  }
+
+  private getNetworkEditorInputs() {
+    const networkType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'host';
+    const interfaceName = (document.getElementById('panel-network-interface') as HTMLInputElement | null)?.value || 'eth1';
+    return {
+      networkType,
+      interfaceName,
+      mac: (document.getElementById('panel-network-mac') as HTMLInputElement | null)?.value,
+      mtu: (document.getElementById('panel-network-mtu') as HTMLInputElement | null)?.value,
+      mode: (document.getElementById('panel-network-mode') as HTMLSelectElement | null)?.value,
+      remote: (document.getElementById('panel-network-remote') as HTMLInputElement | null)?.value,
+      vni: (document.getElementById('panel-network-vni') as HTMLInputElement | null)?.value,
+      udpPort: (document.getElementById('panel-network-udp-port') as HTMLInputElement | null)?.value,
+    };
+  }
+
+  private buildNetworkIdentifiers(currentData: any, networkType: string, interfaceName: string) {
     const oldId = currentData.id as string;
     const oldName = currentData.name as string;
-
-    // Build new ID from network type and interface
-    const networkType = networkTypeInput ? networkTypeInput.value : 'host';
-    const interfaceName = interfaceInput ? interfaceInput.value : 'eth1';
     const isBridgeType = networkType === 'bridge' || networkType === 'ovs-bridge';
     const isDummyType = networkType === 'dummy';
     const newId = isBridgeType
       ? interfaceName
-      : (isDummyType
-        ? (oldId.startsWith('dummy') ? oldId : this.generateUniqueDummyId())
-        : `${networkType}:${interfaceName}`);
+      : (isDummyType ? (oldId.startsWith('dummy') ? oldId : this.generateUniqueDummyId()) : `${networkType}:${interfaceName}`);
     const newName = isDummyType ? 'dummy' : newId;
+    return { oldId, oldName, newId, newName };
+  }
 
-    // Collect extended properties
-    const extendedData: any = { ...currentData.extraData };
-    extendedData.kind = networkType;
-
-    // Set new extended properties
-    if (macInput && macInput.value) extendedData.extMac = macInput.value;
-    if (mtuInput && mtuInput.value) extendedData.extMtu = Number(mtuInput.value);
-
-    // Collect vars from dynamic entries
-    const varsEntries = document.querySelectorAll('[id^="network-vars-entry-"]');
-    const vars: Record<string, string> = {};
-    varsEntries.forEach(entry => {
-      const keyInput = entry.querySelector('[data-field="network-vars-key"]') as HTMLInputElement;
-      const valueInput = entry.querySelector('[data-field="network-vars-value"]') as HTMLInputElement;
-      if (keyInput && valueInput && keyInput.value.trim()) {
-        vars[keyInput.value.trim()] = valueInput.value;
-      }
-    });
-    if (Object.keys(vars).length > 0) {
-      extendedData.extVars = vars;
+  private buildNetworkExtendedData(inputs: any, currentExtra: any): any {
+    const extendedData: any = { ...currentExtra, kind: inputs.networkType };
+    if (inputs.mac) extendedData.extMac = inputs.mac;
+    if (inputs.mtu) extendedData.extMtu = Number(inputs.mtu);
+    const vars = this.collectDynamicEntries('network-vars');
+    if (Object.keys(vars).length) extendedData.extVars = vars;
+    const labels = this.collectDynamicEntries('network-labels');
+    if (Object.keys(labels).length) extendedData.extLabels = labels;
+    if (inputs.networkType === 'macvlan' && inputs.mode) extendedData.extMode = inputs.mode;
+    if (['vxlan', 'vxlan-stitch'].includes(inputs.networkType)) {
+      if (inputs.remote) extendedData.extRemote = inputs.remote;
+      if (inputs.vni) extendedData.extVni = Number(inputs.vni);
+      if (inputs.udpPort) extendedData.extUdpPort = Number(inputs.udpPort);
     }
-
-    // Collect labels from dynamic entries
-    const labelsEntries = document.querySelectorAll('[id^="network-labels-entry-"]');
-    const labels: Record<string, string> = {};
-    labelsEntries.forEach(entry => {
-      const keyInput = entry.querySelector('[data-field="network-labels-key"]') as HTMLInputElement;
-      const valueInput = entry.querySelector('[data-field="network-labels-value"]') as HTMLInputElement;
-      if (keyInput && valueInput && keyInput.value.trim()) {
-        labels[keyInput.value.trim()] = valueInput.value;
-      }
-    });
-    if (Object.keys(labels).length > 0) {
-      extendedData.extLabels = labels;
+    if (['host', 'mgmt-net', 'macvlan'].includes(inputs.networkType) && inputs.interfaceName) {
+      extendedData.extHostInterface = inputs.interfaceName;
     }
+    return extendedData;
+  }
 
-    // Type-specific properties
-    if (modeSelect && modeSelect.value && networkType === 'macvlan') extendedData.extMode = modeSelect.value;
-    if (remoteInput && remoteInput.value && (networkType === 'vxlan' || networkType === 'vxlan-stitch')) extendedData.extRemote = remoteInput.value;
-    if (vniInput && vniInput.value && (networkType === 'vxlan' || networkType === 'vxlan-stitch')) extendedData.extVni = Number(vniInput.value);
-    if (udpPortInput && udpPortInput.value && (networkType === 'vxlan' || networkType === 'vxlan-stitch')) extendedData.extUdpPort = Number(udpPortInput.value);
-
-    // For host/mgmt-net/macvlan, store the host interface
-    if ((networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') && interfaceName) {
-      extendedData.extHostInterface = interfaceName;
-    }
-
-    // If ID hasn't changed, just update the data
-    if (oldId === newId) {
-      const updatedData = {
-        ...currentData,
-        name: newName,
-        topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
-        extraData: {
-          ...extendedData,
-          kind: networkType
-        }
+  private applyNetworkDataSameId(targetNode: cytoscape.NodeSingular, currentData: any, newName: string, networkType: string, extendedData: any): void {
+    const updatedData = {
+      ...currentData,
+      name: newName,
+      topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
+      extraData: { ...extendedData, kind: networkType }
+    };
+    targetNode.data(updatedData);
+    targetNode.connectedEdges().forEach(edge => {
+      const edgeData = edge.data();
+      const updatedEdgeData = {
+        ...edgeData,
+        extraData: { ...(edgeData.extraData || {}), ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData) }
       };
-      targetNode.data(updatedData);
+      edge.data(updatedEdgeData);
+    });
+  }
 
-      // Update connected edges with extended properties from the network node
-      targetNode.connectedEdges().forEach(edge => {
-        const edgeData = edge.data();
-        const updatedEdgeData = {
-          ...edgeData,
-          extraData: {
-            ...(edgeData.extraData || {}),
-            ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData)
-          }
-        };
-        edge.data(updatedEdgeData);
-      });
-    } else {
-      // ID has changed - we need to recreate the node since Cytoscape IDs are immutable
-      const position = targetNode.position();
-      const connectedEdges = targetNode.connectedEdges().map(edge => {
-        const edgeData = edge.data();
-        return {
-          id: edge.id(),
-          source: edgeData.source,
-          target: edgeData.target,
-          sourceEndpoint: edgeData.sourceEndpoint,
-          targetEndpoint: edgeData.targetEndpoint,
-          data: edgeData,
-          classes: edge.classes()
-        };
-      });
-
-      // Remove the old node (this also removes connected edges)
-      this.cy.remove(targetNode);
-
-      // Create new node with new ID
-      const newNodeData = {
-        ...currentData,
-        id: newId,
-        name: newName,
-        topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
-        extraData: {
-          ...extendedData,
-          kind: networkType
-        }
-      };
-
-      this.cy.add({
-        group: 'nodes',
-        data: newNodeData,
-        position: position
-      });
-
-      // Recreate edges with updated references
-      connectedEdges.forEach(edgeInfo => {
-        const newEdgeData = { ...edgeInfo.data };
-
-        // Update source/target references
-        if (newEdgeData.source === oldId) {
-          newEdgeData.source = newId;
-        }
-        if (newEdgeData.target === oldId) {
-          newEdgeData.target = newId;
-        }
-
-        // sourceName and targetName should also be updated
-        if (newEdgeData.sourceName === oldName) {
-          newEdgeData.sourceName = newName;
-        }
-        if (newEdgeData.targetName === oldName) {
-          newEdgeData.targetName = newName;
-        }
-
-        // Add extended properties from the network node to the edge
-        newEdgeData.extraData = {
-          ...(newEdgeData.extraData || {}),
-          ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData)
-        };
-
-        // Determine if edge should have stub-link class based on special endpoints
-        let edgeClasses = edgeInfo.classes || [];
-        const isStubLink = isSpecialNodeOrBridge(newEdgeData.source, this.cy) || isSpecialNodeOrBridge(newEdgeData.target, this.cy);
-
-        // Ensure stub-link class is present for special endpoints
-        if (isStubLink && !edgeClasses.includes('stub-link')) {
-          edgeClasses = [...edgeClasses, 'stub-link'];
-        }
-
-        // Add the edge back
-        this.cy.add({
-          group: 'edges',
-          data: newEdgeData,
-          classes: edgeClasses.join(' ')
-        });
-      });
-    }
+  private recreateNetworkNode(targetNode: cytoscape.NodeSingular, currentData: any, ids: any, networkType: string, extendedData: any): void {
+    const position = targetNode.position();
+    const connectedEdges = targetNode.connectedEdges().map(edge => ({
+      data: edge.data(),
+      classes: edge.classes()
+    }));
+    this.cy.remove(targetNode);
+    const newNodeData = {
+      ...currentData,
+      id: ids.newId,
+      name: ids.newName,
+      topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
+      extraData: { ...extendedData, kind: networkType }
+    };
+    this.cy.add({ group: 'nodes', data: newNodeData, position });
+    connectedEdges.forEach(edgeInfo => {
+      const newEdgeData = { ...edgeInfo.data };
+      if (newEdgeData.source === ids.oldId) newEdgeData.source = ids.newId;
+      if (newEdgeData.target === ids.oldId) newEdgeData.target = ids.newId;
+      if (newEdgeData.sourceName === ids.oldName) newEdgeData.sourceName = ids.newName;
+      if (newEdgeData.targetName === ids.oldName) newEdgeData.targetName = ids.newName;
+      newEdgeData.extraData = { ...(newEdgeData.extraData || {}), ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData) };
+      let edgeClasses = edgeInfo.classes || [];
+      const isStubLink = isSpecialNodeOrBridge(newEdgeData.source, this.cy) || isSpecialNodeOrBridge(newEdgeData.target, this.cy);
+      if (isStubLink && !edgeClasses.includes('stub-link')) edgeClasses = [...edgeClasses, 'stub-link'];
+      this.cy.add({ group: 'edges', data: newEdgeData, classes: edgeClasses.join(' ') });
+    });
   }
 
   /**

@@ -4,6 +4,34 @@ import { FreeTextAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/logger';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 
+interface FreeTextModalElements {
+  backdrop: HTMLDivElement;
+  dialog: HTMLDivElement;
+  dragHandle: HTMLDivElement;
+  titleEl: HTMLHeadingElement;
+  textInput: HTMLTextAreaElement;
+  fontSizeInput: HTMLInputElement;
+  fontFamilySelect: HTMLSelectElement;
+  fontColorInput: HTMLInputElement;
+  bgColorInput: HTMLInputElement;
+  boldBtn: HTMLButtonElement;
+  italicBtn: HTMLButtonElement;
+  underlineBtn: HTMLButtonElement;
+  transparentBtn: HTMLButtonElement;
+  cancelBtn: HTMLButtonElement;
+  okBtn: HTMLButtonElement;
+}
+
+interface FormattingState {
+  isBold: boolean;
+  isItalic: boolean;
+  isUnderline: boolean;
+  isTransparentBg: boolean;
+}
+
+// eslint-disable-next-line no-unused-vars
+type FreeTextResolve = (value: FreeTextAnnotation | null) => void;
+
 /**
  * Manages free text annotations in the Cytoscape viewport
  */
@@ -222,209 +250,279 @@ export class ManagerFreeText {
    */
   private async promptForTextWithFormatting(title: string, annotation: FreeTextAnnotation): Promise<FreeTextAnnotation | null> {
     return new Promise((resolve) => {
-      const backdrop = document.getElementById('free-text-modal-backdrop') as HTMLDivElement;
-      const dialog = document.getElementById('free-text-modal') as HTMLDivElement;
-      const dragHandle = document.getElementById('free-text-drag-handle') as HTMLDivElement;
-      const titleEl = document.getElementById('free-text-modal-title') as HTMLHeadingElement;
-      const textInput = document.getElementById('free-text-modal-text') as HTMLTextAreaElement;
-      const fontSizeInput = document.getElementById('free-text-font-size') as HTMLInputElement;
-      const fontFamilySelect = document.getElementById('free-text-font-family') as HTMLSelectElement;
-      const fontColorInput = document.getElementById('free-text-font-color') as HTMLInputElement;
-      const bgColorInput = document.getElementById('free-text-bg-color') as HTMLInputElement;
-      const boldBtn = document.getElementById('free-text-bold-btn') as HTMLButtonElement;
-      const italicBtn = document.getElementById('free-text-italic-btn') as HTMLButtonElement;
-      const underlineBtn = document.getElementById('free-text-underline-btn') as HTMLButtonElement;
-      const transparentBtn = document.getElementById('free-text-transparent-btn') as HTMLButtonElement;
-      const cancelBtn = document.getElementById('free-text-cancel-btn') as HTMLButtonElement;
-      const okBtn = document.getElementById('free-text-ok-btn') as HTMLButtonElement;
+      this.openFreeTextModal(title, annotation, resolve);
+    });
+  }
 
-      if (!backdrop || !dialog || !dragHandle || !titleEl || !textInput || !fontSizeInput || !fontFamilySelect || !fontColorInput || !bgColorInput || !boldBtn || !italicBtn || !underlineBtn || !transparentBtn || !cancelBtn || !okBtn) {
-        log.error('Free text modal elements not found');
+  private openFreeTextModal(title: string, annotation: FreeTextAnnotation, resolve: FreeTextResolve): void {
+    const elements = this.getModalElements();
+    if (!elements) {
+      resolve(null);
+      return;
+    }
+
+    const cleanupTasks: Array<() => void> = [];
+    const cleanup = () => cleanupTasks.forEach(task => task());
+
+    this.initializeModal(title, annotation, elements);
+    const state = this.setupFormattingControls(annotation, elements, cleanupTasks);
+    cleanupTasks.push(this.setupDragHandlers(elements.dialog, elements.dragHandle));
+    this.setupSubmitHandlers(annotation, elements, state, resolve, cleanup, cleanupTasks);
+    cleanupTasks.push(() => {
+      elements.dialog.style.display = 'none';
+      elements.dialog.style.position = '';
+      elements.dialog.style.left = '';
+      elements.dialog.style.top = '';
+      elements.dialog.style.transform = '';
+      elements.dragHandle.style.cursor = 'grab';
+      elements.backdrop.style.display = 'none';
+    });
+
+    this.showModal(elements);
+  }
+
+  private getModalElements(): FreeTextModalElements | null {
+    const backdrop = document.getElementById('free-text-modal-backdrop') as HTMLDivElement;
+    const dialog = document.getElementById('free-text-modal') as HTMLDivElement;
+    const dragHandle = document.getElementById('free-text-drag-handle') as HTMLDivElement;
+    const titleEl = document.getElementById('free-text-modal-title') as HTMLHeadingElement;
+    const textInput = document.getElementById('free-text-modal-text') as HTMLTextAreaElement;
+    const fontSizeInput = document.getElementById('free-text-font-size') as HTMLInputElement;
+    const fontFamilySelect = document.getElementById('free-text-font-family') as HTMLSelectElement;
+    const fontColorInput = document.getElementById('free-text-font-color') as HTMLInputElement;
+    const bgColorInput = document.getElementById('free-text-bg-color') as HTMLInputElement;
+    const boldBtn = document.getElementById('free-text-bold-btn') as HTMLButtonElement;
+    const italicBtn = document.getElementById('free-text-italic-btn') as HTMLButtonElement;
+    const underlineBtn = document.getElementById('free-text-underline-btn') as HTMLButtonElement;
+    const transparentBtn = document.getElementById('free-text-transparent-btn') as HTMLButtonElement;
+    const cancelBtn = document.getElementById('free-text-cancel-btn') as HTMLButtonElement;
+    const okBtn = document.getElementById('free-text-ok-btn') as HTMLButtonElement;
+
+    if (!backdrop || !dialog || !dragHandle || !titleEl || !textInput || !fontSizeInput || !fontFamilySelect || !fontColorInput || !bgColorInput || !boldBtn || !italicBtn || !underlineBtn || !transparentBtn || !cancelBtn || !okBtn) {
+      log.error('Free text modal elements not found');
+      return null;
+    }
+
+    return {
+      backdrop,
+      dialog,
+      dragHandle,
+      titleEl,
+      textInput,
+      fontSizeInput,
+      fontFamilySelect,
+      fontColorInput,
+      bgColorInput,
+      boldBtn,
+      italicBtn,
+      underlineBtn,
+      transparentBtn,
+      cancelBtn,
+      okBtn,
+    };
+  }
+
+  private initializeModal(title: string, annotation: FreeTextAnnotation, els: FreeTextModalElements): void {
+    const { titleEl, textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput } = els;
+
+    titleEl.textContent = title;
+    textInput.value = annotation.text || '';
+    textInput.style.fontFamily = annotation.fontFamily || 'monospace';
+    textInput.style.fontSize = `${annotation.fontSize || 14}px`;
+    textInput.style.fontWeight = annotation.fontWeight || 'normal';
+    textInput.style.fontStyle = annotation.fontStyle || 'normal';
+    textInput.style.textDecoration = annotation.textDecoration || 'none';
+    textInput.style.color = annotation.fontColor || '#FFFFFF';
+    textInput.style.background = annotation.backgroundColor === 'transparent' ? 'transparent' : (annotation.backgroundColor || '#000000');
+
+    fontSizeInput.value = String(annotation.fontSize || 14);
+    fontFamilySelect.innerHTML = '';
+    const fonts = ['monospace', 'sans-serif', 'serif', 'Arial', 'Helvetica', 'Courier New', 'Times New Roman', 'Georgia'];
+    fonts.forEach(font => {
+      const option = document.createElement('option');
+      option.value = font;
+      option.textContent = font;
+      if (font === (annotation.fontFamily || 'monospace')) {
+        option.selected = true;
+      }
+      fontFamilySelect.appendChild(option);
+    });
+    fontColorInput.value = annotation.fontColor || '#FFFFFF';
+    bgColorInput.value = annotation.backgroundColor === 'transparent' ? '#000000' : (annotation.backgroundColor || '#000000');
+  }
+
+  private setupFormattingControls(annotation: FreeTextAnnotation, els: FreeTextModalElements, cleanupTasks: Array<() => void>): FormattingState {
+    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, boldBtn, italicBtn, underlineBtn, transparentBtn, textInput } = els;
+
+    const state: FormattingState = {
+      isBold: annotation.fontWeight === 'bold',
+      isItalic: annotation.fontStyle === 'italic',
+      isUnderline: annotation.textDecoration === 'underline',
+      isTransparentBg: annotation.backgroundColor === 'transparent',
+    };
+
+    fontSizeInput.oninput = () => {
+      textInput.style.fontSize = fontSizeInput.value + 'px';
+    };
+    cleanupTasks.push(() => { fontSizeInput.oninput = null; });
+
+    fontFamilySelect.onchange = () => {
+      textInput.style.fontFamily = fontFamilySelect.value;
+    };
+    cleanupTasks.push(() => { fontFamilySelect.onchange = null; });
+
+    fontColorInput.oninput = () => {
+      textInput.style.color = fontColorInput.value;
+    };
+    cleanupTasks.push(() => { fontColorInput.oninput = null; });
+
+    bgColorInput.oninput = () => {
+      if (!bgColorInput.disabled) {
+        textInput.style.background = bgColorInput.value;
+      }
+    };
+    cleanupTasks.push(() => { bgColorInput.oninput = null; });
+
+    const updateButtonClasses = () => {
+      boldBtn.className = `btn btn-small ${state.isBold ? 'btn-primary' : 'btn-outlined'}`;
+      italicBtn.className = `btn btn-small ${state.isItalic ? 'btn-primary' : 'btn-outlined'}`;
+      underlineBtn.className = `btn btn-small ${state.isUnderline ? 'btn-primary' : 'btn-outlined'}`;
+      transparentBtn.className = `btn btn-small ml-auto ${state.isTransparentBg ? 'btn-primary' : 'btn-outlined'}`;
+    };
+    boldBtn.onclick = () => {
+      state.isBold = !state.isBold;
+      textInput.style.fontWeight = state.isBold ? 'bold' : 'normal';
+      updateButtonClasses();
+    };
+    cleanupTasks.push(() => { boldBtn.onclick = null; });
+
+    italicBtn.onclick = () => {
+      state.isItalic = !state.isItalic;
+      textInput.style.fontStyle = state.isItalic ? 'italic' : 'normal';
+      updateButtonClasses();
+    };
+    cleanupTasks.push(() => { italicBtn.onclick = null; });
+
+    underlineBtn.onclick = () => {
+      state.isUnderline = !state.isUnderline;
+      textInput.style.textDecoration = state.isUnderline ? 'underline' : 'none';
+      updateButtonClasses();
+    };
+    cleanupTasks.push(() => { underlineBtn.onclick = null; });
+
+    transparentBtn.onclick = () => {
+      state.isTransparentBg = !state.isTransparentBg;
+      bgColorInput.disabled = state.isTransparentBg;
+      textInput.style.background = state.isTransparentBg ? 'transparent' : bgColorInput.value;
+      updateButtonClasses();
+    };
+    cleanupTasks.push(() => { transparentBtn.onclick = null; });
+
+    if (state.isTransparentBg) {
+      bgColorInput.disabled = true;
+      textInput.style.background = 'transparent';
+    }
+
+    updateButtonClasses();
+    return state;
+  }
+
+  private setupDragHandlers(dialog: HTMLDivElement, dragHandle: HTMLDivElement): () => void {
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      dialog.style.left = `${e.clientX - offsetX}px`;
+      dialog.style.top = `${e.clientY - offsetY}px`;
+    };
+
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      dragHandle.style.cursor = 'grab';
+    };
+
+    dragHandle.onmousedown = (e: MouseEvent) => {
+      isDragging = true;
+      const rect = dialog.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      dialog.style.position = 'fixed';
+      dialog.style.left = `${rect.left}px`;
+      dialog.style.top = `${rect.top}px`;
+      dialog.style.transform = 'none';
+      dragHandle.style.cursor = 'grabbing';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      e.preventDefault();
+    };
+
+    return () => {
+      dragHandle.onmousedown = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }
+
+  private setupSubmitHandlers(
+    annotation: FreeTextAnnotation,
+    els: FreeTextModalElements,
+    state: FormattingState,
+    resolve: FreeTextResolve,
+    cleanup: () => void,
+    cleanupTasks: Array<() => void>
+  ): void {
+    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect, cancelBtn, okBtn } = els;
+
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+    cleanupTasks.push(() => { cancelBtn.onclick = null; });
+
+    okBtn.onclick = () => {
+      const text = textInput.value.trim();
+      if (!text) {
+        cleanup();
         resolve(null);
         return;
       }
 
-      titleEl.textContent = title;
-      textInput.value = annotation.text || '';
-      textInput.style.fontFamily = annotation.fontFamily || 'monospace';
-      textInput.style.fontSize = `${annotation.fontSize || 14}px`;
-      textInput.style.fontWeight = annotation.fontWeight || 'normal';
-      textInput.style.fontStyle = annotation.fontStyle || 'normal';
-      textInput.style.textDecoration = annotation.textDecoration || 'none';
-      textInput.style.color = annotation.fontColor || '#FFFFFF';
-      textInput.style.background = annotation.backgroundColor === 'transparent' ? 'transparent' : (annotation.backgroundColor || '#000000');
-
-      fontSizeInput.value = String(annotation.fontSize || 14);
-      fontSizeInput.oninput = () => {
-        textInput.style.fontSize = fontSizeInput.value + 'px';
+      const result: FreeTextAnnotation = {
+        ...annotation,
+        text,
+        fontSize: parseInt(fontSizeInput.value),
+        fontColor: fontColorInput.value,
+        backgroundColor: state.isTransparentBg ? 'transparent' : bgColorInput.value,
+        fontWeight: state.isBold ? 'bold' : 'normal',
+        fontStyle: state.isItalic ? 'italic' : 'normal',
+        textDecoration: state.isUnderline ? 'underline' : 'none',
+        fontFamily: fontFamilySelect.value,
       };
+      cleanup();
+      resolve(result);
+    };
+    cleanupTasks.push(() => { okBtn.onclick = null; });
 
-      fontFamilySelect.innerHTML = '';
-      const fonts = ['monospace', 'sans-serif', 'serif', 'Arial', 'Helvetica', 'Courier New', 'Times New Roman', 'Georgia'];
-      fonts.forEach(font => {
-        const option = document.createElement('option');
-        option.value = font;
-        option.textContent = font;
-        if (font === (annotation.fontFamily || 'monospace')) {
-          option.selected = true;
-        }
-        fontFamilySelect.appendChild(option);
-      });
-      fontFamilySelect.onchange = () => {
-        textInput.style.fontFamily = fontFamilySelect.value;
-      };
-
-      fontColorInput.value = annotation.fontColor || '#FFFFFF';
-      fontColorInput.oninput = () => {
-        textInput.style.color = fontColorInput.value;
-      };
-
-      bgColorInput.value = annotation.backgroundColor === 'transparent' ? '#000000' : (annotation.backgroundColor || '#000000');
-      bgColorInput.oninput = () => {
-        if (!bgColorInput.disabled) {
-          textInput.style.background = bgColorInput.value;
-        }
-      };
-
-      let isBold = annotation.fontWeight === 'bold';
-      let isItalic = annotation.fontStyle === 'italic';
-      let isUnderline = annotation.textDecoration === 'underline';
-      let isTransparentBg = annotation.backgroundColor === 'transparent';
-
-      const updateButtonClasses = () => {
-        boldBtn.className = `btn btn-small ${isBold ? 'btn-primary' : 'btn-outlined'}`;
-        italicBtn.className = `btn btn-small ${isItalic ? 'btn-primary' : 'btn-outlined'}`;
-        underlineBtn.className = `btn btn-small ${isUnderline ? 'btn-primary' : 'btn-outlined'}`;
-        transparentBtn.className = `btn btn-small ml-auto ${isTransparentBg ? 'btn-primary' : 'btn-outlined'}`;
-      };
-      updateButtonClasses();
-
-      boldBtn.onclick = () => {
-        isBold = !isBold;
-        textInput.style.fontWeight = isBold ? 'bold' : 'normal';
-        updateButtonClasses();
-      };
-
-      italicBtn.onclick = () => {
-        isItalic = !isItalic;
-        textInput.style.fontStyle = isItalic ? 'italic' : 'normal';
-        updateButtonClasses();
-      };
-
-      underlineBtn.onclick = () => {
-        isUnderline = !isUnderline;
-        textInput.style.textDecoration = isUnderline ? 'underline' : 'none';
-        updateButtonClasses();
-      };
-
-      transparentBtn.onclick = () => {
-        isTransparentBg = !isTransparentBg;
-        bgColorInput.disabled = isTransparentBg;
-        textInput.style.background = isTransparentBg ? 'transparent' : bgColorInput.value;
-        updateButtonClasses();
-      };
-      if (isTransparentBg) {
-        bgColorInput.disabled = true;
-        textInput.style.background = 'transparent';
+    textInput.onkeydown = (e) => {
+      if (e.key === 'Escape') {
+        cancelBtn.click();
+      } else if (e.key === 'Enter' && e.ctrlKey) {
+        okBtn.click();
       }
+    };
+    cleanupTasks.push(() => { textInput.onkeydown = null; });
+  }
 
-      let isDragging = false;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      const onMouseMove = (e: MouseEvent) => {
-        if (!isDragging) return;
-        dialog.style.left = `${e.clientX - offsetX}px`;
-        dialog.style.top = `${e.clientY - offsetY}px`;
-      };
-
-      const onMouseUp = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-        dragHandle.style.cursor = 'grab';
-      };
-
-      const cleanup = () => {
-        dialog.style.display = 'none';
-        dialog.style.position = '';
-        dialog.style.left = '';
-        dialog.style.top = '';
-        dialog.style.transform = '';
-        dragHandle.style.cursor = 'grab';
-        backdrop.style.display = 'none';
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-        textInput.onkeydown = null;
-        fontSizeInput.oninput = null;
-        fontFamilySelect.onchange = null;
-        fontColorInput.oninput = null;
-        bgColorInput.oninput = null;
-        boldBtn.onclick = null;
-        italicBtn.onclick = null;
-        underlineBtn.onclick = null;
-        transparentBtn.onclick = null;
-        cancelBtn.onclick = null;
-        okBtn.onclick = null;
-      };
-
-      dragHandle.onmousedown = (e: MouseEvent) => {
-        isDragging = true;
-        const rect = dialog.getBoundingClientRect();
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
-        dialog.style.position = 'fixed';
-        dialog.style.left = `${rect.left}px`;
-        dialog.style.top = `${rect.top}px`;
-        dialog.style.transform = 'none';
-        dragHandle.style.cursor = 'grabbing';
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        e.preventDefault();
-      };
-
-      cancelBtn.onclick = () => {
-        cleanup();
-        resolve(null);
-      };
-
-      okBtn.onclick = () => {
-        const text = textInput.value.trim();
-        if (!text) {
-          cleanup();
-          resolve(null);
-          return;
-        }
-
-        const result: FreeTextAnnotation = {
-          ...annotation,
-          text,
-          fontSize: parseInt(fontSizeInput.value),
-          fontColor: fontColorInput.value,
-          backgroundColor: isTransparentBg ? 'transparent' : bgColorInput.value,
-          fontWeight: isBold ? 'bold' : 'normal',
-          fontStyle: isItalic ? 'italic' : 'normal',
-          textDecoration: isUnderline ? 'underline' : 'none',
-          fontFamily: fontFamilySelect.value,
-        };
-        cleanup();
-        resolve(result);
-      };
-
-      textInput.onkeydown = (e) => {
-        if (e.key === 'Escape') {
-          cancelBtn.click();
-        } else if (e.key === 'Enter' && e.ctrlKey) {
-          okBtn.click();
-        }
-      };
-
-      backdrop.style.display = 'block';
-      dialog.style.display = 'block';
-      textInput.focus();
-      textInput.select();
-    });
+  private showModal(els: FreeTextModalElements): void {
+    els.backdrop.style.display = 'block';
+    els.dialog.style.display = 'block';
+    els.textInput.focus();
+    els.textInput.select();
   }
 
   /**

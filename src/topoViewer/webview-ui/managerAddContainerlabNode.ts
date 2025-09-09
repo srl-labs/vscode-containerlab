@@ -15,36 +15,59 @@ export class ManagerAddContainerlabNode {
     event: cytoscape.EventObject,
     template?: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string }
   ): void {
-    if (ManagerAddContainerlabNode.nodeCounter === 0) {
-      const existingNodeIds = cy.nodes().map(node => node.id());
-      const maxId = existingNodeIds
-        .filter(id => id.startsWith('nodeId-'))
-        .map(id => parseInt(id.replace('nodeId-', ''), 10))
-        .filter(num => !isNaN(num))
-        .reduce((max, current) => Math.max(max, current), 0);
-      ManagerAddContainerlabNode.nodeCounter = maxId;
-    }
-
-
-    ManagerAddContainerlabNode.nodeCounter++;
-    const newNodeId = `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
-
-    // Generate the node name based on template baseName or default
-    let nodeName = newNodeId;
-    if (template?.baseName) {
-      // Find the next available number for this base name
-      const existingNodeNames = cy.nodes().map(node => node.data('name'));
-      let counter = 1;
-      while (existingNodeNames.includes(`${template.baseName}${counter}`)) {
-        counter++;
-      }
-      nodeName = `${template.baseName}${counter}`;
-    }
-
+    this.initializeNodeCounter(cy);
+    const newNodeId = this.generateNodeId();
+    const nodeName = this.generateNodeName(cy, newNodeId, template);
     const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
+    const newNodeData = this.createNodeData(newNodeId, nodeName, template, kind);
+    const position = this.determinePosition(cy, event);
+
+    cy.add({ group: 'nodes', data: newNodeData, position });
+    this.applyGeoCoordinates(cy, newNodeId, position);
+  }
+
+  private initializeNodeCounter(cy: cytoscape.Core): void {
+    if (ManagerAddContainerlabNode.nodeCounter !== 0) {
+      return;
+    }
+    const existingNodeIds = cy.nodes().map(node => node.id());
+    const maxId = existingNodeIds
+      .filter(id => id.startsWith('nodeId-'))
+      .map(id => parseInt(id.replace('nodeId-', ''), 10))
+      .filter(num => !isNaN(num))
+      .reduce((max, current) => Math.max(max, current), 0);
+    ManagerAddContainerlabNode.nodeCounter = maxId;
+  }
+
+  private generateNodeId(): string {
+    ManagerAddContainerlabNode.nodeCounter++;
+    return `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
+  }
+
+  private generateNodeName(
+    cy: cytoscape.Core,
+    defaultName: string,
+    template?: { baseName?: string }
+  ): string {
+    if (!template?.baseName) {
+      return defaultName;
+    }
+    const existingNodeNames = cy.nodes().map(node => node.data('name'));
+    let counter = 1;
+    while (existingNodeNames.includes(`${template.baseName}${counter}`)) {
+      counter++;
+    }
+    return `${template.baseName}${counter}`;
+  }
+
+  private createNodeData(
+    newNodeId: string,
+    nodeName: string,
+    template: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string } | undefined,
+    kind: string
+  ): NodeData {
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
     const shouldIncludeType = nokiaKinds.includes(kind);
-
     const type = template ? template.type : window.defaultType || 'ixrd1';
 
     const newNodeData: NodeData = {
@@ -63,21 +86,26 @@ export class ManagerAddContainerlabNode {
         image: template?.image || '',
         ...(shouldIncludeType && type ? { type } : {}),
         mgmtIpv4Address: '',
-        // Mark if this was created from a custom template
         fromCustomTemplate: template?.name ? true : false,
-        // Apply all template properties if available
-        ...(template && Object.fromEntries(
-          Object.entries(template).filter(([key]) =>
-            !['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'].includes(key)
-          )
-        ))
+        ...(template &&
+          Object.fromEntries(
+            Object.entries(template).filter(([key]) =>
+              !['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'].includes(key)
+            )
+          ))
       }
     };
 
     const imageMap = window.imageMapping || {};
     const k = newNodeData.extraData?.kind || 'nokia_srlinux';
     newNodeData.extraData!.image = template?.image || imageMap[k] || '';
+    return newNodeData;
+  }
 
+  private determinePosition(
+    cy: cytoscape.Core,
+    event: cytoscape.EventObject
+  ): { x: number; y: number } {
     const extent = cy.extent();
     let position = event.position;
 
@@ -92,18 +120,22 @@ export class ManagerAddContainerlabNode {
       const viewportCenterY = (extent.y1 + extent.y2) / 2;
       const viewportWidth = extent.x2 - extent.x1;
       const viewportHeight = extent.y2 - extent.y1;
-
       const maxOffsetX = viewportWidth * 0.3;
       const maxOffsetY = viewportHeight * 0.3;
-
       position = {
         x: viewportCenterX + (Math.random() - 0.5) * maxOffsetX,
         y: viewportCenterY + (Math.random() - 0.5) * maxOffsetY
       };
     }
 
-    cy.add({ group: 'nodes', data: newNodeData, position });
+    return position;
+  }
 
+  private applyGeoCoordinates(
+    cy: cytoscape.Core,
+    newNodeId: string,
+    position: { x: number; y: number }
+  ): void {
     const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
     if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
       const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
