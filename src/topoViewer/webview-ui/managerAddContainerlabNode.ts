@@ -1,7 +1,7 @@
 // file: managerAddContainerlabNode.ts
 
 import cytoscape from 'cytoscape';
-import type { NodeData } from '../types/topoViewerGraph';
+import type { NodeData, NodeExtraData } from '../types/topoViewerGraph';
 import topoViewerState from '../state';
 
 /**
@@ -66,11 +66,27 @@ export class ManagerAddContainerlabNode {
     template: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string } | undefined,
     kind: string
   ): NodeData {
-    const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
-    const shouldIncludeType = nokiaKinds.includes(kind);
-    const type = template ? template.type : window.defaultType || 'ixrd1';
+    const extraData: NodeExtraData = {
+      kind,
+      longname: '',
+      image: template?.image || '',
+      mgmtIpv4Address: '',
+      fromCustomTemplate: Boolean(template?.name),
+      ...this.extractExtraTemplate(template)
+    };
 
-    const newNodeData: NodeData = {
+    const type = this.determineType(kind, template);
+    if (type) {
+      extraData.type = type;
+    }
+
+    const imageMap = window.imageMapping || {};
+    const resolvedKind = extraData.kind || 'nokia_srlinux';
+    if (!extraData.image) {
+      extraData.image = imageMap[resolvedKind] || '';
+    }
+
+    return {
       id: newNodeId,
       editor: 'true',
       weight: '30',
@@ -80,26 +96,34 @@ export class ManagerAddContainerlabNode {
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
-      extraData: {
-        kind,
-        longname: '',
-        image: template?.image || '',
-        ...(shouldIncludeType && type ? { type } : {}),
-        mgmtIpv4Address: '',
-        fromCustomTemplate: template?.name ? true : false,
-        ...(template &&
-          Object.fromEntries(
-            Object.entries(template).filter(([key]) =>
-              !['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'].includes(key)
-            )
-          ))
-      }
+      extraData
     };
+  }
 
-    const imageMap = window.imageMapping || {};
-    const k = newNodeData.extraData?.kind || 'nokia_srlinux';
-    newNodeData.extraData!.image = template?.image || imageMap[k] || '';
-    return newNodeData;
+  private determineType(
+    kind: string,
+    template?: { type?: string }
+  ): string | undefined {
+    const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+    if (!nokiaKinds.includes(kind)) {
+      return undefined;
+    }
+    if (template?.type) {
+      return template.type;
+    }
+    return window.defaultType || 'ixrd1';
+  }
+
+  private extractExtraTemplate(
+    template?: { [key: string]: unknown }
+  ): Record<string, unknown> {
+    if (!template) {
+      return {};
+    }
+    const excluded = ['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'];
+    return Object.fromEntries(
+      Object.entries(template).filter(([key]) => !excluded.includes(key))
+    );
   }
 
   private determinePosition(

@@ -295,6 +295,145 @@ export function viewportButtonsCaptureViewportAsSvg(): void {
   panel.style.display = 'block';
 }
 
+function updateNodePosition(
+  node: any,
+  nodeJson: any,
+  isGeoActive: boolean
+): void {
+  let posX = node.position().x;
+  let posY = node.position().y;
+  if (isGeoActive) {
+    const origX = node.data('_origPosX');
+    const origY = node.data('_origPosY');
+    if (origX !== undefined && origY !== undefined) {
+      posX = origX;
+      posY = origY;
+    }
+  }
+  nodeJson.position = { x: posX, y: posY };
+}
+
+function handleGeoData(
+  node: any,
+  nodeJson: any,
+  isGeoActive: boolean
+): void {
+  const lat = node.data('lat');
+  const lng = node.data('lng');
+  if (lat !== undefined && lng !== undefined) {
+    nodeJson.data = nodeJson.data || {};
+    nodeJson.data.geoLayoutActive = !!isGeoActive;
+    nodeJson.data.lat = lat.toString();
+    nodeJson.data.lng = lng.toString();
+    return;
+  }
+
+  if (isGeoActive) {
+    nodeJson.data = nodeJson.data || {};
+    nodeJson.data.geoLayoutActive = true;
+    return;
+  }
+
+  if (nodeJson.data?.geoLayoutActive) {
+    delete nodeJson.data.geoLayoutActive;
+  }
+}
+
+function applyParentData(node: any, nodeJson: any, cy: any): void {
+  const parentId = node.parent().id();
+  if (!parentId) return;
+
+  nodeJson.parent = parentId;
+  if (!nodeJson.data?.extraData?.labels) return;
+
+  const parentParts = parentId.split(':');
+  if (parentParts.length >= 2) {
+    nodeJson.data.extraData.labels['graph-group'] = parentParts[0];
+    nodeJson.data.extraData.labels['graph-level'] = parentParts[1];
+  }
+
+  const validLabelClasses = [
+    'top-center',
+    'top-left',
+    'top-right',
+    'bottom-center',
+    'bottom-left',
+    'bottom-right'
+  ];
+
+  const parentElement = cy.getElementById(parentId);
+  if (!parentElement) return;
+
+  const parentClasses = parentElement.classes();
+  const validParentClasses = parentClasses.filter((cls: string) =>
+    validLabelClasses.includes(cls)
+  );
+  nodeJson.data.groupLabelPos =
+    validParentClasses.length > 0 ? validParentClasses[0] : '';
+}
+
+function prepareNodeForSave(node: any, isGeoActive: boolean, cy: any): any {
+  const nodeJson = node.json();
+  updateNodePosition(node, nodeJson, isGeoActive);
+  handleGeoData(node, nodeJson, isGeoActive);
+  applyParentData(node, nodeJson, cy);
+  return nodeJson;
+}
+
+async function saveAnnotationsAndStyles(updatedNodes: any[]): Promise<void> {
+  const freeTextNodes = updatedNodes.filter(
+    (node: any) => node.data && node.data.topoViewerRole === 'freeText'
+  );
+  const groupStyles =
+    topoViewerState.editorEngine?.groupStyleManager?.getGroupStyles() || [];
+
+  if (freeTextNodes.length === 0 && groupStyles.length === 0) {
+    log.info('No annotations to save');
+    return;
+  }
+
+  if (freeTextNodes.length > 0) {
+    log.info(
+      `Found ${freeTextNodes.length} free text nodes to save as annotations`
+    );
+  }
+
+  // Convert free text nodes to annotations format
+  const annotations = freeTextNodes.map((node: any) => {
+    const data = node.data.freeTextData || {};
+    return {
+      id: node.data.id,
+      text: node.data.name || '',
+      position: node.position || { x: 0, y: 0 },
+      fontSize: data.fontSize || 14,
+      fontColor: data.fontColor || '#FFFFFF',
+      backgroundColor: data.backgroundColor || 'transparent',
+      fontWeight: data.fontWeight || 'normal',
+      fontStyle: data.fontStyle || 'normal',
+      textDecoration: data.textDecoration || 'none',
+      fontFamily: data.fontFamily || 'monospace'
+    };
+  });
+
+  // Send annotations and group styles to backend for saving
+  const sender = getMessageSender();
+  const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
+    'topo-editor-save-annotations',
+    { annotations, groupStyles }
+  );
+  log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
+
+  // Reapply group styles after saving to maintain visual consistency
+  if (topoViewerState.editorEngine?.groupStyleManager) {
+    groupStyles.forEach((style: any) => {
+      topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(
+        style.id
+      );
+    });
+    log.info('Reapplied group styles after save');
+  }
+}
+
 /**
  * Save topology data back to the backend
  * Updates node positions and group information before saving
@@ -314,139 +453,28 @@ export async function viewportButtonsSaveTopo(): Promise<void> {
     const layoutManager = window.layoutManager;
     const isGeoActive = layoutManager?.isGeoMapInitialized || false;
 
-    if (isGeoActive && layoutManager && typeof layoutManager.updateNodeGeoCoordinates === 'function') {
+    if (
+      isGeoActive &&
+      layoutManager &&
+      typeof layoutManager.updateNodeGeoCoordinates === 'function'
+    ) {
       layoutManager.updateNodeGeoCoordinates();
     }
 
     // Process nodes: update each node's "position" property with the current position
-    const updatedNodes = cy.nodes().map((node: any) => {
-      const nodeJson = node.json();
-
-      // Update position property
-      let posX = node.position().x;
-      let posY = node.position().y;
-      if (isGeoActive) {
-        const origX = node.data('_origPosX');
-        const origY = node.data('_origPosY');
-        if (origX !== undefined && origY !== undefined) {
-          posX = origX;
-          posY = origY;
-        }
-      }
-      nodeJson.position = { x: posX, y: posY };
-
-      // Save geo coordinates if available
-      const lat = node.data('lat');
-      const lng = node.data('lng');
-      if (lat !== undefined && lng !== undefined) {
-        nodeJson.data = nodeJson.data || {};
-        // Mark geo layout active so backend can skip writing XY positions
-        nodeJson.data.geoLayoutActive = !!isGeoActive;
-        nodeJson.data.lat = lat.toString();
-        nodeJson.data.lng = lng.toString();
-      } else {
-        // Ensure flag is present when geo is active, even if lat/lng are missing
-        if (isGeoActive) {
-          nodeJson.data = nodeJson.data || {};
-          nodeJson.data.geoLayoutActive = true;
-        } else if (nodeJson.data?.geoLayoutActive) {
-          // Clean up flag when not in geo mode
-          delete nodeJson.data.geoLayoutActive;
-        }
-      }
-
-      // Update parent property
-      const parentId = node.parent().id();
-      if (parentId) {
-        nodeJson.parent = parentId;
-
-        // Check if extraData and labels exist before modifying
-        if (nodeJson.data?.extraData?.labels) {
-          const parentParts = parentId.split(':');
-          if (parentParts.length >= 2) {
-            nodeJson.data.extraData.labels['graph-group'] = parentParts[0];
-            nodeJson.data.extraData.labels['graph-level'] = parentParts[1];
-          }
-
-          // Get label position from parent's classes
-          const validLabelClasses = [
-            'top-center',
-            'top-left',
-            'top-right',
-            'bottom-center',
-            'bottom-left',
-            'bottom-right'
-          ];
-
-          // Get the parent's classes as array
-          const parentElement = cy.getElementById(parentId);
-          if (parentElement) {
-            const parentClasses = parentElement.classes();
-
-            // Filter the classes so that only valid entries remain
-            const validParentClasses = parentClasses.filter((cls: string) => validLabelClasses.includes(cls));
-
-            // Assign only the first valid class, or an empty string if none exists
-            nodeJson.data.groupLabelPos = validParentClasses.length > 0 ? validParentClasses[0] : '';
-          }
-        }
-      }
-
-      return nodeJson;
-    });
+    const updatedNodes = cy
+      .nodes()
+      .map((node: any) => prepareNodeForSave(node, isGeoActive, cy));
 
     // Send updated topology data to backend
     const sender = getMessageSender();
-    const response = await sender.sendMessageToVscodeEndpointPost('topo-viewport-save', updatedNodes);
+    const response = await sender.sendMessageToVscodeEndpointPost(
+      'topo-viewport-save',
+      updatedNodes
+    );
     log.info(`Topology saved successfully: ${JSON.stringify(response)}`);
 
-    // Also save free text annotations in view mode
-    // Filter out only the free text nodes from the updated nodes
-    const freeTextNodes = updatedNodes.filter((node: any) =>
-      node.data && node.data.topoViewerRole === 'freeText'
-    );
-    const groupStyles = topoViewerState.editorEngine?.groupStyleManager?.getGroupStyles() || [];
-
-    if (freeTextNodes.length > 0 || groupStyles.length > 0) {
-      if (freeTextNodes.length > 0) {
-        log.info(`Found ${freeTextNodes.length} free text nodes to save as annotations`);
-      }
-
-      // Convert free text nodes to annotations format
-      const annotations = freeTextNodes.map((node: any) => {
-        const data = node.data.freeTextData || {};
-        return {
-          id: node.data.id,
-          text: node.data.name || '',
-          position: node.position || { x: 0, y: 0 },
-          fontSize: data.fontSize || 14,
-          fontColor: data.fontColor || '#FFFFFF',
-          backgroundColor: data.backgroundColor || 'transparent',
-          fontWeight: data.fontWeight || 'normal',
-          fontStyle: data.fontStyle || 'normal',
-          textDecoration: data.textDecoration || 'none',
-          fontFamily: data.fontFamily || 'monospace'
-        };
-      });
-
-      // Send annotations and group styles to backend for saving
-      const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
-        'topo-editor-save-annotations',
-        { annotations, groupStyles }
-      );
-      log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
-
-      // Reapply group styles after saving to maintain visual consistency
-      if (topoViewerState.editorEngine?.groupStyleManager) {
-        groupStyles.forEach((style: any) => {
-          topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(style.id);
-        });
-        log.info('Reapplied group styles after save');
-      }
-    } else {
-      log.info('No annotations to save');
-    }
-
+    await saveAnnotationsAndStyles(updatedNodes);
   } catch (error) {
     log.error(`Failed to save topology: ${error}`);
   }

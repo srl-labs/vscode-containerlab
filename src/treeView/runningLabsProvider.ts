@@ -659,6 +659,48 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return result;
     }
 
+    private buildTooltipParts(container: c.ClabJSON): string[] {
+        const tooltipParts = [
+            `Container: ${container.name}`,
+            `ID: ${container.container_id}`,
+            `State: ${container.state}`,
+            `Status: ${container.status || "Unknown"}`,
+            `Kind: ${container.kind}`,
+            `Image: ${container.image}`
+        ];
+
+        if (container.node_type) {
+            tooltipParts.push(`Type: ${container.node_type}`);
+        }
+
+        if (container.node_group && container.node_group.trim() !== '') {
+            tooltipParts.push(`Group: ${container.node_group}`);
+        }
+
+        const v4Addr = container.ipv4_address?.split('/')[0];
+        if (v4Addr && v4Addr !== "N/A") {
+            tooltipParts.push(`IPv4: ${v4Addr}`);
+        }
+
+        const v6Addr = container.ipv6_address?.split('/')[0];
+        if (v6Addr && v6Addr !== "N/A") {
+            tooltipParts.push(`IPv6: ${v6Addr}`);
+        }
+
+        return tooltipParts;
+    }
+
+    private getContainerIcon(container: c.ClabJSON): string {
+        if (container.state === "running") {
+            const status = container.status?.toLowerCase() || "";
+            if (status.includes("health: starting") || status.includes("unhealthy")) {
+                return c.CtrStateIcons.PARTIAL;
+            }
+            return c.CtrStateIcons.RUNNING;
+        }
+        return c.CtrStateIcons.STOPPED;
+    }
+
     /**
      * Discover containers that belong to a specific lab path.
      */
@@ -668,71 +710,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         let containerNodes: c.ClabContainerTreeNode[] = [];
 
         containersForThisLab.forEach((container: c.ClabJSON) => {
-            // Use name_short if available, otherwise extract from name
-            const name_short = container.name_short ||
-                container.name.replace(/^clab-[^-]+-/, '');
+            const name_short = container.name_short || container.name.replace(/^clab-[^-]+-/, '');
+            const tooltipParts = this.buildTooltipParts(container);
+            const icon = this.getContainerIcon(container);
 
-            let tooltipParts = [
-                `Container: ${container.name}`,
-                `ID: ${container.container_id}`,
-                `State: ${container.state}`,
-                `Status: ${container.status || "Unknown"}`,
-                `Kind: ${container.kind}`,
-                `Image: ${container.image}`
-            ];
-
-            // Add node type if available
-            if (container.node_type) {
-                tooltipParts.push(`Type: ${container.node_type}`);
-            }
-
-            // Add node group if available and not empty
-            if (container.node_group && container.node_group.trim() !== '') {
-                tooltipParts.push(`Group: ${container.node_group}`);
-            }
-
-            // Add IPs to tooltip if valid
-            const v4Addr = container.ipv4_address?.split('/')[0];
-            if (v4Addr && v4Addr !== "N/A") {
-                tooltipParts.push(`IPv4: ${v4Addr}`);
-            }
-            const v6Addr = container.ipv6_address?.split('/')[0];
-            if (v6Addr && v6Addr !== "N/A") {
-                tooltipParts.push(`IPv6: ${v6Addr}`);
-            }
-
-            // Determine icon based on state
-            let icon: string;
-            if (container.state === "running") {
-                // Check status for health information if available
-                const status = container.status?.toLowerCase() || "";
-                if (status.includes("health: starting") || status.includes("unhealthy")) {
-                    icon = c.CtrStateIcons.PARTIAL; // Reusing partial icon for unhealthy state
-                } else {
-                    icon = c.CtrStateIcons.RUNNING; // Default for running containers
-                }
-            } else {
-                icon = c.CtrStateIcons.STOPPED;
-            }
-
-            // Discover interfaces for this specific container
-            // The interface discovery logic already uses caching based on container ID and state
             const interfaces = this.discoverContainerInterfaces(
-                absLabPath, // Pass the absolute path of the lab file
+                absLabPath,
                 container.name,
                 container.container_id,
-                container.state // Pass container state for cache validation
-            ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); // Sort interfaces alphabetically
+                container.state
+            ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
-            // Determine collapsible state based on interfaces
             const collapsible = interfaces.length > 0
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None;
 
-            // if shortname is defined, use it for the label
             const label = container.name_short || container.name;
 
-            // Create the container node with optional fields
             const node = new c.ClabContainerTreeNode(
                 label,
                 collapsible,
@@ -742,21 +736,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 container.state,
                 container.kind,
                 container.image,
-                interfaces, // Assign discovered interfaces
-                { absolute: absLabPath, relative: utils.getRelLabFolderPath(container.labPath) }, // Lab path info
-                container.ipv4_address, // Full address with mask
-                container.ipv6_address, // Full address with mask
-                container.node_type, // Node type (if available)
-                container.node_group, // Node group (if available)
+                interfaces,
+                { absolute: absLabPath, relative: utils.getRelLabFolderPath(container.labPath) },
+                container.ipv4_address,
+                container.ipv6_address,
+                container.node_type,
+                container.node_group,
                 container.status,
-                "containerlabContainer" // Context value
+                "containerlabContainer"
             );
 
-            // Set description with status
             node.description = container.status ? ` ${container.status}` : "";
             node.tooltip = tooltipParts.join("\n");
 
-            // Set icon path
             const iconPath = this.getResourceUri(icon);
             node.iconPath = { light: iconPath, dark: iconPath };
 

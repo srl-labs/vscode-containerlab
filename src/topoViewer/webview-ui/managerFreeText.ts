@@ -282,44 +282,30 @@ export class ManagerFreeText {
   }
 
   private getModalElements(): FreeTextModalElements | null {
-    const backdrop = document.getElementById('free-text-modal-backdrop') as HTMLDivElement;
-    const dialog = document.getElementById('free-text-modal') as HTMLDivElement;
-    const dragHandle = document.getElementById('free-text-drag-handle') as HTMLDivElement;
-    const titleEl = document.getElementById('free-text-modal-title') as HTMLHeadingElement;
-    const textInput = document.getElementById('free-text-modal-text') as HTMLTextAreaElement;
-    const fontSizeInput = document.getElementById('free-text-font-size') as HTMLInputElement;
-    const fontFamilySelect = document.getElementById('free-text-font-family') as HTMLSelectElement;
-    const fontColorInput = document.getElementById('free-text-font-color') as HTMLInputElement;
-    const bgColorInput = document.getElementById('free-text-bg-color') as HTMLInputElement;
-    const boldBtn = document.getElementById('free-text-bold-btn') as HTMLButtonElement;
-    const italicBtn = document.getElementById('free-text-italic-btn') as HTMLButtonElement;
-    const underlineBtn = document.getElementById('free-text-underline-btn') as HTMLButtonElement;
-    const transparentBtn = document.getElementById('free-text-transparent-btn') as HTMLButtonElement;
-    const cancelBtn = document.getElementById('free-text-cancel-btn') as HTMLButtonElement;
-    const okBtn = document.getElementById('free-text-ok-btn') as HTMLButtonElement;
+    const elements = {
+      backdrop: document.getElementById('free-text-modal-backdrop') as HTMLDivElement | null,
+      dialog: document.getElementById('free-text-modal') as HTMLDivElement | null,
+      dragHandle: document.getElementById('free-text-drag-handle') as HTMLDivElement | null,
+      titleEl: document.getElementById('free-text-modal-title') as HTMLHeadingElement | null,
+      textInput: document.getElementById('free-text-modal-text') as HTMLTextAreaElement | null,
+      fontSizeInput: document.getElementById('free-text-font-size') as HTMLInputElement | null,
+      fontFamilySelect: document.getElementById('free-text-font-family') as HTMLSelectElement | null,
+      fontColorInput: document.getElementById('free-text-font-color') as HTMLInputElement | null,
+      bgColorInput: document.getElementById('free-text-bg-color') as HTMLInputElement | null,
+      boldBtn: document.getElementById('free-text-bold-btn') as HTMLButtonElement | null,
+      italicBtn: document.getElementById('free-text-italic-btn') as HTMLButtonElement | null,
+      underlineBtn: document.getElementById('free-text-underline-btn') as HTMLButtonElement | null,
+      transparentBtn: document.getElementById('free-text-transparent-btn') as HTMLButtonElement | null,
+      cancelBtn: document.getElementById('free-text-cancel-btn') as HTMLButtonElement | null,
+      okBtn: document.getElementById('free-text-ok-btn') as HTMLButtonElement | null,
+    };
 
-    if (!backdrop || !dialog || !dragHandle || !titleEl || !textInput || !fontSizeInput || !fontFamilySelect || !fontColorInput || !bgColorInput || !boldBtn || !italicBtn || !underlineBtn || !transparentBtn || !cancelBtn || !okBtn) {
+    if (Object.values(elements).some(el => el === null)) {
       log.error('Free text modal elements not found');
       return null;
     }
 
-    return {
-      backdrop,
-      dialog,
-      dragHandle,
-      titleEl,
-      textInput,
-      fontSizeInput,
-      fontFamilySelect,
-      fontColorInput,
-      bgColorInput,
-      boldBtn,
-      italicBtn,
-      underlineBtn,
-      transparentBtn,
-      cancelBtn,
-      okBtn,
-    };
+    return elements as FreeTextModalElements;
   }
 
   private initializeModal(title: string, annotation: FreeTextAnnotation, els: FreeTextModalElements): void {

@@ -381,48 +381,54 @@ export class TopoViewerAdaptorClab {
   }
 
   private normalizeSingleTypeToSpecialId(t: string, linkObj: any, ctx: DummyContext): string {
-    if (t === 'host' || t === 'mgmt-net' || t === 'macvlan') {
-      const hi = linkObj?.['host-interface'] ?? '';
-      return `${t}:${hi}`;
-    }
-    if (t === 'vxlan' || t === 'vxlan-stitch') {
-      const remote = linkObj?.remote ?? '';
-      const vni = linkObj?.vni ?? '';
-      const udp = linkObj?.['udp-port'] ?? '';
-      return `${t}:${remote}/${vni}/${udp}`;
-    }
-    if (t === 'dummy') {
-      if (ctx.dummyLinkMap.has(linkObj)) {
-        return ctx.dummyLinkMap.get(linkObj)!;
-      }
-      ctx.dummyCounter += 1;
-      const dummyId = `dummy${ctx.dummyCounter}`;
-      ctx.dummyLinkMap.set(linkObj, dummyId);
-      return dummyId;
-    }
-    return '';
+    const handlers: Record<string, () => string> = {
+      host: () => `${t}:${linkObj?.['host-interface'] ?? ''}`,
+      'mgmt-net': () => `${t}:${linkObj?.['host-interface'] ?? ''}`,
+      macvlan: () => `${t}:${linkObj?.['host-interface'] ?? ''}`,
+      vxlan: () => {
+        const remote = linkObj?.remote ?? '';
+        const vni = linkObj?.vni ?? '';
+        const udp = linkObj?.['udp-port'] ?? '';
+        return `${t}:${remote}/${vni}/${udp}`;
+      },
+      'vxlan-stitch': () => {
+        const remote = linkObj?.remote ?? '';
+        const vni = linkObj?.vni ?? '';
+        const udp = linkObj?.['udp-port'] ?? '';
+        return `${t}:${remote}/${vni}/${udp}`;
+      },
+      dummy: () => {
+        if (ctx.dummyLinkMap.has(linkObj)) {
+          return ctx.dummyLinkMap.get(linkObj)!;
+        }
+        ctx.dummyCounter += 1;
+        const dummyId = `dummy${ctx.dummyCounter}`;
+        ctx.dummyLinkMap.set(linkObj, dummyId);
+        return dummyId;
+      },
+    };
+
+    return handlers[t]?.() ?? '';
   }
 
   private normalizeLinkToTwoEndpoints(linkObj: any, ctx: DummyContext): { endA: any; endB: any; type?: string } | null {
     const t = linkObj?.type as string | undefined;
-    if (t) {
-      if (t === 'veth') {
-        const a = linkObj?.endpoints?.[0];
-        const b = linkObj?.endpoints?.[1];
-        if (!a || !b) return null;
-        return { endA: a, endB: b, type: t };
-      }
-      if (['host', 'mgmt-net', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t)) {
-        const a = linkObj?.endpoint;
-        if (!a) return null;
-        const special = this.normalizeSingleTypeToSpecialId(t, linkObj, ctx);
-        return { endA: a, endB: special, type: t };
-      }
+    if (t === 'veth') {
+      const [a, b] = linkObj?.endpoints ?? [];
+      if (!a || !b) return null;
+      return { endA: a, endB: b, type: t };
     }
-    const a = linkObj?.endpoints?.[0];
-    const b = linkObj?.endpoints?.[1];
+
+    if (['host', 'mgmt-net', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t ?? '')) {
+      const a = linkObj?.endpoint;
+      if (!a) return null;
+      const special = this.normalizeSingleTypeToSpecialId(t!, linkObj, ctx);
+      return { endA: a, endB: special, type: t };
+    }
+
+    const [a, b] = linkObj?.endpoints ?? [];
     if (!a || !b) return null;
-    return { endA: a, endB: b };
+    return { endA: a, endB: b, type: t };
   }
 
   private isPresetLayout(parsed: ClabTopology, annotations?: any): boolean {
@@ -1151,24 +1157,46 @@ export class TopoViewerAdaptorClab {
     targetContainerName: string;
     sourceIface: string;
     targetIface: string;
-    sourceIfaceData: any;
-    targetIfaceData: any;
+    sourceIfaceData?: any;
+    targetIfaceData?: any;
   }): any {
-    const { sourceContainerName, targetContainerName, sourceIface, targetIface, sourceIfaceData, targetIfaceData } = params;
+    const {
+      sourceContainerName,
+      targetContainerName,
+      sourceIface,
+      targetIface,
+      sourceIfaceData = {},
+      targetIfaceData = {},
+    } = params;
+
+    const {
+      mac: srcMac = '',
+      state: srcState = '',
+      mtu: srcMtu = '',
+      type: srcType = '',
+    } = sourceIfaceData;
+
+    const {
+      mac: tgtMac = '',
+      state: tgtState = '',
+      mtu: tgtMtu = '',
+      type: tgtType = '',
+    } = targetIfaceData;
+
     return {
       clabServerUsername: 'asad',
       clabSourceLongName: sourceContainerName,
       clabTargetLongName: targetContainerName,
       clabSourcePort: sourceIface,
       clabTargetPort: targetIface,
-      clabSourceMacAddress: sourceIfaceData?.mac ?? '',
-      clabTargetMacAddress: targetIfaceData?.mac ?? '',
-      clabSourceInterfaceState: sourceIfaceData?.state ?? '',
-      clabTargetInterfaceState: targetIfaceData?.state ?? '',
-      clabSourceMtu: sourceIfaceData?.mtu ?? '',
-      clabTargetMtu: targetIfaceData?.mtu ?? '',
-      clabSourceType: sourceIfaceData?.type ?? '',
-      clabTargetType: targetIfaceData?.type ?? '',
+      clabSourceMacAddress: srcMac,
+      clabTargetMacAddress: tgtMac,
+      clabSourceInterfaceState: srcState,
+      clabTargetInterfaceState: tgtState,
+      clabSourceMtu: srcMtu,
+      clabTargetMtu: tgtMtu,
+      clabSourceType: srcType,
+      clabTargetType: tgtType,
     };
   }
 
@@ -1180,17 +1208,19 @@ export class TopoViewerAdaptorClab {
   }
 
   private extractExtLinkProps(linkObj: any): any {
-    return {
-      extType: linkObj?.type ?? '',
-      extMtu: linkObj?.mtu ?? '',
-      extVars: linkObj?.vars ?? undefined,
-      extLabels: linkObj?.labels ?? undefined,
-      extHostInterface: linkObj?.['host-interface'] ?? '',
-      extMode: linkObj?.mode ?? '',
-      extRemote: linkObj?.remote ?? '',
-      extVni: linkObj?.vni ?? '',
-      extUdpPort: linkObj?.['udp-port'] ?? '',
-    };
+    const {
+      type: extType = '',
+      mtu: extMtu = '',
+      vars: extVars,
+      labels: extLabels,
+      ['host-interface']: extHostInterface = '',
+      mode: extMode = '',
+      remote: extRemote = '',
+      vni: extVni = '',
+      ['udp-port']: extUdpPort = '',
+    } = linkObj ?? {};
+
+    return { extType, extMtu, extVars, extLabels, extHostInterface, extMode, extRemote, extVni, extUdpPort };
   }
 
   private extractExtMacs(linkObj: any, endA: any, endB: any): any {

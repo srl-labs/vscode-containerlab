@@ -157,115 +157,108 @@ export async function manageNodeImpairments(
     netemMap,
     context.extensionUri
   );
+  function buildNetemArgs(fields: Record<string, string>): string[] {
+    const netemArgs: string[] = [];
+    if (fields.delay) {
+      netemArgs.push(`--delay ${fields.delay}`);
+    }
+    if (fields.jitter) {
+      netemArgs.push(`--jitter ${fields.jitter}`);
+    }
+    if (fields.loss) {
+      const numericLoss = stripPercentage(fields.loss);
+      if (numericLoss !== "" && numericLoss !== "0") {
+        netemArgs.push(`--loss ${numericLoss}`);
+      }
+    }
+    if (fields.rate) {
+      netemArgs.push(`--rate ${fields.rate}`);
+    }
+    if (fields.corruption) {
+      const numericCorruption = stripPercentage(fields.corruption);
+      if (numericCorruption !== "" && numericCorruption !== "0") {
+        netemArgs.push(`--corruption ${numericCorruption}`);
+      }
+    }
+    return netemArgs;
+  }
+
+  async function handleApply(netemData: Record<string, any>) {
+    const ops: Promise<any>[] = [];
+    for (const [intfName, fields] of Object.entries(netemData)) {
+      const netemArgs = buildNetemArgs(fields as Record<string, string>);
+      if (netemArgs.length > 0) {
+        const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")} > /dev/null 2>&1`;
+        ops.push(
+          runWithSudo(
+            cmd,
+            `Applying netem on ${node.name}/${intfName}`,
+            outputChannel,
+            "containerlab"
+          )
+        );
+      }
+    }
+    if (ops.length === 0) {
+      vscode.window.showInformationMessage("No parameters specified; nothing applied.");
+      const updated = await refreshNetemSettings();
+      panel.webview.postMessage({ command: "updateFields", data: updated });
+      return;
+    }
+    try {
+      await Promise.all(ops);
+      vscode.window.showInformationMessage(`Applied netem settings for ${node.label}`);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to apply settings: ${err.message}`);
+    }
+    const updated = await refreshNetemSettings();
+    panel.webview.postMessage({ command: "updateFields", data: updated });
+  }
+
+  async function handleClearAll() {
+    const ops: Promise<any>[] = [];
+    for (const ifNode of allIfs) {
+      const norm = normalizeInterfaceName(ifNode.name);
+      if (norm === "lo") {
+        continue;
+      }
+      const cmd = `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001 > /dev/null 2>&1`;
+      ops.push(
+        runWithSudo(
+          cmd,
+          `Clearing netem on ${node.name}/${norm}`,
+          outputChannel,
+          "containerlab"
+        )
+      );
+    }
+    try {
+      await Promise.all(ops);
+      vscode.window.showInformationMessage(`Cleared netem settings for ${node.name}`);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to clear settings: ${err.message}`);
+    }
+    const updated = await refreshNetemSettings();
+    panel.webview.postMessage({ command: "updateFields", data: updated });
+  }
+
+  async function handleRefresh() {
+    const updated = await refreshNetemSettings();
+    panel.webview.postMessage({ command: "updateFields", data: updated });
+    vscode.window.showInformationMessage("Netem settings refreshed.");
+  }
 
   panel.webview.onDidReceiveMessage(async (msg) => {
     switch (msg.command) {
-      case "apply": {
-        const netemData = msg.data as Record<string, any>;
-        const ops: Promise<any>[] = [];
-
-        for (const [intfName, fields] of Object.entries(netemData)) {
-          const netemArgs: string[] = [];
-
-          // Delay
-          if (fields.delay) {
-            netemArgs.push(`--delay ${fields.delay}`);
-          }
-          // Jitter
-          if (fields.jitter) {
-            netemArgs.push(`--jitter ${fields.jitter}`);
-          }
-          // Loss (strip out % if present)
-          if (fields.loss) {
-            const numericLoss = stripPercentage(fields.loss);
-            // Only add if user actually set a positive or non-zero
-            if (numericLoss !== "" && numericLoss !== "0") {
-              netemArgs.push(`--loss ${numericLoss}`);
-            }
-          }
-          // Rate
-          if (fields.rate) {
-            netemArgs.push(`--rate ${fields.rate}`);
-          }
-          // Corruption (strip out % if present)
-          if (fields.corruption) {
-            const numericCorruption = stripPercentage(fields.corruption);
-            if (numericCorruption !== "" && numericCorruption !== "0") {
-              netemArgs.push(`--corruption ${numericCorruption}`);
-            }
-          }
-
-          if (netemArgs.length > 0) {
-            // Minimal change: Append redirection to suppress command output.
-            const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")} > /dev/null 2>&1`;
-            ops.push(
-              runWithSudo(
-                cmd,
-                `Applying netem on ${node.name}/${intfName}`,
-                outputChannel,
-                "containerlab"
-              )
-            );
-          }
-        }
-
-        if (ops.length === 0) {
-          vscode.window.showInformationMessage("No parameters specified; nothing applied.");
-          // Even if nothing was applied, refresh the webview.
-          const updated = await refreshNetemSettings();
-          panel.webview.postMessage({ command: "updateFields", data: updated });
-          return;
-        }
-
-        try {
-          await Promise.all(ops);
-          vscode.window.showInformationMessage(`Applied netem settings for ${node.label}`);
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to apply settings: ${err.message}`);
-        }
-        // Refresh the settings in the webview after apply
-        const updated = await refreshNetemSettings();
-        panel.webview.postMessage({ command: "updateFields", data: updated });
+      case "apply":
+        await handleApply(msg.data as Record<string, any>);
         break;
-      }
-
-      case "clearAll": {
-        const ops: Promise<any>[] = [];
-        for (const ifNode of allIfs) {
-          const norm = normalizeInterfaceName(ifNode.name);
-          // Skip "lo"
-          if (norm === "lo") {
-            continue;
-          }
-          // Minimal change: Append output redirection.
-          const cmd = `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001 > /dev/null 2>&1`;
-          ops.push(
-            runWithSudo(
-              cmd,
-              `Clearing netem on ${node.name}/${norm}`,
-              outputChannel,
-              "containerlab"
-            )
-          );
-        }
-        try {
-          await Promise.all(ops);
-          vscode.window.showInformationMessage(`Cleared netem settings for ${node.name}`);
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to clear settings: ${err.message}`);
-        }
-        // Refresh the settings in the webview after clear all
-        const updated = await refreshNetemSettings();
-        panel.webview.postMessage({ command: "updateFields", data: updated });
+      case "clearAll":
+        await handleClearAll();
         break;
-      }
-
-      case "refresh": {
-        const updated = await refreshNetemSettings();
-        panel.webview.postMessage({ command: "updateFields", data: updated });
-        vscode.window.showInformationMessage("Netem settings refreshed.");
+      case "refresh":
+        await handleRefresh();
         break;
-      }
     }
   });
 }

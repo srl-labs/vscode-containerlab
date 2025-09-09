@@ -5,27 +5,49 @@ import { ClabTopology, ClabNode } from '../types/topoViewerType';
  * configuration for a node. The precedence order is:
  * node -> group -> kind -> defaults.
  */
-export function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
-  const defaults = parsed.topology?.defaults ?? {};
-  const groups = parsed.topology?.groups ?? {};
-  const kinds = parsed.topology?.kinds ?? {};
 
-  const groupCfg = node.group && groups[node.group] ? groups[node.group] : {};
-  const kindName = node.kind ?? (groupCfg.kind ?? defaults.kind);
-  const kindCfg = kindName && kinds[kindName] ? kinds[kindName] : {};
+function getSection(
+  source: Record<string, ClabNode> | undefined,
+  key: string | undefined
+): ClabNode {
+  return key && source?.[key] ? source[key] : {};
+}
 
-  const merged: ClabNode = {
+function resolveKindName(
+  node: ClabNode,
+  groupCfg: ClabNode,
+  defaults: ClabNode
+): string | undefined {
+  return node.kind ?? groupCfg.kind ?? defaults.kind;
+}
+
+function mergeNodeLabels(
+  ...labels: (Record<string, any> | undefined)[]
+): Record<string, any> {
+  return Object.assign({}, ...labels.filter(Boolean));
+}
+
+export function resolveNodeConfig(
+  parsed: ClabTopology,
+  node: ClabNode
+): ClabNode {
+  const { defaults = {}, groups, kinds } = parsed.topology ?? {};
+
+  const groupCfg = getSection(groups, node.group);
+  const kindName = resolveKindName(node, groupCfg, defaults);
+  const kindCfg = getSection(kinds, kindName);
+
+  return {
     ...defaults,
     ...kindCfg,
     ...groupCfg,
     ...node,
+    kind: kindName,
+    labels: mergeNodeLabels(
+      defaults.labels,
+      kindCfg.labels,
+      groupCfg.labels,
+      node.labels,
+    ),
   };
-  merged.kind = kindName;
-  merged.labels = {
-    ...(defaults.labels ?? {}),
-    ...(kindCfg.labels ?? {}),
-    ...(groupCfg.labels ?? {}),
-    ...(node.labels ?? {}),
-  };
-  return merged;
 }

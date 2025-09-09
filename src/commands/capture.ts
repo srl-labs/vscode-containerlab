@@ -163,6 +163,77 @@ export async function captureInterfaceWithPacketflix(
   vscode.env.openExternal(vscode.Uri.parse(packetflixUri[0]));
 }
 
+function isDarkModeEnabled(themeSetting?: string): boolean {
+  switch (themeSetting) {
+    case "Dark":
+      return true
+    case "Light":
+      return false
+    default: {
+      const vscThemeKind = vscode.window.activeColorTheme.kind
+      return (
+        vscThemeKind === vscode.ColorThemeKind.Dark ||
+        vscThemeKind === vscode.ColorThemeKind.HighContrast
+      )
+    }
+  }
+}
+
+function getEdgesharkNetwork(): string {
+  try {
+    const edgesharkInfo = execSync(
+      `docker ps --filter "name=edgeshark" --format "{{.Names}}" | head -1`,
+      { encoding: 'utf-8' }
+    ).trim()
+    if (edgesharkInfo) {
+      const networks = execSync(
+        `docker inspect ${edgesharkInfo} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`,
+        { encoding: 'utf-8' }
+      ).trim()
+      const networkId = networks.split(' ')[0]
+      if (networkId) {
+        const networkName = execSync(
+          `docker network inspect ${networkId} --format '{{.Name}}'`,
+          { encoding: 'utf-8' }
+        ).trim()
+        return `--network ${networkName}`
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return ""
+}
+
+function getVolumeMount(nodeName: string): string {
+  try {
+    const labDir = execSync(
+      `docker inspect ${nodeName} --format '{{index .Config.Labels "clab-node-lab-dir"}}' 2>/dev/null`,
+      { encoding: 'utf-8' }
+    ).trim()
+    if (labDir && labDir !== '<no value>') {
+      const pathParts = labDir.split('/')
+      pathParts.pop()
+      pathParts.pop()
+      const labRootDir = pathParts.join('/')
+      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`)
+      return `-v "${labRootDir}:/pcaps"`
+    }
+  } catch {
+    // ignore
+  }
+  return ""
+}
+
+function adjustPacketflixHost(uri: string, edgesharkNetwork: string): string {
+  if (uri.includes('localhost') || uri.includes('127.0.0.1')) {
+    return edgesharkNetwork
+      ? uri.replace(/localhost|127\.0\.0\.1/g, 'edgeshark-edgeshark-1')
+      : uri.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal')
+  }
+  return uri
+}
+
 // Capture using Edgeshark + Wireshark via VNC in a webview
 export async function captureEdgesharkVNC(
   node: ClabInterfaceTreeNode,
@@ -181,78 +252,10 @@ export async function captureEdgesharkVNC(
   const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme")
   const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground")
 
-  let darkModeEnabled = false;
-
-  switch (wiresharkThemeSetting) {
-    case "Dark":
-      darkModeEnabled = true
-      break;
-    case "Light":
-      darkModeEnabled = false
-      break;
-    default: {
-      // Follow VS Code system theme
-      const vscThemeKind = vscode.window.activeColorTheme.kind
-      switch (vscThemeKind) {
-        case vscode.ColorThemeKind.Dark:
-          darkModeEnabled = true
-          break;
-        case vscode.ColorThemeKind.HighContrast:
-          darkModeEnabled = true
-          break;
-        default:
-          darkModeEnabled = false
-          break;
-      }
-    }
-  }
-
-  const darkModeSetting = darkModeEnabled ? "-e DARK_MODE=1" : "";
-
-  // Check if Edgeshark is running and get its network
-  let edgesharkNetwork = "";
-  try {
-    const edgesharkInfo = execSync(`docker ps --filter "name=edgeshark" --format "{{.Names}}" | head -1`, { encoding: 'utf-8' }).trim();
-    if (edgesharkInfo) {
-      const networks = execSync(`docker inspect ${edgesharkInfo} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, { encoding: 'utf-8' }).trim();
-      const networkId = networks.split(' ')[0];
-      if (networkId) {
-        const networkName = execSync(`docker network inspect ${networkId} --format '{{.Name}}'`, { encoding: 'utf-8' }).trim();
-        edgesharkNetwork = `--network ${networkName}`;
-      }
-    }
-  } catch {
-    // If we can't find the network, continue without it
-  }
-
-  // Get the lab directory from the container labels to mount for saving pcap files
-  let volumeMount = "";
-  try {
-    const labDir = execSync(`docker inspect ${node.parentName} --format '{{index .Config.Labels "clab-node-lab-dir"}}' 2>/dev/null`, { encoding: 'utf-8' }).trim();
-    if (labDir && labDir !== '<no value>') {
-      // Go up two levels to get the actual lab directory (from node-specific dir to lab root)
-      const pathParts = labDir.split('/');
-      pathParts.pop(); // Remove node name (e.g., "srl1")
-      pathParts.pop(); // Remove lab name (e.g., "clab-vlan")
-      const labRootDir = pathParts.join('/');
-      volumeMount = `-v "${labRootDir}:/pcaps"`;
-      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`);
-    }
-  } catch {
-    // If we can't get the lab directory, continue without mounting
-  }
-
-  // Replace localhost with host.docker.internal or the actual host IP
-  let modifiedPacketflixUri = packetflixUri[0];
-  if (modifiedPacketflixUri.includes('localhost') || modifiedPacketflixUri.includes('127.0.0.1')) {
-    // When using the edgeshark network, we need to use the edgeshark container name
-    if (edgesharkNetwork) {
-      modifiedPacketflixUri = modifiedPacketflixUri.replace(/localhost|127\.0\.0\.1/g, 'edgeshark-edgeshark-1');
-    } else {
-      // Otherwise use host.docker.internal which works on Docker Desktop
-      modifiedPacketflixUri = modifiedPacketflixUri.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal');
-    }
-  }
+  const darkModeSetting = isDarkModeEnabled(wiresharkThemeSetting) ? "-e DARK_MODE=1" : ""
+  const edgesharkNetwork = getEdgesharkNetwork()
+  const volumeMount = getVolumeMount(node.parentName)
+  const modifiedPacketflixUri = adjustPacketflixHost(packetflixUri[0], edgesharkNetwork)
 
   const port = await utils.getFreePort()
   const ctrName = utils.sanitize(`clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()}`)

@@ -943,126 +943,7 @@ class TopologyWebviewController {
       // Context menu for edges/links in viewer mode
         this.cy.cxtmenu({
           selector: 'edge',
-            commands: (ele: cytoscape.Singular) => {
-              const sourceId = ele.data("source");
-              const targetId = ele.data("target");
-
-              // Check if nodes are special network endpoints
-              const sourceNode = self.cy.getElementById(sourceId);
-              const targetNode = self.cy.getElementById(targetId);
-
-            // Check for all types of special network endpoints (bridge, host, mgmt-net, macvlan)
-              const sourceIsSpecialNetwork =
-                isSpecialNodeOrBridge(sourceId, self.cy) ||
-                (sourceNode.length > 0 &&
-                  (sourceNode.data('extraData')?.kind === 'bridge' ||
-                   sourceNode.data('extraData')?.kind === 'ovs-bridge'));
-
-              const targetIsSpecialNetwork =
-                isSpecialNodeOrBridge(targetId, self.cy) ||
-                (targetNode.length > 0 &&
-                  (targetNode.data('extraData')?.kind === 'bridge' ||
-                   targetNode.data('extraData')?.kind === 'ovs-bridge'));
-
-              const extra = ele.data('extraData') || {};
-
-              // Get the display names - use the node ID from the graph (which is the short name without prefix)
-              // Fall back to removing prefix from long name if needed
-              const getDisplayName = (nodeId: string, longName: string | undefined): string => {
-                // First try to use the node ID directly (this is typically the short name)
-                const node = self.cy.getElementById(nodeId);
-                if (node.length > 0 && node.data('name')) {
-                  return node.data('name');
-                }
-
-                // If we have a long name with prefix, remove the prefix
-                if (longName && topoViewerState.prefixName && longName.startsWith(topoViewerState.prefixName + '-')) {
-                  return longName.substring(topoViewerState.prefixName.length + 1);
-                }
-
-                // Otherwise return what we have
-                return longName || nodeId;
-              };
-
-              const sourceName = getDisplayName(sourceId, extra.clabSourceLongName);
-              const targetName = getDisplayName(targetId, extra.clabTargetLongName);
-
-            const sourceEndpoint = extra.clabSourcePort || ele.data("sourceEndpoint") || "Port A";
-            const targetEndpoint = extra.clabTargetPort || ele.data("targetEndpoint") || "Port B";
-
-            const commands = [];
-
-            // Add capture option for source if it's not a special network
-            if (!sourceIsSpecialNetwork) {
-              commands.push({
-                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                          <img src="${(window as any).imagesUrl}/wireshark_bold.svg" style="width:1.4em; height:1.4em; filter: brightness(0) invert(1);" />
-                          <div style="height:0.3em;"></div>
-                          <span style="font-size:0.9em;">${sourceName} - ${sourceEndpoint}</span>
-                        </div>`,
-                select: (ele: cytoscape.Singular) => {
-                  if (!ele.isEdge()) {
-                    return;
-                  }
-                  // Use setTimeout to ensure this runs after any other event handlers
-                  setTimeout(async () => {
-                    const extra = ele.data('extraData') || {};
-                    const nodeName = extra.clabSourceLongName || ele.data('source');
-                    const interfaceName = extra.clabSourcePort || ele.data('sourceEndpoint') || "";
-                    if (nodeName && interfaceName) {
-                      // Use the default capture method from settings
-                      await self.messageSender.sendMessageToVscodeEndpointPost('clab-interface-capture', { nodeName, interfaceName });
-                    }
-                  }, 50);
-                }
-              });
-            }
-
-            // Add capture option for target if it's not a special network
-            if (!targetIsSpecialNetwork) {
-              commands.push({
-                content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                          <img src="${(window as any).imagesUrl}/wireshark_bold.svg" style="width:1.4em; height:1.4em; filter: brightness(0) invert(1);" />
-                          <div style="height:0.3em;"></div>
-                          <span style="font-size:0.9em;">${targetName} - ${targetEndpoint}</span>
-                        </div>`,
-                select: (ele: cytoscape.Singular) => {
-                  if (!ele.isEdge()) {
-                    return;
-                  }
-                  // Use setTimeout to ensure this runs after any other event handlers
-                  setTimeout(async () => {
-                    const extra = ele.data('extraData') || {};
-                    const nodeName = extra.clabTargetLongName || ele.data('target');
-                    const interfaceName = extra.clabTargetPort || ele.data('targetEndpoint') || "";
-                    if (nodeName && interfaceName) {
-                      // Use the default capture method from settings
-                      await self.messageSender.sendMessageToVscodeEndpointPost('clab-interface-capture', { nodeName, interfaceName });
-                    }
-                  }, 50);
-                }
-              });
-            }
-
-            // Always add the details option
-            commands.push(
-            {
-              content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-                          <i class="fas fa-info-circle" style="font-size:1.4em;"></i>
-                          <div style="height:0.3em;"></div>
-                          <span style="font-size:0.9em;">Link Properties</span>
-                        </div>`,
-              select: (ele: cytoscape.Singular) => {
-                if (!ele.isEdge()) {
-                  return;
-                }
-                // Use setTimeout to ensure this runs after any other event handlers
-                setTimeout(() => self.showLinkPropertiesPanel(ele), 50);
-              }
-            });
-
-            return commands;
-        },
+            commands: (ele: cytoscape.Singular) => this.buildEdgeMenuCommands(ele),
         menuRadius: 110, // standard radius for fewer items
         fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
         activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
@@ -1176,38 +1057,7 @@ class TopologyWebviewController {
         },
         onNodeClick: async (event) => {
             this.viewportPanels!.nodeClicked = true; // prevent panels from closing
-          const node = event.target;
-          log.debug(`Node clicked: ${node.id()}`);
-          const originalEvent = event.originalEvent as MouseEvent;
-          const extraData = node.data("extraData");
-          const isNodeInEditMode = node.data("editor") === "true";
-          switch (true) {
-            case originalEvent.ctrlKey && node.isChild():
-              log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
-              node.move({ parent: null });
-              break;
-            case originalEvent.shiftKey && node.data('topoViewerRole') !== 'freeText':
-              log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
-              this.isEdgeHandlerActive = true;
-              this.eh.start(node);
-              break;
-            case originalEvent.altKey && (isNodeInEditMode || node.data('topoViewerRole') === 'group' || node.data('topoViewerRole') === 'freeText'):
-              if (node.data('topoViewerRole') === 'group') {
-                log.debug(`Alt+click on group: deleting group ${node.id()}`);
-                this.groupManager?.directGroupRemoval(node.id());
-              } else if (node.data('topoViewerRole') === 'freeText') {
-                log.debug(`Alt+click on freeText: deleting text ${node.id()}`);
-                this.freeTextManager?.removeFreeTextAnnotation(node.id());
-              } else {
-                log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
-                node.remove();
-              }
-              break;
-            case (node.data("topoViewerRole") == "textbox"):
-              break;
-            default:
-              break;
-          }
+          await this.handleEditModeNodeClick(event);
         },
         onEdgeClick: (event) => {
             this.viewportPanels!.edgeClicked = true; // prevent panels from closing
@@ -1233,34 +1083,7 @@ class TopologyWebviewController {
         this.isEdgeHandlerActive = false;
       });
 
-      document.addEventListener('keydown', (event) => {
-        // Check if we should handle the keyboard event
-        if (!this.shouldHandleKeyboardEvent(event)) {
-          return;
-        }
-
-        if (event.key === 'Delete' || event.key === 'Backspace') {
-          event.preventDefault();
-          this.handleDeleteKeyPress();
-        } else if (event.ctrlKey && event.key === 'a') {
-          event.preventDefault();
-          this.handleSelectAll();
-        } else if (event.key.toLowerCase() === 'g') {
-          this.groupManager.viewportButtonsAddGroup();
-        } else if (event.ctrlKey && event.key.toLowerCase() === 'c') {
-          event.preventDefault();
-          this.copyPasteManager.handleCopy();
-        } else if (event.ctrlKey && event.key.toLowerCase() === 'v' && this.isViewportDrawerClabEditorChecked) {
-          event.preventDefault();
-          this.copyPasteManager.handlePaste();
-        } else if (event.ctrlKey && event.key.toLowerCase() === 'x' && this.isViewportDrawerClabEditorChecked) {
-          event.preventDefault();
-          this.handleCutKeyPress();
-        } else if (event.ctrlKey && event.key.toLowerCase() === 'd' && this.isViewportDrawerClabEditorChecked) {
-          event.preventDefault();
-          this.copyPasteManager.handleDuplicate();
-        }
-      });
+        document.addEventListener('keydown', (event) => this.handleKeyDown(event));
 
       // Edge creation completion via edgehandles.
         this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) =>
@@ -1325,6 +1148,206 @@ class TopologyWebviewController {
     // Drag-and-drop reparenting logic is now handled by groupManager.initializeGroupManagement()
 
 
+  }
+
+  private buildEdgeMenuCommands(ele: cytoscape.Singular): any[] {
+    const sourceId = ele.data('source');
+    const targetId = ele.data('target');
+    const extra = ele.data('extraData') || {};
+
+    const sourceName = this.getEdgeDisplayName(sourceId, extra.clabSourceLongName);
+    const targetName = this.getEdgeDisplayName(targetId, extra.clabTargetLongName);
+    const sourceEndpoint = extra.clabSourcePort || ele.data('sourceEndpoint') || 'Port A';
+    const targetEndpoint = extra.clabTargetPort || ele.data('targetEndpoint') || 'Port B';
+
+    const commands: any[] = [];
+
+    if (!this.isSpecialNetworkNode(sourceId)) {
+      commands.push(this.createCaptureCommand('source', sourceName, sourceEndpoint));
+    }
+
+    if (!this.isSpecialNetworkNode(targetId)) {
+      commands.push(this.createCaptureCommand('target', targetName, targetEndpoint));
+    }
+
+    commands.push(this.createLinkPropertiesCommand());
+
+    return commands;
+  }
+
+  private isSpecialNetworkNode(nodeId: string): boolean {
+    const node = this.cy.getElementById(nodeId);
+    return (
+      isSpecialNodeOrBridge(nodeId, this.cy) ||
+      (node.length > 0 &&
+        (node.data('extraData')?.kind === 'bridge' || node.data('extraData')?.kind === 'ovs-bridge'))
+    );
+  }
+
+  private getEdgeDisplayName(nodeId: string, longName?: string): string {
+    const node = this.cy.getElementById(nodeId);
+    if (node.length > 0 && node.data('name')) {
+      return node.data('name');
+    }
+    if (longName && topoViewerState.prefixName && longName.startsWith(topoViewerState.prefixName + '-')) {
+      return longName.substring(topoViewerState.prefixName.length + 1);
+    }
+    return longName || nodeId;
+  }
+
+  private createCaptureCommand(side: 'source' | 'target', name: string, endpoint: string): any {
+    return {
+      content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                <img src="${(window as any).imagesUrl}/wireshark_bold.svg" style="width:1.4em; height:1.4em; filter: brightness(0) invert(1);" />
+                <div style="height:0.3em;"></div>
+                <span style="font-size:0.9em;">${name} - ${endpoint}</span>
+              </div>`,
+      select: (ele: cytoscape.Singular) => {
+        if (!ele.isEdge()) {
+          return;
+        }
+        setTimeout(async () => {
+          const extra = ele.data('extraData') || {};
+          const nodeName = side === 'source'
+            ? extra.clabSourceLongName || ele.data('source')
+            : extra.clabTargetLongName || ele.data('target');
+          const interfaceName = side === 'source'
+            ? extra.clabSourcePort || ele.data('sourceEndpoint') || ''
+            : extra.clabTargetPort || ele.data('targetEndpoint') || '';
+          if (nodeName && interfaceName) {
+            await this.messageSender.sendMessageToVscodeEndpointPost('clab-interface-capture', { nodeName, interfaceName });
+          }
+        }, 50);
+      }
+    };
+  }
+
+  private createLinkPropertiesCommand(): any {
+    return {
+      content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                <i class="fas fa-info-circle" style="font-size:1.4em;"></i>
+                <div style="height:0.3em;"></div>
+                <span style="font-size:0.9em;">Link Properties</span>
+              </div>`,
+      select: (ele: cytoscape.Singular) => {
+        if (!ele.isEdge()) {
+          return;
+        }
+        setTimeout(() => this.showLinkPropertiesPanel(ele), 50);
+      }
+    };
+  }
+
+  private async handleEditModeNodeClick(event: cytoscape.EventObject): Promise<void> {
+    const node = event.target;
+    log.debug(`Node clicked: ${node.id()}`);
+    const originalEvent = event.originalEvent as MouseEvent;
+    const extraData = node.data('extraData');
+    const isNodeInEditMode = node.data('editor') === 'true';
+
+    if (originalEvent.ctrlKey && node.isChild()) {
+      log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
+      node.move({ parent: null });
+      return;
+    }
+
+    if (originalEvent.shiftKey && node.data('topoViewerRole') !== 'freeText') {
+      log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
+      this.isEdgeHandlerActive = true;
+      this.eh.start(node);
+      return;
+    }
+
+    if (
+      originalEvent.altKey &&
+      (isNodeInEditMode || node.data('topoViewerRole') === 'group' || node.data('topoViewerRole') === 'freeText')
+    ) {
+      this.handleAltNodeClick(node, extraData);
+      return;
+    }
+
+    if (node.data('topoViewerRole') === 'textbox') {
+      return;
+    }
+  }
+
+  private handleAltNodeClick(node: cytoscape.Singular, extraData: any): void {
+    if (node.data('topoViewerRole') === 'group') {
+      log.debug(`Alt+click on group: deleting group ${node.id()}`);
+      this.groupManager?.directGroupRemoval(node.id());
+    } else if (node.data('topoViewerRole') === 'freeText') {
+      log.debug(`Alt+click on freeText: deleting text ${node.id()}`);
+      this.freeTextManager?.removeFreeTextAnnotation(node.id());
+    } else {
+      log.debug(`Alt+click on node: deleting node ${extraData?.longname || node.id()}`);
+      node.remove();
+    }
+  }
+
+  private handleKeyDown(event: KeyboardEvent): void {
+    if (!this.shouldHandleKeyboardEvent(event)) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    const ctrl = event.ctrlKey;
+    const editMode = this.isViewportDrawerClabEditorChecked;
+
+    const baseHandlers: Record<string, () => void> = {
+      delete: () => {
+        event.preventDefault();
+        this.handleDeleteKeyPress();
+      },
+      backspace: () => {
+        event.preventDefault();
+        this.handleDeleteKeyPress();
+      },
+      g: () => {
+        this.groupManager.viewportButtonsAddGroup();
+      }
+    };
+
+    const ctrlHandlers: Record<string, () => void> = {
+      a: () => {
+        event.preventDefault();
+        this.handleSelectAll();
+      },
+      c: () => {
+        event.preventDefault();
+        this.copyPasteManager.handleCopy();
+      },
+      v: () => {
+        if (editMode) {
+          event.preventDefault();
+          this.copyPasteManager.handlePaste();
+        }
+      },
+      x: () => {
+        if (editMode) {
+          event.preventDefault();
+          this.handleCutKeyPress();
+        }
+      },
+      d: () => {
+        if (editMode) {
+          event.preventDefault();
+          this.copyPasteManager.handleDuplicate();
+        }
+      }
+    };
+
+    if (ctrl) {
+      const handler = ctrlHandlers[key];
+      if (handler) {
+        handler();
+        return;
+      }
+    }
+
+    const handler = baseHandlers[key];
+    if (handler) {
+      handler();
+    }
   }
 
   private showNodePropertiesPanel(node: cytoscape.Singular): void {

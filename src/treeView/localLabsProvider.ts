@@ -98,93 +98,115 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     private async discoverLabs(dir?: string): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
         console.log("[LocalTreeDataProvider]:\tDiscovering...");
 
-        // Use cached file list if available
-        let uris: vscode.Uri[];
-
-        if (this.fileCache) {
-            uris = this.fileCache;
-            console.log("[LocalTreeDataProvider]:\tUsing cached file list");
-        } else {
-            // Perform file discovery and cache the results
-            console.log("[LocalTreeDataProvider]:\tPerforming file discovery");
-            uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
-                .filter(u => !u.scheme || u.scheme === 'file');
-            this.fileCache = uris;
-        }
-
+        const uris = await this.getLabUris();
         const labs: Record<string, c.ClabLabTreeNode> = {};
-
-        // get a list of running labPaths so we can filter out any running labs.
         const labPaths = this.getLabPaths();
-
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
 
-        const addLab = (filePath: string, isFavorite: boolean) => {
-            const normPath = utils.normalizeLabPath(filePath);
-            if (labPaths.has(normPath)) {
-                return;
-            }
-
-            const contextVal = isFavorite
-                ? "containerlabLabUndeployedFavorite"
-                : "containerlabLabUndeployed";
-
-            let labNode = this.labNodeCache.get(normPath);
-
-            if (labNode) {
-                // Update existing node properties without recreating it
-                labNode.contextValue = contextVal;
-                (labNode as any).favorite = isFavorite;
-                labNode.description = utils.getRelLabFolderPath(normPath);
-                // Keep the same object reference for better performance
-            } else {
-                // Create new node only if it doesn't exist in cache
-                labNode = new c.ClabLabTreeNode(
-                    path.basename(filePath),
-                    vscode.TreeItemCollapsibleState.None,
-                    {
-                        relative: filePath,
-                        absolute: normPath
-                    },
-                    undefined,
-                    undefined,
-                    undefined,
-                    contextVal,
-                    isFavorite
-                );
-
-                labNode.description = utils.getRelLabFolderPath(normPath);
-                // Add to cache only for new nodes
-                this.labNodeCache.set(normPath, labNode);
-            }
-
-            labs[normPath] = labNode;
-        };
-
-        uris.forEach(uri => addLab(uri.fsPath, favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false));
-
-        favoriteLabs?.forEach(p => {
-            const norm = utils.normalizeLabPath(p);
-            if (uris.find(u => utils.normalizeLabPath(u.fsPath) === norm)) {
-                return;
-            }
-            // Always include favorite labs even if the file no longer exists locally
-            addLab(p, true);
-        });
-
-        if (this.treeFilter) {
-            const filter = FilterUtils.createFilter(this.treeFilter);
-            for (const [p, node] of Object.entries(labs)) {
-                const rel = path.relative(workspaceRoot, p);
-                const lbl = String(node.label);
-                if (!filter(lbl) && !filter(rel)) {
-                    delete labs[p];
-                }
-            }
-        }
+        uris.forEach(uri => this.addLab(labs, labPaths, uri.fsPath, favoriteLabs?.has(utils.normalizeLabPath(uri.fsPath)) ?? false));
+        this.includeFavoriteLabs(uris, labs, labPaths);
+        this.applyTreeFilter(labs, workspaceRoot);
 
         const dirPath = dir ?? workspaceRoot;
+        const { labNodes, folderNodes } = this.collectNodes(labs, dirPath, workspaceRoot);
 
+        this.cleanupCache(labs);
+        labNodes.sort(this.compareLabs);
+
+        const result: (c.ClabFolderTreeNode | c.ClabLabTreeNode)[] = [...labNodes, ...folderNodes];
+        const isEmpty = result.length === 0 && dirPath === workspaceRoot;
+        if (dirPath === workspaceRoot) {
+            vscode.commands.executeCommand('setContext', 'localLabsEmpty', isEmpty);
+        }
+        return isEmpty ? undefined : result;
+    }
+
+    private async getLabUris(): Promise<vscode.Uri[]> {
+        if (this.fileCache) {
+            console.log("[LocalTreeDataProvider]:\tUsing cached file list");
+            return this.fileCache;
+        }
+        console.log("[LocalTreeDataProvider]:\tPerforming file discovery");
+        const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
+            .filter(u => !u.scheme || u.scheme === 'file');
+        this.fileCache = uris;
+        return uris;
+    }
+
+    private addLab(
+        labs: Record<string, c.ClabLabTreeNode>,
+        labPaths: Set<string>,
+        filePath: string,
+        isFavorite: boolean
+    ): void {
+        const normPath = utils.normalizeLabPath(filePath);
+        if (labPaths.has(normPath)) {
+            return;
+        }
+
+        const contextVal = isFavorite
+            ? "containerlabLabUndeployedFavorite"
+            : "containerlabLabUndeployed";
+
+        let labNode = this.labNodeCache.get(normPath);
+
+        if (labNode) {
+            labNode.contextValue = contextVal;
+            (labNode as any).favorite = isFavorite;
+            labNode.description = utils.getRelLabFolderPath(normPath);
+        } else {
+            labNode = new c.ClabLabTreeNode(
+                path.basename(filePath),
+                vscode.TreeItemCollapsibleState.None,
+                {
+                    relative: filePath,
+                    absolute: normPath
+                },
+                undefined,
+                undefined,
+                undefined,
+                contextVal,
+                isFavorite
+            );
+            labNode.description = utils.getRelLabFolderPath(normPath);
+            this.labNodeCache.set(normPath, labNode);
+        }
+
+        labs[normPath] = labNode;
+    }
+
+    private includeFavoriteLabs(
+        uris: vscode.Uri[],
+        labs: Record<string, c.ClabLabTreeNode>,
+        labPaths: Set<string>
+    ): void {
+        favoriteLabs?.forEach(p => {
+            const norm = utils.normalizeLabPath(p);
+            if (!uris.find(u => utils.normalizeLabPath(u.fsPath) === norm)) {
+                this.addLab(labs, labPaths, p, true);
+            }
+        });
+    }
+
+    private applyTreeFilter(labs: Record<string, c.ClabLabTreeNode>, workspaceRoot: string): void {
+        if (!this.treeFilter) {
+            return;
+        }
+        const filter = FilterUtils.createFilter(this.treeFilter);
+        for (const [p, node] of Object.entries(labs)) {
+            const rel = path.relative(workspaceRoot, p);
+            const lbl = String(node.label);
+            if (!filter(lbl) && !filter(rel)) {
+                delete labs[p];
+            }
+        }
+    }
+
+    private collectNodes(
+        labs: Record<string, c.ClabLabTreeNode>,
+        dirPath: string,
+        workspaceRoot: string
+    ): { labNodes: c.ClabLabTreeNode[]; folderNodes: c.ClabFolderTreeNode[] } {
         const folderSet = new Set<string>();
         const labNodes: c.ClabLabTreeNode[] = [];
 
@@ -193,7 +215,6 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
             if (labDir === dirPath) {
                 labNodes.push(lab);
             } else if (dirPath === workspaceRoot && !labDir.startsWith(workspaceRoot)) {
-                // Labs outside the workspace root appear directly under the root
                 labNodes.push(lab);
             } else if (labDir.startsWith(dirPath + path.sep) || (dirPath === workspaceRoot && labDir !== workspaceRoot && labDir.startsWith(dirPath))) {
                 const relative = path.relative(dirPath, labDir).split(path.sep)[0];
@@ -202,35 +223,23 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         });
 
         const folderNodes = Array.from(folderSet).sort().map(p => new c.ClabFolderTreeNode(path.basename(p), p));
+        return { labNodes, folderNodes };
+    }
 
-        // Update cache to remove stale entries
+    private cleanupCache(labs: Record<string, c.ClabLabTreeNode>): void {
         for (const key of Array.from(this.labNodeCache.keys())) {
             if (!labs[key]) {
                 this.labNodeCache.delete(key);
             }
         }
+    }
 
-        labNodes.sort((a, b) => {
-            if (a.favorite && !b.favorite) { return -1; }
-            if (!a.favorite && b.favorite) { return 1; }
-            const aPath = a.labPath?.absolute ?? '';
-            const bPath = b.labPath?.absolute ?? '';
-            return aPath.localeCompare(bPath);
-        });
-
-        let result: (c.ClabFolderTreeNode | c.ClabLabTreeNode)[] = [...labNodes, ...folderNodes];
-
-        const isEmpty = result.length === 0 && dirPath === workspaceRoot;
-        if (dirPath === workspaceRoot) {
-            vscode.commands.executeCommand(
-                'setContext',
-                'localLabsEmpty',
-                isEmpty
-            );
-        }
-
-        return isEmpty ? undefined : result;
-
+    private compareLabs(a: c.ClabLabTreeNode, b: c.ClabLabTreeNode): number {
+        if (a.favorite && !b.favorite) { return -1; }
+        if (!a.favorite && b.favorite) { return 1; }
+        const aPath = a.labPath?.absolute ?? '';
+        const bPath = b.labPath?.absolute ?? '';
+        return aPath.localeCompare(bPath);
     }
 
     // Parse clab inspect data and return a set of absolute labPaths.

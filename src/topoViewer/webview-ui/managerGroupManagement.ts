@@ -385,34 +385,43 @@ export class ManagerGroupManagement {
 
   private populateGroupEditorFields(node: cytoscape.NodeSingular, ui: GroupEditorElements): void {
     const currentParentId = node.id();
+    const [group, level] = currentParentId.split(':');
     this.setText(ui.groupIdEl, currentParentId);
-    this.setValue(ui.groupEl, currentParentId.split(':')[0]);
-    this.setValue(ui.levelEl, currentParentId.split(':')[1]);
+    this.setValue(ui.groupEl, group);
+    this.setValue(ui.levelEl, level);
 
     this.setLabelButton(node, ui.labelButtonEl);
 
-    const style = this.groupStyleManager.getStyle(currentParentId);
-    this.setValue(ui.bgColorEl, style?.backgroundColor || '#d9d9d9');
+    const styleDefaults = {
+      backgroundColor: '#d9d9d9',
+      backgroundOpacity: 20,
+      borderColor: '#dddddd',
+      borderWidth: 0.5,
+      borderStyle: 'solid' as const,
+      borderRadius: 0,
+      color: '#ebecf0'
+    };
+    const style = { ...styleDefaults, ...this.groupStyleManager.getStyle(currentParentId) };
+
+    this.setValue(ui.bgColorEl, style.backgroundColor);
 
     if (ui.bgOpacityEl) {
-      const opacity = style?.backgroundOpacity ?? 20;
-      ui.bgOpacityEl.value = opacity.toString();
+      ui.bgOpacityEl.value = style.backgroundOpacity.toString();
       const opacityValueEl = document.getElementById('panel-node-editor-parent-bg-opacity-value');
-      this.setText(opacityValueEl, opacity + '%');
+      this.setText(opacityValueEl, `${style.backgroundOpacity}%`);
     }
 
-    this.setValue(ui.borderColorEl, style?.borderColor || '#dddddd');
-    this.setValue(ui.borderWidthEl, style?.borderWidth?.toString() || '0.5');
-    if (ui.borderStyleEl) ui.borderStyleEl.value = style?.borderStyle || 'solid';
+    this.setValue(ui.borderColorEl, style.borderColor);
+    this.setValue(ui.borderWidthEl, style.borderWidth.toString());
+    if (ui.borderStyleEl) ui.borderStyleEl.value = style.borderStyle;
 
     if (ui.borderRadiusEl) {
-      const radius = style?.borderRadius ?? 0;
-      ui.borderRadiusEl.value = radius.toString();
+      ui.borderRadiusEl.value = style.borderRadius.toString();
       const radiusValueEl = document.getElementById('panel-node-editor-parent-border-radius-value');
-      this.setText(radiusValueEl, radius + 'px');
+      this.setText(radiusValueEl, `${style.borderRadius}px`);
     }
 
-    this.setValue(ui.textColorEl, style?.color || '#ebecf0');
+    this.setValue(ui.textColorEl, style.color);
   }
 
   private attachGroupEditorListeners(panel: HTMLElement, autoUpdateGroup: () => void): void {

@@ -461,40 +461,31 @@ export class ManagerNodeEditor {
    */
   private extractTypeOptionsFromSchema(schema: any): void {
     this.nodeTypeOptions.clear();
+    const allOf = schema?.definitions?.['node-config']?.allOf;
+    if (!allOf) return;
 
-    if (!schema?.definitions?.['node-config']?.allOf) {
-      return;
+    for (const condition of allOf) {
+      const pattern = condition.if?.properties?.kind?.pattern;
+      const typeProp = condition.then?.properties?.type;
+      if (!pattern || !typeProp) continue;
+
+      const kindMatch = pattern.match(/\(([^)]+)\)/);
+      if (!kindMatch) continue;
+      const kind = kindMatch[1];
+      const typeOptions = this.extractTypeOptions(typeProp);
+      if (typeOptions.length === 0) continue;
+
+      this.nodeTypeOptions.set(kind, typeOptions);
+      log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
     }
+  }
 
-    // Iterate through all conditional type definitions in the schema
-    for (const condition of schema.definitions['node-config'].allOf) {
-      if (condition.if?.properties?.kind?.pattern && condition.then?.properties?.type) {
-        // Extract the kind from the pattern (e.g., "(nokia_srlinux)" -> "nokia_srlinux")
-        const pattern = condition.if.properties.kind.pattern;
-        const kindMatch = pattern.match(/\(([^)]+)\)/);
-        if (kindMatch) {
-          const kind = kindMatch[1];
-          const typeProp = condition.then.properties.type;
-
-          // Extract type options from enum or anyOf
-          let typeOptions: string[] = [];
-          if (typeProp.enum) {
-            typeOptions = typeProp.enum;
-          } else if (Array.isArray(typeProp.anyOf)) {
-            for (const sub of typeProp.anyOf) {
-              if (sub.enum) {
-                typeOptions = [...typeOptions, ...sub.enum];
-              }
-            }
-          }
-
-          if (typeOptions.length > 0) {
-            this.nodeTypeOptions.set(kind, typeOptions);
-            log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
-          }
-        }
-      }
+  private extractTypeOptions(typeProp: any): string[] {
+    if (typeProp.enum) return typeProp.enum;
+    if (Array.isArray(typeProp.anyOf)) {
+      return typeProp.anyOf.flatMap((sub: any) => (sub.enum ? sub.enum : []));
     }
+    return [];
   }
 
   /**
@@ -1614,75 +1605,96 @@ export class ManagerNodeEditor {
    * Validate all form inputs
    */
   private validateForm(): boolean {
-    let isValid = true;
     this.clearAllValidationErrors();
+    const validators = [
+      () => this.validateMgmtIpv4(),
+      () => this.validateMgmtIpv6(),
+      () => this.validateMemoryField(),
+      () => this.validateCpuField(),
+      () => this.validateCpuSetField(),
+      () => this.validatePortsField(),
+      () => this.validateBindsField(),
+      () => this.validateNodeNameField()
+    ];
+    return validators.every(validate => validate());
+  }
 
-    // Validate IPv4
-    const mgmtIpv4 = this.getInputValue('node-mgmt-ipv4');
-    if (mgmtIpv4 && !this.validateIPv4(mgmtIpv4)) {
+  private validateMgmtIpv4(): boolean {
+    const value = this.getInputValue('node-mgmt-ipv4');
+    if (value && !this.validateIPv4(value)) {
       this.showValidationError('node-mgmt-ipv4', 'Invalid IPv4 address format');
-      isValid = false;
+      return false;
     }
+    return true;
+  }
 
-    // Validate IPv6
-    const mgmtIpv6 = this.getInputValue('node-mgmt-ipv6');
-    if (mgmtIpv6 && !this.validateIPv6(mgmtIpv6)) {
+  private validateMgmtIpv6(): boolean {
+    const value = this.getInputValue('node-mgmt-ipv6');
+    if (value && !this.validateIPv6(value)) {
       this.showValidationError('node-mgmt-ipv6', 'Invalid IPv6 address format');
-      isValid = false;
+      return false;
     }
+    return true;
+  }
 
-    // Validate memory
-    const memory = this.getInputValue('node-memory');
-    if (memory && !this.validateMemory(memory)) {
+  private validateMemoryField(): boolean {
+    const value = this.getInputValue('node-memory');
+    if (value && !this.validateMemory(value)) {
       this.showValidationError('node-memory', 'Invalid memory format (e.g., 1Gb, 512Mb)');
-      isValid = false;
+      return false;
     }
+    return true;
+  }
 
-    // Validate CPU
-    const cpu = this.getInputValue('node-cpu');
-    if (cpu) {
-      const cpuValue = parseFloat(cpu);
-      if (isNaN(cpuValue) || cpuValue <= 0) {
-        this.showValidationError('node-cpu', 'CPU must be a positive number');
-        isValid = false;
-      }
+  private validateCpuField(): boolean {
+    const value = this.getInputValue('node-cpu');
+    if (!value) return true;
+    const cpuValue = parseFloat(value);
+    if (isNaN(cpuValue) || cpuValue <= 0) {
+      this.showValidationError('node-cpu', 'CPU must be a positive number');
+      return false;
     }
+    return true;
+  }
 
-    // Validate CPU set
-    const cpuSet = this.getInputValue('node-cpu-set');
-    if (cpuSet && !this.validateCpuSet(cpuSet)) {
+  private validateCpuSetField(): boolean {
+    const value = this.getInputValue('node-cpu-set');
+    if (value && !this.validateCpuSet(value)) {
       this.showValidationError('node-cpu-set', 'Invalid CPU set format (e.g., 0-3, 0,3)');
-      isValid = false;
+      return false;
     }
+    return true;
+  }
 
-    // Validate ports
+  private validatePortsField(): boolean {
     const ports = this.collectDynamicEntries('ports');
     for (const port of ports) {
       if (!this.validatePortMapping(port)) {
         this.showValidationError('node-ports-container', 'Invalid port format (e.g., 8080:80 or 8080:80/tcp)');
-        isValid = false;
-        break;
+        return false;
       }
     }
+    return true;
+  }
 
-    // Validate bind mounts
+  private validateBindsField(): boolean {
     const binds = this.collectDynamicEntries('binds');
     for (const bind of binds) {
       if (!this.validateBindMount(bind)) {
         this.showValidationError('node-binds-container', 'Invalid bind mount format (e.g., /host/path:/container/path)');
-        isValid = false;
-        break;
+        return false;
       }
     }
+    return true;
+  }
 
-    // Validate node name is not empty
+  private validateNodeNameField(): boolean {
     const nodeName = this.getInputValue('node-name');
     if (!nodeName || nodeName.trim() === '') {
       this.showValidationError('node-name', 'Node name is required');
-      isValid = false;
+      return false;
     }
-
-    return isValid;
+    return true;
   }
 
   private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
@@ -1905,39 +1917,35 @@ export class ManagerNodeEditor {
   private collectHealthcheckProps(nodeProps: NodeProperties): void {
     const hcTest = this.getInputValue('node-healthcheck-test');
     if (hcTest) {
-      nodeProps.healthcheck = nodeProps.healthcheck || {};
-      nodeProps.healthcheck.test = hcTest.split(' ');
+      this.ensureHealthcheck(nodeProps);
+      nodeProps.healthcheck!.test = hcTest.split(' ');
     }
 
-    const hcStartPeriod = this.getInputValue('node-healthcheck-start-period');
-    if (hcStartPeriod) {
-      nodeProps.healthcheck = nodeProps.healthcheck || {};
-      nodeProps.healthcheck['start-period'] = parseInt(hcStartPeriod);
-    }
-
-    const hcInterval = this.getInputValue('node-healthcheck-interval');
-    if (hcInterval) {
-      nodeProps.healthcheck = nodeProps.healthcheck || {};
-      nodeProps.healthcheck.interval = parseInt(hcInterval);
-    }
-
-    const hcTimeout = this.getInputValue('node-healthcheck-timeout');
-    if (hcTimeout) {
-      nodeProps.healthcheck = nodeProps.healthcheck || {};
-      nodeProps.healthcheck.timeout = parseInt(hcTimeout);
-    }
-
-    const hcRetries = this.getInputValue('node-healthcheck-retries');
-    if (hcRetries) {
-      nodeProps.healthcheck = nodeProps.healthcheck || {};
-      nodeProps.healthcheck.retries = parseInt(hcRetries);
-    }
+    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-start-period', 'start-period');
+    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-interval', 'interval');
+    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-timeout', 'timeout');
+    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-retries', 'retries');
 
     const ippVal = (document.getElementById('node-image-pull-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
     if (ippVal && ippVal !== 'Default') nodeProps['image-pull-policy'] = ippVal as any;
 
     const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
     if (runtimeVal && runtimeVal !== 'Default') nodeProps.runtime = runtimeVal as any;
+  }
+
+  private ensureHealthcheck(nodeProps: NodeProperties): void {
+    if (!nodeProps.healthcheck) nodeProps.healthcheck = {};
+  }
+
+  private setHealthcheckNumber(
+    nodeProps: NodeProperties,
+    inputId: string,
+    prop: keyof NonNullable<NodeProperties['healthcheck']>
+  ): void {
+    const value = this.getInputValue(inputId);
+    if (!value) return;
+    this.ensureHealthcheck(nodeProps);
+    (nodeProps.healthcheck as any)[prop] = parseInt(value);
   }
 
   private async handleCustomNode(nodeProps: NodeProperties): Promise<boolean> {

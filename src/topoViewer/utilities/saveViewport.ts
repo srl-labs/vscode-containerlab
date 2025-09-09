@@ -52,6 +52,22 @@ function splitEndpointLike(endpoint: string | { node: string; interface?: string
   return { node: '', iface: '' };
 }
 
+function linkTypeFromSpecial(special: CanonicalEndpoint): CanonicalLinkKey['type'] {
+  const { node } = special;
+  if (node === 'host') return 'host';
+  if (node === 'mgmt-net') return 'mgmt-net';
+  if (node.startsWith('macvlan:')) return 'macvlan';
+  if (node.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
+  if (node.startsWith('vxlan:')) return 'vxlan';
+  if (node.startsWith('dummy')) return 'dummy';
+  return 'unknown';
+}
+
+function selectNonSpecial(a: CanonicalEndpoint, b?: CanonicalEndpoint): CanonicalEndpoint {
+  if (!b) return a;
+  return endpointIsSpecial(a) && !endpointIsSpecial(b) ? b : a;
+}
+
 function canonicalKeyToString(key: CanonicalLinkKey): string {
   if (key.type === 'veth' && key.b) {
     const aStr = `${key.a.node}:${key.a.iface}`;
@@ -85,47 +101,36 @@ function parseExtendedVeth(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
 function parseExtendedSingle(linkItem: YAML.YAMLMap, t: CanonicalLinkKey['type']): CanonicalLinkKey | null {
   const ep = linkItem.get('endpoint', true);
   if (ep) {
-    const a = splitEndpointLike((ep as any)?.toJSON?.() ?? ep);
-    return { type: t, a };
+    return { type: t, a: splitEndpointLike((ep as any)?.toJSON?.() ?? ep) };
   }
+
   const eps = linkItem.get('endpoints', true);
-  if (YAML.isSeq(eps) && eps.items.length >= 1) {
-    const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
-    const bMaybe = eps.items.length > 1
-      ? splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any))
-      : undefined;
-    if (bMaybe) {
-      return { type: t, a: endpointIsSpecial(a) && !endpointIsSpecial(bMaybe) ? bMaybe : a };
-    }
-    return { type: t, a };
-  }
-  return null;
+  if (!YAML.isSeq(eps) || eps.items.length === 0) return null;
+
+  const a = splitEndpointLike((eps.items[0] as any)?.toJSON?.() ?? (eps.items[0] as any));
+  const b = eps.items.length > 1
+    ? splitEndpointLike((eps.items[1] as any)?.toJSON?.() ?? (eps.items[1] as any))
+    : undefined;
+
+  return { type: t, a: selectNonSpecial(a, b) };
 }
 
 function parseShortLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
   const eps = linkItem.get('endpoints', true);
-  if (YAML.isSeq(eps) && eps.items.length >= 2) {
-    const epA = String((eps.items[0] as any).value ?? eps.items[0]);
-    const epB = String((eps.items[1] as any).value ?? eps.items[1]);
-    const a = splitEndpointLike(epA);
-    const b = splitEndpointLike(epB);
-    const aIsSpecial = endpointIsSpecial(epA) || endpointIsSpecial(a);
-    const bIsSpecial = endpointIsSpecial(epB) || endpointIsSpecial(b);
-    if (aIsSpecial !== bIsSpecial) {
-      const special = aIsSpecial ? a : b;
-      const nonSpecial = aIsSpecial ? b : a;
-      let type: CanonicalLinkKey['type'] = 'unknown';
-      if (special.node === 'host') type = 'host';
-      else if (special.node === 'mgmt-net') type = 'mgmt-net';
-      else if (special.node.startsWith('macvlan:')) type = 'macvlan';
-      else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
-      else if (special.node.startsWith('vxlan:')) type = 'vxlan';
-      else if (special.node.startsWith('dummy')) type = 'dummy';
-      return { type, a: nonSpecial };
-    }
-    return { type: 'veth', a, b };
+  if (!YAML.isSeq(eps) || eps.items.length < 2) return null;
+
+  const epA = String((eps.items[0] as any).value ?? eps.items[0]);
+  const epB = String((eps.items[1] as any).value ?? eps.items[1]);
+  const a = splitEndpointLike(epA);
+  const b = splitEndpointLike(epB);
+  const aIsSpecial = endpointIsSpecial(a);
+  const bIsSpecial = endpointIsSpecial(b);
+  if (aIsSpecial !== bIsSpecial) {
+    const special = aIsSpecial ? a : b;
+    const nonSpecial = aIsSpecial ? b : a;
+    return { type: linkTypeFromSpecial(special), a: nonSpecial };
   }
-  return null;
+  return { type: 'veth', a, b };
 }
 
 function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
@@ -148,20 +153,13 @@ function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
   const targetEp = data.targetEndpoint ? `${target}:${data.targetEndpoint}` : target;
   const a = splitEndpointLike(sourceEp);
   const b = splitEndpointLike(targetEp);
-  const aIsSpecial = isSpecialEndpoint(source) || a.node.startsWith('macvlan:') || a.node.startsWith('vxlan:') || a.node.startsWith('vxlan-stitch:');
-  const bIsSpecial = isSpecialEndpoint(target) || b.node.startsWith('macvlan:') || b.node.startsWith('vxlan:') || b.node.startsWith('vxlan-stitch:');
+  const aIsSpecial = endpointIsSpecial(a);
+  const bIsSpecial = endpointIsSpecial(b);
 
   if (aIsSpecial !== bIsSpecial) {
     const special = aIsSpecial ? a : b;
     const nonSpecial = aIsSpecial ? b : a;
-    let type: CanonicalLinkKey['type'] = 'unknown';
-    if (special.node === 'host') type = 'host';
-    else if (special.node === 'mgmt-net') type = 'mgmt-net';
-    else if (special.node.startsWith('macvlan:')) type = 'macvlan';
-    else if (special.node.startsWith('vxlan-stitch:')) type = 'vxlan-stitch';
-    else if (special.node.startsWith('vxlan:')) type = 'vxlan';
-    else if (special.node.startsWith('dummy')) type = 'dummy';
-    return { type, a: nonSpecial };
+    return { type: linkTypeFromSpecial(special), a: nonSpecial };
   }
 
   return { type: 'veth', a, b };
@@ -209,44 +207,47 @@ function isRegularNode(el: any): boolean {
   );
 }
 
+function setNodePosition(nodeAnn: NodeAnnotation, node: any, prev?: NodeAnnotation): void {
+  const isGeoActive = !!node?.data?.geoLayoutActive;
+  if (isGeoActive) {
+    if (prev?.position) nodeAnn.position = { x: prev.position.x, y: prev.position.y };
+    return;
+  }
+  nodeAnn.position = {
+    x: Math.round(node.position?.x || 0),
+    y: Math.round(node.position?.y || 0),
+  };
+}
+
+function addGeo(nodeAnn: NodeAnnotation, node: any): void {
+  if (node.data.lat && node.data.lng) {
+    const lat = parseFloat(node.data.lat);
+    const lng = parseFloat(node.data.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      nodeAnn.geoCoordinates = { lat, lng };
+    }
+  }
+}
+
+function addGroupInfo(nodeAnn: NodeAnnotation, parent: any): void {
+  if (!parent) return;
+  const parts = parent.split(':');
+  if (parts.length === 2) {
+    nodeAnn.group = parts[0];
+    nodeAnn.level = parts[1];
+  }
+}
+
 function createNodeAnnotation(
   node: any,
   prevNodeById: Map<string, NodeAnnotation>,
 ): NodeAnnotation {
   const nodeIdForAnn = node.data.name || node.data.id;
-  const isGeoActive = !!node?.data?.geoLayoutActive;
-  const nodeAnnotation: NodeAnnotation = {
-    id: nodeIdForAnn,
-    icon: node.data.topoViewerRole,
-  };
-  if (isGeoActive) {
-    const prev = prevNodeById.get(nodeIdForAnn);
-    if (prev?.position) {
-      nodeAnnotation.position = { x: prev.position.x, y: prev.position.y };
-    }
-  } else {
-    nodeAnnotation.position = {
-      x: Math.round(node.position?.x || 0),
-      y: Math.round(node.position?.y || 0),
-    };
-  }
-  if (node.data.lat && node.data.lng) {
-    const lat = parseFloat(node.data.lat);
-    const lng = parseFloat(node.data.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      nodeAnnotation.geoCoordinates = { lat, lng };
-    }
-  }
-  if (node.data.groupLabelPos) {
-    nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
-  }
-  if (node.parent) {
-    const parts = node.parent.split(':');
-    if (parts.length === 2) {
-      nodeAnnotation.group = parts[0];
-      nodeAnnotation.level = parts[1];
-    }
-  }
+  const nodeAnnotation: NodeAnnotation = { id: nodeIdForAnn, icon: node.data.topoViewerRole };
+  setNodePosition(nodeAnnotation, node, prevNodeById.get(nodeIdForAnn));
+  addGeo(nodeAnnotation, node);
+  if (node.data.groupLabelPos) nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
+  addGroupInfo(nodeAnnotation, node.parent);
   return nodeAnnotation;
 }
 
@@ -750,6 +751,43 @@ function updateExistingLink(
   }
 }
 
+function validateRequiredFields(
+  chosenType: CanonicalLinkKey['type'],
+  data: any,
+  extra: any,
+  payloadKeyStr: string,
+): boolean {
+  const requiresHost = ['mgmt-net', 'host', 'macvlan'].includes(chosenType);
+  const requiresVx = ['vxlan', 'vxlan-stitch'].includes(chosenType);
+  const needsHostInterface = requiresHost && !data.source.includes(':') && !data.target.includes(':');
+  if (
+    (needsHostInterface && !extra.extHostInterface) ||
+    (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))
+  ) {
+    log.warn(`Skipping creation for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
+    return false;
+  }
+  return true;
+}
+
+function applyExtendedLink(
+  link: YAML.YAMLMap,
+  data: any,
+  extra: any,
+  chosenType: CanonicalLinkKey['type'],
+  payloadKey: CanonicalLinkKey,
+  doc: YAML.Document.Parsed,
+): void {
+  if (chosenType === 'veth') {
+    applyExtendedVeth(link, data, extra, doc);
+  } else {
+    applyExtendedSingleEndpoint(link, data, extra, chosenType, payloadKey, doc);
+  }
+  setOrDelete(doc, link, 'mtu', extra.extMtu !== '' ? extra.extMtu : undefined);
+  setOrDelete(doc, link, 'vars', extra.extVars);
+  setOrDelete(doc, link, 'labels', extra.extLabels);
+}
+
 function createNewLink(
   linksNode: YAML.YAMLSeq,
   data: any,
@@ -764,22 +802,8 @@ function createNewLink(
   const wantsExtended = hasExtendedProperties(extra) || chosenType === 'dummy';
   if (wantsExtended) {
     newLink.set('type', doc.createNode(chosenType));
-    const requiresHost = chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan';
-    const requiresVx = chosenType === 'vxlan' || chosenType === 'vxlan-stitch';
-    const needsHostInterface = requiresHost && !data.source.includes(':') && !data.target.includes(':');
-    if ((needsHostInterface && !extra.extHostInterface) ||
-        (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
-      log.warn(`Skipping creation for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
-      return;
-    }
-    if (chosenType === 'veth') {
-      applyExtendedVeth(newLink, data, extra, doc);
-    } else {
-      applyExtendedSingleEndpoint(newLink, data, extra, chosenType, payloadKey, doc);
-    }
-    setOrDelete(doc, newLink, 'mtu', extra.extMtu !== '' ? extra.extMtu : undefined);
-    setOrDelete(doc, newLink, 'vars', extra.extVars);
-    setOrDelete(doc, newLink, 'labels', extra.extLabels);
+    if (!validateRequiredFields(chosenType, data, extra, payloadKeyStr)) return;
+    applyExtendedLink(newLink, data, extra, chosenType, payloadKey, doc);
   } else {
     applyBriefFormat(newLink, data, doc);
   }
