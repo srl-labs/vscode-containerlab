@@ -70,7 +70,6 @@ export class TopoViewerEditor {
       _panel: vscode.WebviewPanel
     ) => Promise<{ result: unknown; error: string | null }>
   > = {
-    'topo-editor-reload-viewport': this.handleReloadViewportEndpoint.bind(this),
     'topo-viewport-save': this.handleViewportSaveEndpoint.bind(this),
     'lab-settings-get': this.handleLabSettingsGetEndpoint.bind(this),
     'lab-settings-update': this.handleLabSettingsUpdateEndpoint.bind(this),
@@ -1021,36 +1020,6 @@ topology:
       return { result: null, error };
     }
     return handler(payload, payloadObj, panel);
-  }
-
-  private async handleReloadViewportEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      if (this.isSwitchingMode) {
-        const result = 'Reload skipped - mode switch in progress';
-        log.debug(result);
-        return { result, error: null };
-      }
-      this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-      const success = await this.updatePanelHtml(this.currentPanel);
-      if (success) {
-        const result = 'Endpoint "topo-editor-reload-viewport" executed successfully.';
-        log.info(result);
-        return { result, error: null };
-      }
-      const result = 'Panel update failed - check logs for details';
-      log.debug('Panel update returned false during reload');
-      return { result, error: null };
-    } catch (innerError) {
-      const result = 'Error executing endpoint "topo-editor-reload-viewport".';
-      log.error(
-        `Error executing endpoint "topo-editor-reload-viewport": ${JSON.stringify(innerError, null, 2)}`
-      );
-      return { result, error: null };
-    }
   }
 
   private async handleViewportSaveEndpoint(

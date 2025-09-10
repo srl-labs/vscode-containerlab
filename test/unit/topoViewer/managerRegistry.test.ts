@@ -8,7 +8,6 @@ import {
   zoomToFitManager,
   labelEndpointManager,
   getGroupManager,
-  getReloadTopoManager,
 } from '../../../src/topoViewer/core/managerRegistry';
 import {
   layoutAlgoManager as layoutAlgoManager2,
@@ -19,7 +18,6 @@ import { ManagerLayoutAlgo } from '../../../src/topoViewer/webview-ui/managerLay
 import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
 import { ManagerZoomToFit } from '../../../src/topoViewer/webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../../../src/topoViewer/webview-ui/managerLabelEndpoint';
-import { ManagerReloadTopo } from '../../../src/topoViewer/webview-ui/managerReloadTopo';
 import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
 
 // Ensure window is defined for modules that expect it
@@ -47,11 +45,5 @@ describe('manager registry', () => {
 
     expect(labelEndpointManager).to.equal(labelEndpointManager2);
     expect(labelEndpointManager).to.be.instanceOf(ManagerLabelEndpoint);
-
-    const sender = { sendMessageToVscodeEndpointPost: async () => {} } as any;
-    const r1 = getReloadTopoManager(sender);
-    const r2 = getReloadTopoManager(sender);
-    expect(r1).to.equal(r2);
-    expect(r1).to.be.instanceOf(ManagerReloadTopo);
   });
 });

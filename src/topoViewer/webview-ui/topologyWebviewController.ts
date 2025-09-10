@@ -27,9 +27,8 @@ import type { ManagerGroupManagement } from './managerGroupManagement';
 import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
 import type { ManagerZoomToFit } from './managerZoomToFit';
 import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
-import type { ManagerReloadTopo } from './managerReloadTopo';
 import { ManagerShortcutDisplay } from './managerShortcutDisplay';
-import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton, getReloadTopoManager } from '../core/managerRegistry';
+import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton } from '../core/managerRegistry';
 import { log } from '../logging/logger';
 import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { registerCyEventHandlers } from './cyEventHandlers';
@@ -77,7 +76,6 @@ class TopologyWebviewController {
   public layoutAlgoManager!: ManagerLayoutAlgo;
   public zoomToFitManager!: ManagerZoomToFit;
   public labelEndpointManager!: ManagerLabelEndpoint;
-  public reloadTopoManager!: ManagerReloadTopo;
   public freeTextManager?: ManagerFreeText;
   public copyPasteManager!: CopyPasteManager;
   public captureViewportManager!: { viewportButtonsCaptureViewportAsSvg: () => void };
@@ -368,7 +366,6 @@ class TopologyWebviewController {
     this.layoutAlgoManager = layoutAlgoManagerSingleton;
     this.zoomToFitManager = zoomToFitManagerSingleton;
     this.labelEndpointManager = labelEndpointManagerSingleton;
-    this.reloadTopoManager = getReloadTopoManager(this.messageSender);
     this.isViewportDrawerClabEditorChecked = mode === 'edit';
     if (mode === 'edit') {
       this.setupAutoSave();
@@ -417,7 +414,6 @@ class TopologyWebviewController {
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
     window.viewportButtonsLabelEndpoint = () => this.labelEndpointManager.viewportButtonsLabelEndpoint(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
-    window.viewportButtonsReloadTopo = () => this.reloadTopoManager.viewportButtonsReloadTopo(this.cy);
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
   }
 

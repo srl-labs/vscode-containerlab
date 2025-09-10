@@ -156,19 +156,6 @@ export function viewportButtonsLabelEndpoint(): void {
 }
 
 /**
- * Reload the topology by requesting fresh data from the VS Code extension backend.
- */
-export async function viewportButtonsReloadTopo(): Promise<void> {
-  try {
-    const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('reload-viewport', 'Empty Payload');
-    log.info('Reload viewport request sent');
-  } catch (error) {
-    log.error(`Error reloading topology: ${error}`);
-  }
-}
-
-/**
  * Search for nodes in the topology
  */
 function getTopologySearchInput(): HTMLInputElement | null {

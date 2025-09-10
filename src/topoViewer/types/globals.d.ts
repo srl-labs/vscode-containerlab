@@ -25,7 +25,6 @@ declare global {
     viewportButtonsZoomToFit?: () => void;
     viewportButtonsLabelEndpoint?: () => void;
     viewportButtonsCaptureViewportAsSvg?: () => void;
-    viewportButtonsReloadTopo?: () => void;
     viewportButtonsUndo?: () => void;
     showPanelAbout?: () => void;
     // group manager bindings
