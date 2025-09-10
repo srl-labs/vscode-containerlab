@@ -99,8 +99,9 @@ export default {
           if (parent.type === 'AssignmentExpression' && parent.right === node) {
             try {
               return sourceCode.getText(parent.left);
-            } catch {
+            } catch (e) {
               // fallthrough
+              void e;
             }
           }
 
@@ -120,7 +121,10 @@ export default {
         }
 
         function calculate(node) {
+          // Count baseline path + aggregate nested callbacks / functions.
           let complexity = 1;
+          const root = node;
+
           function traverse(n) {
             switch (n.type) {
               case 'IfStatement':
@@ -144,6 +148,33 @@ export default {
                 break;
               case 'CatchClause':
                 complexity++;
+                break;
+              case 'AssignmentExpression': {
+                // Heuristic: count event handler assignments like `elem.onclick = fn` as adding complexity
+                // to better align with CodeMetrics behavior in UI-heavy code.
+                try {
+                  const left = n.left;
+                  const right = n.right;
+                  if (left && left.type === 'MemberExpression') {
+                    const keyName = getMemberExpressionName(left);
+                    const isHandler = keyName && /^on[a-z]+$/i.test(keyName);
+                    const isFunc = right && (right.type === 'FunctionExpression' || right.type === 'ArrowFunctionExpression');
+                    if (isHandler && isFunc) {
+                      complexity++;
+                    }
+                  }
+                } catch (e) {
+                  void e;
+                }
+                break;
+              }
+              // Treat nested functions (callbacks / handlers) as adding to aggregate
+              // complexity to better match CodeMetrics scoring.
+              case 'FunctionExpression':
+              case 'ArrowFunctionExpression':
+                if (n !== root) {
+                  complexity++;
+                }
                 break;
               default:
                 break;
@@ -184,12 +215,7 @@ export default {
         return {
           FunctionDeclaration: check,
           FunctionExpression: check,
-          ArrowFunctionExpression: check,
-          MethodDefinition(node) {
-            if (node.value) {
-              check(node.value);
-            }
-          }
+          ArrowFunctionExpression: check
         };
       }
     }
