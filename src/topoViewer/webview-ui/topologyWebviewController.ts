@@ -134,24 +134,29 @@ class TopologyWebviewController {
     await loadCytoStyle(this.cy);
     perfMeasure('cytoscape_style', 'cytoscape_style_start');
     perfMark('fetch_data_start');
-    await fetchAndLoadData(this.cy, this.messageSender).then(() => {
-      perfMeasure('fetch_data', 'fetch_data_start');
-      perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
+    await fetchAndLoadData(this.cy, this.messageSender);
+    perfMeasure('fetch_data', 'fetch_data_start');
+    perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
 
-      this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
-        metrics: PerformanceMonitor.getMeasures()
-      });
+    this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
+      metrics: PerformanceMonitor.getMeasures()
+    });
 
-      if (this.cy.elements().length > 0 && typeof requestAnimationFrame !== 'undefined') {
-        // eslint-disable-next-line no-undef
-        requestAnimationFrame(() => {
-          this.cy.animate({
-            fit: { eles: this.cy.elements(), padding: 50 },
-            duration: 150,
-            easing: 'ease-out'
-          });
+    if (this.cy.elements().length > 0 && typeof requestAnimationFrame !== 'undefined') {
+      // eslint-disable-next-line no-undef
+      requestAnimationFrame(() => {
+        this.cy.animate({
+          fit: { eles: this.cy.elements(), padding: 50 },
+          duration: 150,
+          easing: 'ease-out'
         });
-      }
+      });
+    }
+
+    // Enable grid snapping after elements are in place to avoid initial shifts
+    (this.cy as any).gridGuide({
+      snapToGridOnRelease: true,
+      snapToAlignmentLocationOnRelease: true
     });
 
     void (async () => {
@@ -170,7 +175,10 @@ class TopologyWebviewController {
 
     this.registerEvents(mode);
     if (mode === 'edit') {
+      this.setupAutoSave();
       setTimeout(() => this.initializeEdgehandles(), 50);
+    } else {
+      this.setupAutoSaveViewMode();
     }
     setTimeout(() => this.initializeContextMenu(mode), 100);
 
@@ -331,7 +339,15 @@ class TopologyWebviewController {
       log.debug(`Cytoscape event: ${event.type}`);
     });
     const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    (this.cy as any).gridGuide(buildGridGuideOptions(theme as any, { gridSpacing: 14, gridColor }));
+    // Disable snapping until the topology data is fully loaded
+    (this.cy as any).gridGuide(
+      buildGridGuideOptions(theme as any, {
+        gridSpacing: 14,
+        gridColor,
+        snapToGridOnRelease: false,
+        snapToAlignmentLocationOnRelease: false
+      })
+    );
   }
 
   private initializeManagers(mode: 'edit' | 'view'): void {
@@ -367,11 +383,6 @@ class TopologyWebviewController {
     this.zoomToFitManager = zoomToFitManagerSingleton;
     this.labelEndpointManager = labelEndpointManagerSingleton;
     this.isViewportDrawerClabEditorChecked = mode === 'edit';
-    if (mode === 'edit') {
-      this.setupAutoSave();
-    } else {
-      this.setupAutoSaveViewMode();
-    }
     this.captureViewportManager = {
       viewportButtonsCaptureViewportAsSvg: () => {
         viewportButtonsCaptureViewportAsSvg();
