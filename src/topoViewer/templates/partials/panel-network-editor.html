@@ -92,16 +92,7 @@
           </div>
         </div>
 
-        <!-- Vars -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Vars</label>
-          <div id="panel-network-vars-container" class="space-y-2">
-            <!-- Dynamic var entries will be added here -->
-          </div>
-          <button class="btn btn-small mt-2" onclick="addNetworkVarEntry()">
-            <i class="fas fa-plus mr-1"></i> Add Var
-          </button>
-        </div>
+          <div id="panel-network-vars-placeholder"></div>
 
         <!-- Labels -->
         <div class="form-group">
@@ -116,12 +107,34 @@
       </div>
     </div>
   </div>
-  <!-- Footer with Save/Cancel buttons -->
-  <div class="panel-block flex items-center">
-    <div class="w-1/5 pr-1"></div>
-    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
-      <button class="btn btn-primary btn-small" id="panel-network-editor-save-button">Save</button>
-      <button class="btn btn-outlined btn-small" id="panel-network-editor-close-button">Close</button>
-    </div>
-  </div>
+    <div id="panel-network-footer-placeholder"></div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const varsTpl = document.getElementById('vars-section-template');
+        const footerTpl = document.getElementById('editor-footer-template');
+        if (varsTpl && footerTpl) {
+          const varsFrag = varsTpl.content.cloneNode(true);
+          const varsContainer = varsFrag.querySelector('.vars-container');
+          const addBtn = varsFrag.querySelector('.add-var-btn');
+          if (varsContainer) {
+            varsContainer.id = 'panel-network-vars-container';
+          }
+          if (addBtn) {
+            addBtn.setAttribute('onclick', 'addNetworkVarEntry()');
+          }
+          document.getElementById('panel-network-vars-placeholder')?.appendChild(varsFrag);
+
+          const footerFrag = footerTpl.content.cloneNode(true);
+          const saveBtn = footerFrag.querySelector('.editor-save-btn');
+          const closeBtn = footerFrag.querySelector('.editor-close-btn');
+          if (saveBtn) {
+            saveBtn.id = 'panel-network-editor-save-button';
+          }
+          if (closeBtn) {
+            closeBtn.id = 'panel-network-editor-close-button';
+          }
+          document.getElementById('panel-network-footer-placeholder')?.appendChild(footerFrag);
+        }
+      });
+    </script>
 </div>

@@ -28,117 +28,58 @@
       </div>
     </div>
 
-    <!-- Endpoint A Properties -->
-    <div class="panel-block p-0" id="panel-link-endpoint-a">
-      <div class="px-0">
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Endpoint-A</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-a-name">
-                  link-endpoint-a-name-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">MAC address</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-a-mac-address">N/A</label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">MTU</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-a-mtu">N/A</label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Type</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-a-type">N/A</label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="panel-link-endpoints"></div>
 
-    <!-- Endpoint B Properties -->
-    <div class="panel-block p-0" id="panel-link-endpoint-b">
-      <div class="px-0">
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Endpoint-B</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-b-name">
-                  link-endpoint-b-name-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">MAC address</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-b-mac-address">N/A</label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">MTU</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-b-mtu">N/A</label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Type</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-endpoint-b-type">N/A</label>
-              </div>
-            </div>
-          </div>
-        </div>
+    <template id="link-endpoint-template">
+      <div class="panel-block p-0">
+        <div class="px-0 endpoint-fields"></div>
       </div>
-    </div>
+    </template>
 
   </div>
 </section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const endpoints = ['a', 'b'];
+      const container = document.getElementById('panel-link-endpoints');
+      const template = document.getElementById('link-endpoint-template');
+      if (!container || !(template instanceof HTMLTemplateElement)) {
+        return;
+      }
+
+      function createField(labelText, id) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'my-1';
+        wrapper.innerHTML = `
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">${labelText}</label>
+              </div>
+              <div class="w-3/5 pl-2">
+                <label class="text-left font-extralight text-base break-words" id="${id}">N/A</label>
+              </div>
+            </div>
+          </div>`;
+        return wrapper;
+      }
+
+      endpoints.forEach(letter => {
+        const fragment = template.content.cloneNode(true);
+        const block = fragment.querySelector('.panel-block');
+        const fields = fragment.querySelector('.endpoint-fields');
+        const prefix = `panel-link-endpoint-${letter}`;
+        if (block) {
+          block.id = prefix;
+        }
+        if (fields) {
+          fields.appendChild(createField(`Endpoint-${letter.toUpperCase()}`, `${prefix}-name`));
+          fields.appendChild(createField('MAC address', `${prefix}-mac-address`));
+          fields.appendChild(createField('MTU', `${prefix}-mtu`));
+          fields.appendChild(createField('Type', `${prefix}-type`));
+        }
+        container.appendChild(fragment);
+      });
+    });
+  </script>

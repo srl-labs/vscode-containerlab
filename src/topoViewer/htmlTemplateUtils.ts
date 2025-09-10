@@ -220,7 +220,7 @@ export function generateHtmlTemplate(
   ensurePartials(partials, mode);
   template = resolvePartials(template, partials);
 
-  const logoFile = params.isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
+  const logoFile = 'containerlab.svg';
 
   const baseReplacements: Record<string, string> = {
     cssUri: params.cssUri,
