@@ -1,4 +1,4 @@
-import * as https from 'https';
+import * as https from 'node:https';
 import * as vscode from 'vscode';
 
 export interface PopularRepo {

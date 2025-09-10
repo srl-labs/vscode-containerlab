@@ -4,8 +4,8 @@ import * as c from "./common";
 import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
-import { execFileSync } from "child_process";
-import * as fs from "fs";
+import { execFileSync } from "node:child_process";
+import * as fs from "node:fs";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
 // Mode switching imports removed - now handled by command completion callbacks
