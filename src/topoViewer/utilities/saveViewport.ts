@@ -81,11 +81,13 @@ function canonicalKeyToString(key: CanonicalLinkKey): string {
 
 function getTypeString(linkItem: YAML.YAMLMap): string | undefined {
   const typeNode = linkItem.get('type', true) as any;
-  return typeof typeNode?.value === 'string'
-    ? (typeNode.value as string)
-    : typeof typeNode === 'string'
-      ? typeNode
-      : undefined;
+  if (typeNode && typeof typeNode.value === 'string') {
+    return typeNode.value as string;
+  }
+  if (typeof typeNode === 'string') {
+    return typeNode;
+  }
+  return undefined;
 }
 
 function parseExtendedVeth(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {

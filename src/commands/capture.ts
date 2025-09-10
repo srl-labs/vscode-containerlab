@@ -1,9 +1,9 @@
 import * as vscode from "vscode"
-import { exec, execSync } from "child_process";
+import * as os from "os";
 import { outputChannel } from "../extension";
 import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
-import { getEdgesharkInstallCmd } from "./edgeshark";
+import { installEdgeshark } from "./edgeshark";
 
 let sessionHostname: string = "";
 
@@ -53,7 +53,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   if(!edgesharkOk) {
     const selectedOpt = await vscode.window.showInformationMessage("Capture: Edgeshark is not running. Would you like to start it?", { modal: false }, "Yes")
     if(selectedOpt === "Yes") {
-      execSync(getEdgesharkInstallCmd())
+      await installEdgeshark()
     }
     else {
       return
@@ -179,24 +179,17 @@ function isDarkModeEnabled(themeSetting?: string): boolean {
   }
 }
 
-function getEdgesharkNetwork(): string {
+async function getEdgesharkNetwork(): Promise<string> {
   try {
-    const edgesharkInfo = execSync(
-      `docker ps --filter "name=edgeshark" --format "{{.Names}}" | head -1`,
-      { encoding: 'utf-8' }
-    ).trim()
-    if (edgesharkInfo) {
-      const networks = execSync(
-        `docker inspect ${edgesharkInfo} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`,
-        { encoding: 'utf-8' }
-      ).trim()
-      const networkId = networks.split(' ')[0]
+    const psOut = await utils.runWithSudo(`docker ps --filter "name=edgeshark" --format "{{.Names}}"`, 'List edgeshark containers', outputChannel, 'generic', true) as string;
+    const firstName = (psOut || '').split(/\r?\n/).find(Boolean)?.trim() || '';
+    if (firstName) {
+      const netsOut = await utils.runWithSudo(`docker inspect ${firstName} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, 'Inspect edgeshark networks', outputChannel, 'generic', true) as string;
+      const networkId = (netsOut || '').trim().split(/\s+/)[0] || '';
       if (networkId) {
-        const networkName = execSync(
-          `docker network inspect ${networkId} --format '{{.Name}}'`,
-          { encoding: 'utf-8' }
-        ).trim()
-        return `--network ${networkName}`
+        const nameOut = await utils.runWithSudo(`docker network inspect ${networkId} --format '{{.Name}}'`, 'Inspect network name', outputChannel, 'generic', true) as string;
+        const netName = (nameOut || '').trim();
+        if (netName) return `--network ${netName}`;
       }
     }
   } catch {
@@ -205,12 +198,16 @@ function getEdgesharkNetwork(): string {
   return ""
 }
 
-function getVolumeMount(nodeName: string): string {
+async function getVolumeMount(nodeName: string): Promise<string> {
   try {
-    const labDir = execSync(
-      `docker inspect ${nodeName} --format '{{index .Config.Labels "clab-node-lab-dir"}}' 2>/dev/null`,
-      { encoding: 'utf-8' }
-    ).trim()
+    const out = await utils.runWithSudo(
+      `docker inspect ${nodeName} --format '{{index .Config.Labels "clab-node-lab-dir"}}'`,
+      'Inspect lab dir label',
+      outputChannel,
+      'generic',
+      true
+    ) as string;
+    const labDir = (out || '').trim();
     if (labDir && labDir !== '<no value>') {
       const pathParts = labDir.split('/')
       pathParts.pop()
@@ -253,22 +250,21 @@ export async function captureEdgesharkVNC(
   const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground")
 
   const darkModeSetting = isDarkModeEnabled(wiresharkThemeSetting) ? "-e DARK_MODE=1" : ""
-  const edgesharkNetwork = getEdgesharkNetwork()
-  const volumeMount = getVolumeMount(node.parentName)
+  const edgesharkNetwork = await getEdgesharkNetwork()
+  const volumeMount = await getVolumeMount(node.parentName)
   const modifiedPacketflixUri = adjustPacketflixHost(packetflixUri[0], edgesharkNetwork)
 
   const port = await utils.getFreePort()
   const ctrName = utils.sanitize(`clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()}`)
-  const containerId = await new Promise<string>((resolve, reject) => {
-    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name ${ctrName} ${dockerImage}`;
-    exec(command, { encoding: 'utf-8' }, (err, stdout, stderr) => {
-      if (err) {
-        vscode.window.showErrorMessage(`Starting Wireshark: ${stderr}`);
-        return reject(err);
-      }
-      resolve(stdout.trim());
-    });
-  })
+  let containerId = '';
+  try {
+    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs || ''} --name ${ctrName} ${dockerImage}`;
+    const out = await utils.runWithSudo(command, 'Start Wireshark VNC', outputChannel, 'generic', true, true) as string;
+    containerId = (out || '').trim().split(/\s+/)[0] || '';
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Starting Wireshark: ${err.message || String(err)}`);
+    return;
+  }
 
   // let vscode port forward for us
   const localUri = vscode.Uri.parse(`http://localhost:${port}`);
@@ -285,7 +281,7 @@ export async function captureEdgesharkVNC(
   );
 
   panel.onDidDispose(() => {
-    execSync(`docker rm -f ${containerId}`)
+    void utils.runWithSudo(`docker rm -f ${containerId}`, 'Remove Wireshark container', outputChannel).catch(() => undefined);
   })
 
   const iframeUrl = externalUri;
@@ -387,11 +383,21 @@ export async function captureEdgesharkVNC(
 
 export async function killAllWiresharkVNCCtrs() {
   const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
-  exec(`docker rm -f $(docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}")`, (err, _stdout, stderr) => {
-    if (err) {
-      vscode.window.showErrorMessage(`Killing Wireshark container: ${stderr}`);
+  try {
+    const idsOut = await utils.runWithSudo(
+      `docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}"`,
+      'List Wireshark VNC containers',
+      outputChannel,
+      'generic',
+      true
+    ) as string;
+    const ids = (idsOut || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if (ids.length > 0) {
+      await utils.runWithSudo(`docker rm -f ${ids.join(' ')}`, 'Remove Wireshark VNC containers', outputChannel);
     }
-  })
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Killing Wireshark container: ${err.message || String(err)}`);
+  }
 }
 
 /**
@@ -451,24 +457,16 @@ export async function getHostname(): Promise<string> {
   // 3. If in an Orbstack environment (whether SSH or not), always use IPv4.
   if (utils.isOrbstack()) {
     try {
-      const ipOutput = execSync("ip -4 add show eth0", {
-        stdio: ["pipe", "pipe", "ignore"],
-      }).toString();
-      const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
-      if (ipMatch && ipMatch[1]) {
-        outputChannel.debug(
-          `(Orbstack) Using IPv4 from 'ip -4 add show eth0': ${ipMatch[1]}`
-        );
-        return ipMatch[1];
-      } else {
-        outputChannel.debug(
-          "(Orbstack) Could not extract IPv4 address from 'ip -4 add show eth0'"
-        );
+      const nets = os.networkInterfaces();
+      const eth0 = nets['eth0'] || [];
+      const v4 = (eth0 as any[]).find((n: any) => (n.family === 'IPv4' || n.family === 4) && !n.internal);
+      if (v4 && v4.address) {
+        outputChannel.debug(`(Orbstack) Using IPv4 from networkInterfaces: ${v4.address}`);
+        return v4.address as string;
       }
+      outputChannel.debug("(Orbstack) Could not determine IPv4 from networkInterfaces");
     } catch (e: any) {
-      outputChannel.debug(
-        `(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`
-      );
+      outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`);
     }
   }
 

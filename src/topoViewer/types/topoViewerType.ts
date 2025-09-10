@@ -93,11 +93,3 @@ export interface EnvironmentJson {
     envCyTopoJsonBytes: CytoTopology | '';
 }
 
-
-// /**
-//  * Represents CytoPosition for preset layout
-//  */
-// export interface CytoViewportSaveItem {
-//     data: { id: string };
-//     position: { x: number; y: number };
-//   }

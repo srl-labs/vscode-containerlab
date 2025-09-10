@@ -45,6 +45,9 @@ export class ManagerFreeText {
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
   private loadInProgress = false;
   private loadTimeout: ReturnType<typeof setTimeout> | null = null;
+  private idCounter = 0;
+  private reapplyStylesBound: () => void;
+  private onLoadTimeout: () => Promise<void>;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, groupStyleManager?: ManagerGroupStyle) {
     this.cy = cy;
@@ -52,6 +55,42 @@ export class ManagerFreeText {
     this.groupStyleManager = groupStyleManager;
     this.setupEventHandlers();
     this.setupStylePreservation();
+
+    this.reapplyStylesBound = () => {
+      this.annotationNodes.forEach((node, id) => {
+        const annotation = this.annotations.get(id);
+        if (annotation) {
+          this.applyTextNodeStyles(node, annotation);
+        }
+      });
+      log.debug('Reapplied styles to free text annotations');
+    };
+
+    this.onLoadTimeout = async () => {
+      this.loadInProgress = true;
+      try {
+        const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+          'topo-editor-load-annotations',
+          {}
+        );
+
+        if (response && response.annotations) {
+          this.annotations.clear();
+          this.annotationNodes.forEach(node => { if (node && node.inside()) node.remove(); });
+          this.annotationNodes.clear();
+
+          const annotations = response.annotations as FreeTextAnnotation[];
+          annotations.forEach(annotation => this.addFreeTextAnnotation(annotation));
+          log.info(`Loaded ${annotations.length} free text annotations`);
+
+          setTimeout(this.reapplyStylesBound, 200);
+        }
+      } catch (error) {
+        log.error(`Failed to load annotations: ${error}`);
+      } finally {
+        this.loadInProgress = false;
+      }
+    };
   }
 
   public setGroupStyleManager(manager: ManagerGroupStyle): void {
@@ -205,7 +244,7 @@ export class ManagerFreeText {
    * Add free text at a specific position
    */
   private async addFreeTextAtPosition(position: cytoscape.Position): Promise<void> {
-    const id = `freeText_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `freeText_${Date.now()}_${++this.idCounter}`;
     const defaultAnnotation: FreeTextAnnotation = {
       id,
       text: '',
@@ -689,51 +728,8 @@ export class ManagerFreeText {
     }
 
     // Debounce the load to prevent rapid-fire requests
-    return new Promise((resolve, reject) => {
-      this.loadTimeout = setTimeout(async () => {
-        this.loadInProgress = true;
-        try {
-          const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-            'topo-editor-load-annotations',
-            {}
-          );
-
-      if (response && response.annotations) {
-        // Clear existing annotations first to avoid duplicates
-        this.annotations.clear();
-        this.annotationNodes.forEach(node => {
-          if (node && node.inside()) {
-            node.remove();
-          }
-        });
-        this.annotationNodes.clear();
-
-        const annotations = response.annotations as FreeTextAnnotation[];
-        annotations.forEach(annotation => {
-          this.addFreeTextAnnotation(annotation);
-        });
-          log.info(`Loaded ${annotations.length} free text annotations`);
-
-          // Reapply styles after a delay to ensure they persist after refresh
-          setTimeout(() => {
-            this.annotationNodes.forEach((node, id) => {
-              const annotation = this.annotations.get(id);
-              if (annotation) {
-                this.applyTextNodeStyles(node, annotation);
-              }
-            });
-            log.debug('Reapplied styles to free text annotations');
-          }, 200);
-        }
-        resolve();
-      } catch (error) {
-        log.error(`Failed to load annotations: ${error}`);
-        reject(error);
-      } finally {
-        this.loadInProgress = false;
-      }
-      }, 100); // 100ms debounce
-    });
+    this.loadTimeout = setTimeout(this.onLoadTimeout, 100);
+    return Promise.resolve();
   }
 
   /**

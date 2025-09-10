@@ -729,7 +729,7 @@ export class ManagerUnifiedFloatingPanel {
     try {
       // Note: window.confirm doesn't work in VS Code webviews
       // For now, we'll delete without confirmation
-      // TODO: Implement confirmation through VS Code backend
+      // NOTE: Consider implementing confirmation through VS Code backend
 
       const payload = { name: nodeName };
       const resp = await this.messageSender.sendMessageToVscodeEndpointPost(

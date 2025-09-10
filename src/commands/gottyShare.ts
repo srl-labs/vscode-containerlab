@@ -1,21 +1,22 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, gottySessions, runningLabsProvider, refreshGottySessions } from "../extension";
-import { exec } from "child_process";
 import { getHostname } from "./capture";
+import { runWithSudo } from "../helpers/utils";
 
 async function parseGottyLink(output: string): Promise<string | undefined> {
   try {
-    // Try to parse JSON from containerlab tools gotty list
-    const jsonMatch = output.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const sessions = JSON.parse(jsonMatch[0]);
-      if (sessions.length > 0) {
+    // Try to parse a JSON array from the output by locating brackets
+    const start = output.indexOf('[');
+    const end = output.lastIndexOf(']');
+    if (start !== -1 && end !== -1 && end > start) {
+      const payload = output.slice(start, end + 1);
+      const sessions = JSON.parse(payload);
+      if (Array.isArray(sessions) && sessions.length > 0) {
         const session = sessions[0];
-        if (session.port) {
+        if (session && session.port) {
           const hostname = await getHostname();
           if (hostname) {
-            // If it's an IPv6 literal, bracket it
             const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
             return `http://${bracketed}:${session.port}`;
           }
@@ -24,10 +25,9 @@ async function parseGottyLink(output: string): Promise<string | undefined> {
     }
 
     // Fallback: try to extract URL directly from output
-    const match = output.match(/https?:\/\/\S+/);
-    if (match) {
-      const url = match[0];
-      // Replace HOST_IP placeholder with actual hostname
+    const urlMatch = /(https?:\/\/\S+)/.exec(output);
+    if (urlMatch) {
+      const url = urlMatch[1];
       if (url.includes('HOST_IP')) {
         const hostname = await getHostname();
         if (hostname) {
@@ -51,14 +51,7 @@ export async function gottyAttach(node: ClabLabTreeNode) {
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await new Promise<string>((resolve, reject) => {
-      exec(`containerlab tools gotty attach -l ${node.name} --port ${port}`, { encoding: 'utf-8' }, (err, stdout, stderr) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve([stdout, stderr].filter(Boolean).join('\n').trim());
-      });
-    });
+    const out = await runWithSudo(`containerlab tools gotty attach -l ${node.name} --port ${port}`, 'GoTTY attach', outputChannel, 'containerlab', true, true) as string;
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);
@@ -85,14 +78,7 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     return;
   }
   try {
-    await new Promise<void>((resolve, reject) => {
-      exec(`containerlab tools gotty detach -l ${node.name}`, (err) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve();
-      });
-    });
+    await runWithSudo(`containerlab tools gotty detach -l ${node.name}`, 'GoTTY detach', outputChannel, 'containerlab');
     gottySessions.delete(node.name);
     vscode.window.showInformationMessage('GoTTY session detached');
   } catch (err: any) {
@@ -110,14 +96,7 @@ export async function gottyReattach(node: ClabLabTreeNode) {
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await new Promise<string>((resolve, reject) => {
-      exec(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, { encoding: 'utf-8' }, (err, stdout, stderr) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve([stdout, stderr].filter(Boolean).join('\n').trim());
-      });
-    });
+    const out = await runWithSudo(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, 'GoTTY reattach', outputChannel, 'containerlab', true, true) as string;
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);

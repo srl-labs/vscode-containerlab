@@ -82,9 +82,9 @@ function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<s
 }
 
 function resolvePartials(content: string, partials: Record<string, string>): string {
-  return content.replace(/{{([A-Z0-9_]+)}}/g, (_, key) => {
-    const replacement = partials[key];
-    if (replacement !== undefined) {
+  return content.replace(/{{([A-Z0-9_]+)}}/g, (_: string, key: string) => {
+    if (Object.prototype.hasOwnProperty.call(partials, key)) {
+      const replacement = partials[key] as string;
       return resolvePartials(replacement, partials);
     }
     return '';

@@ -56,6 +56,9 @@ export class ManagerLabSettings {
 
     // Listen for VS Code messages
     window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
       const message = event.data;
       if (message.type === 'lab-settings-updated') {
         this.currentSettings = message.settings;

@@ -72,6 +72,57 @@ class TopologyWebviewController {
   public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: () => void };
   public labSettingsManager?: ManagerLabSettings;
   private interfaceCounters: Record<string, number> = {};
+  public async initAsync(mode: 'edit' | 'view'): Promise<void> {
+    perfMark('cytoscape_style_start');
+    await loadCytoStyle(this.cy);
+    perfMeasure('cytoscape_style', 'cytoscape_style_start');
+    perfMark('fetch_data_start');
+    await fetchAndLoadData(this.cy, this.messageSender).then(() => {
+      perfMeasure('fetch_data', 'fetch_data_start');
+      perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
+
+      this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
+        metrics: PerformanceMonitor.getMeasures()
+      });
+
+      if (this.cy.elements().length > 0 && typeof requestAnimationFrame !== 'undefined') {
+        // eslint-disable-next-line no-undef
+        requestAnimationFrame(() => {
+          this.cy.animate({
+            fit: { eles: this.cy.elements(), padding: 50 },
+            duration: 150,
+            easing: 'ease-out'
+          });
+        });
+      }
+    });
+
+    void (async () => {
+      try {
+        const result = await fetchAndLoadDataEnvironment(["clab-name", "clab-prefix"]);
+        const labName = result["clab-name"] || "Unknown";
+        this.updateSubtitle(labName);
+        topoViewerState.labName = labName;
+        if (typeof result["clab-prefix"] === 'string') {
+          topoViewerState.prefixName = result["clab-prefix"] as string;
+        }
+      } catch (error) {
+        log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    })();
+
+    this.registerEvents(mode);
+    if (mode === 'edit') {
+      setTimeout(() => this.initializeEdgehandles(), 50);
+    }
+    setTimeout(() => this.initializeContextMenu(mode), 100);
+
+    setTimeout(() => {
+      this.groupStyleManager?.loadGroupStyles().catch((error) => {
+        log.error(`Failed to load group style annotations: ${error}`);
+      });
+    }, 500);
+  }
 
 
 
@@ -274,60 +325,10 @@ class TopologyWebviewController {
       parentSpacing: -1,
     });
 
-    perfMark('cytoscape_style_start');
-    loadCytoStyle(this.cy);
-    perfMeasure('cytoscape_style', 'cytoscape_style_start');
+    // Style will be applied in initAsync to avoid async in constructor
 
-    perfMark('fetch_data_start');
-    fetchAndLoadData(this.cy, this.messageSender).then(() => {
-      perfMeasure('fetch_data', 'fetch_data_start');
-      perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
-
-      // Send performance data to extension
-      this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
-        metrics: PerformanceMonitor.getMeasures()
-      });
-
-      // Double-check viewport fit with animation for smoothness
-      if (this.cy.elements().length > 0 && typeof requestAnimationFrame !== 'undefined') {
-        // eslint-disable-next-line no-undef
-        requestAnimationFrame(() => {
-          this.cy.animate({
-            fit: {
-              eles: this.cy.elements(),
-              padding: 50
-            },
-            duration: 150,
-            easing: 'ease-out'
-          });
-        });
-      }
-    });
-
-    // Defer environment data loading to avoid blocking initial render
-    setTimeout(async () => {
-      try {
-        const result = await fetchAndLoadDataEnvironment(["clab-name", "clab-prefix"]);
-        const labName = result["clab-name"] || "Unknown";
-        this.updateSubtitle(labName);
-        topoViewerState.labName = labName;
-        if (typeof result["clab-prefix"] === 'string') {
-          topoViewerState.prefixName = result["clab-prefix"] as string;
-        }
-      } catch (error) {
-        log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }, 0);
-
-    // Register events based on mode
-    this.registerEvents(mode);
-    if (mode === 'edit') {
-      // Defer edgehandles initialization
-      setTimeout(() => this.initializeEdgehandles(), 50);
-    }
-    // Defer context menu initialization
-    setTimeout(() => this.initializeContextMenu(mode), 100);
-
+    // Initialize shortcut display manager (constructor sets up listeners)
+    // eslint-disable-next-line sonarjs/constructor-for-side-effects
     new ManagerShortcutDisplay();
 
     // Initiate managers and panels
@@ -348,12 +349,6 @@ class TopologyWebviewController {
     this.copyPasteManager = new CopyPasteManager(this.cy, this.messageSender, this.groupStyleManager, this.freeTextManager);
 
     // Annotations will be loaded by managerCytoscapeFetchAndLoad after layout completes
-    // Only load group styles here since they're not loaded elsewhere
-    setTimeout(() => {
-      this.groupStyleManager?.loadGroupStyles().catch((error) => {
-        log.error(`Failed to load group style annotations: ${error}`);
-      });
-    }, 500);
 
     if (mode === 'edit') {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
@@ -446,6 +441,9 @@ class TopologyWebviewController {
     // Don't trigger here - will be called after controller is exposed to window
 
     window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
       const msg = event.data as any;
       if (msg && msg.type === 'yaml-saved') {
         fetchAndLoadData(this.cy, this.messageSender);
@@ -1836,6 +1834,7 @@ class TopologyWebviewController {
 document.addEventListener('DOMContentLoaded', () => {
   const mode = (window as any).topoViewerMode === 'viewer' ? 'view' : 'edit';
   const controller = new TopologyWebviewController('cy', mode);
+  void controller.initAsync(mode);
   // Store the instance for other modules
   topoViewerState.editorEngine = controller;
   topoViewerState.cy = controller.cy;

@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
-import { exec } from "child_process";
-import * as utils from "../helpers/utils";
+import { runWithSudo } from "../helpers/utils";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
@@ -30,17 +29,15 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
 
   outputChannel.info(`git clone ${repoUrl} ${dest}`);
 
-  exec(`${utils.getSudo()}git clone ${repoUrl} "${dest}"`, (error, stdout, stderr) => {
-    if (stdout) { outputChannel.info(stdout); }
-    if (stderr) { outputChannel.error(stderr); }
-    if (error) {
-      vscode.window.showErrorMessage(`Git clone failed: ${error.message}`);
-      outputChannel.error(`git clone failed: ${error.message}`);
-      return;
-    }
+  try {
+    const out = await runWithSudo(`git clone ${repoUrl} "${dest}"`, 'Git clone', outputChannel, 'generic', true, true) as string;
+    if (out) outputChannel.info(out);
     vscode.window.showInformationMessage(`Repository cloned to ${dest}`);
     vscode.commands.executeCommand('containerlab.refresh');
-  });
+  } catch (error: any) {
+    vscode.window.showErrorMessage(`Git clone failed: ${error.message || String(error)}`);
+    outputChannel.error(`git clone failed: ${error.message || String(error)}`);
+  }
 }
 
 export async function cloneRepo() {

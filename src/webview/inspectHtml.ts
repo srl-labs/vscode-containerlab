@@ -15,10 +15,10 @@ function stateToClass(state: string): string {
   }
 }
 
-function firstTruthy<T>(...values: (T | undefined | null | "")[]): T | "" {
+function firstTruthyString(...values: Array<string | undefined | null>): string {
   for (const v of values) {
     if (v) {
-      return v;
+      return v as string;
     }
   }
   return "";
@@ -68,35 +68,35 @@ export function getInspectHtml(
   for (const [labName, arr] of Object.entries(grouped)) {
     const rows = arr
       .map((ctr) => {
-        const containerName = firstTruthy(
+        const containerName = firstTruthyString(
           ctr.name,
           Array.isArray(ctr.Names) ? ctr.Names[0] : "",
           ctr.Labels?.["clab-node-longname"]
         );
 
-        const state = firstTruthy(ctr.state, ctr.State);
+        const state = firstTruthyString(ctr.state, ctr.State);
         const cls = stateToClass(state);
 
-        const kind = firstTruthy(ctr.kind, ctr.Labels?.["clab-node-kind"]);
-        const type = firstTruthy(ctr.node_type, ctr.Labels?.["clab-node-type"]);
-        const image = firstTruthy(ctr.image, ctr.Image);
+        const kind = firstTruthyString(ctr.kind, ctr.Labels?.["clab-node-kind"]);
+        const type = firstTruthyString(ctr.node_type, ctr.Labels?.["clab-node-type"]);
+        const image = firstTruthyString(ctr.image, ctr.Image);
         const pid = ctr.Pid ?? "";
-        const net = firstTruthy(ctr.network_name, ctr.NetworkName);
-        const status = firstTruthy(ctr.status, ctr.Status);
+        const net = firstTruthyString(ctr.network_name, ctr.NetworkName);
+        const status = firstTruthyString(ctr.status, ctr.Status);
         const owner = ctr.Labels?.["clab-owner"] || "";
 
-        const ipv4 = firstTruthy(
+        const ipv4 = firstTruthyString(
           ctr.ipv4_address,
           ctr.NetworkSettings?.IPv4addr,
           ctr.NetworkSettings?.ipv4_address
         );
-        const ipv6 = firstTruthy(
+        const ipv6 = firstTruthyString(
           ctr.ipv6_address,
           ctr.NetworkSettings?.IPv6addr,
           ctr.NetworkSettings?.ipv6_address
         );
 
-        const containerId = firstTruthy(ctr.ID, ctr.id, ctr.ShortID);
+        const containerId = firstTruthyString(ctr.ID, ctr.id, ctr.ShortID);
         const portsHtml = buildPortsHtml(ctr.Ports, containerName, containerId);
 
         return `

@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { exec, execSync } from "child_process";
+import { exec } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
 import { ClabLabTreeNode } from "../treeView/common";
@@ -97,10 +97,7 @@ export function getSudo() {
  */
 export function isOrbstack(): boolean {
   try {
-    const kernel = execSync("uname -r")
-      .toString()
-      .trim()
-      .toLowerCase();
+    const kernel = os.release().toLowerCase();
     // If "orbstack" is in the kernel, assume OrbStack environment
     return kernel.includes("orbstack");
   } catch {
@@ -111,7 +108,7 @@ export function isOrbstack(): boolean {
 export function getUsername(): string {
   let username = "";
   try {
-    username = execSync("whoami").toString("utf-8").trim();
+    username = os.userInfo().username;
   } catch {
     throw new Error(
       "Could not determine user. Failed to execute command: whoami",
@@ -430,10 +427,10 @@ export async function checkAndUpdateClabIfNeeded(
         if (selection === 'Update Now') {
           vscode.commands.executeCommand(updateCommandId);
         } else if (selection === 'View Release Notes') {
-          const urlRegex = /https?:\/\/[^\s]+/g;
-          const match = versionOutput.match(urlRegex);
-          if (match && match.length > 0) {
-            vscode.env.openExternal(vscode.Uri.parse(match[0]));
+          const urlRegex = /(https?:\/\/\S+)/;
+          const m = urlRegex.exec(versionOutput);
+          if (m) {
+            vscode.env.openExternal(vscode.Uri.parse(m[1]));
           } else {
             vscode.window.showInformationMessage("No release notes URL found.");
           }
@@ -507,14 +504,29 @@ export function sanitize(
   }
 
   // Trim leading/trailing separators not allowed at ends
-  out = out.replace(/^[-.]+/, "").replace(/[-.]+$/, "");
+  const trimSep = (s: string) => {
+    let start = 0;
+    while (start < s.length && (s[start] === '-' || s[start] === '.')) start++;
+    let end = s.length - 1;
+    while (end >= start && (s[end] === '-' || s[end] === '.')) end--;
+    return s.slice(start, end + 1);
+  };
+  out = trimSep(out);
 
   // Must start with alphanumeric
-  if (!out || !/^[A-Za-z0-9]/.test(out)) out = `c-${out}`;
+  const isAlnumStart = (s: string) => {
+    if (!s) return false;
+    const c = s.charCodeAt(0);
+    const isDigit = c >= 48 && c <= 57;
+    const isUpper = c >= 65 && c <= 90;
+    const isLower = c >= 97 && c <= 122;
+    return isDigit || isUpper || isLower;
+  };
+  if (!isAlnumStart(out)) out = `c-${out}`;
 
   // Enforce length and avoid bad trailing chars after cut
   if (out.length > maxLen) out = out.slice(0, maxLen);
-  out = out.replace(/[-.]+$/, "");
+  out = trimSep(out);
   if (!out) out = "container";
 
   return lower ? out.toLowerCase() : out;

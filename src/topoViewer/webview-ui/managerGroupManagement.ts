@@ -110,11 +110,9 @@ export class ManagerGroupManagement {
     log.debug(`Generated unique parent ID: ${newParentId}`);
 
     const ext = this.cy.extent();
-    const offsetMin = 10;
-    const offsetMax = 50;
-    const randomOffset = Math.random() * (offsetMax - offsetMin) + offsetMin;
-    const topCenterX = (ext.x1 + ext.x2 + randomOffset) / 2;
-    const topCenterY = ext.y1 + 2 * randomOffset;
+    const offsetBase = 20;
+    const topCenterX = (ext.x1 + ext.x2 + offsetBase) / 2;
+    const topCenterY = ext.y1 + 2 * offsetBase;
 
     const parentNodeData: NodeOptions = {
       group: 'nodes',

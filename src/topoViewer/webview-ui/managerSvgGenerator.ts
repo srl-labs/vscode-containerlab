@@ -32,6 +32,54 @@ export type NodeType =
 export function generateEncodedSVG(nodeType: NodeType, fillColor: string): string {
   let svgString = "";
 
+  function renderLeafOrDcgw(fill: string): string {
+    return `
+                <svg
+                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                    xmlns="http://www.w3.org/2000/svg"
+                    xml:space="preserve"
+                    style="enable-background:new 0 0 120 120;"
+                    viewBox="0 0 120 120"
+                    y="0px"
+                    x="0px"
+                    id="Layer_1"
+                    version="1.1"
+                    width="120px"
+                    height="120px"
+                    fill="none"
+                >
+                    <style type="text/css">
+                        .st0 { fill: ${fill}; }
+                        .st1 { fill: none; stroke: #FFFFFF; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; }
+                    </style>
+                    <rect height="120" width="120" class="st0" />
+                    <g>
+                        <g>
+                            <path d="M93.8,39.8h-10.7c-1.8,0-3-1.3-3.1-3.1V25.9" class="st1" />
+                            <path d="M99,21.2L83,37.3" class="st1" />
+                        </g>
+                        <g>
+                            <path d="M19.9,33.9V23.2c0-1.8,1.3-3,3.1-3.1h10.8" class="st1" />
+                            <path d="M38.9,39L22.8,22.9" class="st1" />
+                        </g>
+                        <g>
+                            <path d="M24.9,80.9h10.7c1.8,0,3,1.3,3.1,3.1v10.8" class="st1" />
+                            <path d="M19.9,99.8L36,83.8" class="st1" />
+                        </g>
+                        <g>
+                            <path d="M100,86v10.7c0,1.8-1.3,3-3.1,3.1h-10.8" class="st1" />
+                            <path d="M81.1,81L97.1,97" class="st1" />
+                        </g>
+                        <g>
+                            <line x1="100.1" y1="50" x2="20.1" y2="50" class="st1" />
+                            <line x1="100.1" y1="60" x2="20.1" y2="60" class="st1" />
+                            <line x1="100.1" y1="70" x2="20.1" y2="70" class="st1" />
+                        </g>
+                    </g>
+                </svg>
+            `;
+  }
+
   switch (nodeType) {
 
     case "pe":  // Provider Edge Router
@@ -77,91 +125,11 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
       break;
 
     case "dcgw":  // Data Center Gateway
-      svgString = `
-                <svg
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
-                    xmlns="http://www.w3.org/2000/svg"
-                    xml:space="preserve"
-                    style="enable-background:new 0 0 120 120;"
-                    viewBox="0 0 120 120"
-                    y="0px"
-                    x="0px"
-                    id="Layer_1"
-                    version="1.1"
-                    width="120px"
-                    height="120px"
-                    fill="none"
-                >
-                    <style type="text/css">
-                        .st0 { fill: ${fillColor}; }
-                        .st1 { fill: none; stroke: #FFFFFF; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; }
-                    </style>
-                    <rect height="120" width="120" class="st0" />
-                    <g>
-                        <g>
-                            <path d="M93.8,39.8h-10.7c-1.8,0-3-1.3-3.1-3.1V25.9" class="st1" />
-                            <path d="M99,21.2L83,37.3" class="st1" />
-                        </g>
-                        <g>
-                            <path d="M19.9,33.9V23.2c0-1.8,1.3-3,3.1-3.1h10.8" class="st1" />
-                            <path d="M38.9,39L22.8,22.9" class="st1" />
-                        </g>
-                        <g>
-                            <path d="M24.9,80.9h10.7c1.8,0,3,1.3,3.1,3.1v10.8" class="st1" />
-                            <path d="M19.9,99.8L36,83.8" class="st1" />
-                        </g>
-                        <g>
-                            <path d="M100,86v10.7c0,1.8-1.3,3-3.1,3.1h-10.8" class="st1" />
-                            <path d="M81.1,81L97.1,97" class="st1" />
-                        </g>
-                        <g>
-                            <line x1="100.1" y1="50" x2="20.1" y2="50" class="st1" />
-                            <line x1="100.1" y1="60" x2="20.1" y2="60" class="st1" />
-                            <line x1="100.1" y1="70" x2="20.1" y2="70" class="st1" />
-                        </g>
-                    </g>
-                </svg>
-            `;
+      svgString = renderLeafOrDcgw(fillColor);
       break;
 
     case "leaf":  // Leaf Node
-      svgString = `
-                    <svg
-                        xmlns:xlink="http://www.w3.org/1999/xlink"
-                        xmlns="http://www.w3.org/2000/svg"
-                        xml:space="preserve"
-                        style="enable-background:new 0 0 120 120;"
-                        viewBox="0 0 120 120"
-                        y="0px"
-                        x="0px"
-                        id="Layer_1"
-                        version="1.1"
-                        width="120px"
-                        height="120px"
-                        fill="none"
-                    >
-                        <style type="text/css">
-                            .st0 { fill: ${fillColor}; }
-                            .st1 { fill: none; stroke: #FFFFFF; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; }
-                        </style>
-                        <rect height="120" width="120" class="st0" />
-                        <g>
-                            <g>
-                                <path d="M91.5,27.3l7.6,7.6c1.3,1.3,1.3,3.1,0,4.3l-7.6,7.7" class="st1" />
-                                <path d="M28.5,46.9l-7.6-7.6c-1.3-1.3-1.3-3.1,0-4.3l7.6-7.7" class="st1" />
-                            </g>
-                            <g>
-                                <path d="M91.5,73.1l7.6,7.6c1.3,1.3,1.3,3.1,0,4.3l-7.6,7.7" class="st1" />
-                                <path d="M28.5,92.7l-7.6-7.6c-1.3-1.3-1.3-3.1,0-4.3l7.6-7.7" class="st1" />
-                            </g>
-                            <g>
-                                <path d="M96.6,36.8H67.9l-16,45.9H23.2" class="st1" />
-                                <path d="M96.6,82.7H67.9l-16-45.9H23.2" class="st1" />
-                            </g>
-                        </g>
-                    </svg>
-
-                `;
+      svgString = renderLeafOrDcgw(fillColor);
       break;
 
     case "bridge": // Bridge uses switch icon

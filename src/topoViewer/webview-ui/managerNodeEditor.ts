@@ -469,9 +469,10 @@ export class ManagerNodeEditor {
       const typeProp = condition.then?.properties?.type;
       if (!pattern || !typeProp) continue;
 
-      const kindMatch = pattern.match(/\(([^)]+)\)/);
-      if (!kindMatch) continue;
-      const kind = kindMatch[1];
+      const start = pattern.indexOf('(');
+      const end = start >= 0 ? pattern.indexOf(')', start + 1) : -1;
+      if (start < 0 || end <= start) continue;
+      const kind = pattern.slice(start + 1, end);
       const typeOptions = this.extractTypeOptions(typeProp);
       if (typeOptions.length === 0) continue;
 
@@ -1508,8 +1509,17 @@ export class ManagerNodeEditor {
    */
   private validateIPv4(ip: string): boolean {
     if (!ip) return true; // Empty is valid
-    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    return ipv4Regex.test(ip);
+    const parts = ip.split('.');
+    if (parts.length !== 4) return false;
+    for (const p of parts) {
+      if (p.length === 0 || p.length > 3) return false;
+      if (!/^\d+$/.test(p)) return false;
+      const n = parseInt(p, 10);
+      if (n < 0 || n > 255) return false;
+      // Disallow leading zeros like 01 unless the value is exactly '0'
+      if (p.length > 1 && p.startsWith('0')) return false;
+    }
+    return true;
   }
 
   /**
@@ -1517,8 +1527,26 @@ export class ManagerNodeEditor {
    */
   private validateIPv6(ip: string): boolean {
     if (!ip) return true; // Empty is valid
-    const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
-    return ipv6Regex.test(ip);
+    // Handle IPv4-mapped addresses
+    const lastColon = ip.lastIndexOf(':');
+    if (lastColon !== -1 && ip.indexOf('.') > lastColon) {
+      const v6 = ip.slice(0, lastColon);
+      const v4 = ip.slice(lastColon + 1);
+      return this.validateIPv6(v6 + '::') && this.validateIPv4(v4);
+    }
+
+    const hasDoubleColon = ip.includes('::');
+    if (hasDoubleColon && ip.indexOf('::') !== ip.lastIndexOf('::')) return false;
+
+    const parts = ip.split(':').filter(s => s.length > 0);
+    if (!hasDoubleColon && parts.length !== 8) return false;
+    if (hasDoubleColon && parts.length > 7) return false;
+
+    const hexRe = /^[0-9a-fA-F]{1,4}$/;
+    for (const part of parts) {
+      if (!hexRe.test(part)) return false;
+    }
+    return true;
   }
 
   /**
@@ -1527,7 +1555,7 @@ export class ManagerNodeEditor {
   private validatePortMapping(port: string): boolean {
     if (!port) return true; // Empty is valid
     const portRegex = /^(\d+):(\d+)(\/(?:tcp|udp))?$/;
-    const match = port.match(portRegex);
+    const match = portRegex.exec(port);
     if (!match) return false;
 
     const hostPort = parseInt(match[1]);
@@ -2035,9 +2063,7 @@ export class ManagerNodeEditor {
       const inheritedVal = (inheritBase as any)[prop];
       const hasValue = shouldPersist(val);
       const hasInheritedValue = shouldPersist(inheritedVal);
-      if (hasValue && deepEqual(val, inheritedVal)) {
-        inheritedProps.push(prop);
-      } else if (!hasValue && hasInheritedValue) {
+      if ((hasValue && deepEqual(val, inheritedVal)) || (!hasValue && hasInheritedValue)) {
         inheritedProps.push(prop);
       }
     });

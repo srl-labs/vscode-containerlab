@@ -481,8 +481,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register configuration for file watching
   vscode.workspace.onDidChangeConfiguration(e => {
     if (e.affectsConfiguration('containerlab.autoSync')) {
-      // Access the setting to trigger any watchers
-      void vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
+      // Setting changed; no action required here
     }
   });
 

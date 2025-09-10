@@ -146,9 +146,10 @@ export class ManagerAddContainerlabNode {
       const viewportHeight = extent.y2 - extent.y1;
       const maxOffsetX = viewportWidth * 0.3;
       const maxOffsetY = viewportHeight * 0.3;
+      // Place near the center to avoid overlap without randomness
       position = {
-        x: viewportCenterX + (Math.random() - 0.5) * maxOffsetX,
-        y: viewportCenterY + (Math.random() - 0.5) * maxOffsetY
+        x: viewportCenterX + maxOffsetX * 0.1,
+        y: viewportCenterY + maxOffsetY * 0.1
       };
     }
 
@@ -183,8 +184,8 @@ export class ManagerAddContainerlabNode {
     const hostRegex = new RegExp(`^${networkType}:eth(\\d+)$`);
     const usedNumbers = existingNodeIds
       .map(id => {
-        const match = id.match(hostRegex);
-        return match ? parseInt(match[1], 10) : null;
+        const m = hostRegex.exec(id);
+        return m ? parseInt(m[1], 10) : null;
       })
       .filter((n): n is number => n !== null);
     const nextInterface = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
@@ -229,8 +230,8 @@ export class ManagerAddContainerlabNode {
       const maxOffsetY = viewportHeight * 0.3;
 
       position = {
-        x: viewportCenterX + (Math.random() - 0.5) * maxOffsetX,
-        y: viewportCenterY + (Math.random() - 0.5) * maxOffsetY
+        x: viewportCenterX + maxOffsetX * 0.1,
+        y: viewportCenterY + maxOffsetY * 0.1
       };
     }
 

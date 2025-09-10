@@ -249,38 +249,39 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
   }
 
   // Second pass: assign missing values or normalize existing values.
+  let offsetCounter = 0;
   dataArray.forEach(item => {
     const { data } = item;
     const id = data.id || 'Unknown ID';
 
     // Process latitude.
     if (!data.lat || data.lat.trim() === "") {
-      const randomOffset = Math.random() * 0.9;
-      data.lat = (averageLat + randomOffset).toFixed(15);
+      const deterministicOffset = (offsetCounter++ % 9) * 0.1;
+      data.lat = (averageLat + deterministicOffset).toFixed(15);
       log.debug(`Assigned new lat for ID ${id}: ${data.lat}`);
     } else {
       const normalizedLat = parseFloat(data.lat);
       if (!isNaN(normalizedLat)) {
         data.lat = normalizedLat.toFixed(15);
       } else {
-        const randomOffset = Math.random() * 0.9;
-        data.lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat + randomOffset).toFixed(15);
+        const deterministicOffset = (offsetCounter++ % 9) * 0.1;
+        data.lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat + deterministicOffset).toFixed(15);
         log.warn(`Invalid lat for ID ${id}. Assigned new lat: ${data.lat}`);
       }
     }
 
     // Process longitude.
     if (!data.lng || data.lng.trim() === "") {
-      const randomOffset = Math.random() * 0.9;
-      data.lng = (averageLng + randomOffset).toFixed(15);
+      const deterministicOffset = (offsetCounter++ % 9) * 0.1;
+      data.lng = (averageLng + deterministicOffset).toFixed(15);
       log.debug(`Assigned new lng for ID ${id}: ${data.lng}`);
     } else {
       const normalizedLng = parseFloat(data.lng);
       if (!isNaN(normalizedLng)) {
         data.lng = normalizedLng.toFixed(15);
       } else {
-        const randomOffset = Math.random() * 0.9;
-        data.lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng + randomOffset).toFixed(15);
+        const deterministicOffset = (offsetCounter++ % 9) * 0.1;
+        data.lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng + deterministicOffset).toFixed(15);
         log.warn(`Invalid lng for ID ${id}. Assigned new lng: ${data.lng}`);
       }
     }
@@ -335,4 +336,3 @@ export async function fetchAndLoadDataEnvironment(keys: EnvironmentKeys[]): Prom
     throw error;
   }
 }
-

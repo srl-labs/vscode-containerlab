@@ -751,7 +751,6 @@ topology:
         this.lastYamlFilePath = fileUri.fsPath;
       } catch {
         if (this.lastYamlFilePath) {
-          fileUri = vscode.Uri.file(this.lastYamlFilePath);
           log.info(`Using cached file path: ${this.lastYamlFilePath}`);
         } else {
           throw new Error(`File not found: ${fileUri.fsPath}`);

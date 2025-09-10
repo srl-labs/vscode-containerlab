@@ -51,7 +51,7 @@ describe('deploy command', () => {
 
   // Should instantiate ClabCommand with the selected node and execute it.
   it('creates ClabCommand and runs it', async () => {
-    const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
+    const node = { labPath: { absolute: '/home/user/lab.yml' } } as any;
     await deploy(node);
 
     expect(clabStub.instances.length).to.equal(1);

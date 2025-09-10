@@ -19,6 +19,7 @@ import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 log.info(`TopoViewer Version: ${topoViewerVersion}`);
 
 type DummyContext = { dummyCounter: number; dummyLinkMap: Map<any, string> };
+type SpecialNodeType = 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy';
 
 /**
  * TopoViewerAdaptorClab is responsible for adapting Containerlab YAML configurations
@@ -344,8 +345,6 @@ export class TopoViewerAdaptorClab {
    * @returns A string representing the parent identifier.
    */
   private buildParent(nodeObj: ClabNode, nodeAnnotation?: any): string {
-    // const grp = nodeObj.group ?? '';
-
     const grp = nodeAnnotation?.group || nodeObj.labels?.['topoViewer-group'] || nodeObj.labels?.['graph-group'] || '';
     const lvl = nodeAnnotation?.level || nodeObj.labels?.['topoViewer-groupLevel'] || nodeObj.labels?.['graph-level'] || '1';
 
@@ -650,7 +649,7 @@ export class TopoViewerAdaptorClab {
     parsed: ClabTopology,
     ctx: DummyContext
   ): {
-    specialNodes: Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>;
+    specialNodes: Map<string, { type: SpecialNodeType; label: string }>;
     specialNodeProps: Map<string, any>;
   } {
     const specialNodes = this.initSpecialNodes(parsed.topology?.nodes);
@@ -670,8 +669,8 @@ export class TopoViewerAdaptorClab {
     return { specialNodes, specialNodeProps };
   }
 
-  private initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }> {
-    const specialNodes = new Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>();
+  private initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, { type: SpecialNodeType; label: string }> {
+    const specialNodes = new Map<string, { type: SpecialNodeType; label: string }>();
     if (!nodes) return specialNodes;
     for (const [nodeName, nodeData] of Object.entries(nodes)) {
       if (nodeData.kind === 'bridge' || nodeData.kind === 'ovs-bridge') {
@@ -759,7 +758,7 @@ export class TopoViewerAdaptorClab {
   }
 
   private addCloudNodes(
-    specialNodes: Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>,
+    specialNodes: Map<string, { type: SpecialNodeType; label: string }>,
     specialNodeProps: Map<string, any>,
     opts: { annotations?: any },
     elements: CyElement[]
@@ -948,7 +947,7 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> },
     fullPrefix: string,
     clabName: string,
-    specialNodes: Map<string, { type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy'; label: string }>,
+    specialNodes: Map<string, { type: SpecialNodeType; label: string }>,
     ctx: DummyContext,
     elements: CyElement[]
   ): void {

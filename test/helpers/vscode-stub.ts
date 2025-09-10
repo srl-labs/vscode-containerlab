@@ -39,7 +39,9 @@ export const workspace = {
     this.workspaceFolders.splice(index, del, ...folders);
   },
   onDidSaveTextDocument(cb: any) {
-    void cb;
+    if (typeof cb === 'function') {
+      // no-op
+    }
     return { dispose() {} };
   },
   fs: {
@@ -80,7 +82,7 @@ export class ThemeColor {
 }
 
 export class ThemeIcon {
-  static File = 'file';
+  static readonly File = 'file';
   public id: string;
   public color?: ThemeColor;
   constructor(id: string, color?: ThemeColor) {

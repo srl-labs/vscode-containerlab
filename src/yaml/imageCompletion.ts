@@ -12,17 +12,37 @@ function isCompletingImageValue(
 ): boolean {
   const line = document.lineAt(position.line).text;
   const beforeCursor = line.slice(0, position.character);
-  if (/(^|\s|-)image\s*:\s*[^#]*/.test(beforeCursor)) {
-    return true;
+  const beforeNoComment = beforeCursor.split('#')[0];
+
+  // Check if the current line contains an inline image: key
+  const idx = beforeNoComment.toLowerCase().lastIndexOf('image:');
+  if (idx !== -1) {
+    const pre = beforeNoComment.slice(0, idx).trim();
+    // allow optional dash for list items
+    if (pre === '' || pre === '-' || pre === '- ')
+      return true;
   }
+
+  // Look up to 10 lines back for a line ending with 'image:' at a lower indent
+  // to support values on the following line
+  const currIndent = (() => {
+    let i = 0;
+    while (i < line.length && (line[i] === ' ' || line[i] === '\t')) i++;
+    return i;
+  })();
 
   for (let l = position.line - 1; l >= 0 && l >= position.line - 10; l--) {
     const text = document.lineAt(l).text;
-    if (text.trim() === '') continue;
-    const match = text.match(/^(\s*-?\s*)image\s*:\s*$/);
-    if (match) {
-      const currIndent = line.match(/^(\s*)/)?.[1]?.length ?? 0;
-      const prevIndent = match[1].length;
+    const noComment = text.split('#')[0];
+    let trimmed = noComment;
+    while (trimmed.length && (trimmed.endsWith(' ') || trimmed.endsWith('\t'))) {
+      trimmed = trimmed.slice(0, -1);
+    }
+    const lower = trimmed.toLowerCase();
+    if (lower.endsWith('image:')) {
+      let j = 0;
+      while (j < trimmed.length && (trimmed[j] === ' ' || trimmed[j] === '\t' || trimmed[j] === '-')) j++;
+      const prevIndent = j;
       return currIndent > prevIndent;
     }
   }

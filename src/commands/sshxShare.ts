@@ -4,8 +4,9 @@ import { outputChannel, sshxSessions, runningLabsProvider, refreshSshxSessions }
 import { runWithSudo } from "../helpers/utils";
 
 function parseLink(output: string): string | undefined {
-  const match = output.match(/https?:\/\/\S+/);
-  return match ? match[0] : undefined;
+  const re = /(https?:\/\/\S+)/;
+  const m = re.exec(output);
+  return m ? m[1] : undefined;
 }
 
 export async function sshxAttach(node: ClabLabTreeNode) {

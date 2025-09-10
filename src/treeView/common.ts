@@ -136,7 +136,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
 
     // Get the IPv4 address without CIDR mask
     public get IPv4Address() {
-        if (!(this.v4Address === "N/A")) {
+        if (this.v4Address !== "N/A") {
             return this.v4Address?.split('/')[0];
         } else {
             return "";
@@ -145,7 +145,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
 
     // Get the IPv6 address without CIDR mask
     public get IPv6Address() {
-        if (!(this.v6Address === "N/A")) {
+        if (this.v6Address !== "N/A") {
             return this.v6Address?.split('/')[0];
         } else {
             return "";

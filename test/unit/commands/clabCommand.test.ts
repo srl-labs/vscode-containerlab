@@ -59,7 +59,7 @@ describe('ClabCommand', () => {
     const node = new ClabLabTreeNode(
       'lab',
       vscodeStub.TreeItemCollapsibleState.None,
-      { absolute: '/tmp/lab.yml', relative: 'lab.yml' }
+      { absolute: '/home/user/lab.yml', relative: 'lab.yml' }
     );
     const clab = new ClabCommand('deploy', node);
     await clab.run(['--foo']);
@@ -73,7 +73,7 @@ describe('ClabCommand', () => {
     const execSpy = cmdStub.Command.prototype.execute as sinon.SinonSpy;
     expect(execSpy.calledOnce).to.be.true;
     expect(execSpy.firstCall.args[0]).to.deep.equal([
-      'deploy', '-r', 'docker', '--foo', '-t', '/tmp/lab.yml'
+      'deploy', '-r', 'docker', '--foo', '-t', '/home/user/lab.yml'
     ]);
   });
 

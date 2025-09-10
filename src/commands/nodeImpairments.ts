@@ -9,7 +9,9 @@ import { outputChannel } from "../extension";
  * For example, "mgmt0-0 (mgmt0.0)" becomes "mgmt0-0".
  */
 function normalizeInterfaceName(iface: string): string {
-  return iface.replace(/\s*\(.*\).*$/, "").trim();
+  const idx = iface.indexOf('(');
+  const base = idx >= 0 ? iface.slice(0, idx) : iface;
+  return base.trim();
 }
 
 /**
@@ -17,8 +19,11 @@ function normalizeInterfaceName(iface: string): string {
  * suitable for containerlab. Example: "5%", "5.0%" -> "5", "5.0" => means 5%.
  */
 function stripPercentage(val: string): string {
-  // Remove trailing % if present
-  return val.replace(/\s*%$/, "").trim();
+  let s = val.trimEnd();
+  if (s.endsWith('%')) {
+    s = s.slice(0, -1).trimEnd();
+  }
+  return s.trim();
 }
 
 /**

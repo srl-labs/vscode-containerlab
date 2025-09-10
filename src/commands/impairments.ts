@@ -69,7 +69,8 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {
       placeHolder: `Link delay with time unit. ie: 50ms, 1s, 30s`,
       validateInput: (input: string): string | undefined => {
         if (input.length === 0) { return "Input should not be empty"; }
-        if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
+        const re = /^\d+(ms|s)$/;
+        if (!re.test(input)) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
         return undefined;
       }
     };
@@ -99,7 +100,8 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<void> 
       placeHolder: `Jitter with time unit. ie: 50ms, 1s, 30s`,
       validateInput: (input: string): string | undefined => {
         if (input.length === 0) { return "Input should not be empty"; }
-        if (!(input.match("[0-9]+(ms|s)$"))) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
+        const re = /^\d+(ms|s)$/;
+        if (!re.test(input)) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
         return undefined;
       }
     };
@@ -129,7 +131,8 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<void> {
       placeHolder: `Packet loss as a percentage. ie 50 means 50% packet loss`,
       validateInput: (input: string): string | undefined => {
         if (input.length === 0) { return "Input should not be empty"; }
-        if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100."; }
+        const re = /^(?:[1-9]\d?|100)$/;
+        if (!re.test(input)) { return "Input should be a number between 0 and 100."; }
         return undefined;
       }
     };
@@ -159,7 +162,8 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<void> {
       placeHolder: `Rate-limit in kbps. ie 100 means 100kbit/s`,
       validateInput: (input: string): string | undefined => {
         if (input.length === 0) { return "Input should not be empty"; }
-        if (!(input.match("[0-9]+"))) { return "Input should be a number"; }
+        const re = /^\d+$/;
+        if (!re.test(input)) { return "Input should be a number"; }
         return undefined;
       }
     };
@@ -189,7 +193,8 @@ export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<vo
       placeHolder: `Packet corruption as a percentage. ie 50 means 50% probability of packet corruption.`,
       validateInput: (input: string): string | undefined => {
         if (input.length === 0) { return "Input should not be empty"; }
-        if (!(input.match("[1-9][0-9]?$|^100$"))) { return "Input should be a number between 0 and 100."; }
+        const re = /^(?:[1-9]\d?|100)$/;
+        if (!re.test(input)) { return "Input should be a number between 0 and 100."; }
         return undefined;
       }
     };

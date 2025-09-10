@@ -43,13 +43,13 @@ describe('openLabFile command', () => {
 
   // Opens the topology file in the current VS Code window.
   it('opens the lab file with vscode.open', () => {
-    const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
+    const node = { labPath: { absolute: '/home/user/lab.yml' } } as any;
     openLabFile(node);
 
     const spy = (vscodeStub.commands.executeCommand as sinon.SinonSpy);
     expect(spy.calledOnce).to.be.true;
     expect(spy.firstCall.args[0]).to.equal('vscode.open');
-    expect(spy.firstCall.args[1].fsPath).to.equal('/tmp/lab.yml');
+    expect(spy.firstCall.args[1].fsPath).to.equal('/home/user/lab.yml');
   });
 
   // Should show an error message when no node is provided.

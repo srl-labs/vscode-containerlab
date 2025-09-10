@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as utils from '../helpers/utils';
-import { exec, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import { outputChannel } from '../extension';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -38,8 +38,35 @@ export function execCommandInTerminal(command: string, terminalName: string) {
  * @param stdoutCb Optional extra function to run on stdout data event. The process and cleaned stdout data is passed to the func.
  * @param stderrCb Optional extra function to run on stderr data. The process and Cleaned stderr data is passed to the func
  */
+function splitArgs(input: string): string[] {
+    const args: string[] = [];
+    let current = '';
+    let quote: '"' | "'" | null = null;
+    for (let i = 0; i < input.length; i++) {
+        const ch = input[i];
+        if (quote) {
+            if (ch === quote) {
+                quote = null;
+            } else {
+                current += ch;
+            }
+        } else {
+            if (ch === '"' || ch === "'") {
+                quote = ch as any;
+            } else if (ch === ' ') {
+                if (current) { args.push(current); current = ''; }
+            } else {
+                current += ch;
+            }
+        }
+    }
+    if (current) args.push(current);
+    return args;
+}
+
 export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: Function, stderrCb?: Function) {
-    let proc = exec(command);
+    const [cmd, ...args] = splitArgs(command);
+    const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (show) { outputChannel.show(); }
 

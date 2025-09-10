@@ -165,7 +165,13 @@ export class ManagerLayoutAlgo {
     if (isNaN(fsNum)) {
       const raw = ele.style('font-size');
       const rawNum = parseFloat(raw);
-      fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
+      if (isNaN(rawNum)) {
+        fsNum = 12;
+      } else if (String(raw).includes('em')) {
+        fsNum = rawNum * 16;
+      } else {
+        fsNum = rawNum;
+      }
     }
     ele.data(dataKey, fsNum);
     return fsNum;
@@ -442,13 +448,17 @@ export class ManagerLayoutAlgo {
     cy.nodes().forEach(node => {
       let lat = parseFloat(node.data('lat'));
       if (!node.data('lat') || isNaN(lat)) {
-        // Spread nodes around the center with smaller random offset
-        lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat) + (Math.random() - 0.5) * 0.2;
+        // Spread nodes around the center with deterministic offset
+        const idx = node.id().length % 5;
+        const offset = (idx - 2) * 0.05;
+        lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat) + offset;
       }
       let lng = parseFloat(node.data('lng'));
       if (!node.data('lng') || isNaN(lng)) {
-        // Spread nodes around the center with smaller random offset
-        lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng) + (Math.random() - 0.5) * 0.3;
+        // Spread nodes around the center with deterministic offset
+        const idx = (node.id().charCodeAt(0) || 0) % 7;
+        const offset = (idx - 3) * 0.05;
+        lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng) + offset;
       }
 
       const latStr = lat.toFixed(15);

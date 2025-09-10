@@ -46,7 +46,7 @@ describe('addLabFolderToWorkspace command', () => {
   // Adds a new folder entry to the current workspace.
   it('adds the folder to the workspace', async () => {
     const node = {
-      labPath: { absolute: '/tmp/path/to/lab.clab.yaml' },
+      labPath: { absolute: '/home/user/path/to/lab.clab.yaml' },
       label: 'lab1',
       name: 'lab1',
     } as any;
@@ -55,7 +55,7 @@ describe('addLabFolderToWorkspace command', () => {
     const addSpy = (vscodeStub.workspace.updateWorkspaceFolders as sinon.SinonSpy);
     const msgSpy = (vscodeStub.window.showInformationMessage as sinon.SinonSpy);
     expect(addSpy.calledOnce).to.be.true;
-    expect(addSpy.firstCall.args[2].uri.fsPath).to.equal('/tmp/path/to');
+    expect(addSpy.firstCall.args[2].uri.fsPath).to.equal('/home/user/path/to');
     expect(addSpy.firstCall.args[2].name).to.equal('lab1');
     expect(msgSpy.calledOnceWith('Added "lab1" to your workspace.')).to.be.true;
   });

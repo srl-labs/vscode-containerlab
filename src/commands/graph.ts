@@ -92,7 +92,8 @@ function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: 
   }
 
   const editor = vscode.window.activeTextEditor;
-  if (editor && editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
+  const topoFileRegex = /\.clab\.(yaml|yml)$/;
+  if (editor && topoFileRegex.test(editor.document.uri.fsPath)) {
     return { labPath: editor.document.uri.fsPath, isViewMode: false };
   }
 

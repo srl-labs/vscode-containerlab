@@ -12,10 +12,6 @@ const PASTE_OFFSET = {
   Y: 20
 } as const;
 
-const ID_GENERATION = {
-  RADIX: 36,
-  SUBSTRING_LENGTH: 9
-} as const;
 
 interface CopyData {
   elements: any[];
@@ -226,7 +222,8 @@ export class CopyPasteManager {
   }
 
   private generateDummyId(baseName: string, usedIds: Set<string>): string {
-    const match = baseName.match(/^(dummy)(\d*)$/);
+    const re = /^(dummy)(\d*)$/;
+    const match = re.exec(baseName);
     const base = match?.[1] || 'dummy';
     let num = parseInt(match?.[2] || '1') || 1;
     while (usedIds.has(`${base}${num}`)) num++;
@@ -235,7 +232,8 @@ export class CopyPasteManager {
 
   private generateAdapterNodeId(baseName: string, usedIds: Set<string>): string {
     const [nodeType, adapter] = baseName.split(':');
-    const adapterMatch = adapter.match(/^([a-zA-Z]+)(\d+)$/);
+    const adapterRe = /^([a-zA-Z]+)(\d+)$/;
+    const adapterMatch = adapterRe.exec(adapter);
     if (adapterMatch) {
       const adapterBase = adapterMatch[1];
       let adapterNum = parseInt(adapterMatch[2]);
@@ -258,24 +256,31 @@ export class CopyPasteManager {
   private generateSpecialNodeId(baseName: string, usedIds: Set<string>): string {
     let name = baseName;
     while (usedIds.has(name)) {
-      const match = name.match(/^(.*?)(\d*)$/);
-      const base = match?.[1] || name;
-      let num = parseInt(match?.[2] || '0') || 0;
-      name = base + (++num);
+      // Split name into non-digit base + trailing digits
+      let i = name.length - 1;
+      while (i >= 0 && name[i] >= '0' && name[i] <= '9') i--;
+      const base = name.slice(0, i + 1) || name;
+      const digits = name.slice(i + 1);
+      let num = digits ? parseInt(digits, 10) : 0;
+      num += 1;
+      name = `${base}${num}`;
     }
     return name;
   }
 
   private generateRegularNodeId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
-    const match = baseName.match(/^(.*)(\d+)$/);
-    const base = match?.[1] || baseName;
-    let num = match?.[2] ? parseInt(match[2]) : 0;
+    // Split baseName into base + trailing number (if any)
+    let i = baseName.length - 1;
+    while (i >= 0 && baseName[i] >= '0' && baseName[i] <= '9') i--;
+    const hasNumber = i < baseName.length - 1;
+    const base = hasNumber ? baseName.slice(0, i + 1) : baseName;
+    let num = hasNumber ? parseInt(baseName.slice(i + 1), 10) : 0;
 
     if (isGroup) {
       while (usedIds.has(`${base}${num || ''}:1`)) num++;
       return `${base}${num || ''}:1`;
     }
-    if (match) {
+    if (hasNumber) {
       while (usedIds.has(`${base}${num}`)) num++;
       return `${base}${num}`;
     }
@@ -349,11 +354,9 @@ export class CopyPasteManager {
    * @param annotations - The annotations to apply to the new elements.
    */
   private postProcess(added: any, idMap: Map<string, string>, annotations: TopologyAnnotations): void {
-    try {
-      loadCytoStyle(this.cy);
-    } catch (error) {
+    loadCytoStyle(this.cy).catch((error) => {
       log.error(`Failed to load cytoscape styles during paste operation: ${error}`);
-    }
+    });
 
     // Apply group styles from annotations
     try {
@@ -399,7 +402,11 @@ export class CopyPasteManager {
 
     const usedNums = new Set(node.connectedEdges().map((e: any) => {
       const ep = e.data().source === nodeId ? e.data().sourceEndpoint : e.data().targetEndpoint;
-      return ep ? parseInt(ep.match(/\d+$/)?.[0] || '0') : 0;
+      if (!ep || typeof ep !== 'string') return 0;
+      let i = ep.length - 1;
+      while (i >= 0 && ep[i] >= '0' && ep[i] <= '9') i--;
+      const digits = ep.slice(i + 1);
+      return digits ? parseInt(digits, 10) : 0;
     }).filter((n: number) => n > 0));
 
     let num = 1;
@@ -419,7 +426,7 @@ export class CopyPasteManager {
 
     // Handle free text annotations with position adjustment
     annotations.freeTextAnnotations?.forEach(annotation => {
-      const newId = `freeText_${Date.now()}_${Math.random().toString(ID_GENERATION.RADIX).substring(2, 2 + ID_GENERATION.SUBSTRING_LENGTH)}`;
+      const newId = `freeText_${Date.now()}_${this.pasteCounter}`;
       const newAnnotation = {
         ...annotation,
         id: newId,

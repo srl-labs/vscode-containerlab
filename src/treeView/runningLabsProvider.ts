@@ -4,7 +4,8 @@ import * as c from "./common";
 import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
+import * as fs from "fs";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
 // Mode switching imports removed - now handled by command completion callbacks
@@ -167,17 +168,16 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         const now = Date.now();
 
         // Check for expired caches
+        let anyInterfaceExpired = false;
         for (const value of this.containerInterfacesCache.values()) {
             if (now - value.timestamp > this.cacheTTL) {
-                return true;
+                anyInterfaceExpired = true;
+                break;
             }
         }
 
-        if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp >= this.cacheTTL) {
-            return true;
-        }
-
-        return false;
+        const labsExpired = !!(this.labsCache.inspect && (now - this.labsCache.inspect.timestamp >= this.cacheTTL));
+        return anyInterfaceExpired || labsExpired;
     }
 
     getTreeItem(element: c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode): vscode.TreeItem {
@@ -642,10 +642,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         flatContainers.forEach(container => {
             // Extract lab name from the container
-            let labName = "unknown";
-
-            // get the lab name from the containerlab item
-            labName = container.Labels['containerlab']
+            const labName = container.Labels['containerlab'] || "unknown";
 
             // Initialize array for this lab if it doesn't exist
             if (!result[labName]) {
@@ -785,11 +782,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         try {
             // IMPORTANT: Use the absolute lab path in the command
-            const cmd = `${utils.getSudo()}containerlab inspect interfaces -t "${absLabPath}" -f json -n ${cName}`;
-            // Use execSync for simplicity here, assuming it's fast enough. Add timeout if needed.
-            const clabStdout = execSync(
-                cmd,
-                { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 } // 10s timeout
+            const candidateBins = ['/usr/bin/containerlab', '/bin/containerlab', '/usr/local/bin/containerlab'];
+            const bin = candidateBins.find(p => {
+                try { return fs.existsSync(p); } catch { return false; }
+            }) || 'containerlab';
+            const clabStdout = execFileSync(
+                bin,
+                ['inspect', 'interfaces', '-t', absLabPath, '-f', 'json', '-n', cName],
+                { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 }
             ).toString();
 
             const clabInsJSON: ClabInsIntfJSON[] = JSON.parse(clabStdout);

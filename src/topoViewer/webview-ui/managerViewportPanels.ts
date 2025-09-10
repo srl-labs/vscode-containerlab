@@ -480,14 +480,7 @@ export class ManagerViewportPanels {
       if (interfaceInput) {
         interfaceInput.value = nodeId;
       }
-    } else if (networkType === 'host' || networkType === 'mgmt-net') {
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Host Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.value = interfaceName;
-      }
-    } else if (networkType === 'macvlan') {
+    } else if (networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') {
       if (interfaceLabel) {
         interfaceLabel.textContent = 'Host Interface';
       }
@@ -674,12 +667,14 @@ export class ManagerViewportPanels {
     const nodeData = node.data();
     const parts = nodeId.split(':');
     const networkType = nodeData.extraData?.kind || parts[0] || 'host';
-    const interfaceName =
-      networkType === 'bridge' || networkType === 'ovs-bridge'
-        ? nodeId
-        : networkType === 'dummy'
-        ? ''
-        : parts[1] || 'eth1';
+    let interfaceName: string;
+    if (networkType === 'bridge' || networkType === 'ovs-bridge') {
+      interfaceName = nodeId;
+    } else if (networkType === 'dummy') {
+      interfaceName = '';
+    } else {
+      interfaceName = parts[1] || 'eth1';
+    }
 
     const idLabel = document.getElementById('panel-network-editor-id');
     if (idLabel) {
@@ -1007,7 +1002,7 @@ export class ManagerViewportPanels {
   // eslint-disable-next-line no-unused-vars
   private attachExtendedValidators(validate: () => string[], renderErrors: (errors: string[]) => void): void {
     const mtuEl = document.getElementById('panel-link-ext-mtu');
-    const attach = (el: HTMLElement | null) => { if (!el) return; el.addEventListener('input', () => renderErrors(validate())); };
+    const attach = (el: HTMLElement | null) => { if (el) { el.addEventListener('input', () => renderErrors(validate())); } };
     attach(mtuEl as HTMLElement);
   }
 
@@ -1104,9 +1099,12 @@ export class ManagerViewportPanels {
     const newName = nodeNameInput.value;                    // the new name
 
     // Build updated extraData, preserving other fields.
-    const typeValue = this.panelNodeEditorUseDropdownForType
-      ? (typeDropdownInput ? typeDropdownInput.value || '' : '')
-      : (typeInput ? typeInput.value : '');
+    let typeValue = '';
+    if (this.panelNodeEditorUseDropdownForType) {
+      typeValue = typeDropdownInput ? (typeDropdownInput.value || '') : '';
+    } else {
+      typeValue = typeInput ? typeInput.value : '';
+    }
 
     const updatedExtraData = {
       ...currentData.extraData,
@@ -1207,9 +1205,14 @@ export class ManagerViewportPanels {
     const oldName = currentData.name as string;
     const isBridgeType = networkType === 'bridge' || networkType === 'ovs-bridge';
     const isDummyType = networkType === 'dummy';
-    const newId = isBridgeType
-      ? interfaceName
-      : (isDummyType ? (oldId.startsWith('dummy') ? oldId : this.generateUniqueDummyId()) : `${networkType}:${interfaceName}`);
+    let newId = '';
+    if (isBridgeType) {
+      newId = interfaceName;
+    } else if (isDummyType) {
+      newId = oldId.startsWith('dummy') ? oldId : this.generateUniqueDummyId();
+    } else {
+      newId = `${networkType}:${interfaceName}`;
+    }
     const newName = isDummyType ? 'dummy' : newId;
     return { oldId, oldName, newId, newName };
   }
@@ -1350,9 +1353,9 @@ export class ManagerViewportPanels {
           (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
           (edge.data('target') === nodeId && key === 'targetEndpoint');
         if (!endpoint || !isNodeEndpoint) return;
-        const match = endpoint.match(patternRegex);
-        if (match) {
-          const newEndpoint = newPattern.replace('{n}', match[1]);
+        const m = patternRegex.exec(endpoint);
+        if (m) {
+          const newEndpoint = newPattern.replace('{n}', m[1]);
           edge.data(key, newEndpoint);
         }
       });
@@ -1407,11 +1410,11 @@ export class ManagerViewportPanels {
         const imageMap = window.imageMapping || {};
         const imageInput = document.getElementById('panel-node-editor-image') as HTMLInputElement;
         if (imageInput) {
-          const mappedImage = imageMap[selectedValue];
-          if (mappedImage !== undefined) {
+          if (Object.prototype.hasOwnProperty.call(imageMap, selectedValue)) {
+            const mappedImage = imageMap[selectedValue] as string;
             imageInput.value = mappedImage;
             imageInput.dispatchEvent(new Event('input'));
-          } else if (mappedImage === undefined) {
+          } else {
             imageInput.value = '';
             imageInput.dispatchEvent(new Event('input'));
           }
@@ -1518,7 +1521,7 @@ export class ManagerViewportPanels {
     }
     catch (err) {
       log.error(`panelEdgeEditor: unexpected error: ${err instanceof Error ? err.message : String(err)}`);
-      // TODO: surface user-facing notification
+      // NOTE: Consider surfacing a user-facing notification
     }
   }
 
@@ -1546,8 +1549,11 @@ export class ManagerViewportPanels {
   }
 
   private extractKindFromPattern(pattern: string): string {
-    const match = pattern.match(/\(([^)]+)\)/);
-    return match ? match[1] : '';
+    const start = pattern.indexOf('(');
+    if (start < 0) return '';
+    const end = pattern.indexOf(')', start + 1);
+    if (end <= start) return '';
+    return pattern.slice(start + 1, end);
   }
 
   private isNokiaKind(kind: string): boolean {
