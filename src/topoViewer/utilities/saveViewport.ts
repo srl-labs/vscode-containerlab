@@ -34,9 +34,34 @@ const TYPE_VXLAN = 'vxlan' as const;
 const TYPE_DUMMY = 'dummy' as const;
 const TYPE_UNKNOWN = 'unknown' as const;
 
+// Commonly duplicated YAML keys
+const KEY_HOST_INTERFACE = 'host-interface';
+const KEY_MODE = 'mode';
+const KEY_REMOTE = 'remote';
+const KEY_VNI = 'vni';
+const KEY_UDP_PORT = 'udp-port';
+const KEY_MTU = 'mtu';
+const KEY_VARS = 'vars';
+const KEY_LABELS = 'labels';
+
 // Key sets used for brief/extended representations
-const BRIEF_REMOVE_KEYS = ['host-interface', 'mode', 'remote', 'vni', 'udp-port', 'mtu', 'vars', 'labels'] as const;
-const VETH_REMOVE_KEYS = ['host-interface', 'mode', 'remote', 'vni', 'udp-port'] as const;
+const BRIEF_REMOVE_KEYS = [
+  KEY_HOST_INTERFACE,
+  KEY_MODE,
+  KEY_REMOTE,
+  KEY_VNI,
+  KEY_UDP_PORT,
+  KEY_MTU,
+  KEY_VARS,
+  KEY_LABELS,
+] as const;
+const VETH_REMOVE_KEYS = [
+  KEY_HOST_INTERFACE,
+  KEY_MODE,
+  KEY_REMOTE,
+  KEY_VNI,
+  KEY_UDP_PORT,
+] as const;
 
 // Common type groups
 const SINGLE_ENDPOINT_TYPES = new Set<CanonicalLinkKey['type']>([
@@ -458,7 +483,7 @@ function applyExtraProps(
     'binds',
     'env',
     'env-files',
-    'labels',
+    KEY_LABELS,
     'user',
     'entrypoint',
     'cmd',
@@ -693,9 +718,9 @@ function applyHostInterface(
   hostInterface: any,
 ): void {
   if (HOSTY_TYPES.has(chosenType)) {
-    setOrDelete(doc, map, 'host-interface', hostInterface);
-  } else if ((map as any).has && (map as any).has('host-interface', true)) {
-    (map as any).delete('host-interface');
+    setOrDelete(doc, map, KEY_HOST_INTERFACE, hostInterface);
+  } else if ((map as any).has && (map as any).has(KEY_HOST_INTERFACE, true)) {
+    (map as any).delete(KEY_HOST_INTERFACE);
   }
 }
 
@@ -706,9 +731,9 @@ function applyMacvlanMode(
   mode: any,
 ): void {
   if (chosenType === TYPE_MACVLAN) {
-    setOrDelete(doc, map, 'mode', mode);
-  } else if ((map as any).has && (map as any).has('mode', true)) {
-    (map as any).delete('mode');
+    setOrDelete(doc, map, KEY_MODE, mode);
+  } else if ((map as any).has && (map as any).has(KEY_MODE, true)) {
+    (map as any).delete(KEY_MODE);
   }
 }
 
@@ -719,11 +744,11 @@ function applyVxlanOptions(
   extra: any,
 ): void {
   if (VX_TYPES.has(chosenType)) {
-    setOrDelete(doc, map, 'remote', extra.extRemote);
-    setOrDelete(doc, map, 'vni', extra.extVni !== '' ? extra.extVni : undefined);
-    setOrDelete(doc, map, 'udp-port', extra.extUdpPort !== '' ? extra.extUdpPort : undefined);
+    setOrDelete(doc, map, KEY_REMOTE, extra.extRemote);
+    setOrDelete(doc, map, KEY_VNI, extra.extVni !== '' ? extra.extVni : undefined);
+    setOrDelete(doc, map, KEY_UDP_PORT, extra.extUdpPort !== '' ? extra.extUdpPort : undefined);
   } else {
-    removeKeys(map, ['remote', 'vni', 'udp-port']);
+    removeKeys(map, [KEY_REMOTE, KEY_VNI, KEY_UDP_PORT]);
   }
 }
 
@@ -743,8 +768,9 @@ function applyExtendedFormat(
   doc: YAML.Document.Parsed,
 ): boolean {
   map.set('type', doc.createNode(chosenType));
-  const requiresHost = chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan';
-  const requiresVx = chosenType === 'vxlan' || chosenType === 'vxlan-stitch';
+  const requiresHost =
+    chosenType === STR_MGMT_NET || chosenType === STR_HOST || chosenType === TYPE_MACVLAN;
+  const requiresVx = chosenType === TYPE_VXLAN || chosenType === TYPE_VXLAN_STITCH;
   if ((requiresHost && !extra.extHostInterface) ||
       (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
     log.warn(`Skipping write for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
@@ -757,9 +783,9 @@ function applyExtendedFormat(
     applyExtendedSingleEndpoint(map, data, extra, chosenType, payloadKey, doc);
   }
 
-  setOrDelete(doc, map, 'mtu', extra.extMtu !== '' ? extra.extMtu : undefined);
-  setOrDelete(doc, map, 'vars', extra.extVars);
-  setOrDelete(doc, map, 'labels', extra.extLabels);
+  setOrDelete(doc, map, KEY_MTU, extra.extMtu !== '' ? extra.extMtu : undefined);
+  setOrDelete(doc, map, KEY_VARS, extra.extVars);
+  setOrDelete(doc, map, KEY_LABELS, extra.extLabels);
   return true;
 }
 
@@ -774,7 +800,7 @@ function updateExistingLink(
 ): void {
   linkItem.flow = false;
   const hasExtended = hasExtendedProperties(extra);
-  const shouldBrief = !hasExtended && chosenType !== 'dummy';
+  const shouldBrief = !hasExtended && chosenType !== TYPE_DUMMY;
   if (shouldBrief) {
     applyBriefFormat(linkItem, data, doc);
   } else {
@@ -788,8 +814,9 @@ function validateRequiredFields(
   extra: any,
   payloadKeyStr: string,
 ): boolean {
-  const requiresHost = ['mgmt-net', 'host', 'macvlan'].includes(chosenType);
-  const requiresVx = ['vxlan', 'vxlan-stitch'].includes(chosenType);
+  const requiresHost =
+    chosenType === STR_MGMT_NET || chosenType === STR_HOST || chosenType === TYPE_MACVLAN;
+  const requiresVx = chosenType === TYPE_VXLAN || chosenType === TYPE_VXLAN_STITCH;
   const needsHostInterface = requiresHost && !data.source.includes(':') && !data.target.includes(':');
   if (
     (needsHostInterface && !extra.extHostInterface) ||
@@ -814,9 +841,9 @@ function applyExtendedLink(
   } else {
     applyExtendedSingleEndpoint(link, data, extra, chosenType, payloadKey, doc);
   }
-  setOrDelete(doc, link, 'mtu', extra.extMtu !== '' ? extra.extMtu : undefined);
-  setOrDelete(doc, link, 'vars', extra.extVars);
-  setOrDelete(doc, link, 'labels', extra.extLabels);
+  setOrDelete(doc, link, KEY_MTU, extra.extMtu !== '' ? extra.extMtu : undefined);
+  setOrDelete(doc, link, KEY_VARS, extra.extVars);
+  setOrDelete(doc, link, KEY_LABELS, extra.extLabels);
 }
 
 function createNewLink(
@@ -830,7 +857,7 @@ function createNewLink(
 ): void {
   const newLink = new YAML.YAMLMap();
   newLink.flow = false;
-  const wantsExtended = hasExtendedProperties(extra) || chosenType === 'dummy';
+  const wantsExtended = hasExtendedProperties(extra) || chosenType === TYPE_DUMMY;
   if (wantsExtended) {
     newLink.set('type', doc.createNode(chosenType));
     if (!validateRequiredFields(chosenType, data, extra, payloadKeyStr)) return;

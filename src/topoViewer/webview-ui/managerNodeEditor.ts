@@ -52,6 +52,14 @@ const ID_NODE_IPP_DROPDOWN = 'node-image-pull-policy-dropdown-container' as cons
 const ID_NODE_IPP_FILTER_INPUT = 'node-image-pull-policy-dropdown-container-filter-input' as const;
 const ID_NODE_RUNTIME_DROPDOWN = 'node-runtime-dropdown-container' as const;
 const ID_NODE_RUNTIME_FILTER_INPUT = 'node-runtime-dropdown-container-filter-input' as const;
+const ID_NODE_IMAGE_DROPDOWN = 'node-image-dropdown-container' as const;
+const ID_NODE_IMAGE_FILTER_INPUT = 'node-image-dropdown-container-filter-input' as const;
+const ID_NODE_IMAGE_FALLBACK_INPUT = 'node-image-fallback-input' as const;
+const ID_NODE_VERSION_FALLBACK_INPUT = 'node-version-fallback-input' as const;
+const ID_PANEL_NODE_TOPOROLE_CONTAINER = 'panel-node-topoviewerrole-dropdown-container' as const;
+const ID_NODE_CERT_KEYSIZE_DROPDOWN = 'node-cert-key-size-dropdown-container' as const;
+const ID_NODE_CERT_VALIDITY = 'node-cert-validity' as const;
+const ID_NODE_SANS_CONTAINER = 'node-sans-container' as const;
 
 // Common labels and placeholders
 const LABEL_DEFAULT = 'Default' as const;
@@ -61,6 +69,18 @@ const PH_SEARCH_RP = 'Search restart policy...' as const;
 const PH_SEARCH_NM = 'Search network mode...' as const;
 const PH_SEARCH_IPP = 'Search pull policy...' as const;
 const PH_SEARCH_RUNTIME = 'Search runtime...' as const;
+const PH_SEARCH_IMAGE = 'Search for image...' as const;
+const PH_SELECT_VERSION = 'Select version...' as const;
+const PH_IMAGE_EXAMPLE = 'e.g., ghcr.io/nokia/srlinux' as const;
+const PH_VERSION_EXAMPLE = 'e.g., latest' as const;
+// Healthcheck IDs and prop
+const ID_HC_TEST = 'node-healthcheck-test' as const;
+const ID_HC_START = 'node-healthcheck-start-period' as const;
+const ID_HC_INTERVAL = 'node-healthcheck-interval' as const;
+const ID_HC_TIMEOUT = 'node-healthcheck-timeout' as const;
+const ID_HC_RETRIES = 'node-healthcheck-retries' as const;
+const PROP_HEALTHCHECK = 'healthcheck' as const;
+const PH_SEARCH_KEY_SIZE = 'Search key size...' as const;
 
 const PH_BIND = 'Bind mount (host:container)' as const;
 const PH_ENV_KEY = 'ENV_NAME' as const;
@@ -94,6 +114,45 @@ const PROP_SHM_SIZE = 'shm-size' as const;
 // Data attributes used for dynamic entry buttons
 const DATA_ATTR_CONTAINER = 'data-container' as const;
 const DATA_ATTR_ENTRY_ID = 'data-entry-id' as const;
+
+// Shared field→prop mappings for inheritance badges and change listeners
+type FieldMapping = { id: string; prop: string; badgeId?: string };
+const FIELD_MAPPINGS_BASE: FieldMapping[] = [
+  { id: ID_NODE_KIND_DROPDOWN, prop: 'kind' },
+  { id: ID_NODE_TYPE, prop: 'type' },
+  { id: ID_NODE_IMAGE_DROPDOWN, prop: 'image' },
+  { id: 'node-startup-config', prop: PROP_STARTUP_CONFIG },
+  { id: 'node-enforce-startup-config', prop: PROP_ENFORCE_STARTUP_CONFIG },
+  { id: 'node-suppress-startup-config', prop: PROP_SUPPRESS_STARTUP_CONFIG },
+  { id: 'node-license', prop: 'license' },
+  { id: 'node-binds-container', prop: 'binds' },
+  { id: 'node-env-container', prop: 'env' },
+  { id: 'node-labels-container', prop: 'labels' },
+  { id: 'node-user', prop: 'user' },
+  { id: 'node-entrypoint', prop: 'entrypoint' },
+  { id: 'node-cmd', prop: 'cmd' },
+  { id: 'node-exec-container', prop: 'exec' },
+  { id: ID_NODE_RP_DROPDOWN, prop: 'restart-policy' },
+  { id: 'node-auto-remove', prop: 'auto-remove' },
+  { id: 'node-startup-delay', prop: 'startup-delay' },
+  { id: 'node-mgmt-ipv4', prop: PROP_MGMT_IPV4 },
+  { id: 'node-mgmt-ipv6', prop: PROP_MGMT_IPV6 },
+  { id: ID_NODE_NM_DROPDOWN, prop: 'network-mode' },
+  { id: 'node-ports-container', prop: 'ports' },
+  { id: 'node-dns-servers-container', prop: 'dns' },
+  { id: 'node-aliases-container', prop: 'aliases' },
+  { id: 'node-memory', prop: 'memory' },
+  { id: 'node-cpu', prop: 'cpu' },
+  { id: 'node-cpu-set', prop: PROP_CPU_SET },
+  { id: 'node-shm-size', prop: PROP_SHM_SIZE },
+  { id: 'node-cap-add-container', prop: 'cap-add' },
+  { id: 'node-sysctls-container', prop: 'sysctls' },
+  { id: 'node-devices-container', prop: 'devices' },
+  { id: ID_NODE_CERT_ISSUE, prop: 'certificate' },
+  { id: ID_HC_TEST, prop: PROP_HEALTHCHECK },
+  { id: ID_NODE_IPP_DROPDOWN, prop: 'image-pull-policy' },
+  { id: ID_NODE_RUNTIME_DROPDOWN, prop: 'runtime' },
+];
 
 /**
  * Node properties that map to Containerlab configuration
@@ -443,21 +502,21 @@ export class ManagerNodeEditor {
     // Cert key size
     const keySizeOptions = ['2048', '4096'];
     createFilterableDropdown(
-      'node-cert-key-size-dropdown-container',
+      ID_NODE_CERT_KEYSIZE_DROPDOWN,
       keySizeOptions,
       '2048',
       () => {},
-      'Search key size...'
+      PH_SEARCH_KEY_SIZE
     );
 
     // Image pull policy
-    const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
+    const ippOptions = [...OPTIONS_IPP];
     createFilterableDropdown(
-      'node-image-pull-policy-dropdown-container',
+      ID_NODE_IPP_DROPDOWN,
       ippOptions,
-      'Default',
+      LABEL_DEFAULT,
       () => {},
-      'Search pull policy...'
+      PH_SEARCH_IPP
     );
 
     // Runtime
@@ -956,7 +1015,7 @@ export class ManagerNodeEditor {
     } else if (nodeData.extraData?.icon && typeof nodeData.extraData.icon === 'string') {
       iconInitial = nodeData.extraData.icon;
     }
-    createFilterableDropdown('panel-node-topoviewerrole-dropdown-container', nodeIcons, iconInitial, () => {}, 'Search for icon...');
+    createFilterableDropdown(ID_PANEL_NODE_TOPOROLE_CONTAINER, nodeIcons, iconInitial, () => {}, 'Search for icon...');
   }
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {
@@ -1171,7 +1230,7 @@ export class ManagerNodeEditor {
   private setupImageFields(extraData: Record<string, any>, actualInherited: string[]): void {
     const dockerImages = (window as any).dockerImages as string[] | undefined;
     const imageInitial = extraData.image || '';
-    this.markFieldInheritance('node-image-dropdown-container', actualInherited.includes('image'));
+    this.markFieldInheritance(ID_NODE_IMAGE_DROPDOWN, actualInherited.includes('image'));
 
     if (this.shouldUseImageDropdowns(dockerImages)) {
       this.setupImageDropdowns(dockerImages!, imageInitial);
@@ -1197,22 +1256,22 @@ export class ManagerNodeEditor {
     const { base: initialBaseImage, version: initialVersion } = this.splitImageName(imageInitial, baseImages);
 
     createFilterableDropdown(
-      'node-image-dropdown-container',
+      ID_NODE_IMAGE_DROPDOWN,
       baseImages,
       initialBaseImage,
       (selectedBaseImage: string) => this.handleBaseImageChange(selectedBaseImage),
-      'Search for image...',
+      PH_SEARCH_IMAGE,
       true
     );
 
     const versions = this.imageVersionMap.get(initialBaseImage) || ['latest'];
     const versionToSelect = initialVersion || versions[0] || 'latest';
     createFilterableDropdown(
-      'node-version-dropdown-container',
+      ID_NODE_VERSION_DROPDOWN,
       versions,
       versionToSelect,
       () => {},
-      'Select version...',
+      PH_SELECT_VERSION,
       true
     );
   }
@@ -1239,13 +1298,13 @@ export class ManagerNodeEditor {
   }
 
   private setupFallbackImageInputs(imageInitial: string): void {
-    const container = document.getElementById('node-image-dropdown-container');
+    const container = document.getElementById(ID_NODE_IMAGE_DROPDOWN);
     if (container) {
       const input = document.createElement('input');
       input.type = 'text';
       input.className = `${CLASS_INPUT_FIELD} w-full`;
-      input.placeholder = 'e.g., ghcr.io/nokia/srlinux';
-      input.id = 'node-image-fallback-input';
+      input.placeholder = PH_IMAGE_EXAMPLE;
+      input.id = ID_NODE_IMAGE_FALLBACK_INPUT;
       input.value = imageInitial.includes(':') ? imageInitial.substring(0, imageInitial.lastIndexOf(':')) : imageInitial;
       container.appendChild(input);
     }
@@ -1255,8 +1314,8 @@ export class ManagerNodeEditor {
       const versionInput = document.createElement('input');
       versionInput.type = 'text';
       versionInput.className = `${CLASS_INPUT_FIELD} w-full`;
-      versionInput.placeholder = 'e.g., latest';
-      versionInput.id = 'node-version-fallback-input';
+      versionInput.placeholder = PH_VERSION_EXAMPLE;
+      versionInput.id = ID_NODE_VERSION_FALLBACK_INPUT;
       const colon = imageInitial.lastIndexOf(':');
       versionInput.value = colon > 0 ? imageInitial.substring(colon + 1) : 'latest';
       versionContainer.appendChild(versionInput);
@@ -1385,7 +1444,7 @@ export class ManagerNodeEditor {
       }
     }
     // Otherwise get from regular input
-    return this.getInputValue('node-type');
+    return this.getInputValue(ID_NODE_TYPE);
   }
 
   /**
@@ -1416,49 +1475,11 @@ export class ManagerNodeEditor {
     // Properties that should never show inherited badge
     const neverInherited = ['kind', 'name', 'group'];
 
-    // Define field mappings - same as in setupInheritanceChangeListeners
-    const mappings: Array<{ fieldId: string; prop: string }> = [
-      { fieldId: ID_NODE_KIND_DROPDOWN, prop: 'kind' },
-      { fieldId: ID_NODE_TYPE, prop: 'type' },
-      { fieldId: 'node-image-dropdown-container', prop: 'image' },
-      { fieldId: 'node-startup-config', prop: PROP_STARTUP_CONFIG },
-      { fieldId: 'node-enforce-startup-config', prop: PROP_ENFORCE_STARTUP_CONFIG },
-      { fieldId: 'node-suppress-startup-config', prop: PROP_SUPPRESS_STARTUP_CONFIG },
-      { fieldId: 'node-license', prop: 'license' },
-      { fieldId: 'node-binds-container', prop: 'binds' },
-      { fieldId: 'node-env-container', prop: 'env' },
-      { fieldId: 'node-labels-container', prop: 'labels' },
-      { fieldId: 'node-user', prop: 'user' },
-      { fieldId: 'node-entrypoint', prop: 'entrypoint' },
-      { fieldId: 'node-cmd', prop: 'cmd' },
-      { fieldId: 'node-exec-container', prop: 'exec' },
-      { fieldId: ID_NODE_RP_DROPDOWN, prop: 'restart-policy' },
-      { fieldId: 'node-auto-remove', prop: 'auto-remove' },
-      { fieldId: 'node-startup-delay', prop: 'startup-delay' },
-      { fieldId: 'node-mgmt-ipv4', prop: PROP_MGMT_IPV4 },
-      { fieldId: 'node-mgmt-ipv6', prop: PROP_MGMT_IPV6 },
-      { fieldId: ID_NODE_NM_DROPDOWN, prop: 'network-mode' },
-      { fieldId: 'node-ports-container', prop: 'ports' },
-      { fieldId: 'node-dns-servers-container', prop: 'dns' },
-      { fieldId: 'node-aliases-container', prop: 'aliases' },
-      { fieldId: 'node-memory', prop: 'memory' },
-      { fieldId: 'node-cpu', prop: 'cpu' },
-      { fieldId: 'node-cpu-set', prop: PROP_CPU_SET },
-      { fieldId: 'node-shm-size', prop: PROP_SHM_SIZE },
-      { fieldId: 'node-cap-add-container', prop: 'cap-add' },
-      { fieldId: 'node-sysctls-container', prop: 'sysctls' },
-      { fieldId: 'node-devices-container', prop: 'devices' },
-      { fieldId: ID_NODE_CERT_ISSUE, prop: 'certificate' },
-      { fieldId: ID_HC_TEST, prop: PROP_HEALTHCHECK },
-      { fieldId: ID_NODE_IPP_DROPDOWN, prop: 'image-pull-policy' },
-      { fieldId: ID_NODE_RUNTIME_DROPDOWN, prop: 'runtime' }
-    ];
-
-    // Update each field's inherited badge based on whether its property is in the inherited list
-    mappings.forEach(({ fieldId, prop }) => {
+    // Use shared mappings
+    FIELD_MAPPINGS_BASE.forEach(({ id, prop }) => {
       // Never show inherited badge for certain properties
       const isInherited = !neverInherited.includes(prop) && inheritedProps.includes(prop);
-      this.markFieldInheritance(fieldId, isInherited);
+      this.markFieldInheritance(id, isInherited);
     });
   }
 
@@ -1481,49 +1502,16 @@ export class ManagerNodeEditor {
    * Set up listeners to update inheritance indicators when fields change
    */
   private setupInheritanceChangeListeners(): void {
-    const mappings: Array<{ id: string; prop: string; badgeId?: string }> = [
-      { id: ID_NODE_KIND_DROPDOWN, prop: 'kind' },
-      { id: ID_NODE_TYPE, prop: 'type' },
-      { id: 'node-image-dropdown-container', prop: 'image' },
-      { id: 'node-startup-config', prop: PROP_STARTUP_CONFIG },
-      { id: 'node-enforce-startup-config', prop: PROP_ENFORCE_STARTUP_CONFIG },
-      { id: 'node-suppress-startup-config', prop: PROP_SUPPRESS_STARTUP_CONFIG },
-      { id: 'node-license', prop: 'license' },
-      { id: 'node-binds-container', prop: 'binds' },
-      { id: 'node-env-container', prop: 'env' },
-      { id: 'node-labels-container', prop: 'labels' },
-      { id: 'node-user', prop: 'user' },
-      { id: 'node-entrypoint', prop: 'entrypoint' },
-      { id: 'node-cmd', prop: 'cmd' },
-      { id: 'node-exec-container', prop: 'exec' },
-      { id: ID_NODE_RP_DROPDOWN, prop: 'restart-policy' },
-      { id: 'node-auto-remove', prop: 'auto-remove' },
-      { id: 'node-startup-delay', prop: 'startup-delay' },
-      { id: 'node-mgmt-ipv4', prop: PROP_MGMT_IPV4 },
-      { id: 'node-mgmt-ipv6', prop: PROP_MGMT_IPV6 },
-      { id: ID_NODE_NM_DROPDOWN, prop: 'network-mode' },
-      { id: 'node-ports-container', prop: 'ports' },
-      { id: 'node-dns-servers-container', prop: 'dns' },
-      { id: 'node-aliases-container', prop: 'aliases' },
-      { id: 'node-memory', prop: 'memory' },
-      { id: 'node-cpu', prop: 'cpu' },
-      { id: 'node-cpu-set', prop: PROP_CPU_SET },
-      { id: 'node-shm-size', prop: PROP_SHM_SIZE },
-      { id: 'node-cap-add-container', prop: 'cap-add' },
-      { id: 'node-sysctls-container', prop: 'sysctls' },
-      { id: 'node-devices-container', prop: 'devices' },
-      { id: ID_NODE_CERT_ISSUE, prop: 'certificate' },
-      { id: 'node-cert-key-size-dropdown-container', prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
-      { id: 'node-cert-validity', prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
-      { id: 'node-sans-container', prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
-      { id: ID_HC_TEST, prop: PROP_HEALTHCHECK },
+    const extraMappings: FieldMapping[] = [
+      { id: ID_NODE_CERT_KEYSIZE_DROPDOWN, prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
+      { id: ID_NODE_CERT_VALIDITY, prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
+      { id: ID_NODE_SANS_CONTAINER, prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
       { id: ID_HC_START, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
       { id: ID_HC_INTERVAL, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
       { id: ID_HC_TIMEOUT, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
       { id: ID_HC_RETRIES, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
-      { id: ID_NODE_IPP_DROPDOWN, prop: 'image-pull-policy' },
-      { id: ID_NODE_RUNTIME_DROPDOWN, prop: 'runtime' }
     ];
+    const mappings: FieldMapping[] = [...FIELD_MAPPINGS_BASE, ...extraMappings];
 
     mappings.forEach(({ id, prop, badgeId }) => {
       const el = document.getElementById(id);
@@ -1889,13 +1877,13 @@ export class ManagerNodeEditor {
     const dockerImages = (window as any).dockerImages as string[] | undefined;
     const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 && dockerImages.some(img => img && img.trim() !== '');
     if (hasDockerImages) {
-      const baseImg = (document.getElementById('node-image-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+      const baseImg = (document.getElementById(ID_NODE_IMAGE_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
     const version = (document.getElementById(ID_NODE_VERSION_FILTER_INPUT) as HTMLInputElement | null)?.value || 'latest';
       if (baseImg) {
         nodeProps.image = `${baseImg}:${version}`;
       }
     } else {
-      const baseImg = (document.getElementById('node-image-fallback-input') as HTMLInputElement | null)?.value || '';
+      const baseImg = (document.getElementById(ID_NODE_IMAGE_FALLBACK_INPUT) as HTMLInputElement | null)?.value || '';
       const version = (document.getElementById('node-version-fallback-input') as HTMLInputElement | null)?.value || 'latest';
       if (baseImg) {
         nodeProps.image = `${baseImg}:${version}`;
@@ -2184,10 +2172,3 @@ export class ManagerNodeEditor {
     this.clearAllDynamicEntries();
   }
 }
-// Healthcheck IDs and prop
-const ID_HC_TEST = 'node-healthcheck-test' as const;
-const ID_HC_START = 'node-healthcheck-start-period' as const;
-const ID_HC_INTERVAL = 'node-healthcheck-interval' as const;
-const ID_HC_TIMEOUT = 'node-healthcheck-timeout' as const;
-const ID_HC_RETRIES = 'node-healthcheck-retries' as const;
-const PROP_HEALTHCHECK = 'healthcheck' as const;

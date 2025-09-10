@@ -45,6 +45,18 @@ export class ManagerViewportPanels {
 
   private static readonly ID_NETWORK_INTERFACE = 'panel-network-interface' as const;
 
+  private static readonly ID_NETWORK_REMOTE = 'panel-network-remote' as const;
+  private static readonly ID_NETWORK_VNI = 'panel-network-vni' as const;
+  private static readonly ID_NETWORK_UDP_PORT = 'panel-network-udp-port' as const;
+  private static readonly VXLAN_INPUT_IDS = [
+    ManagerViewportPanels.ID_NETWORK_REMOTE,
+    ManagerViewportPanels.ID_NETWORK_VNI,
+    ManagerViewportPanels.ID_NETWORK_UDP_PORT,
+  ] as const;
+
+  private static readonly ID_LINK_EDITOR_SAVE_BUTTON = 'panel-link-editor-save-button' as const;
+  private static readonly ID_LINK_EXT_MTU = 'panel-link-ext-mtu' as const;
+
   private static readonly ID_NETWORK_TYPE_DROPDOWN = 'panel-network-type-dropdown-container' as const;
   private static readonly ID_NETWORK_TYPE_FILTER_INPUT = 'panel-network-type-dropdown-container-filter-input' as const;
   private static readonly ID_NETWORK_SAVE_BUTTON = 'panel-network-editor-save-button' as const;
@@ -477,7 +489,11 @@ export class ManagerViewportPanels {
   }
 
   private getInterfaceFieldConfig(networkType: string): { label: string; placeholder: string; showInterface: boolean } {
-    const base = { label: ManagerViewportPanels.LABEL_INTERFACE, placeholder: 'Enter interface name', showInterface: true };
+    const base: { label: string; placeholder: string; showInterface: boolean } = {
+      label: ManagerViewportPanels.LABEL_INTERFACE,
+      placeholder: 'Enter interface name',
+      showInterface: true,
+    };
     const map: Record<string, Partial<typeof base>> = {
       [ManagerViewportPanels.TYPE_BRIDGE]: { label: ManagerViewportPanels.LABEL_BRIDGE_NAME, placeholder: 'Enter bridge name' },
       [ManagerViewportPanels.TYPE_OVS_BRIDGE]: { label: ManagerViewportPanels.LABEL_BRIDGE_NAME, placeholder: 'Enter bridge name' },
@@ -494,8 +510,14 @@ export class ManagerViewportPanels {
   private toggleExtendedSections(networkType: string): void {
     const modeSection = document.getElementById('panel-network-mode-section') as HTMLElement | null;
     const vxlanSection = document.getElementById('panel-network-vxlan-section') as HTMLElement | null;
-    if (modeSection) modeSection.style.display = (networkType === ManagerViewportPanels.TYPE_MACVLAN) ? 'block' : 'none';
-    if (vxlanSection) vxlanSection.style.display = ManagerViewportPanels.VX_TYPES.includes(networkType as any) ? 'block' : 'none';
+    if (modeSection)
+      modeSection.style.display = (networkType === ManagerViewportPanels.TYPE_MACVLAN)
+        ? ManagerViewportPanels.DISPLAY_BLOCK
+        : ManagerViewportPanels.DISPLAY_NONE;
+    if (vxlanSection)
+      vxlanSection.style.display = ManagerViewportPanels.VX_TYPES.includes(networkType as any)
+        ? ManagerViewportPanels.DISPLAY_BLOCK
+        : ManagerViewportPanels.DISPLAY_NONE;
   }
 
   /**
@@ -532,7 +554,7 @@ export class ManagerViewportPanels {
   private configureInterfaceField(networkType: string, nodeId: string, interfaceName: string): void {
     if (networkType === ManagerViewportPanels.TYPE_DUMMY) return; // Dummy nodes don't have interfaces
 
-    const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
+    const interfaceInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_INTERFACE) as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
       el.textContent === ManagerViewportPanels.LABEL_INTERFACE || el.textContent === ManagerViewportPanels.LABEL_BRIDGE_NAME
     );
@@ -540,7 +562,7 @@ export class ManagerViewportPanels {
     const isBridge = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
     const isHostLike = ManagerViewportPanels.HOSTY_TYPES.includes(networkType as any);
 
-    let labelText = ManagerViewportPanels.LABEL_INTERFACE;
+    let labelText: string = ManagerViewportPanels.LABEL_INTERFACE;
     if (isBridge) labelText = ManagerViewportPanels.LABEL_BRIDGE_NAME;
     else if (isHostLike) labelText = ManagerViewportPanels.LABEL_HOST_INTERFACE;
     const inputValue = isBridge ? nodeId : interfaceName;
@@ -562,9 +584,9 @@ export class ManagerViewportPanels {
     this.setInputValue('panel-network-mtu', extraData.extMtu ?? extraFallback.extMtu);
     const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
     if (modeSelect) modeSelect.value = extraData.extMode || ManagerViewportPanels.TYPE_BRIDGE;
-    this.setInputValue('panel-network-remote', extraData.extRemote);
-    this.setInputValue('panel-network-vni', extraData.extVni);
-    this.setInputValue('panel-network-udp-port', extraData.extUdpPort);
+    this.setInputValue(ManagerViewportPanels.ID_NETWORK_REMOTE, extraData.extRemote);
+    this.setInputValue(ManagerViewportPanels.ID_NETWORK_VNI, extraData.extVni);
+    this.setInputValue(ManagerViewportPanels.ID_NETWORK_UDP_PORT, extraData.extUdpPort);
 
     this.loadNetworkDynamicEntries('vars', extraData.extVars || extraFallback.extVars);
     this.loadNetworkDynamicEntries('labels', extraData.extLabels || extraFallback.extLabels);
@@ -609,7 +631,7 @@ export class ManagerViewportPanels {
    * Set up validation listeners and save button behavior for the network editor.
    */
   private setupNetworkValidation(networkType: string, node: cytoscape.NodeSingular): void {
-    const vxlanInputs = ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'];
+    const vxlanInputs = ManagerViewportPanels.VXLAN_INPUT_IDS;
     vxlanInputs.forEach(inputId => {
       const input = document.getElementById(inputId) as HTMLInputElement;
       if (input) {
@@ -618,8 +640,8 @@ export class ManagerViewportPanels {
           const saveButton = document.getElementById(ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON) as HTMLButtonElement;
           if (saveButton) {
             saveButton.disabled = !isValid;
-            saveButton.classList.toggle('opacity-50', !isValid);
-            saveButton.classList.toggle('cursor-not-allowed', !isValid);
+            saveButton.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !isValid);
+            saveButton.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !isValid);
           }
         });
       }
@@ -632,8 +654,8 @@ export class ManagerViewportPanels {
 
       const { isValid: initialValid } = this.validateNetworkFields(networkType);
       (newSaveBtn as HTMLButtonElement).disabled = !initialValid;
-      newSaveBtn.classList.toggle('opacity-50', !initialValid);
-      newSaveBtn.classList.toggle('cursor-not-allowed', !initialValid);
+      newSaveBtn.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !initialValid);
+      newSaveBtn.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !initialValid);
 
       newSaveBtn.addEventListener('click', async () => {
         const { isValid, errors } = this.validateNetworkFields(networkType, true);
@@ -661,7 +683,7 @@ export class ManagerViewportPanels {
   }
 
   private clearNetworkValidationStyles(): void {
-    ['panel-network-remote', 'panel-network-vni', 'panel-network-udp-port'].forEach(id => {
+    ManagerViewportPanels.VXLAN_INPUT_IDS.forEach(id => {
       document.getElementById(id)?.classList.remove('border-red-500', 'border-2');
     });
   }
@@ -669,9 +691,9 @@ export class ManagerViewportPanels {
   private collectNetworkErrors(currentType: string, showErrors: boolean): string[] {
     if (!(ManagerViewportPanels.VX_TYPES as readonly string[]).includes(currentType)) return [];
     const fields = [
-      { id: 'panel-network-remote', msg: 'Remote IP is required' },
-      { id: 'panel-network-vni', msg: 'VNI is required' },
-      { id: 'panel-network-udp-port', msg: 'UDP Port is required' }
+      { id: ManagerViewportPanels.ID_NETWORK_REMOTE, msg: 'Remote IP is required' },
+      { id: ManagerViewportPanels.ID_NETWORK_VNI, msg: 'VNI is required' },
+      { id: ManagerViewportPanels.ID_NETWORK_UDP_PORT, msg: 'UDP Port is required' }
     ];
     const errors: string[] = [];
     fields.forEach(({ id, msg }) => {
@@ -879,7 +901,7 @@ export class ManagerViewportPanels {
       basicClose.parentNode?.replaceChild(freshClose, basicClose);
       freshClose.addEventListener('click', () => { panel.style.display = 'none'; this.edgeClicked = false; }, { once: true });
     }
-    const basicSave = document.getElementById('panel-link-editor-save-button');
+    const basicSave = document.getElementById(ManagerViewportPanels.ID_LINK_EDITOR_SAVE_BUTTON);
     if (basicSave) {
       const freshSave = basicSave.cloneNode(true) as HTMLElement;
       basicSave.parentNode?.replaceChild(freshSave, basicSave);
@@ -936,7 +958,7 @@ export class ManagerViewportPanels {
     const panel = document.getElementById('panel-link-editor') as HTMLElement | null;
     const idLabel = document.getElementById('panel-link-extended-editor-id') as HTMLElement | null;
     const closeBtn = document.getElementById('panel-link-editor-close-button') as HTMLElement | null;
-    const saveBtn = document.getElementById('panel-link-editor-save-button') as HTMLElement | null;
+    const saveBtn = document.getElementById(ManagerViewportPanels.ID_LINK_EDITOR_SAVE_BUTTON) as HTMLElement | null;
     if (!panel || !idLabel || !closeBtn || !saveBtn) {
       log.error('panelEdgeEditorExtended: missing required DOM elements');
       return null;
@@ -989,13 +1011,16 @@ export class ManagerViewportPanels {
 
   private setNonVethInfoVisibility(isVeth: boolean): void {
     const nonVethInfo = document.getElementById('panel-link-ext-non-veth-info') as HTMLElement | null;
-    if (nonVethInfo) nonVethInfo.style.display = isVeth ? 'none' : 'block';
+    if (nonVethInfo)
+      nonVethInfo.style.display = isVeth
+        ? ManagerViewportPanels.DISPLAY_NONE
+        : ManagerViewportPanels.DISPLAY_BLOCK;
   }
 
   private setMacAndMtu(extraData: any, isVeth: boolean): void {
     const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
     const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
-    const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
+    const mtuEl = document.getElementById(ManagerViewportPanels.ID_LINK_EXT_MTU) as HTMLInputElement | null;
     if (srcMacEl) srcMacEl.value = extraData.extSourceMac || '';
     if (tgtMacEl) tgtMacEl.value = extraData.extTargetMac || '';
     if (isVeth && mtuEl) mtuEl.value = extraData.extMtu != null ? String(extraData.extMtu) : '';
@@ -1018,11 +1043,11 @@ export class ManagerViewportPanels {
     const banner = document.getElementById('panel-link-ext-errors') as HTMLElement | null;
     const bannerList = document.getElementById('panel-link-ext-errors-list') as HTMLElement | null;
     const setSaveDisabled = (disabled: boolean) => {
-      const btn = document.getElementById('panel-link-editor-save-button') as HTMLButtonElement | null;
+        const btn = document.getElementById(ManagerViewportPanels.ID_LINK_EDITOR_SAVE_BUTTON) as HTMLButtonElement | null;
       if (!btn) return;
       btn.disabled = disabled;
-      btn.classList.toggle('opacity-50', disabled);
-      btn.classList.toggle('cursor-not-allowed', disabled);
+      btn.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, disabled);
+      btn.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, disabled);
     };
     if (!banner || !bannerList) return;
     if (!errors.length) {
@@ -1051,7 +1076,7 @@ export class ManagerViewportPanels {
 
   // eslint-disable-next-line no-unused-vars
   private attachExtendedValidators(validate: () => string[], renderErrors: (errors: string[]) => void): void {
-    const mtuEl = document.getElementById('panel-link-ext-mtu');
+    const mtuEl = document.getElementById(ManagerViewportPanels.ID_LINK_EXT_MTU);
     const attach = (el: HTMLElement | null) => { if (el) { el.addEventListener('input', () => renderErrors(validate())); } };
     attach(mtuEl as HTMLElement);
   }
@@ -1111,7 +1136,7 @@ export class ManagerViewportPanels {
     const updated = { ...existing } as any;
     const srcMacEl = document.getElementById('panel-link-ext-src-mac') as HTMLInputElement | null;
     const tgtMacEl = document.getElementById('panel-link-ext-tgt-mac') as HTMLInputElement | null;
-    const mtuEl = document.getElementById('panel-link-ext-mtu') as HTMLInputElement | null;
+    const mtuEl = document.getElementById(ManagerViewportPanels.ID_LINK_EXT_MTU) as HTMLInputElement | null;
     if (srcMacEl) updated.extSourceMac = srcMacEl.value.trim() || undefined;
     if (tgtMacEl) updated.extTargetMac = tgtMacEl.value.trim() || undefined;
     if (mtuEl) updated.extMtu = mtuEl.value ? Number(mtuEl.value) : undefined;
@@ -1237,16 +1262,16 @@ export class ManagerViewportPanels {
 
   private getNetworkEditorInputs() {
     const networkType = (document.getElementById(ManagerViewportPanels.ID_NETWORK_TYPE_FILTER_INPUT) as HTMLInputElement | null)?.value || ManagerViewportPanels.TYPE_HOST;
-    const interfaceName = (document.getElementById('panel-network-interface') as HTMLInputElement | null)?.value || 'eth1';
+    const interfaceName = (document.getElementById(ManagerViewportPanels.ID_NETWORK_INTERFACE) as HTMLInputElement | null)?.value || 'eth1';
     return {
       networkType,
       interfaceName,
       mac: (document.getElementById('panel-network-mac') as HTMLInputElement | null)?.value,
       mtu: (document.getElementById('panel-network-mtu') as HTMLInputElement | null)?.value,
       mode: (document.getElementById('panel-network-mode') as HTMLSelectElement | null)?.value,
-      remote: (document.getElementById('panel-network-remote') as HTMLInputElement | null)?.value,
-      vni: (document.getElementById('panel-network-vni') as HTMLInputElement | null)?.value,
-      udpPort: (document.getElementById('panel-network-udp-port') as HTMLInputElement | null)?.value,
+      remote: (document.getElementById(ManagerViewportPanels.ID_NETWORK_REMOTE) as HTMLInputElement | null)?.value,
+      vni: (document.getElementById(ManagerViewportPanels.ID_NETWORK_VNI) as HTMLInputElement | null)?.value,
+      udpPort: (document.getElementById(ManagerViewportPanels.ID_NETWORK_UDP_PORT) as HTMLInputElement | null)?.value,
     };
   }
 
