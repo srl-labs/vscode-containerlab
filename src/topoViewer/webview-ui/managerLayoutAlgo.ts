@@ -770,7 +770,33 @@ export class ManagerLayoutAlgo {
     // Persist node geographic coordinates before destroying the overlay
     this.updateNodeGeoCoordinates();
 
-    // Restore original graph positions captured when Geo layout was activated
+    this.restoreOriginalPositions(cy);
+    this.hideAndRemoveLeafletContainer();
+    this.removeLeafletHandlers(cy);
+    this.clearRenderDebounce();
+
+    this.cytoscapeLeafletLeaf.destroy();
+    this.cytoscapeLeafletLeaf = undefined as any;
+    this.cytoscapeLeafletMap = undefined as any;
+    this.geoScaleBaseZoom = 1;
+
+    this.applyGeoScale(false);
+
+    // Optionally start a Cola layout after disabling Geo mode, unless skipped
+    if (!options?.skipPostLayout) await this.runPostColaLayout(cy);
+
+    this.hideGeoOverlays();
+
+    this.isGeoMapInitialized = false;
+
+    // Re-enable grid guide interactions once the map overlay is removed
+    this.enableGridGuide();
+    // Restore theme-based styles when leaving Geo layout
+    this.geoTheme = null;
+    loadCytoStyle(cy);
+  }
+
+  private restoreOriginalPositions(cy: cytoscape.Core) {
     cy.nodes().forEach((node) => {
       const x = node.data('_origPosX');
       const y = node.data('_origPosY');
@@ -780,65 +806,52 @@ export class ManagerLayoutAlgo {
         node.removeData('_origPosY');
       }
     });
+  }
 
+  private hideAndRemoveLeafletContainer() {
     const leafletContainer = document.getElementById('cy-leaflet');
-    if (leafletContainer) {
-      leafletContainer.style.display = 'none';
-      leafletContainer.classList.add('hidden');
-      // Remove the container entirely to ensure a clean reinitialisation later
-      if (leafletContainer.parentNode) {
-        leafletContainer.parentNode.removeChild(leafletContainer);
-      }
-    }
+    if (!leafletContainer) return;
+    leafletContainer.style.display = 'none';
+    leafletContainer.classList.add('hidden');
+    if (leafletContainer.parentNode) leafletContainer.parentNode.removeChild(leafletContainer);
+  }
+
+  private removeLeafletHandlers(cy: cytoscape.Core) {
     if (this.cytoscapeLeafletMap) {
       this.cytoscapeLeafletMap.off('zoom', this.onLeafletZoomBound);
       this.cytoscapeLeafletMap.off('zoomend', this.onLeafletZoomEndBound);
     }
     cy.off('add', this.onElementAddedBound);
     cy.off('render', this.onCyRenderBound);
+  }
 
-    // Clear any pending render debounce timer
-    if (this.renderDebounceTimer !== null) {
-      window.clearTimeout(this.renderDebounceTimer);
-      this.renderDebounceTimer = null;
+  private clearRenderDebounce() {
+    if (this.renderDebounceTimer === null) return;
+    window.clearTimeout(this.renderDebounceTimer);
+    this.renderDebounceTimer = null;
+  }
+
+  private async runPostColaLayout(cy: cytoscape.Core) {
+    try {
+      await loadExtension('cola');
+    } catch (err) {
+      log.error(`[GeoMap] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
     }
-    this.cytoscapeLeafletLeaf.destroy();
-    this.cytoscapeLeafletLeaf = undefined as any;
-    this.cytoscapeLeafletMap = undefined as any;
-    this.geoScaleBaseZoom = 1;
+    cy.layout({
+      name: 'cola',
+      nodeGap: 5,
+      edgeLength: 100,
+      animate: true,
+      randomize: false,
+      maxSimulationTime: 1500
+    } as any).run();
+  }
 
-    this.applyGeoScale(false);
-
-    // Optionally start a Cola layout after disabling Geo mode, unless skipped
-    if (!options?.skipPostLayout) {
-      try {
-        await loadExtension('cola');
-      } catch (err) {
-        log.error(`[GeoMap] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
-      }
-
-      cy.layout({
-        name: 'cola',
-        nodeGap: 5,
-        edgeLength: 100,
-        animate: true,
-        randomize: false,
-        maxSimulationTime: 1500
-      } as any).run();
-    }
-
+  private hideGeoOverlays() {
     const overlays = document.getElementsByClassName('viewport-geo-map');
     for (let i = 0; i < overlays.length; i++) {
       if (!overlays[i].classList.contains('hidden')) overlays[i].classList.add('hidden');
     }
-
-    this.isGeoMapInitialized = false;
-
-    // Re-enable grid guide interactions once the map overlay is removed
-    this.enableGridGuide();
-    // Restore theme-based styles when leaving Geo layout
-    this.geoTheme = null;
-    loadCytoStyle(cy);
   }
 
   public async viewportDrawerLayoutForceDirected(): Promise<void> {

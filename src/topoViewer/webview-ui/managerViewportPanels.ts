@@ -468,35 +468,23 @@ export class ManagerViewportPanels {
    * Configure the interface field based on the selected network type.
    */
   private configureInterfaceField(networkType: string, nodeId: string, interfaceName: string): void {
+    if (networkType === 'dummy') return; // Dummy nodes don't have interfaces
+
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
       el.textContent === 'Interface' || el.textContent === 'Bridge Name'
     );
 
-    if (networkType === 'bridge' || networkType === 'ovs-bridge') {
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Bridge Name';
-      }
-      if (interfaceInput) {
-        interfaceInput.value = nodeId;
-      }
-    } else if (networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan') {
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Host Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.value = interfaceName;
-      }
-    } else if (networkType === 'dummy') {
-      // Dummy nodes don't have interfaces
-    } else {
-      if (interfaceLabel) {
-        interfaceLabel.textContent = 'Interface';
-      }
-      if (interfaceInput) {
-        interfaceInput.value = interfaceName;
-      }
-    }
+    const isBridge = networkType === 'bridge' || networkType === 'ovs-bridge';
+    const isHostLike = networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan';
+
+    let labelText = 'Interface';
+    if (isBridge) labelText = 'Bridge Name';
+    else if (isHostLike) labelText = 'Host Interface';
+    const inputValue = isBridge ? nodeId : interfaceName;
+
+    if (interfaceLabel) interfaceLabel.textContent = labelText;
+    if (interfaceInput) interfaceInput.value = inputValue;
   }
 
   /**

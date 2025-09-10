@@ -72,39 +72,43 @@ export class ManagerGroupStyle {
     if (!style) return;
 
     let node = this.cy.getElementById(id);
-
-    // If node doesn't exist, create it (for empty groups)
     if (node.empty()) {
-      const [groupName, level] = id.split(':');
-      if (groupName && level) {
-        const pos = this.cy.nodes().length > 0
-          ? { x: this.cy.extent().x1 + 100, y: this.cy.extent().y1 + 100 }
-          : { x: 100, y: 100 };
-
-        node = this.cy.add({
-          group: 'nodes',
-          data: {
-            id, name: groupName, weight: '1000', topoViewerRole: 'group',
-            extraData: {
-              clabServerUsername: 'asad', weight: '2', name: '',
-              topoViewerGroup: groupName, topoViewerGroupLevel: level
-            }
-          },
-          position: pos,
-          classes: 'empty-group'
-        });
-        log.debug(`Created missing group: ${id}`);
-      } else {
-        return;
-      }
+      node = this.createMissingGroupNode(id);
+      if (node.empty()) return;
     }
 
+    node.style(this.buildCssFromStyle(style));
+  }
+
+  private createMissingGroupNode(id: string) {
+    const [groupName, level] = id.split(':');
+    if (!groupName || !level) return this.cy.collection();
+
+    const pos = this.cy.nodes().length > 0
+      ? { x: this.cy.extent().x1 + 100, y: this.cy.extent().y1 + 100 }
+      : { x: 100, y: 100 };
+
+    const node = this.cy.add({
+      group: 'nodes',
+      data: {
+        id, name: groupName, weight: '1000', topoViewerRole: 'group',
+        extraData: {
+          clabServerUsername: 'asad', weight: '2', name: '',
+          topoViewerGroup: groupName, topoViewerGroupLevel: level
+        }
+      },
+      position: pos,
+      classes: 'empty-group'
+    });
+    log.debug(`Created missing group: ${id}`);
+    return node;
+  }
+
+  private buildCssFromStyle(style: GroupStyleAnnotation): any {
     const css: any = {};
     if (style.backgroundColor) {
       css['background-color'] = style.backgroundColor;
-      if (style.backgroundOpacity !== undefined) {
-        css['background-opacity'] = style.backgroundOpacity / 100;
-      }
+      if (style.backgroundOpacity !== undefined) css['background-opacity'] = style.backgroundOpacity / 100;
     }
     if (style.borderColor) css['border-color'] = style.borderColor;
     if (style.borderWidth !== undefined) css['border-width'] = `${style.borderWidth}px`;
@@ -114,7 +118,7 @@ export class ManagerGroupStyle {
       css['corner-radius'] = `${style.borderRadius}px`;
     }
     if (style.color) css['color'] = style.color;
-    node.style(css);
+    return css;
   }
 
   public async loadGroupStyles(): Promise<void> {

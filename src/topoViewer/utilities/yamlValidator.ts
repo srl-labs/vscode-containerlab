@@ -93,28 +93,20 @@ function handleError(err: unknown): void {
 
 function checkLinkReferences(yamlObj: any): string | null {
   const nodes = new Set(Object.keys(yamlObj?.topology?.nodes ?? {}));
-  const invalidNodes = new Set<string>();
+  const links = yamlObj?.topology?.links;
+  if (!Array.isArray(links)) return null;
 
-  if (Array.isArray(yamlObj?.topology?.links)) {
-    for (const link of yamlObj.topology.links) {
-      if (!Array.isArray(link?.endpoints)) {
-        continue;
-      }
-      for (const ep of link.endpoints) {
-        if (typeof ep !== 'string') {
-          continue;
-        }
-        const nodeName = ep.split(':')[0];
-        if (nodeName && !nodes.has(nodeName)) {
-          invalidNodes.add(nodeName);
-        }
-      }
+  const invalidNodes = new Set<string>();
+  for (const link of links) {
+    const endpoints = Array.isArray(link?.endpoints) ? link.endpoints : [];
+    for (const ep of endpoints) {
+      if (typeof ep !== 'string') continue;
+      const nodeName = ep.split(':')[0];
+      if (nodeName && !nodes.has(nodeName)) invalidNodes.add(nodeName);
     }
   }
 
-  if (invalidNodes.size > 0) {
-    return `Undefined node reference(s): ${Array.from(invalidNodes).join(', ')}`;
-  }
-  return null;
+  return invalidNodes.size
+    ? `Undefined node reference(s): ${Array.from(invalidNodes).join(', ')}`
+    : null;
 }
-

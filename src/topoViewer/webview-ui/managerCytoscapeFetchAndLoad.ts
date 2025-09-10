@@ -216,80 +216,70 @@ export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
   const existingLngs: number[] = [];
 
   // First pass: collect existing latitudes and longitudes.
-  dataArray.forEach(item => {
-    const { data } = item;
-    if (data.lat && data.lat.trim() !== "") {
-      const lat = parseFloat(data.lat);
-      if (!isNaN(lat)) {
-        existingLats.push(lat);
-      }
-    }
-    if (data.lng && data.lng.trim() !== "") {
-      const lng = parseFloat(data.lng);
-      if (!isNaN(lng)) {
-        existingLngs.push(lng);
-      }
-    }
+  dataArray.forEach(({ data }) => {
+    addIfValidNumber(existingLats, data.lat);
+    addIfValidNumber(existingLngs, data.lng);
   });
 
-  // Compute averages if possible, otherwise use defaults.
-  let averageLat = existingLats.length > 0
-    ? existingLats.reduce((a, b) => a + b, 0) / existingLats.length
-    : DEFAULT_AVERAGE_LAT;
-  let averageLng = existingLngs.length > 0
-    ? existingLngs.reduce((a, b) => a + b, 0) / existingLngs.length
-    : DEFAULT_AVERAGE_LNG;
+  const { avg: averageLat, usedDefault: usedDefaultLat } = computeAverage(existingLats, DEFAULT_AVERAGE_LAT);
+  const { avg: averageLng, usedDefault: usedDefaultLng } = computeAverage(existingLngs, DEFAULT_AVERAGE_LNG);
 
-  const useDefaultLat = existingLats.length === 0;
-  const useDefaultLng = existingLngs.length === 0;
-  if (useDefaultLat || useDefaultLng) {
+  if (usedDefaultLat || usedDefaultLng) {
     log.warn('Missing latitude or longitude values. Using default averages.');
-    averageLat = useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat;
-    averageLng = useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng;
   }
 
   // Second pass: assign missing values or normalize existing values.
-  let offsetCounter = 0;
+  const counter = { value: 0 };
   dataArray.forEach(item => {
     const { data } = item;
     const id = data.id || 'Unknown ID';
 
-    // Process latitude.
-    if (!data.lat || data.lat.trim() === "") {
-      const deterministicOffset = (offsetCounter++ % 9) * 0.1;
-      data.lat = (averageLat + deterministicOffset).toFixed(15);
-      log.debug(`Assigned new lat for ID ${id}: ${data.lat}`);
-    } else {
-      const normalizedLat = parseFloat(data.lat);
-      if (!isNaN(normalizedLat)) {
-        data.lat = normalizedLat.toFixed(15);
-      } else {
-        const deterministicOffset = (offsetCounter++ % 9) * 0.1;
-        data.lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat + deterministicOffset).toFixed(15);
-        log.warn(`Invalid lat for ID ${id}. Assigned new lat: ${data.lat}`);
-      }
-    }
-
-    // Process longitude.
-    if (!data.lng || data.lng.trim() === "") {
-      const deterministicOffset = (offsetCounter++ % 9) * 0.1;
-      data.lng = (averageLng + deterministicOffset).toFixed(15);
-      log.debug(`Assigned new lng for ID ${id}: ${data.lng}`);
-    } else {
-      const normalizedLng = parseFloat(data.lng);
-      if (!isNaN(normalizedLng)) {
-        data.lng = normalizedLng.toFixed(15);
-      } else {
-        const deterministicOffset = (offsetCounter++ % 9) * 0.1;
-        data.lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng + deterministicOffset).toFixed(15);
-        log.warn(`Invalid lng for ID ${id}. Assigned new lng: ${data.lng}`);
-      }
-    }
+    data.lat = normalizeCoord(data.lat, averageLat, DEFAULT_AVERAGE_LAT, counter, id, 'lat', usedDefaultLat);
+    data.lng = normalizeCoord(data.lng, averageLng, DEFAULT_AVERAGE_LNG, counter, id, 'lng', usedDefaultLng);
   });
 
   log.debug(`Updated dataArray: ${JSON.stringify(dataArray)}`);
   return dataArray;
 
+}
+
+function addIfValidNumber(target: number[], maybe: string | undefined) {
+  if (!maybe) return;
+  const s = maybe.trim();
+  if (!s) return;
+  const n = parseFloat(s);
+  if (!isNaN(n)) target.push(n);
+}
+
+function computeAverage(values: number[], fallback: number): { avg: number; usedDefault: boolean } {
+  if (values.length === 0) return { avg: fallback, usedDefault: true };
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  return { avg, usedDefault: false };
+}
+
+function normalizeCoord(
+  value: string | undefined,
+  average: number,
+  defaultAverage: number,
+  counter: { value: number },
+  id: string,
+  kind: 'lat' | 'lng',
+  usedDefault: boolean,
+): string {
+  const logKey = kind;
+  const normalized = value && value.trim() !== '' ? parseFloat(value) : NaN;
+  if (!isNaN(normalized)) {
+    return normalized.toFixed(15);
+  }
+  const deterministicOffset = (counter.value++ % 9) * 0.1;
+  const base = usedDefault ? defaultAverage : (average + deterministicOffset);
+  const v = base.toFixed(15);
+  const level = value && value.trim() !== '' ? 'warn' : 'debug';
+  const msg = value && value.trim() !== ''
+    ? `Invalid ${logKey} for ID ${id}. Assigned new ${logKey}: ${v}`
+    : `Assigned new ${logKey} for ID ${id}: ${v}`;
+  (log as any)[level](msg);
+  return v;
 }
 type EnvironmentKeys =
   | "working-directory"

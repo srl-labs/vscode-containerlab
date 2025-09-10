@@ -42,24 +42,25 @@ function splitArgs(input: string): string[] {
     const args: string[] = [];
     let current = '';
     let quote: '"' | "'" | null = null;
+
     for (let i = 0; i < input.length; i++) {
         const ch = input[i];
+
+        // Inside a quoted segment
         if (quote) {
-            if (ch === quote) {
-                quote = null;
-            } else {
-                current += ch;
-            }
-        } else {
-            if (ch === '"' || ch === "'") {
-                quote = ch as any;
-            } else if (ch === ' ') {
-                if (current) { args.push(current); current = ''; }
-            } else {
-                current += ch;
-            }
+            if (ch === quote) { quote = null; continue; }
+            current += ch; continue;
         }
+
+        // Not in quotes
+        if (ch === '"' || ch === "'") { quote = ch as any; continue; }
+        if (ch === ' ') {
+            if (current) { args.push(current); current = ''; }
+            continue;
+        }
+        current += ch;
     }
+
     if (current) args.push(current);
     return args;
 }

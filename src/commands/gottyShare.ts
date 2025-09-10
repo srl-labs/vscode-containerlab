@@ -6,42 +6,48 @@ import { runWithSudo } from "../helpers/utils";
 
 async function parseGottyLink(output: string): Promise<string | undefined> {
   try {
-    // Try to parse a JSON array from the output by locating brackets
-    const start = output.indexOf('[');
-    const end = output.lastIndexOf(']');
-    if (start !== -1 && end !== -1 && end > start) {
-      const payload = output.slice(start, end + 1);
-      const sessions = JSON.parse(payload);
-      if (Array.isArray(sessions) && sessions.length > 0) {
-        const session = sessions[0];
-        if (session && session.port) {
-          const hostname = await getHostname();
-          if (hostname) {
-            const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-            return `http://${bracketed}:${session.port}`;
-          }
-        }
-      }
-    }
+    const bracketedHost = await getBracketedHostname();
+    const fromJson = tryParseLinkFromJson(output, bracketedHost);
+    if (fromJson) return fromJson;
 
-    // Fallback: try to extract URL directly from output
-    const urlMatch = /(https?:\/\/\S+)/.exec(output);
-    if (urlMatch) {
-      const url = urlMatch[1];
-      if (url.includes('HOST_IP')) {
-        const hostname = await getHostname();
-        if (hostname) {
-          const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-          return url.replace('HOST_IP', bracketed);
-        }
-      }
-      return url;
-    }
+    const fromText = tryParseLinkFromText(output, bracketedHost);
+    if (fromText) return fromText;
   } catch (error) {
     outputChannel.error(`Failed to parse GoTTY link: ${error}`);
   }
-
   return undefined;
+}
+
+function tryParseLinkFromJson(output: string, bracketedHost?: string): string | undefined {
+  const start = output.indexOf('[');
+  const end = output.lastIndexOf(']');
+  if (start === -1 || end === -1 || end <= start) return undefined;
+  try {
+    const payload = output.slice(start, end + 1);
+    const sessions = JSON.parse(payload);
+    if (!Array.isArray(sessions) || sessions.length === 0) return undefined;
+    const port = sessions[0]?.port;
+    if (!port || !bracketedHost) return undefined;
+    return `http://${bracketedHost}:${port}`;
+  } catch {
+    return undefined;
+  }
+}
+
+function tryParseLinkFromText(output: string, bracketedHost?: string): string | undefined {
+  const urlMatch = /(https?:\/\/\S+)/.exec(output);
+  if (!urlMatch) return undefined;
+  const url = urlMatch[1];
+  if (url.includes('HOST_IP') && bracketedHost) {
+    return url.replace('HOST_IP', bracketedHost);
+  }
+  return url;
+}
+
+async function getBracketedHostname(): Promise<string | undefined> {
+  const hostname = await getHostname();
+  if (!hostname) return undefined;
+  return hostname.includes(":") ? `[${hostname}]` : hostname;
 }
 
 export async function gottyAttach(node: ClabLabTreeNode) {

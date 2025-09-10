@@ -41,23 +41,10 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   }
   outputChannel.debug(`captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
-  // Check edgeshark is available on the host
-  // - make a simple API call to get version of packetflix
-  let edgesharkOk = false
-  try {
-    const res = await fetch('http://127.0.0.1:5001/version');
-    edgesharkOk = res.ok
-  } catch {
-    // Port is probably closed, edgeshark not running
-  }
-  if(!edgesharkOk) {
-    const selectedOpt = await vscode.window.showInformationMessage("Capture: Edgeshark is not running. Would you like to start it?", { modal: false }, "Yes")
-    if(selectedOpt === "Yes") {
-      await installEdgeshark()
-    }
-    else {
-      return
-    }
+  // Ensure Edgeshark is running/available
+  const edgesharkReady = await ensureEdgesharkAvailable();
+  if (!edgesharkReady) {
+    return;
   }
 
   // If user multi‐selected items, we capture them all.
@@ -110,6 +97,30 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   outputChannel.debug(`single-edgeShark => ${uri.toString()}`);
 
   return [uri, bracketed]
+}
+
+// Ensure Edgeshark API is up; optionally prompt to start it
+async function ensureEdgesharkAvailable(): Promise<boolean> {
+  // - make a simple API call to get version of packetflix
+  let edgesharkOk = false;
+  try {
+    const res = await fetch("http://127.0.0.1:5001/version");
+    edgesharkOk = res.ok;
+  } catch {
+    // Port is probably closed, edgeshark not running
+  }
+  if (edgesharkOk) return true;
+
+  const selectedOpt = await vscode.window.showInformationMessage(
+    "Capture: Edgeshark is not running. Would you like to start it?",
+    { modal: false },
+    "Yes"
+  );
+  if (selectedOpt === "Yes") {
+    await installEdgeshark();
+    return true;
+  }
+  return false;
 }
 
 // Capture multiple interfaces with Edgeshark

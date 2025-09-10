@@ -727,56 +727,53 @@ topology:
 
   private async loadInitialYaml(fileUri: vscode.Uri, labName: string): Promise<void> {
     if (this.isViewMode) {
-      log.info(`Creating panel in view mode for lab: ${labName}`);
-      if (fileUri && fileUri.fsPath) {
-        try {
-          await fs.promises.readFile(fileUri.fsPath, 'utf8');
-          this.lastYamlFilePath = fileUri.fsPath;
-          log.info('Read YAML file for view mode');
-        } catch (err) {
-          log.warn(`Could not read YAML in view mode: ${err}`);
-          this.lastYamlFilePath = '';
-        }
-      }
-      if (!this.lastYamlFilePath) {
-        log.info('Using minimal YAML for view mode');
-      }
-      this.skipInitialValidation = true;
-    } else {
-      if (!fileUri || !fileUri.fsPath) {
-        throw new Error('No file URI provided for edit mode');
-      }
+      await this.loadYamlViewMode(fileUri, labName);
+      return;
+    }
+    await this.loadYamlEditMode(fileUri);
+  }
+
+  private async loadYamlViewMode(fileUri: vscode.Uri, labName: string): Promise<void> {
+    log.info(`Creating panel in view mode for lab: ${labName}`);
+    if (fileUri?.fsPath) {
       try {
-        await vscode.workspace.fs.stat(fileUri);
+        await fs.promises.readFile(fileUri.fsPath, 'utf8');
         this.lastYamlFilePath = fileUri.fsPath;
-      } catch {
-        if (this.lastYamlFilePath) {
-          log.info(`Using cached file path: ${this.lastYamlFilePath}`);
-        } else {
-          throw new Error(`File not found: ${fileUri.fsPath}`);
-        }
+        log.info('Read YAML file for view mode');
+      } catch (err) {
+        log.warn(`Could not read YAML in view mode: ${err}`);
+        this.lastYamlFilePath = '';
       }
-      let yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
-      if (!yaml.trim()) {
-        const baseName = path.basename(this.lastYamlFilePath);
-        const labNameFromFile = baseName
-          .replace(/\.clab\.(yml|yaml)$/i, '')
-          .replace(/\.(yml|yaml)$/i, '');
-        const defaultContent = `name: ${labNameFromFile}\n\n` +
+    }
+    if (!this.lastYamlFilePath) log.info('Using minimal YAML for view mode');
+    this.skipInitialValidation = true;
+  }
+
+  private async loadYamlEditMode(fileUri: vscode.Uri): Promise<void> {
+    if (!fileUri?.fsPath) throw new Error('No file URI provided for edit mode');
+    try {
+      await vscode.workspace.fs.stat(fileUri);
+      this.lastYamlFilePath = fileUri.fsPath;
+    } catch {
+      if (this.lastYamlFilePath) log.info(`Using cached file path: ${this.lastYamlFilePath}`);
+      else throw new Error(`File not found: ${fileUri.fsPath}`);
+    }
+    let yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+    if (!yaml.trim()) {
+      const baseName = path.basename(this.lastYamlFilePath);
+      const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+      const defaultContent = `name: ${labNameFromFile}\n\n` +
 `topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
-        this.isInternalUpdate = true;
-        await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
-        await this.sleep(50);
-        this.isInternalUpdate = false;
-        yaml = defaultContent;
-        log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
-      }
-      if (!this.skipInitialValidation) {
-        const isValid = await this.validateYaml(yaml);
-        if (!isValid) {
-          throw new Error('YAML validation failed. Aborting createWebviewPanel.');
-        }
-      }
+      this.isInternalUpdate = true;
+      await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
+      await this.sleep(50);
+      this.isInternalUpdate = false;
+      yaml = defaultContent;
+      log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
+    }
+    if (!this.skipInitialValidation) {
+      const isValid = await this.validateYaml(yaml);
+      if (!isValid) throw new Error('YAML validation failed. Aborting createWebviewPanel.');
     }
   }
 
@@ -927,34 +924,35 @@ topology:
     hadPrefix: boolean,
     hadMgmt: boolean
   ): string {
-    if (settings.prefix !== undefined && settings.prefix !== null && !hadPrefix) {
-      const lines = updatedYaml.split('\n');
-      const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-      if (nameIndex !== -1) {
-        const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
-        lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
-        updatedYaml = lines.join('\n');
-      }
-    }
-    if (settings.mgmt !== undefined && !hadMgmt && settings.mgmt && Object.keys(settings.mgmt).length > 0) {
-      const lines = updatedYaml.split('\n');
-      let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
-      if (insertIndex === -1) {
-        insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-      }
-      if (insertIndex !== -1) {
-        const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
-        const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
-        const nextLine = lines[insertIndex + 1];
-        if (nextLine && nextLine.trim() !== '') {
-          lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
-        } else {
-          lines.splice(insertIndex + 1, 0, ...mgmtLines);
-        }
-        updatedYaml = lines.join('\n');
-      }
-    }
+    updatedYaml = this.maybeInsertPrefix(updatedYaml, settings, hadPrefix);
+    updatedYaml = this.maybeInsertMgmt(updatedYaml, settings, hadMgmt);
     return updatedYaml;
+  }
+
+  private maybeInsertPrefix(updatedYaml: string, settings: any, hadPrefix: boolean): string {
+    if (settings.prefix === undefined || settings.prefix === null || hadPrefix) return updatedYaml;
+    const lines = updatedYaml.split('\n');
+    const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+    if (nameIndex === -1) return updatedYaml;
+    const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
+    lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
+    return lines.join('\n');
+  }
+
+  private maybeInsertMgmt(updatedYaml: string, settings: any, hadMgmt: boolean): string {
+    if (settings.mgmt === undefined || hadMgmt || !settings.mgmt || Object.keys(settings.mgmt).length === 0) {
+      return updatedYaml;
+    }
+    const lines = updatedYaml.split('\n');
+    let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
+    if (insertIndex === -1) insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+    if (insertIndex === -1) return updatedYaml;
+    const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
+    const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
+    const nextLine = lines[insertIndex + 1];
+    if (nextLine && nextLine.trim() !== '') lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
+    else lines.splice(insertIndex + 1, 0, ...mgmtLines);
+    return lines.join('\n');
   }
   private async handleGeneralEndpoint(
     endpointName: string,
@@ -1407,29 +1405,7 @@ topology:
     let result: unknown = null;
     let error: string | null = null;
 
-    const resolveInterface = async (nodeName: string, interfaceName: string): Promise<string> => {
-      let actualInterfaceName = interfaceName;
-      if (runningLabsProvider) {
-        const treeData = await runningLabsProvider.discoverInspectLabs();
-        if (treeData) {
-          for (const lab of Object.values(treeData)) {
-            const container = (lab as any).containers?.find(
-              (c: any) => c.name === nodeName || c.name_short === nodeName
-            );
-            if (container && container.interfaces) {
-              const intf = container.interfaces.find(
-                (i: any) => i.name === interfaceName || i.alias === interfaceName
-              );
-              if (intf) {
-                actualInterfaceName = intf.name;
-                break;
-              }
-            }
-          }
-        }
-      }
-      return actualInterfaceName;
-    };
+    const resolveInterface = (nodeName: string, interfaceName: string) => this.resolveInterfaceName(nodeName, interfaceName);
 
     switch (endpointName) {
       case 'clab-interface-capture': {
@@ -1514,6 +1490,18 @@ topology:
     }
 
     return { result, error };
+  }
+
+  private async resolveInterfaceName(nodeName: string, interfaceName: string): Promise<string> {
+    if (!runningLabsProvider) return interfaceName;
+    const treeData = await runningLabsProvider.discoverInspectLabs();
+    if (!treeData) return interfaceName;
+    for (const lab of Object.values(treeData)) {
+      const container = (lab as any).containers?.find((c: any) => c.name === nodeName || c.name_short === nodeName);
+      const intf = container?.interfaces?.find((i: any) => i.name === interfaceName || i.alias === interfaceName);
+      if (intf) return intf.name;
+    }
+    return interfaceName;
   }
   private async handleLabLifecycleEndpoint(
     endpointName: string,
@@ -1604,43 +1592,36 @@ topology:
    */
   public async checkDeploymentState(labName: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
-      // Update the inspector data
       await inspector.update();
-
-      // Check if the lab exists in the raw inspect data
-      if (inspector.rawInspectData) {
-        // First try exact name match
-        if (labName in inspector.rawInspectData) {
-          return 'deployed';
-        }
-
-        // If we have a YAML file path, also check by comparing lab paths
-        if (this.lastYamlFilePath) {
-          const normalizedYamlPath = this.lastYamlFilePath.replace(/\\/g, '/');
-
-          for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData)) {
-            const deployedLab = labData as any;
-            // Check if the lab's topo-file matches our YAML path
-            if (deployedLab['topo-file']) {
-              const normalizedTopoFile = deployedLab['topo-file'].replace(/\\/g, '/');
-              if (normalizedTopoFile === normalizedYamlPath) {
-                // Update the currentLabName to match the deployed lab name
-                if (this.currentLabName !== deployedLabName) {
-                  log.info(`Updating lab name from '${this.currentLabName}' to '${deployedLabName}' based on topo-file match`);
-                  this.currentLabName = deployedLabName;
-                }
-                return 'deployed';
-              }
-            }
-          }
-        }
-
-        return 'undeployed';
-      }
+      if (!inspector.rawInspectData) return 'unknown';
+      if (this.labExistsByName(labName)) return 'deployed';
+      if (this.lastYamlFilePath && this.updateLabNameFromTopoFileMatch()) return 'deployed';
+      return 'undeployed';
     } catch (err) {
       log.warn(`Failed to check deployment state: ${err}`);
+      return 'unknown';
     }
-    return 'unknown';
+  }
+
+  private labExistsByName(labName: string): boolean {
+    return labName in (inspector.rawInspectData as any);
+  }
+
+  private updateLabNameFromTopoFileMatch(): boolean {
+    const normalizedYamlPath = this.lastYamlFilePath!.replace(/\\/g, '/');
+    for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData as any)) {
+      const topo = (labData as any)['topo-file'];
+      if (!topo) continue;
+      const normalizedTopoFile = (topo as string).replace(/\\/g, '/');
+      if (normalizedTopoFile === normalizedYamlPath) {
+        if (this.currentLabName !== deployedLabName) {
+          log.info(`Updating lab name from '${this.currentLabName}' to '${deployedLabName}' based on topo-file match`);
+          this.currentLabName = deployedLabName;
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

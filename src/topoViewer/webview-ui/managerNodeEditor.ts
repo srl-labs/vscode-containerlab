@@ -206,58 +206,61 @@ export class ManagerNodeEditor {
     const typeDropdownContainer = document.getElementById('panel-node-type-dropdown-container');
     const typeInput = document.getElementById('node-type') as HTMLInputElement;
 
-    if (typeFormGroup) {
-      // Get type options for the selected kind
-      const typeOptions = this.getTypeOptionsForKind(selectedKind);
+    if (!typeFormGroup) return;
 
-      if (typeOptions.length > 0) {
-        // Show type field with dropdown for kinds with predefined types
-        typeFormGroup.style.display = 'block';
-        if (typeDropdownContainer && typeInput) {
-          typeDropdownContainer.style.display = 'block';
-          typeInput.style.display = 'none';
-
-          // Add empty option at the beginning for default/no selection
-          const typeOptionsWithEmpty = ['', ...typeOptions];
-
-          // Get current type value to preserve if possible
-          const currentType = typeInput.value || '';
-          const typeToSelect = typeOptionsWithEmpty.includes(currentType) ? currentType : '';
-
-          // Create searchable dropdown for type
-          createFilterableDropdown(
-            'panel-node-type-dropdown-container',
-            typeOptionsWithEmpty,
-            typeToSelect,
-            (selectedType: string) => {
-              // Type will be saved when save button is clicked
-              log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`);
-            },
-            'Search for type...',
-            true // Allow free text for custom types
-          );
-        }
-      } else {
-        // For kinds without predefined types, show regular input field
-        const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
-        if (isNokiaKind) {
-          // Still show the field for Nokia kinds even without predefined types
-          typeFormGroup.style.display = 'block';
-          if (typeDropdownContainer && typeInput) {
-            typeDropdownContainer.style.display = 'none';
-            typeInput.style.display = 'block';
-          }
-        } else {
-          // Hide for non-Nokia kinds without types
-          typeFormGroup.style.display = 'none';
-          if (typeInput) {
-            typeInput.value = '';
-          }
-        }
-      }
+    const typeOptions = this.getTypeOptionsForKind(selectedKind);
+    if (typeOptions.length > 0) {
+      this.showTypeDropdown(typeFormGroup, typeDropdownContainer, typeInput, typeOptions, selectedKind);
+    } else {
+      this.toggleTypeInputForKind(selectedKind, typeFormGroup, typeDropdownContainer, typeInput);
     }
 
     log.debug(`Kind changed to ${selectedKind}, type field visibility: ${typeFormGroup?.style.display}`);
+  }
+
+  private showTypeDropdown(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+    typeOptions: string[],
+    selectedKind: string,
+  ) {
+    typeFormGroup.style.display = 'block';
+    if (!typeDropdownContainer || !typeInput) return;
+    typeDropdownContainer.style.display = 'block';
+    typeInput.style.display = 'none';
+
+    const typeOptionsWithEmpty = ['', ...typeOptions];
+    const currentType = typeInput.value || '';
+    const typeToSelect = typeOptionsWithEmpty.includes(currentType) ? currentType : '';
+
+    createFilterableDropdown(
+      'panel-node-type-dropdown-container',
+      typeOptionsWithEmpty,
+      typeToSelect,
+      (selectedType: string) => log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`),
+      'Search for type...',
+      true
+    );
+  }
+
+  private toggleTypeInputForKind(
+    selectedKind: string,
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+  ) {
+    const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
+    if (isNokiaKind) {
+      typeFormGroup.style.display = 'block';
+      if (typeDropdownContainer && typeInput) {
+        typeDropdownContainer.style.display = 'none';
+        typeInput.style.display = 'block';
+      }
+      return;
+    }
+    typeFormGroup.style.display = 'none';
+    if (typeInput) typeInput.value = '';
   }
 
   /**
@@ -465,20 +468,23 @@ export class ManagerNodeEditor {
     if (!allOf) return;
 
     for (const condition of allOf) {
-      const pattern = condition.if?.properties?.kind?.pattern;
-      const typeProp = condition.then?.properties?.type;
-      if (!pattern || !typeProp) continue;
-
-      const start = pattern.indexOf('(');
-      const end = start >= 0 ? pattern.indexOf(')', start + 1) : -1;
-      if (start < 0 || end <= start) continue;
-      const kind = pattern.slice(start + 1, end);
+      const kind = this.getKindFromCondition(condition);
+      if (!kind) continue;
+      const typeProp = condition?.then?.properties?.type;
       const typeOptions = this.extractTypeOptions(typeProp);
       if (typeOptions.length === 0) continue;
-
       this.nodeTypeOptions.set(kind, typeOptions);
       log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
     }
+  }
+
+  private getKindFromCondition(condition: any): string | null {
+    const pattern = condition?.if?.properties?.kind?.pattern as string | undefined;
+    if (!pattern) return null;
+    const start = pattern.indexOf('(');
+    const end = start >= 0 ? pattern.indexOf(')', start + 1) : -1;
+    if (start < 0 || end <= start) return null;
+    return pattern.slice(start + 1, end);
   }
 
   private extractTypeOptions(typeProp: any): string[] {
@@ -766,25 +772,8 @@ export class ManagerNodeEditor {
     const groupName = nodeProps.group;
     const inheritBase = resolveNodeConfig(topology, { group: groupName, kind: kindName });
 
-    const shouldPersist = (val: any) => {
-      if (val === undefined) return false;
-      if (Array.isArray(val)) return val.length > 0;
-      if (val && typeof val === 'object') return Object.keys(val).length > 0;
-      return true;
-    };
-
-    const normalize = (obj: any): any => {
-      if (Array.isArray(obj)) return obj.map(normalize);
-      if (obj && typeof obj === 'object') {
-        return Object.keys(obj).sort().reduce((acc, k) => {
-          acc[k] = normalize(obj[k]);
-          return acc;
-        }, {} as any);
-      }
-      return obj;
-    };
-
-    const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+    const shouldPersist = (val: any) => this.shouldPersistValue(val);
+    const deepEqual = (a: any, b: any) => this.deepEqualNormalized(a, b);
 
     const actualInherited: string[] = [];
 
@@ -2036,23 +2025,8 @@ export class ManagerNodeEditor {
     const groupName = currentData.extraData?.group;
     const inheritBase = resolveNodeConfig(topology, { group: groupName, kind: kindName });
     const mergedNode = resolveNodeConfig(topology, { ...nodeProps, group: groupName, kind: kindName });
-    const normalize = (obj: any): any => {
-      if (Array.isArray(obj)) return obj.map(normalize);
-      if (obj && typeof obj === 'object') {
-        return Object.keys(obj).sort().reduce((acc, k) => {
-          acc[k] = normalize(obj[k]);
-          return acc;
-        }, {} as any);
-      }
-      return obj;
-    };
-    const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
-    const shouldPersist = (val: any) => {
-      if (val === undefined) return false;
-      if (Array.isArray(val)) return val.length > 0;
-      if (val && typeof val === 'object') return Object.keys(val).length > 0;
-      return true;
-    };
+    const deepEqual = (a: any, b: any) => this.deepEqualNormalized(a, b);
+    const shouldPersist = (val: any) => this.shouldPersistValue(val);
     const inheritedProps: string[] = [];
     const neverInherited = ['kind', 'name', 'group'];
     Object.keys(mergedNode).forEach(prop => {
@@ -2074,6 +2048,28 @@ export class ManagerNodeEditor {
       updatedExtraData.group = groupName;
     }
     return { updatedExtraData, inheritedProps };
+  }
+
+  private normalizeObject(obj: any): any {
+    if (Array.isArray(obj)) return obj.map(o => this.normalizeObject(o));
+    if (obj && typeof obj === 'object') {
+      return Object.keys(obj).sort().reduce((acc, k) => {
+        acc[k] = this.normalizeObject(obj[k]);
+        return acc;
+      }, {} as any);
+    }
+    return obj;
+  }
+
+  private deepEqualNormalized(a: any, b: any): boolean {
+    return JSON.stringify(this.normalizeObject(a)) === JSON.stringify(this.normalizeObject(b));
+  }
+
+  private shouldPersistValue(val: any): boolean {
+    if (val === undefined) return false;
+    if (Array.isArray(val)) return val.length > 0;
+    if (val && typeof val === 'object') return Object.keys(val).length > 0;
+    return true;
   }
 
   private async refreshNodeData(): Promise<void> {
