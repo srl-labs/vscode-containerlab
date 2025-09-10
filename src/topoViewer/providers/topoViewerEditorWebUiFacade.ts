@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import * as path from 'node:path';
+import * as path from 'path';
 
-import * as fs from 'node:fs';
-import { promises as fsPromises } from 'node:fs';
+import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import * as YAML from 'yaml';
 
 import { log } from '../logging/logger';

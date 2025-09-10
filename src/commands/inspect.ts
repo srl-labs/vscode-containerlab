@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { promisify } from "node:util";
-import { exec } from "node:child_process";
+import { promisify } from "util";
+import { exec } from "child_process";
 import { getInspectHtml } from "../webview/inspectHtml";
 import { ClabLabTreeNode } from "../treeView/common";
 import { getSudo } from "../helpers/utils";

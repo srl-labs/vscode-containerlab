@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import * as utils from "../helpers/utils";
 import * as c from "./common";
 
-import { promisify } from "node:util";
-import { exec } from "node:child_process";
+import { promisify } from "util";
+import { exec } from "child_process";
 
 const execAsync = promisify(exec);
 

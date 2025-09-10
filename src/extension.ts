@@ -3,7 +3,7 @@ import * as cmd from './commands/index';
 import * as utils from './helpers/utils';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
-import * as path from 'node:path';
+import * as path from 'path';
 
 import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
 import { setCurrentTopoViewer } from './commands/graph';
@@ -120,8 +120,8 @@ export async function refreshDockerImages(context?: vscode.ExtensionContext): Pr
   const ctx = context ?? extensionContext;
   if (!ctx) return;
   try {
-    const { exec } = await import('node:child_process');
-    const { promisify } = await import('node:util');
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
     const execAsync = promisify(exec);
     const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}}"');
     const images = (stdout || '')

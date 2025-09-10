@@ -1,11 +1,11 @@
 // file: src/topoViewer/backend/topoViewerAdaptorClab.ts
 
 import * as vscode from 'vscode';
-import * as path from 'node:path';
-import { promises as fs } from 'node:fs';
+import * as path from 'path';
+import { promises as fs } from 'fs';
 import { log } from '../logging/logger';
 import * as YAML from 'yaml'; // github.com/eemeli/yaml
-import * as os from 'node:os';
+import * as os from 'os';
 
 import { ClabNode, CyElement, ClabTopology, EnvironmentJson, CytoTopology } from '../types/topoViewerType';
 import { resolveNodeConfig } from './nodeConfig';

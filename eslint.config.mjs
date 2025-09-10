@@ -2,7 +2,6 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import sonarjs from 'eslint-plugin-sonarjs';
-import unicorn from 'eslint-plugin-unicorn';
 import aggregateComplexity from './eslint-plugin-aggregate-complexity.mjs';
 
 export default [
@@ -46,13 +45,14 @@ export default [
         fetch: 'readonly'
       }
     },
-    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, unicorn, 'aggregate-complexity': aggregateComplexity },
-    // merge the rule-sets (Unicorn rules are disabled by default)
+    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, 'aggregate-complexity': aggregateComplexity },
+    // merge the two rule-sets
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
       ...sonarjs.configs.recommended.rules,
       // disallow any trailing whitespace
+
       'no-trailing-spaces': ['error', {
         skipBlankLines: false,    // also flag lines that are purely whitespace
         ignoreComments: false     // also flag whitespace at end of comments
@@ -66,49 +66,7 @@ export default [
       'aggregate-complexity/aggregate-complexity': ['error', { max: 15 }]
 
     }
-  },
-
-  /* ---------- Extension runtime (Node) – enforce Node protocol imports ---------- */
-  {
-    files: ['src/**/*.ts', '!src/topoViewer/webview-ui/**'],
-    plugins: { unicorn },
-    rules: {
-      'unicorn/prefer-node-protocol': 'error'
-    }
-  },
-
-  /* ---------- Webview UI (browser) – turn off Node-specific rules ---------- */
-  {
-    files: ['src/topoViewer/webview-ui/**/*.ts'],
-    plugins: { unicorn },
-    rules: {
-      'unicorn/prefer-node-protocol': 'off',
-      'unicorn/prefer-global-this': 'off'
-    }
-  },
-
-  /* ---------- Tests – relax module/style constraints ---------- */
-  {
-    files: ['test/**/*.ts'],
-    plugins: { unicorn },
-    rules: {
-      'unicorn/filename-case': 'off',
-      'unicorn/import-style': 'off',
-      'unicorn/prevent-abbreviations': 'off',
-      'unicorn/prefer-module': 'off',
-      'unicorn/prefer-node-protocol': 'off',
-      'unicorn/prefer-top-level-await': 'off'
-    }
-  },
-
-  /* ---------- Declarations – avoid false-positives in d.ts ---------- */
-  {
-    files: ['**/*.d.ts'],
-    plugins: { unicorn },
-    rules: {
-      'unicorn/require-module-specifiers': 'off',
-      'unicorn/no-abusive-eslint-disable': 'off'
-    }
   }
 
+  
 ];

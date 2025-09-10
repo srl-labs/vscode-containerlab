@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import * as os from "node:os";
+import * as os from "os";
 import { outputChannel } from "../extension";
 import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
-import * as path from "node:path";
+import * as path from "path";
 
 /**
  * Save the entire lab configuration.
