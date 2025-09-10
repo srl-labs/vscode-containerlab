@@ -3,17 +3,10 @@
  * @param nodeId - The node ID to check.
  * @returns True if the node is a special endpoint (host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge).
  */
+import { isSpecialEndpointId } from './linkTypes';
+
 export function isSpecialEndpoint(nodeId: string): boolean {
-  return (
-    nodeId.startsWith('host:') ||
-    nodeId.startsWith('mgmt-net:') ||
-    nodeId.startsWith('macvlan:') ||
-    nodeId.startsWith('vxlan:') ||
-    nodeId.startsWith('vxlan-stitch:') ||
-    nodeId.startsWith('dummy') ||
-    nodeId.startsWith('bridge:') ||
-    nodeId.startsWith('ovs-bridge:')
-  );
+  return isSpecialEndpointId(nodeId);
 }
 
 /**

@@ -34,47 +34,14 @@ import { log } from '../logging/logger';
 import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { registerCyEventHandlers } from './cyEventHandlers';
 import { PerformanceMonitor } from '../utilities/performanceMonitor';
+import { debounce } from '../utilities/asyncUtils';
+import { buildGridGuideOptions } from '../utilities/gridGuide';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
 import { isSpecialNodeOrBridge, isSpecialEndpoint } from '../utilities/specialNodes';
 
-const GRID_GUIDE_OPTIONS = {
-  snapToGridOnRelease: true,
-  snapToGridDuringDrag: false,
-  snapToAlignmentLocationOnRelease: true,
-  snapToAlignmentLocationDuringDrag: false,
-  distributionGuidelines: false,
-  geometricGuideline: false,
-  initPosAlignment: false,
-  centerToEdgeAlignment: false,
-  resize: false,
-  parentPadding: false,
-  drawGrid: true,
-  gridSpacing: 14,
-  snapToGridCenter: true,
-  zoomDash: true,
-  panGrid: true,
-  gridStackOrder: -1,
-  lineWidth: 0.5,
-  guidelinesStackOrder: 4,
-  guidelinesTolerance: 2.0,
-  guidelinesStyle: {
-    strokeStyle: "#8b7d6b",
-    geometricGuidelineRange: 400,
-    range: 100,
-    minDistRange: 10,
-    distGuidelineOffset: 10,
-    horizontalDistColor: "#ff0000",
-    verticalDistColor: "#00ff00",
-    initPosAlignmentColor: "#0000ff",
-    lineDash: [0, 0],
-    horizontalDistLine: [0, 0],
-    verticalDistLine: [0, 0],
-    initPosAlignmentLine: [0, 0],
-  },
-  parentSpacing: -1,
-};
+// Grid guide options now come from shared builder in utilities/gridGuide
 
 
 
@@ -218,18 +185,10 @@ class TopologyWebviewController {
 
 
 
-  private debounce(func: Function, wait: number) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: any[]) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  }
-
   // Add automatic save on change
   private setupAutoSave(): void {
     // Debounced save function
-    const autoSave = this.debounce(async () => {
+    const autoSave = debounce(async () => {
       if (this.isEdgeHandlerActive) {
         return;
       }
@@ -276,7 +235,7 @@ class TopologyWebviewController {
   // Add automatic save for view mode (only saves annotations.json)
   private setupAutoSaveViewMode(): void {
     // Debounced save function for view mode
-    const autoSaveViewMode = this.debounce(async () => {
+    const autoSaveViewMode = debounce(async () => {
       const suppressNotification = true;
       await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
@@ -374,7 +333,7 @@ class TopologyWebviewController {
       log.debug(`Cytoscape event: ${event.type}`);
     });
     const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    (this.cy as any).gridGuide({ ...GRID_GUIDE_OPTIONS, gridColor });
+    (this.cy as any).gridGuide(buildGridGuideOptions(theme as any, { gridSpacing: 14, gridColor }));
   }
 
   private initializeManagers(mode: 'edit' | 'view'): void {

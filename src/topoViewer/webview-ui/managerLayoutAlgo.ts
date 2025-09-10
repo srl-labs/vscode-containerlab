@@ -2,6 +2,7 @@ import cytoscape from 'cytoscape';
 import topoViewerState from '../state';
 import { log } from '../logging/logger';
 import { loadExtension } from '../cytoscapeInstanceFactory';
+import { buildGridGuideOptions } from '../utilities/gridGuide';
 
 // Common Cytoscape style keys reused in this module
 const STYLE_TEXT_OUTLINE_WIDTH = 'text-outline-width' as const;
@@ -342,90 +343,34 @@ export class ManagerLayoutAlgo {
   private disableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
-    const theme = topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light';
-    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    (cy as any).gridGuide({
-      drawGrid: false,
-      snapToGridOnRelease: false,
-      snapToGridDuringDrag: false,
-      snapToAlignmentLocationOnRelease: false,
-      snapToAlignmentLocationDuringDrag: false,
-      distributionGuidelines: false,
-      geometricGuideline: false,
-      initPosAlignment: false,
-      centerToEdgeAlignment: false,
-      resize: false,
-      parentPadding: false,
-      gridSpacing: 10,
-      snapToGridCenter: false,
-      zoomDash: false,
-      panGrid: false,
-      gridStackOrder: -1,
-      gridColor,
-      lineWidth: 0.5,
-      guidelinesStackOrder: 4,
-      guidelinesTolerance: 2.0,
-      guidelinesStyle: {
-        strokeStyle: "#8b7d6b",
-        geometricGuidelineRange: 400,
-        range: 100,
-        minDistRange: 10,
-        distGuidelineOffset: 10,
-        horizontalDistColor: "#ff0000",
-        verticalDistColor: "#00ff00",
-        initPosAlignmentColor: "#0000ff",
-        lineDash: [0, 0],
-        horizontalDistLine: [0, 0],
-        verticalDistLine: [0, 0],
-        initPosAlignmentLine: [0, 0],
-      },
-      parentSpacing: -1
-    });
+    const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
+    (cy as any).gridGuide(
+      buildGridGuideOptions(theme, {
+        drawGrid: false,
+        snapToGridOnRelease: false,
+        snapToAlignmentLocationOnRelease: false,
+        snapToGridCenter: false,
+        zoomDash: false,
+        panGrid: false,
+      })
+    );
   }
 
   /** Re-enable grid guide overlay and snapping */
   private enableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
-    const theme = topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light';
-    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    (cy as any).gridGuide({
-      drawGrid: true,
-      snapToGridOnRelease: true,
-      snapToGridDuringDrag: false,
-      snapToAlignmentLocationOnRelease: true,
-      snapToAlignmentLocationDuringDrag: false,
-      distributionGuidelines: false,
-      geometricGuideline: false,
-      initPosAlignment: false,
-      centerToEdgeAlignment: false,
-      resize: false,
-      parentPadding: false,
-      gridSpacing: 10,
-      snapToGridCenter: true,
-      zoomDash: true,
-      panGrid: true,
-      gridStackOrder: -1,
-      gridColor,
-      lineWidth: 0.5,
-      guidelinesStackOrder: 4,
-      guidelinesTolerance: 2.0,
-      guidelinesStyle: {
-        strokeStyle: "#8b7d6b",
-        geometricGuidelineRange: 400,
-        range: 100,
-        minDistRange: 10,
-        distGuidelineOffset: 10,
-        horizontalDistColor: "#ff0000",
-        verticalDistColor: "#00ff00",
-        initPosAlignmentColor: "#0000ff",
-        lineDash: [0, 0],
-        horizontalDistLine: [0, 0],
-        verticalDistLine: [0, 0],
-        initPosAlignmentLine: [0, 0],
-      },
-      parentSpacing: -1
-    });
+    const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
+    (cy as any).gridGuide(
+      buildGridGuideOptions(theme, {
+        drawGrid: true,
+        snapToGridOnRelease: true,
+        snapToAlignmentLocationOnRelease: true,
+        snapToGridCenter: true,
+        zoomDash: true,
+        panGrid: true,
+      })
+    );
   }
 
   /**
@@ -439,76 +384,11 @@ export class ManagerLayoutAlgo {
   public assignMissingLatLng(): void {
     const cy = this.getCy();
     if (!cy) return;
-
-    // Stuttgart, Germany as default center (Europe)
-    const DEFAULT_AVERAGE_LAT = 48.684826888402256;
-    const DEFAULT_AVERAGE_LNG = 9.007895390625677;
-
-    const { lats, lngs } = this.collectExistingLatLng(cy);
-    const averageLat = this.averageOrDefault(lats, DEFAULT_AVERAGE_LAT);
-    const averageLng = this.averageOrDefault(lngs, DEFAULT_AVERAGE_LNG);
-
-    const useDefaultLat = lats.length === 0;
-    const useDefaultLng = lngs.length === 0;
-
-    cy.nodes().forEach(node => {
-      this.assignNodeLatLng(
-        node,
-        averageLat,
-        averageLng,
-        useDefaultLat,
-        useDefaultLng,
-        DEFAULT_AVERAGE_LAT,
-        DEFAULT_AVERAGE_LNG
-      );
-    });
+    const { assignMissingLatLngToCy } = require('../utilities/geoUtils');
+    assignMissingLatLngToCy(cy);
   }
 
-  private collectExistingLatLng(cy: cytoscape.Core): { lats: number[]; lngs: number[] } {
-    const lats: number[] = [];
-    const lngs: number[] = [];
-    cy.nodes().forEach(node => {
-      const lat = parseFloat(node.data('lat'));
-      if (!isNaN(lat)) lats.push(lat);
-
-      const lng = parseFloat(node.data('lng'));
-      if (!isNaN(lng)) lngs.push(lng);
-    });
-    return { lats, lngs };
-  }
-
-  private averageOrDefault(values: number[], fallback: number): number {
-    return values.length > 0
-      ? values.reduce((a, b) => a + b, 0) / values.length
-      : fallback;
-  }
-
-  private assignNodeLatLng(
-    node: cytoscape.NodeSingular,
-    averageLat: number,
-    averageLng: number,
-    useDefaultLat: boolean,
-    useDefaultLng: boolean,
-    defaultLat: number,
-    defaultLng: number
-  ): void {
-    let lat = parseFloat(node.data('lat'));
-    if (!node.data('lat') || isNaN(lat)) {
-      const idx = node.id().length % 5;
-      const offset = (idx - 2) * 0.05;
-      lat = (useDefaultLat ? defaultLat : averageLat) + offset;
-    }
-
-    let lng = parseFloat(node.data('lng'));
-    if (!node.data('lng') || isNaN(lng)) {
-      const idx = (node.id().charCodeAt(0) || 0) % 7;
-      const offset = (idx - 3) * 0.05;
-      lng = (useDefaultLng ? defaultLng : averageLng) + offset;
-    }
-
-    node.data('lat', lat.toFixed(15));
-    node.data('lng', lng.toFixed(15));
-  }
+  // Lat/Lng helpers moved to utilities/geoUtils
 
   public viewportButtonsLayoutAlgo(event?: Event): void {
     // Prevent event from bubbling up

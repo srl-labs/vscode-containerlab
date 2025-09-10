@@ -9,6 +9,7 @@ import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
 import { FilterUtils } from '../../helpers/filterUtils';
 import { updateNodePosition, handleGeoData } from './nodeUtils';
+import { GROUP_LABEL_POSITIONS } from '../utilities/labelPositions';
 
 // Common class and display constants
 const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
@@ -317,14 +318,7 @@ function applyParentData(node: any, nodeJson: any, cy: any): void {
     nodeJson.data.extraData.labels['graph-level'] = parentParts[1];
   }
 
-  const validLabelClasses = [
-    'top-center',
-    'top-left',
-    'top-right',
-    'bottom-center',
-    'bottom-left',
-    'bottom-right'
-  ];
+  const validLabelClasses = GROUP_LABEL_POSITIONS as readonly string[];
 
   const parentElement = cy.getElementById(parentId);
   if (!parentElement) return;

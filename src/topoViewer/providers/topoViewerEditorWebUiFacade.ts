@@ -18,6 +18,7 @@ import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
 import { annotationsManager } from '../utilities/annotationsManager';
 import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
+import { sleep } from '../utilities/asyncUtils';
 
 // Common configuration section key used throughout this module
 const CONFIG_SECTION = 'containerlab.editor';
@@ -97,8 +98,27 @@ export class TopoViewerEditor {
     this.adaptor = new TopoViewerAdaptorClab();
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private buildDefaultLabYaml(labName: string, savedPath?: string): string {
+    const saved = savedPath ? ` # saved as ${savedPath}` : '';
+    return `name: ${labName}${saved}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
+`;
   }
 
   private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
@@ -262,26 +282,7 @@ export class TopoViewerEditor {
     this.lastFolderName = baseNameWithoutExt;
 
     // Build the template with the actual lab name - default topology with two SRL routers
-    const templateContent = `
-name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
+    const templateContent = this.buildDefaultLabYaml(baseNameWithoutExt, targetFileUri.fsPath);
 
     try {
       // Ensure the directory exists using the final URI's directory
@@ -293,7 +294,7 @@ topology:
       const data = Buffer.from(templateContent, 'utf8');
       this.isInternalUpdate = true;
       await vscode.workspace.fs.writeFile(targetFileUri, data);
-      await this.sleep(50);
+      await sleep(50);
       this.isInternalUpdate = false;
 
       // Remember the actual path where it was written
@@ -483,28 +484,10 @@ topology:
       const labNameFromFile = baseName
         .replace(/\.clab\.(yml|yaml)$/i, '')
         .replace(/\.(yml|yaml)$/i, '');
-      const defaultContent = `name: ${labNameFromFile}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
+      const defaultContent = this.buildDefaultLabYaml(labNameFromFile);
       this.isInternalUpdate = true;
       await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
-      await this.sleep(50);
+      await sleep(50);
       this.isInternalUpdate = false;
       yamlContent = defaultContent;
       log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
@@ -837,7 +820,7 @@ topology:
 `topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
       this.isInternalUpdate = true;
       await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
-      await this.sleep(50);
+      await sleep(50);
       this.isInternalUpdate = false;
       yaml = defaultContent;
       log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
@@ -1233,7 +1216,7 @@ topology:
           preserveFocus: false
         });
       }
-      await this.sleep(50);
+      await sleep(50);
       await vscode.commands.executeCommand('undo');
       await document.save();
       if (currentActiveEditor && !existingEditor) {
@@ -1320,7 +1303,7 @@ topology:
     } finally {
       this.isSwitchingMode = false;
       log.debug(`Mode switch completed, flag cleared`);
-      await this.sleep(100);
+      await sleep(100);
     }
   }
 
@@ -1824,7 +1807,7 @@ topology:
       });
 
       // Wait for the editor to be fully rendered
-      await this.sleep(100);
+      await sleep(100);
 
       // Set a custom layout with the topology editor taking 60% and YAML taking 40%
       // This provides a good balance - the topology editor has more space while

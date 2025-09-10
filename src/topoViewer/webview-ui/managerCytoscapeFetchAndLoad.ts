@@ -3,6 +3,7 @@ import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
+import { assignMissingLatLngToElements } from '../utilities/geoUtils';
 
 
 /**
@@ -210,77 +211,12 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
  * @returns The updated data array.
  */
 export function assignMissingLatLng(dataArray: DataItem[]): DataItem[] {
-  const DEFAULT_AVERAGE_LAT = 48.684826888402256;
-  const DEFAULT_AVERAGE_LNG = 9.007895390625677;
-  const existingLats: number[] = [];
-  const existingLngs: number[] = [];
-
-  // First pass: collect existing latitudes and longitudes.
-  dataArray.forEach(({ data }) => {
-    addIfValidNumber(existingLats, data.lat);
-    addIfValidNumber(existingLngs, data.lng);
-  });
-
-  const { avg: averageLat, usedDefault: usedDefaultLat } = computeAverage(existingLats, DEFAULT_AVERAGE_LAT);
-  const { avg: averageLng, usedDefault: usedDefaultLng } = computeAverage(existingLngs, DEFAULT_AVERAGE_LNG);
-
-  if (usedDefaultLat || usedDefaultLng) {
-    log.warn('Missing latitude or longitude values. Using default averages.');
-  }
-
-  // Second pass: assign missing values or normalize existing values.
-  const counter = { value: 0 };
-  dataArray.forEach(item => {
-    const { data } = item;
-    const id = data.id || 'Unknown ID';
-
-    data.lat = normalizeCoord(data.lat, averageLat, DEFAULT_AVERAGE_LAT, counter, id, 'lat', usedDefaultLat);
-    data.lng = normalizeCoord(data.lng, averageLng, DEFAULT_AVERAGE_LNG, counter, id, 'lng', usedDefaultLng);
-  });
-
-  log.debug(`Updated dataArray: ${JSON.stringify(dataArray)}`);
-  return dataArray;
-
+  const updated = assignMissingLatLngToElements(dataArray);
+  log.debug(`Updated dataArray: ${JSON.stringify(updated)}`);
+  return updated as DataItem[];
 }
 
-function addIfValidNumber(target: number[], maybe: string | undefined) {
-  if (!maybe) return;
-  const s = maybe.trim();
-  if (!s) return;
-  const n = parseFloat(s);
-  if (!isNaN(n)) target.push(n);
-}
-
-function computeAverage(values: number[], fallback: number): { avg: number; usedDefault: boolean } {
-  if (values.length === 0) return { avg: fallback, usedDefault: true };
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  return { avg, usedDefault: false };
-}
-
-function normalizeCoord(
-  value: string | undefined,
-  average: number,
-  defaultAverage: number,
-  counter: { value: number },
-  id: string,
-  kind: 'lat' | 'lng',
-  usedDefault: boolean,
-): string {
-  const logKey = kind;
-  const normalized = value && value.trim() !== '' ? parseFloat(value) : NaN;
-  if (!isNaN(normalized)) {
-    return normalized.toFixed(15);
-  }
-  const deterministicOffset = (counter.value++ % 9) * 0.1;
-  const base = usedDefault ? defaultAverage : (average + deterministicOffset);
-  const v = base.toFixed(15);
-  const level = value && value.trim() !== '' ? 'warn' : 'debug';
-  const msg = value && value.trim() !== ''
-    ? `Invalid ${logKey} for ID ${id}. Assigned new ${logKey}: ${v}`
-    : `Assigned new ${logKey} for ID ${id}: ${v}`;
-  (log as any)[level](msg);
-  return v;
-}
+// Moved lat/lng helpers to utilities/geoUtils
 type EnvironmentKeys =
   | "working-directory"
   | "clab-name"

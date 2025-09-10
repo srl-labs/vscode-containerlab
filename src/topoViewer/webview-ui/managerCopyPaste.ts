@@ -5,6 +5,7 @@ import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { isSpecialEndpoint } from '../utilities/specialNodes';
 import { log } from '../logging/logger';
 import { TopologyAnnotations } from '../types/topoViewerGraph';
+import { getUniqueId } from './utilities/idUtils';
 
 // Constants for copy/paste operations
 const PASTE_OFFSET = {
@@ -230,89 +231,9 @@ export class CopyPasteManager {
    * @returns A unique ID string.
    */
   private getUniqueId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
-    if (isSpecialEndpoint(baseName)) {
-      if (baseName.startsWith('dummy')) {
-        return this.generateDummyId(baseName, usedIds);
-      }
-      if (baseName.includes(':')) {
-        return this.generateAdapterNodeId(baseName, usedIds);
-      }
-      return this.generateSpecialNodeId(baseName, usedIds);
-    }
-    return this.generateRegularNodeId(baseName, usedIds, isGroup);
+    return getUniqueId(baseName, usedIds, isGroup);
   }
 
-  private generateDummyId(baseName: string, usedIds: Set<string>): string {
-    const re = /^(dummy)(\d*)$/;
-    const match = re.exec(baseName);
-    const base = match?.[1] || 'dummy';
-    let num = parseInt(match?.[2] || '1') || 1;
-    while (usedIds.has(`${base}${num}`)) num++;
-    return `${base}${num}`;
-  }
-
-  private generateAdapterNodeId(baseName: string, usedIds: Set<string>): string {
-    const [nodeType, adapter] = baseName.split(':');
-    const adapterRe = /^([a-zA-Z]+)(\d+)$/;
-    const adapterMatch = adapterRe.exec(adapter);
-    if (adapterMatch) {
-      const adapterBase = adapterMatch[1];
-      let adapterNum = parseInt(adapterMatch[2]);
-      let name = baseName;
-      while (usedIds.has(name)) {
-        adapterNum++;
-        name = `${nodeType}:${adapterBase}${adapterNum}`;
-      }
-      return name;
-    }
-    let name = baseName;
-    let counter = 1;
-    while (usedIds.has(name)) {
-      name = `${nodeType}:${adapter}${counter}`;
-      counter++;
-    }
-    return name;
-  }
-
-  private generateSpecialNodeId(baseName: string, usedIds: Set<string>): string {
-    let name = baseName;
-    while (usedIds.has(name)) {
-      // Split name into non-digit base + trailing digits
-      let i = name.length - 1;
-      while (i >= 0 && name[i] >= '0' && name[i] <= '9') i--;
-      const base = name.slice(0, i + 1) || name;
-      const digits = name.slice(i + 1);
-      let num = digits ? parseInt(digits, 10) : 0;
-      num += 1;
-      name = `${base}${num}`;
-    }
-    return name;
-  }
-
-  private generateRegularNodeId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
-    // Split baseName into base + trailing number (if any)
-    let i = baseName.length - 1;
-    while (i >= 0 && baseName[i] >= '0' && baseName[i] <= '9') i--;
-    const hasNumber = i < baseName.length - 1;
-    const base = hasNumber ? baseName.slice(0, i + 1) : baseName;
-    let num = hasNumber ? parseInt(baseName.slice(i + 1), 10) : 0;
-
-    if (isGroup) {
-      while (usedIds.has(`${base}${num || ''}:1`)) num++;
-      return `${base}${num || ''}:1`;
-    }
-    if (hasNumber) {
-      while (usedIds.has(`${base}${num}`)) num++;
-      return `${base}${num}`;
-    }
-    let name = baseName;
-    num = 1;
-    while (usedIds.has(name)) {
-      name = `${base}${num}`;
-      num++;
-    }
-    return name;
-  }
 
   /**
    * Calculates the position delta for paste operations.

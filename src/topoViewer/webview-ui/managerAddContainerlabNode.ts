@@ -3,6 +3,7 @@
 import cytoscape from 'cytoscape';
 import type { NodeData, NodeExtraData } from '../types/topoViewerGraph';
 import topoViewerState from '../state';
+import { getUniqueId } from './utilities/idUtils';
 
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.
@@ -52,12 +53,8 @@ export class ManagerAddContainerlabNode {
     if (!template?.baseName) {
       return defaultName;
     }
-    const existingNodeNames = cy.nodes().map(node => node.data('name'));
-    let counter = 1;
-    while (existingNodeNames.includes(`${template.baseName}${counter}`)) {
-      counter++;
-    }
-    return `${template.baseName}${counter}`;
+    const used = new Set<string>(cy.nodes().map(node => node.data('name')));
+    return getUniqueId(template.baseName, used, false);
   }
 
   private createNodeData(

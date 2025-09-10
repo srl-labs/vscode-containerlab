@@ -3,6 +3,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import type { GroupStyleAnnotation } from '../types/topoViewerGraph';
 import type { ManagerFreeText } from './managerFreeText';
+import { debounce } from '../utilities/asyncUtils';
 
 export class ManagerGroupStyle {
   private cy: cytoscape.Core;
@@ -17,7 +18,7 @@ export class ManagerGroupStyle {
     this.cy = cy;
     this.messageSender = messageSender;
     this.freeTextManager = freeTextManager;
-    this.saveDebounced = this.debounce(() => {
+    this.saveDebounced = debounce(() => {
       this.saveAnnotations();
     }, 300);
   }
@@ -26,13 +27,7 @@ export class ManagerGroupStyle {
     this.freeTextManager = manager;
   }
 
-  private debounce(func: Function, wait: number) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: any[]) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  }
+  // debounce provided by utilities/asyncUtils
 
   public getGroupStyles(): GroupStyleAnnotation[] {
     return Array.from(this.groupStyles.values());

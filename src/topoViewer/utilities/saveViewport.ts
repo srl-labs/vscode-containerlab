@@ -8,6 +8,8 @@ import { ClabTopology } from '../types/topoViewerType';
 import { annotationsManager } from './annotationsManager';
 import { CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
 import { isSpecialEndpoint } from './specialNodes';
+import { STR_HOST, STR_MGMT_NET, PREFIX_MACVLAN, PREFIX_VXLAN_STITCH, PREFIX_VXLAN, PREFIX_DUMMY, TYPE_DUMMY, SINGLE_ENDPOINT_TYPES, VX_TYPES, HOSTY_TYPES, splitEndpointLike } from './linkTypes';
+import { sleep } from './asyncUtils';
 
 type CanonicalEndpoint = { node: string; iface: string };
 type CanonicalLinkKey = {
@@ -22,16 +24,9 @@ type CanonicalLinkKey = {
 };
 
 // Common string literals used in multiple places in this module
-const STR_HOST = 'host';
-const STR_MGMT_NET = 'mgmt-net';
-const PREFIX_MACVLAN = 'macvlan:';
-const PREFIX_VXLAN_STITCH = 'vxlan-stitch:';
-const PREFIX_VXLAN = 'vxlan:';
-const PREFIX_DUMMY = 'dummy';
 const TYPE_MACVLAN = 'macvlan' as const;
 const TYPE_VXLAN_STITCH = 'vxlan-stitch' as const;
 const TYPE_VXLAN = 'vxlan' as const;
-const TYPE_DUMMY = 'dummy' as const;
 const TYPE_UNKNOWN = 'unknown' as const;
 
 // Commonly duplicated YAML keys
@@ -64,16 +59,7 @@ const VETH_REMOVE_KEYS = [
 ] as const;
 
 // Common type groups
-const SINGLE_ENDPOINT_TYPES = new Set<CanonicalLinkKey['type']>([
-  STR_HOST,
-  STR_MGMT_NET,
-  TYPE_MACVLAN,
-  TYPE_DUMMY,
-  TYPE_VXLAN,
-  TYPE_VXLAN_STITCH,
-]);
-const VX_TYPES = new Set<CanonicalLinkKey['type']>([TYPE_VXLAN, TYPE_VXLAN_STITCH]);
-const HOSTY_TYPES = new Set<CanonicalLinkKey['type']>([STR_MGMT_NET, STR_HOST, TYPE_MACVLAN]);
+// Use shared sets
 
 function endpointIsSpecial(ep: CanonicalEndpoint | string): boolean {
   const epStr = typeof ep === 'string' ? ep : `${ep.node}:${ep.iface}`;
@@ -86,24 +72,9 @@ function endpointIsSpecial(ep: CanonicalEndpoint | string): boolean {
   );
 }
 
-function splitEndpointLike(endpoint: string | { node: string; interface?: string }): CanonicalEndpoint {
-  if (typeof endpoint === 'string') {
-    if (
-      endpoint.startsWith(PREFIX_MACVLAN) ||
-      endpoint.startsWith(PREFIX_DUMMY) ||
-      endpoint.startsWith(PREFIX_VXLAN) ||
-      endpoint.startsWith(PREFIX_VXLAN_STITCH)
-    ) {
-      return { node: endpoint, iface: '' };
-    }
-    const parts = endpoint.split(':');
-    if (parts.length === 2) return { node: parts[0], iface: parts[1] };
-    return { node: endpoint, iface: '' };
-  }
-  if (endpoint && typeof endpoint === 'object') {
-    return { node: endpoint.node, iface: endpoint.interface ?? '' };
-  }
-  return { node: '', iface: '' };
+function splitEndpointCanonical(endpoint: string | { node: string; interface?: string }): CanonicalEndpoint {
+  const { node, iface } = splitEndpointLike(endpoint);
+  return { node, iface };
 }
 
 function linkTypeFromSpecial(special: CanonicalEndpoint): CanonicalLinkKey['type'] {
@@ -177,8 +148,8 @@ function parseShortLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
 
   const epA = String((eps.items[0] as any).value ?? eps.items[0]);
   const epB = String((eps.items[1] as any).value ?? eps.items[1]);
-  const a = splitEndpointLike(epA);
-  const b = splitEndpointLike(epB);
+  const a = splitEndpointCanonical(epA);
+  const b = splitEndpointCanonical(epB);
   return canonicalFromPair(a, b);
 }
 
@@ -200,8 +171,8 @@ function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
   const target: string = data.target;
   const sourceEp = data.sourceEndpoint ? `${source}:${data.sourceEndpoint}` : source;
   const targetEp = data.targetEndpoint ? `${target}:${data.targetEndpoint}` : target;
-  const a = splitEndpointLike(sourceEp);
-  const b = splitEndpointLike(targetEp);
+  const a = splitEndpointCanonical(sourceEp);
+  const b = splitEndpointCanonical(targetEp);
   return canonicalFromPair(a, b);
 }
 
@@ -216,9 +187,7 @@ function canonicalFromPair(a: CanonicalEndpoint, b: CanonicalEndpoint): Canonica
   return { type: 'veth', a, b };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// sleep is imported from utilities/asyncUtils
 
 function buildEndpointMap(doc: YAML.Document.Parsed, ep: CanonicalEndpoint): YAML.YAMLMap {
   const m = new YAML.YAMLMap();

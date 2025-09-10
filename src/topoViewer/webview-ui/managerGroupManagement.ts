@@ -8,6 +8,7 @@ const LABEL_BUTTON_TEXT_ID = `${PANEL_EL_PREFIX}label-dropdown-button-text` as c
 const CLASS_EMPTY_GROUP = 'empty-group' as const;
 import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
 import type { ManagerGroupStyle } from './managerGroupStyle';
+import { GROUP_LABEL_POSITIONS } from '../utilities/labelPositions';
 
 // Declarations for globals provided elsewhere
 /* eslint-disable no-unused-vars */
@@ -346,8 +347,7 @@ export class ManagerGroupManagement {
 
   private setLabelButton(node: cytoscape.NodeSingular, labelButtonEl: HTMLElement | null): void {
     if (!labelButtonEl) return;
-    const labelClasses = ['top-center', 'top-left', 'top-right', 'bottom-center', 'bottom-left', 'bottom-right'];
-    const currentClass = labelClasses.find(cls => node.hasClass(cls));
+    const currentClass = GROUP_LABEL_POSITIONS.find(cls => node.hasClass(cls));
     labelButtonEl.textContent = currentClass || 'Select Position';
   }
 

@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import { fetchAndLoadData } from './managerCytoscapeFetchAndLoad';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
+import { sleep } from '../utilities/asyncUtils';
 
 /**
  * Handles reloading the topology data from the backend.
@@ -25,14 +26,12 @@ export class ManagerReloadTopo {
         'Empty Payload'
       );
       log.debug(`Response from backend: ${JSON.stringify(response)}`);
-      await this.sleep(delayMs);
+      await sleep(delayMs);
       fetchAndLoadData(cy, this.messageSender);
     } catch (err) {
       log.error(`Backend call failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+  // use shared sleep from asyncUtils
 }
