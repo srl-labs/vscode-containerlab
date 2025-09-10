@@ -25,7 +25,7 @@ export class ManagerSaveTopo {
   /**
    * Updates node positions and sends the topology data to the backend.
    */
-  public async viewportButtonsSaveTopo(
+  public async saveTopo(
     cy: cytoscape.Core,
     suppressNotification = false
   ): Promise<void> {
@@ -33,7 +33,7 @@ export class ManagerSaveTopo {
     if (!isVscodeDeployment) return;
 
     try {
-      log.debug('viewportButtonsSaveTopo triggered');
+      log.debug('saveTopo triggered');
       const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
       const updatedNodes = this.collectNodes(cy, layoutMgr);
       const updatedEdges = this.collectEdges(cy);

@@ -464,7 +464,7 @@ export class ManagerViewportPanels {
       saveBtn.parentNode?.replaceChild(newSave, saveBtn);
       newSave.addEventListener('click', async () => {
         await this.updateNodeFromEditor(node);
-        await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+        await this.saveManager.saveTopo(this.cy, false);
       });
     }
   }
@@ -666,7 +666,7 @@ export class ManagerViewportPanels {
 
         await this.updateNetworkFromEditor(node);
         const suppressNotification = false;
-        await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
+        await this.saveManager.saveTopo(this.cy, suppressNotification);
       });
     }
   }
@@ -910,7 +910,7 @@ export class ManagerViewportPanels {
           const newSourceEP = (ctx.sourceIsNetwork && !ctx.sourceIsBridge) ? '' : (srcInput?.value?.trim() || '');
           const newTargetEP = (ctx.targetIsNetwork && !ctx.targetIsBridge) ? '' : (tgtInput?.value?.trim() || '');
           edge.data({ sourceEndpoint: newSourceEP, targetEndpoint: newTargetEP });
-          await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+          await this.saveManager.saveTopo(this.cy, false);
         } catch (err) {
           log.error(`panelEdgeEditor basic save error: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -1103,13 +1103,13 @@ export class ManagerViewportPanels {
 
       const current = edge.data();
       if (!ctx.isVeth) {
-        await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+        await this.saveManager.saveTopo(this.cy, false);
         return;
       }
 
       const updatedExtra = this.buildLinkExtendedData(current.extraData || {});
       edge.data({ ...current, extraData: updatedExtra });
-      await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+      await this.saveManager.saveTopo(this.cy, false);
     } catch (err) {
       log.error(`panelEdgeEditorExtended: error during save: ${err instanceof Error ? err.message : String(err)}`);
     }

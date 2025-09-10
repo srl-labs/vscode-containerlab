@@ -2136,7 +2136,7 @@ export class ManagerNodeEditor {
       'pe';
     const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
     this.currentNode!.data(updatedData);
-    await this.saveManager.viewportButtonsSaveTopo(this.cy, false);
+    await this.saveManager.saveTopo(this.cy, false);
     await this.refreshNodeData();
     this.updateInheritedBadges(inheritedProps);
     log.info(`Node ${this.currentNode!.id()} updated with enhanced properties`);

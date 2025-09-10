@@ -193,7 +193,7 @@ class TopologyWebviewController {
         return;
       }
       const suppressNotification = true;
-      await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
+      await this.saveManager.saveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
     // Listen for topology changes - but skip free text nodes as they handle their own saves
@@ -237,7 +237,7 @@ class TopologyWebviewController {
     // Debounced save function for view mode
     const autoSaveViewMode = debounce(async () => {
       const suppressNotification = true;
-      await this.saveManager.viewportButtonsSaveTopo(this.cy, suppressNotification);
+      await this.saveManager.saveTopo(this.cy, suppressNotification);
     }, 500); // Wait 500ms after last change before saving
 
     // Listen for position changes only - view mode doesn't add/remove nodes
@@ -418,7 +418,6 @@ class TopologyWebviewController {
     window.viewportButtonsLabelEndpoint = () => this.labelEndpointManager.viewportButtonsLabelEndpoint(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsReloadTopo = () => this.reloadTopoManager.viewportButtonsReloadTopo(this.cy);
-    window.viewportButtonsSaveTopo = () => this.saveManager.viewportButtonsSaveTopo(this.cy);
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
   }
 
@@ -473,7 +472,7 @@ class TopologyWebviewController {
   private handleCopiedElements(data: any): void {
     const addedElements = this.copyPasteManager.performPaste(data);
     if (addedElements && addedElements.length > 0) {
-      this.saveManager.viewportButtonsSaveTopo(this.cy, true);
+      this.saveManager.saveTopo(this.cy, true);
     }
   }
 
@@ -1465,7 +1464,7 @@ class TopologyWebviewController {
     });
 
     // Save after cut
-    await this.saveManager.viewportButtonsSaveTopo(this.cy, true);
+    await this.saveManager.saveTopo(this.cy, true);
   }
 
   /**
@@ -1659,7 +1658,7 @@ class TopologyWebviewController {
         }
       });
     });
-    this.saveManager.viewportButtonsSaveTopo(this.cy, true);
+    this.saveManager.saveTopo(this.cy, true);
   }
 
   /**

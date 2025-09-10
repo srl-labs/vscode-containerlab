@@ -8,8 +8,6 @@ import { exportViewportAsSvg } from './utils';
 import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
 import { FilterUtils } from '../../helpers/filterUtils';
-import { updateNodePosition, handleGeoData } from './nodeUtils';
-import { GROUP_LABEL_POSITIONS } from '../utilities/labelPositions';
 
 // Common class and display constants
 const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
@@ -305,154 +303,6 @@ export function viewportButtonsCaptureViewportAsSvg(): void {
 }
 
 
-function applyParentData(node: any, nodeJson: any, cy: any): void {
-  const parentId = node.parent().id();
-  if (!parentId) return;
-
-  nodeJson.parent = parentId;
-  if (!nodeJson.data?.extraData?.labels) return;
-
-  const parentParts = parentId.split(':');
-  if (parentParts.length >= 2) {
-    nodeJson.data.extraData.labels['graph-group'] = parentParts[0];
-    nodeJson.data.extraData.labels['graph-level'] = parentParts[1];
-  }
-
-  const validLabelClasses = GROUP_LABEL_POSITIONS as readonly string[];
-
-  const parentElement = cy.getElementById(parentId);
-  if (!parentElement) return;
-
-  const parentClasses = parentElement.classes();
-  const validParentClasses = parentClasses.filter((cls: string) =>
-    validLabelClasses.includes(cls)
-  );
-  nodeJson.data.groupLabelPos =
-    validParentClasses.length > 0 ? validParentClasses[0] : '';
-}
-
-function prepareNodeForSave(node: any, isGeoActive: boolean, cy: any): any {
-  const nodeJson = node.json();
-  updateNodePosition(node, nodeJson, isGeoActive);
-  handleGeoData(node, nodeJson, isGeoActive);
-  applyParentData(node, nodeJson, cy);
-  return nodeJson;
-}
-
-function nodeToAnnotation(node: any): any {
-  const {
-    fontSize = 14,
-    fontColor = '#FFFFFF',
-    backgroundColor = 'transparent',
-    fontWeight = 'normal',
-    fontStyle = 'normal',
-    textDecoration = 'none',
-    fontFamily = 'monospace'
-  } = node.data.freeTextData || {};
-
-  return {
-    id: node.data.id,
-    text: node.data.name || '',
-    position: node.position || { x: 0, y: 0 },
-    fontSize,
-    fontColor,
-    backgroundColor,
-    fontWeight,
-    fontStyle,
-    textDecoration,
-    fontFamily
-  };
-}
-
-function buildAnnotations(nodes: any[]): any[] {
-  return nodes.map(nodeToAnnotation);
-}
-
-function reapplyGroupStyles(groupStyles: any[]): void {
-  const manager = topoViewerState.editorEngine?.groupStyleManager;
-  if (!manager) {
-    return;
-  }
-  groupStyles.forEach((style: any) => manager.applyStyleToNode(style.id));
-  log.info('Reapplied group styles after save');
-}
-
-async function saveAnnotationsAndStyles(updatedNodes: any[]): Promise<void> {
-  const freeTextNodes = updatedNodes.filter(
-    (node: any) => node.data?.topoViewerRole === 'freeText'
-  );
-  const groupStyles =
-    topoViewerState.editorEngine?.groupStyleManager?.getGroupStyles() || [];
-
-  if (freeTextNodes.length === 0 && groupStyles.length === 0) {
-    log.info('No annotations to save');
-    return;
-  }
-
-  if (freeTextNodes.length > 0) {
-    log.info(
-      `Found ${freeTextNodes.length} free text nodes to save as annotations`
-    );
-  }
-
-  const annotations = buildAnnotations(freeTextNodes);
-
-  const sender = getMessageSender();
-  const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
-    'topo-editor-save-annotations',
-    { annotations, groupStyles }
-  );
-  log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
-
-  reapplyGroupStyles(groupStyles);
-}
-
-/**
- * Save topology data back to the backend
- * Updates node positions and group information before saving
- */
-export async function viewportButtonsSaveTopo(): Promise<void> {
-  try {
-    log.info('viewportButtonsSaveTopo triggered');
-
-    // Ensure Cytoscape instance is available
-    if (!topoViewerState.cy) {
-      log.error('Cytoscape instance "cy" is not defined.');
-      return;
-    }
-    const cy = topoViewerState.cy;
-
-    // Check if geo-map is active and update geo coordinates
-    const layoutManager = window.layoutManager;
-    const isGeoActive = layoutManager?.isGeoMapInitialized || false;
-
-    if (
-      isGeoActive &&
-      layoutManager &&
-      typeof layoutManager.updateNodeGeoCoordinates === 'function'
-    ) {
-      layoutManager.updateNodeGeoCoordinates();
-    }
-
-    // Process nodes: update each node's "position" property with the current position
-    const updatedNodes = cy
-      .nodes()
-      .map((node: any) => prepareNodeForSave(node, isGeoActive, cy));
-
-    // Send updated topology data to backend
-    const sender = getMessageSender();
-    const response = await sender.sendMessageToVscodeEndpointPost(
-      'topo-viewport-save',
-      updatedNodes
-    );
-    log.info(`Topology saved successfully: ${JSON.stringify(response)}`);
-
-    await saveAnnotationsAndStyles(updatedNodes);
-  } catch (error) {
-    log.error(`Failed to save topology: ${error}`);
-  }
-}
-
 /**
  * Toggle split view with YAML editor
  */
@@ -476,8 +326,6 @@ export async function viewportButtonsToggleSplit(event?: Event): Promise<void> {
 export function initializeGlobalHandlers(): void {
   // Make functions available globally for HTML onclick handlers
   (globalThis as any).showPanelAbout = showPanelAbout;
-  // Override the save handler for view mode to include annotation saving
-  (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
   // Note: Most viewport button handlers are now managed by TopologyWebviewController
   // Only set view-specific handlers here that are not provided by the controller
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
