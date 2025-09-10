@@ -24,6 +24,7 @@ const CLASS_TAB_ACTIVE = 'tab-active' as const;
 const CLASS_DYNAMIC_ENTRY = 'dynamic-entry' as const;
 const CLASS_DYNAMIC_DELETE_BTN = 'dynamic-delete-btn' as const;
 const CLASS_INPUT_FIELD = 'input-field' as const;
+const HTML_TRASH_ICON = '<i class="fas fa-trash"></i>' as const;
 
 const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
@@ -57,9 +58,15 @@ const ID_NODE_IMAGE_FILTER_INPUT = 'node-image-dropdown-container-filter-input' 
 const ID_NODE_IMAGE_FALLBACK_INPUT = 'node-image-fallback-input' as const;
 const ID_NODE_VERSION_FALLBACK_INPUT = 'node-version-fallback-input' as const;
 const ID_PANEL_NODE_TOPOROLE_CONTAINER = 'panel-node-topoviewerrole-dropdown-container' as const;
+const ID_PANEL_NODE_TOPOROLE_FILTER_INPUT = 'panel-node-topoviewerrole-dropdown-container-filter-input' as const;
 const ID_NODE_CERT_KEYSIZE_DROPDOWN = 'node-cert-key-size-dropdown-container' as const;
 const ID_NODE_CERT_VALIDITY = 'node-cert-validity' as const;
 const ID_NODE_SANS_CONTAINER = 'node-sans-container' as const;
+const ID_NODE_CERT_KEYSIZE_FILTER_INPUT = 'node-cert-key-size-dropdown-container-filter-input' as const;
+const ID_NODE_NAME = 'node-name' as const;
+const ID_NODE_CUSTOM_NAME = 'node-custom-name' as const;
+const ID_NODE_CUSTOM_NAME_GROUP = 'node-custom-name-group' as const;
+const ID_NODE_NAME_GROUP = 'node-name-group' as const;
 
 // Common labels and placeholders
 const LABEL_DEFAULT = 'Default' as const;
@@ -110,10 +117,70 @@ const PROP_MGMT_IPV4 = 'mgmt-ipv4' as const;
 const PROP_MGMT_IPV6 = 'mgmt-ipv6' as const;
 const PROP_CPU_SET = 'cpu-set' as const;
 const PROP_SHM_SIZE = 'shm-size' as const;
+const PROP_RESTART_POLICY = 'restart-policy' as const;
+const PROP_AUTO_REMOVE = 'auto-remove' as const;
+const PROP_STARTUP_DELAY = 'startup-delay' as const;
+const PROP_NETWORK_MODE = 'network-mode' as const;
+const PROP_PORTS = 'ports' as const;
+const PROP_DNS = 'dns' as const;
+const PROP_ALIASES = 'aliases' as const;
+const PROP_MEMORY = 'memory' as const;
+const PROP_CPU = 'cpu' as const;
+const PROP_CAP_ADD = 'cap-add' as const;
+const PROP_SYSCTLS = 'sysctls' as const;
+const PROP_DEVICES = 'devices' as const;
+const PROP_CERTIFICATE = 'certificate' as const;
+const PROP_IMAGE_PULL_POLICY = 'image-pull-policy' as const;
+const PROP_RUNTIME = 'runtime' as const;
 
 // Data attributes used for dynamic entry buttons
 const DATA_ATTR_CONTAINER = 'data-container' as const;
 const DATA_ATTR_ENTRY_ID = 'data-entry-id' as const;
+const DATA_ATTR_FIELD = 'data-field' as const;
+
+// Reused DOM IDs
+const ID_NODE_STARTUP_CONFIG = 'node-startup-config' as const;
+const ID_NODE_ENFORCE_STARTUP_CONFIG = 'node-enforce-startup-config' as const;
+const ID_NODE_SUPPRESS_STARTUP_CONFIG = 'node-suppress-startup-config' as const;
+const ID_NODE_LICENSE = 'node-license' as const;
+const ID_NODE_BINDS_CONTAINER = 'node-binds-container' as const;
+const ID_NODE_ENV_CONTAINER = 'node-env-container' as const;
+const ID_NODE_LABELS_CONTAINER = 'node-labels-container' as const;
+const ID_NODE_USER = 'node-user' as const;
+const ID_NODE_ENTRYPOINT = 'node-entrypoint' as const;
+const ID_NODE_CMD = 'node-cmd' as const;
+const ID_NODE_EXEC_CONTAINER = 'node-exec-container' as const;
+const ID_NODE_AUTO_REMOVE = 'node-auto-remove' as const;
+const ID_NODE_STARTUP_DELAY = 'node-startup-delay' as const;
+const ID_NODE_PORTS_CONTAINER = 'node-ports-container' as const;
+const ID_NODE_DNS_SERVERS_CONTAINER = 'node-dns-servers-container' as const;
+const ID_NODE_ALIASES_CONTAINER = 'node-aliases-container' as const;
+const ID_NODE_MEMORY = 'node-memory' as const;
+const ID_NODE_CPU = 'node-cpu' as const;
+const ID_NODE_CAP_ADD_CONTAINER = 'node-cap-add-container' as const;
+const ID_NODE_SYSCTLS_CONTAINER = 'node-sysctls-container' as const;
+const ID_NODE_DEVICES_CONTAINER = 'node-devices-container' as const;
+const ID_NODE_MGMT_IPV4 = 'node-mgmt-ipv4' as const;
+const ID_NODE_MGMT_IPV6 = 'node-mgmt-ipv6' as const;
+const ID_NODE_CPU_SET = 'node-cpu-set' as const;
+const ID_NODE_SHM_SIZE = 'node-shm-size' as const;
+
+// Dynamic container names
+const CN_BINDS = 'binds' as const;
+const CN_ENV = 'env' as const;
+const CN_LABELS = 'labels' as const;
+const CN_EXEC = 'exec' as const;
+const CN_PORTS = 'ports' as const;
+const CN_DNS_SERVERS = 'dns-servers' as const;
+const CN_ALIASES = 'aliases' as const;
+const CN_CAP_ADD = 'cap-add' as const;
+const CN_SYSCTLS = 'sysctls' as const;
+const CN_DEVICES = 'devices' as const;
+const CN_SANS = 'sans' as const;
+
+// Special node IDs
+const ID_TEMP_CUSTOM_NODE = 'temp-custom-node' as const;
+const ID_EDIT_CUSTOM_NODE = 'edit-custom-node' as const;
 
 // Shared field→prop mappings for inheritance badges and change listeners
 type FieldMapping = { id: string; prop: string; badgeId?: string };
@@ -121,37 +188,37 @@ const FIELD_MAPPINGS_BASE: FieldMapping[] = [
   { id: ID_NODE_KIND_DROPDOWN, prop: 'kind' },
   { id: ID_NODE_TYPE, prop: 'type' },
   { id: ID_NODE_IMAGE_DROPDOWN, prop: 'image' },
-  { id: 'node-startup-config', prop: PROP_STARTUP_CONFIG },
-  { id: 'node-enforce-startup-config', prop: PROP_ENFORCE_STARTUP_CONFIG },
-  { id: 'node-suppress-startup-config', prop: PROP_SUPPRESS_STARTUP_CONFIG },
-  { id: 'node-license', prop: 'license' },
-  { id: 'node-binds-container', prop: 'binds' },
-  { id: 'node-env-container', prop: 'env' },
-  { id: 'node-labels-container', prop: 'labels' },
-  { id: 'node-user', prop: 'user' },
-  { id: 'node-entrypoint', prop: 'entrypoint' },
-  { id: 'node-cmd', prop: 'cmd' },
-  { id: 'node-exec-container', prop: 'exec' },
-  { id: ID_NODE_RP_DROPDOWN, prop: 'restart-policy' },
-  { id: 'node-auto-remove', prop: 'auto-remove' },
-  { id: 'node-startup-delay', prop: 'startup-delay' },
-  { id: 'node-mgmt-ipv4', prop: PROP_MGMT_IPV4 },
-  { id: 'node-mgmt-ipv6', prop: PROP_MGMT_IPV6 },
-  { id: ID_NODE_NM_DROPDOWN, prop: 'network-mode' },
-  { id: 'node-ports-container', prop: 'ports' },
-  { id: 'node-dns-servers-container', prop: 'dns' },
-  { id: 'node-aliases-container', prop: 'aliases' },
-  { id: 'node-memory', prop: 'memory' },
-  { id: 'node-cpu', prop: 'cpu' },
-  { id: 'node-cpu-set', prop: PROP_CPU_SET },
-  { id: 'node-shm-size', prop: PROP_SHM_SIZE },
-  { id: 'node-cap-add-container', prop: 'cap-add' },
-  { id: 'node-sysctls-container', prop: 'sysctls' },
-  { id: 'node-devices-container', prop: 'devices' },
-  { id: ID_NODE_CERT_ISSUE, prop: 'certificate' },
+  { id: ID_NODE_STARTUP_CONFIG, prop: PROP_STARTUP_CONFIG },
+  { id: ID_NODE_ENFORCE_STARTUP_CONFIG, prop: PROP_ENFORCE_STARTUP_CONFIG },
+  { id: ID_NODE_SUPPRESS_STARTUP_CONFIG, prop: PROP_SUPPRESS_STARTUP_CONFIG },
+  { id: ID_NODE_LICENSE, prop: 'license' },
+  { id: ID_NODE_BINDS_CONTAINER, prop: CN_BINDS },
+  { id: ID_NODE_ENV_CONTAINER, prop: CN_ENV },
+  { id: ID_NODE_LABELS_CONTAINER, prop: CN_LABELS },
+  { id: ID_NODE_USER, prop: 'user' },
+  { id: ID_NODE_ENTRYPOINT, prop: 'entrypoint' },
+  { id: ID_NODE_CMD, prop: 'cmd' },
+  { id: ID_NODE_EXEC_CONTAINER, prop: CN_EXEC },
+  { id: ID_NODE_RP_DROPDOWN, prop: PROP_RESTART_POLICY },
+  { id: ID_NODE_AUTO_REMOVE, prop: PROP_AUTO_REMOVE },
+  { id: ID_NODE_STARTUP_DELAY, prop: PROP_STARTUP_DELAY },
+  { id: ID_NODE_MGMT_IPV4, prop: PROP_MGMT_IPV4 },
+  { id: ID_NODE_MGMT_IPV6, prop: PROP_MGMT_IPV6 },
+  { id: ID_NODE_NM_DROPDOWN, prop: PROP_NETWORK_MODE },
+  { id: ID_NODE_PORTS_CONTAINER, prop: PROP_PORTS },
+  { id: ID_NODE_DNS_SERVERS_CONTAINER, prop: PROP_DNS },
+  { id: ID_NODE_ALIASES_CONTAINER, prop: PROP_ALIASES },
+  { id: ID_NODE_MEMORY, prop: PROP_MEMORY },
+  { id: ID_NODE_CPU, prop: PROP_CPU },
+  { id: ID_NODE_CPU_SET, prop: PROP_CPU_SET },
+  { id: ID_NODE_SHM_SIZE, prop: PROP_SHM_SIZE },
+  { id: ID_NODE_CAP_ADD_CONTAINER, prop: PROP_CAP_ADD },
+  { id: ID_NODE_SYSCTLS_CONTAINER, prop: PROP_SYSCTLS },
+  { id: ID_NODE_DEVICES_CONTAINER, prop: PROP_DEVICES },
+  { id: ID_NODE_CERT_ISSUE, prop: PROP_CERTIFICATE },
   { id: ID_HC_TEST, prop: PROP_HEALTHCHECK },
-  { id: ID_NODE_IPP_DROPDOWN, prop: 'image-pull-policy' },
-  { id: ID_NODE_RUNTIME_DROPDOWN, prop: 'runtime' },
+  { id: ID_NODE_IPP_DROPDOWN, prop: PROP_IMAGE_PULL_POLICY },
+  { id: ID_NODE_RUNTIME_DROPDOWN, prop: PROP_RUNTIME },
 ];
 
 /**
@@ -707,17 +774,17 @@ export class ManagerNodeEditor {
    */
   private setupDynamicEntryHandlers(): void {
     // Expose functions globally for onclick handlers in HTML
-    (window as any).addBindEntry = () => this.addDynamicEntry('binds', PH_BIND);
-    (window as any).addEnvEntry = () => this.addDynamicKeyValueEntry('env', PH_ENV_KEY, PH_VALUE);
-    (window as any).addLabelEntry = () => this.addDynamicKeyValueEntry('labels', PH_LABEL_KEY, PH_LABEL_VALUE);
-    (window as any).addExecEntry = () => this.addDynamicEntry('exec', PH_EXEC);
-    (window as any).addPortEntry = () => this.addDynamicEntry('ports', PH_PORT);
-    (window as any).addDnsServerEntry = () => this.addDynamicEntry('dns-servers', PH_DNS_SERVER);
-    (window as any).addAliasEntry = () => this.addDynamicEntry('aliases', PH_ALIAS);
-    (window as any).addCapabilityEntry = () => this.addDynamicEntry('cap-add', PH_CAP);
-    (window as any).addSysctlEntry = () => this.addDynamicKeyValueEntry('sysctls', PH_SYSCTL_KEY, PH_VALUE);
-    (window as any).addDeviceEntry = () => this.addDynamicEntry('devices', PH_DEVICE);
-    (window as any).addSanEntry = () => this.addDynamicEntry('sans', PH_SAN);
+    (window as any).addBindEntry = () => this.addDynamicEntry(CN_BINDS, PH_BIND);
+    (window as any).addEnvEntry = () => this.addDynamicKeyValueEntry(CN_ENV, PH_ENV_KEY, PH_VALUE);
+    (window as any).addLabelEntry = () => this.addDynamicKeyValueEntry(CN_LABELS, PH_LABEL_KEY, PH_LABEL_VALUE);
+    (window as any).addExecEntry = () => this.addDynamicEntry(CN_EXEC, PH_EXEC);
+    (window as any).addPortEntry = () => this.addDynamicEntry(CN_PORTS, PH_PORT);
+    (window as any).addDnsServerEntry = () => this.addDynamicEntry(CN_DNS_SERVERS, PH_DNS_SERVER);
+    (window as any).addAliasEntry = () => this.addDynamicEntry(CN_ALIASES, PH_ALIAS);
+    (window as any).addCapabilityEntry = () => this.addDynamicEntry(CN_CAP_ADD, PH_CAP);
+    (window as any).addSysctlEntry = () => this.addDynamicKeyValueEntry(CN_SYSCTLS, PH_SYSCTL_KEY, PH_VALUE);
+    (window as any).addDeviceEntry = () => this.addDynamicEntry(CN_DEVICES, PH_DEVICE);
+    (window as any).addSanEntry = () => this.addDynamicEntry(CN_SANS, PH_SAN);
 
     // Register remove entry function globally (no longer needed with event listeners)
     // but keeping for backward compatibility if any inline handlers remain
@@ -761,14 +828,14 @@ export class ManagerNodeEditor {
     input.type = 'text';
     input.className = CLASS_INPUT_FIELD;
     input.placeholder = placeholder;
-    input.setAttribute('data-field', containerName);
+    input.setAttribute(DATA_ATTR_FIELD, containerName);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
     button.className = CLASS_DYNAMIC_DELETE_BTN;
     button.setAttribute(DATA_ATTR_CONTAINER, containerName);
     button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.innerHTML = HTML_TRASH_ICON;
 
     entryDiv.appendChild(input);
     entryDiv.appendChild(button);
@@ -793,20 +860,20 @@ export class ManagerNodeEditor {
     keyInput.type = 'text';
     keyInput.className = CLASS_INPUT_FIELD;
     keyInput.placeholder = keyPlaceholder;
-    keyInput.setAttribute('data-field', `${containerName}-key`);
+    keyInput.setAttribute(DATA_ATTR_FIELD, `${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
     valueInput.className = CLASS_INPUT_FIELD;
     valueInput.placeholder = valuePlaceholder;
-    valueInput.setAttribute('data-field', `${containerName}-value`);
+    valueInput.setAttribute(DATA_ATTR_FIELD, `${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
     button.className = CLASS_DYNAMIC_DELETE_BTN;
     button.setAttribute(DATA_ATTR_CONTAINER, containerName);
     button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.innerHTML = HTML_TRASH_ICON;
 
     entryDiv.appendChild(keyInput);
     entryDiv.appendChild(valueInput);
@@ -863,8 +930,8 @@ export class ManagerNodeEditor {
    */
   private clearAllDynamicEntries(): void {
     const containers = [
-      'binds', 'env', 'labels', 'exec', 'ports', 'dns-servers',
-      'aliases', 'cap-add', 'sysctls', 'devices', 'sans'
+      CN_BINDS, CN_ENV, CN_LABELS, CN_EXEC, CN_PORTS, CN_DNS_SERVERS,
+      CN_ALIASES, CN_CAP_ADD, CN_SYSCTLS, CN_DEVICES, CN_SANS
     ];
 
     containers.forEach(name => {
@@ -973,7 +1040,7 @@ export class ManagerNodeEditor {
 
   private loadBasicTab(node: cytoscape.NodeSingular, extraData: Record<string, any>, actualInherited: string[]): void {
     const nodeData = node.data();
-    this.setInputValue('node-name', nodeData.name || node.id());
+    this.setInputValue(ID_NODE_NAME, nodeData.name || node.id());
     this.setupKindAndTypeFields(extraData, actualInherited);
     this.setupIconField(nodeData);
     this.setupImageFields(extraData, actualInherited);
@@ -1019,13 +1086,13 @@ export class ManagerNodeEditor {
   }
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {
-    this.setInputValue('node-custom-name', '');
+    this.setInputValue(ID_NODE_CUSTOM_NAME, '');
     this.setCheckboxValue(ID_NODE_CUSTOM_DEFAULT, false);
 
-    const customNameGroup = document.getElementById('node-custom-name-group');
-    const nodeNameGroup = document.getElementById('node-name-group');
-    const isTempNode = node.id() === 'temp-custom-node';
-    const isEditNode = node.id() === 'edit-custom-node';
+    const customNameGroup = document.getElementById(ID_NODE_CUSTOM_NAME_GROUP);
+    const nodeNameGroup = document.getElementById(ID_NODE_NAME_GROUP);
+    const isTempNode = node.id() === ID_TEMP_CUSTOM_NODE;
+    const isEditNode = node.id() === ID_EDIT_CUSTOM_NODE;
 
     if (customNameGroup) {
       customNameGroup.style.display = isTempNode || isEditNode ? 'block' : 'none';
@@ -1034,7 +1101,7 @@ export class ManagerNodeEditor {
       nodeNameGroup.style.display = isTempNode || isEditNode ? 'none' : 'block';
     }
 
-    const heading = document.getElementById(ID_PANEL_NODE_EDITOR_HEADING);
+      const heading = document.getElementById(ID_PANEL_NODE_EDITOR_HEADING);
     if (heading) {
       if (isTempNode) {
         heading.textContent = 'Create Custom Node Template';
@@ -1047,81 +1114,81 @@ export class ManagerNodeEditor {
   }
 
   private loadConfigurationTab(extraData: Record<string, any>, actualInherited: string[]): void {
-    this.setInputValue('node-startup-config', extraData[PROP_STARTUP_CONFIG] || '');
-    this.markFieldInheritance('node-startup-config', actualInherited.includes(PROP_STARTUP_CONFIG));
-    this.setCheckboxValue('node-enforce-startup-config', extraData[PROP_ENFORCE_STARTUP_CONFIG] || false);
-    this.markFieldInheritance('node-enforce-startup-config', actualInherited.includes(PROP_ENFORCE_STARTUP_CONFIG));
-    this.setCheckboxValue('node-suppress-startup-config', extraData[PROP_SUPPRESS_STARTUP_CONFIG] || false);
-    this.markFieldInheritance('node-suppress-startup-config', actualInherited.includes(PROP_SUPPRESS_STARTUP_CONFIG));
-    this.setInputValue('node-license', extraData.license || '');
-    this.markFieldInheritance('node-license', actualInherited.includes('license'));
+    this.setInputValue(ID_NODE_STARTUP_CONFIG, extraData[PROP_STARTUP_CONFIG] || '');
+    this.markFieldInheritance(ID_NODE_STARTUP_CONFIG, actualInherited.includes(PROP_STARTUP_CONFIG));
+    this.setCheckboxValue(ID_NODE_ENFORCE_STARTUP_CONFIG, extraData[PROP_ENFORCE_STARTUP_CONFIG] || false);
+    this.markFieldInheritance(ID_NODE_ENFORCE_STARTUP_CONFIG, actualInherited.includes(PROP_ENFORCE_STARTUP_CONFIG));
+    this.setCheckboxValue(ID_NODE_SUPPRESS_STARTUP_CONFIG, extraData[PROP_SUPPRESS_STARTUP_CONFIG] || false);
+    this.markFieldInheritance(ID_NODE_SUPPRESS_STARTUP_CONFIG, actualInherited.includes(PROP_SUPPRESS_STARTUP_CONFIG));
+    this.setInputValue(ID_NODE_LICENSE, extraData.license || '');
+    this.markFieldInheritance(ID_NODE_LICENSE, actualInherited.includes('license'));
 
     if (extraData.binds && Array.isArray(extraData.binds)) {
-      extraData.binds.forEach((bind: string) => this.addDynamicEntryWithValue('binds', bind, 'Bind mount (host:container)'));
+      extraData.binds.forEach((bind: string) => this.addDynamicEntryWithValue(CN_BINDS, bind, PH_BIND));
     }
-    this.markFieldInheritance('node-binds-container', actualInherited.includes('binds'));
+    this.markFieldInheritance(ID_NODE_BINDS_CONTAINER, actualInherited.includes(CN_BINDS));
 
     if (extraData.env && typeof extraData.env === 'object') {
       Object.entries(extraData.env).forEach(([key, value]) =>
-        this.addDynamicKeyValueEntryWithValue('env', key, value as string),
+        this.addDynamicKeyValueEntryWithValue(CN_ENV, key, value as string),
       );
     }
-    this.markFieldInheritance('node-env-container', actualInherited.includes('env'));
+    this.markFieldInheritance(ID_NODE_ENV_CONTAINER, actualInherited.includes(CN_ENV));
 
     if (extraData.labels && typeof extraData.labels === 'object') {
       Object.entries(extraData.labels).forEach(([key, value]) =>
-        this.addDynamicKeyValueEntryWithValue('labels', key, value as string),
+        this.addDynamicKeyValueEntryWithValue(CN_LABELS, key, value as string),
       );
     }
-    this.markFieldInheritance('node-labels-container', actualInherited.includes('labels'));
+    this.markFieldInheritance(ID_NODE_LABELS_CONTAINER, actualInherited.includes(CN_LABELS));
   }
 
   private loadRuntimeTab(extraData: Record<string, any>, actualInherited: string[]): void {
-    this.setInputValue('node-user', extraData.user || '');
-    this.markFieldInheritance('node-user', actualInherited.includes('user'));
-    this.setInputValue('node-entrypoint', extraData.entrypoint || '');
-    this.markFieldInheritance('node-entrypoint', actualInherited.includes('entrypoint'));
-    this.setInputValue('node-cmd', extraData.cmd || '');
-    this.markFieldInheritance('node-cmd', actualInherited.includes('cmd'));
+    this.setInputValue(ID_NODE_USER, extraData.user || '');
+    this.markFieldInheritance(ID_NODE_USER, actualInherited.includes('user'));
+    this.setInputValue(ID_NODE_ENTRYPOINT, extraData.entrypoint || '');
+    this.markFieldInheritance(ID_NODE_ENTRYPOINT, actualInherited.includes('entrypoint'));
+    this.setInputValue(ID_NODE_CMD, extraData.cmd || '');
+    this.markFieldInheritance(ID_NODE_CMD, actualInherited.includes('cmd'));
     const rpOptions = [...OPTIONS_RP];
-    const rpInitial = extraData['restart-policy'] || LABEL_DEFAULT;
+    const rpInitial = extraData[PROP_RESTART_POLICY] || LABEL_DEFAULT;
     createFilterableDropdown(ID_NODE_RP_DROPDOWN, rpOptions, rpInitial, () => {}, PH_SEARCH_RP);
-    this.markFieldInheritance(ID_NODE_RP_DROPDOWN, actualInherited.includes('restart-policy'));
-    this.setCheckboxValue('node-auto-remove', extraData['auto-remove'] || false);
-    this.markFieldInheritance('node-auto-remove', actualInherited.includes('auto-remove'));
-    this.setInputValue('node-startup-delay', extraData['startup-delay'] || '');
-    this.markFieldInheritance('node-startup-delay', actualInherited.includes('startup-delay'));
+    this.markFieldInheritance(ID_NODE_RP_DROPDOWN, actualInherited.includes(PROP_RESTART_POLICY));
+    this.setCheckboxValue(ID_NODE_AUTO_REMOVE, extraData[PROP_AUTO_REMOVE] || false);
+    this.markFieldInheritance(ID_NODE_AUTO_REMOVE, actualInherited.includes(PROP_AUTO_REMOVE));
+    this.setInputValue(ID_NODE_STARTUP_DELAY, extraData[PROP_STARTUP_DELAY] || '');
+    this.markFieldInheritance(ID_NODE_STARTUP_DELAY, actualInherited.includes(PROP_STARTUP_DELAY));
 
     if (extraData.exec && Array.isArray(extraData.exec)) {
-      extraData.exec.forEach((cmd: string) => this.addDynamicEntryWithValue('exec', cmd, PH_EXEC));
+      extraData.exec.forEach((cmd: string) => this.addDynamicEntryWithValue(CN_EXEC, cmd, PH_EXEC));
     }
-    this.markFieldInheritance('node-exec-container', actualInherited.includes('exec'));
+    this.markFieldInheritance(ID_NODE_EXEC_CONTAINER, actualInherited.includes('exec'));
   }
 
   private loadNetworkTab(extraData: Record<string, any>, actualInherited: string[]): void {
-    this.setInputValue('node-mgmt-ipv4', extraData[PROP_MGMT_IPV4] || '');
-    this.markFieldInheritance('node-mgmt-ipv4', actualInherited.includes(PROP_MGMT_IPV4));
-    this.setInputValue('node-mgmt-ipv6', extraData[PROP_MGMT_IPV6] || '');
-    this.markFieldInheritance('node-mgmt-ipv6', actualInherited.includes(PROP_MGMT_IPV6));
+    this.setInputValue(ID_NODE_MGMT_IPV4, extraData[PROP_MGMT_IPV4] || '');
+    this.markFieldInheritance(ID_NODE_MGMT_IPV4, actualInherited.includes(PROP_MGMT_IPV4));
+    this.setInputValue(ID_NODE_MGMT_IPV6, extraData[PROP_MGMT_IPV6] || '');
+    this.markFieldInheritance(ID_NODE_MGMT_IPV6, actualInherited.includes(PROP_MGMT_IPV6));
     const nmOptions = [...OPTIONS_NM];
-    const nmInitial = extraData['network-mode'] || LABEL_DEFAULT;
+    const nmInitial = extraData[PROP_NETWORK_MODE] || LABEL_DEFAULT;
     createFilterableDropdown(ID_NODE_NM_DROPDOWN, nmOptions, nmInitial, () => {}, PH_SEARCH_NM);
-    this.markFieldInheritance(ID_NODE_NM_DROPDOWN, actualInherited.includes('network-mode'));
+    this.markFieldInheritance(ID_NODE_NM_DROPDOWN, actualInherited.includes(PROP_NETWORK_MODE));
 
     if (extraData.ports && Array.isArray(extraData.ports)) {
-      extraData.ports.forEach((port: string) => this.addDynamicEntryWithValue('ports', port, 'Host:Container'));
+      extraData.ports.forEach((port: string) => this.addDynamicEntryWithValue(CN_PORTS, port, PH_PORT));
     }
-    this.markFieldInheritance('node-ports-container', actualInherited.includes('ports'));
+    this.markFieldInheritance(ID_NODE_PORTS_CONTAINER, actualInherited.includes(PROP_PORTS));
 
     if (extraData.dns && extraData.dns.servers && Array.isArray(extraData.dns.servers)) {
-      extraData.dns.servers.forEach((server: string) => this.addDynamicEntryWithValue('dns-servers', server, PH_DNS_SERVER));
+      extraData.dns.servers.forEach((server: string) => this.addDynamicEntryWithValue(CN_DNS_SERVERS, server, PH_DNS_SERVER));
     }
-    this.markFieldInheritance('node-dns-servers-container', actualInherited.includes('dns'));
+    this.markFieldInheritance(ID_NODE_DNS_SERVERS_CONTAINER, actualInherited.includes(PROP_DNS));
 
     if (extraData.aliases && Array.isArray(extraData.aliases)) {
-      extraData.aliases.forEach((alias: string) => this.addDynamicEntryWithValue('aliases', alias, PH_ALIAS));
+      extraData.aliases.forEach((alias: string) => this.addDynamicEntryWithValue(CN_ALIASES, alias, PH_ALIAS));
     }
-    this.markFieldInheritance('node-aliases-container', actualInherited.includes('aliases'));
+    this.markFieldInheritance(ID_NODE_ALIASES_CONTAINER, actualInherited.includes(PROP_ALIASES));
   }
 
   private loadAdvancedTab(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -1136,55 +1203,55 @@ export class ManagerNodeEditor {
   }
 
   private loadResourceLimits(extraData: Record<string, any>, actualInherited: string[]): void {
-    this.setInputValue('node-memory', extraData.memory || '');
-    this.markFieldInheritance('node-memory', actualInherited.includes('memory'));
-    this.setInputValue('node-cpu', extraData.cpu || '');
-    this.markFieldInheritance('node-cpu', actualInherited.includes('cpu'));
-    this.setInputValue('node-cpu-set', extraData[PROP_CPU_SET] || '');
-    this.markFieldInheritance('node-cpu-set', actualInherited.includes(PROP_CPU_SET));
-    this.setInputValue('node-shm-size', extraData[PROP_SHM_SIZE] || '');
-    this.markFieldInheritance('node-shm-size', actualInherited.includes(PROP_SHM_SIZE));
+    this.setInputValue(ID_NODE_MEMORY, extraData.memory || '');
+    this.markFieldInheritance(ID_NODE_MEMORY, actualInherited.includes(PROP_MEMORY));
+    this.setInputValue(ID_NODE_CPU, extraData.cpu || '');
+    this.markFieldInheritance(ID_NODE_CPU, actualInherited.includes(PROP_CPU));
+    this.setInputValue(ID_NODE_CPU_SET, extraData[PROP_CPU_SET] || '');
+    this.markFieldInheritance(ID_NODE_CPU_SET, actualInherited.includes(PROP_CPU_SET));
+    this.setInputValue(ID_NODE_SHM_SIZE, extraData[PROP_SHM_SIZE] || '');
+    this.markFieldInheritance(ID_NODE_SHM_SIZE, actualInherited.includes(PROP_SHM_SIZE));
   }
 
   private loadCapAdd(extraData: Record<string, any>, actualInherited: string[]): void {
-    if (extraData['cap-add'] && Array.isArray(extraData['cap-add'])) {
-      extraData['cap-add'].forEach((cap: string) => this.addDynamicEntryWithValue('cap-add', cap, 'Capability'));
+    if (extraData[PROP_CAP_ADD] && Array.isArray(extraData[PROP_CAP_ADD])) {
+      extraData[PROP_CAP_ADD].forEach((cap: string) => this.addDynamicEntryWithValue(CN_CAP_ADD, cap, PH_CAP));
     }
-    this.markFieldInheritance('node-cap-add-container', actualInherited.includes('cap-add'));
+    this.markFieldInheritance(ID_NODE_CAP_ADD_CONTAINER, actualInherited.includes(PROP_CAP_ADD));
   }
 
   private loadSysctls(extraData: Record<string, any>, actualInherited: string[]): void {
     if (extraData.sysctls && typeof extraData.sysctls === 'object') {
       Object.entries(extraData.sysctls).forEach(([key, value]) =>
-        this.addDynamicKeyValueEntryWithValue('sysctls', key, String(value))
+        this.addDynamicKeyValueEntryWithValue(CN_SYSCTLS, key, String(value))
       );
     }
-    this.markFieldInheritance('node-sysctls-container', actualInherited.includes('sysctls'));
+    this.markFieldInheritance(ID_NODE_SYSCTLS_CONTAINER, actualInherited.includes(PROP_SYSCTLS));
   }
 
   private loadDevices(extraData: Record<string, any>, actualInherited: string[]): void {
     if (extraData.devices && Array.isArray(extraData.devices)) {
-      extraData.devices.forEach((device: string) => this.addDynamicEntryWithValue('devices', device, 'Device path'));
+      extraData.devices.forEach((device: string) => this.addDynamicEntryWithValue(CN_DEVICES, device, PH_DEVICE));
     }
-    this.markFieldInheritance('node-devices-container', actualInherited.includes('devices'));
+    this.markFieldInheritance(ID_NODE_DEVICES_CONTAINER, actualInherited.includes(PROP_DEVICES));
   }
 
   private loadCertificateSection(extraData: Record<string, any>, actualInherited: string[]): void {
     if (extraData.certificate) {
       this.setCheckboxValue(ID_NODE_CERT_ISSUE, extraData.certificate.issue || false);
-      this.markFieldInheritance(ID_NODE_CERT_ISSUE, actualInherited.includes('certificate'));
+      this.markFieldInheritance(ID_NODE_CERT_ISSUE, actualInherited.includes(PROP_CERTIFICATE));
       const keySizeOptions = ['2048', '4096'];
       const keySizeInitial = String(extraData.certificate['key-size'] || '2048');
       createFilterableDropdown(
-        'node-cert-key-size-dropdown-container',
+        ID_NODE_CERT_KEYSIZE_DROPDOWN,
         keySizeOptions,
         keySizeInitial,
         () => {},
-        'Search key size...'
+        PH_SEARCH_KEY_SIZE
       );
-      this.setInputValue('node-cert-validity', extraData.certificate['validity-duration'] || '');
+      this.setInputValue(ID_NODE_CERT_VALIDITY, extraData.certificate['validity-duration'] || '');
       if (extraData.certificate.sans && Array.isArray(extraData.certificate.sans)) {
-        extraData.certificate.sans.forEach((san: string) => this.addDynamicEntryWithValue('sans', san, 'SAN'));
+        extraData.certificate.sans.forEach((san: string) => this.addDynamicEntryWithValue(CN_SANS, san, PH_SAN));
       }
     }
   }
@@ -1211,7 +1278,7 @@ export class ManagerNodeEditor {
       () => {},
       PH_SEARCH_IPP
     );
-    this.markFieldInheritance(ID_NODE_IPP_DROPDOWN, actualInherited.includes('image-pull-policy'));
+    this.markFieldInheritance(ID_NODE_IPP_DROPDOWN, actualInherited.includes(PROP_IMAGE_PULL_POLICY));
   }
 
   private loadRuntimeOption(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -1224,7 +1291,7 @@ export class ManagerNodeEditor {
       () => {},
       PH_SEARCH_RUNTIME
     );
-    this.markFieldInheritance(ID_NODE_RUNTIME_DROPDOWN, actualInherited.includes('runtime'));
+    this.markFieldInheritance(ID_NODE_RUNTIME_DROPDOWN, actualInherited.includes(PROP_RUNTIME));
   }
 
   private setupImageFields(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -1341,14 +1408,14 @@ export class ManagerNodeEditor {
     input.className = CLASS_INPUT_FIELD;
     input.placeholder = placeholder;
     input.value = value;
-    input.setAttribute('data-field', containerName);
+    input.setAttribute(DATA_ATTR_FIELD, containerName);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
     button.className = CLASS_DYNAMIC_DELETE_BTN;
     button.setAttribute(DATA_ATTR_CONTAINER, containerName);
     button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.innerHTML = HTML_TRASH_ICON;
 
     entryDiv.appendChild(input);
     entryDiv.appendChild(button);
@@ -1373,20 +1440,20 @@ export class ManagerNodeEditor {
     keyInput.type = 'text';
     keyInput.className = CLASS_INPUT_FIELD;
     keyInput.value = key;
-    keyInput.setAttribute('data-field', `${containerName}-key`);
+    keyInput.setAttribute(DATA_ATTR_FIELD, `${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
     valueInput.className = CLASS_INPUT_FIELD;
     valueInput.value = value;
-    valueInput.setAttribute('data-field', `${containerName}-value`);
+    valueInput.setAttribute(DATA_ATTR_FIELD, `${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
     button.className = CLASS_DYNAMIC_DELETE_BTN;
     button.setAttribute(DATA_ATTR_CONTAINER, containerName);
     button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.innerHTML = HTML_TRASH_ICON;
 
     entryDiv.appendChild(keyInput);
     entryDiv.appendChild(valueInput);
@@ -1711,57 +1778,57 @@ export class ManagerNodeEditor {
   }
 
   private validateMgmtIpv4(): boolean {
-    const value = this.getInputValue('node-mgmt-ipv4');
+    const value = this.getInputValue(ID_NODE_MGMT_IPV4);
     if (value && !this.validateIPv4(value)) {
-      this.showValidationError('node-mgmt-ipv4', 'Invalid IPv4 address format');
+      this.showValidationError(ID_NODE_MGMT_IPV4, 'Invalid IPv4 address format');
       return false;
     }
     return true;
   }
 
   private validateMgmtIpv6(): boolean {
-    const value = this.getInputValue('node-mgmt-ipv6');
+    const value = this.getInputValue(ID_NODE_MGMT_IPV6);
     if (value && !this.validateIPv6(value)) {
-      this.showValidationError('node-mgmt-ipv6', 'Invalid IPv6 address format');
+      this.showValidationError(ID_NODE_MGMT_IPV6, 'Invalid IPv6 address format');
       return false;
     }
     return true;
   }
 
   private validateMemoryField(): boolean {
-    const value = this.getInputValue('node-memory');
+    const value = this.getInputValue(ID_NODE_MEMORY);
     if (value && !this.validateMemory(value)) {
-      this.showValidationError('node-memory', 'Invalid memory format (e.g., 1Gb, 512Mb)');
+      this.showValidationError(ID_NODE_MEMORY, 'Invalid memory format (e.g., 1Gb, 512Mb)');
       return false;
     }
     return true;
   }
 
   private validateCpuField(): boolean {
-    const value = this.getInputValue('node-cpu');
+    const value = this.getInputValue(ID_NODE_CPU);
     if (!value) return true;
     const cpuValue = parseFloat(value);
     if (isNaN(cpuValue) || cpuValue <= 0) {
-      this.showValidationError('node-cpu', 'CPU must be a positive number');
+      this.showValidationError(ID_NODE_CPU, 'CPU must be a positive number');
       return false;
     }
     return true;
   }
 
   private validateCpuSetField(): boolean {
-    const value = this.getInputValue('node-cpu-set');
+    const value = this.getInputValue(ID_NODE_CPU_SET);
     if (value && !this.validateCpuSet(value)) {
-      this.showValidationError('node-cpu-set', 'Invalid CPU set format (e.g., 0-3, 0,3)');
+      this.showValidationError(ID_NODE_CPU_SET, 'Invalid CPU set format (e.g., 0-3, 0,3)');
       return false;
     }
     return true;
   }
 
   private validatePortsField(): boolean {
-    const ports = this.collectDynamicEntries('ports');
+    const ports = this.collectDynamicEntries(CN_PORTS);
     for (const port of ports) {
       if (!this.validatePortMapping(port)) {
-        this.showValidationError('node-ports-container', 'Invalid port format (e.g., 8080:80 or 8080:80/tcp)');
+        this.showValidationError(ID_NODE_PORTS_CONTAINER, 'Invalid port format (e.g., 8080:80 or 8080:80/tcp)');
         return false;
       }
     }
@@ -1769,10 +1836,10 @@ export class ManagerNodeEditor {
   }
 
   private validateBindsField(): boolean {
-    const binds = this.collectDynamicEntries('binds');
+    const binds = this.collectDynamicEntries(CN_BINDS);
     for (const bind of binds) {
       if (!this.validateBindMount(bind)) {
-        this.showValidationError('node-binds-container', 'Invalid bind mount format (e.g., /host/path:/container/path)');
+        this.showValidationError(ID_NODE_BINDS_CONTAINER, 'Invalid bind mount format (e.g., /host/path:/container/path)');
         return false;
       }
     }
@@ -1780,9 +1847,9 @@ export class ManagerNodeEditor {
   }
 
   private validateNodeNameField(): boolean {
-    const nodeName = this.getInputValue('node-name');
+    const nodeName = this.getInputValue(ID_NODE_NAME);
     if (!nodeName || nodeName.trim() === '') {
-      this.showValidationError('node-name', 'Node name is required');
+      this.showValidationError(ID_NODE_NAME, 'Node name is required');
       return false;
     }
     return true;
@@ -1791,7 +1858,7 @@ export class ManagerNodeEditor {
   private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
     try {
       // Get the icon/role value
-      const iconValue = (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'pe';
+      const iconValue = (document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null)?.value || 'pe';
 
       // Get the base name value
       const baseName = this.getInputValue('node-base-name') || '';
@@ -1857,7 +1924,7 @@ export class ManagerNodeEditor {
 
   private collectNodeProperties(): NodeProperties {
     const nodeProps: NodeProperties = {
-      name: this.getInputValue('node-name'),
+      name: this.getInputValue(ID_NODE_NAME),
       kind: (document.getElementById(ID_NODE_KIND_FILTER_INPUT) as HTMLInputElement | null)?.value || undefined,
       type: this.getTypeFieldValue() || undefined,
     };
@@ -1884,7 +1951,7 @@ export class ManagerNodeEditor {
       }
     } else {
       const baseImg = (document.getElementById(ID_NODE_IMAGE_FALLBACK_INPUT) as HTMLInputElement | null)?.value || '';
-      const version = (document.getElementById('node-version-fallback-input') as HTMLInputElement | null)?.value || 'latest';
+    const version = (document.getElementById(ID_NODE_VERSION_FALLBACK_INPUT) as HTMLInputElement | null)?.value || 'latest';
       if (baseImg) {
         nodeProps.image = `${baseImg}:${version}`;
       }
@@ -1892,20 +1959,20 @@ export class ManagerNodeEditor {
   }
 
   private collectConfigurationProps(nodeProps: NodeProperties): void {
-    const startupConfig = this.getInputValue('node-startup-config');
+    const startupConfig = this.getInputValue(ID_NODE_STARTUP_CONFIG);
     if (startupConfig) nodeProps[PROP_STARTUP_CONFIG] = startupConfig as any;
 
-    if (this.getCheckboxValue('node-enforce-startup-config')) {
+    if (this.getCheckboxValue(ID_NODE_ENFORCE_STARTUP_CONFIG)) {
       nodeProps[PROP_ENFORCE_STARTUP_CONFIG] = true as any;
     }
-    if (this.getCheckboxValue('node-suppress-startup-config')) {
+    if (this.getCheckboxValue(ID_NODE_SUPPRESS_STARTUP_CONFIG)) {
       nodeProps[PROP_SUPPRESS_STARTUP_CONFIG] = true as any;
     }
 
     const license = this.getInputValue('node-license');
     if (license) nodeProps.license = license;
 
-    const binds = this.collectDynamicEntries('binds');
+    const binds = this.collectDynamicEntries(CN_BINDS);
     if (binds.length > 0) nodeProps.binds = binds;
 
     const env = this.collectDynamicKeyValueEntries('env');
@@ -1925,7 +1992,7 @@ export class ManagerNodeEditor {
     const cmd = this.getInputValue('node-cmd');
     if (cmd) nodeProps.cmd = cmd;
 
-    const exec = this.collectDynamicEntries('exec');
+    const exec = this.collectDynamicEntries(CN_EXEC);
     if (exec.length > 0) nodeProps.exec = exec;
 
     const rpVal = (document.getElementById(ID_NODE_RP_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
@@ -1940,25 +2007,25 @@ export class ManagerNodeEditor {
   }
 
   private collectNetworkProps(nodeProps: NodeProperties): void {
-    const mgmtIpv4 = this.getInputValue('node-mgmt-ipv4');
+    const mgmtIpv4 = this.getInputValue(ID_NODE_MGMT_IPV4);
     if (mgmtIpv4) (nodeProps as any)[PROP_MGMT_IPV4] = mgmtIpv4;
 
-    const mgmtIpv6 = this.getInputValue('node-mgmt-ipv6');
+    const mgmtIpv6 = this.getInputValue(ID_NODE_MGMT_IPV6);
     if (mgmtIpv6) (nodeProps as any)[PROP_MGMT_IPV6] = mgmtIpv6;
 
     const nmVal = (document.getElementById(ID_NODE_NM_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
     if (nmVal && nmVal !== LABEL_DEFAULT) nodeProps['network-mode'] = nmVal;
 
-    const ports = this.collectDynamicEntries('ports');
+    const ports = this.collectDynamicEntries(CN_PORTS);
     if (ports.length > 0) nodeProps.ports = ports;
 
-    const dnsServers = this.collectDynamicEntries('dns-servers');
+    const dnsServers = this.collectDynamicEntries(CN_DNS_SERVERS);
     if (dnsServers.length > 0) {
       nodeProps.dns = nodeProps.dns || {};
       nodeProps.dns.servers = dnsServers;
     }
 
-    const aliases = this.collectDynamicEntries('aliases');
+    const aliases = this.collectDynamicEntries(CN_ALIASES);
     if (aliases.length > 0) nodeProps.aliases = aliases;
   }
 
@@ -1966,16 +2033,16 @@ export class ManagerNodeEditor {
     const memory = this.getInputValue('node-memory');
     if (memory) nodeProps.memory = memory;
 
-    const cpu = this.getInputValue('node-cpu');
+    const cpu = this.getInputValue(ID_NODE_CPU);
     if (cpu) nodeProps.cpu = parseFloat(cpu);
 
-    const cpuSet = this.getInputValue('node-cpu-set');
+    const cpuSet = this.getInputValue(ID_NODE_CPU_SET);
     if (cpuSet) (nodeProps as any)[PROP_CPU_SET] = cpuSet;
 
-    const shmSize = this.getInputValue('node-shm-size');
+    const shmSize = this.getInputValue(ID_NODE_SHM_SIZE);
     if (shmSize) (nodeProps as any)[PROP_SHM_SIZE] = shmSize;
 
-    const capAdd = this.collectDynamicEntries('cap-add');
+    const capAdd = this.collectDynamicEntries(CN_CAP_ADD);
     if (capAdd.length > 0) nodeProps['cap-add'] = capAdd;
 
     const sysctls = this.collectDynamicKeyValueEntries('sysctls');
@@ -1987,7 +2054,7 @@ export class ManagerNodeEditor {
       });
     }
 
-    const devices = this.collectDynamicEntries('devices');
+    const devices = this.collectDynamicEntries(CN_DEVICES);
     if (devices.length > 0) nodeProps.devices = devices;
   }
 
@@ -1995,13 +2062,13 @@ export class ManagerNodeEditor {
     if (!this.getCheckboxValue(ID_NODE_CERT_ISSUE)) return;
     nodeProps.certificate = { issue: true };
 
-    const keySize = (document.getElementById('node-cert-key-size-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
+    const keySize = (document.getElementById(ID_NODE_CERT_KEYSIZE_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
     if (keySize) nodeProps.certificate['key-size'] = parseInt(keySize);
 
-    const validity = this.getInputValue('node-cert-validity');
+    const validity = this.getInputValue(ID_NODE_CERT_VALIDITY);
     if (validity) nodeProps.certificate['validity-duration'] = validity;
 
-    const sans = this.collectDynamicEntries('sans');
+    const sans = this.collectDynamicEntries(CN_SANS);
     if (sans.length > 0) nodeProps.certificate.sans = sans;
   }
 
@@ -2040,13 +2107,13 @@ export class ManagerNodeEditor {
   }
 
   private async handleCustomNode(nodeProps: NodeProperties): Promise<boolean> {
-    const customName = this.getInputValue('node-custom-name');
+    const customName = this.getInputValue(ID_NODE_CUSTOM_NAME);
     const setDefault = this.getCheckboxValue(ID_NODE_CUSTOM_DEFAULT);
     if (!customName) return false;
     const currentNodeData = this.currentNode!.data();
     const editingNodeName = currentNodeData.extraData?.editingCustomNodeName;
-    const isTempNode = this.currentNode!.id() === 'temp-custom-node';
-    const isEditNode = this.currentNode!.id() === 'edit-custom-node';
+    const isTempNode = this.currentNode!.id() === ID_TEMP_CUSTOM_NODE;
+    const isEditNode = this.currentNode!.id() === ID_EDIT_CUSTOM_NODE;
     if (isTempNode || isEditNode) {
       await this.saveCustomNodeTemplate(customName, nodeProps, setDefault, editingNodeName);
       this.close();
@@ -2058,14 +2125,14 @@ export class ManagerNodeEditor {
 
   private isCustomTemplateNode(): boolean {
     const nodeId = this.currentNode?.id();
-    return nodeId === 'temp-custom-node' || nodeId === 'edit-custom-node';
+    return nodeId === ID_TEMP_CUSTOM_NODE || nodeId === ID_EDIT_CUSTOM_NODE;
   }
 
   private async updateNode(nodeProps: NodeProperties): Promise<void> {
     const currentData = this.currentNode!.data();
     const { updatedExtraData, inheritedProps } = this.mergeNodeData(nodeProps, currentData);
     const iconValue =
-      (document.getElementById('panel-node-topoviewerrole-dropdown-container-filter-input') as HTMLInputElement | null)?.value ||
+      (document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null)?.value ||
       'pe';
     const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
     this.currentNode!.data(updatedData);
@@ -2078,12 +2145,13 @@ export class ManagerNodeEditor {
   private mergeNodeData(nodeProps: NodeProperties, currentData: any): { updatedExtraData: any; inheritedProps: string[] } {
     const updatedExtraData: any = { ...(currentData.extraData || {}) };
     const formManagedProperties = [
-      'name', 'kind', 'type', 'image', 'startup-config', 'enforce-startup-config',
-      'suppress-startup-config', 'license', 'binds', 'env', 'labels', 'user',
-      'entrypoint', 'cmd', 'exec', 'restart-policy', 'auto-remove', 'startup-delay',
-      'mgmt-ipv4', 'mgmt-ipv6', 'network-mode', 'ports', 'dns', 'aliases',
-      'memory', 'cpu', 'cpu-set', 'shm-size', 'cap-add', 'sysctls', 'devices',
-      'certificate', 'healthcheck', 'image-pull-policy', 'runtime', 'inherited'
+      'name', 'kind', 'type', 'image',
+      PROP_STARTUP_CONFIG, PROP_ENFORCE_STARTUP_CONFIG, PROP_SUPPRESS_STARTUP_CONFIG,
+      'license', CN_BINDS, CN_ENV, CN_LABELS, 'user',
+      'entrypoint', 'cmd', 'exec', PROP_RESTART_POLICY, PROP_AUTO_REMOVE, PROP_STARTUP_DELAY,
+      PROP_MGMT_IPV4, PROP_MGMT_IPV6, PROP_NETWORK_MODE, PROP_PORTS, PROP_DNS, PROP_ALIASES,
+      PROP_MEMORY, PROP_CPU, PROP_CPU_SET, PROP_SHM_SIZE, PROP_CAP_ADD, PROP_SYSCTLS, PROP_DEVICES,
+      PROP_CERTIFICATE, 'healthcheck', PROP_IMAGE_PULL_POLICY, PROP_RUNTIME, 'inherited'
     ];
     formManagedProperties.forEach(prop => { delete updatedExtraData[prop]; });
     Object.assign(updatedExtraData, nodeProps);
