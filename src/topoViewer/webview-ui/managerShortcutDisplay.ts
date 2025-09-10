@@ -89,14 +89,7 @@ export class ManagerShortcutDisplay {
     if (['INPUT', 'TEXTAREA'].includes(tag)) return;
     const modifierKeys = ['Control', 'Shift', 'Alt', 'Meta'];
     if (modifierKeys.includes(e.key)) return; // Skip lone modifiers
-    const modifiers = [
-      [e.ctrlKey, this.isMac ? '⌃' : 'Ctrl'],
-      [e.shiftKey, this.isMac ? '⇧' : 'Shift'],
-      [e.altKey, this.isMac ? '⌥' : 'Alt'],
-      [e.metaKey, this.isMac ? '⌘' : 'Meta'],
-    ]
-      .filter(([pressed]) => pressed)
-      .map(([, display]) => display);
+    const modifiers = this.getModifiers(e);
     const key = this.friendlyKeys[e.key] || e.key.toUpperCase();
     const shortcut = [...modifiers, key].join(' + ');
     if (shortcut) this.addInputDisplay(shortcut);
@@ -106,17 +99,23 @@ export class ManagerShortcutDisplay {
     if (!this.shortcutEnabled) return;
     const tag = (e.target as HTMLElement).tagName;
     if (['INPUT', 'BUTTON', 'SELECT'].includes(tag)) return;
-    const modifiers = [
-      [e.ctrlKey, this.isMac ? '⌃' : 'Ctrl'],
-      [e.shiftKey, this.isMac ? '⇧' : 'Shift'],
-      [e.altKey, this.isMac ? '⌥' : 'Alt'],
-      [e.metaKey, this.isMac ? '⌘' : 'Meta'],
-    ]
-      .filter(([pressed]) => pressed)
-      .map(([, display]) => display);
+    const modifiers = this.getModifiers(e);
     const click = ['Left Click', 'Middle Click', 'Right Click'][e.button];
     if (!click) return;
     const shortcut = [...modifiers, click].join(' + ');
     this.addInputDisplay(shortcut);
+  }
+
+  private getModifiers(e: KeyboardEvent | MouseEvent): string[] {
+    return (
+      [
+        [e.ctrlKey, this.isMac ? '⌃' : 'Ctrl'],
+        [e.shiftKey, this.isMac ? '⇧' : 'Shift'],
+        [e.altKey, this.isMac ? '⌥' : 'Alt'],
+        [e.metaKey, this.isMac ? '⌘' : 'Meta'],
+      ] as [boolean, string][]
+    )
+      .filter(([pressed]) => pressed)
+      .map(([, display]) => display);
   }
 }

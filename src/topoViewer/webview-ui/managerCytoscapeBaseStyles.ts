@@ -8,6 +8,19 @@ import topoViewerState from '../state';
 // Common style literals reused several times
 const DATA_NAME = 'data(name)';
 const SELECTOR_GROUP = 'node[topoViewerRole="group"]';
+const GROUP_NODE_STYLE = {
+  shape: 'rectangle',
+  'border-width': '0.5px',
+  'border-color': '#DDDDDD',
+  'background-color': '#d9d9d9',
+  width: '80px',
+  height: '80px',
+  'background-opacity': '0.2',
+  color: '#EBECF0',
+  'text-outline-color': '#000000',
+  'font-size': '0.67em',
+  'z-index': '1'
+};
 
 /**
  * Cytoscape styles shared between view and edit webviews.
@@ -73,26 +86,8 @@ const cytoscapeStylesBase: any[] = [
     selector: 'node[?query]',
     style: { 'background-clip': 'none', 'background-fit': 'contain' }
   },
-  {
-    selector: 'node:parent',
-    style: {
-      shape: 'rectangle',
-      'border-width': '0.5px',
-      'border-color': '#DDDDDD',
-      'background-color': '#d9d9d9',
-      width: '80px',
-      height: '80px',
-      'background-opacity': '0.2',
-      color: '#EBECF0',
-      'text-outline-color': '#000000',
-      'font-size': '0.67em',
-      'z-index': '1'
-    }
-  },
-  {
-    selector: SELECTOR_GROUP,
-    style: {}
-  },
+    { selector: 'node:parent', style: GROUP_NODE_STYLE },
+  { selector: SELECTOR_GROUP, style: {} },
   // Alignment for parent nodes
   {
     selector: 'node:parent.top-center',
@@ -179,22 +174,7 @@ const cytoscapeStylesBase: any[] = [
       'border-color': '#AD0000'
     }
   },
-  {
-    selector: SELECTOR_GROUP,
-    style: {
-      shape: 'rectangle',
-      'border-width': '0.5px',
-      'border-color': '#DDDDDD',
-      'background-color': '#d9d9d9',
-      width: '80px',
-      height: '80px',
-      'background-opacity': '0.2',
-      color: '#EBECF0',
-      'text-outline-color': '#000000',
-      'font-size': '0.67em',
-      'z-index': '1'
-    }
-  },
+    { selector: SELECTOR_GROUP, style: GROUP_NODE_STYLE },
   // Encoded SVG backgrounds for different node roles are added programmatically below.
   {
     selector: 'edge',

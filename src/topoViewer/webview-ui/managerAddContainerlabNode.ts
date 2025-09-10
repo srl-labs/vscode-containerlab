@@ -211,41 +211,8 @@ export class ManagerAddContainerlabNode {
       }
     };
 
-    const extent = cy.extent();
-    let position = event.position;
-
-    if (
-      !position ||
-      position.x < extent.x1 ||
-      position.x > extent.x2 ||
-      position.y < extent.y1 ||
-      position.y > extent.y2
-    ) {
-      const viewportCenterX = (extent.x1 + extent.x2) / 2;
-      const viewportCenterY = (extent.y1 + extent.y2) / 2;
-      const viewportWidth = extent.x2 - extent.x1;
-      const viewportHeight = extent.y2 - extent.y1;
-
-      const maxOffsetX = viewportWidth * 0.3;
-      const maxOffsetY = viewportHeight * 0.3;
-
-      position = {
-        x: viewportCenterX + maxOffsetX * 0.1,
-        y: viewportCenterY + maxOffsetY * 0.1
-      };
-    }
-
+    let position = this.determinePosition(cy, event);
     cy.add({ group: 'nodes', data: newNodeData, position });
-
-    const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
-    if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
-      const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
-        x: position.x,
-        y: position.y
-      });
-      const node = cy.getElementById(newNodeId);
-      node.data('lat', latlng.lat.toString());
-      node.data('lng', latlng.lng.toString());
-    }
+    this.applyGeoCoordinates(cy, newNodeId, position);
   }
 }

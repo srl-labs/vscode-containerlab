@@ -179,14 +179,7 @@ function parseShortLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
   const epB = String((eps.items[1] as any).value ?? eps.items[1]);
   const a = splitEndpointLike(epA);
   const b = splitEndpointLike(epB);
-  const aIsSpecial = endpointIsSpecial(a);
-  const bIsSpecial = endpointIsSpecial(b);
-  if (aIsSpecial !== bIsSpecial) {
-    const special = aIsSpecial ? a : b;
-    const nonSpecial = aIsSpecial ? b : a;
-    return { type: linkTypeFromSpecial(special), a: nonSpecial };
-  }
-  return { type: 'veth', a, b };
+  return canonicalFromPair(a, b);
 }
 
 function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null {
@@ -209,15 +202,17 @@ function canonicalFromPayloadEdge(data: any): CanonicalLinkKey | null {
   const targetEp = data.targetEndpoint ? `${target}:${data.targetEndpoint}` : target;
   const a = splitEndpointLike(sourceEp);
   const b = splitEndpointLike(targetEp);
+  return canonicalFromPair(a, b);
+}
+
+function canonicalFromPair(a: CanonicalEndpoint, b: CanonicalEndpoint): CanonicalLinkKey {
   const aIsSpecial = endpointIsSpecial(a);
   const bIsSpecial = endpointIsSpecial(b);
-
   if (aIsSpecial !== bIsSpecial) {
     const special = aIsSpecial ? a : b;
     const nonSpecial = aIsSpecial ? b : a;
     return { type: linkTypeFromSpecial(special), a: nonSpecial };
   }
-
   return { type: 'veth', a, b };
 }
 

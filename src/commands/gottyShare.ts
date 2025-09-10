@@ -9,7 +9,6 @@ async function parseGottyLink(output: string): Promise<string | undefined> {
     const bracketedHost = await getBracketedHostname();
     const fromJson = tryParseLinkFromJson(output, bracketedHost);
     if (fromJson) return fromJson;
-
     const fromText = tryParseLinkFromText(output, bracketedHost);
     if (fromText) return fromText;
   } catch (error) {
@@ -50,14 +49,14 @@ async function getBracketedHostname(): Promise<string | undefined> {
   return hostname.includes(":") ? `[${hostname}]` : hostname;
 }
 
-export async function gottyAttach(node: ClabLabTreeNode) {
+async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
   if (!node || !node.name) {
-    vscode.window.showErrorMessage("No lab selected for GoTTY attach.");
+    vscode.window.showErrorMessage(`No lab selected for GoTTY ${action}.`);
     return;
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await runWithSudo(`containerlab tools gotty attach -l ${node.name} --port ${port}`, 'GoTTY attach', outputChannel, 'containerlab', true, true) as string;
+    const out = await runWithSudo(`containerlab tools gotty ${action} -l ${node.name} --port ${port}`, `GoTTY ${action}`, outputChannel, 'containerlab', true, true) as string;
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);
@@ -67,15 +66,22 @@ export async function gottyAttach(node: ClabLabTreeNode) {
         vscode.env.openExternal(vscode.Uri.parse(link));
       }
     } else {
-      vscode.window.showInformationMessage('GoTTY session started but no link found.');
+      const msg = action === 'attach' ? 'GoTTY session started but no link found.' : 'GoTTY session reattached';
+      vscode.window.showInformationMessage(msg);
     }
   } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to attach GoTTY: ${err.message || err}`);
+    vscode.window.showErrorMessage(`Failed to ${action} GoTTY: ${err.message || err}`);
   }
   await refreshGottySessions();
-  // Run a soft refresh so tree items are rebuilt while reusing existing inspect data
-  // This ensures the GoTTY label updates without forcing a full inspect
-  runningLabsProvider.softRefresh();
+  if (action === 'attach') {
+    runningLabsProvider.softRefresh();
+  } else {
+    runningLabsProvider.refresh();
+  }
+}
+
+export async function gottyAttach(node: ClabLabTreeNode) {
+  await gottyStart('attach', node);
 }
 
 export async function gottyDetach(node: ClabLabTreeNode) {
@@ -91,35 +97,11 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to detach GoTTY: ${err.message || err}`);
   }
   await refreshGottySessions();
-  // Changed from refreshWithoutDiscovery() to refresh() to update GoTTY icons
   runningLabsProvider.refresh();
 }
 
 export async function gottyReattach(node: ClabLabTreeNode) {
-  if (!node || !node.name) {
-    vscode.window.showErrorMessage("No lab selected for GoTTY reattach.");
-    return;
-  }
-  try {
-    const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await runWithSudo(`containerlab tools gotty reattach -l ${node.name} --port ${port}`, 'GoTTY reattach', outputChannel, 'containerlab', true, true) as string;
-    const link = await parseGottyLink(out || '');
-    if (link) {
-      gottySessions.set(node.name, link);
-      await vscode.env.clipboard.writeText(link);
-      const choice = await vscode.window.showInformationMessage('GoTTY link copied to clipboard. Default credentials: admin/admin', 'Open Link');
-      if (choice === 'Open Link') {
-        vscode.env.openExternal(vscode.Uri.parse(link));
-      }
-    } else {
-      vscode.window.showInformationMessage('GoTTY session reattached');
-    }
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to reattach GoTTY: ${err.message || err}`);
-  }
-  await refreshGottySessions();
-  // Changed from refreshWithoutDiscovery() to refresh() to update GoTTY icons
-  runningLabsProvider.refresh();
+  await gottyStart('reattach', node);
 }
 
 export function gottyCopyLink(link: string) {

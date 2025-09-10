@@ -8,6 +8,7 @@ import { exportViewportAsSvg } from './utils';
 import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
 import { FilterUtils } from '../../helpers/filterUtils';
+import { updateNodePosition, handleGeoData } from './nodeUtils';
 
 // Common class and display constants
 const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
@@ -302,49 +303,6 @@ export function viewportButtonsCaptureViewportAsSvg(): void {
   panel.style.display = 'block';
 }
 
-function updateNodePosition(
-  node: any,
-  nodeJson: any,
-  isGeoActive: boolean
-): void {
-  let posX = node.position().x;
-  let posY = node.position().y;
-  if (isGeoActive) {
-    const origX = node.data('_origPosX');
-    const origY = node.data('_origPosY');
-    if (origX !== undefined && origY !== undefined) {
-      posX = origX;
-      posY = origY;
-    }
-  }
-  nodeJson.position = { x: posX, y: posY };
-}
-
-function handleGeoData(
-  node: any,
-  nodeJson: any,
-  isGeoActive: boolean
-): void {
-  const lat = node.data('lat');
-  const lng = node.data('lng');
-  if (lat !== undefined && lng !== undefined) {
-    nodeJson.data = nodeJson.data || {};
-    nodeJson.data.geoLayoutActive = !!isGeoActive;
-    nodeJson.data.lat = lat.toString();
-    nodeJson.data.lng = lng.toString();
-    return;
-  }
-
-  if (isGeoActive) {
-    nodeJson.data = nodeJson.data || {};
-    nodeJson.data.geoLayoutActive = true;
-    return;
-  }
-
-  if (nodeJson.data?.geoLayoutActive) {
-    delete nodeJson.data.geoLayoutActive;
-  }
-}
 
 function applyParentData(node: any, nodeJson: any, cy: any): void {
   const parentId = node.parent().id();

@@ -684,12 +684,12 @@ export class ManagerUnifiedFloatingPanel {
     this.addNodeAtCenter(template);
   }
 
-  private addNodeAtCenter(template?: any): void {
+  private createCenterEvent(): cytoscape.EventObject {
     const extent = this.cy.extent();
     const viewportCenterX = (extent.x1 + extent.x2) / 2;
     const viewportCenterY = (extent.y1 + extent.y2) / 2;
 
-    const syntheticEvent: cytoscape.EventObject = {
+    return {
       type: 'click',
       target: this.cy,
       cy: this.cy,
@@ -699,7 +699,10 @@ export class ManagerUnifiedFloatingPanel {
       renderedPosition: { x: viewportCenterX, y: viewportCenterY },
       originalEvent: new MouseEvent('click')
     } as cytoscape.EventObject;
+  }
 
+  private addNodeAtCenter(template?: any): void {
+    const syntheticEvent = this.createCenterEvent();
     this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, syntheticEvent, template);
   }
 
@@ -826,27 +829,7 @@ export class ManagerUnifiedFloatingPanel {
   private handleAddNetwork(): void {
     log.debug('Adding new network via unified panel');
 
-    const extent = this.cy.extent();
-    const viewportCenterX = (extent.x1 + extent.x2) / 2;
-    const viewportCenterY = (extent.y1 + extent.y2) / 2;
-
-    const syntheticEvent: cytoscape.EventObject = {
-      type: 'click',
-      target: this.cy,
-      cy: this.cy,
-      namespace: '',
-      timeStamp: Date.now(),
-      position: {
-        x: viewportCenterX,
-        y: viewportCenterY
-      },
-      renderedPosition: {
-        x: viewportCenterX,
-        y: viewportCenterY
-      },
-      originalEvent: new MouseEvent('click')
-    } as cytoscape.EventObject;
-
+    const syntheticEvent = this.createCenterEvent();
     this.addNodeManager.viewportButtonsAddNetworkNode(this.cy, syntheticEvent);
 
     const newNode = this.cy.nodes().last();

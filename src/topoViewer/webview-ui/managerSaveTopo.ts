@@ -6,6 +6,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import topoViewerState from '../state';
 import { isSpecialEndpoint } from '../utilities/specialNodes';
+import { updateNodePosition, handleGeoData } from './nodeUtils';
 
 /**
  * Handles saving topology data from the Cytoscape viewport.
@@ -67,39 +68,10 @@ export class ManagerSaveTopo {
 
   private prepareNodeJson(node: cytoscape.NodeSingular, layoutMgr?: any): any {
     const nodeJson: any = node.json();
-
-    let posX = node.position().x;
-    let posY = node.position().y;
-    if (layoutMgr?.isGeoMapInitialized) {
-      const origX = node.data('_origPosX');
-      const origY = node.data('_origPosY');
-      if (origX !== undefined && origY !== undefined) {
-        posX = origX;
-        posY = origY;
-      }
-    }
-    nodeJson.position = { x: posX, y: posY };
-
-    if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
-      nodeJson.data = nodeJson.data || {};
-      nodeJson.data.geoLayoutActive = true;
-      const lat = node.data('lat');
-      const lng = node.data('lng');
-      if (lat !== undefined && lng !== undefined) {
-        nodeJson.data.lat = lat.toString();
-        nodeJson.data.lng = lng.toString();
-      } else {
-        const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
-          x: node.position().x,
-          y: node.position().y
-        });
-        nodeJson.data.lat = latlng.lat.toString();
-        nodeJson.data.lng = latlng.lng.toString();
-      }
-    } else {
-      nodeJson.data = nodeJson.data || {};
-      if (nodeJson.data.geoLayoutActive) delete nodeJson.data.geoLayoutActive;
-    }
+    const isGeo = !!layoutMgr?.isGeoMapInitialized;
+    updateNodePosition(node, nodeJson, isGeo);
+    handleGeoData(node, nodeJson, isGeo, layoutMgr);
+    if (!isGeo && nodeJson.data?.geoLayoutActive) delete nodeJson.data.geoLayoutActive;
 
     const parentCollection = node.parent();
     nodeJson.parent = parentCollection.nonempty() ? parentCollection[0].id() : '';
