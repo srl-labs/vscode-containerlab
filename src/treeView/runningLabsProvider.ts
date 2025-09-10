@@ -736,127 +736,119 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         cID: string,
         containerState: string
     ): c.ClabInterfaceTreeNode[] {
-        // Use a consistent cache key including the absolute path
         const cacheKey = `${absLabPath}::${cName}::${cID}`;
-
-        // Cache validation check
-        if (this.containerInterfacesCache.has(cacheKey)) {
-            const cached = this.containerInterfacesCache.get(cacheKey)!;
-            // Check if container state matches and cache is not expired
-            const isValid = cached.state === containerState &&
-                (Date.now() - cached.timestamp < this.cacheTTL);
-
-            if (isValid) {
-                return cached.interfaces;
-            }
-        }
-
+        const cached = this.containerInterfacesCache.get(cacheKey);
+        const cachedValid = cached && cached.state === containerState &&
+            (Date.now() - cached.timestamp < this.cacheTTL);
+        if (cachedValid) return cached!.interfaces;
 
         let interfaces: c.ClabInterfaceTreeNode[] = [];
-
         try {
-            // IMPORTANT: Use the absolute lab path in the command
-            const candidateBins = ['/usr/bin/containerlab', '/bin/containerlab', '/usr/local/bin/containerlab'];
-            const bin = candidateBins.find(p => {
-                try { return fs.existsSync(p); } catch { return false; }
-            }) || 'containerlab';
-            const clabStdout = execFileSync(
-                bin,
-                ['inspect', 'interfaces', '-t', absLabPath, '-f', 'json', '-n', cName],
-                { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 }
-            ).toString();
-
-            const clabInsJSON: ClabInsIntfJSON[] = JSON.parse(clabStdout);
-
-            // Check if the expected structure is present
-            if (clabInsJSON && clabInsJSON.length > 0 && Array.isArray(clabInsJSON[0].interfaces)) {
-                clabInsJSON[0].interfaces.forEach(intf => {
-                    // Skip interfaces in 'unknown' state or loopback 'lo'
-                    if (intf.state === "unknown" || intf.name === "lo") return;
-
-                    let tooltipParts: string[] = [
-                        `Name: ${intf.name}`,
-                        `State: ${intf.state}`,
-                        `Type: ${intf.type}`,
-                        `MAC: ${intf.mac}`,
-                        `MTU: ${intf.mtu}`
-                    ];
-
-                    let label: string = intf.name;
-                    let description: string = intf.state.toUpperCase();
-
-                    // Use alias if available
-                    if (intf.alias) {
-                        label = intf.alias;
-                        tooltipParts.splice(1, 0, `Alias: ${intf.alias}`); // Insert alias after name
-                        description = `${intf.state.toUpperCase()} (${intf.name})`; // Show state and real name
-                    }
-
-                    // Determine icons and context value based on interface state
-                    let iconLight: vscode.Uri;
-                    let iconDark: vscode.Uri;
-                    const contextValue = this.getInterfaceContextValue(intf.state);
-
-                    switch (intf.state) {
-                        case "up":
-                            iconLight = this.getResourceUri(c.IntfStateIcons.UP);
-                            iconDark = this.getResourceUri(c.IntfStateIcons.UP);
-                            break;
-                        case "down":
-                            iconLight = this.getResourceUri(c.IntfStateIcons.DOWN);
-                            iconDark = this.getResourceUri(c.IntfStateIcons.DOWN);
-                            break;
-                        default: // Should not happen if we skip 'unknown'
-                            iconLight = this.getResourceUri(c.IntfStateIcons.LIGHT);
-                            iconDark = this.getResourceUri(c.IntfStateIcons.DARK);
-                            break;
-                    }
-
-                    const node = new c.ClabInterfaceTreeNode(
-                        label,
-                        vscode.TreeItemCollapsibleState.None,
-                        cName, // parent container name
-                        cID,   // parent container ID
-                        intf.name, // interface name
-                        intf.type,
-                        intf.alias,
-                        intf.mac,
-                        intf.mtu,
-                        intf.ifindex,
-                        intf.state, // Store raw state value
-                        contextValue
-                    );
-
-                    node.tooltip = tooltipParts.join("\n");
-                    node.description = description;
-                    node.iconPath = { light: iconLight, dark: iconDark };
-
-                    interfaces.push(node);
-                });
-            } else {
-                console.warn(`[RunningLabTreeDataProvider]: Unexpected JSON structure from inspect interfaces for ${cName}`);
-            }
-
-
-            // Update cache with current state and timestamp
+            const bin = this.findContainerlabBinary();
+            const clabInsJSON = this.getInterfacesJSON(bin, absLabPath, cName);
+            interfaces = this.buildInterfaceNodes(clabInsJSON, cName, cID);
             this.containerInterfacesCache.set(cacheKey, {
                 state: containerState,
                 timestamp: Date.now(),
                 interfaces
             });
-
         } catch (err: any) {
-            // Log specific errors
             if (err.killed || err.signal === 'SIGTERM') {
                 console.error(`[RunningLabTreeDataProvider]: Interface detection timed out for ${cName}. Cmd: ${err.cmd}`);
             } else {
                 console.error(`[RunningLabTreeDataProvider]: Interface detection failed for ${cName}. ${err.message || String(err)}`);
             }
-            // Clear cache entry on error to force refetch next time
             this.containerInterfacesCache.delete(cacheKey);
         }
+        return interfaces;
+    }
 
-        return interfaces; // Return potentially empty array on error
+    private findContainerlabBinary(): string {
+        const candidateBins = ['/usr/bin/containerlab', '/bin/containerlab', '/usr/local/bin/containerlab'];
+        return candidateBins.find(p => {
+            try { return fs.existsSync(p); } catch { return false; }
+        }) || 'containerlab';
+    }
+
+    private getInterfacesJSON(bin: string, absLabPath: string, cName: string): ClabInsIntfJSON[] {
+        const clabStdout = execFileSync(
+            bin,
+            ['inspect', 'interfaces', '-t', absLabPath, '-f', 'json', '-n', cName],
+            { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 }
+        ).toString();
+        return JSON.parse(clabStdout);
+    }
+
+    private buildInterfaceNodes(clabInsJSON: ClabInsIntfJSON[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
+        const interfaces: c.ClabInterfaceTreeNode[] = [];
+
+        if (!(clabInsJSON && clabInsJSON.length > 0 && Array.isArray(clabInsJSON[0].interfaces))) {
+            console.warn(`[RunningLabTreeDataProvider]: Unexpected JSON structure from inspect interfaces for ${cName}`);
+            return interfaces;
+        }
+
+        clabInsJSON[0].interfaces.forEach(intf => {
+            if (intf.state === 'unknown' || intf.name === 'lo') return;
+
+            const tooltipParts: string[] = [
+                `Name: ${intf.name}`,
+                `State: ${intf.state}`,
+                `Type: ${intf.type}`,
+                `MAC: ${intf.mac}`,
+                `MTU: ${intf.mtu}`
+            ];
+
+            let label: string = intf.name;
+            let description: string = intf.state.toUpperCase();
+
+            if (intf.alias) {
+                label = intf.alias;
+                tooltipParts.splice(1, 0, `Alias: ${intf.alias}`);
+                description = `${intf.state.toUpperCase()} (${intf.name})`;
+            }
+
+            let iconLight: vscode.Uri;
+            let iconDark: vscode.Uri;
+            const contextValue = this.getInterfaceContextValue(intf.state);
+
+            switch (intf.state) {
+                case 'up':
+                    iconLight = this.getResourceUri(c.IntfStateIcons.UP);
+                    iconDark = this.getResourceUri(c.IntfStateIcons.UP);
+                    break;
+                case 'down':
+                    iconLight = this.getResourceUri(c.IntfStateIcons.DOWN);
+                    iconDark = this.getResourceUri(c.IntfStateIcons.DOWN);
+                    break;
+                default:
+                    iconLight = this.getResourceUri(c.IntfStateIcons.LIGHT);
+                    iconDark = this.getResourceUri(c.IntfStateIcons.DARK);
+                    break;
+            }
+
+            const node = new c.ClabInterfaceTreeNode(
+                label,
+                vscode.TreeItemCollapsibleState.None,
+                cName,
+                cID,
+                intf.name,
+                intf.type,
+                intf.alias,
+                intf.mac,
+                intf.mtu,
+                intf.ifindex,
+                intf.state,
+                contextValue
+            );
+
+            node.tooltip = tooltipParts.join("\n");
+            node.description = description;
+            node.iconPath = { light: iconLight, dark: iconDark };
+
+            interfaces.push(node);
+        });
+
+        return interfaces;
     }
 
 

@@ -387,9 +387,47 @@ function prepareNodeForSave(node: any, isGeoActive: boolean, cy: any): any {
   return nodeJson;
 }
 
+function nodeToAnnotation(node: any): any {
+  const {
+    fontSize = 14,
+    fontColor = '#FFFFFF',
+    backgroundColor = 'transparent',
+    fontWeight = 'normal',
+    fontStyle = 'normal',
+    textDecoration = 'none',
+    fontFamily = 'monospace'
+  } = node.data.freeTextData || {};
+
+  return {
+    id: node.data.id,
+    text: node.data.name || '',
+    position: node.position || { x: 0, y: 0 },
+    fontSize,
+    fontColor,
+    backgroundColor,
+    fontWeight,
+    fontStyle,
+    textDecoration,
+    fontFamily
+  };
+}
+
+function buildAnnotations(nodes: any[]): any[] {
+  return nodes.map(nodeToAnnotation);
+}
+
+function reapplyGroupStyles(groupStyles: any[]): void {
+  const manager = topoViewerState.editorEngine?.groupStyleManager;
+  if (!manager) {
+    return;
+  }
+  groupStyles.forEach((style: any) => manager.applyStyleToNode(style.id));
+  log.info('Reapplied group styles after save');
+}
+
 async function saveAnnotationsAndStyles(updatedNodes: any[]): Promise<void> {
   const freeTextNodes = updatedNodes.filter(
-    (node: any) => node.data && node.data.topoViewerRole === 'freeText'
+    (node: any) => node.data?.topoViewerRole === 'freeText'
   );
   const groupStyles =
     topoViewerState.editorEngine?.groupStyleManager?.getGroupStyles() || [];
@@ -405,24 +443,8 @@ async function saveAnnotationsAndStyles(updatedNodes: any[]): Promise<void> {
     );
   }
 
-  // Convert free text nodes to annotations format
-  const annotations = freeTextNodes.map((node: any) => {
-    const data = node.data.freeTextData || {};
-    return {
-      id: node.data.id,
-      text: node.data.name || '',
-      position: node.position || { x: 0, y: 0 },
-      fontSize: data.fontSize || 14,
-      fontColor: data.fontColor || '#FFFFFF',
-      backgroundColor: data.backgroundColor || 'transparent',
-      fontWeight: data.fontWeight || 'normal',
-      fontStyle: data.fontStyle || 'normal',
-      textDecoration: data.textDecoration || 'none',
-      fontFamily: data.fontFamily || 'monospace'
-    };
-  });
+  const annotations = buildAnnotations(freeTextNodes);
 
-  // Send annotations and group styles to backend for saving
   const sender = getMessageSender();
   const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
     'topo-editor-save-annotations',
@@ -430,15 +452,7 @@ async function saveAnnotationsAndStyles(updatedNodes: any[]): Promise<void> {
   );
   log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
 
-  // Reapply group styles after saving to maintain visual consistency
-  if (topoViewerState.editorEngine?.groupStyleManager) {
-    groupStyles.forEach((style: any) => {
-      topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(
-        style.id
-      );
-    });
-    log.info('Reapplied group styles after save');
-  }
+  reapplyGroupStyles(groupStyles);
 }
 
 /**

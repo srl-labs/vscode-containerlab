@@ -352,29 +352,42 @@ export class ManagerFreeText {
     const { titleEl, textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput } = els;
 
     titleEl.textContent = title;
-    textInput.value = annotation.text || '';
-    textInput.style.fontFamily = annotation.fontFamily || 'monospace';
-    textInput.style.fontSize = `${annotation.fontSize || 14}px`;
-    textInput.style.fontWeight = annotation.fontWeight || 'normal';
-    textInput.style.fontStyle = annotation.fontStyle || 'normal';
-    textInput.style.textDecoration = annotation.textDecoration || 'none';
-    textInput.style.color = annotation.fontColor || '#FFFFFF';
-    textInput.style.background = annotation.backgroundColor === 'transparent' ? 'transparent' : (annotation.backgroundColor || '#000000');
+    this.applyTextInputStyles(textInput, annotation);
+    fontSizeInput.value = String(annotation.fontSize ?? 14);
+    this.populateFontFamilySelect(fontFamilySelect, annotation.fontFamily);
+    fontColorInput.value = annotation.fontColor ?? '#FFFFFF';
+    bgColorInput.value = this.resolveBackgroundColor(annotation.backgroundColor, true);
+  }
 
-    fontSizeInput.value = String(annotation.fontSize || 14);
-    fontFamilySelect.innerHTML = '';
+  private applyTextInputStyles(textInput: HTMLTextAreaElement, annotation: FreeTextAnnotation): void {
+    textInput.value = annotation.text ?? '';
+    textInput.style.fontFamily = annotation.fontFamily ?? 'monospace';
+    textInput.style.fontSize = `${annotation.fontSize ?? 14}px`;
+    textInput.style.fontWeight = annotation.fontWeight ?? 'normal';
+    textInput.style.fontStyle = annotation.fontStyle ?? 'normal';
+    textInput.style.textDecoration = annotation.textDecoration ?? 'none';
+    textInput.style.color = annotation.fontColor ?? '#FFFFFF';
+    textInput.style.background = this.resolveBackgroundColor(annotation.backgroundColor, false);
+  }
+
+  private populateFontFamilySelect(select: HTMLSelectElement, selectedFamily?: string): void {
+    select.innerHTML = '';
     const fonts = ['monospace', 'sans-serif', 'serif', 'Arial', 'Helvetica', 'Courier New', 'Times New Roman', 'Georgia'];
+    const selected = selectedFamily ?? 'monospace';
     fonts.forEach(font => {
       const option = document.createElement('option');
       option.value = font;
       option.textContent = font;
-      if (font === (annotation.fontFamily || 'monospace')) {
-        option.selected = true;
-      }
-      fontFamilySelect.appendChild(option);
+      option.selected = font === selected;
+      select.appendChild(option);
     });
-    fontColorInput.value = annotation.fontColor || '#FFFFFF';
-    bgColorInput.value = annotation.backgroundColor === 'transparent' ? '#000000' : (annotation.backgroundColor || '#000000');
+  }
+
+  private resolveBackgroundColor(color: string | undefined, forInput: boolean): string {
+    if (color === 'transparent') {
+      return forInput ? '#000000' : 'transparent';
+    }
+    return color ?? '#000000';
   }
 
   private setupFormattingControls(annotation: FreeTextAnnotation, els: FreeTextModalElements, cleanupTasks: Array<() => void>): FormattingState {

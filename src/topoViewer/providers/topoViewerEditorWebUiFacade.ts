@@ -60,6 +60,37 @@ export class TopoViewerEditor {
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
   private isSplitViewOpen: boolean = false; // Track if YAML split view is open
+  /* eslint-disable no-unused-vars */
+  private readonly generalEndpointHandlers: Record<
+    string,
+    (
+      _payload: string | undefined,
+      _payloadObj: any,
+      _panel: vscode.WebviewPanel
+    ) => Promise<{ result: unknown; error: string | null }>
+  > = {
+    'topo-editor-reload-viewport': this.handleReloadViewportEndpoint.bind(this),
+    'topo-viewport-save': this.handleViewportSaveEndpoint.bind(this),
+    'lab-settings-get': this.handleLabSettingsGetEndpoint.bind(this),
+    'lab-settings-update': this.handleLabSettingsUpdateEndpoint.bind(this),
+    'topo-editor-get-node-config': this.handleGetNodeConfigEndpoint.bind(this),
+    'show-error-message': this.handleShowErrorMessageEndpoint.bind(this),
+    'topo-editor-viewport-save': this.handleViewportSaveEditEndpoint.bind(this),
+    'topo-editor-viewport-save-suppress-notification':
+      this.handleViewportSaveSuppressNotificationEndpoint.bind(this),
+    'topo-editor-undo': this.handleUndoEndpoint.bind(this),
+    'topo-editor-show-vscode-message': this.handleShowVscodeMessageEndpoint.bind(this),
+    'topo-switch-mode': this.handleSwitchModeEndpoint.bind(this),
+    'open-external': this.handleOpenExternalEndpoint.bind(this),
+    'topo-editor-load-annotations': this.handleLoadAnnotationsEndpoint.bind(this),
+    'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
+    'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
+    'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
+    showError: this.handleShowErrorEndpoint.bind(this),
+    'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
+    copyElements: this.handleCopyElementsEndpoint.bind(this),
+    getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this)
+  };
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -964,365 +995,478 @@ topology:
     payloadObj: any,
     panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    let result: unknown = null;
-    let error: string | null = null;
-
-    const handlers: Record<string, () => Promise<void>> = {
-      'topo-editor-reload-viewport': async () => {
-        try {
-          if (this.isSwitchingMode) {
-            result = 'Reload skipped - mode switch in progress';
-            log.debug(result);
-            return;
-          }
-          this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-          const success = await this.updatePanelHtml(this.currentPanel);
-          if (success) {
-            result = `Endpoint "${endpointName}" executed successfully.`;
-            log.info(result);
-          } else {
-            result = `Panel update failed - check logs for details`;
-            log.debug('Panel update returned false during reload');
-          }
-        } catch (innerError) {
-          result = `Error executing endpoint "${endpointName}".`;
-          log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-        }
-      },
-      'topo-viewport-save': async () => {
-        try {
-          await saveViewport({
-            yamlFilePath: this.lastYamlFilePath,
-            payload: payload as string,
-            mode: 'view'
-          });
-          result = `Saved viewport positions successfully.`;
-          log.info(result);
-        } catch (err) {
-          log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'lab-settings-get': async () => {
-        try {
-          const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-          const parsed = YAML.parse(yamlContent) as any;
-          const settings = { name: parsed.name, prefix: parsed.prefix, mgmt: parsed.mgmt };
-          result = { success: true, settings };
-          log.info('Lab settings retrieved successfully');
-        } catch (err) {
-          result = { success: false, error: String(err) };
-          log.error(`Error getting lab settings: ${err}`);
-        }
-      },
-      'lab-settings-update': async () => {
-        const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
-        const res = await this.updateLabSettings(settings);
-        result = res.success ? { success: true, yamlContent: res.yamlContent } : { success: false, error: res.error };
-      },
-      'topo-editor-get-node-config': async () => {
-        try {
-          const nodeName = typeof payloadObj === 'string' ? payloadObj : payloadObj?.node || payloadObj?.nodeName;
-          if (!nodeName) {
-            throw new Error('Node name is required');
-          }
-          if (!this.lastYamlFilePath) {
-            throw new Error('No lab YAML file loaded');
-          }
-          const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-          const topo = YAML.parse(yamlContent) as any;
-          this.adaptor.currentClabTopo = topo;
-          const nodeObj = topo.topology?.nodes?.[nodeName] || {};
-          const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
-          const nodePropKeys = new Set(Object.keys(nodeObj || {}));
-          const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
-          result = { ...mergedNode, inherited: inheritedProps };
-          log.info(`Node config retrieved for ${nodeName}`);
-        } catch (err) {
-          error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
-          log.error(error);
-        }
-      },
-      'show-error-message': async () => {
-        const data = payload as any;
-        if (data && data.message) {
-          vscode.window.showErrorMessage(data.message);
-        }
-        result = { success: true };
-      },
-      'topo-editor-viewport-save': async () => {
-        try {
-          await saveViewport({
-            adaptor: this.adaptor,
-            yamlFilePath: this.lastYamlFilePath,
-            payload: payload as string,
-            mode: 'edit',
-            setInternalUpdate: v => {
-              this.isInternalUpdate = v;
-            }
-          });
-          result = `Saved topology with preserved comments!`;
-          log.info(result);
-        } catch (err) {
-          log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(err, null, 2)}`);
-          this.isInternalUpdate = false;
-        }
-      },
-      'topo-editor-viewport-save-suppress-notification': async () => {
-        try {
-          await saveViewport({
-            adaptor: this.adaptor,
-            yamlFilePath: this.lastYamlFilePath,
-            payload: payload as string,
-            mode: 'edit',
-            setInternalUpdate: v => {
-              this.isInternalUpdate = v;
-            }
-          });
-        } catch (err) {
-          result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
-          log.error(
-            `Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(err, null, 2)}`
-          );
-          this.isInternalUpdate = false;
-        }
-      },
-      'topo-editor-undo': async () => {
-        try {
-          const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
-          const currentActiveEditor = vscode.window.activeTextEditor;
-          const existingEditor = vscode.window.visibleTextEditors.find(
-            editor => editor.document.uri.fsPath === document.uri.fsPath
-          );
-          if (existingEditor) {
-            await vscode.window.showTextDocument(document, {
-              viewColumn: existingEditor.viewColumn,
-              preview: false,
-              preserveFocus: false
-            });
-          } else {
-            const targetColumn = vscode.ViewColumn.Beside;
-            await vscode.window.showTextDocument(document, {
-              viewColumn: targetColumn,
-              preview: false,
-              preserveFocus: false
-            });
-          }
-          await this.sleep(50);
-          await vscode.commands.executeCommand('undo');
-          await document.save();
-          if (currentActiveEditor && !existingEditor) {
-            await vscode.window.showTextDocument(currentActiveEditor.document, {
-              viewColumn: currentActiveEditor.viewColumn,
-              preview: false,
-              preserveFocus: false
-            });
-          }
-          result = 'Undo operation completed successfully';
-          log.info('Undo operation executed on YAML file');
-        } catch (err) {
-          result = `Error executing undo operation`;
-          log.error(`Error executing undo operation: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'topo-editor-show-vscode-message': async () => {
-        try {
-          const data = JSON.parse(payload as string) as {
-            type: 'info' | 'warning' | 'error';
-            message: string;
-          };
-          switch (data.type) {
-            case 'info':
-              await vscode.window.showInformationMessage(data.message);
-              break;
-            case 'warning':
-              await vscode.window.showWarningMessage(data.message);
-              break;
-            case 'error':
-              await vscode.window.showErrorMessage(data.message);
-              break;
-            default:
-              log.error(`Unsupported message type: ${JSON.stringify(data.type, null, 2)}`);
-          }
-          result = `Displayed ${data.type} message: ${data.message}`;
-          log.info(result);
-        } catch (err) {
-          result = `Error executing endpoint "clab-show-vscode-message".`;
-          log.error(
-            `Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(err, null, 2)}`
-          );
-        }
-      },
-      'topo-switch-mode': async () => {
-        try {
-          if (this.isSwitchingMode) {
-            error = 'Mode switch already in progress';
-            log.debug('Mode switch already in progress');
-            return;
-          }
-          log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
-          this.isSwitchingMode = true;
-          const data = payload ? JSON.parse(payload as string) : { mode: 'toggle' };
-          if (data.mode === 'toggle') {
-            this.isViewMode = !this.isViewMode;
-          } else if (data.mode === 'view') {
-            this.isViewMode = true;
-          } else if (data.mode === 'edit') {
-            this.isViewMode = false;
-          }
-          this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-          const success = await this.updatePanelHtmlInternal(this.currentPanel);
-          if (success) {
-            result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
-            log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
-          } else {
-            error = 'Failed to switch mode';
-          }
-          await this.sleep(100);
-        } catch (err) {
-          error = `Error switching mode: ${err}`;
-          log.error(`Error switching mode: ${JSON.stringify(err, null, 2)}`);
-        } finally {
-          this.isSwitchingMode = false;
-          log.debug(`Mode switch completed, flag cleared`);
-        }
-      },
-      'open-external': async () => {
-        try {
-          const url: string = JSON.parse(payload as string);
-          await vscode.env.openExternal(vscode.Uri.parse(url));
-          result = `Opened external URL: ${url}`;
-          log.info(result);
-        } catch (err) {
-          result = `Error executing endpoint "open-external".`;
-          log.error(`Error executing endpoint "open-external": ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'topo-editor-load-annotations': async () => {
-        try {
-          const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-          result = {
-            annotations: annotations.freeTextAnnotations || [],
-            groupStyles: annotations.groupStyleAnnotations || []
-          };
-          log.info(
-            `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
-          );
-        } catch (err) {
-          result = { annotations: [], groupStyles: [] };
-          log.error(`Error loading annotations: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'topo-editor-save-annotations': async () => {
-        try {
-          const data = payloadObj;
-          const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-          await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-            freeTextAnnotations: data.annotations,
-            groupStyleAnnotations: data.groupStyles,
-            cloudNodeAnnotations: existing.cloudNodeAnnotations,
-            nodeAnnotations: existing.nodeAnnotations
-          });
-          result = { success: true };
-          log.info(
-            `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
-          );
-        } catch (err) {
-          error = `Error saving annotations: ${err}`;
-          log.error(`Error saving annotations: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'topo-editor-save-custom-node': async () => {
-        try {
-          const data = payloadObj;
-          const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-          let customNodes = config.get<any[]>('customNodes', []);
-          if (data.setDefault) {
-            customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
-          }
-          if (data.oldName) {
-            const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
-            if (oldIndex >= 0) {
-              const nodeData = { ...data };
-              delete nodeData.oldName;
-              customNodes[oldIndex] = nodeData;
-            } else {
-              const nodeData = { ...data };
-              delete nodeData.oldName;
-              customNodes.push(nodeData);
-            }
-          } else {
-            const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
-            if (existingIndex >= 0) {
-              customNodes[existingIndex] = data;
-            } else {
-              customNodes.push(data);
-            }
-          }
-          await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
-          const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
-          result = { customNodes, defaultNode: defaultCustomNode?.name || '' };
-          log.info(`Saved custom node ${data.name}`);
-        } catch (err) {
-          error = `Error saving custom node: ${err}`;
-          log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'topo-editor-delete-custom-node': async () => {
-        try {
-          const data = payloadObj;
-          const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-          const customNodes = config.get<any[]>('customNodes', []);
-          const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
-          await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
-          const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
-          result = { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || '' };
-          log.info(`Deleted custom node ${data.name}`);
-        } catch (err) {
-          error = `Error deleting custom node: ${err}`;
-          log.error(`Error deleting custom node: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'showError': async () => {
-        try {
-          const message = payloadObj as string;
-          await vscode.window.showErrorMessage(message);
-          result = 'Error message displayed';
-        } catch (err) {
-          error = `Error showing error message: ${err}`;
-          log.error(`Error showing error message: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'topo-toggle-split-view': async () => {
-        try {
-          await this.toggleSplitView();
-          result = { splitViewOpen: this.isSplitViewOpen };
-          log.info(`Split view toggled: ${this.isSplitViewOpen ? 'opened' : 'closed'}`);
-        } catch (err) {
-          error = `Error toggling split view: ${err}`;
-          log.error(`Error toggling split view: ${JSON.stringify(err, null, 2)}`);
-        }
-      },
-      'copyElements': async () => {
-        this.context.globalState.update('topoClipboard', payloadObj);
-        result = 'Elements copied';
-      },
-      'getCopiedElements': async () => {
-        const clipboard = this.context.globalState.get('topoClipboard') || [];
-        panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
-        result = 'Clipboard sent';
-      }
-    };
-
-    const handler = handlers[endpointName];
-    if (handler) {
-      await handler();
-    } else {
-      error = `Unknown endpoint "${endpointName}".`;
+    const handler = this.generalEndpointHandlers[endpointName];
+    if (!handler) {
+      const error = `Unknown endpoint "${endpointName}".`;
       log.error(error);
+      return { result: null, error };
     }
-
-    return { result, error };
+    return handler(payload, payloadObj, panel);
   }
+
+  private async handleReloadViewportEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      if (this.isSwitchingMode) {
+        const result = 'Reload skipped - mode switch in progress';
+        log.debug(result);
+        return { result, error: null };
+      }
+      this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+      const success = await this.updatePanelHtml(this.currentPanel);
+      if (success) {
+        const result = 'Endpoint "topo-editor-reload-viewport" executed successfully.';
+        log.info(result);
+        return { result, error: null };
+      }
+      const result = 'Panel update failed - check logs for details';
+      log.debug('Panel update returned false during reload');
+      return { result, error: null };
+    } catch (innerError) {
+      const result = 'Error executing endpoint "topo-editor-reload-viewport".';
+      log.error(
+        `Error executing endpoint "topo-editor-reload-viewport": ${JSON.stringify(innerError, null, 2)}`
+      );
+      return { result, error: null };
+    }
+  }
+
+  private async handleViewportSaveEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await saveViewport({ yamlFilePath: this.lastYamlFilePath, payload: payload as string, mode: 'view' });
+      const result = 'Saved viewport positions successfully.';
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error: null };
+    }
+  }
+
+  private async handleLabSettingsGetEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+      const parsed = YAML.parse(yamlContent) as any;
+      const settings = { name: parsed.name, prefix: parsed.prefix, mgmt: parsed.mgmt };
+      log.info('Lab settings retrieved successfully');
+      return { result: { success: true, settings }, error: null };
+    } catch (err) {
+      log.error(`Error getting lab settings: ${err}`);
+      return { result: { success: false, error: String(err) }, error: null };
+    }
+  }
+
+  private async handleLabSettingsUpdateEndpoint(
+    payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const settings = typeof payload === 'string' ? JSON.parse(payload) : payloadObj;
+    const res = await this.updateLabSettings(settings);
+    return {
+      result: res.success ? { success: true, yamlContent: res.yamlContent } : { success: false, error: res.error },
+      error: null
+    };
+  }
+
+  private async handleGetNodeConfigEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const nodeName = typeof payloadObj === 'string' ? payloadObj : payloadObj?.node || payloadObj?.nodeName;
+      if (!nodeName) {
+        throw new Error('Node name is required');
+      }
+      if (!this.lastYamlFilePath) {
+        throw new Error('No lab YAML file loaded');
+      }
+      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+      const topo = YAML.parse(yamlContent) as any;
+      this.adaptor.currentClabTopo = topo;
+      const nodeObj = topo.topology?.nodes?.[nodeName] || {};
+      const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
+      const nodePropKeys = new Set(Object.keys(nodeObj || {}));
+      const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
+      log.info(`Node config retrieved for ${nodeName}`);
+      return { result: { ...mergedNode, inherited: inheritedProps }, error: null };
+    } catch (err) {
+      const error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
+      log.error(error);
+      return { result: null, error };
+    }
+  }
+
+  private async handleShowErrorMessageEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const data = payload as any;
+    if (data && data.message) {
+      vscode.window.showErrorMessage(data.message);
+    }
+    return { result: { success: true }, error: null };
+  }
+
+  private async handleViewportSaveEditEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await saveViewport({
+        adaptor: this.adaptor,
+        yamlFilePath: this.lastYamlFilePath,
+        payload: payload as string,
+        mode: 'edit',
+        setInternalUpdate: v => {
+          this.isInternalUpdate = v;
+        }
+      });
+      const result = 'Saved topology with preserved comments!';
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(err, null, 2)}`);
+      this.isInternalUpdate = false;
+      return { result: null, error: null };
+    }
+  }
+
+  private async handleViewportSaveSuppressNotificationEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await saveViewport({
+        adaptor: this.adaptor,
+        yamlFilePath: this.lastYamlFilePath,
+        payload: payload as string,
+        mode: 'edit',
+        setInternalUpdate: v => {
+          this.isInternalUpdate = v;
+        }
+      });
+      return { result: null, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "topo-editor-viewport-save-suppress-notification".';
+      log.error(
+        `Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(err, null, 2)}`
+      );
+      this.isInternalUpdate = false;
+      return { result, error: null };
+    }
+  }
+
+  private async handleUndoEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
+      const currentActiveEditor = vscode.window.activeTextEditor;
+      const existingEditor = vscode.window.visibleTextEditors.find(
+        editor => editor.document.uri.fsPath === document.uri.fsPath
+      );
+      if (existingEditor) {
+        await vscode.window.showTextDocument(document, {
+          viewColumn: existingEditor.viewColumn,
+          preview: false,
+          preserveFocus: false
+        });
+      } else {
+        const targetColumn = vscode.ViewColumn.Beside;
+        await vscode.window.showTextDocument(document, {
+          viewColumn: targetColumn,
+          preview: false,
+          preserveFocus: false
+        });
+      }
+      await this.sleep(50);
+      await vscode.commands.executeCommand('undo');
+      await document.save();
+      if (currentActiveEditor && !existingEditor) {
+        await vscode.window.showTextDocument(currentActiveEditor.document, {
+          viewColumn: currentActiveEditor.viewColumn,
+          preview: false,
+          preserveFocus: false
+        });
+      }
+      const result = 'Undo operation completed successfully';
+      log.info('Undo operation executed on YAML file');
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing undo operation';
+      log.error(`Error executing undo operation: ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleShowVscodeMessageEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = JSON.parse(payload as string) as { type: 'info' | 'warning' | 'error'; message: string };
+      switch (data.type) {
+        case 'info':
+          await vscode.window.showInformationMessage(data.message);
+          break;
+        case 'warning':
+          await vscode.window.showWarningMessage(data.message);
+          break;
+        case 'error':
+          await vscode.window.showErrorMessage(data.message);
+          break;
+        default:
+          log.error(`Unsupported message type: ${JSON.stringify(data.type, null, 2)}`);
+      }
+      const result = `Displayed ${data.type} message: ${data.message}`;
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "clab-show-vscode-message".';
+      log.error(`Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleSwitchModeEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      if (this.isSwitchingMode) {
+        const error = 'Mode switch already in progress';
+        log.debug('Mode switch already in progress');
+        return { result: null, error };
+      }
+      log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
+      this.isSwitchingMode = true;
+      const data = payload ? JSON.parse(payload as string) : { mode: 'toggle' };
+      if (data.mode === 'toggle') {
+        this.isViewMode = !this.isViewMode;
+      } else if (data.mode === 'view') {
+        this.isViewMode = true;
+      } else if (data.mode === 'edit') {
+        this.isViewMode = false;
+      }
+      this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+      const success = await this.updatePanelHtmlInternal(this.currentPanel);
+      if (success) {
+        const result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
+        log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
+        return { result, error: null };
+      }
+      const error = 'Failed to switch mode';
+      return { result: null, error };
+    } catch (err) {
+      const error = `Error switching mode: ${err}`;
+      log.error(`Error switching mode: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    } finally {
+      this.isSwitchingMode = false;
+      log.debug(`Mode switch completed, flag cleared`);
+      await this.sleep(100);
+    }
+  }
+
+  private async handleOpenExternalEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const url: string = JSON.parse(payload as string);
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+      const result = `Opened external URL: ${url}`;
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "open-external".';
+      log.error(`Error executing endpoint "open-external": ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleLoadAnnotationsEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const result = {
+        annotations: annotations.freeTextAnnotations || [],
+        groupStyles: annotations.groupStyleAnnotations || []
+      };
+      log.info(
+        `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
+      );
+      return { result, error: null };
+    } catch (err) {
+      log.error(`Error loading annotations: ${JSON.stringify(err, null, 2)}`);
+      return { result: { annotations: [], groupStyles: [] }, error: null };
+    }
+  }
+
+  private async handleSaveAnnotationsEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
+        freeTextAnnotations: data.annotations,
+        groupStyleAnnotations: data.groupStyles,
+        cloudNodeAnnotations: existing.cloudNodeAnnotations,
+        nodeAnnotations: existing.nodeAnnotations
+      });
+      log.info(
+        `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
+      );
+      return { result: { success: true }, error: null };
+    } catch (err) {
+      const error = `Error saving annotations: ${err}`;
+      log.error(`Error saving annotations: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleSaveCustomNodeEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+      let customNodes = config.get<any[]>('customNodes', []);
+      if (data.setDefault) {
+        customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
+      }
+      if (data.oldName) {
+        const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
+        const nodeData = { ...data };
+        delete nodeData.oldName;
+        if (oldIndex >= 0) {
+          customNodes[oldIndex] = nodeData;
+        } else {
+          customNodes.push(nodeData);
+        }
+      } else {
+        const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
+        if (existingIndex >= 0) {
+          customNodes[existingIndex] = data;
+        } else {
+          customNodes.push(data);
+        }
+      }
+      await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
+      const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
+      log.info(`Saved custom node ${data.name}`);
+      return { result: { customNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
+    } catch (err) {
+      const error = `Error saving custom node: ${err}`;
+      log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleDeleteCustomNodeEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+      const customNodes = config.get<any[]>('customNodes', []);
+      const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
+      await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
+      const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
+      log.info(`Deleted custom node ${data.name}`);
+      return { result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
+    } catch (err) {
+      const error = `Error deleting custom node: ${err}`;
+      log.error(`Error deleting custom node: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleShowErrorEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const message = payloadObj as string;
+      await vscode.window.showErrorMessage(message);
+      const result = 'Error message displayed';
+      return { result, error: null };
+    } catch (err) {
+      const error = `Error showing error message: ${err}`;
+      log.error(`Error showing error message: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleToggleSplitViewEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await this.toggleSplitView();
+      const result = { splitViewOpen: this.isSplitViewOpen };
+      log.info(`Split view toggled: ${this.isSplitViewOpen ? 'opened' : 'closed'}`);
+      return { result, error: null };
+    } catch (err) {
+      const error = `Error toggling split view: ${err}`;
+      log.error(`Error toggling split view: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleCopyElementsEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    this.context.globalState.update('topoClipboard', payloadObj);
+    return { result: 'Elements copied', error: null };
+  }
+
+  private async handleGetCopiedElementsEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const clipboard = this.context.globalState.get('topoClipboard') || [];
+    panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
+    return { result: 'Clipboard sent', error: null };
+  }
+
+  /* eslint-enable no-unused-vars */
   private async handleNodeEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
     let result: unknown = null;
     let error: string | null = null;

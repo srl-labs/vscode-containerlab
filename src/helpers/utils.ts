@@ -483,51 +483,29 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 // Rules: only [A-Za-z0-9_.-], must start with alnum, no trailing '.'/'-'.
 export function sanitize(
   raw: string,
-  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {}
+  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {},
 ): string {
   if (!raw) return "container";
 
-  const allowed = /[A-Za-z0-9_.-]/;
-  let out = "";
-  let lastDash = false;
+  // Replace all disallowed characters (including "/") with "-"
+  let out = raw.replace(/[^A-Za-z0-9_.-]+/g, "-");
 
-  for (const ch of raw) {
-    if (allowed.test(ch) && ch !== "/") { // '/' is not allowed in --name
-      out += ch;
-      lastDash = false;
-    } else {
-      if (!lastDash) {
-        out += "-";
-        lastDash = true;
-      }
-    }
+  // Remove leading or trailing separators
+  while (out.startsWith("-") || out.startsWith(".")) out = out.substring(1);
+  while (out.endsWith("-") || out.endsWith(".")) out = out.slice(0, -1);
+
+  // Ensure the name starts with an alphanumeric character
+  if (!/^[A-Za-z0-9]/.test(out)) {
+    out = `c-${out}`;
   }
 
-  // Trim leading/trailing separators not allowed at ends
-  const trimSep = (s: string) => {
-    let start = 0;
-    while (start < s.length && (s[start] === '-' || s[start] === '.')) start++;
-    let end = s.length - 1;
-    while (end >= start && (s[end] === '-' || s[end] === '.')) end--;
-    return s.slice(start, end + 1);
-  };
-  out = trimSep(out);
+  // Enforce maximum length and trim any trailing separators again
+  if (out.length > maxLen) {
+    out = out.slice(0, maxLen);
+    while (out.endsWith("-") || out.endsWith(".")) out = out.slice(0, -1);
+  }
 
-  // Must start with alphanumeric
-  const isAlnumStart = (s: string) => {
-    if (!s) return false;
-    const c = s.charCodeAt(0);
-    const isDigit = c >= 48 && c <= 57;
-    const isUpper = c >= 65 && c <= 90;
-    const isLower = c >= 97 && c <= 122;
-    return isDigit || isUpper || isLower;
-  };
-  if (!isAlnumStart(out)) out = `c-${out}`;
-
-  // Enforce length and avoid bad trailing chars after cut
-  if (out.length > maxLen) out = out.slice(0, maxLen);
-  out = trimSep(out);
   if (!out) out = "container";
-
   return lower ? out.toLowerCase() : out;
 }
+

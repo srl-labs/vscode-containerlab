@@ -512,82 +512,103 @@ function applyExtraProps(
   ].forEach(applyProp);
 }
 
-function updateYamlLinks(
-  payloadParsed: any[],
-  doc: YAML.Document.Parsed,
-  updatedKeys: Map<string, string>,
-): void {
+function ensureLinksNode(doc: YAML.Document.Parsed): YAML.YAMLSeq {
   const maybeLinksNode = doc.getIn(['topology', 'links'], true);
-  let linksNode: YAML.YAMLSeq;
-  if (YAML.isSeq(maybeLinksNode)) {
-    linksNode = maybeLinksNode;
-  } else {
-    linksNode = new YAML.YAMLSeq();
-    const topologyNode = doc.getIn(['topology'], true);
-    if (YAML.isMap(topologyNode)) {
-      topologyNode.set('links', linksNode);
-    }
-  }
+  if (YAML.isSeq(maybeLinksNode)) return maybeLinksNode;
+  const linksNode = new YAML.YAMLSeq();
+  const topologyNode = doc.getIn(['topology'], true);
+  if (YAML.isMap(topologyNode)) topologyNode.set('links', linksNode);
   linksNode.flow = false;
+  return linksNode;
+}
 
-  payloadParsed.filter(el => el.group === 'edges').forEach(element => processEdge(element, linksNode, doc));
+function getPayloadEdges(payloadParsed: any[]): any[] {
+  return payloadParsed.filter(el => el.group === 'edges');
+}
 
-  const payloadEdgeKeys = new Set<string>(
-    payloadParsed
-      .filter(el => el.group === 'edges')
+function buildPayloadEdgeKeys(edges: any[]): Set<string> {
+  return new Set(
+    edges
       .map(el => canonicalFromPayloadEdge(el.data))
       .filter((k): k is CanonicalLinkKey => Boolean(k))
       .map(k => canonicalKeyToString(k)),
   );
+}
 
+function filterObsoleteLinks(linksNode: YAML.YAMLSeq, payloadEdgeKeys: Set<string>): void {
   linksNode.items = linksNode.items.filter(linkItem => {
     if (YAML.isMap(linkItem)) {
       const key = canonicalFromYamlLink(linkItem as YAML.YAMLMap);
-      if (key) {
-        return payloadEdgeKeys.has(canonicalKeyToString(key));
-      }
+      if (key) return payloadEdgeKeys.has(canonicalKeyToString(key));
     }
     return true;
   });
+}
 
+function replaceEndpointValue(
+  item: any,
+  doc: YAML.Document.Parsed,
+  updatedKeys: Map<string, string>,
+): YAML.Node {
+  if (YAML.isMap(item)) {
+    const n = (item as YAML.YAMLMap).get('node', true) as any;
+    const nodeVal = String(n?.value ?? n ?? '');
+    const updated = updatedKeys.get(nodeVal);
+    if (updated) (item as YAML.YAMLMap).set('node', doc.createNode(updated));
+    return item;
+  }
+  let endpointStr = String((item as any).value ?? item);
+  if (endpointStr.includes(':')) {
+    const [nodeKey, rest] = endpointStr.split(':');
+    if (updatedKeys.has(nodeKey)) endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+  } else if (updatedKeys.has(endpointStr)) {
+    endpointStr = updatedKeys.get(endpointStr)!;
+  }
+  return doc.createNode(endpointStr);
+}
+
+function updateEndpointsSeq(
+  endpointsNode: YAML.YAMLSeq,
+  doc: YAML.Document.Parsed,
+  updatedKeys: Map<string, string>,
+): void {
+  endpointsNode.items = endpointsNode.items.map(item => replaceEndpointValue(item, doc, updatedKeys));
+  endpointsNode.flow = endpointsNode.items.every(it => !YAML.isMap(it));
+}
+
+function updateEndpointMap(
+  endpoint: YAML.YAMLMap | undefined,
+  doc: YAML.Document.Parsed,
+  updatedKeys: Map<string, string>,
+): void {
+  if (!endpoint) return;
+  const n = endpoint.get('node', true) as any;
+  const nodeVal = String(n?.value ?? n ?? '');
+  const updated = updatedKeys.get(nodeVal);
+  if (updated) endpoint.set('node', doc.createNode(updated));
+}
+
+function updateExistingLinks(
+  linksNode: YAML.YAMLSeq,
+  doc: YAML.Document.Parsed,
+  updatedKeys: Map<string, string>,
+): void {
   for (const linkItem of linksNode.items) {
     if (!YAML.isMap(linkItem)) continue;
     (linkItem as YAML.YAMLMap).flow = false;
     const endpointsNode = linkItem.get('endpoints', true);
-    if (YAML.isSeq(endpointsNode)) {
-      endpointsNode.items = endpointsNode.items.map(item => {
-        if (YAML.isMap(item)) {
-          const n = (item as YAML.YAMLMap).get('node', true) as any;
-          const nodeVal = String(n?.value ?? n ?? '');
-          const updated = updatedKeys.get(nodeVal);
-          if (updated) {
-            (item as YAML.YAMLMap).set('node', doc.createNode(updated));
-          }
-          return item;
-        }
-        let endpointStr = String((item as any).value ?? item);
-        if (endpointStr.includes(':')) {
-          const [nodeKey, rest] = endpointStr.split(':');
-          if (updatedKeys.has(nodeKey)) {
-            endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
-          }
-        } else if (updatedKeys.has(endpointStr)) {
-          endpointStr = updatedKeys.get(endpointStr)!;
-        }
-        return doc.createNode(endpointStr);
-      });
-      endpointsNode.flow = endpointsNode.items.every(it => !YAML.isMap(it));
-    }
-    const endpointSingle = linkItem.get('endpoint', true);
-    if (YAML.isMap(endpointSingle)) {
-      const n = endpointSingle.get('node', true) as any;
-      const nodeVal = String(n?.value ?? n ?? '');
-      const updated = updatedKeys.get(nodeVal);
-      if (updated) {
-        endpointSingle.set('node', doc.createNode(updated));
-      }
-    }
+    if (YAML.isSeq(endpointsNode)) updateEndpointsSeq(endpointsNode, doc, updatedKeys);
+    updateEndpointMap(linkItem.get('endpoint', true) as YAML.YAMLMap | undefined, doc, updatedKeys);
   }
+}
+
+function updateYamlLinks(payloadParsed: any[], doc: YAML.Document.Parsed, updatedKeys: Map<string, string>): void {
+  const linksNode = ensureLinksNode(doc);
+  const edges = getPayloadEdges(payloadParsed);
+  edges.forEach(element => processEdge(element, linksNode, doc));
+  const payloadEdgeKeys = buildPayloadEdgeKeys(edges);
+  filterObsoleteLinks(linksNode, payloadEdgeKeys);
+  updateExistingLinks(linksNode, doc, updatedKeys);
 }
 
 async function writeYamlFile(

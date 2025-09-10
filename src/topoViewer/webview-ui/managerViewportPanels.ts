@@ -1155,46 +1155,21 @@ export class ManagerViewportPanels {
    * @returns A promise that resolves when the node data has been updated.
    */
   public async updateNodeFromEditor(node: cytoscape.NodeSingular): Promise<void> {
-    // Ensure we target a single node even if a collection is passed.
-    const targetNode: cytoscape.NodeSingular = (node as any).length && (node as any).length > 1 ? (node as any)[0] : node;
-
-    // Get the input values.
+    const targetNode = this.ensureSingleNode(node);
     const nodeNameInput = document.getElementById("node-name") as HTMLInputElement;
     const nodeImageInput = document.getElementById("node-image-dropdown-container-filter-input") as HTMLInputElement;
     const typeDropdownInput = document.getElementById("panel-node-type-dropdown-container-filter-input") as HTMLInputElement;
     const typeInput = document.getElementById("node-type") as HTMLInputElement;
-
-    // Retrieve dropdown selections.
     const kindDropdownInput = document.getElementById("panel-node-kind-dropdown-container-filter-input") as HTMLInputElement;
     const topoViewerRoleDropdownInput = document.getElementById("panel-node-topoviewerrole-dropdown-container-filter-input") as HTMLInputElement;
 
-    // Retrieve current node data.
     const currentData = targetNode.data();
-    const oldName = currentData.name as string;              // remember old name
-    const newName = nodeNameInput.value;                    // the new name
+    const oldName = currentData.name as string;
+    const newName = nodeNameInput.value;
 
-    // Build updated extraData, preserving other fields.
-    let typeValue = '';
-    if (this.panelNodeEditorUseDropdownForType) {
-      typeValue = typeDropdownInput ? (typeDropdownInput.value || '') : '';
-    } else {
-      typeValue = typeInput ? typeInput.value : '';
-    }
+    const typeValue = this.getNodeTypeValue(typeDropdownInput, typeInput);
+    const updatedExtraData = this.buildNodeExtraData(currentData.extraData, nodeNameInput.value, nodeImageInput.value, kindDropdownInput?.value, typeValue);
 
-    const updatedExtraData = {
-      ...currentData.extraData,
-      name: nodeNameInput.value,
-      image: nodeImageInput.value,
-      kind: kindDropdownInput ? kindDropdownInput.value : 'nokia_srlinux',
-    };
-
-    if (this.panelNodeEditorUseDropdownForType || typeValue.trim() !== '') {
-      updatedExtraData.type = typeValue;
-    } else if ('type' in updatedExtraData) {
-      delete updatedExtraData.type;
-    }
-
-    // Build the updated data object.
     const updatedData = {
       ...currentData,
       name: nodeNameInput.value,
@@ -1202,40 +1177,14 @@ export class ManagerViewportPanels {
       extraData: updatedExtraData,
     };
 
-    // Update the Cytoscape node data.
     targetNode.data(updatedData);
     log.debug(`Cytoscape node updated with new data: ${JSON.stringify(updatedData)}`);
 
-    // If the node's name actually changed, update connected edges.
     if (oldName !== newName) {
-      const edges = targetNode.connectedEdges();
-      edges.forEach(edge => {
-        const edgeData = edge.data();
-        let modified = false;
-        const updatedEdgeData: any = { ...edgeData };
-
-        // Update sourceName if it pointed to our old name
-        if (edgeData.sourceName === oldName) {
-          updatedEdgeData.sourceName = newName;
-          modified = true;
-        }
-        // Update targetName if it pointed to our old name
-        if (edgeData.targetName === oldName) {
-          updatedEdgeData.targetName = newName;
-          modified = true;
-        }
-        if (modified) {
-          edge.data(updatedEdgeData);
-          log.debug(`Edge ${edge.id()} updated to reflect node rename: ${JSON.stringify(updatedEdgeData)}`);
-        }
-      });
+      this.updateEdgesForRenamedNode(targetNode, oldName, newName);
     }
 
-    // Optionally, hide the node editor panel.
-    const panelNodeEditor = document.getElementById("panel-node-editor");
-    if (panelNodeEditor) {
-      panelNodeEditor.style.display = "none";
-    }
+    this.hideNodeEditor();
   }
 
   /**
@@ -1253,6 +1202,56 @@ export class ManagerViewportPanels {
       this.applyNetworkDataSameId(targetNode, currentData, idInfo.newName, inputs.networkType, extendedData);
     } else {
       this.recreateNetworkNode(targetNode, currentData, idInfo, inputs.networkType, extendedData);
+    }
+  }
+
+  private getNodeTypeValue(typeDropdownInput: HTMLInputElement | null, typeInput: HTMLInputElement | null): string {
+    if (this.panelNodeEditorUseDropdownForType) {
+      return typeDropdownInput ? (typeDropdownInput.value || '') : '';
+    }
+    return typeInput ? typeInput.value : '';
+  }
+
+  private buildNodeExtraData(currentExtra: any, name: string, image: string, kindValue: string | undefined, typeValue: string): any {
+    const updatedExtraData = {
+      ...currentExtra,
+      name,
+      image,
+      kind: kindValue || 'nokia_srlinux',
+    };
+    if (this.panelNodeEditorUseDropdownForType || typeValue.trim() !== '') {
+      updatedExtraData.type = typeValue;
+    } else if ('type' in updatedExtraData) {
+      delete updatedExtraData.type;
+    }
+    return updatedExtraData;
+  }
+
+  private updateEdgesForRenamedNode(targetNode: cytoscape.NodeSingular, oldName: string, newName: string): void {
+    const edges = targetNode.connectedEdges();
+    edges.forEach(edge => {
+      const edgeData = edge.data();
+      const updatedEdgeData: any = { ...edgeData };
+      let modified = false;
+      if (edgeData.sourceName === oldName) {
+        updatedEdgeData.sourceName = newName;
+        modified = true;
+      }
+      if (edgeData.targetName === oldName) {
+        updatedEdgeData.targetName = newName;
+        modified = true;
+      }
+      if (modified) {
+        edge.data(updatedEdgeData);
+        log.debug(`Edge ${edge.id()} updated to reflect node rename: ${JSON.stringify(updatedEdgeData)}`);
+      }
+    });
+  }
+
+  private hideNodeEditor(): void {
+    const panelNodeEditor = document.getElementById("panel-node-editor");
+    if (panelNodeEditor) {
+      panelNodeEditor.style.display = "none";
     }
   }
 

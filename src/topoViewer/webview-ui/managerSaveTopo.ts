@@ -33,123 +33,17 @@ export class ManagerSaveTopo {
 
     try {
       log.debug('viewportButtonsSaveTopo triggered');
-
       const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
-      const updatedNodes = cy.nodes().map((node: cytoscape.NodeSingular) => {
-        const nodeJson: any = node.json();
+      const updatedNodes = this.collectNodes(cy, layoutMgr);
+      const updatedEdges = this.collectEdges(cy);
 
-        let posX = node.position().x;
-        let posY = node.position().y;
-        if (layoutMgr?.isGeoMapInitialized) {
-          const origX = node.data('_origPosX');
-          const origY = node.data('_origPosY');
-          if (origX !== undefined && origY !== undefined) {
-            posX = origX;
-            posY = origY;
-          }
-        }
-        nodeJson.position = { x: posX, y: posY };
-
-        if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
-          nodeJson.data = nodeJson.data || {};
-          // Mark geo layout active so backend can decide how to save annotations
-          nodeJson.data.geoLayoutActive = true;
-          const lat = node.data('lat');
-          const lng = node.data('lng');
-          if (lat !== undefined && lng !== undefined) {
-            nodeJson.data.lat = lat.toString();
-            nodeJson.data.lng = lng.toString();
-          } else {
-            const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
-              x: node.position().x,
-              y: node.position().y
-            });
-            nodeJson.data.lat = latlng.lat.toString();
-            nodeJson.data.lng = latlng.lng.toString();
-          }
-        } else {
-          // Ensure flag is falsey when geo layout is not active
-          nodeJson.data = nodeJson.data || {};
-          if (nodeJson.data.geoLayoutActive) delete nodeJson.data.geoLayoutActive;
-        }
-
-        const parentCollection = node.parent();
-        const parentId: string = parentCollection.nonempty() ? parentCollection[0].id() : '';
-        nodeJson.parent = parentId;
-        // Do not add group-related labels to the node's extraData
-        // These are UI-only properties that should not be persisted to YAML
-        return nodeJson;
-      });
-
-      const updatedEdges = cy.edges().reduce((acc: any[], edge: cytoscape.EdgeSingular) => {
-        const edgeJson: any = edge.json();
-
-        if (edgeJson.data) {
-          const sourceId = edgeJson.data.source;
-          const targetId = edgeJson.data.target;
-          const sourceEp = edgeJson.data.sourceEndpoint;
-          const targetEp = edgeJson.data.targetEndpoint;
-
-          // Check if source or target are special nodes (host, mgmt-net, macvlan)
-          const isSourceSpecial = isSpecialEndpoint(sourceId);
-          const isTargetSpecial = isSpecialEndpoint(targetId);
-
-          if (
-            (isSourceSpecial || (typeof sourceEp === 'string' && sourceEp)) &&
-            (isTargetSpecial || (typeof targetEp === 'string' && targetEp))
-          ) {
-            // For special nodes, the ID already contains the full endpoint
-            const sourceEndpoint = isSourceSpecial ? sourceId : `${sourceId}:${sourceEp}`;
-            const targetEndpoint = isTargetSpecial ? targetId : `${targetId}:${targetEp}`;
-
-            edgeJson.data.endpoints = [sourceEndpoint, targetEndpoint];
-            acc.push(edgeJson);
-          } else if (
-            Array.isArray(edgeJson.data.endpoints) &&
-            edgeJson.data.endpoints.length === 2 &&
-            edgeJson.data.endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'))
-          ) {
-            acc.push(edgeJson);
-          }
-        }
-
-        return acc;
-      }, [] as any[]);
-
-      if (!suppressNotification) {
-        loadCytoStyle(cy);
-
-        // Reapply group styles after loadCytoStyle to maintain visual consistency
-        if (topoViewerState.editorEngine?.groupStyleManager) {
-          const groupStyles = topoViewerState.editorEngine.groupStyleManager.getGroupStyles();
-          groupStyles.forEach((style: any) => {
-            topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(style.id);
-          });
-        }
-      } else {
-        const lm = topoViewerState.editorEngine?.layoutAlgoManager;
-        if (lm?.isGeoMapInitialized) {
-          const factor = lm.calculateGeoScale();
-          lm.applyGeoScale(true, factor);
-        }
-      }
+      this.applyPostLoadStyles(cy, suppressNotification);
 
       const updatedElements = [...updatedNodes, ...updatedEdges];
       log.debug(`Updated Topology Data: ${JSON.stringify(updatedElements, null, 2)}`);
 
-      // Determine the correct endpoint based on the mode
       const mode = (window as any).topoViewerMode;
-      let endpoint: string;
-
-      if (mode === 'viewer') {  // FIX: Check for 'viewer' not 'view'
-        // View mode uses a single endpoint and doesn't support suppress notification
-        endpoint = 'topo-viewport-save';
-      } else {
-        // Edit mode uses different endpoints based on suppressNotification
-        endpoint = suppressNotification
-          ? 'topo-editor-viewport-save-suppress-notification'
-          : 'topo-editor-viewport-save';
-      }
+      const endpoint = this.getEndpoint(mode, suppressNotification);
 
       const response = await this.messageSender.sendMessageToVscodeEndpointPost(
         endpoint,
@@ -159,10 +53,125 @@ export class ManagerSaveTopo {
 
       // Note: Free text annotations save themselves when they change,
       // so we don't need to save them here
-
       // Note: The backend handles showing the notification message in view mode
     } catch (err) {
       log.error(`Backend call failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }
+
+  private collectNodes(cy: cytoscape.Core, layoutMgr?: any): any[] {
+    return cy.nodes().map((node: cytoscape.NodeSingular) =>
+      this.prepareNodeJson(node, layoutMgr)
+    );
+  }
+
+  private prepareNodeJson(node: cytoscape.NodeSingular, layoutMgr?: any): any {
+    const nodeJson: any = node.json();
+
+    let posX = node.position().x;
+    let posY = node.position().y;
+    if (layoutMgr?.isGeoMapInitialized) {
+      const origX = node.data('_origPosX');
+      const origY = node.data('_origPosY');
+      if (origX !== undefined && origY !== undefined) {
+        posX = origX;
+        posY = origY;
+      }
+    }
+    nodeJson.position = { x: posX, y: posY };
+
+    if (layoutMgr?.isGeoMapInitialized && layoutMgr.cytoscapeLeafletMap) {
+      nodeJson.data = nodeJson.data || {};
+      nodeJson.data.geoLayoutActive = true;
+      const lat = node.data('lat');
+      const lng = node.data('lng');
+      if (lat !== undefined && lng !== undefined) {
+        nodeJson.data.lat = lat.toString();
+        nodeJson.data.lng = lng.toString();
+      } else {
+        const latlng = layoutMgr.cytoscapeLeafletMap.containerPointToLatLng({
+          x: node.position().x,
+          y: node.position().y
+        });
+        nodeJson.data.lat = latlng.lat.toString();
+        nodeJson.data.lng = latlng.lng.toString();
+      }
+    } else {
+      nodeJson.data = nodeJson.data || {};
+      if (nodeJson.data.geoLayoutActive) delete nodeJson.data.geoLayoutActive;
+    }
+
+    const parentCollection = node.parent();
+    nodeJson.parent = parentCollection.nonempty() ? parentCollection[0].id() : '';
+    return nodeJson;
+  }
+
+  private collectEdges(cy: cytoscape.Core): any[] {
+    return cy.edges().reduce((acc: any[], edge: cytoscape.EdgeSingular) => {
+      const edgeJson = this.prepareEdgeJson(edge);
+      if (edgeJson) acc.push(edgeJson);
+      return acc;
+    }, [] as any[]);
+  }
+
+  private prepareEdgeJson(edge: cytoscape.EdgeSingular): any | null {
+    const edgeJson: any = edge.json();
+    if (!edgeJson.data) return null;
+
+    const sourceId = edgeJson.data.source;
+    const targetId = edgeJson.data.target;
+    const sourceEp = edgeJson.data.sourceEndpoint;
+    const targetEp = edgeJson.data.targetEndpoint;
+    const endpoints = edgeJson.data.endpoints;
+
+    const isSourceSpecial = isSpecialEndpoint(sourceId);
+    const isTargetSpecial = isSpecialEndpoint(targetId);
+
+    if (
+      (isSourceSpecial || (typeof sourceEp === 'string' && sourceEp)) &&
+      (isTargetSpecial || (typeof targetEp === 'string' && targetEp))
+    ) {
+      const sourceEndpoint = isSourceSpecial ? sourceId : `${sourceId}:${sourceEp}`;
+      const targetEndpoint = isTargetSpecial ? targetId : `${targetId}:${targetEp}`;
+      edgeJson.data.endpoints = [sourceEndpoint, targetEndpoint];
+      return edgeJson;
+    }
+
+    if (
+      Array.isArray(endpoints) &&
+      endpoints.length === 2 &&
+      endpoints.every((ep: any) => typeof ep === 'string' && ep.includes(':'))
+    ) {
+      return edgeJson;
+    }
+
+    return null;
+  }
+
+  private applyPostLoadStyles(cy: cytoscape.Core, suppressNotification: boolean): void {
+    if (!suppressNotification) {
+      loadCytoStyle(cy);
+      const groupStyleManager = topoViewerState.editorEngine?.groupStyleManager;
+      groupStyleManager
+        ?.getGroupStyles()
+        .forEach((style: any) => groupStyleManager.applyStyleToNode(style.id));
+      return;
+    }
+
+    const lm = topoViewerState.editorEngine?.layoutAlgoManager;
+    if (lm?.isGeoMapInitialized) {
+      const factor = lm.calculateGeoScale();
+      lm.applyGeoScale(true, factor);
+    }
+  }
+
+  private getEndpoint(mode: string, suppressNotification: boolean): string {
+    if (mode === 'viewer') {
+      return 'topo-viewport-save';
+    }
+
+    return suppressNotification
+      ? 'topo-editor-viewport-save-suppress-notification'
+      : 'topo-editor-viewport-save';
   }
 }

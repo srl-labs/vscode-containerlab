@@ -182,146 +182,110 @@ export class ManagerGroupManagement {
 
   public initializeGroupManagement(): void {
     try {
-      // Store the parent before a node is grabbed to correctly update its status on move/remove
-      this.cy.on('grab', 'node', (event) => {
-        event.target.scratch('_oldParent', event.target.parent());
-      });
-
-      // After a node is moved, update both the old and new parent's empty status
-      this.cy.on('move', 'node', (event) => {
-        const oldParent = event.target.scratch('_oldParent');
-        const newParent = event.target.parent();
-
-        if (oldParent) {
-          this.updateGroupEmptyStatus(oldParent);
-        }
-        if (newParent.nonempty()) {
-          this.updateGroupEmptyStatus(newParent);
-        }
-      });
-
-      // After a node is removed, update its former parent's empty status
-      this.cy.on('remove', 'node', (event) => {
-        const oldParent = event.target.scratch('_oldParent');
-        if (oldParent) {
-          this.updateGroupEmptyStatus(oldParent);
-        }
-      });
-
-      const isNodeInsideParent = (
-        node: cytoscape.NodeSingular,
-        parent: cytoscape.NodeSingular,
-      ): boolean => {
-        const parentBox = parent.boundingBox();
-        const nodePos = node.position();
-        return (
-          nodePos.x >= parentBox.x1 &&
-          nodePos.x <= parentBox.x2 &&
-          nodePos.y >= parentBox.y1 &&
-          nodePos.y <= parentBox.y2
-        );
-      };
-
-      // Prevent groups from becoming children of other groups during any operation
-      this.cy.on('add', 'node', (event: cytoscape.EventObject) => {
-        const node = event.target as cytoscape.NodeSingular;
-        // If a group node somehow gets a parent, remove that parent relationship
-        if (node.data('topoViewerRole') === 'group' && node.parent().nonempty()) {
-          log.warn(`Preventing group ${node.id()} from being child of ${node.parent().first().id()}`);
-          node.move({ parent: null });
-        }
-      });
-
-      // Monitor parent changes and prevent groups from becoming children
-      this.cy.on('data', 'node', (event: cytoscape.EventObject) => {
-        const node = event.target as cytoscape.NodeSingular;
-        if (node.data('topoViewerRole') === 'group' && node.data('parent')) {
-          log.warn(`Preventing group ${node.id()} from having parent ${node.data('parent')}`);
-          node.data('parent', null);
-          node.move({ parent: null });
-        }
-      });
-
-      this.cy.on('dragfree', 'node', (event: cytoscape.EventObject) => {
-        const draggedNode = event.target as cytoscape.NodeSingular;
-
-        // Don't process free text nodes being dragged
-        if (draggedNode.data('topoViewerRole') === 'freeText') {
-          return;
-        }
-
-        // CRITICAL: Never reassign children when ANY group is being dragged
-        const anyGroupBeingDragged = this.cy.nodes('[topoViewerRole = "group"]').some(group => (group as cytoscape.NodeSingular).grabbed());
-        if (anyGroupBeingDragged) {
-          log.debug('Skipping all reparenting because a group is being dragged');
-          return;
-        }
-
-        // Groups cannot be dragged into other groups - ensure they have no parent
-        if (draggedNode.data('topoViewerRole') === 'group' || draggedNode.isParent()) {
-          if (draggedNode.parent().nonempty()) {
-            log.warn(`Group ${draggedNode.id()} incorrectly has parent, removing`);
-            draggedNode.move({ parent: null });
-          }
-          // Don't do any cleanup when groups are involved
-          return;
-        }
-
-        // If this node already has a parent, check if the parent is being dragged
-        // If so, don't reassign this node to a different parent
-        if (draggedNode.parent().nonempty()) {
-          const currentParent = draggedNode.parent().first();
-          if (currentParent.grabbed() || currentParent.data('topoViewerRole') === 'group') {
-            log.debug(`Skipping reparenting of ${draggedNode.id()} because its parent ${currentParent.id()} is a group or being dragged`);
-            return;
-          }
-        }
-
-        let assignedParent: cytoscape.NodeSingular | null = null;
-
-        this.cy.nodes('[topoViewerRole = "group"]').forEach(parent => {
-          // Skip if trying to parent to itself
-          if (parent.id() === draggedNode.id()) {
-            return;
-          }
-
-          // Never allow a group/parent node to become a child of another group
-          if (draggedNode.isParent() || draggedNode.data('topoViewerRole') === 'group') {
-            return;
-          }
-
-          // Skip if this potential parent is currently being dragged
-          if (parent.grabbed()) {
-            return;
-          }
-
-          // Don't steal children from a group that's being dragged
-          if (draggedNode.parent().nonempty() && draggedNode.parent().first().grabbed()) {
-            return;
-          }
-
-          if (isNodeInsideParent(draggedNode, parent)) {
-            assignedParent = parent;
-          }
-        });
-
-        if (assignedParent !== null) {
-          const parentNode = assignedParent as cytoscape.NodeSingular;
-
-          // Final check: never parent a group to another node
-          if (draggedNode.data('topoViewerRole') === 'group' || draggedNode.isParent()) {
-            log.warn(`Prevented group ${draggedNode.id()} from becoming child of ${parentNode.id()}`);
-            return;
-          }
-
-          draggedNode.move({ parent: parentNode.id() });
-          log.info(`${draggedNode.id()} became a child of ${parentNode.id()}`);
-        }
-      });
-
+      this.cy.on('grab', 'node', this.handleNodeGrab);
+      this.cy.on('move', 'node', this.handleNodeMove);
+      this.cy.on('remove', 'node', this.handleNodeRemove);
+      this.cy.on('add', 'node', this.preventGroupChild);
+      this.cy.on('data', 'node', this.preventGroupParentData);
+      this.cy.on('dragfree', 'node', this.handleNodeDragfree);
     } catch (error) {
       log.error(`initializeGroupManagement failed: ${error}`);
     }
+  }
+
+  private handleNodeGrab = (event: cytoscape.EventObject): void => {
+    event.target.scratch('_oldParent', event.target.parent());
+  };
+
+  private handleNodeMove = (event: cytoscape.EventObject): void => {
+    const oldParent = event.target.scratch('_oldParent');
+    const newParent = event.target.parent();
+    if (oldParent) this.updateGroupEmptyStatus(oldParent);
+    if (newParent.nonempty()) this.updateGroupEmptyStatus(newParent);
+  };
+
+  private handleNodeRemove = (event: cytoscape.EventObject): void => {
+    const oldParent = event.target.scratch('_oldParent');
+    if (oldParent) this.updateGroupEmptyStatus(oldParent);
+  };
+
+  private preventGroupChild = (event: cytoscape.EventObject): void => {
+    const node = event.target as cytoscape.NodeSingular;
+    if (node.data('topoViewerRole') === 'group' && node.parent().nonempty()) {
+      log.warn(`Preventing group ${node.id()} from being child of ${node.parent().first().id()}`);
+      node.move({ parent: null });
+    }
+  };
+
+  private preventGroupParentData = (event: cytoscape.EventObject): void => {
+    const node = event.target as cytoscape.NodeSingular;
+    if (node.data('topoViewerRole') === 'group' && node.data('parent')) {
+      log.warn(`Preventing group ${node.id()} from having parent ${node.data('parent')}`);
+      node.data('parent', null);
+      node.move({ parent: null });
+    }
+  };
+
+  private handleNodeDragfree = (event: cytoscape.EventObject): void => {
+    const draggedNode = event.target as cytoscape.NodeSingular;
+    if (this.shouldSkipDragfree(draggedNode)) return;
+    const assignedParent = this.findAssignedParent(draggedNode);
+    if (!assignedParent) return;
+    if (draggedNode.data('topoViewerRole') === 'group' || draggedNode.isParent()) {
+      log.warn(`Prevented group ${draggedNode.id()} from becoming child of ${assignedParent.id()}`);
+      return;
+    }
+    draggedNode.move({ parent: assignedParent.id() });
+    log.info(`${draggedNode.id()} became a child of ${assignedParent.id()}`);
+  };
+
+  private shouldSkipDragfree(draggedNode: cytoscape.NodeSingular): boolean {
+    if (draggedNode.data('topoViewerRole') === 'freeText') {
+      return true;
+    }
+    if (this.cy.nodes('[topoViewerRole = "group"]').some(group => (group as cytoscape.NodeSingular).grabbed())) {
+      log.debug('Skipping all reparenting because a group is being dragged');
+      return true;
+    }
+    if (draggedNode.data('topoViewerRole') === 'group' || draggedNode.isParent()) {
+      if (draggedNode.parent().nonempty()) {
+        log.warn(`Group ${draggedNode.id()} incorrectly has parent, removing`);
+        draggedNode.move({ parent: null });
+      }
+      return true;
+    }
+    if (draggedNode.parent().nonempty()) {
+      const currentParent = draggedNode.parent().first();
+      if (currentParent.grabbed() || currentParent.data('topoViewerRole') === 'group') {
+        log.debug(`Skipping reparenting of ${draggedNode.id()} because its parent ${currentParent.id()} is a group or being dragged`);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private findAssignedParent(draggedNode: cytoscape.NodeSingular): cytoscape.NodeSingular | null {
+    let assignedParent: cytoscape.NodeSingular | null = null;
+    this.cy.nodes('[topoViewerRole = "group"]').forEach(parent => {
+      if (parent.id() === draggedNode.id()) return;
+      if (parent.grabbed()) return;
+      if (draggedNode.parent().nonempty() && draggedNode.parent().first().grabbed()) return;
+      if (this.isNodeInsideParent(draggedNode, parent as cytoscape.NodeSingular)) {
+        assignedParent = parent as cytoscape.NodeSingular;
+      }
+    });
+    return assignedParent;
+  }
+
+  private isNodeInsideParent(node: cytoscape.NodeSingular, parent: cytoscape.NodeSingular): boolean {
+    const parentBox = parent.boundingBox();
+    const nodePos = node.position();
+    return (
+      nodePos.x >= parentBox.x1 &&
+      nodePos.x <= parentBox.x2 &&
+      nodePos.y >= parentBox.y1 &&
+      nodePos.y <= parentBox.y2
+    );
   }
 
   public showGroupEditor(nodeOrId: cytoscape.NodeSingular | string): void {
