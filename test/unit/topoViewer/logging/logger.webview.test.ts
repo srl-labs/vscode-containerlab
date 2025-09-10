@@ -4,6 +4,8 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import path from 'path';
 import { describe, it, afterEach } from 'mocha';
+import fs from 'fs';
+import vm from 'vm';
 
 describe('logger (webview)', () => {
   const loggerPath = path.join(
@@ -27,9 +29,20 @@ describe('logger (webview)', () => {
 
   it('posts messages to VS Code extension host', () => {
     const postMessage = sinon.spy();
-    (global as any).window = { vscode: { postMessage } };
+    const resolved = `${loggerPath}.js`;
+    const code = fs.readFileSync(resolved, 'utf8');
+    const shared: any = {};
+    const sandbox: any = {
+      exports: shared,
+      module: { exports: shared },
+      require,
+      __filename: resolved,
+      __dirname: path.dirname(resolved),
+      window: { vscode: { postMessage } }
+    };
+    vm.runInNewContext(code, sandbox, { filename: resolved });
 
-    const { log } = require(loggerPath);
+    const { log } = sandbox.exports as typeof import('../../../../src/topoViewer/logging/logger');
     log.error('boom');
 
     expect(postMessage.calledOnce).to.be.true;
@@ -42,9 +55,20 @@ describe('logger (webview)', () => {
 
   it('stringifies objects before sending', () => {
     const postMessage = sinon.spy();
-    (global as any).window = { vscode: { postMessage } };
+    const resolved = `${loggerPath}.js`;
+    const code = fs.readFileSync(resolved, 'utf8');
+    const shared: any = {};
+    const sandbox: any = {
+      exports: shared,
+      module: { exports: shared },
+      require,
+      __filename: resolved,
+      __dirname: path.dirname(resolved),
+      window: { vscode: { postMessage } }
+    };
+    vm.runInNewContext(code, sandbox, { filename: resolved });
 
-    const { log } = require(loggerPath);
+    const { log } = sandbox.exports as typeof import('../../../../src/topoViewer/logging/logger');
     log.info({ a: 1 });
 
     const arg = postMessage.firstCall.args[0];
