@@ -2,6 +2,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import sonarjs from 'eslint-plugin-sonarjs';
+import aggregateComplexity from './eslint-plugin-aggregate-complexity.mjs';
 
 export default [
   /* ─── files & globs ESLint must ignore ─────────────────────────── */
@@ -44,7 +45,7 @@ export default [
         fetch: 'readonly'
       }
     },
-    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs },
+    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, 'aggregate-complexity': aggregateComplexity },
     // merge the two rule-sets
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -61,7 +62,8 @@ export default [
       'sonarjs/no-identical-functions': 'warn',
       'sonarjs/no-duplicate-string': 'warn',
       'sonarjs/no-hardcoded-ip': 'off',
-      'sonarjs/no-alphabetical-sort': 'off'
+      'sonarjs/no-alphabetical-sort': 'off',
+      'aggregate-complexity/aggregate-complexity': ['warn', { max: 15 }]
 
     }
   }
