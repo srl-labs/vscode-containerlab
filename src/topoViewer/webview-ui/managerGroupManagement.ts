@@ -6,6 +6,7 @@ const PANEL_PARENT_ID = 'panel-node-editor-parent' as const;
 const PANEL_EL_PREFIX = 'panel-node-editor-parent-' as const;
 const LABEL_BUTTON_TEXT_ID = `${PANEL_EL_PREFIX}label-dropdown-button-text` as const;
 const CLASS_EMPTY_GROUP = 'empty-group' as const;
+const DEFAULT_LABEL_POS = 'top-center' as const;
 import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 import { GROUP_LABEL_POSITIONS } from '../utilities/labelPositions';
@@ -163,8 +164,10 @@ export class ManagerGroupManagement {
       borderWidth: 0.5,
       borderStyle: 'solid' as 'solid',
       borderRadius: 0,
-      color: '#ebecf0'
+      color: '#ebecf0',
+      labelPosition: DEFAULT_LABEL_POS
     };
+    this.updateLabelPositionClass(newParent, DEFAULT_LABEL_POS);
     this.groupStyleManager.updateGroupStyle(newParentId, defaultStyle);
 
     this.showGroupEditor(newParentId);
@@ -404,8 +407,33 @@ export class ManagerGroupManagement {
     const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement | null;
     if (updateButton) updateButton.addEventListener('click', autoUpdateGroup);
 
-    const dropdownButton = panel.querySelector('#panel-node-editor-parent-label-dropdown button');
-    if (dropdownButton) dropdownButton.addEventListener('click', () => this.panelNodeEditorParentToggleDropdown());
+    this.initializeLabelDropdown(autoUpdateGroup);
+  }
+
+  private initializeLabelDropdown(autoUpdateGroup: () => void): void {
+    const menu = document.getElementById(`${PANEL_EL_PREFIX}label-dropdown-menu`) as (HTMLElement & {
+      dataset: DOMStringMap;
+    }) | null;
+    const button = document.querySelector('#panel-node-editor-parent-label-dropdown button') as HTMLButtonElement | null;
+    const buttonTextEl = document.getElementById(LABEL_BUTTON_TEXT_ID);
+    if (!menu || !button || !buttonTextEl) {
+      log.error('Label dropdown elements not found');
+      return;
+    }
+    if (!menu.dataset.listenersAttached) {
+      const items = menu.querySelectorAll('.dropdown-item');
+      items.forEach(item => {
+        item.addEventListener('click', event => {
+          event.preventDefault();
+          const selectedText = item.textContent || '';
+          buttonTextEl.textContent = selectedText;
+          menu.classList.add('hidden');
+          autoUpdateGroup();
+        });
+      });
+      button.addEventListener('click', () => menu.classList.toggle('hidden'));
+      menu.dataset.listenersAttached = 'true';
+    }
   }
 
   private attachInputListeners(panel: HTMLElement, autoUpdateGroup: () => void): void {
@@ -454,28 +482,12 @@ export class ManagerGroupManagement {
   }
 
   public panelNodeEditorParentToggleDropdown(): void {
-    const menu = document.getElementById(`${PANEL_EL_PREFIX}label-dropdown-menu`) as (HTMLElement & {
-      dataset: DOMStringMap;
-    }) | null;
+    const menu = document.getElementById(`${PANEL_EL_PREFIX}label-dropdown-menu`);
     if (!menu) {
       log.error('Dropdown menu element not found');
       return;
     }
-    if (!menu.dataset.listenersAttached) {
-      const items = menu.querySelectorAll('.dropdown-item');
-      items.forEach(item => {
-        item.addEventListener('click', function (this: HTMLElement, event: Event) {
-          event.preventDefault();
-          const selectedText = this.textContent || '';
-          const buttonTextEl = document.getElementById(LABEL_BUTTON_TEXT_ID);
-          if (buttonTextEl) {
-            buttonTextEl.textContent = selectedText;
-          }
-          menu.classList.add('hidden');
-        });
-      });
-      menu.dataset.listenersAttached = 'true';
-    }
+    this.initializeLabelDropdown(() => this.nodeParentPropertiesUpdate());
     menu.classList.toggle('hidden');
   }
 
@@ -518,16 +530,19 @@ export class ManagerGroupManagement {
       borderWidth: this.getNumericValue(inputs.borderWidthEl),
       borderStyle: inputs.borderStyleEl?.value as 'solid' | 'dotted' | 'dashed' | 'double' | undefined,
       borderRadius: this.getNumericValue(inputs.borderRadiusEl),
-      color: inputs.textColorEl?.value
+      color: inputs.textColorEl?.value,
+      labelPosition: inputs.labelPositionEl.textContent?.trim().toLowerCase()
     };
   }
 
   private updateLabelPositionClass(node: cytoscape.NodeSingular, labelPos: string): void {
-    const validLabelClasses = ['top-center', 'top-left', 'top-right', 'bottom-center', 'bottom-left', 'bottom-right'];
-    validLabelClasses.forEach(cls => node.removeClass(cls));
-    if (validLabelClasses.includes(labelPos)) {
+    GROUP_LABEL_POSITIONS.forEach(cls => node.removeClass(cls));
+    if (GROUP_LABEL_POSITIONS.includes(labelPos as any)) {
       node.addClass(labelPos);
+      node.data('groupLabelPos', labelPos);
       log.debug(`Applied label position '${labelPos}' to node: ${node.id()}`);
+    } else {
+      node.removeData('groupLabelPos');
     }
   }
 

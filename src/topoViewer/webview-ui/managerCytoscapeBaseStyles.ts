@@ -100,18 +100,18 @@ const cytoscapeStylesBase: any[] = [
   {
     selector: 'node:parent.top-left',
     style: {
-      'text-halign': 'right',
+      'text-halign': 'left',
       'text-valign': 'top',
-      'text-margin-x': (ele: any) => -ele.outerWidth(),
+      'text-margin-x': -4,
       'text-margin-y': -2
     }
   },
   {
     selector: 'node:parent.top-right',
     style: {
-      'text-halign': 'left',
+      'text-halign': 'right',
       'text-valign': 'top',
-      'text-margin-x': (ele: any) => ele.outerWidth(),
+      'text-margin-x': 4,
       'text-margin-y': -2
     }
   },
@@ -126,18 +126,18 @@ const cytoscapeStylesBase: any[] = [
   {
     selector: 'node:parent.bottom-left',
     style: {
-      'text-halign': 'right',
+      'text-halign': 'left',
       'text-valign': 'bottom',
-      'text-margin-x': (ele: any) => -ele.outerWidth(),
+      'text-margin-x': -4,
       'text-margin-y': 2
     }
   },
   {
     selector: 'node:parent.bottom-right',
     style: {
-      'text-halign': 'left',
+      'text-halign': 'right',
       'text-valign': 'bottom',
-      'text-margin-x': (ele: any) => ele.outerWidth(),
+      'text-margin-x': 4,
       'text-margin-y': 2
     }
   },

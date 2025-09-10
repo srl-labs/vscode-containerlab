@@ -182,11 +182,11 @@ class TopologyWebviewController {
     }
     setTimeout(() => this.initializeContextMenu(mode), 100);
 
-    setTimeout(() => {
-      this.groupStyleManager?.loadGroupStyles().catch((error) => {
-        log.error(`Failed to load group style annotations: ${error}`);
-      });
-    }, 500);
+    try {
+      await this.groupStyleManager.loadGroupStyles();
+    } catch (error) {
+      log.error(`Failed to load group style annotations: ${error}`);
+    }
   }
 
 

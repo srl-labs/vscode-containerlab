@@ -58,6 +58,7 @@ export class ManagerGroupStyle {
         'corner-radius': '',
         color: ''
       });
+      this.applyLabelPositionClass(node, '');
     }
     this.saveDebounced();
   }
@@ -73,6 +74,9 @@ export class ManagerGroupStyle {
     }
 
     node.style(this.buildCssFromStyle(style));
+    if (style.labelPosition) {
+      this.applyLabelPositionClass(node, style.labelPosition);
+    }
   }
 
   private createMissingGroupNode(id: string) {
@@ -114,6 +118,18 @@ export class ManagerGroupStyle {
     }
     if (style.color) css['color'] = style.color;
     return css;
+  }
+
+  private applyLabelPositionClass(node: cytoscape.NodeSingular, labelPos: string): void {
+    const validLabelClasses = ['top-center', 'top-left', 'top-right', 'bottom-center', 'bottom-left', 'bottom-right'];
+    validLabelClasses.forEach(cls => node.removeClass(cls));
+    if (validLabelClasses.includes(labelPos)) {
+      node.addClass(labelPos);
+      node.data('groupLabelPos', labelPos);
+      log.debug(`Applied label position '${labelPos}' to group node ${node.id()}`);
+    } else {
+      node.removeData('groupLabelPos');
+    }
   }
 
   public async loadGroupStyles(): Promise<void> {
