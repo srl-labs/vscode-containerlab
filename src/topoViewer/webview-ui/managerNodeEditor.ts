@@ -9,6 +9,21 @@ import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import type { ClabTopology } from '../types/topoViewerType';
 
+// Reuse common literal types to avoid duplicate strings
+type ExecTarget = 'container' | 'host';
+type ExecPhase = 'on-enter' | 'on-exit';
+type RestartPolicy = 'no' | 'on-failure' | 'always' | 'unless-stopped';
+type ImagePullPolicy = 'IfNotPresent' | 'Never' | 'Always';
+type Runtime = 'docker' | 'podman' | 'ignite';
+
+// Common CSS classes and element IDs
+const CLASS_HIDDEN = 'hidden' as const;
+const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
+const ID_PANEL_EDITOR_CANCEL = 'panel-node-editor-cancel' as const;
+const ID_PANEL_EDITOR_SAVE = 'panel-node-editor-save' as const;
+const ID_NODE_CERT_ISSUE = 'node-cert-issue' as const;
+const ID_CERT_OPTIONS = 'cert-options' as const;
+
 /**
  * Node properties that map to Containerlab configuration
  */
@@ -35,7 +50,7 @@ export interface NodeProperties {
   entrypoint?: string;
   cmd?: string;
   exec?: string[];
-  'restart-policy'?: 'no' | 'on-failure' | 'always' | 'unless-stopped';
+  'restart-policy'?: RestartPolicy;
   'auto-remove'?: boolean;
   'startup-delay'?: number;
 
@@ -72,8 +87,8 @@ export interface NodeProperties {
     timeout?: number;
     retries?: number;
   };
-  'image-pull-policy'?: 'IfNotPresent' | 'Never' | 'Always';
-  runtime?: 'docker' | 'podman' | 'ignite';
+  'image-pull-policy'?: ImagePullPolicy;
+  runtime?: Runtime;
 
   // Metadata
   inherited?: string[];
@@ -87,22 +102,22 @@ export interface NodeProperties {
       }>;
       exec?: Array<{
         command: string;
-        target?: 'container' | 'host';
-        phase?: 'on-enter' | 'on-exit';
+        target?: ExecTarget;
+        phase?: ExecPhase;
       }>;
     };
     'create-links'?: {
       exec?: Array<{
         command: string;
-        target?: 'container' | 'host';
-        phase?: 'on-enter' | 'on-exit';
+        target?: ExecTarget;
+        phase?: ExecPhase;
       }>;
     };
     configure?: {
       exec?: Array<{
         command: string;
-        target?: 'container' | 'host';
-        phase?: 'on-enter' | 'on-exit';
+        target?: ExecTarget;
+        phase?: ExecPhase;
       }>;
     };
   };
@@ -520,9 +535,9 @@ export class ManagerNodeEditor {
         // Show corresponding tab content
         tabContents?.forEach(content => {
           if (content.id === `tab-${targetTab}`) {
-            content.classList.remove('hidden');
+            content.classList.remove(CLASS_HIDDEN);
           } else {
-            content.classList.add('hidden');
+            content.classList.add(CLASS_HIDDEN);
           }
         });
       });
@@ -534,25 +549,25 @@ export class ManagerNodeEditor {
    */
   private setupEventHandlers(): void {
     // Close button
-    const closeBtn = document.getElementById('panel-node-editor-close');
+    const closeBtn = document.getElementById(ID_PANEL_EDITOR_CLOSE);
     closeBtn?.addEventListener('click', () => this.close());
 
     // Cancel button
-    const cancelBtn = document.getElementById('panel-node-editor-cancel');
+    const cancelBtn = document.getElementById(ID_PANEL_EDITOR_CANCEL);
     cancelBtn?.addEventListener('click', () => this.close());
 
     // Save button
-    const saveBtn = document.getElementById('panel-node-editor-save');
+    const saveBtn = document.getElementById(ID_PANEL_EDITOR_SAVE);
     saveBtn?.addEventListener('click', () => this.save());
 
     // Certificate checkbox toggle
-    const certCheckbox = document.getElementById('node-cert-issue') as HTMLInputElement;
-    const certOptions = document.getElementById('cert-options');
+    const certCheckbox = document.getElementById(ID_NODE_CERT_ISSUE) as HTMLInputElement;
+    const certOptions = document.getElementById(ID_CERT_OPTIONS);
     certCheckbox?.addEventListener('change', () => {
       if (certCheckbox.checked) {
-        certOptions?.classList.remove('hidden');
+        certOptions?.classList.remove(CLASS_HIDDEN);
       } else {
-        certOptions?.classList.add('hidden');
+        certOptions?.classList.add(CLASS_HIDDEN);
       }
     });
   }

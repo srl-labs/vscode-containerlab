@@ -19,7 +19,28 @@ import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 log.info(`TopoViewer Version: ${topoViewerVersion}`);
 
 type DummyContext = { dummyCounter: number; dummyLinkMap: Map<any, string> };
-type SpecialNodeType = 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'bridge' | 'ovs-bridge' | 'dummy';
+const TYPES = {
+  HOST: 'host',
+  MGMT_NET: 'mgmt-net',
+  MACVLAN: 'macvlan',
+  VXLAN: 'vxlan',
+  VXLAN_STITCH: 'vxlan-stitch',
+  BRIDGE: 'bridge',
+  OVS_BRIDGE: 'ovs-bridge',
+  DUMMY: 'dummy',
+} as const;
+type SpecialNodeType = typeof TYPES[keyof typeof TYPES];
+
+// Common string literals used across this adaptor
+const PREFIX_MACVLAN = 'macvlan:';
+const PREFIX_VXLAN = 'vxlan:';
+const PREFIX_VXLAN_STITCH = 'vxlan-stitch:';
+const PREFIX_DUMMY = 'dummy';
+const STR_HOST = 'host';
+const STR_MGMT_NET = 'mgmt-net';
+const NODE_KIND_BRIDGE = TYPES.BRIDGE;
+const NODE_KIND_OVS_BRIDGE = TYPES.OVS_BRIDGE;
+const SINGLE_ENDPOINT_TYPES = [STR_HOST, STR_MGMT_NET, TYPES.MACVLAN, TYPES.DUMMY, TYPES.VXLAN, TYPES.VXLAN_STITCH];
 
 /**
  * TopoViewerAdaptorClab is responsible for adapting Containerlab YAML configurations
@@ -312,10 +333,10 @@ export class TopoViewerAdaptorClab {
     if (typeof endpoint === 'string') {
       // Special handling for macvlan endpoints
       if (
-        endpoint.startsWith('macvlan:') ||
-        endpoint.startsWith('vxlan:') ||
-        endpoint.startsWith('vxlan-stitch:') ||
-        endpoint.startsWith('dummy')
+        endpoint.startsWith(PREFIX_MACVLAN) ||
+        endpoint.startsWith(PREFIX_VXLAN) ||
+        endpoint.startsWith(PREFIX_VXLAN_STITCH) ||
+        endpoint.startsWith(PREFIX_DUMMY)
       ) {
         return { node: endpoint, iface: '' };
       }
@@ -418,7 +439,7 @@ export class TopoViewerAdaptorClab {
       return { endA: a, endB: b, type: t };
     }
 
-    if (['host', 'mgmt-net', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t ?? '')) {
+    if (SINGLE_ENDPOINT_TYPES.includes(t ?? '')) {
       const a = linkObj?.endpoint;
       if (!a) return null;
       const special = this.normalizeSingleTypeToSpecialId(t!, linkObj, ctx);
@@ -514,7 +535,7 @@ export class TopoViewerAdaptorClab {
     const topoViewerRole =
       nodeAnn?.icon ||
       mergedNode.labels?.['topoViewer-role'] ||
-      (mergedNode.kind === 'bridge' || mergedNode.kind === 'ovs-bridge' ? 'bridge' : 'router');
+      (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE ? NODE_KIND_BRIDGE : 'router');
 
     const element: CyElement = {
       group: 'nodes',
@@ -673,7 +694,7 @@ export class TopoViewerAdaptorClab {
     const specialNodes = new Map<string, { type: SpecialNodeType; label: string }>();
     if (!nodes) return specialNodes;
     for (const [nodeName, nodeData] of Object.entries(nodes)) {
-      if (nodeData.kind === 'bridge' || nodeData.kind === 'ovs-bridge') {
+      if (nodeData.kind === NODE_KIND_BRIDGE || nodeData.kind === NODE_KIND_OVS_BRIDGE) {
         specialNodes.set(nodeName, { type: nodeData.kind as any, label: nodeName });
       }
     }
@@ -692,8 +713,8 @@ export class TopoViewerAdaptorClab {
   private determineSpecialNode(node: string, iface: string): { id: string; type: string; label: string } | null {
     if (node === 'host') return { id: `host:${iface}`, type: 'host', label: `host:${iface || 'host'}` };
     if (node === 'mgmt-net') return { id: `mgmt-net:${iface}`, type: 'mgmt-net', label: `mgmt-net:${iface || 'mgmt-net'}` };
-    if (node.startsWith('macvlan:')) return { id: node, type: 'macvlan', label: node };
-    if (node.startsWith('vxlan-stitch:')) return { id: node, type: 'vxlan-stitch', label: node };
+    if (node.startsWith(PREFIX_MACVLAN)) return { id: node, type: 'macvlan', label: node };
+    if (node.startsWith(PREFIX_VXLAN_STITCH)) return { id: node, type: 'vxlan-stitch', label: node };
     if (node.startsWith('vxlan:')) return { id: node, type: 'vxlan', label: node };
     if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: 'dummy' };
     return null;
@@ -721,8 +742,8 @@ export class TopoViewerAdaptorClab {
     const { node, iface } = this.splitEndpoint(end);
     if (node === 'host') return `host:${iface}`;
     if (node === 'mgmt-net') return `mgmt-net:${iface}`;
-    if (node.startsWith('macvlan:')) return node;
-    if (node.startsWith('vxlan-stitch:')) return node;
+    if (node.startsWith(PREFIX_MACVLAN)) return node;
+    if (node.startsWith(PREFIX_VXLAN_STITCH)) return node;
     if (node.startsWith('vxlan:')) return node;
     if (node.startsWith('dummy')) return node;
     return null;
@@ -825,8 +846,8 @@ export class TopoViewerAdaptorClab {
   private resolveActualNode(node: string, iface: string): string {
     if (node === 'host') return `host:${iface}`;
     if (node === 'mgmt-net') return `mgmt-net:${iface}`;
-    if (node.startsWith('macvlan:')) return node;
-    if (node.startsWith('vxlan-stitch:')) return node;
+    if (node.startsWith(PREFIX_MACVLAN)) return node;
+    if (node.startsWith(PREFIX_VXLAN_STITCH)) return node;
     if (node.startsWith('vxlan:')) return node;
     if (node.startsWith('dummy')) return node;
     return node;
@@ -836,9 +857,9 @@ export class TopoViewerAdaptorClab {
     if (
       node === 'host' ||
       node === 'mgmt-net' ||
-      node.startsWith('macvlan:') ||
+      node.startsWith(PREFIX_MACVLAN) ||
       node.startsWith('vxlan:') ||
-      node.startsWith('vxlan-stitch:') ||
+      node.startsWith(PREFIX_VXLAN_STITCH) ||
       node.startsWith('dummy')
     ) {
       return actualNode;
@@ -907,7 +928,7 @@ export class TopoViewerAdaptorClab {
       return this.validateVethLink(linkObj);
     }
 
-    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(linkType)) {
+    if (SINGLE_ENDPOINT_TYPES.includes(linkType)) {
       return this.validateSpecialLink(linkType, linkObj);
     }
 
@@ -1004,7 +1025,7 @@ export class TopoViewerAdaptorClab {
     return (
       node === 'host' ||
       node === 'mgmt-net' ||
-      node.startsWith('macvlan:') ||
+      node.startsWith(PREFIX_MACVLAN) ||
       node.startsWith('dummy')
     );
   }

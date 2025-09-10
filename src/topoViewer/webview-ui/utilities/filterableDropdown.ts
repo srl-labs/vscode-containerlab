@@ -92,6 +92,9 @@ export function createFilterableDropdown(
 
   // Function to populate dropdown options
   const populateOptions = (filteredOptions: string[]) => {
+    const CLASS_HIGHLIGHT = 'bg-highlight';
+    const COLOR_ACTIVE_BG = 'var(--vscode-list-activeSelectionBackground)';
+    const COLOR_TRANSPARENT = 'transparent';
     dropdownMenu.innerHTML = '';
 
     filteredOptions.forEach(option => {
@@ -106,12 +109,12 @@ export function createFilterableDropdown(
 
       // Add hover effect
       optionElement.addEventListener('mouseenter', () => {
-        optionElement.classList.add('bg-highlight');
-        (optionElement as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+        optionElement.classList.add(CLASS_HIGHLIGHT);
+        (optionElement as HTMLElement).style.backgroundColor = COLOR_ACTIVE_BG;
       });
       optionElement.addEventListener('mouseleave', () => {
-        optionElement.classList.remove('bg-highlight');
-        (optionElement as HTMLElement).style.backgroundColor = 'transparent';
+        optionElement.classList.remove(CLASS_HIGHLIGHT);
+        (optionElement as HTMLElement).style.backgroundColor = COLOR_TRANSPARENT;
       });
 
       optionElement.addEventListener('click', (e) => {
@@ -233,21 +236,24 @@ export function createFilterableDropdown(
   filterInput.addEventListener('keydown', (e) => {
     const items = dropdownMenu.querySelectorAll('.dropdown-item') as NodeListOf<HTMLElement>;
     let currentIndex = -1;
+    const CLASS_HIGHLIGHT = 'bg-highlight';
+    const COLOR_ACTIVE_BG = 'var(--vscode-list-activeSelectionBackground)';
+    const COLOR_TRANSPARENT = 'transparent';
     items.forEach((item, index) => {
-      if (item.classList.contains('bg-highlight')) currentIndex = index;
+      if (item.classList.contains(CLASS_HIGHLIGHT)) currentIndex = index;
     });
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         if (currentIndex >= 0) {
-          items[currentIndex].classList.remove('bg-highlight');
-          (items[currentIndex] as HTMLElement).style.backgroundColor = 'transparent';
+          items[currentIndex].classList.remove(CLASS_HIGHLIGHT);
+          (items[currentIndex] as HTMLElement).style.backgroundColor = COLOR_TRANSPARENT;
         }
         currentIndex = Math.min(currentIndex + 1, items.length - 1);
         if (items[currentIndex]) {
-          items[currentIndex].classList.add('bg-highlight');
-          (items[currentIndex] as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+          items[currentIndex].classList.add(CLASS_HIGHLIGHT);
+          (items[currentIndex] as HTMLElement).style.backgroundColor = COLOR_ACTIVE_BG;
           items[currentIndex].scrollIntoView({ block: 'nearest' });
         }
         dropdownMenu.classList.remove('hidden');
@@ -255,13 +261,13 @@ export function createFilterableDropdown(
       case 'ArrowUp':
         e.preventDefault();
         if (currentIndex >= 0) {
-          items[currentIndex].classList.remove('bg-highlight');
-          (items[currentIndex] as HTMLElement).style.backgroundColor = 'transparent';
+          items[currentIndex].classList.remove(CLASS_HIGHLIGHT);
+          (items[currentIndex] as HTMLElement).style.backgroundColor = COLOR_TRANSPARENT;
         }
         currentIndex = Math.max(currentIndex - 1, 0);
         if (items[currentIndex]) {
-          items[currentIndex].classList.add('bg-highlight');
-          (items[currentIndex] as HTMLElement).style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+          items[currentIndex].classList.add(CLASS_HIGHLIGHT);
+          (items[currentIndex] as HTMLElement).style.backgroundColor = COLOR_ACTIVE_BG;
           items[currentIndex].scrollIntoView({ block: 'nearest' });
         }
         dropdownMenu.classList.remove('hidden');

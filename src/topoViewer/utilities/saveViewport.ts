@@ -21,24 +21,53 @@ type CanonicalLinkKey = {
   udpPort?: string | number;
 };
 
+// Common string literals used in multiple places in this module
+const STR_HOST = 'host';
+const STR_MGMT_NET = 'mgmt-net';
+const PREFIX_MACVLAN = 'macvlan:';
+const PREFIX_VXLAN_STITCH = 'vxlan-stitch:';
+const PREFIX_VXLAN = 'vxlan:';
+const PREFIX_DUMMY = 'dummy';
+const TYPE_MACVLAN = 'macvlan' as const;
+const TYPE_VXLAN_STITCH = 'vxlan-stitch' as const;
+const TYPE_VXLAN = 'vxlan' as const;
+const TYPE_DUMMY = 'dummy' as const;
+const TYPE_UNKNOWN = 'unknown' as const;
+
+// Key sets used for brief/extended representations
+const BRIEF_REMOVE_KEYS = ['host-interface', 'mode', 'remote', 'vni', 'udp-port', 'mtu', 'vars', 'labels'] as const;
+const VETH_REMOVE_KEYS = ['host-interface', 'mode', 'remote', 'vni', 'udp-port'] as const;
+
+// Common type groups
+const SINGLE_ENDPOINT_TYPES = new Set<CanonicalLinkKey['type']>([
+  STR_HOST,
+  STR_MGMT_NET,
+  TYPE_MACVLAN,
+  TYPE_DUMMY,
+  TYPE_VXLAN,
+  TYPE_VXLAN_STITCH,
+]);
+const VX_TYPES = new Set<CanonicalLinkKey['type']>([TYPE_VXLAN, TYPE_VXLAN_STITCH]);
+const HOSTY_TYPES = new Set<CanonicalLinkKey['type']>([STR_MGMT_NET, STR_HOST, TYPE_MACVLAN]);
+
 function endpointIsSpecial(ep: CanonicalEndpoint | string): boolean {
   const epStr = typeof ep === 'string' ? ep : `${ep.node}:${ep.iface}`;
   return (
     isSpecialEndpoint(epStr) ||
-    epStr.startsWith('macvlan:') ||
-    epStr.startsWith('vxlan:') ||
-    epStr.startsWith('vxlan-stitch:') ||
-    epStr.startsWith('dummy')
+    epStr.startsWith(PREFIX_MACVLAN) ||
+    epStr.startsWith(PREFIX_VXLAN) ||
+    epStr.startsWith(PREFIX_VXLAN_STITCH) ||
+    epStr.startsWith(PREFIX_DUMMY)
   );
 }
 
 function splitEndpointLike(endpoint: string | { node: string; interface?: string }): CanonicalEndpoint {
   if (typeof endpoint === 'string') {
     if (
-      endpoint.startsWith('macvlan:') ||
-      endpoint.startsWith('dummy') ||
-      endpoint.startsWith('vxlan:') ||
-      endpoint.startsWith('vxlan-stitch:')
+      endpoint.startsWith(PREFIX_MACVLAN) ||
+      endpoint.startsWith(PREFIX_DUMMY) ||
+      endpoint.startsWith(PREFIX_VXLAN) ||
+      endpoint.startsWith(PREFIX_VXLAN_STITCH)
     ) {
       return { node: endpoint, iface: '' };
     }
@@ -54,13 +83,13 @@ function splitEndpointLike(endpoint: string | { node: string; interface?: string
 
 function linkTypeFromSpecial(special: CanonicalEndpoint): CanonicalLinkKey['type'] {
   const { node } = special;
-  if (node === 'host') return 'host';
-  if (node === 'mgmt-net') return 'mgmt-net';
-  if (node.startsWith('macvlan:')) return 'macvlan';
-  if (node.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
-  if (node.startsWith('vxlan:')) return 'vxlan';
-  if (node.startsWith('dummy')) return 'dummy';
-  return 'unknown';
+  if (node === STR_HOST) return STR_HOST;
+  if (node === STR_MGMT_NET) return STR_MGMT_NET;
+  if (node.startsWith(PREFIX_MACVLAN)) return TYPE_MACVLAN;
+  if (node.startsWith(PREFIX_VXLAN_STITCH)) return TYPE_VXLAN_STITCH;
+  if (node.startsWith(PREFIX_VXLAN)) return TYPE_VXLAN;
+  if (node.startsWith(PREFIX_DUMMY)) return TYPE_DUMMY;
+  return TYPE_UNKNOWN;
 }
 
 function selectNonSpecial(a: CanonicalEndpoint, b?: CanonicalEndpoint): CanonicalEndpoint {
@@ -140,7 +169,7 @@ function canonicalFromYamlLink(linkItem: YAML.YAMLMap): CanonicalLinkKey | null 
   if (typeStr) {
     const t = typeStr as CanonicalLinkKey['type'];
     if (t === 'veth') return parseExtendedVeth(linkItem);
-    if (['mgmt-net', 'host', 'macvlan', 'dummy', 'vxlan', 'vxlan-stitch'].includes(t)) {
+    if (SINGLE_ENDPOINT_TYPES.has(t)) {
       return parseExtendedSingle(linkItem, t);
     }
     return null;
@@ -256,7 +285,7 @@ function createNodeAnnotation(
 function createCloudNodeAnnotation(cloudNode: any): CloudNodeAnnotation {
   const cloudNodeAnnotation: CloudNodeAnnotation = {
     id: cloudNode.data.id,
-    type: cloudNode.data.extraData?.kind || 'host',
+    type: cloudNode.data.extraData?.kind || STR_HOST,
     label: cloudNode.data.name || cloudNode.data.id,
     position: {
       x: cloudNode.position?.x || 0,
@@ -558,7 +587,7 @@ async function writeYamlFile(
 }
 
 function determineChosenType(payloadKey: CanonicalLinkKey, extra: any): CanonicalLinkKey['type'] {
-  const validTypes = new Set<CanonicalLinkKey['type']>(['veth', 'mgmt-net', 'host', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
+  const validTypes = new Set<CanonicalLinkKey['type']>(['veth', STR_MGMT_NET, STR_HOST, TYPE_MACVLAN, TYPE_VXLAN, TYPE_VXLAN_STITCH, TYPE_DUMMY]);
   if (extra.extType && validTypes.has(extra.extType)) return extra.extType;
   return payloadKey.type === 'unknown' ? 'veth' : payloadKey.type;
 }
@@ -599,7 +628,7 @@ function applyBriefFormat(map: YAML.YAMLMap, data: any, doc: YAML.Document.Parse
   endpointsNode.flow = true;
   map.set('endpoints', endpointsNode);
   if ((map as any).has && (map as any).has('endpoint', true)) (map as any).delete('endpoint');
-  ['host-interface', 'mode', 'remote', 'vni', 'udp-port', 'mtu', 'vars', 'labels'].forEach(k => {
+  BRIEF_REMOVE_KEYS.forEach(k => {
     if ((map as any).has && (map as any).has(k, true)) (map as any).delete(k);
   });
 }
@@ -619,7 +648,7 @@ function applyExtendedVeth(map: YAML.YAMLMap, data: any, extra: any, doc: YAML.D
   endpointsNode.add(epB);
   map.set('endpoints', endpointsNode);
   if ((map as any).has && (map as any).has('endpoint', true)) (map as any).delete('endpoint');
-  ['host-interface', 'mode', 'remote', 'vni', 'udp-port'].forEach(k => {
+  VETH_REMOVE_KEYS.forEach(k => {
     if ((map as any).has && (map as any).has(k, true)) (map as any).delete(k);
   });
 }
@@ -663,7 +692,7 @@ function applyHostInterface(
   chosenType: CanonicalLinkKey['type'],
   hostInterface: any,
 ): void {
-  if (chosenType === 'mgmt-net' || chosenType === 'host' || chosenType === 'macvlan') {
+  if (HOSTY_TYPES.has(chosenType)) {
     setOrDelete(doc, map, 'host-interface', hostInterface);
   } else if ((map as any).has && (map as any).has('host-interface', true)) {
     (map as any).delete('host-interface');
@@ -676,7 +705,7 @@ function applyMacvlanMode(
   chosenType: CanonicalLinkKey['type'],
   mode: any,
 ): void {
-  if (chosenType === 'macvlan') {
+  if (chosenType === TYPE_MACVLAN) {
     setOrDelete(doc, map, 'mode', mode);
   } else if ((map as any).has && (map as any).has('mode', true)) {
     (map as any).delete('mode');
@@ -689,7 +718,7 @@ function applyVxlanOptions(
   chosenType: CanonicalLinkKey['type'],
   extra: any,
 ): void {
-  if (chosenType === 'vxlan' || chosenType === 'vxlan-stitch') {
+  if (VX_TYPES.has(chosenType)) {
     setOrDelete(doc, map, 'remote', extra.extRemote);
     setOrDelete(doc, map, 'vni', extra.extVni !== '' ? extra.extVni : undefined);
     setOrDelete(doc, map, 'udp-port', extra.extUdpPort !== '' ? extra.extUdpPort : undefined);

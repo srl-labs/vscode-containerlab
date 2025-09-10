@@ -19,6 +19,9 @@ import { saveViewport } from '../utilities/saveViewport';
 import { annotationsManager } from '../utilities/annotationsManager';
 import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
 
+// Common configuration section key used throughout this module
+const CONFIG_SECTION = 'containerlab.editor';
+
 interface WebviewMessage {
   type?: string;
   requestId?: string;
@@ -569,7 +572,8 @@ topology:
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
     await refreshDockerImages(this.context);
-    const config = vscode.workspace.getConfiguration('containerlab.editor');
+    const CONFIG_SECTION = 'containerlab.editor';
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     const ifacePatternMapping = config.get<Record<string, string>>('interfacePatternMapping', {});
     const updateLinkEndpointsOnKindChange = config.get<boolean>(
       'updateLinkEndpointsOnKindChange',
@@ -1230,7 +1234,7 @@ topology:
       'topo-editor-save-custom-node': async () => {
         try {
           const data = payloadObj;
-          const config = vscode.workspace.getConfiguration('containerlab.editor');
+          const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
           let customNodes = config.get<any[]>('customNodes', []);
           if (data.setDefault) {
             customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
@@ -1266,7 +1270,7 @@ topology:
       'topo-editor-delete-custom-node': async () => {
         try {
           const data = payloadObj;
-          const config = vscode.workspace.getConfiguration('containerlab.editor');
+          const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
           const customNodes = config.get<any[]>('customNodes', []);
           const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
           await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);

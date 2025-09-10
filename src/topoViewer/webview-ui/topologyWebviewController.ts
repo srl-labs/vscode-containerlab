@@ -53,6 +53,13 @@ class TopologyWebviewController {
   private isEdgeHandlerActive: boolean = false;
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
+  // Reused UI literals to avoid duplicate strings
+  public static readonly UI_FILL_COLOR = 'rgba(31, 31, 31, 0.75)';
+  public static readonly UI_ACTIVE_FILL_COLOR = 'rgba(66, 88, 255, 1)';
+  public static readonly UI_ITEM_COLOR = 'white';
+  public static readonly UI_ITEM_TEXT_SHADOW = 'rgba(61, 62, 64, 1)';
+  public static readonly UI_OPEN_EVENT = 'cxttap';
+
   public messageSender: VscodeMessageSender;
   public saveManager: ManagerSaveTopo;
   public undoManager: ManagerUndo;
@@ -576,13 +583,14 @@ class TopologyWebviewController {
               return;
             }
             // Remove free text
-            this.freeTextManager?.removeFreeTextAnnotation(ele.id());
+    this.freeTextManager?.removeFreeTextAnnotation(ele.id());
           }
         }
       ],
       menuRadius: 60, // smaller fixed radius for text menu
-      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      // Common UI colours/events re-used across menus
+      fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command
       separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -590,9 +598,9 @@ class TopologyWebviewController {
       adaptativeNodeSpotlightRadius: false, // DON'T adapt to node size - keep it small
       minSpotlightRadius: 20, // fixed small spotlight
       maxSpotlightRadius: 20, // fixed small spotlight
-      openMenuEvents: 'cxttap', // single right-click to open menu
-      itemColor: 'white', // the colour of text in the command's content
-      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+      itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
       outsideMenuCancel: 10 // cancel menu when clicking outside
@@ -700,8 +708,8 @@ class TopologyWebviewController {
           return commands;
         },
       menuRadius: 110, // the radius of the menu
-      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -709,9 +717,9 @@ class TopologyWebviewController {
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
       minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      openMenuEvents: 'cxttap', // single right-click to open menu
-      itemColor: 'white', // the colour of text in the command's content
-      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+      itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
       outsideMenuCancel: 10 // cancel menu when clicking outside
@@ -760,8 +768,8 @@ class TopologyWebviewController {
         }
       ],
       menuRadius: 110, // the radius of the menu
-      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -769,9 +777,9 @@ class TopologyWebviewController {
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
       minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      openMenuEvents: 'cxttap', // single right-click to open menu
-      itemColor: 'white', // the colour of text in the command's content
-      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+      itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
       outsideMenuCancel: 10 // cancel menu when clicking outside
@@ -810,8 +818,8 @@ class TopologyWebviewController {
         }
       ],
       menuRadius: 80, // the radius of the menu
-      fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-      activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+      fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
       activePadding: 5, // additional size in pixels for the active command
       indicatorSize: 0, // the size in pixels of the pointer to the active command, will default to the node size if the node size is smaller than the indicator size,
       separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -819,9 +827,9 @@ class TopologyWebviewController {
       adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
       minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
       maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight (ignored for the node if adaptativeNodeSpotlightRadius is enabled but still used for the edge & background)
-      openMenuEvents: 'cxttap', // single right-click to open menu
-      itemColor: 'white', // the colour of text in the command's content
-      itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+      itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
       zIndex: 9999, // the z-index of the ui div
       atMouse: false, // draw menu at mouse position
       outsideMenuCancel: 10 // cancel menu when clicking outside
@@ -921,8 +929,8 @@ class TopologyWebviewController {
           return commands;
         },
         menuRadius: 110, // standard radius for multiple actions
-        fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-        activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+        fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+        activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
         activePadding: 5, // additional size in pixels for the active command
         indicatorSize: 0, // the size in pixels of the pointer to the active command
         separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -930,9 +938,9 @@ class TopologyWebviewController {
         adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
         minSpotlightRadius: 24, // the minimum radius in pixels of the spotlight
         maxSpotlightRadius: 38, // the maximum radius in pixels of the spotlight
-        openMenuEvents: 'cxttap', // single right-click to open menu
-        itemColor: 'white', // the colour of text in the command's content
-        itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+        openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+        itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+        itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
         zIndex: 9999, // the z-index of the ui div
         atMouse: false, // draw menu at mouse position
         outsideMenuCancel: 10 // cancel menu when clicking outside
@@ -943,8 +951,8 @@ class TopologyWebviewController {
           selector: 'edge',
             commands: (ele: cytoscape.Singular) => this.buildEdgeMenuCommands(ele),
         menuRadius: 110, // standard radius for fewer items
-        fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-        activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+        fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+        activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
         activePadding: 5, // additional size in pixels for the active command
         indicatorSize: 0, // the size in pixels of the pointer to the active command
         separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -952,9 +960,9 @@ class TopologyWebviewController {
         adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
         minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight
         maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight
-        openMenuEvents: 'cxttap', // single right-click to open menu
-        itemColor: 'white', // the colour of text in the command's content
-        itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+        openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+        itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+        itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
         zIndex: 9999, // the z-index of the ui div
         atMouse: false, // draw menu at mouse position
         outsideMenuCancel: 10 // cancel menu when clicking outside
@@ -1010,8 +1018,8 @@ class TopologyWebviewController {
           }
         ],
         menuRadius: 80, // smaller radius for single action
-        fillColor: 'rgba(31, 31, 31, 0.75)', // the background colour of the menu
-        activeFillColor: 'rgba(66, 88, 255, 1)', // the colour used to indicate the selected command
+        fillColor: TopologyWebviewController.UI_FILL_COLOR, // the background colour of the menu
+        activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR, // the colour used to indicate the selected command
         activePadding: 5, // additional size in pixels for the active command
         indicatorSize: 0, // the size in pixels of the pointer to the active command
         separatorWidth: 3, // the empty spacing in pixels between successive commands
@@ -1019,9 +1027,9 @@ class TopologyWebviewController {
         adaptativeNodeSpotlightRadius: true, // specify whether the spotlight radius should adapt to the node size
         minSpotlightRadius: 0, // the minimum radius in pixels of the spotlight
         maxSpotlightRadius: 0, // the maximum radius in pixels of the spotlight
-        openMenuEvents: 'cxttap', // single right-click to open menu
-        itemColor: 'white', // the colour of text in the command's content
-        itemTextShadowColor: 'rgba(61, 62, 64, 1)', // the text shadow colour of the command's content
+        openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT, // single right-click to open menu
+        itemColor: TopologyWebviewController.UI_ITEM_COLOR, // the colour of text in the command's content
+        itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW, // the text shadow colour of the command's content
         zIndex: 9999, // the z-index of the ui div
         atMouse: false, // draw menu at mouse position
         outsideMenuCancel: 10 // cancel menu when clicking outside

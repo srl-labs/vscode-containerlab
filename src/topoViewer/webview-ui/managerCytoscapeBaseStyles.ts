@@ -5,6 +5,10 @@ import { log } from '../logging/logger';
 import { generateEncodedSVG, NodeType } from './managerSvgGenerator';
 import topoViewerState from '../state';
 
+// Common style literals reused several times
+const DATA_NAME = 'data(name)';
+const SELECTOR_GROUP = 'node[topoViewerRole="group"]';
+
 /**
  * Cytoscape styles shared between view and edit webviews.
  * Additional styles specific to the editor (edge handles, status nodes, etc.)
@@ -36,8 +40,8 @@ const cytoscapeStylesBase: any[] = [
       shape: 'rectangle',
       width: '10',
       height: '10',
-      content: 'data(name)',
-      label: 'data(name)',
+      content: DATA_NAME,
+      label: DATA_NAME,
       'font-size': '0.58em',
       'text-valign': 'bottom',
       'text-halign': 'center',
@@ -86,7 +90,7 @@ const cytoscapeStylesBase: any[] = [
     }
   },
   {
-    selector: 'node[topoViewerRole="group"]',
+    selector: SELECTOR_GROUP,
     style: {}
   },
   // Alignment for parent nodes
@@ -176,7 +180,7 @@ const cytoscapeStylesBase: any[] = [
     }
   },
   {
-    selector: 'node[topoViewerRole="group"]',
+    selector: SELECTOR_GROUP,
     style: {
       shape: 'rectangle',
       'border-width': '0.5px',
@@ -288,8 +292,8 @@ const cytoscapeStylesBase: any[] = [
       width: '14',
       height: '14',
       'font-size': '0.5em',
-      content: 'data(name)',
-      label: 'data(name)'
+      content: DATA_NAME,
+      label: DATA_NAME
     }
   },
   // Edge handles plugin styles
@@ -392,7 +396,7 @@ const freeTextStyles = [
       'background-color': 'transparent',
       'background-opacity': 0,
       'border-width': 0,
-      content: 'data(name)',
+      content: DATA_NAME,
       'text-wrap': 'wrap',
       'text-max-width': '200px',
       // Default font properties - will be overridden by custom styles
@@ -450,7 +454,7 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
 
   const styles = cytoscapeStylesBase.map((def: any) => {
     const clone: any = { selector: def.selector, style: { ...(def.style || {}) } };
-    if (def.selector === 'node[topoViewerRole="group"]') {
+  if (def.selector === SELECTOR_GROUP) {
       if (theme === 'light') {
         clone.style['background-color'] = '#a6a6a6';
         clone.style['background-opacity'] = '0.4';
@@ -571,4 +575,3 @@ export function extractNodeIcons(): string[] {
 
 // Expose globally for external consumers
 (globalThis as any).loadCytoStyle = loadCytoStyle;
-

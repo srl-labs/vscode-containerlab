@@ -144,8 +144,9 @@ export class ManagerFreeText {
   }
 
   private setupEventHandlers(): void {
+    const SELECTOR_FREE_TEXT = 'node[topoViewerRole="freeText"]';
     // Handle double-click on free text nodes to edit
-    this.cy.on('dblclick', 'node[topoViewerRole="freeText"]', (event) => {
+    this.cy.on('dblclick', SELECTOR_FREE_TEXT, (event) => {
       event.preventDefault();
       event.stopPropagation();
       const node = event.target;
@@ -153,7 +154,7 @@ export class ManagerFreeText {
     });
 
     // Also try dbltap for touch devices
-    this.cy.on('dbltap', 'node[topoViewerRole="freeText"]', (event) => {
+    this.cy.on('dbltap', SELECTOR_FREE_TEXT, (event) => {
       event.preventDefault();
       event.stopPropagation();
       const node = event.target;
@@ -161,7 +162,7 @@ export class ManagerFreeText {
     });
 
     // Handle deletion of free text nodes
-    this.cy.on('remove', 'node[topoViewerRole="freeText"]', (event) => {
+    this.cy.on('remove', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
       const id = node.id();
       // Only remove from our tracking if it's not already being handled
@@ -173,7 +174,7 @@ export class ManagerFreeText {
     });
 
     // Handle position changes for free text nodes
-    this.cy.on('dragfree', 'node[topoViewerRole="freeText"]', (event) => {
+    this.cy.on('dragfree', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
       this.updateFreeTextPosition(node.id(), node.position());
     });
@@ -408,11 +409,15 @@ export class ManagerFreeText {
     };
     cleanupTasks.push(() => { bgColorInput.oninput = null; });
 
+    const BTN_BASE = 'btn btn-small';
+    const BTN_BASE_RIGHT = 'btn btn-small ml-auto';
+    const BTN_PRIMARY = 'btn-primary';
+    const BTN_OUTLINED = 'btn-outlined';
     const updateButtonClasses = () => {
-      boldBtn.className = `btn btn-small ${state.isBold ? 'btn-primary' : 'btn-outlined'}`;
-      italicBtn.className = `btn btn-small ${state.isItalic ? 'btn-primary' : 'btn-outlined'}`;
-      underlineBtn.className = `btn btn-small ${state.isUnderline ? 'btn-primary' : 'btn-outlined'}`;
-      transparentBtn.className = `btn btn-small ml-auto ${state.isTransparentBg ? 'btn-primary' : 'btn-outlined'}`;
+      boldBtn.className = `${BTN_BASE} ${state.isBold ? BTN_PRIMARY : BTN_OUTLINED}`;
+      italicBtn.className = `${BTN_BASE} ${state.isItalic ? BTN_PRIMARY : BTN_OUTLINED}`;
+      underlineBtn.className = `${BTN_BASE} ${state.isUnderline ? BTN_PRIMARY : BTN_OUTLINED}`;
+      transparentBtn.className = `${BTN_BASE_RIGHT} ${state.isTransparentBg ? BTN_PRIMARY : BTN_OUTLINED}`;
     };
     boldBtn.onclick = () => {
       state.isBold = !state.isBold;

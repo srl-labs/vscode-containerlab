@@ -4,6 +4,11 @@ import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
 import { execCommandInOutput } from "./command";
 
+// Common validation messages and patterns
+const ERR_EMPTY = 'Input should not be empty';
+const TIME_UNIT_RE = /^\d+(ms|s)$/;
+const ERR_TIME_UNIT = 'Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)';
+
 /**
  * Helper function to check if impairment options are available.
  * If the connection is WSL, a warning is displayed and returns false.
@@ -68,9 +73,9 @@ export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {
       title: `Set link delay for ${node.name} on ${node.parentName}`,
       placeHolder: `Link delay with time unit. ie: 50ms, 1s, 30s`,
       validateInput: (input: string): string | undefined => {
-        if (input.length === 0) { return "Input should not be empty"; }
-        const re = /^\d+(ms|s)$/;
-        if (!re.test(input)) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
+        if (input.length === 0) { return ERR_EMPTY; }
+        const re = TIME_UNIT_RE;
+        if (!re.test(input)) { return ERR_TIME_UNIT; }
         return undefined;
       }
     };
@@ -99,9 +104,9 @@ export async function setLinkJitter(node: ClabInterfaceTreeNode): Promise<void> 
       title: `Set link jitter for ${node.name} on ${node.parentName}`,
       placeHolder: `Jitter with time unit. ie: 50ms, 1s, 30s`,
       validateInput: (input: string): string | undefined => {
-        if (input.length === 0) { return "Input should not be empty"; }
-        const re = /^\d+(ms|s)$/;
-        if (!re.test(input)) { return "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)"; }
+        if (input.length === 0) { return ERR_EMPTY; }
+        const re = TIME_UNIT_RE;
+        if (!re.test(input)) { return ERR_TIME_UNIT; }
         return undefined;
       }
     };
@@ -130,7 +135,7 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<void> {
       title: `Set packet loss for ${node.name} on ${node.parentName}`,
       placeHolder: `Packet loss as a percentage. ie 50 means 50% packet loss`,
       validateInput: (input: string): string | undefined => {
-        if (input.length === 0) { return "Input should not be empty"; }
+        if (input.length === 0) { return ERR_EMPTY; }
         const re = /^(?:[1-9]\d?|100)$/;
         if (!re.test(input)) { return "Input should be a number between 0 and 100."; }
         return undefined;
@@ -161,7 +166,7 @@ export async function setLinkRate(node: ClabInterfaceTreeNode): Promise<void> {
       title: `Set egress rate-limit for ${node.name} on ${node.parentName}`,
       placeHolder: `Rate-limit in kbps. ie 100 means 100kbit/s`,
       validateInput: (input: string): string | undefined => {
-        if (input.length === 0) { return "Input should not be empty"; }
+        if (input.length === 0) { return ERR_EMPTY; }
         const re = /^\d+$/;
         if (!re.test(input)) { return "Input should be a number"; }
         return undefined;
@@ -192,7 +197,7 @@ export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<vo
       title: `Set packet corruption for ${node.name} on ${node.parentName}`,
       placeHolder: `Packet corruption as a percentage. ie 50 means 50% probability of packet corruption.`,
       validateInput: (input: string): string | undefined => {
-        if (input.length === 0) { return "Input should not be empty"; }
+        if (input.length === 0) { return ERR_EMPTY; }
         const re = /^(?:[1-9]\d?|100)$/;
         if (!re.test(input)) { return "Input should be a number between 0 and 100."; }
         return undefined;

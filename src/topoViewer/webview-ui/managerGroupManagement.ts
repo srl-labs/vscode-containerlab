@@ -1,5 +1,11 @@
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
+
+// Common group editor DOM identifiers and classes
+const PANEL_PARENT_ID = 'panel-node-editor-parent' as const;
+const PANEL_EL_PREFIX = 'panel-node-editor-parent-' as const;
+const LABEL_BUTTON_TEXT_ID = `${PANEL_EL_PREFIX}label-dropdown-button-text` as const;
+const CLASS_EMPTY_GROUP = 'empty-group' as const;
 import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 
@@ -77,9 +83,9 @@ export class ManagerGroupManagement {
       return;
     }
     if (group.children().length === 0) {
-      group.addClass('empty-group');
+      group.addClass(CLASS_EMPTY_GROUP);
     } else {
-      group.removeClass('empty-group');
+      group.removeClass(CLASS_EMPTY_GROUP);
     }
   }
 
@@ -332,7 +338,7 @@ export class ManagerGroupManagement {
   }
 
   private getGroupEditorPanel(): HTMLElement | null {
-    const panel = document.getElementById('panel-node-editor-parent');
+    const panel = document.getElementById(PANEL_PARENT_ID);
     if (!panel) {
       log.warn('Group editor panel element not found');
       return null;
@@ -352,17 +358,17 @@ export class ManagerGroupManagement {
 
   private getGroupEditorElements(): GroupEditorElements {
     return {
-      groupIdEl: document.getElementById('panel-node-editor-parent-graph-group-id'),
-      groupEl: document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement,
-      levelEl: document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement,
-      labelButtonEl: document.getElementById('panel-node-editor-parent-label-dropdown-button-text'),
-      bgColorEl: document.getElementById('panel-node-editor-parent-bg-color') as HTMLInputElement,
-      bgOpacityEl: document.getElementById('panel-node-editor-parent-bg-opacity') as HTMLInputElement,
-      borderColorEl: document.getElementById('panel-node-editor-parent-border-color') as HTMLInputElement,
-      borderWidthEl: document.getElementById('panel-node-editor-parent-border-width') as HTMLInputElement,
-      borderStyleEl: document.getElementById('panel-node-editor-parent-border-style') as HTMLSelectElement,
-      borderRadiusEl: document.getElementById('panel-node-editor-parent-border-radius') as HTMLInputElement,
-      textColorEl: document.getElementById('panel-node-editor-parent-text-color') as HTMLInputElement
+      groupIdEl: document.getElementById(`${PANEL_EL_PREFIX}graph-group-id`),
+      groupEl: document.getElementById(`${PANEL_EL_PREFIX}graph-group`) as HTMLInputElement,
+      levelEl: document.getElementById(`${PANEL_EL_PREFIX}graph-level`) as HTMLInputElement,
+      labelButtonEl: document.getElementById(LABEL_BUTTON_TEXT_ID),
+      bgColorEl: document.getElementById(`${PANEL_EL_PREFIX}bg-color`) as HTMLInputElement,
+      bgOpacityEl: document.getElementById(`${PANEL_EL_PREFIX}bg-opacity`) as HTMLInputElement,
+      borderColorEl: document.getElementById(`${PANEL_EL_PREFIX}border-color`) as HTMLInputElement,
+      borderWidthEl: document.getElementById(`${PANEL_EL_PREFIX}border-width`) as HTMLInputElement,
+      borderStyleEl: document.getElementById(`${PANEL_EL_PREFIX}border-style`) as HTMLSelectElement,
+      borderRadiusEl: document.getElementById(`${PANEL_EL_PREFIX}border-radius`) as HTMLInputElement,
+      textColorEl: document.getElementById(`${PANEL_EL_PREFIX}text-color`) as HTMLInputElement
     };
   }
 
@@ -405,7 +411,7 @@ export class ManagerGroupManagement {
 
     if (ui.bgOpacityEl) {
       ui.bgOpacityEl.value = style.backgroundOpacity.toString();
-      const opacityValueEl = document.getElementById('panel-node-editor-parent-bg-opacity-value');
+      const opacityValueEl = document.getElementById(`${PANEL_EL_PREFIX}bg-opacity-value`);
       this.setText(opacityValueEl, `${style.backgroundOpacity}%`);
     }
 
@@ -415,7 +421,7 @@ export class ManagerGroupManagement {
 
     if (ui.borderRadiusEl) {
       ui.borderRadiusEl.value = style.borderRadius.toString();
-      const radiusValueEl = document.getElementById('panel-node-editor-parent-border-radius-value');
+      const radiusValueEl = document.getElementById(`${PANEL_EL_PREFIX}border-radius-value`);
       this.setText(radiusValueEl, `${style.borderRadius}px`);
     }
 
@@ -425,10 +431,10 @@ export class ManagerGroupManagement {
   private attachGroupEditorListeners(panel: HTMLElement, autoUpdateGroup: () => void): void {
     this.attachInputListeners(panel, autoUpdateGroup);
 
-    const deleteButton = document.getElementById('panel-node-editor-parent-delete-button');
+    const deleteButton = document.getElementById(`${PANEL_EL_PREFIX}delete-button`);
     if (deleteButton) deleteButton.addEventListener('click', () => this.nodeParentRemoval());
 
-    const closeButton = document.getElementById('panel-node-editor-parent-close-button');
+    const closeButton = document.getElementById(`${PANEL_EL_PREFIX}close-button`);
     if (closeButton) closeButton.addEventListener('click', () => this.nodeParentPropertiesUpdateClose());
 
     const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement | null;
@@ -484,7 +490,7 @@ export class ManagerGroupManagement {
   }
 
   public panelNodeEditorParentToggleDropdown(): void {
-    const menu = document.getElementById('panel-node-editor-parent-label-dropdown-menu') as (HTMLElement & {
+    const menu = document.getElementById(`${PANEL_EL_PREFIX}label-dropdown-menu`) as (HTMLElement & {
       dataset: DOMStringMap;
     }) | null;
     if (!menu) {
@@ -497,7 +503,7 @@ export class ManagerGroupManagement {
         item.addEventListener('click', function (this: HTMLElement, event: Event) {
           event.preventDefault();
           const selectedText = this.textContent || '';
-          const buttonTextEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
+          const buttonTextEl = document.getElementById(LABEL_BUTTON_TEXT_ID);
           if (buttonTextEl) {
             buttonTextEl.textContent = selectedText;
           }
@@ -510,8 +516,8 @@ export class ManagerGroupManagement {
   }
 
   private getParentEditorInputs(): ParentEditorInputs {
-    const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
-    const groupInputEl = document.getElementById('panel-node-editor-parent-graph-group') as HTMLInputElement | null;
+    const parentIdEl = document.getElementById(`${PANEL_EL_PREFIX}graph-group-id`);
+    const groupInputEl = document.getElementById(`${PANEL_EL_PREFIX}graph-group`) as HTMLInputElement | null;
     const levelInputEl = document.getElementById('panel-node-editor-parent-graph-level') as HTMLInputElement | null;
     const labelPositionEl = document.getElementById('panel-node-editor-parent-label-dropdown-button-text');
     if (!parentIdEl || !groupInputEl || !levelInputEl || !labelPositionEl) {
@@ -650,7 +656,7 @@ export class ManagerGroupManagement {
 
   public nodeParentPropertiesUpdateClose(): boolean {
     try {
-      const panel = document.getElementById('panel-node-editor-parent');
+      const panel = document.getElementById(PANEL_PARENT_ID);
       if (panel) {
         panel.style.display = 'none';
         log.info('Node editor parent panel closed successfully');
@@ -666,7 +672,7 @@ export class ManagerGroupManagement {
 
   public nodeParentRemoval(): boolean {
     try {
-      const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
+      const parentIdEl = document.getElementById(`${PANEL_EL_PREFIX}graph-group-id`);
       if (!parentIdEl) {
         throw new Error("Parent ID element 'panel-node-editor-parent-graph-group-id' not found.");
       }
@@ -718,7 +724,7 @@ export class ManagerGroupManagement {
       // Close the panel if it's showing this group
       const parentIdEl = document.getElementById('panel-node-editor-parent-graph-group-id');
       if (parentIdEl && parentIdEl.textContent?.trim() === groupId) {
-        const nodeEditorParentPanel = document.getElementById('panel-node-editor-parent');
+        const nodeEditorParentPanel = document.getElementById(PANEL_PARENT_ID);
         if (nodeEditorParentPanel) {
           nodeEditorParentPanel.style.display = 'none';
         }
