@@ -36,6 +36,23 @@ const extension = require('../../../src/extension');
 const LAB_B = '/workspace/b/lab2.clab.yaml';
 const LAB_A = '/workspace/a/lab1.clab.yml';
 
+const noop = () => {};
+const fileWatcherStub = {
+  onDidCreate: noop,
+  onDidDelete: noop,
+  onDidChange: noop,
+};
+function createFileWatcher() {
+  return fileWatcherStub;
+}
+async function emptyFindFiles() {
+  return [];
+}
+class EventEmitterStub {
+  public event = noop;
+  fire() {}
+}
+
 describe('LocalLabTreeDataProvider', () => {
   after(() => {
     (Module as any)._resolveFilename = originalResolve;
@@ -44,13 +61,9 @@ describe('LocalLabTreeDataProvider', () => {
   beforeEach(() => {
     vscodeStub.commands.executed.length = 0;
     vscodeStub.workspace.workspaceFolders = [{ uri: { fsPath: '/workspace', path: '/workspace' } }];
-    vscodeStub.workspace.createFileSystemWatcher = () => ({
-      onDidCreate: () => {},
-      onDidDelete: () => {},
-      onDidChange: () => {},
-    });
-    vscodeStub.workspace.findFiles = async () => [];
-    vscodeStub.EventEmitter = class { public event = () => {}; fire() {} } as any;
+    vscodeStub.workspace.createFileSystemWatcher = createFileWatcher;
+    vscodeStub.workspace.findFiles = emptyFindFiles;
+    vscodeStub.EventEmitter = EventEmitterStub as any;
     delete require.cache[require.resolve('../../../src/helpers/utils')];
     try {
       delete require.cache[require.resolve('../../helpers/utils-stub')];

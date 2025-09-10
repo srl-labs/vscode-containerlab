@@ -437,6 +437,20 @@ export async function setSessionHostname(): Promise<boolean> {
   return true;
 }
 
+function resolveOrbstackIPv4(): string | undefined {
+  try {
+    const nets = os.networkInterfaces();
+    const eth0 = nets["eth0"] ?? [];
+    const v4 = (eth0 as any[]).find(
+      (n: any) => (n.family === "IPv4" || n.family === 4) && !n.internal
+    );
+    return v4?.address as string | undefined;
+  } catch (e: any) {
+    outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`);
+    return undefined;
+  }
+}
+
 /**
  * Determine the hostname (or IP) to use for packet capture based on environment:
  *
@@ -467,18 +481,12 @@ export async function getHostname(): Promise<string> {
 
   // 3. If in an Orbstack environment (whether SSH or not), always use IPv4.
   if (utils.isOrbstack()) {
-    try {
-      const nets = os.networkInterfaces();
-      const eth0 = nets['eth0'] || [];
-      const v4 = (eth0 as any[]).find((n: any) => (n.family === 'IPv4' || n.family === 4) && !n.internal);
-      if (v4 && v4.address) {
-        outputChannel.debug(`(Orbstack) Using IPv4 from networkInterfaces: ${v4.address}`);
-        return v4.address as string;
-      }
-      outputChannel.debug("(Orbstack) Could not determine IPv4 from networkInterfaces");
-    } catch (e: any) {
-      outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`);
+    const v4 = resolveOrbstackIPv4();
+    if (v4) {
+      outputChannel.debug(`(Orbstack) Using IPv4 from networkInterfaces: ${v4}`);
+      return v4;
     }
+    outputChannel.debug("(Orbstack) Could not determine IPv4 from networkInterfaces");
   }
 
   // 4. If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.

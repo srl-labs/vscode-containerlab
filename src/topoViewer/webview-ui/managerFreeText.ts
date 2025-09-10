@@ -390,38 +390,40 @@ export class ManagerFreeText {
     return color ?? '#000000';
   }
 
-  private setupFormattingControls(annotation: FreeTextAnnotation, els: FreeTextModalElements, cleanupTasks: Array<() => void>): FormattingState {
-    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, boldBtn, italicBtn, underlineBtn, transparentBtn, textInput } = els;
+  private bindHandler(
+    el: HTMLElement,
+    prop: 'onclick' | 'oninput' | 'onchange' | 'onkeydown',
+    handler: any,
+    cleanupTasks: Array<() => void>
+  ): void {
+    (el as any)[prop] = handler;
+    cleanupTasks.push(() => { (el as any)[prop] = null; });
+  }
 
-    const state: FormattingState = {
-      isBold: annotation.fontWeight === 'bold',
-      isItalic: annotation.fontStyle === 'italic',
-      isUnderline: annotation.textDecoration === 'underline',
-      isTransparentBg: annotation.backgroundColor === 'transparent',
-    };
-
-    fontSizeInput.oninput = () => {
+  private configureFontInputs(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
+    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, textInput } = els;
+    this.bindHandler(fontSizeInput, 'oninput', () => {
       textInput.style.fontSize = fontSizeInput.value + 'px';
-    };
-    cleanupTasks.push(() => { fontSizeInput.oninput = null; });
-
-    fontFamilySelect.onchange = () => {
+    }, cleanupTasks);
+    this.bindHandler(fontFamilySelect, 'onchange', () => {
       textInput.style.fontFamily = fontFamilySelect.value;
-    };
-    cleanupTasks.push(() => { fontFamilySelect.onchange = null; });
-
-    fontColorInput.oninput = () => {
+    }, cleanupTasks);
+    this.bindHandler(fontColorInput, 'oninput', () => {
       textInput.style.color = fontColorInput.value;
-    };
-    cleanupTasks.push(() => { fontColorInput.oninput = null; });
-
-    bgColorInput.oninput = () => {
+    }, cleanupTasks);
+    this.bindHandler(bgColorInput, 'oninput', () => {
       if (!bgColorInput.disabled) {
         textInput.style.background = bgColorInput.value;
       }
-    };
-    cleanupTasks.push(() => { bgColorInput.oninput = null; });
+    }, cleanupTasks);
+  }
 
+  private configureStyleButtons(
+    els: FreeTextModalElements,
+    state: FormattingState,
+    cleanupTasks: Array<() => void>
+  ): () => void {
+    const { boldBtn, italicBtn, underlineBtn, transparentBtn, bgColorInput, textInput } = els;
     const BTN_BASE = 'btn btn-small';
     const BTN_BASE_RIGHT = 'btn btn-small ml-auto';
     const BTN_PRIMARY = 'btn-primary';
@@ -432,34 +434,43 @@ export class ManagerFreeText {
       underlineBtn.className = `${BTN_BASE} ${state.isUnderline ? BTN_PRIMARY : BTN_OUTLINED}`;
       transparentBtn.className = `${BTN_BASE_RIGHT} ${state.isTransparentBg ? BTN_PRIMARY : BTN_OUTLINED}`;
     };
-    boldBtn.onclick = () => {
-      state.isBold = !state.isBold;
-      textInput.style.fontWeight = state.isBold ? 'bold' : 'normal';
-      updateButtonClasses();
-    };
-    cleanupTasks.push(() => { boldBtn.onclick = null; });
 
-    italicBtn.onclick = () => {
-      state.isItalic = !state.isItalic;
-      textInput.style.fontStyle = state.isItalic ? 'italic' : 'normal';
-      updateButtonClasses();
-    };
-    cleanupTasks.push(() => { italicBtn.onclick = null; });
+    const toggles = [
+      { btn: boldBtn, key: 'isBold', style: ['fontWeight', 'bold', 'normal'] as const },
+      { btn: italicBtn, key: 'isItalic', style: ['fontStyle', 'italic', 'normal'] as const },
+      { btn: underlineBtn, key: 'isUnderline', style: ['textDecoration', 'underline', 'none'] as const },
+    ] as const;
 
-    underlineBtn.onclick = () => {
-      state.isUnderline = !state.isUnderline;
-      textInput.style.textDecoration = state.isUnderline ? 'underline' : 'none';
-      updateButtonClasses();
-    };
-    cleanupTasks.push(() => { underlineBtn.onclick = null; });
+    toggles.forEach(({ btn, key, style }) => {
+      this.bindHandler(btn, 'onclick', () => {
+        state[key] = !state[key];
+        (textInput.style as any)[style[0]] = state[key] ? style[1] : style[2];
+        updateButtonClasses();
+      }, cleanupTasks);
+    });
 
-    transparentBtn.onclick = () => {
+    this.bindHandler(transparentBtn, 'onclick', () => {
       state.isTransparentBg = !state.isTransparentBg;
       bgColorInput.disabled = state.isTransparentBg;
       textInput.style.background = state.isTransparentBg ? 'transparent' : bgColorInput.value;
       updateButtonClasses();
+    }, cleanupTasks);
+
+    return updateButtonClasses;
+  }
+
+  private setupFormattingControls(annotation: FreeTextAnnotation, els: FreeTextModalElements, cleanupTasks: Array<() => void>): FormattingState {
+    const { bgColorInput, textInput } = els;
+
+    const state: FormattingState = {
+      isBold: annotation.fontWeight === 'bold',
+      isItalic: annotation.fontStyle === 'italic',
+      isUnderline: annotation.textDecoration === 'underline',
+      isTransparentBg: annotation.backgroundColor === 'transparent',
     };
-    cleanupTasks.push(() => { transparentBtn.onclick = null; });
+
+    this.configureFontInputs(els, cleanupTasks);
+    const updateButtonClasses = this.configureStyleButtons(els, state, cleanupTasks);
 
     if (state.isTransparentBg) {
       bgColorInput.disabled = true;
@@ -511,6 +522,29 @@ export class ManagerFreeText {
     };
   }
 
+  private buildAnnotationResult(
+    annotation: FreeTextAnnotation,
+    els: FreeTextModalElements,
+    state: FormattingState
+  ): FreeTextAnnotation | null {
+    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect } = els;
+    const text = textInput.value.trim();
+    if (!text) {
+      return null;
+    }
+    return {
+      ...annotation,
+      text,
+      fontSize: parseInt(fontSizeInput.value),
+      fontColor: fontColorInput.value,
+      backgroundColor: state.isTransparentBg ? 'transparent' : bgColorInput.value,
+      fontWeight: state.isBold ? 'bold' : 'normal',
+      fontStyle: state.isItalic ? 'italic' : 'normal',
+      textDecoration: state.isUnderline ? 'underline' : 'none',
+      fontFamily: fontFamilySelect.value,
+    };
+  }
+
   private setupSubmitHandlers(
     annotation: FreeTextAnnotation,
     els: FreeTextModalElements,
@@ -519,46 +553,26 @@ export class ManagerFreeText {
     cleanup: () => void,
     cleanupTasks: Array<() => void>
   ): void {
-    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect, cancelBtn, okBtn } = els;
+    const { textInput, cancelBtn, okBtn } = els;
 
-    cancelBtn.onclick = () => {
+    this.bindHandler(cancelBtn, 'onclick', () => {
       cleanup();
       resolve(null);
-    };
-    cleanupTasks.push(() => { cancelBtn.onclick = null; });
+    }, cleanupTasks);
 
-    okBtn.onclick = () => {
-      const text = textInput.value.trim();
-      if (!text) {
-        cleanup();
-        resolve(null);
-        return;
-      }
-
-      const result: FreeTextAnnotation = {
-        ...annotation,
-        text,
-        fontSize: parseInt(fontSizeInput.value),
-        fontColor: fontColorInput.value,
-        backgroundColor: state.isTransparentBg ? 'transparent' : bgColorInput.value,
-        fontWeight: state.isBold ? 'bold' : 'normal',
-        fontStyle: state.isItalic ? 'italic' : 'normal',
-        textDecoration: state.isUnderline ? 'underline' : 'none',
-        fontFamily: fontFamilySelect.value,
-      };
+    this.bindHandler(okBtn, 'onclick', () => {
+      const result = this.buildAnnotationResult(annotation, els, state);
       cleanup();
       resolve(result);
-    };
-    cleanupTasks.push(() => { okBtn.onclick = null; });
+    }, cleanupTasks);
 
-    textInput.onkeydown = (e) => {
+    this.bindHandler(textInput, 'onkeydown', (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         cancelBtn.click();
       } else if (e.key === 'Enter' && e.ctrlKey) {
         okBtn.click();
       }
-    };
-    cleanupTasks.push(() => { textInput.onkeydown = null; });
+    }, cleanupTasks);
   }
 
   private showModal(els: FreeTextModalElements): void {

@@ -121,6 +121,49 @@ class TopologyWebviewController {
   private static readonly KIND_BRIDGE = 'bridge' as const;
   private static readonly KIND_OVS_BRIDGE = 'ovs-bridge' as const;
   private interfaceCounters: Record<string, number> = {};
+  // eslint-disable-next-line no-unused-vars
+  private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
+    delete: (event) => {
+      event.preventDefault();
+      this.handleDeleteKeyPress();
+    },
+    backspace: (event) => {
+      event.preventDefault();
+      this.handleDeleteKeyPress();
+    },
+    g: () => {
+      this.groupManager.viewportButtonsAddGroup();
+    },
+    'ctrl+a': (event) => {
+      event.preventDefault();
+      this.handleSelectAll();
+    },
+    'ctrl+c': (event) => {
+      event.preventDefault();
+      this.copyPasteManager.handleCopy();
+    },
+    'ctrl+v': (event) => {
+      if (!this.isViewportDrawerClabEditorChecked) {
+        return;
+      }
+      event.preventDefault();
+      this.copyPasteManager.handlePaste();
+    },
+    'ctrl+x': (event) => {
+      if (!this.isViewportDrawerClabEditorChecked) {
+        return;
+      }
+      event.preventDefault();
+      this.handleCutKeyPress();
+    },
+    'ctrl+d': (event) => {
+      if (!this.isViewportDrawerClabEditorChecked) {
+        return;
+      }
+      event.preventDefault();
+      this.copyPasteManager.handleDuplicate();
+    }
+  };
   public async initAsync(mode: 'edit' | 'view'): Promise<void> {
     perfMark('cytoscape_style_start');
     await loadCytoStyle(this.cy);
@@ -426,39 +469,53 @@ class TopologyWebviewController {
         return;
       }
       const msg = event.data as any;
-      if (msg && msg.type === 'yaml-saved') {
-        fetchAndLoadData(this.cy, this.messageSender);
-      } else if (msg && msg.type === 'updateTopology') {
-        try {
-          const elements = msg.data as any[];
-          if (Array.isArray(elements)) {
-            elements.forEach((el) => {
-              const id = el?.data?.id;
-              if (!id) {
-                return;
-              }
-              const existing = this.cy.getElementById(id);
-              if (existing && existing.length > 0) {
-                existing.data(el.data);
-                if (typeof el.classes === 'string') {
-                  existing.classes(el.classes);
-                }
-              } else {
-                this.cy.add(el);
-              }
-            });
-            loadCytoStyle(this.cy);
-          }
-        } catch (error) {
-          log.error(`Error processing updateTopology message: ${error}`);
-        }
-      } else if (msg.type === 'copiedElements') {
-        const addedElements = this.copyPasteManager.performPaste(msg.data);
-        if (addedElements && addedElements.length > 0) {
-          this.saveManager.viewportButtonsSaveTopo(this.cy, true);
-        }
+      if (!msg?.type) {
+        return;
+      }
+      // eslint-disable-next-line no-unused-vars
+      const handlers: Record<string, (data: any) => void> = {
+        'yaml-saved': () => fetchAndLoadData(this.cy, this.messageSender),
+        'updateTopology': (data) => this.updateTopology(data),
+        'copiedElements': (data) => this.handleCopiedElements(data)
+      };
+      const handler = handlers[msg.type];
+      if (handler) {
+        handler(msg.data);
       }
     });
+  }
+
+  private updateTopology(data: any): void {
+    try {
+      const elements = data as any[];
+      if (Array.isArray(elements)) {
+        elements.forEach((el) => {
+          const id = el?.data?.id;
+          if (!id) {
+            return;
+          }
+          const existing = this.cy.getElementById(id);
+          if (existing && existing.length > 0) {
+            existing.data(el.data);
+            if (typeof el.classes === 'string') {
+              existing.classes(el.classes);
+            }
+          } else {
+            this.cy.add(el);
+          }
+        });
+        loadCytoStyle(this.cy);
+      }
+    } catch (error) {
+      log.error(`Error processing updateTopology message: ${error}`);
+    }
+  }
+
+  private handleCopiedElements(data: any): void {
+    const addedElements = this.copyPasteManager.performPaste(data);
+    if (addedElements && addedElements.length > 0) {
+      this.saveManager.viewportButtonsSaveTopo(this.cy, true);
+    }
   }
 
   /**
@@ -598,68 +655,74 @@ class TopologyWebviewController {
   }
 
   private buildNodeMenuCommands(ele: cytoscape.Singular): any[] {
-    const commands: any[] = [];
-    if (this.isNetworkNode(ele.id())) {
-      commands.push({
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Network</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          this.viewportPanels?.setNodeClicked(true);
-          this.viewportPanels?.panelNetworkEditor(node);
-        },
-      });
-    } else {
-      commands.push({
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Node</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          this.viewportPanels?.setNodeClicked(true);
-          if (this.nodeEditor) {
-            void this.nodeEditor.open(node);
-          }
-        },
-      });
-    }
-    commands.push(
-      {
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Node</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          const parent = node.parent();
-          node.remove();
-          if (parent.nonempty() && parent.children().length === 0) {
-            parent.remove();
-          }
-        },
-      },
-      {
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-link" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Add Link</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          this.isEdgeHandlerActive = true;
-          this.eh.start(node);
-        },
-      },
-    );
+    const isNetwork = this.isNetworkNode(ele.id());
+    const commands = [
+      this.createEditCommand(isNetwork),
+      this.createDeleteCommand(),
+      this.createAddLinkCommand()
+    ];
     if (ele.isNode() && ele.parent().nonempty()) {
-      commands.push({
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-users-slash" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Release from Group</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          setTimeout(() => {
-            this.groupManager.orphaningNode(node);
-          }, 50);
-        },
-      });
+      commands.push(this.createReleaseFromGroupCommand());
     }
     return commands;
+  }
+
+  private createNodeMenuItem(
+    icon: string,
+    label: string,
+    // eslint-disable-next-line no-unused-vars
+    action: (node: cytoscape.NodeSingular) => void | Promise<void>
+  ): any {
+    return {
+      content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="${icon}" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>${label}</span></div>`,
+      select: (node: cytoscape.Singular) => {
+        if (!node.isNode()) {
+          return;
+        }
+        return action(node as cytoscape.NodeSingular);
+      }
+    };
+  }
+
+  private createEditCommand(isNetwork: boolean): any {
+    const label = isNetwork ? 'Edit Network' : 'Edit Node';
+    return this.createNodeMenuItem('fas fa-pen-to-square', label, (node) => {
+      this.viewportPanels?.setNodeClicked(true);
+      if (isNetwork) {
+        this.viewportPanels?.panelNetworkEditor(node);
+      } else if (this.nodeEditor) {
+        void this.nodeEditor.open(node);
+      }
+    });
+  }
+
+  private createDeleteCommand(): any {
+    return this.createNodeMenuItem('fas fa-trash-alt', 'Delete Node', (node) => {
+      const parent = node.parent();
+      node.remove();
+      if (parent.nonempty() && parent.children().length === 0) {
+        parent.remove();
+      }
+    });
+  }
+
+  private createAddLinkCommand(): any {
+    return this.createNodeMenuItem('fas fa-link', 'Add Link', (node) => {
+      this.isEdgeHandlerActive = true;
+      this.eh.start(node);
+    });
+  }
+
+  private createReleaseFromGroupCommand(): any {
+    return this.createNodeMenuItem('fas fa-users-slash', 'Release from Group', (node) => {
+      setTimeout(() => {
+        this.groupManager.orphaningNode(node);
+      }, 50);
+    });
+  }
+
+  private getNodeName(node: cytoscape.NodeSingular): string {
+    return node.data('extraData')?.longname || node.data('name') || node.id();
   }
 
   private initializeGroupContextMenu(): void {
@@ -716,24 +779,7 @@ class TopologyWebviewController {
   private initializeEdgeContextMenu(): void {
     this.cy.cxtmenu({
       selector: 'edge',
-      commands: [
-        {
-          content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-pen" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Link</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isEdge()) {
-              return;
-            }
-            this.viewportPanels?.setEdgeClicked(true);
-            this.viewportPanels?.panelEdgeEditor(ele);
-          },
-        },
-        {
-          content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Link</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            ele.remove();
-          },
-        },
-      ],
+      commands: () => this.buildEditEdgeMenuCommands(),
       menuRadius: 80,
       fillColor: TopologyWebviewController.UI_FILL_COLOR,
       activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
@@ -751,6 +797,29 @@ class TopologyWebviewController {
       atMouse: false,
       outsideMenuCancel: 10,
     });
+  }
+
+  private buildEditEdgeMenuCommands(): any[] {
+    const commands: any[] = [];
+    // Edit link
+    commands.push({
+      content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-pen" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Link</span></div>`,
+      select: (edge: cytoscape.Singular) => {
+        if (!edge.isEdge()) return;
+        this.viewportPanels?.setEdgeClicked(true);
+        this.viewportPanels?.panelEdgeEditor(edge);
+      },
+    });
+
+    // Delete link
+    commands.push({
+      content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Link</span></div>`,
+      select: (edge: cytoscape.Singular) => {
+        edge.remove();
+      },
+    });
+
+    return commands;
   }
 
   private initializeViewerMenus(): void {
@@ -858,64 +927,37 @@ class TopologyWebviewController {
       return [];
     }
     const commands = [
-      {
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-terminal" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>SSH</span></div>`,
-        select: async (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          const nodeName = node.data("extraData")?.longname || node.data("name") || node.id();
-          await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
-        },
-      },
-      {
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-cube" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Shell</span></div>`,
-        select: async (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          const nodeName = node.data("extraData")?.longname || node.data("name") || node.id();
-          await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
-        },
-      },
-      {
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-file-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Logs</span></div>`,
-        select: async (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          const nodeName = node.data("extraData")?.longname || node.data("name") || node.id();
-          await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
-        },
-      },
-      {
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-info-circle" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Properties</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
-          setTimeout(() => this.showNodePropertiesPanel(node), 50);
-        },
-      },
+      this.createNodeMenuItem('fas fa-terminal', 'SSH', async (node) => {
+        const nodeName = this.getNodeName(node);
+        await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
+      }),
+      this.createNodeMenuItem('fas fa-cube', 'Shell', async (node) => {
+        const nodeName = this.getNodeName(node);
+        await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
+      }),
+      this.createNodeMenuItem('fas fa-file-alt', 'Logs', async (node) => {
+        const nodeName = this.getNodeName(node);
+        await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
+      }),
+      this.createNodeMenuItem('fas fa-info-circle', 'Properties', (node) => {
+        setTimeout(() => this.showNodePropertiesPanel(node as unknown as cytoscape.Singular), 50);
+      })
     ];
     if (ele.isNode() && ele.parent().nonempty()) {
-      commands.push({
-        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-users-slash" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Release from Group</span></div>`,
-        select: (node: cytoscape.Singular) => {
-          if (!node.isNode()) {
-            return;
-          }
+      commands.push(
+        this.createNodeMenuItem('fas fa-users-slash', 'Release from Group', (node) => {
           setTimeout(() => {
             this.groupManager.orphaningNode(node);
           }, 50);
-        },
-      });
+        })
+      );
     }
     return commands;
   }
 
   private buildViewerEdgeMenuCommands(ele: cytoscape.Singular): any[] {
     const commands = [
+      ...this.buildEdgeCaptureCommands(ele),
       {
         content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-info-circle" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Properties</span></div>`,
         select: (edge: cytoscape.Singular) => {
@@ -937,6 +979,58 @@ class TopologyWebviewController {
     return commands;
   }
 
+  private buildEdgeCaptureCommands(ele: cytoscape.Singular): any[] {
+    if (!ele.isEdge()) return [];
+
+    const { srcNode, srcIf, dstNode, dstIf } = this.computeEdgeCaptureEndpoints(ele);
+    const items: any[] = [];
+    const imagesUrl = this.getImagesUrl();
+
+    if (srcNode && srcIf) {
+      items.push({
+        content: this.buildCaptureMenuContent(imagesUrl, srcNode, srcIf),
+        select: this.captureInterface.bind(this, srcNode, srcIf),
+      });
+    }
+    if (dstNode && dstIf) {
+      items.push({
+        content: this.buildCaptureMenuContent(imagesUrl, dstNode, dstIf),
+        select: this.captureInterface.bind(this, dstNode, dstIf),
+      });
+    }
+
+    return items;
+  }
+
+  private getImagesUrl(): string {
+    return (window as any).imagesUrl || '';
+  }
+
+  private buildCaptureMenuContent(imagesUrl: string, name: string, endpoint: string): string {
+    return `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                          <img src="${imagesUrl}/wireshark_bold.svg" style="width:1.4em; height:1.4em; filter: brightness(0) invert(1);" />
+                          <div style="height:0.3em;"></div>
+                          <span style="font-size:0.9em;">${name} - ${endpoint}</span>
+                        </div>`;
+  }
+
+  private computeEdgeCaptureEndpoints(ele: cytoscape.Singular): { srcNode: string; srcIf: string; dstNode: string; dstIf: string } {
+    const data = ele.data();
+    const extra = data.extraData || {};
+    const srcNode: string = extra.clabSourceLongName || data.source || '';
+    const dstNode: string = extra.clabTargetLongName || data.target || '';
+    const srcIf: string = data.sourceEndpoint || '';
+    const dstIf: string = data.targetEndpoint || '';
+    return { srcNode, srcIf, dstNode, dstIf };
+  }
+
+  private async captureInterface(nodeName: string, interfaceName: string): Promise<void> {
+    await this.messageSender.sendMessageToVscodeEndpointPost('clab-interface-capture', {
+      nodeName,
+      interfaceName,
+    });
+  }
+
 
 
   /**
@@ -945,115 +1039,113 @@ class TopologyWebviewController {
    */
   private async registerEvents(mode: 'edit' | 'view'): Promise<void> {
     if (mode === 'edit') {
-      registerCyEventHandlers({
-        cy: this.cy,
-        onCanvasClick: (event) => {
-          const mouseEvent = event.originalEvent as MouseEvent;
-          if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
-            log.debug('Canvas clicked with Shift key - adding node.');
-            // Check if there's a default custom node to use
-            const defaultName = (window as any).defaultNode;
-            let template = undefined;
-            if (defaultName) {
-              const customNodes = (window as any).customNodes || [];
-              template = customNodes.find((n: any) => n.name === defaultName);
-            }
-            this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, event, template);
-          }
-        },
-        onNodeClick: async (event) => {
-            this.viewportPanels!.nodeClicked = true; // prevent panels from closing
-          await this.handleEditModeNodeClick(event);
-        },
-        onEdgeClick: (event) => {
-            this.viewportPanels!.edgeClicked = true; // prevent panels from closing
-          const edge = event.target;
-          const originalEvent = event.originalEvent as MouseEvent;
-          if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
-            log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
-            edge.remove();
-          }
-        }
-      });
-
-      // Edgehandles lifecycle events.
-      this.cy.on('ehstart', () => {
-        this.isEdgeHandlerActive = true;
-      });
-
-      this.cy.on('ehstop', () => {
-        this.isEdgeHandlerActive = false;
-      });
-
-      this.cy.on('ehcancel', () => {
-        this.isEdgeHandlerActive = false;
-      });
-
-        document.addEventListener('keydown', (event) => this.handleKeyDown(event));
-
-      // Edge creation completion via edgehandles.
-        this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) =>
-          this.handleEdgeCreation(sourceNode, targetNode, addedEdge)
-        );
-
+      await this.registerEditModeEvents();
     } else {
-      // Viewer mode - NO left-click interactions, only right-click radial menus
-      const cy = this.cy;
-      let radialMenuOpen = false;
+      this.registerViewModeEvents();
+    }
+  }
 
-      // Track radial menu state
-      cy.on('cxtmenu:open', () => {
-        radialMenuOpen = true;
-      });
+  private handleCanvasClick(event: cytoscape.EventObject): void {
+    const mouseEvent = event.originalEvent as MouseEvent;
+    if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
+      log.debug('Canvas clicked with Shift key - adding node.');
+      const defaultName = (window as any).defaultNode;
+      let template: any | undefined;
+      if (defaultName) {
+        const customNodes = (window as any).customNodes || [];
+        template = customNodes.find((n: any) => n.name === defaultName);
+      }
+      this.addNodeManager.viewportButtonsAddContainerlabNode(this.cy, event, template);
+    }
+  }
 
-      cy.on('cxtmenu:close', () => {
-        setTimeout(() => {
-          radialMenuOpen = false;
-        }, 200);
-      });
+  private handleEditModeEdgeClick(event: cytoscape.EventObject): void {
+    const edge = event.target;
+    const originalEvent = event.originalEvent as MouseEvent;
+    if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
+      log.debug(`Alt+click on edge: deleting edge ${edge.id()}`);
+      edge.remove();
+    }
+  }
 
-      // Only register canvas click to close panels
-      registerCyEventHandlers({
-        cy,
-        onCanvasClick: () => {
-          // Don't close panels if radial menu is open
-          if (radialMenuOpen) {
-            return;
-          }
-          const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
-          for (let i = 0; i < panelOverlays.length; i++) {
-            (panelOverlays[i] as HTMLElement).style.display = 'none';
-          }
-          const viewportDrawer = document.getElementsByClassName(TopologyWebviewController.CLASS_VIEWPORT_DRAWER);
-          for (let i = 0; i < viewportDrawer.length; i++) {
-            (viewportDrawer[i] as HTMLElement).style.display = 'none';
-          }
-          topoViewerState.nodeClicked = false;
-          topoViewerState.edgeClicked = false;
-          cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
-          topoViewerState.selectedEdge = null;
-        }
-        // NO onNodeClick handler - all node interactions via right-click menu
-        // NO onEdgeClick handler - all edge interactions via right-click menu (if needed)
-      });
+  private registerEdgehandlesLifecycleEvents(): void {
+    this.cy.on('ehstart', () => {
+      this.isEdgeHandlerActive = true;
+    });
+    this.cy.on('ehstop ehcancel', () => {
+      this.isEdgeHandlerActive = false;
+    });
+  }
 
-      // Global keyboard event handler for Ctrl+A in viewer mode
-      document.addEventListener('keydown', (event) => {
-        // Check if we should handle the keyboard event
-        if (!this.shouldHandleKeyboardEvent(event)) {
+  private async registerEditModeEvents(): Promise<void> {
+    registerCyEventHandlers({
+      cy: this.cy,
+      onCanvasClick: (event) => this.handleCanvasClick(event),
+      onNodeClick: async (event) => {
+        this.viewportPanels!.nodeClicked = true; // prevent panels from closing
+        await this.handleEditModeNodeClick(event);
+      },
+      onEdgeClick: (event) => {
+        this.viewportPanels!.edgeClicked = true; // prevent panels from closing
+        this.handleEditModeEdgeClick(event);
+      }
+    });
+
+    this.registerEdgehandlesLifecycleEvents();
+    document.addEventListener('keydown', (event) => this.handleKeyDown(event));
+    this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) =>
+      this.handleEdgeCreation(sourceNode, targetNode, addedEdge)
+    );
+  }
+
+  private registerViewModeEvents(): void {
+    const cy = this.cy;
+    let radialMenuOpen = false;
+
+    cy.on('cxtmenu:open', () => {
+      radialMenuOpen = true;
+    });
+
+    cy.on('cxtmenu:close', () => {
+      setTimeout(() => {
+        radialMenuOpen = false;
+      }, 200);
+    });
+
+    registerCyEventHandlers({
+      cy,
+      onCanvasClick: () => {
+        if (radialMenuOpen) {
           return;
         }
+        this.closePanelsAndResetState();
+      }
+    });
 
-        if (event.ctrlKey && event.key === 'a') {
-          event.preventDefault();
-          this.handleSelectAll();
-        }
-      });
+    document.addEventListener('keydown', (event) => {
+      if (!this.shouldHandleKeyboardEvent(event)) {
+        return;
+      }
+      if (event.ctrlKey && event.key === 'a') {
+        event.preventDefault();
+        this.handleSelectAll();
+      }
+    });
+  }
+
+  private closePanelsAndResetState(): void {
+    const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
+    for (let i = 0; i < panelOverlays.length; i++) {
+      (panelOverlays[i] as HTMLElement).style.display = 'none';
     }
-
-    // Drag-and-drop reparenting logic is now handled by groupManager.initializeGroupManagement()
-
-
+    const viewportDrawer = document.getElementsByClassName(TopologyWebviewController.CLASS_VIEWPORT_DRAWER);
+    for (let i = 0; i < viewportDrawer.length; i++) {
+      (viewportDrawer[i] as HTMLElement).style.display = 'none';
+    }
+    topoViewerState.nodeClicked = false;
+    topoViewerState.edgeClicked = false;
+    this.cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
+    topoViewerState.selectedEdge = null;
   }
 
 
@@ -1107,65 +1199,11 @@ class TopologyWebviewController {
     if (!this.shouldHandleKeyboardEvent(event)) {
       return;
     }
-
     const key = event.key.toLowerCase();
-    const ctrl = event.ctrlKey;
-    const editMode = this.isViewportDrawerClabEditorChecked;
-
-    const baseHandlers: Record<string, () => void> = {
-      delete: () => {
-        event.preventDefault();
-        this.handleDeleteKeyPress();
-      },
-      backspace: () => {
-        event.preventDefault();
-        this.handleDeleteKeyPress();
-      },
-      g: () => {
-        this.groupManager.viewportButtonsAddGroup();
-      }
-    };
-
-    const ctrlHandlers: Record<string, () => void> = {
-      a: () => {
-        event.preventDefault();
-        this.handleSelectAll();
-      },
-      c: () => {
-        event.preventDefault();
-        this.copyPasteManager.handleCopy();
-      },
-      v: () => {
-        if (editMode) {
-          event.preventDefault();
-          this.copyPasteManager.handlePaste();
-        }
-      },
-      x: () => {
-        if (editMode) {
-          event.preventDefault();
-          this.handleCutKeyPress();
-        }
-      },
-      d: () => {
-        if (editMode) {
-          event.preventDefault();
-          this.copyPasteManager.handleDuplicate();
-        }
-      }
-    };
-
-    if (ctrl) {
-      const handler = ctrlHandlers[key];
-      if (handler) {
-        handler();
-        return;
-      }
-    }
-
-    const handler = baseHandlers[key];
+    const combo = `${event.ctrlKey ? 'ctrl+' : ''}${key}`;
+    const handler = this.keyHandlers[combo] || this.keyHandlers[key];
     if (handler) {
-      handler();
+      handler(event);
     }
   }
 
@@ -1221,10 +1259,18 @@ class TopologyWebviewController {
 
   private populateLinkPanel(ele: cytoscape.Singular): void {
     const extraData = ele.data('extraData') || {};
+    this.updateLinkName(ele);
+    this.updateLinkEndpointInfo(ele, extraData);
+  }
+
+  private updateLinkName(ele: cytoscape.Singular): void {
     const linkNameEl = document.getElementById('panel-link-name');
     if (linkNameEl) {
       linkNameEl.innerHTML = `┌ ${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}<br>└ ${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`;
     }
+  }
+
+  private updateLinkEndpointInfo(ele: cytoscape.Singular, extraData: any): void {
     const entries: Array<[string, string | undefined]> = [
       ['panel-link-endpoint-a-name', `${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}`],
       ['panel-link-endpoint-a-mac-address', extraData.clabSourceMacAddress || 'N/A'],
@@ -1233,7 +1279,7 @@ class TopologyWebviewController {
       ['panel-link-endpoint-b-name', `${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`],
       ['panel-link-endpoint-b-mac-address', extraData.clabTargetMacAddress || 'N/A'],
       ['panel-link-endpoint-b-mtu', extraData.clabTargetMtu || 'N/A'],
-      ['panel-link-endpoint-b-type', extraData.clabTargetType || 'N/A'],
+      ['panel-link-endpoint-b-type', extraData.clabTargetType || 'N/A']
     ];
     entries.forEach(([id, value]) => {
       const el = document.getElementById(id);

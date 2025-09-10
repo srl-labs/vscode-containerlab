@@ -401,34 +401,27 @@ export class TopoViewerAdaptorClab {
   }
 
   private normalizeSingleTypeToSpecialId(t: string, linkObj: any, ctx: DummyContext): string {
-    const handlers: Record<string, () => string> = {
-      host: () => `${t}:${linkObj?.['host-interface'] ?? ''}`,
-      'mgmt-net': () => `${t}:${linkObj?.['host-interface'] ?? ''}`,
-      macvlan: () => `${t}:${linkObj?.['host-interface'] ?? ''}`,
-      vxlan: () => {
-        const remote = linkObj?.remote ?? '';
-        const vni = linkObj?.vni ?? '';
-        const udp = linkObj?.['udp-port'] ?? '';
-        return `${t}:${remote}/${vni}/${udp}`;
-      },
-      'vxlan-stitch': () => {
-        const remote = linkObj?.remote ?? '';
-        const vni = linkObj?.vni ?? '';
-        const udp = linkObj?.['udp-port'] ?? '';
-        return `${t}:${remote}/${vni}/${udp}`;
-      },
-      dummy: () => {
-        if (ctx.dummyLinkMap.has(linkObj)) {
-          return ctx.dummyLinkMap.get(linkObj)!;
-        }
-        ctx.dummyCounter += 1;
-        const dummyId = `dummy${ctx.dummyCounter}`;
-        ctx.dummyLinkMap.set(linkObj, dummyId);
-        return dummyId;
-      },
-    };
+    if (['host', 'mgmt-net', 'macvlan'].includes(t)) {
+      return `${t}:${linkObj?.['host-interface'] ?? ''}`;
+    }
 
-    return handlers[t]?.() ?? '';
+    if (t === 'vxlan' || t === 'vxlan-stitch') {
+      const remote = linkObj?.remote ?? '';
+      const vni = linkObj?.vni ?? '';
+      const udp = linkObj?.['udp-port'] ?? '';
+      return `${t}:${remote}/${vni}/${udp}`;
+    }
+
+    if (t === 'dummy') {
+      const cached = ctx.dummyLinkMap.get(linkObj);
+      if (cached) return cached;
+      ctx.dummyCounter += 1;
+      const dummyId = `dummy${ctx.dummyCounter}`;
+      ctx.dummyLinkMap.set(linkObj, dummyId);
+      return dummyId;
+    }
+
+    return '';
   }
 
   private normalizeLinkToTwoEndpoints(linkObj: any, ctx: DummyContext): { endA: any; endB: any; type?: string } | null {

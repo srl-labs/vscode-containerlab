@@ -438,43 +438,54 @@ function applyBasicProps(
   }
 }
 
+function normalizeObject(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(normalizeObject);
+  if (obj && typeof obj === 'object') {
+    return Object.keys(obj)
+      .sort()
+      .reduce((res, key) => {
+        res[key] = normalizeObject(obj[key]);
+        return res;
+      }, {} as any);
+  }
+  return obj;
+}
+
+function deepEqualNormalized(a: any, b: any): boolean {
+  return JSON.stringify(normalizeObject(a)) === JSON.stringify(normalizeObject(b));
+}
+
+function shouldPersist(val: any): boolean {
+  if (val === undefined) return false;
+  if (Array.isArray(val)) return val.length > 0;
+  if (val && typeof val === 'object') return Object.keys(val).length > 0;
+  return true;
+}
+
+function applyExtraProp(
+  doc: YAML.Document.Parsed,
+  nodeMap: YAML.YAMLMap,
+  extraData: any,
+  inherit: any,
+  prop: string,
+): void {
+  const val = (extraData as any)[prop];
+  const inheritedVal = (inherit as any)[prop];
+  if (shouldPersist(val) && !deepEqualNormalized(val, inheritedVal)) {
+    const node = doc.createNode(val) as any;
+    if (node && typeof node === 'object') node.flow = false;
+    nodeMap.set(prop, node);
+  } else {
+    nodeMap.delete(prop);
+  }
+}
+
 function applyExtraProps(
   doc: YAML.Document.Parsed,
   nodeMap: YAML.YAMLMap,
   extraData: any,
   inherit: any,
 ): void {
-  const normalize = (obj: any): any => {
-    if (Array.isArray(obj)) return obj.map(normalize);
-    if (obj && typeof obj === 'object') {
-      return Object.keys(obj)
-        .sort()
-        .reduce((res, key) => {
-          res[key] = normalize(obj[key]);
-          return res;
-        }, {} as any);
-    }
-    return obj;
-  };
-  const deepEqual = (a: any, b: any) => JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
-  const shouldPersist = (val: any) => {
-    if (val === undefined) return false;
-    if (Array.isArray(val)) return val.length > 0;
-    if (val && typeof val === 'object') return Object.keys(val).length > 0;
-    return true;
-  };
-  const applyProp = (prop: string) => {
-    const val = (extraData as any)[prop];
-    const inheritedVal = (inherit as any)[prop];
-    if (shouldPersist(val) && !deepEqual(val, inheritedVal)) {
-      const node = doc.createNode(val) as any;
-      if (node && typeof node === 'object') node.flow = false;
-      nodeMap.set(prop, node);
-    } else {
-      nodeMap.delete(prop);
-    }
-  };
-
   [
     'startup-config',
     'enforce-startup-config',
@@ -509,7 +520,7 @@ function applyExtraProps(
     'image-pull-policy',
     'runtime',
     'stages',
-  ].forEach(applyProp);
+  ].forEach(prop => applyExtraProp(doc, nodeMap, extraData, inherit, prop));
 }
 
 function ensureLinksNode(doc: YAML.Document.Parsed): YAML.YAMLSeq {

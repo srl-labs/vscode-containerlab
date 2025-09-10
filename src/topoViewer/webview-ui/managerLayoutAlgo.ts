@@ -435,7 +435,7 @@ export class ManagerLayoutAlgo {
    * all nodes have valid geographic coordinates before Geo positioning is
    * enabled. Existing values are normalised while missing ones are generated
    * using the average of known coordinates or fall back defaults.
-   */
+  */
   public assignMissingLatLng(): void {
     const cy = this.getCy();
     if (!cy) return;
@@ -444,49 +444,70 @@ export class ManagerLayoutAlgo {
     const DEFAULT_AVERAGE_LAT = 48.684826888402256;
     const DEFAULT_AVERAGE_LNG = 9.007895390625677;
 
-    const existingLats: number[] = [];
-    const existingLngs: number[] = [];
+    const { lats, lngs } = this.collectExistingLatLng(cy);
+    const averageLat = this.averageOrDefault(lats, DEFAULT_AVERAGE_LAT);
+    const averageLng = this.averageOrDefault(lngs, DEFAULT_AVERAGE_LNG);
 
+    const useDefaultLat = lats.length === 0;
+    const useDefaultLng = lngs.length === 0;
+
+    cy.nodes().forEach(node => {
+      this.assignNodeLatLng(
+        node,
+        averageLat,
+        averageLng,
+        useDefaultLat,
+        useDefaultLng,
+        DEFAULT_AVERAGE_LAT,
+        DEFAULT_AVERAGE_LNG
+      );
+    });
+  }
+
+  private collectExistingLatLng(cy: cytoscape.Core): { lats: number[]; lngs: number[] } {
+    const lats: number[] = [];
+    const lngs: number[] = [];
     cy.nodes().forEach(node => {
       const lat = parseFloat(node.data('lat'));
-      if (!isNaN(lat)) existingLats.push(lat);
+      if (!isNaN(lat)) lats.push(lat);
 
       const lng = parseFloat(node.data('lng'));
-      if (!isNaN(lng)) existingLngs.push(lng);
+      if (!isNaN(lng)) lngs.push(lng);
     });
+    return { lats, lngs };
+  }
 
-    let averageLat = existingLats.length > 0
-      ? existingLats.reduce((a, b) => a + b, 0) / existingLats.length
-      : DEFAULT_AVERAGE_LAT;
-    let averageLng = existingLngs.length > 0
-      ? existingLngs.reduce((a, b) => a + b, 0) / existingLngs.length
-      : DEFAULT_AVERAGE_LNG;
+  private averageOrDefault(values: number[], fallback: number): number {
+    return values.length > 0
+      ? values.reduce((a, b) => a + b, 0) / values.length
+      : fallback;
+  }
 
-    const useDefaultLat = existingLats.length === 0;
-    const useDefaultLng = existingLngs.length === 0;
+  private assignNodeLatLng(
+    node: cytoscape.NodeSingular,
+    averageLat: number,
+    averageLng: number,
+    useDefaultLat: boolean,
+    useDefaultLng: boolean,
+    defaultLat: number,
+    defaultLng: number
+  ): void {
+    let lat = parseFloat(node.data('lat'));
+    if (!node.data('lat') || isNaN(lat)) {
+      const idx = node.id().length % 5;
+      const offset = (idx - 2) * 0.05;
+      lat = (useDefaultLat ? defaultLat : averageLat) + offset;
+    }
 
-    cy.nodes().forEach(node => {
-      let lat = parseFloat(node.data('lat'));
-      if (!node.data('lat') || isNaN(lat)) {
-        // Spread nodes around the center with deterministic offset
-        const idx = node.id().length % 5;
-        const offset = (idx - 2) * 0.05;
-        lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat) + offset;
-      }
-      let lng = parseFloat(node.data('lng'));
-      if (!node.data('lng') || isNaN(lng)) {
-        // Spread nodes around the center with deterministic offset
-        const idx = (node.id().charCodeAt(0) || 0) % 7;
-        const offset = (idx - 3) * 0.05;
-        lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng) + offset;
-      }
+    let lng = parseFloat(node.data('lng'));
+    if (!node.data('lng') || isNaN(lng)) {
+      const idx = (node.id().charCodeAt(0) || 0) % 7;
+      const offset = (idx - 3) * 0.05;
+      lng = (useDefaultLng ? defaultLng : averageLng) + offset;
+    }
 
-      const latStr = lat.toFixed(15);
-      const lngStr = lng.toFixed(15);
-      node.data('lat', latStr);
-      node.data('lng', lngStr);
-
-    });
+    node.data('lat', lat.toFixed(15));
+    node.data('lng', lng.toFixed(15));
   }
 
   public viewportButtonsLayoutAlgo(event?: Event): void {
@@ -945,41 +966,10 @@ export class ManagerLayoutAlgo {
     const cy = this.getCy();
     if (!cy) return;
 
-    const nodeGap = parseFloat((document.getElementById('vertical-layout-slider-node-v-gap') as HTMLInputElement)?.value || '1');
-    const groupGap = parseFloat((document.getElementById('vertical-layout-slider-group-v-gap') as HTMLInputElement)?.value || '100');
+    const nodeGap = this.parseInputValue('vertical-layout-slider-node-v-gap', '1');
+    const groupGap = this.parseInputValue('vertical-layout-slider-group-v-gap', '100');
 
-    setTimeout(() => {
-      cy.nodes().forEach((node) => {
-        if (node.isParent()) {
-          const children = node.children();
-          const cellWidth = node.width() / children.length;
-          children.forEach((child, i) => {
-            child.position({ x: i * (cellWidth + nodeGap), y: 0 });
-          });
-        }
-      });
-
-      const sortedParents = cy.nodes().filter((n) => n.isParent()).sort((a, b) => {
-        const aLevel = parseInt(a.data('extraData')?.topoViewerGroupLevel || '0', 10);
-        const bLevel = parseInt(b.data('extraData')?.topoViewerGroupLevel || '0', 10);
-        if (aLevel !== bLevel) return aLevel - bLevel;
-        return (a.data('id') || '').localeCompare(b.data('id') || '');
-      });
-
-      let y = 0;
-      let maxWidth = 0;
-      cy.nodes().forEach((node) => { if (node.isParent()) maxWidth = Math.max(maxWidth, node.width()); });
-      const centerX = 0;
-      const divFactor = maxWidth / 2;
-
-      sortedParents.forEach((parent) => {
-        const x = centerX - parent.width() / divFactor;
-        parent.position({ x, y });
-        y += groupGap;
-      });
-
-      cy.fit();
-    }, 100);
+    this.applyDrawerLayout(cy, 'vertical', nodeGap, groupGap);
   }
 
   public viewportDrawerLayoutHorizontal(): void {
@@ -987,41 +977,99 @@ export class ManagerLayoutAlgo {
     const cy = this.getCy();
     if (!cy) return;
 
-    const nodeGap = parseFloat((document.getElementById('horizontal-layout-slider-node-h-gap') as HTMLInputElement)?.value || '10') * 10;
-    const groupGap = parseFloat((document.getElementById('horizontal-layout-slider-group-h-gap') as HTMLInputElement)?.value || '100');
+    const nodeGap = this.parseInputValue('horizontal-layout-slider-node-h-gap', '10', 10);
+    const groupGap = this.parseInputValue('horizontal-layout-slider-group-h-gap', '100');
 
+    this.applyDrawerLayout(cy, 'horizontal', nodeGap, groupGap);
+  }
+
+  private parseInputValue(id: string, fallback: string, multiplier = 1): number {
+    const value = (document.getElementById(id) as HTMLInputElement)?.value ?? fallback;
+    return parseFloat(value || fallback) * multiplier;
+  }
+
+  private applyDrawerLayout(
+    cy: cytoscape.Core,
+    orientation: 'vertical' | 'horizontal',
+    nodeGap: number,
+    groupGap: number
+  ): void {
     setTimeout(() => {
-      cy.nodes().forEach((node) => {
-        if (node.isParent()) {
-          const children = node.children();
-          const cellHeight = node.height() / children.length;
-          children.forEach((child, i) => {
-            child.position({ x: 0, y: i * (cellHeight + nodeGap) });
-          });
-        }
-      });
+      this.positionChildren(cy, orientation, nodeGap);
+      const sortedParents = this.sortParentNodes(cy);
+      const maxSize = this.getMaxParentSize(cy, orientation);
+      this.positionParentNodes(sortedParents, orientation, groupGap, maxSize);
+      cy.fit();
+    }, 100);
+  }
 
-      const sortedParents = cy.nodes().filter((n) => n.isParent()).sort((a, b) => {
+  private positionChildren(
+    cy: cytoscape.Core,
+    orientation: 'vertical' | 'horizontal',
+    nodeGap: number
+  ): void {
+    cy.nodes()
+      .filter(n => n.isParent())
+      .forEach(node => {
+        const children = node.children();
+        const cell = orientation === 'vertical'
+          ? node.width() / children.length
+          : node.height() / children.length;
+        children.forEach((child, i) => {
+          if (orientation === 'vertical') {
+            child.position({ x: i * (cell + nodeGap), y: 0 });
+          } else {
+            child.position({ x: 0, y: i * (cell + nodeGap) });
+          }
+        });
+      });
+  }
+
+  private sortParentNodes(cy: cytoscape.Core): cytoscape.CollectionReturnValue {
+    return cy
+      .nodes()
+      .filter(n => n.isParent())
+      .sort((a, b) => {
         const aLevel = parseInt(a.data('extraData')?.topoViewerGroupLevel || '0', 10);
         const bLevel = parseInt(b.data('extraData')?.topoViewerGroupLevel || '0', 10);
         if (aLevel !== bLevel) return aLevel - bLevel;
         return (a.data('id') || '').localeCompare(b.data('id') || '');
       });
+  }
 
-      let x = 0;
-      let maxHeight = 0;
-      cy.nodes().forEach((node) => { if (node.isParent()) maxHeight = Math.max(maxHeight, node.height()); });
-      const centerY = 0;
-      const divFactor = maxHeight / 2;
-
-      sortedParents.forEach((parent) => {
-        const y = centerY - parent.height() / divFactor;
-        parent.position({ x, y });
-        x += groupGap;
+  private getMaxParentSize(
+    cy: cytoscape.Core,
+    orientation: 'vertical' | 'horizontal'
+  ): number {
+    let maxSize = 0;
+    cy
+      .nodes()
+      .filter(n => n.isParent())
+      .forEach(node => {
+        const size = orientation === 'vertical' ? node.width() : node.height();
+        if (size > maxSize) maxSize = size;
       });
+    return maxSize;
+  }
 
-      cy.fit();
-    }, 100);
+  private positionParentNodes(
+    parents: cytoscape.CollectionReturnValue,
+    orientation: 'vertical' | 'horizontal',
+    groupGap: number,
+    maxSize: number
+  ): void {
+    const center = 0;
+    const divFactor = maxSize / 2;
+    let axis = 0;
+    parents.forEach(parent => {
+      const pos = center - (orientation === 'vertical' ? parent.width() : parent.height()) / divFactor;
+      if (orientation === 'vertical') {
+        parent.position({ x: pos, y: axis });
+      } else {
+        parent.position({ x: axis, y: pos });
+      }
+      axis += groupGap;
+    });
   }
 
   public async viewportDrawerPreset(): Promise<void> {

@@ -57,13 +57,13 @@ export default [
         skipBlankLines: false,    // also flag lines that are purely whitespace
         ignoreComments: false     // also flag whitespace at end of comments
       }],
-      'complexity': ['warn', { max: 15 }],
-      'sonarjs/cognitive-complexity': ['warn', 15],
-      'sonarjs/no-identical-functions': 'warn',
-      'sonarjs/no-duplicate-string': 'warn',
+      'complexity': ['error', { max: 15 }],
+      'sonarjs/cognitive-complexity': ['error', 15],
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/no-duplicate-string': 'error',
       'sonarjs/no-hardcoded-ip': 'off',
       'sonarjs/no-alphabetical-sort': 'off',
-      'aggregate-complexity/aggregate-complexity': ['warn', { max: 15 }]
+      'aggregate-complexity/aggregate-complexity': ['error', { max: 15 }]
 
     }
   }

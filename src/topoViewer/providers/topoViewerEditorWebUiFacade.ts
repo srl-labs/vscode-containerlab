@@ -668,20 +668,41 @@ topology:
     this.isViewMode = viewMode;
 
     this.deploymentState = await this.checkDeploymentState(labName);
-    if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
-      fileUri = vscode.Uri.file(this.lastYamlFilePath);
-      log.info(`Using corrected file path: ${fileUri.fsPath}`);
-    }
+    fileUri = this.normalizeFileUri(fileUri);
 
-    const column = vscode.window.activeTextEditor
-      ? vscode.window.activeTextEditor.viewColumn
-      : undefined;
+    const column = vscode.window.activeTextEditor?.viewColumn;
+    if (this.revealIfPanelExists(column)) return;
 
-    if (this.currentPanel) {
-      this.currentPanel.reveal(column);
+    const panel = this.initPanel(labName, column);
+    this.currentPanel = panel;
+
+    try {
+      await this.initializePanelData(fileUri, labName);
+    } catch {
       return;
     }
 
+    this.startUpdatePanelHtml();
+    this.setupFileHandlers();
+    this.registerPanelListeners(panel, context);
+  }
+
+  private normalizeFileUri(fileUri: vscode.Uri): vscode.Uri {
+    if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
+      const corrected = vscode.Uri.file(this.lastYamlFilePath);
+      log.info(`Using corrected file path: ${corrected.fsPath}`);
+      return corrected;
+    }
+    return fileUri;
+  }
+
+  private revealIfPanelExists(column: vscode.ViewColumn | undefined): boolean {
+    if (!this.currentPanel) return false;
+    this.currentPanel.reveal(column);
+    return true;
+  }
+
+  private initPanel(labName: string, column: vscode.ViewColumn | undefined): vscode.WebviewPanel {
     const panel = vscode.window.createWebviewPanel(
       this.viewType,
       labName,
@@ -696,35 +717,44 @@ topology:
         retainContextWhenHidden: true,
       }
     );
-
     const iconUri = vscode.Uri.joinPath(
       this.context.extensionUri,
       'resources',
       'containerlab.png'
     );
     panel.iconPath = iconUri;
+    return panel;
+  }
 
-    this.currentPanel = panel;
-
+  private async initializePanelData(fileUri: vscode.Uri, labName: string): Promise<void> {
     try {
       await this.loadInitialYaml(fileUri, labName);
       if (this.isViewMode) {
-        try {
-          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
-        } catch (err) {
-          log.warn(`Failed to load running lab data: ${err}`);
-        }
+        await this.loadRunningLabData();
       }
     } catch (e) {
-      if (!this.isViewMode) {
-        vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
-        return;
-      }
+      this.handleInitialLoadError(e);
+      throw e;
+    }
+  }
+
+  private async loadRunningLabData(): Promise<void> {
+    try {
+      this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
+    } catch (err) {
+      log.warn(`Failed to load running lab data: ${err}`);
+    }
+  }
+
+  private handleInitialLoadError(e: unknown): void {
+    if (!this.isViewMode) {
+      vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
+    } else {
       log.warn(`Failed to load topology in view mode, continuing: ${(e as Error).message}`);
     }
+  }
 
-
-
+  private startUpdatePanelHtml(): void {
     perfMark('updatePanelHtml_start');
     const updatePromise = this.updatePanelHtmlInternal(this.currentPanel);
     updatePromise
@@ -736,28 +766,34 @@ topology:
       .catch(err => {
         log.error(`Failed to update panel HTML: ${err}`);
       });
+  }
 
-    if (!this.isViewMode && this.lastYamlFilePath) {
-      this.setupFileWatcher();
-      this.setupSaveListener();
-    }
+  private setupFileHandlers(): void {
+    if (this.isViewMode || !this.lastYamlFilePath) return;
+    this.setupFileWatcher();
+    this.setupSaveListener();
+  }
 
+  private registerPanelListeners(panel: vscode.WebviewPanel, context: vscode.ExtensionContext): void {
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
-      if (this.fileWatcher) {
-        this.fileWatcher.dispose();
-        this.fileWatcher = undefined;
-      }
-      if (this.saveListener) {
-        this.saveListener.dispose();
-        this.saveListener = undefined;
-      }
+      this.disposeFileHandlers();
     }, null, context.subscriptions);
 
     panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
       await this.handleWebviewMessage(msg, panel);
     });
+  }
 
+  private disposeFileHandlers(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.dispose();
+      this.fileWatcher = undefined;
+    }
+    if (this.saveListener) {
+      this.saveListener.dispose();
+      this.saveListener = undefined;
+    }
   }
 
   private async loadInitialYaml(fileUri: vscode.Uri, labName: string): Promise<void> {

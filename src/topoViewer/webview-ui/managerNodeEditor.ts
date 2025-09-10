@@ -2143,18 +2143,7 @@ export class ManagerNodeEditor {
   }
 
   private mergeNodeData(nodeProps: NodeProperties, currentData: any): { updatedExtraData: any; inheritedProps: string[] } {
-    const updatedExtraData: any = { ...(currentData.extraData || {}) };
-    const formManagedProperties = [
-      'name', 'kind', 'type', 'image',
-      PROP_STARTUP_CONFIG, PROP_ENFORCE_STARTUP_CONFIG, PROP_SUPPRESS_STARTUP_CONFIG,
-      'license', CN_BINDS, CN_ENV, CN_LABELS, 'user',
-      'entrypoint', 'cmd', 'exec', PROP_RESTART_POLICY, PROP_AUTO_REMOVE, PROP_STARTUP_DELAY,
-      PROP_MGMT_IPV4, PROP_MGMT_IPV6, PROP_NETWORK_MODE, PROP_PORTS, PROP_DNS, PROP_ALIASES,
-      PROP_MEMORY, PROP_CPU, PROP_CPU_SET, PROP_SHM_SIZE, PROP_CAP_ADD, PROP_SYSCTLS, PROP_DEVICES,
-      PROP_CERTIFICATE, 'healthcheck', PROP_IMAGE_PULL_POLICY, PROP_RUNTIME, 'inherited'
-    ];
-    formManagedProperties.forEach(prop => { delete updatedExtraData[prop]; });
-    Object.assign(updatedExtraData, nodeProps);
+    const updatedExtraData = this.prepareExtraData(nodeProps, currentData.extraData || {});
 
     const topology: ClabTopology = {
       topology: {
@@ -2167,6 +2156,34 @@ export class ManagerNodeEditor {
     const groupName = currentData.extraData?.group;
     const inheritBase = resolveNodeConfig(topology, { group: groupName, kind: kindName });
     const mergedNode = resolveNodeConfig(topology, { ...nodeProps, group: groupName, kind: kindName });
+    const inheritedProps = this.computeInheritedProps(mergedNode, nodeProps, inheritBase);
+
+    Object.assign(updatedExtraData, mergedNode);
+    updatedExtraData.inherited = inheritedProps;
+    updatedExtraData.kind = kindName;
+    if (groupName !== undefined) {
+      updatedExtraData.group = groupName;
+    }
+    return { updatedExtraData, inheritedProps };
+  }
+
+  private prepareExtraData(nodeProps: NodeProperties, currentExtraData: any): any {
+    const updatedExtraData: any = { ...currentExtraData };
+    const formManagedProperties = [
+      'name', 'kind', 'type', 'image',
+      PROP_STARTUP_CONFIG, PROP_ENFORCE_STARTUP_CONFIG, PROP_SUPPRESS_STARTUP_CONFIG,
+      'license', CN_BINDS, CN_ENV, CN_LABELS, 'user',
+      'entrypoint', 'cmd', 'exec', PROP_RESTART_POLICY, PROP_AUTO_REMOVE, PROP_STARTUP_DELAY,
+      PROP_MGMT_IPV4, PROP_MGMT_IPV6, PROP_NETWORK_MODE, PROP_PORTS, PROP_DNS, PROP_ALIASES,
+      PROP_MEMORY, PROP_CPU, PROP_CPU_SET, PROP_SHM_SIZE, PROP_CAP_ADD, PROP_SYSCTLS, PROP_DEVICES,
+      PROP_CERTIFICATE, 'healthcheck', PROP_IMAGE_PULL_POLICY, PROP_RUNTIME, 'inherited'
+    ];
+    formManagedProperties.forEach(prop => { delete updatedExtraData[prop]; });
+    Object.assign(updatedExtraData, nodeProps);
+    return updatedExtraData;
+  }
+
+  private computeInheritedProps(mergedNode: any, nodeProps: NodeProperties, inheritBase: any): string[] {
     const deepEqual = (a: any, b: any) => this.deepEqualNormalized(a, b);
     const shouldPersist = (val: any) => this.shouldPersistValue(val);
     const inheritedProps: string[] = [];
@@ -2183,13 +2200,7 @@ export class ManagerNodeEditor {
         inheritedProps.push(prop);
       }
     });
-    Object.assign(updatedExtraData, mergedNode);
-    updatedExtraData.inherited = inheritedProps;
-    updatedExtraData.kind = kindName;
-    if (groupName !== undefined) {
-      updatedExtraData.group = groupName;
-    }
-    return { updatedExtraData, inheritedProps };
+    return inheritedProps;
   }
 
   private normalizeObject(obj: any): any {

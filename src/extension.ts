@@ -34,6 +34,23 @@ export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
+function extractLabName(session: any, prefix: string): string | undefined {
+  if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
+    return session.network.slice(5);
+  }
+  if (typeof session.name !== 'string') {
+    return undefined;
+  }
+  const name = session.name;
+  if (name.startsWith(`${prefix}-`)) {
+    return name.slice(prefix.length + 1);
+  }
+  if (name.startsWith('clab-') && name.endsWith(`-${prefix}`)) {
+    return name.slice(5, -(prefix.length + 1));
+  }
+  return undefined;
+}
+
 export async function refreshSshxSessions() {
   try {
     const out = await utils.runWithSudo(
@@ -50,18 +67,7 @@ export async function refreshSshxSessions() {
         if (!s.link || s.link === 'N/A') {
           return;
         }
-        let lab: string | undefined;
-        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
-          lab = s.network.replace(/^clab-/, '');
-        }
-        if (!lab && typeof s.name === 'string') {
-          const name = s.name;
-          if (name.startsWith('sshx-')) {
-            lab = name.replace(/^sshx-/, '');
-          } else if (name.startsWith('clab-') && name.endsWith('-sshx')) {
-            lab = name.slice(5, -5);
-          }
-        }
+        const lab = extractLabName(s, 'sshx');
         if (lab) {
           sshxSessions.set(lab, s.link);
         }
@@ -91,19 +97,7 @@ export async function refreshGottySessions() {
         if (!s.port || !hostname) {
           return;
         }
-
-        let lab: string | undefined;
-        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
-          lab = s.network.replace(/^clab-/, '');
-        }
-        if (!lab && typeof s.name === 'string') {
-          const name = s.name;
-          if (name.startsWith('gotty-')) {
-            lab = name.replace(/^gotty-/, '');
-          } else if (name.startsWith('clab-') && name.endsWith('-gotty')) {
-            lab = name.slice(5, -6);
-          }
-        }
+        const lab = extractLabName(s, 'gotty');
         if (lab) {
           // Construct the URL using hostname and port
           const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;

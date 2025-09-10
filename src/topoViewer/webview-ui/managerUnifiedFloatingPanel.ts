@@ -317,71 +317,109 @@ export class ManagerUnifiedFloatingPanel {
     let currentFocusIndex = -1;
     const visibleItems: HTMLElement[] = [];
 
-    const updateFilter = (searchText: string) => {
-      const search = searchText.toLowerCase();
-      visibleItems.length = 0;
-
-      allItems.forEach(({ element, label }) => {
-        if (search === '' || label.includes(search)) {
-          element.style.display = '';
-          visibleItems.push(element);
-        } else {
-          element.style.display = 'none';
-        }
-      });
-
-      if (separator && separator2) {
-        const hasVisibleCustomNodes = customNodes.some((n: any) =>
-          search === '' || n.name.toLowerCase().includes(search)
-        );
-        separator.style.display = hasVisibleCustomNodes ? '' : 'none';
-        separator2.style.display = hasVisibleCustomNodes ? '' : 'none';
-      }
-
-      currentFocusIndex = -1;
-    };
-
-    const setFocus = (index: number) => {
-      visibleItems.forEach(item => {
-        item.style.backgroundColor = '';
-      });
-
-      if (index >= 0 && index < visibleItems.length) {
-        visibleItems[index].style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
-        visibleItems[index].scrollIntoView({ block: 'nearest' });
-        currentFocusIndex = index;
-      }
-    };
-
     filterInput.addEventListener('input', (e) => {
-      updateFilter((e.target as HTMLInputElement).value);
+      this.filterMenuItems(
+        (e.target as HTMLInputElement).value,
+        allItems,
+        visibleItems,
+        customNodes,
+        separator,
+        separator2
+      );
+      currentFocusIndex = -1;
     });
 
     filterInput.addEventListener('keydown', (e) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setFocus(Math.min(currentFocusIndex + 1, visibleItems.length - 1));
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setFocus(Math.max(currentFocusIndex - 1, -1));
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (currentFocusIndex >= 0 && currentFocusIndex < visibleItems.length) {
-            const item = visibleItems[currentFocusIndex];
-            const button = item.querySelector('button') || item;
-            (button as HTMLElement).click();
-          }
-          break;
-        case 'Escape':
-          instance.hide();
-          break;
-      }
+      currentFocusIndex = this.handleFilterKeyNavigation(
+        e,
+        visibleItems,
+        currentFocusIndex,
+        instance
+      );
     });
 
     setTimeout(() => filterInput.focus(), 50);
+  }
+
+  private filterMenuItems(
+    searchText: string,
+    allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
+    visibleItems: HTMLElement[],
+    customNodes: any[],
+    separator: HTMLElement | null,
+    separator2: HTMLElement | null
+  ): void {
+    const search = searchText.toLowerCase();
+    visibleItems.length = 0;
+
+    allItems.forEach(({ element, label }) => {
+      if (search === '' || label.includes(search)) {
+        element.style.display = '';
+        visibleItems.push(element);
+      } else {
+        element.style.display = 'none';
+      }
+    });
+
+    if (separator && separator2) {
+      const hasVisibleCustomNodes = customNodes.some((n: any) =>
+        search === '' || n.name.toLowerCase().includes(search)
+      );
+      separator.style.display = hasVisibleCustomNodes ? '' : 'none';
+      separator2.style.display = hasVisibleCustomNodes ? '' : 'none';
+    }
+  }
+
+  private applyFocus(
+    visibleItems: HTMLElement[],
+    index: number
+  ): number {
+    visibleItems.forEach(item => {
+      item.style.backgroundColor = '';
+    });
+
+    if (index >= 0 && index < visibleItems.length) {
+      visibleItems[index].style.backgroundColor = 'var(--vscode-list-activeSelectionBackground)';
+      visibleItems[index].scrollIntoView({ block: 'nearest' });
+      return index;
+    }
+
+    return -1;
+  }
+
+  private handleFilterKeyNavigation(
+    e: KeyboardEvent,
+    visibleItems: HTMLElement[],
+    currentFocusIndex: number,
+    instance: any
+  ): number {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        return this.applyFocus(
+          visibleItems,
+          Math.min(currentFocusIndex + 1, visibleItems.length - 1)
+        );
+      case 'ArrowUp':
+        e.preventDefault();
+        return this.applyFocus(
+          visibleItems,
+          Math.max(currentFocusIndex - 1, -1)
+        );
+      case 'Enter':
+        e.preventDefault();
+        if (currentFocusIndex >= 0 && currentFocusIndex < visibleItems.length) {
+          const item = visibleItems[currentFocusIndex];
+          const button = item.querySelector('button') || item;
+          (button as HTMLElement).click();
+        }
+        return currentFocusIndex;
+      case 'Escape':
+        instance.hide();
+        return currentFocusIndex;
+      default:
+        return currentFocusIndex;
+    }
   }
 
   private buildAddNodeMenu(instance: any): HTMLElement {
