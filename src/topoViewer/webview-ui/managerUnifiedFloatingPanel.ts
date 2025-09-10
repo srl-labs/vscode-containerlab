@@ -1,5 +1,11 @@
 import tippy from 'tippy.js';
 import { log } from '../logging/logger';
+
+// Common literals for custom node editor
+const TEMP_CUSTOM_ID = 'temp-custom-node' as const;
+const EDIT_CUSTOM_ID = 'edit-custom-node' as const;
+const DEFAULT_ROLE_PE = 'pe' as const;
+const DEFAULT_KIND_SR = 'nokia_srlinux' as const;
 import { VscodeMessageSender } from './managerVscodeWebview';
 import cytoscape from 'cytoscape';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
@@ -643,11 +649,11 @@ export class ManagerUnifiedFloatingPanel {
     if (this.nodeEditor) {
       // Create a temporary node data for the form
       const tempNodeData = {
-        id: 'temp-custom-node',
-        name: 'temp-custom-node',
-        topoViewerRole: window.defaultKind === 'nokia_srlinux' ? 'router' : 'pe',  // Set router for SR Linux, pe for others
+        id: TEMP_CUSTOM_ID,
+        name: TEMP_CUSTOM_ID,
+        topoViewerRole: window.defaultKind === DEFAULT_KIND_SR ? 'router' : DEFAULT_ROLE_PE,  // Set router for SR Linux, pe for others
         extraData: {
-          kind: window.defaultKind || 'nokia_srlinux',
+          kind: window.defaultKind || DEFAULT_KIND_SR,
           type: window.defaultType || '',
           image: ''
         }
@@ -655,7 +661,7 @@ export class ManagerUnifiedFloatingPanel {
 
       // Create a mock node object for the editor
       const mockNode = {
-        id: () => 'temp-custom-node',
+        id: () => TEMP_CUSTOM_ID,
         data: () => tempNodeData,
         parent: () => ({ nonempty: () => false })
       };
@@ -677,14 +683,14 @@ export class ManagerUnifiedFloatingPanel {
     if (this.nodeEditor) {
       // Create a temporary node data with the custom node's properties
       const tempNodeData = {
-        id: 'edit-custom-node',
-        name: 'edit-custom-node',
-        topoViewerRole: customNode.icon || 'pe',  // Add icon to the node data
+        id: EDIT_CUSTOM_ID,
+        name: EDIT_CUSTOM_ID,
+        topoViewerRole: customNode.icon || DEFAULT_ROLE_PE,  // Add icon to the node data
         extraData: {
           kind: customNode.kind,
           type: customNode.type,
           image: customNode.image,
-          icon: customNode.icon || 'pe',  // Also include icon in extraData for the editor
+          icon: customNode.icon || DEFAULT_ROLE_PE,  // Also include icon in extraData for the editor
           // Include any other properties from the custom node
           ...Object.fromEntries(
             Object.entries(customNode).filter(([key]) =>

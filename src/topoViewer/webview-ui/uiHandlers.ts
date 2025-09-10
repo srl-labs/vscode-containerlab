@@ -9,6 +9,13 @@ import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
 import { FilterUtils } from '../../helpers/filterUtils';
 
+// Common class and display constants
+const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+const CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
+const DISPLAY_BLOCK = 'block' as const;
+const DISPLAY_NONE = 'none' as const;
+const ERR_NO_CY = 'Cytoscape instance not available' as const;
+
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
 
@@ -41,14 +48,14 @@ export async function showPanelAbout(): Promise<void> {
     }
 
     // Check if panel is currently visible
-    if (aboutPanel.style.display === "block") {
+    if (aboutPanel.style.display === DISPLAY_BLOCK) {
       // Hide the panel
-      aboutPanel.style.display = "none";
+      aboutPanel.style.display = DISPLAY_NONE;
     } else {
       // Remove all overlay panels first
-      const panelOverlays = document.getElementsByClassName("panel-overlay");
+      const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
       for (let i = 0; i < panelOverlays.length; i++) {
-        (panelOverlays[i] as HTMLElement).style.display = "none";
+        (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
       }
 
       // Hide shortcuts panel if open
@@ -74,7 +81,7 @@ export async function showPanelAbout(): Promise<void> {
       }
 
       // Show the about panel
-      aboutPanel.style.display = "block";
+      aboutPanel.style.display = DISPLAY_BLOCK;
     }
   } catch (error) {
     log.error(`Error toggling about panel: ${error}`);
@@ -87,7 +94,7 @@ export async function showPanelAbout(): Promise<void> {
 export function viewportButtonsZoomToFit(): void {
   try {
     if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available');
+      log.error(ERR_NO_CY);
       return;
     }
 
@@ -110,16 +117,16 @@ export function viewportButtonsTopologyOverview(): void {
     }
 
     // Toggle visibility
-    if (overviewDrawer.style.display === "block") {
-      overviewDrawer.style.display = "none";
+    if (overviewDrawer.style.display === DISPLAY_BLOCK) {
+      overviewDrawer.style.display = DISPLAY_NONE;
     } else {
       // Hide all viewport drawers first
-      const viewportDrawer = document.getElementsByClassName("viewport-drawer");
+      const viewportDrawer = document.getElementsByClassName(CLASS_VIEWPORT_DRAWER);
       for (let i = 0; i < viewportDrawer.length; i++) {
-        (viewportDrawer[i] as HTMLElement).style.display = "none";
+        (viewportDrawer[i] as HTMLElement).style.display = DISPLAY_NONE;
       }
       // Show the topology overview drawer
-      overviewDrawer.style.display = "block";
+      overviewDrawer.style.display = DISPLAY_BLOCK;
     }
   } catch (error) {
     log.error(`Error in topology overview button: ${error}`);
@@ -210,7 +217,7 @@ export function viewportNodeFindEvent(): void {
     }
 
     if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available');
+      log.error(ERR_NO_CY);
       return;
     }
     const cy = topoViewerState.cy;
@@ -255,7 +262,7 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
   event.preventDefault();
   try {
     if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available');
+      log.error(ERR_NO_CY);
       return;
     }
 

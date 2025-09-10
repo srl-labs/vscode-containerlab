@@ -714,7 +714,7 @@ export class TopoViewerAdaptorClab {
     if (node === 'host') return { id: `host:${iface}`, type: 'host', label: `host:${iface || 'host'}` };
     if (node === 'mgmt-net') return { id: `mgmt-net:${iface}`, type: 'mgmt-net', label: `mgmt-net:${iface || 'mgmt-net'}` };
     if (node.startsWith(PREFIX_MACVLAN)) return { id: node, type: 'macvlan', label: node };
-    if (node.startsWith(PREFIX_VXLAN_STITCH)) return { id: node, type: 'vxlan-stitch', label: node };
+    if (node.startsWith(PREFIX_VXLAN_STITCH)) return { id: node, type: TYPES.VXLAN_STITCH, label: node };
     if (node.startsWith('vxlan:')) return { id: node, type: 'vxlan', label: node };
     if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: 'dummy' };
     return null;
@@ -772,7 +772,7 @@ export class TopoViewerAdaptorClab {
   }
 
   private assignVxlanProps(linkType: string, linkObj: any, baseProps: any): void {
-    if (!['vxlan', 'vxlan-stitch'].includes(linkType)) return;
+    if (![TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as any)) return;
     if (linkObj?.remote !== undefined) baseProps.extRemote = linkObj.remote;
     if (linkObj?.vni !== undefined) baseProps.extVni = linkObj.vni;
     if (linkObj?.['udp-port'] !== undefined) baseProps.extUdpPort = linkObj['udp-port'];
@@ -895,7 +895,7 @@ export class TopoViewerAdaptorClab {
       nodeName === 'mgmt-net' ||
       nodeName.startsWith('macvlan:') ||
       nodeName.startsWith('vxlan:') ||
-      nodeName.startsWith('vxlan-stitch:') ||
+      nodeName.startsWith(PREFIX_VXLAN_STITCH) ||
       nodeName.startsWith('dummy')
     );
   }
@@ -955,7 +955,7 @@ export class TopoViewerAdaptorClab {
     if (['mgmt-net', 'host', 'macvlan'].includes(linkType) && !linkObj['host-interface']) {
       errors.push('missing-host-interface');
     }
-    if (['vxlan', 'vxlan-stitch'].includes(linkType)) {
+    if ([TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as any)) {
       if (!linkObj.remote) errors.push('missing-remote');
       if (linkObj.vni === undefined || linkObj.vni === '') errors.push('missing-vni');
       if (linkObj['udp-port'] === undefined || linkObj['udp-port'] === '') errors.push('missing-udp-port');

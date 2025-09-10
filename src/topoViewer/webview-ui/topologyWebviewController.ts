@@ -78,6 +78,11 @@ class TopologyWebviewController {
   public copyPasteManager: CopyPasteManager;
   public captureViewportManager: { viewportButtonsCaptureViewportAsSvg: () => void };
   public labSettingsManager?: ManagerLabSettings;
+  private static readonly CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+  private static readonly CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
+  private static readonly STYLE_LINE_COLOR = 'line-color' as const;
+  private static readonly KIND_BRIDGE = 'bridge' as const;
+  private static readonly KIND_OVS_BRIDGE = 'ovs-bridge' as const;
   private interfaceCounters: Record<string, number> = {};
   public async initAsync(mode: 'edit' | 'view'): Promise<void> {
     perfMark('cytoscape_style_start');
@@ -1120,17 +1125,17 @@ class TopologyWebviewController {
           if (radialMenuOpen) {
             return;
           }
-          const panelOverlays = document.getElementsByClassName('panel-overlay');
+          const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
           for (let i = 0; i < panelOverlays.length; i++) {
             (panelOverlays[i] as HTMLElement).style.display = 'none';
           }
-          const viewportDrawer = document.getElementsByClassName('viewport-drawer');
+          const viewportDrawer = document.getElementsByClassName(TopologyWebviewController.CLASS_VIEWPORT_DRAWER);
           for (let i = 0; i < viewportDrawer.length; i++) {
             (viewportDrawer[i] as HTMLElement).style.display = 'none';
           }
           topoViewerState.nodeClicked = false;
           topoViewerState.edgeClicked = false;
-          cy.edges().removeStyle("line-color");
+          cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
           topoViewerState.selectedEdge = null;
         }
         // NO onNodeClick handler - all node interactions via right-click menu
@@ -1186,7 +1191,7 @@ class TopologyWebviewController {
     return (
       isSpecialNodeOrBridge(nodeId, this.cy) ||
       (node.length > 0 &&
-        (node.data('extraData')?.kind === 'bridge' || node.data('extraData')?.kind === 'ovs-bridge'))
+        (node.data('extraData')?.kind === TopologyWebviewController.KIND_BRIDGE || node.data('extraData')?.kind === TopologyWebviewController.KIND_OVS_BRIDGE))
     );
   }
 
@@ -1357,7 +1362,7 @@ class TopologyWebviewController {
   }
 
   private showNodePropertiesPanel(node: cytoscape.Singular): void {
-    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
     Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = 'none');
     const panelNode = document.getElementById('panel-node');
     if (!panelNode) {
@@ -1384,10 +1389,10 @@ class TopologyWebviewController {
   }
 
   private showLinkPropertiesPanel(ele: cytoscape.Singular): void {
-    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
     Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = 'none');
-    this.cy.edges().removeStyle('line-color');
-    ele.style('line-color', ele.data('editor') === 'true' ? '#32CD32' : '#0043BF');
+    this.cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
+    ele.style(TopologyWebviewController.STYLE_LINE_COLOR, ele.data('editor') === 'true' ? '#32CD32' : '#0043BF');
     const panelLink = document.getElementById('panel-link');
     if (!panelLink) {
       return;
@@ -1453,7 +1458,7 @@ class TopologyWebviewController {
         extData[key] = value;
       }
     };
-    if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
+    if (networkType !== TopologyWebviewController.KIND_BRIDGE && networkType !== TopologyWebviewController.KIND_OVS_BRIDGE) {
       extData.extType = networkType;
     }
     assignIf(sourceIsNetwork ? 'extSourceMac' : 'extTargetMac', extra.extMac);
@@ -1480,7 +1485,7 @@ class TopologyWebviewController {
     }
     const node = this.cy.getElementById(nodeId);
     const kind = node.data('extraData')?.kind;
-    return kind === 'bridge' || kind === 'ovs-bridge';
+    return kind === TopologyWebviewController.KIND_BRIDGE || kind === TopologyWebviewController.KIND_OVS_BRIDGE;
   }
 
   /**
@@ -1504,7 +1509,7 @@ class TopologyWebviewController {
     }
 
     // Don't handle if we're inside a dialog or modal that's not our confirmation dialog
-    const isInDialog = target.closest('.free-text-dialog, .panel-overlay, .dropdown-menu');
+    const isInDialog = target.closest(`.free-text-dialog, .${TopologyWebviewController.CLASS_PANEL_OVERLAY}, .dropdown-menu`);
     const isInOurConfirmDialog = target.closest('.delete-confirmation-dialog');
 
     if (isInDialog && !isInOurConfirmDialog) {
@@ -1747,7 +1752,7 @@ class TopologyWebviewController {
         overviewDrawer.style.display = "none";
       } else {
         // Hide all viewport drawers first
-        const viewportDrawer = document.getElementsByClassName("viewport-drawer");
+        const viewportDrawer = document.getElementsByClassName(TopologyWebviewController.CLASS_VIEWPORT_DRAWER);
         for (let i = 0; i < viewportDrawer.length; i++) {
           (viewportDrawer[i] as HTMLElement).style.display = "none";
         }

@@ -18,11 +18,82 @@ type Runtime = 'docker' | 'podman' | 'ignite';
 
 // Common CSS classes and element IDs
 const CLASS_HIDDEN = 'hidden' as const;
+const CLASS_PANEL_TAB_BUTTON = 'panel-tab-button' as const;
+const CLASS_TAB_CONTENT = 'tab-content' as const;
+const CLASS_TAB_ACTIVE = 'tab-active' as const;
+const CLASS_DYNAMIC_ENTRY = 'dynamic-entry' as const;
+const CLASS_DYNAMIC_DELETE_BTN = 'dynamic-delete-btn' as const;
+const CLASS_INPUT_FIELD = 'input-field' as const;
+
+const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
 const ID_PANEL_EDITOR_CANCEL = 'panel-node-editor-cancel' as const;
 const ID_PANEL_EDITOR_SAVE = 'panel-node-editor-save' as const;
 const ID_NODE_CERT_ISSUE = 'node-cert-issue' as const;
 const ID_CERT_OPTIONS = 'cert-options' as const;
+const ID_PANEL_NODE_EDITOR_HEADING = 'panel-node-editor-heading' as const;
+const ID_PANEL_NODE_EDITOR_ID = 'panel-node-editor-id' as const;
+
+// Frequently used Node Editor element IDs
+const ID_NODE_KIND_DROPDOWN = 'node-kind-dropdown-container' as const;
+const ID_NODE_KIND_FILTER_INPUT = 'node-kind-dropdown-container-filter-input' as const;
+const ID_NODE_TYPE = 'node-type' as const;
+const ID_NODE_TYPE_DROPDOWN = 'panel-node-type-dropdown-container' as const;
+const ID_NODE_TYPE_FILTER_INPUT = 'panel-node-type-dropdown-container-filter-input' as const;
+const ID_NODE_VERSION_DROPDOWN = 'node-version-dropdown-container' as const;
+const ID_NODE_VERSION_FILTER_INPUT = 'node-version-dropdown-container-filter-input' as const;
+const ID_NODE_RP_DROPDOWN = 'node-restart-policy-dropdown-container' as const;
+const ID_NODE_RP_FILTER_INPUT = 'node-restart-policy-dropdown-container-filter-input' as const;
+const ID_NODE_NM_DROPDOWN = 'node-network-mode-dropdown-container' as const;
+const ID_NODE_NM_FILTER_INPUT = 'node-network-mode-dropdown-container-filter-input' as const;
+const ID_NODE_CUSTOM_DEFAULT = 'node-custom-default' as const;
+
+const ID_NODE_IPP_DROPDOWN = 'node-image-pull-policy-dropdown-container' as const;
+const ID_NODE_IPP_FILTER_INPUT = 'node-image-pull-policy-dropdown-container-filter-input' as const;
+const ID_NODE_RUNTIME_DROPDOWN = 'node-runtime-dropdown-container' as const;
+const ID_NODE_RUNTIME_FILTER_INPUT = 'node-runtime-dropdown-container-filter-input' as const;
+
+// Common labels and placeholders
+const LABEL_DEFAULT = 'Default' as const;
+const PH_SEARCH_KIND = 'Search for kind...' as const;
+const PH_SEARCH_TYPE = 'Search for type...' as const;
+const PH_SEARCH_RP = 'Search restart policy...' as const;
+const PH_SEARCH_NM = 'Search network mode...' as const;
+const PH_SEARCH_IPP = 'Search pull policy...' as const;
+const PH_SEARCH_RUNTIME = 'Search runtime...' as const;
+
+const PH_BIND = 'Bind mount (host:container)' as const;
+const PH_ENV_KEY = 'ENV_NAME' as const;
+const PH_VALUE = 'value' as const;
+const PH_LABEL_KEY = 'label-key' as const;
+const PH_LABEL_VALUE = 'label-value' as const;
+const PH_EXEC = 'Command to execute' as const;
+const PH_PORT = 'Host:Container (e.g., 8080:80)' as const;
+const PH_DNS_SERVER = 'DNS server IP' as const;
+const PH_ALIAS = 'Network alias' as const;
+const PH_CAP = 'Capability (e.g., NET_ADMIN)' as const;
+const PH_SYSCTL_KEY = 'sysctl.key' as const;
+const PH_DEVICE = 'Device path (e.g., /dev/net/tun)' as const;
+const PH_SAN = 'SAN (e.g., test.com or 192.168.1.1)' as const;
+
+// Options
+const OPTIONS_RP = [LABEL_DEFAULT, 'no', 'on-failure', 'always', 'unless-stopped'] as const;
+const OPTIONS_NM = [LABEL_DEFAULT, 'host', 'none'] as const;
+const OPTIONS_IPP = [LABEL_DEFAULT, 'IfNotPresent', 'Never', 'Always'] as const;
+const OPTIONS_RUNTIME = [LABEL_DEFAULT, 'docker', 'podman', 'ignite'] as const;
+
+// Common property keys used in extraData/inheritance
+const PROP_STARTUP_CONFIG = 'startup-config' as const;
+const PROP_ENFORCE_STARTUP_CONFIG = 'enforce-startup-config' as const;
+const PROP_SUPPRESS_STARTUP_CONFIG = 'suppress-startup-config' as const;
+const PROP_MGMT_IPV4 = 'mgmt-ipv4' as const;
+const PROP_MGMT_IPV6 = 'mgmt-ipv6' as const;
+const PROP_CPU_SET = 'cpu-set' as const;
+const PROP_SHM_SIZE = 'shm-size' as const;
+
+// Data attributes used for dynamic entry buttons
+const DATA_ATTR_CONTAINER = 'data-container' as const;
+const DATA_ATTR_ENTRY_ID = 'data-entry-id' as const;
 
 /**
  * Node properties that map to Containerlab configuration
@@ -191,7 +262,7 @@ export class ManagerNodeEditor {
     if (versions && versions.length > 0) {
       // We have known versions for this image
       createFilterableDropdown(
-        'node-version-dropdown-container',
+        ID_NODE_VERSION_DROPDOWN,
         versions,
         versions[0] || 'latest',
         () => {},
@@ -202,7 +273,7 @@ export class ManagerNodeEditor {
     } else {
       // Unknown image - allow free text version entry
       createFilterableDropdown(
-        'node-version-dropdown-container',
+        ID_NODE_VERSION_DROPDOWN,
         ['latest'],
         'latest',
         () => {},
@@ -217,9 +288,9 @@ export class ManagerNodeEditor {
    * Handle kind change and update type field visibility
    */
   private handleKindChange(selectedKind: string): void {
-    const typeFormGroup = document.querySelector('#node-type')?.closest('.form-group') as HTMLElement;
-    const typeDropdownContainer = document.getElementById('panel-node-type-dropdown-container');
-    const typeInput = document.getElementById('node-type') as HTMLInputElement;
+    const typeFormGroup = document.getElementById(ID_NODE_TYPE)?.closest('.form-group') as HTMLElement;
+    const typeDropdownContainer = document.getElementById(ID_NODE_TYPE_DROPDOWN);
+    const typeInput = document.getElementById(ID_NODE_TYPE) as HTMLInputElement;
 
     if (!typeFormGroup) return;
 
@@ -250,11 +321,11 @@ export class ManagerNodeEditor {
     const typeToSelect = typeOptionsWithEmpty.includes(currentType) ? currentType : '';
 
     createFilterableDropdown(
-      'panel-node-type-dropdown-container',
+      ID_NODE_TYPE_DROPDOWN,
       typeOptionsWithEmpty,
       typeToSelect,
       (selectedType: string) => log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`),
-      'Search for type...',
+      PH_SEARCH_TYPE,
       true
     );
   }
@@ -282,7 +353,7 @@ export class ManagerNodeEditor {
    * Initialize the enhanced node editor panel
    */
   private initializePanel(): void {
-    this.panel = document.getElementById('panel-node-editor');
+    this.panel = document.getElementById(ID_PANEL_NODE_EDITOR);
     if (!this.panel) {
       log.error('Enhanced node editor panel not found in DOM');
       return;
@@ -307,14 +378,14 @@ export class ManagerNodeEditor {
       const target = e.target as HTMLElement;
 
       // Check if click is on a delete button or its child (the icon)
-      const deleteBtn = target.closest('.dynamic-delete-btn');
+      const deleteBtn = target.closest(`.${CLASS_DYNAMIC_DELETE_BTN}`);
       if (deleteBtn) {
         e.preventDefault();
         e.stopPropagation();
 
         // Get the container and entry ID from the button's data attributes
-        const containerName = deleteBtn.getAttribute('data-container');
-        const entryId = deleteBtn.getAttribute('data-entry-id');
+        const containerName = deleteBtn.getAttribute(DATA_ATTR_CONTAINER);
+        const entryId = deleteBtn.getAttribute(DATA_ATTR_ENTRY_ID);
 
         log.debug(`Delete button clicked via delegation: ${containerName}-${entryId}`);
 
@@ -350,23 +421,23 @@ export class ManagerNodeEditor {
 
   private initializeStaticDropdowns(): void {
     // Restart Policy
-    const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
+    const rpOptions = [...OPTIONS_RP];
     createFilterableDropdown(
-      'node-restart-policy-dropdown-container',
+      ID_NODE_RP_DROPDOWN,
       rpOptions,
-      'Default',
+      LABEL_DEFAULT,
       () => {},
-      'Search restart policy...'
+      PH_SEARCH_RP
     );
 
     // Network Mode
-    const nmOptions = ['Default', 'host', 'none'];
+    const nmOptions = [...OPTIONS_NM];
     createFilterableDropdown(
-      'node-network-mode-dropdown-container',
+      ID_NODE_NM_DROPDOWN,
       nmOptions,
-      'Default',
+      LABEL_DEFAULT,
       () => {},
-      'Search network mode...'
+      PH_SEARCH_NM
     );
 
     // Cert key size
@@ -390,13 +461,13 @@ export class ManagerNodeEditor {
     );
 
     // Runtime
-    const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
+    const runtimeOptions = [...OPTIONS_RUNTIME];
     createFilterableDropdown(
-      'node-runtime-dropdown-container',
+      ID_NODE_RUNTIME_DROPDOWN,
       runtimeOptions,
-      'Default',
+      LABEL_DEFAULT,
       () => {},
-      'Search runtime...'
+      PH_SEARCH_RUNTIME
     );
   }
 
@@ -460,11 +531,11 @@ export class ManagerNodeEditor {
         '';
       const initial = this.determineInitialKind(desired);
       createFilterableDropdown(
-        'node-kind-dropdown-container',
+        ID_NODE_KIND_DROPDOWN,
         this.schemaKinds,
         initial,
         (selectedKind: string) => this.handleKindChange(selectedKind),
-        'Search for kind...'
+        PH_SEARCH_KIND
       );
 
       this.kindsLoaded = true;
@@ -521,16 +592,16 @@ export class ManagerNodeEditor {
    * Setup tab switching functionality
    */
   private setupTabSwitching(): void {
-    const tabButtons = this.panel?.querySelectorAll('.panel-tab-button');
-    const tabContents = this.panel?.querySelectorAll('.tab-content');
+    const tabButtons = this.panel?.querySelectorAll(`.${CLASS_PANEL_TAB_BUTTON}`);
+    const tabContents = this.panel?.querySelectorAll(`.${CLASS_TAB_CONTENT}`);
 
     tabButtons?.forEach(button => {
       button.addEventListener('click', () => {
         const targetTab = button.getAttribute('data-tab');
 
         // Update active tab button
-        tabButtons.forEach(btn => btn.classList.remove('tab-active'));
-        button.classList.add('tab-active');
+        tabButtons.forEach(btn => btn.classList.remove(CLASS_TAB_ACTIVE));
+        button.classList.add(CLASS_TAB_ACTIVE);
 
         // Show corresponding tab content
         tabContents?.forEach(content => {
@@ -577,17 +648,17 @@ export class ManagerNodeEditor {
    */
   private setupDynamicEntryHandlers(): void {
     // Expose functions globally for onclick handlers in HTML
-    (window as any).addBindEntry = () => this.addDynamicEntry('binds', 'Bind mount (host:container)');
-    (window as any).addEnvEntry = () => this.addDynamicKeyValueEntry('env', 'ENV_NAME', 'value');
-    (window as any).addLabelEntry = () => this.addDynamicKeyValueEntry('labels', 'label-key', 'label-value');
-    (window as any).addExecEntry = () => this.addDynamicEntry('exec', 'Command to execute');
-    (window as any).addPortEntry = () => this.addDynamicEntry('ports', 'Host:Container (e.g., 8080:80)');
-    (window as any).addDnsServerEntry = () => this.addDynamicEntry('dns-servers', 'DNS server IP');
-    (window as any).addAliasEntry = () => this.addDynamicEntry('aliases', 'Network alias');
-    (window as any).addCapabilityEntry = () => this.addDynamicEntry('cap-add', 'Capability (e.g., NET_ADMIN)');
-    (window as any).addSysctlEntry = () => this.addDynamicKeyValueEntry('sysctls', 'sysctl.key', 'value');
-    (window as any).addDeviceEntry = () => this.addDynamicEntry('devices', 'Device path (e.g., /dev/net/tun)');
-    (window as any).addSanEntry = () => this.addDynamicEntry('sans', 'SAN (e.g., test.com or 192.168.1.1)');
+    (window as any).addBindEntry = () => this.addDynamicEntry('binds', PH_BIND);
+    (window as any).addEnvEntry = () => this.addDynamicKeyValueEntry('env', PH_ENV_KEY, PH_VALUE);
+    (window as any).addLabelEntry = () => this.addDynamicKeyValueEntry('labels', PH_LABEL_KEY, PH_LABEL_VALUE);
+    (window as any).addExecEntry = () => this.addDynamicEntry('exec', PH_EXEC);
+    (window as any).addPortEntry = () => this.addDynamicEntry('ports', PH_PORT);
+    (window as any).addDnsServerEntry = () => this.addDynamicEntry('dns-servers', PH_DNS_SERVER);
+    (window as any).addAliasEntry = () => this.addDynamicEntry('aliases', PH_ALIAS);
+    (window as any).addCapabilityEntry = () => this.addDynamicEntry('cap-add', PH_CAP);
+    (window as any).addSysctlEntry = () => this.addDynamicKeyValueEntry('sysctls', PH_SYSCTL_KEY, PH_VALUE);
+    (window as any).addDeviceEntry = () => this.addDynamicEntry('devices', PH_DEVICE);
+    (window as any).addSanEntry = () => this.addDynamicEntry('sans', PH_SAN);
 
     // Register remove entry function globally (no longer needed with event listeners)
     // but keeping for backward compatibility if any inline handlers remain
@@ -624,20 +695,20 @@ export class ManagerNodeEditor {
     this.dynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `${containerName}-entry-${count}`;
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'input-field';
+    input.className = CLASS_INPUT_FIELD;
     input.placeholder = placeholder;
     input.setAttribute('data-field', containerName);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
-    button.className = 'dynamic-delete-btn';
-    button.setAttribute('data-container', containerName);
-    button.setAttribute('data-entry-id', count.toString());
+    button.className = CLASS_DYNAMIC_DELETE_BTN;
+    button.setAttribute(DATA_ATTR_CONTAINER, containerName);
+    button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
     button.innerHTML = '<i class="fas fa-trash"></i>';
 
     entryDiv.appendChild(input);
@@ -656,26 +727,26 @@ export class ManagerNodeEditor {
     this.dynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `${containerName}-entry-${count}`;
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
-    keyInput.className = 'input-field';
+    keyInput.className = CLASS_INPUT_FIELD;
     keyInput.placeholder = keyPlaceholder;
     keyInput.setAttribute('data-field', `${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
-    valueInput.className = 'input-field';
+    valueInput.className = CLASS_INPUT_FIELD;
     valueInput.placeholder = valuePlaceholder;
     valueInput.setAttribute('data-field', `${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
-    button.className = 'dynamic-delete-btn';
-    button.setAttribute('data-container', containerName);
-    button.setAttribute('data-entry-id', count.toString());
+    button.className = CLASS_DYNAMIC_DELETE_BTN;
+    button.setAttribute(DATA_ATTR_CONTAINER, containerName);
+    button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
     button.innerHTML = '<i class="fas fa-trash"></i>';
 
     entryDiv.appendChild(keyInput);
@@ -717,7 +788,7 @@ export class ManagerNodeEditor {
 
   private alignKindSelection(node: cytoscape.NodeSingular): void {
     try {
-      const input = document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null;
+    const input = document.getElementById(ID_NODE_KIND_FILTER_INPUT) as HTMLInputElement | null;
       const desired = (node.data()?.extraData?.kind as string) || (window as any).defaultKind || '';
       if (!input || !desired || !this.kindsLoaded || this.schemaKinds.length === 0) {
         return;
@@ -835,7 +906,7 @@ export class ManagerNodeEditor {
   }
 
   private displayNodeId(node: cytoscape.NodeSingular): void {
-    const idElement = document.getElementById('panel-node-editor-id');
+    const idElement = document.getElementById(ID_PANEL_NODE_EDITOR_ID);
     if (idElement) {
       idElement.textContent = node.id();
     }
@@ -857,20 +928,20 @@ export class ManagerNodeEditor {
         ? desiredKind
         : this.schemaKinds[0] || desiredKind;
     createFilterableDropdown(
-      'node-kind-dropdown-container',
+      ID_NODE_KIND_DROPDOWN,
       this.schemaKinds,
       kindInitial,
       (selectedKind: string) => this.handleKindChange(selectedKind),
-      'Search for kind...'
+      PH_SEARCH_KIND
     );
-    this.markFieldInheritance('node-kind-dropdown-container', actualInherited.includes('kind'));
+    this.markFieldInheritance(ID_NODE_KIND_DROPDOWN, actualInherited.includes('kind'));
 
     const typeValue = extraData.type || '';
-    this.setInputValue('node-type', typeValue);
-    this.markFieldInheritance('node-type', actualInherited.includes('type'));
+    this.setInputValue(ID_NODE_TYPE, typeValue);
+    this.markFieldInheritance(ID_NODE_TYPE, actualInherited.includes('type'));
     this.handleKindChange(kindInitial);
     if (typeValue) {
-      const typeInput = document.getElementById('node-type') as HTMLInputElement;
+      const typeInput = document.getElementById(ID_NODE_TYPE) as HTMLInputElement;
       if (typeInput) {
         typeInput.value = typeValue;
       }
@@ -890,7 +961,7 @@ export class ManagerNodeEditor {
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {
     this.setInputValue('node-custom-name', '');
-    this.setCheckboxValue('node-custom-default', false);
+    this.setCheckboxValue(ID_NODE_CUSTOM_DEFAULT, false);
 
     const customNameGroup = document.getElementById('node-custom-name-group');
     const nodeNameGroup = document.getElementById('node-name-group');
@@ -904,7 +975,7 @@ export class ManagerNodeEditor {
       nodeNameGroup.style.display = isTempNode || isEditNode ? 'none' : 'block';
     }
 
-    const heading = document.getElementById('panel-node-editor-heading');
+    const heading = document.getElementById(ID_PANEL_NODE_EDITOR_HEADING);
     if (heading) {
       if (isTempNode) {
         heading.textContent = 'Create Custom Node Template';
@@ -917,12 +988,12 @@ export class ManagerNodeEditor {
   }
 
   private loadConfigurationTab(extraData: Record<string, any>, actualInherited: string[]): void {
-    this.setInputValue('node-startup-config', extraData['startup-config'] || '');
-    this.markFieldInheritance('node-startup-config', actualInherited.includes('startup-config'));
-    this.setCheckboxValue('node-enforce-startup-config', extraData['enforce-startup-config'] || false);
-    this.markFieldInheritance('node-enforce-startup-config', actualInherited.includes('enforce-startup-config'));
-    this.setCheckboxValue('node-suppress-startup-config', extraData['suppress-startup-config'] || false);
-    this.markFieldInheritance('node-suppress-startup-config', actualInherited.includes('suppress-startup-config'));
+    this.setInputValue('node-startup-config', extraData[PROP_STARTUP_CONFIG] || '');
+    this.markFieldInheritance('node-startup-config', actualInherited.includes(PROP_STARTUP_CONFIG));
+    this.setCheckboxValue('node-enforce-startup-config', extraData[PROP_ENFORCE_STARTUP_CONFIG] || false);
+    this.markFieldInheritance('node-enforce-startup-config', actualInherited.includes(PROP_ENFORCE_STARTUP_CONFIG));
+    this.setCheckboxValue('node-suppress-startup-config', extraData[PROP_SUPPRESS_STARTUP_CONFIG] || false);
+    this.markFieldInheritance('node-suppress-startup-config', actualInherited.includes(PROP_SUPPRESS_STARTUP_CONFIG));
     this.setInputValue('node-license', extraData.license || '');
     this.markFieldInheritance('node-license', actualInherited.includes('license'));
 
@@ -953,30 +1024,30 @@ export class ManagerNodeEditor {
     this.markFieldInheritance('node-entrypoint', actualInherited.includes('entrypoint'));
     this.setInputValue('node-cmd', extraData.cmd || '');
     this.markFieldInheritance('node-cmd', actualInherited.includes('cmd'));
-    const rpOptions = ['Default', 'no', 'on-failure', 'always', 'unless-stopped'];
-    const rpInitial = extraData['restart-policy'] || 'Default';
-    createFilterableDropdown('node-restart-policy-dropdown-container', rpOptions, rpInitial, () => {}, 'Search restart policy...');
-    this.markFieldInheritance('node-restart-policy-dropdown-container', actualInherited.includes('restart-policy'));
+    const rpOptions = [...OPTIONS_RP];
+    const rpInitial = extraData['restart-policy'] || LABEL_DEFAULT;
+    createFilterableDropdown(ID_NODE_RP_DROPDOWN, rpOptions, rpInitial, () => {}, PH_SEARCH_RP);
+    this.markFieldInheritance(ID_NODE_RP_DROPDOWN, actualInherited.includes('restart-policy'));
     this.setCheckboxValue('node-auto-remove', extraData['auto-remove'] || false);
     this.markFieldInheritance('node-auto-remove', actualInherited.includes('auto-remove'));
     this.setInputValue('node-startup-delay', extraData['startup-delay'] || '');
     this.markFieldInheritance('node-startup-delay', actualInherited.includes('startup-delay'));
 
     if (extraData.exec && Array.isArray(extraData.exec)) {
-      extraData.exec.forEach((cmd: string) => this.addDynamicEntryWithValue('exec', cmd, 'Command to execute'));
+      extraData.exec.forEach((cmd: string) => this.addDynamicEntryWithValue('exec', cmd, PH_EXEC));
     }
     this.markFieldInheritance('node-exec-container', actualInherited.includes('exec'));
   }
 
   private loadNetworkTab(extraData: Record<string, any>, actualInherited: string[]): void {
-    this.setInputValue('node-mgmt-ipv4', extraData['mgmt-ipv4'] || '');
-    this.markFieldInheritance('node-mgmt-ipv4', actualInherited.includes('mgmt-ipv4'));
-    this.setInputValue('node-mgmt-ipv6', extraData['mgmt-ipv6'] || '');
-    this.markFieldInheritance('node-mgmt-ipv6', actualInherited.includes('mgmt-ipv6'));
-    const nmOptions = ['Default', 'host', 'none'];
-    const nmInitial = extraData['network-mode'] || 'Default';
-    createFilterableDropdown('node-network-mode-dropdown-container', nmOptions, nmInitial, () => {}, 'Search network mode...');
-    this.markFieldInheritance('node-network-mode-dropdown-container', actualInherited.includes('network-mode'));
+    this.setInputValue('node-mgmt-ipv4', extraData[PROP_MGMT_IPV4] || '');
+    this.markFieldInheritance('node-mgmt-ipv4', actualInherited.includes(PROP_MGMT_IPV4));
+    this.setInputValue('node-mgmt-ipv6', extraData[PROP_MGMT_IPV6] || '');
+    this.markFieldInheritance('node-mgmt-ipv6', actualInherited.includes(PROP_MGMT_IPV6));
+    const nmOptions = [...OPTIONS_NM];
+    const nmInitial = extraData['network-mode'] || LABEL_DEFAULT;
+    createFilterableDropdown(ID_NODE_NM_DROPDOWN, nmOptions, nmInitial, () => {}, PH_SEARCH_NM);
+    this.markFieldInheritance(ID_NODE_NM_DROPDOWN, actualInherited.includes('network-mode'));
 
     if (extraData.ports && Array.isArray(extraData.ports)) {
       extraData.ports.forEach((port: string) => this.addDynamicEntryWithValue('ports', port, 'Host:Container'));
@@ -984,12 +1055,12 @@ export class ManagerNodeEditor {
     this.markFieldInheritance('node-ports-container', actualInherited.includes('ports'));
 
     if (extraData.dns && extraData.dns.servers && Array.isArray(extraData.dns.servers)) {
-      extraData.dns.servers.forEach((server: string) => this.addDynamicEntryWithValue('dns-servers', server, 'DNS server IP'));
+      extraData.dns.servers.forEach((server: string) => this.addDynamicEntryWithValue('dns-servers', server, PH_DNS_SERVER));
     }
     this.markFieldInheritance('node-dns-servers-container', actualInherited.includes('dns'));
 
     if (extraData.aliases && Array.isArray(extraData.aliases)) {
-      extraData.aliases.forEach((alias: string) => this.addDynamicEntryWithValue('aliases', alias, 'Network alias'));
+      extraData.aliases.forEach((alias: string) => this.addDynamicEntryWithValue('aliases', alias, PH_ALIAS));
     }
     this.markFieldInheritance('node-aliases-container', actualInherited.includes('aliases'));
   }
@@ -1010,10 +1081,10 @@ export class ManagerNodeEditor {
     this.markFieldInheritance('node-memory', actualInherited.includes('memory'));
     this.setInputValue('node-cpu', extraData.cpu || '');
     this.markFieldInheritance('node-cpu', actualInherited.includes('cpu'));
-    this.setInputValue('node-cpu-set', extraData['cpu-set'] || '');
-    this.markFieldInheritance('node-cpu-set', actualInherited.includes('cpu-set'));
-    this.setInputValue('node-shm-size', extraData['shm-size'] || '');
-    this.markFieldInheritance('node-shm-size', actualInherited.includes('shm-size'));
+    this.setInputValue('node-cpu-set', extraData[PROP_CPU_SET] || '');
+    this.markFieldInheritance('node-cpu-set', actualInherited.includes(PROP_CPU_SET));
+    this.setInputValue('node-shm-size', extraData[PROP_SHM_SIZE] || '');
+    this.markFieldInheritance('node-shm-size', actualInherited.includes(PROP_SHM_SIZE));
   }
 
   private loadCapAdd(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -1041,8 +1112,8 @@ export class ManagerNodeEditor {
 
   private loadCertificateSection(extraData: Record<string, any>, actualInherited: string[]): void {
     if (extraData.certificate) {
-      this.setCheckboxValue('node-cert-issue', extraData.certificate.issue || false);
-      this.markFieldInheritance('node-cert-issue', actualInherited.includes('certificate'));
+      this.setCheckboxValue(ID_NODE_CERT_ISSUE, extraData.certificate.issue || false);
+      this.markFieldInheritance(ID_NODE_CERT_ISSUE, actualInherited.includes('certificate'));
       const keySizeOptions = ['2048', '4096'];
       const keySizeInitial = String(extraData.certificate['key-size'] || '2048');
       createFilterableDropdown(
@@ -1062,39 +1133,39 @@ export class ManagerNodeEditor {
   private loadHealthcheckSection(extraData: Record<string, any>, actualInherited: string[]): void {
     if (extraData.healthcheck) {
       const hc = extraData.healthcheck;
-      this.setInputValue('node-healthcheck-test', hc.test ? hc.test.join(' ') : '');
-      this.setInputValue('node-healthcheck-start-period', hc['start-period'] || '');
-      this.setInputValue('node-healthcheck-interval', hc.interval || '');
-      this.setInputValue('node-healthcheck-timeout', hc.timeout || '');
-      this.setInputValue('node-healthcheck-retries', hc.retries || '');
+      this.setInputValue(ID_HC_TEST, hc.test ? hc.test.join(' ') : '');
+      this.setInputValue(ID_HC_START, hc['start-period'] || '');
+      this.setInputValue(ID_HC_INTERVAL, hc.interval || '');
+      this.setInputValue(ID_HC_TIMEOUT, hc.timeout || '');
+      this.setInputValue(ID_HC_RETRIES, hc.retries || '');
     }
-    this.markFieldInheritance('node-healthcheck-test', actualInherited.includes('healthcheck'));
+    this.markFieldInheritance(ID_HC_TEST, actualInherited.includes(PROP_HEALTHCHECK));
   }
 
   private loadImagePullPolicy(extraData: Record<string, any>, actualInherited: string[]): void {
-    const ippOptions = ['Default', 'IfNotPresent', 'Never', 'Always'];
-    const ippInitial = extraData['image-pull-policy'] || 'Default';
+    const ippOptions = [...OPTIONS_IPP];
+    const ippInitial = extraData['image-pull-policy'] || LABEL_DEFAULT;
     createFilterableDropdown(
-      'node-image-pull-policy-dropdown-container',
+      ID_NODE_IPP_DROPDOWN,
       ippOptions,
       ippInitial,
       () => {},
-      'Search pull policy...'
+      PH_SEARCH_IPP
     );
-    this.markFieldInheritance('node-image-pull-policy-dropdown-container', actualInherited.includes('image-pull-policy'));
+    this.markFieldInheritance(ID_NODE_IPP_DROPDOWN, actualInherited.includes('image-pull-policy'));
   }
 
   private loadRuntimeOption(extraData: Record<string, any>, actualInherited: string[]): void {
-    const runtimeOptions = ['Default', 'docker', 'podman', 'ignite'];
-    const runtimeInitial = extraData.runtime || 'Default';
+    const runtimeOptions = [...OPTIONS_RUNTIME];
+    const runtimeInitial = extraData.runtime || LABEL_DEFAULT;
     createFilterableDropdown(
-      'node-runtime-dropdown-container',
+      ID_NODE_RUNTIME_DROPDOWN,
       runtimeOptions,
       runtimeInitial,
       () => {},
-      'Search runtime...'
+      PH_SEARCH_RUNTIME
     );
-    this.markFieldInheritance('node-runtime-dropdown-container', actualInherited.includes('runtime'));
+    this.markFieldInheritance(ID_NODE_RUNTIME_DROPDOWN, actualInherited.includes('runtime'));
   }
 
   private setupImageFields(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -1172,18 +1243,18 @@ export class ManagerNodeEditor {
     if (container) {
       const input = document.createElement('input');
       input.type = 'text';
-      input.className = 'input-field w-full';
+      input.className = `${CLASS_INPUT_FIELD} w-full`;
       input.placeholder = 'e.g., ghcr.io/nokia/srlinux';
       input.id = 'node-image-fallback-input';
       input.value = imageInitial.includes(':') ? imageInitial.substring(0, imageInitial.lastIndexOf(':')) : imageInitial;
       container.appendChild(input);
     }
 
-    const versionContainer = document.getElementById('node-version-dropdown-container');
+    const versionContainer = document.getElementById(ID_NODE_VERSION_DROPDOWN);
     if (versionContainer) {
       const versionInput = document.createElement('input');
       versionInput.type = 'text';
-      versionInput.className = 'input-field w-full';
+      versionInput.className = `${CLASS_INPUT_FIELD} w-full`;
       versionInput.placeholder = 'e.g., latest';
       versionInput.id = 'node-version-fallback-input';
       const colon = imageInitial.lastIndexOf(':');
@@ -1203,21 +1274,21 @@ export class ManagerNodeEditor {
     this.dynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `${containerName}-entry-${count}`;
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'input-field';
+    input.className = CLASS_INPUT_FIELD;
     input.placeholder = placeholder;
     input.value = value;
     input.setAttribute('data-field', containerName);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
-    button.className = 'dynamic-delete-btn';
-    button.setAttribute('data-container', containerName);
-    button.setAttribute('data-entry-id', count.toString());
+    button.className = CLASS_DYNAMIC_DELETE_BTN;
+    button.setAttribute(DATA_ATTR_CONTAINER, containerName);
+    button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
     button.innerHTML = '<i class="fas fa-trash"></i>';
 
     entryDiv.appendChild(input);
@@ -1236,26 +1307,26 @@ export class ManagerNodeEditor {
     this.dynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `${containerName}-entry-${count}`;
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
-    keyInput.className = 'input-field';
+    keyInput.className = CLASS_INPUT_FIELD;
     keyInput.value = key;
     keyInput.setAttribute('data-field', `${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
-    valueInput.className = 'input-field';
+    valueInput.className = CLASS_INPUT_FIELD;
     valueInput.value = value;
     valueInput.setAttribute('data-field', `${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button'; // Prevent form submission
-    button.className = 'dynamic-delete-btn';
-    button.setAttribute('data-container', containerName);
-    button.setAttribute('data-entry-id', count.toString());
+    button.className = CLASS_DYNAMIC_DELETE_BTN;
+    button.setAttribute(DATA_ATTR_CONTAINER, containerName);
+    button.setAttribute(DATA_ATTR_ENTRY_ID, count.toString());
     button.innerHTML = '<i class="fas fa-trash"></i>';
 
     entryDiv.appendChild(keyInput);
@@ -1305,10 +1376,10 @@ export class ManagerNodeEditor {
    */
   private getTypeFieldValue(): string {
     // First check if dropdown is visible
-    const dropdownContainer = document.getElementById('panel-node-type-dropdown-container');
+    const dropdownContainer = document.getElementById(ID_NODE_TYPE_DROPDOWN);
     if (dropdownContainer && dropdownContainer.style.display !== 'none') {
       // Get value from dropdown filter input
-      const dropdownInput = document.getElementById('panel-node-type-dropdown-container-filter-input') as HTMLInputElement;
+      const dropdownInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement;
       if (dropdownInput) {
         return dropdownInput.value;
       }
@@ -1347,12 +1418,12 @@ export class ManagerNodeEditor {
 
     // Define field mappings - same as in setupInheritanceChangeListeners
     const mappings: Array<{ fieldId: string; prop: string }> = [
-      { fieldId: 'node-kind-dropdown-container', prop: 'kind' },
-      { fieldId: 'node-type', prop: 'type' },
+      { fieldId: ID_NODE_KIND_DROPDOWN, prop: 'kind' },
+      { fieldId: ID_NODE_TYPE, prop: 'type' },
       { fieldId: 'node-image-dropdown-container', prop: 'image' },
-      { fieldId: 'node-startup-config', prop: 'startup-config' },
-      { fieldId: 'node-enforce-startup-config', prop: 'enforce-startup-config' },
-      { fieldId: 'node-suppress-startup-config', prop: 'suppress-startup-config' },
+      { fieldId: 'node-startup-config', prop: PROP_STARTUP_CONFIG },
+      { fieldId: 'node-enforce-startup-config', prop: PROP_ENFORCE_STARTUP_CONFIG },
+      { fieldId: 'node-suppress-startup-config', prop: PROP_SUPPRESS_STARTUP_CONFIG },
       { fieldId: 'node-license', prop: 'license' },
       { fieldId: 'node-binds-container', prop: 'binds' },
       { fieldId: 'node-env-container', prop: 'env' },
@@ -1361,26 +1432,26 @@ export class ManagerNodeEditor {
       { fieldId: 'node-entrypoint', prop: 'entrypoint' },
       { fieldId: 'node-cmd', prop: 'cmd' },
       { fieldId: 'node-exec-container', prop: 'exec' },
-      { fieldId: 'node-restart-policy-dropdown-container', prop: 'restart-policy' },
+      { fieldId: ID_NODE_RP_DROPDOWN, prop: 'restart-policy' },
       { fieldId: 'node-auto-remove', prop: 'auto-remove' },
       { fieldId: 'node-startup-delay', prop: 'startup-delay' },
-      { fieldId: 'node-mgmt-ipv4', prop: 'mgmt-ipv4' },
-      { fieldId: 'node-mgmt-ipv6', prop: 'mgmt-ipv6' },
-      { fieldId: 'node-network-mode-dropdown-container', prop: 'network-mode' },
+      { fieldId: 'node-mgmt-ipv4', prop: PROP_MGMT_IPV4 },
+      { fieldId: 'node-mgmt-ipv6', prop: PROP_MGMT_IPV6 },
+      { fieldId: ID_NODE_NM_DROPDOWN, prop: 'network-mode' },
       { fieldId: 'node-ports-container', prop: 'ports' },
       { fieldId: 'node-dns-servers-container', prop: 'dns' },
       { fieldId: 'node-aliases-container', prop: 'aliases' },
       { fieldId: 'node-memory', prop: 'memory' },
       { fieldId: 'node-cpu', prop: 'cpu' },
-      { fieldId: 'node-cpu-set', prop: 'cpu-set' },
-      { fieldId: 'node-shm-size', prop: 'shm-size' },
+      { fieldId: 'node-cpu-set', prop: PROP_CPU_SET },
+      { fieldId: 'node-shm-size', prop: PROP_SHM_SIZE },
       { fieldId: 'node-cap-add-container', prop: 'cap-add' },
       { fieldId: 'node-sysctls-container', prop: 'sysctls' },
       { fieldId: 'node-devices-container', prop: 'devices' },
-      { fieldId: 'node-cert-issue', prop: 'certificate' },
-      { fieldId: 'node-healthcheck-test', prop: 'healthcheck' },
-      { fieldId: 'node-image-pull-policy-dropdown-container', prop: 'image-pull-policy' },
-      { fieldId: 'node-runtime-dropdown-container', prop: 'runtime' }
+      { fieldId: ID_NODE_CERT_ISSUE, prop: 'certificate' },
+      { fieldId: ID_HC_TEST, prop: PROP_HEALTHCHECK },
+      { fieldId: ID_NODE_IPP_DROPDOWN, prop: 'image-pull-policy' },
+      { fieldId: ID_NODE_RUNTIME_DROPDOWN, prop: 'runtime' }
     ];
 
     // Update each field's inherited badge based on whether its property is in the inherited list
@@ -1411,12 +1482,12 @@ export class ManagerNodeEditor {
    */
   private setupInheritanceChangeListeners(): void {
     const mappings: Array<{ id: string; prop: string; badgeId?: string }> = [
-      { id: 'node-kind-dropdown-container', prop: 'kind' },
-      { id: 'node-type', prop: 'type' },
+      { id: ID_NODE_KIND_DROPDOWN, prop: 'kind' },
+      { id: ID_NODE_TYPE, prop: 'type' },
       { id: 'node-image-dropdown-container', prop: 'image' },
-      { id: 'node-startup-config', prop: 'startup-config' },
-      { id: 'node-enforce-startup-config', prop: 'enforce-startup-config' },
-      { id: 'node-suppress-startup-config', prop: 'suppress-startup-config' },
+      { id: 'node-startup-config', prop: PROP_STARTUP_CONFIG },
+      { id: 'node-enforce-startup-config', prop: PROP_ENFORCE_STARTUP_CONFIG },
+      { id: 'node-suppress-startup-config', prop: PROP_SUPPRESS_STARTUP_CONFIG },
       { id: 'node-license', prop: 'license' },
       { id: 'node-binds-container', prop: 'binds' },
       { id: 'node-env-container', prop: 'env' },
@@ -1425,33 +1496,33 @@ export class ManagerNodeEditor {
       { id: 'node-entrypoint', prop: 'entrypoint' },
       { id: 'node-cmd', prop: 'cmd' },
       { id: 'node-exec-container', prop: 'exec' },
-      { id: 'node-restart-policy-dropdown-container', prop: 'restart-policy' },
+      { id: ID_NODE_RP_DROPDOWN, prop: 'restart-policy' },
       { id: 'node-auto-remove', prop: 'auto-remove' },
       { id: 'node-startup-delay', prop: 'startup-delay' },
-      { id: 'node-mgmt-ipv4', prop: 'mgmt-ipv4' },
-      { id: 'node-mgmt-ipv6', prop: 'mgmt-ipv6' },
-      { id: 'node-network-mode-dropdown-container', prop: 'network-mode' },
+      { id: 'node-mgmt-ipv4', prop: PROP_MGMT_IPV4 },
+      { id: 'node-mgmt-ipv6', prop: PROP_MGMT_IPV6 },
+      { id: ID_NODE_NM_DROPDOWN, prop: 'network-mode' },
       { id: 'node-ports-container', prop: 'ports' },
       { id: 'node-dns-servers-container', prop: 'dns' },
       { id: 'node-aliases-container', prop: 'aliases' },
       { id: 'node-memory', prop: 'memory' },
       { id: 'node-cpu', prop: 'cpu' },
-      { id: 'node-cpu-set', prop: 'cpu-set' },
-      { id: 'node-shm-size', prop: 'shm-size' },
+      { id: 'node-cpu-set', prop: PROP_CPU_SET },
+      { id: 'node-shm-size', prop: PROP_SHM_SIZE },
       { id: 'node-cap-add-container', prop: 'cap-add' },
       { id: 'node-sysctls-container', prop: 'sysctls' },
       { id: 'node-devices-container', prop: 'devices' },
-      { id: 'node-cert-issue', prop: 'certificate' },
-      { id: 'node-cert-key-size-dropdown-container', prop: 'certificate', badgeId: 'node-cert-issue' },
-      { id: 'node-cert-validity', prop: 'certificate', badgeId: 'node-cert-issue' },
-      { id: 'node-sans-container', prop: 'certificate', badgeId: 'node-cert-issue' },
-      { id: 'node-healthcheck-test', prop: 'healthcheck' },
-      { id: 'node-healthcheck-start-period', prop: 'healthcheck', badgeId: 'node-healthcheck-test' },
-      { id: 'node-healthcheck-interval', prop: 'healthcheck', badgeId: 'node-healthcheck-test' },
-      { id: 'node-healthcheck-timeout', prop: 'healthcheck', badgeId: 'node-healthcheck-test' },
-      { id: 'node-healthcheck-retries', prop: 'healthcheck', badgeId: 'node-healthcheck-test' },
-      { id: 'node-image-pull-policy-dropdown-container', prop: 'image-pull-policy' },
-      { id: 'node-runtime-dropdown-container', prop: 'runtime' }
+      { id: ID_NODE_CERT_ISSUE, prop: 'certificate' },
+      { id: 'node-cert-key-size-dropdown-container', prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
+      { id: 'node-cert-validity', prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
+      { id: 'node-sans-container', prop: 'certificate', badgeId: ID_NODE_CERT_ISSUE },
+      { id: ID_HC_TEST, prop: PROP_HEALTHCHECK },
+      { id: ID_HC_START, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
+      { id: ID_HC_INTERVAL, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
+      { id: ID_HC_TIMEOUT, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
+      { id: ID_HC_RETRIES, prop: PROP_HEALTHCHECK, badgeId: ID_HC_TEST },
+      { id: ID_NODE_IPP_DROPDOWN, prop: 'image-pull-policy' },
+      { id: ID_NODE_RUNTIME_DROPDOWN, prop: 'runtime' }
     ];
 
     mappings.forEach(({ id, prop, badgeId }) => {
@@ -1489,7 +1560,7 @@ export class ManagerNodeEditor {
     const container = document.getElementById(`node-${containerName}-container`);
     if (!container) return {};
 
-    const entries = container.querySelectorAll('.dynamic-entry');
+    const entries = container.querySelectorAll(`.${CLASS_DYNAMIC_ENTRY}`);
     const result: Record<string, string> = {};
 
     entries.forEach((entry: Element) => {
@@ -1799,7 +1870,7 @@ export class ManagerNodeEditor {
   private collectNodeProperties(): NodeProperties {
     const nodeProps: NodeProperties = {
       name: this.getInputValue('node-name'),
-      kind: (document.getElementById('node-kind-dropdown-container-filter-input') as HTMLInputElement | null)?.value || undefined,
+      kind: (document.getElementById(ID_NODE_KIND_FILTER_INPUT) as HTMLInputElement | null)?.value || undefined,
       type: this.getTypeFieldValue() || undefined,
     };
 
@@ -1819,7 +1890,7 @@ export class ManagerNodeEditor {
     const hasDockerImages = Array.isArray(dockerImages) && dockerImages.length > 0 && dockerImages.some(img => img && img.trim() !== '');
     if (hasDockerImages) {
       const baseImg = (document.getElementById('node-image-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-      const version = (document.getElementById('node-version-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'latest';
+    const version = (document.getElementById(ID_NODE_VERSION_FILTER_INPUT) as HTMLInputElement | null)?.value || 'latest';
       if (baseImg) {
         nodeProps.image = `${baseImg}:${version}`;
       }
@@ -1834,13 +1905,13 @@ export class ManagerNodeEditor {
 
   private collectConfigurationProps(nodeProps: NodeProperties): void {
     const startupConfig = this.getInputValue('node-startup-config');
-    if (startupConfig) nodeProps['startup-config'] = startupConfig;
+    if (startupConfig) nodeProps[PROP_STARTUP_CONFIG] = startupConfig as any;
 
     if (this.getCheckboxValue('node-enforce-startup-config')) {
-      nodeProps['enforce-startup-config'] = true;
+      nodeProps[PROP_ENFORCE_STARTUP_CONFIG] = true as any;
     }
     if (this.getCheckboxValue('node-suppress-startup-config')) {
-      nodeProps['suppress-startup-config'] = true;
+      nodeProps[PROP_SUPPRESS_STARTUP_CONFIG] = true as any;
     }
 
     const license = this.getInputValue('node-license');
@@ -1869,8 +1940,8 @@ export class ManagerNodeEditor {
     const exec = this.collectDynamicEntries('exec');
     if (exec.length > 0) nodeProps.exec = exec;
 
-    const rpVal = (document.getElementById('node-restart-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-    if (rpVal && rpVal !== 'Default') nodeProps['restart-policy'] = rpVal as any;
+    const rpVal = (document.getElementById(ID_NODE_RP_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
+    if (rpVal && rpVal !== LABEL_DEFAULT) nodeProps['restart-policy'] = rpVal as any;
 
     if (this.getCheckboxValue('node-auto-remove')) {
       nodeProps['auto-remove'] = true;
@@ -1882,13 +1953,13 @@ export class ManagerNodeEditor {
 
   private collectNetworkProps(nodeProps: NodeProperties): void {
     const mgmtIpv4 = this.getInputValue('node-mgmt-ipv4');
-    if (mgmtIpv4) nodeProps['mgmt-ipv4'] = mgmtIpv4;
+    if (mgmtIpv4) (nodeProps as any)[PROP_MGMT_IPV4] = mgmtIpv4;
 
     const mgmtIpv6 = this.getInputValue('node-mgmt-ipv6');
-    if (mgmtIpv6) nodeProps['mgmt-ipv6'] = mgmtIpv6;
+    if (mgmtIpv6) (nodeProps as any)[PROP_MGMT_IPV6] = mgmtIpv6;
 
-    const nmVal = (document.getElementById('node-network-mode-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-    if (nmVal && nmVal !== 'Default') nodeProps['network-mode'] = nmVal;
+    const nmVal = (document.getElementById(ID_NODE_NM_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
+    if (nmVal && nmVal !== LABEL_DEFAULT) nodeProps['network-mode'] = nmVal;
 
     const ports = this.collectDynamicEntries('ports');
     if (ports.length > 0) nodeProps.ports = ports;
@@ -1911,10 +1982,10 @@ export class ManagerNodeEditor {
     if (cpu) nodeProps.cpu = parseFloat(cpu);
 
     const cpuSet = this.getInputValue('node-cpu-set');
-    if (cpuSet) nodeProps['cpu-set'] = cpuSet;
+    if (cpuSet) (nodeProps as any)[PROP_CPU_SET] = cpuSet;
 
     const shmSize = this.getInputValue('node-shm-size');
-    if (shmSize) nodeProps['shm-size'] = shmSize;
+    if (shmSize) (nodeProps as any)[PROP_SHM_SIZE] = shmSize;
 
     const capAdd = this.collectDynamicEntries('cap-add');
     if (capAdd.length > 0) nodeProps['cap-add'] = capAdd;
@@ -1933,7 +2004,7 @@ export class ManagerNodeEditor {
   }
 
   private collectCertificateProps(nodeProps: NodeProperties): void {
-    if (!this.getCheckboxValue('node-cert-issue')) return;
+    if (!this.getCheckboxValue(ID_NODE_CERT_ISSUE)) return;
     nodeProps.certificate = { issue: true };
 
     const keySize = (document.getElementById('node-cert-key-size-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
@@ -1947,22 +2018,22 @@ export class ManagerNodeEditor {
   }
 
   private collectHealthcheckProps(nodeProps: NodeProperties): void {
-    const hcTest = this.getInputValue('node-healthcheck-test');
+    const hcTest = this.getInputValue(ID_HC_TEST);
     if (hcTest) {
       this.ensureHealthcheck(nodeProps);
       nodeProps.healthcheck!.test = hcTest.split(' ');
     }
 
-    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-start-period', 'start-period');
-    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-interval', 'interval');
-    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-timeout', 'timeout');
-    this.setHealthcheckNumber(nodeProps, 'node-healthcheck-retries', 'retries');
+    this.setHealthcheckNumber(nodeProps, ID_HC_START, 'start-period');
+    this.setHealthcheckNumber(nodeProps, ID_HC_INTERVAL, 'interval');
+    this.setHealthcheckNumber(nodeProps, ID_HC_TIMEOUT, 'timeout');
+    this.setHealthcheckNumber(nodeProps, ID_HC_RETRIES, 'retries');
 
-    const ippVal = (document.getElementById('node-image-pull-policy-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-    if (ippVal && ippVal !== 'Default') nodeProps['image-pull-policy'] = ippVal as any;
+    const ippVal = (document.getElementById(ID_NODE_IPP_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
+    if (ippVal && ippVal !== LABEL_DEFAULT) nodeProps['image-pull-policy'] = ippVal as any;
 
-    const runtimeVal = (document.getElementById('node-runtime-dropdown-container-filter-input') as HTMLInputElement | null)?.value || '';
-    if (runtimeVal && runtimeVal !== 'Default') nodeProps.runtime = runtimeVal as any;
+    const runtimeVal = (document.getElementById(ID_NODE_RUNTIME_FILTER_INPUT) as HTMLInputElement | null)?.value || '';
+    if (runtimeVal && runtimeVal !== LABEL_DEFAULT) nodeProps.runtime = runtimeVal as any;
   }
 
   private ensureHealthcheck(nodeProps: NodeProperties): void {
@@ -1982,7 +2053,7 @@ export class ManagerNodeEditor {
 
   private async handleCustomNode(nodeProps: NodeProperties): Promise<boolean> {
     const customName = this.getInputValue('node-custom-name');
-    const setDefault = this.getCheckboxValue('node-custom-default');
+    const setDefault = this.getCheckboxValue(ID_NODE_CUSTOM_DEFAULT);
     if (!customName) return false;
     const currentNodeData = this.currentNode!.data();
     const editingNodeName = currentNodeData.extraData?.editingCustomNodeName;
@@ -2113,3 +2184,10 @@ export class ManagerNodeEditor {
     this.clearAllDynamicEntries();
   }
 }
+// Healthcheck IDs and prop
+const ID_HC_TEST = 'node-healthcheck-test' as const;
+const ID_HC_START = 'node-healthcheck-start-period' as const;
+const ID_HC_INTERVAL = 'node-healthcheck-interval' as const;
+const ID_HC_TIMEOUT = 'node-healthcheck-timeout' as const;
+const ID_HC_RETRIES = 'node-healthcheck-retries' as const;
+const PROP_HEALTHCHECK = 'healthcheck' as const;

@@ -30,6 +30,68 @@ export class ManagerViewportPanels {
   private networkDynamicEntryCounters = new Map<string, number>();
   private linkDynamicEntryCounters = new Map<string, number>();
 
+  // Common classes and IDs reused throughout this file
+  private static readonly CLASS_DYNAMIC_ENTRY = 'dynamic-entry' as const;
+  private static readonly CLASS_INPUT_FIELD = 'input-field' as const;
+  private static readonly CLASS_DYNAMIC_DELETE_BTN = 'dynamic-delete-btn' as const;
+  private static readonly CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+  private static readonly CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
+  private static readonly CLASS_VIEWPORT_DRAWER_ALT = 'ViewPortDrawer' as const;
+  private static readonly CLASS_OPACITY_50 = 'opacity-50' as const;
+  private static readonly CLASS_CURSOR_NOT_ALLOWED = 'cursor-not-allowed' as const;
+
+  private static readonly DISPLAY_BLOCK = 'block' as const;
+  private static readonly DISPLAY_NONE = 'none' as const;
+
+  private static readonly ID_NETWORK_INTERFACE = 'panel-network-interface' as const;
+
+  private static readonly ID_NETWORK_TYPE_DROPDOWN = 'panel-network-type-dropdown-container' as const;
+  private static readonly ID_NETWORK_TYPE_FILTER_INPUT = 'panel-network-type-dropdown-container-filter-input' as const;
+  private static readonly ID_NETWORK_SAVE_BUTTON = 'panel-network-editor-save-button' as const;
+  private static readonly HTML_ICON_TRASH = '<i class="fas fa-trash"></i>' as const;
+  private static readonly ATTR_DATA_FIELD = 'data-field' as const;
+
+  private static readonly PH_SEARCH_NETWORK_TYPE = 'Search for network type...' as const;
+
+  // Network type constants
+  private static readonly TYPE_HOST = 'host' as const;
+  private static readonly TYPE_MGMT = 'mgmt-net' as const;
+  private static readonly TYPE_MACVLAN = 'macvlan' as const;
+  private static readonly TYPE_VXLAN = 'vxlan' as const;
+  private static readonly TYPE_VXLAN_STITCH = 'vxlan-stitch' as const;
+  private static readonly TYPE_DUMMY = 'dummy' as const;
+  private static readonly TYPE_BRIDGE = 'bridge' as const;
+  private static readonly TYPE_OVS_BRIDGE = 'ovs-bridge' as const;
+
+  private static readonly NETWORK_TYPE_OPTIONS = [
+    ManagerViewportPanels.TYPE_HOST,
+    ManagerViewportPanels.TYPE_MGMT,
+    ManagerViewportPanels.TYPE_MACVLAN,
+    ManagerViewportPanels.TYPE_VXLAN,
+    ManagerViewportPanels.TYPE_VXLAN_STITCH,
+    ManagerViewportPanels.TYPE_DUMMY,
+    ManagerViewportPanels.TYPE_BRIDGE,
+    ManagerViewportPanels.TYPE_OVS_BRIDGE,
+  ] as const;
+
+  private static readonly VX_TYPES = [
+    ManagerViewportPanels.TYPE_VXLAN,
+    ManagerViewportPanels.TYPE_VXLAN_STITCH,
+  ] as const;
+  private static readonly HOSTY_TYPES = [
+    ManagerViewportPanels.TYPE_HOST,
+    ManagerViewportPanels.TYPE_MGMT,
+    ManagerViewportPanels.TYPE_MACVLAN,
+  ] as const;
+  private static readonly BRIDGE_TYPES = [
+    ManagerViewportPanels.TYPE_BRIDGE,
+    ManagerViewportPanels.TYPE_OVS_BRIDGE,
+  ] as const;
+
+  private static readonly LABEL_INTERFACE = 'Interface' as const;
+  private static readonly LABEL_BRIDGE_NAME = 'Bridge Name' as const;
+  private static readonly LABEL_HOST_INTERFACE = 'Host Interface' as const;
+
   /**
    * Generate a unique ID for dummy network nodes (dummy1, dummy2, ...).
    */
@@ -73,25 +135,25 @@ export class ManagerViewportPanels {
     this.networkDynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = ManagerViewportPanels.CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `network-${containerName}-entry-${count}`;
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
-    keyInput.className = 'input-field';
+    keyInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     keyInput.placeholder = keyPlaceholder;
-    keyInput.setAttribute('data-field', `network-${containerName}-key`);
+    keyInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `network-${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
-    valueInput.className = 'input-field';
+    valueInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     valueInput.placeholder = valuePlaceholder;
-    valueInput.setAttribute('data-field', `network-${containerName}-value`);
+    valueInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `network-${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'dynamic-delete-btn';
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.className = ManagerViewportPanels.CLASS_DYNAMIC_DELETE_BTN;
+    button.innerHTML = ManagerViewportPanels.HTML_ICON_TRASH;
     button.onclick = () => this.removeNetworkEntry(containerName, count);
 
     entryDiv.appendChild(keyInput);
@@ -111,25 +173,25 @@ export class ManagerViewportPanels {
     this.networkDynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = ManagerViewportPanels.CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `network-${containerName}-entry-${count}`;
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
-    keyInput.className = 'input-field';
+    keyInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     keyInput.value = key;
-    keyInput.setAttribute('data-field', `network-${containerName}-key`);
+    keyInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `network-${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
-    valueInput.className = 'input-field';
+    valueInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     valueInput.value = value;
-    valueInput.setAttribute('data-field', `network-${containerName}-value`);
+    valueInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `network-${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'dynamic-delete-btn';
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.className = ManagerViewportPanels.CLASS_DYNAMIC_DELETE_BTN;
+    button.innerHTML = ManagerViewportPanels.HTML_ICON_TRASH;
     button.onclick = () => this.removeNetworkEntry(containerName, count);
 
     entryDiv.appendChild(keyInput);
@@ -159,25 +221,25 @@ export class ManagerViewportPanels {
     this.linkDynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = ManagerViewportPanels.CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `link-${containerName}-entry-${count}`;
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
-    keyInput.className = 'input-field';
+    keyInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     keyInput.placeholder = keyPlaceholder;
-    keyInput.setAttribute('data-field', `link-${containerName}-key`);
+    keyInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `link-${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
-    valueInput.className = 'input-field';
+    valueInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     valueInput.placeholder = valuePlaceholder;
-    valueInput.setAttribute('data-field', `link-${containerName}-value`);
+    valueInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `link-${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'dynamic-delete-btn';
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.className = ManagerViewportPanels.CLASS_DYNAMIC_DELETE_BTN;
+    button.innerHTML = ManagerViewportPanels.HTML_ICON_TRASH;
     button.onclick = () => this.removeLinkEntry(containerName, count);
 
     entryDiv.appendChild(keyInput);
@@ -197,25 +259,25 @@ export class ManagerViewportPanels {
     this.linkDynamicEntryCounters.set(containerName, count);
 
     const entryDiv = document.createElement('div');
-    entryDiv.className = 'dynamic-entry';
+    entryDiv.className = ManagerViewportPanels.CLASS_DYNAMIC_ENTRY;
     entryDiv.id = `link-${containerName}-entry-${count}`;
 
     const keyInput = document.createElement('input');
     keyInput.type = 'text';
-    keyInput.className = 'input-field';
+    keyInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     keyInput.value = key;
-    keyInput.setAttribute('data-field', `link-${containerName}-key`);
+    keyInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `link-${containerName}-key`);
 
     const valueInput = document.createElement('input');
     valueInput.type = 'text';
-    valueInput.className = 'input-field';
+    valueInput.className = ManagerViewportPanels.CLASS_INPUT_FIELD;
     valueInput.value = value;
-    valueInput.setAttribute('data-field', `link-${containerName}-value`);
+    valueInput.setAttribute(ManagerViewportPanels.ATTR_DATA_FIELD, `link-${containerName}-value`);
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'dynamic-delete-btn';
-    button.innerHTML = '<i class="fas fa-trash"></i>';
+    button.className = ManagerViewportPanels.CLASS_DYNAMIC_DELETE_BTN;
+    button.innerHTML = ManagerViewportPanels.HTML_ICON_TRASH;
     button.onclick = () => this.removeLinkEntry(containerName, count);
 
     entryDiv.appendChild(keyInput);
@@ -269,19 +331,19 @@ export class ManagerViewportPanels {
       if (!this.nodeClicked && !this.edgeClicked) {
         if (!this.isPanel01Cy) {
           // Remove all overlay panels.
-          const panelOverlays = document.getElementsByClassName('panel-overlay');
+          const panelOverlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
           for (let i = 0; i < panelOverlays.length; i++) {
             (panelOverlays[i] as HTMLElement).style.display = 'none';
           }
 
           // Hide viewport drawers.
-          const viewportDrawers = document.getElementsByClassName('viewport-drawer');
+          const viewportDrawers = document.getElementsByClassName(ManagerViewportPanels.CLASS_VIEWPORT_DRAWER);
           for (let i = 0; i < viewportDrawers.length; i++) {
             (viewportDrawers[i] as HTMLElement).style.display = 'none';
           }
 
           // Hide any elements with the class "ViewPortDrawer".
-          const viewPortDrawerElements = document.getElementsByClassName('ViewPortDrawer');
+          const viewPortDrawerElements = document.getElementsByClassName(ManagerViewportPanels.CLASS_VIEWPORT_DRAWER_ALT);
           Array.from(viewPortDrawerElements).forEach((element) => {
             (element as HTMLElement).style.display = 'none';
           });
@@ -327,7 +389,7 @@ export class ManagerViewportPanels {
   }
 
   private hidePanelOverlays(): void {
-    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    const panelOverlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
     Array.from(panelOverlays).forEach(panel => {
       (panel as HTMLElement).style.display = 'none';
     });
@@ -400,14 +462,14 @@ export class ManagerViewportPanels {
   * @param networkType - The selected network type.
   */
   private updateNetworkEditorFields(networkType: string): void {
-    const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
+    const interfaceInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_INTERFACE) as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
-      el.textContent?.includes('Interface') || el.textContent === 'Bridge Name'
+      el.textContent?.includes(ManagerViewportPanels.LABEL_INTERFACE) || el.textContent === ManagerViewportPanels.LABEL_BRIDGE_NAME
     );
     const interfaceSection = interfaceInput?.closest('.form-group') as HTMLElement | null;
 
     const cfg = this.getInterfaceFieldConfig(networkType);
-    if (interfaceSection) interfaceSection.style.display = cfg.showInterface ? 'block' : 'none';
+    if (interfaceSection) interfaceSection.style.display = cfg.showInterface ? ManagerViewportPanels.DISPLAY_BLOCK : ManagerViewportPanels.DISPLAY_NONE;
     if (interfaceLabel) interfaceLabel.textContent = cfg.label;
     if (interfaceInput) interfaceInput.placeholder = cfg.placeholder;
 
@@ -415,16 +477,16 @@ export class ManagerViewportPanels {
   }
 
   private getInterfaceFieldConfig(networkType: string): { label: string; placeholder: string; showInterface: boolean } {
-    const base = { label: 'Interface', placeholder: 'Enter interface name', showInterface: true };
+    const base = { label: ManagerViewportPanels.LABEL_INTERFACE, placeholder: 'Enter interface name', showInterface: true };
     const map: Record<string, Partial<typeof base>> = {
-      bridge: { label: 'Bridge Name', placeholder: 'Enter bridge name' },
-      'ovs-bridge': { label: 'Bridge Name', placeholder: 'Enter bridge name' },
-      dummy: { showInterface: false },
-      host: { label: 'Host Interface', placeholder: 'e.g., eth0, eth1' },
-      'mgmt-net': { label: 'Host Interface', placeholder: 'e.g., eth0, eth1' },
-      macvlan: { label: 'Host Interface', placeholder: 'Parent interface (e.g., eth0)' },
-      vxlan: { label: 'Interface', placeholder: 'VXLAN interface name' },
-      'vxlan-stitch': { label: 'Interface', placeholder: 'VXLAN interface name' }
+      [ManagerViewportPanels.TYPE_BRIDGE]: { label: ManagerViewportPanels.LABEL_BRIDGE_NAME, placeholder: 'Enter bridge name' },
+      [ManagerViewportPanels.TYPE_OVS_BRIDGE]: { label: ManagerViewportPanels.LABEL_BRIDGE_NAME, placeholder: 'Enter bridge name' },
+      [ManagerViewportPanels.TYPE_DUMMY]: { showInterface: false },
+      [ManagerViewportPanels.TYPE_HOST]: { label: ManagerViewportPanels.LABEL_HOST_INTERFACE, placeholder: 'e.g., eth0, eth1' },
+      [ManagerViewportPanels.TYPE_MGMT]: { label: ManagerViewportPanels.LABEL_HOST_INTERFACE, placeholder: 'e.g., eth0, eth1' },
+      [ManagerViewportPanels.TYPE_MACVLAN]: { label: ManagerViewportPanels.LABEL_HOST_INTERFACE, placeholder: 'Parent interface (e.g., eth0)' },
+      [ManagerViewportPanels.TYPE_VXLAN]: { label: ManagerViewportPanels.LABEL_INTERFACE, placeholder: 'VXLAN interface name' },
+      [ManagerViewportPanels.TYPE_VXLAN_STITCH]: { label: ManagerViewportPanels.LABEL_INTERFACE, placeholder: 'VXLAN interface name' }
     };
     return { ...base, ...(map[networkType] || {}) };
   }
@@ -432,17 +494,17 @@ export class ManagerViewportPanels {
   private toggleExtendedSections(networkType: string): void {
     const modeSection = document.getElementById('panel-network-mode-section') as HTMLElement | null;
     const vxlanSection = document.getElementById('panel-network-vxlan-section') as HTMLElement | null;
-    if (modeSection) modeSection.style.display = networkType === 'macvlan' ? 'block' : 'none';
-    if (vxlanSection) vxlanSection.style.display = ['vxlan', 'vxlan-stitch'].includes(networkType) ? 'block' : 'none';
+    if (modeSection) modeSection.style.display = (networkType === ManagerViewportPanels.TYPE_MACVLAN) ? 'block' : 'none';
+    if (vxlanSection) vxlanSection.style.display = ManagerViewportPanels.VX_TYPES.includes(networkType as any) ? 'block' : 'none';
   }
 
   /**
    * Initialize the network type dropdown and handle re-validation when the selection changes.
    */
   private initializeNetworkTypeDropdown(networkType: string): void {
-    const networkTypeOptions = ['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy', 'bridge', 'ovs-bridge'];
+    const networkTypeOptions = [...ManagerViewportPanels.NETWORK_TYPE_OPTIONS];
     createFilterableDropdown(
-      'panel-network-type-dropdown-container',
+      ManagerViewportPanels.ID_NETWORK_TYPE_DROPDOWN,
       networkTypeOptions,
       networkType,
       (selectedValue: string) => {
@@ -452,15 +514,15 @@ export class ManagerViewportPanels {
         // Re-validate when network type changes
         setTimeout(() => {
           const { isValid } = this.validateNetworkFields(selectedValue);
-          const saveButton = document.getElementById('panel-network-editor-save-button') as HTMLButtonElement;
+          const saveButton = document.getElementById(ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON) as HTMLButtonElement;
           if (saveButton) {
             saveButton.disabled = !isValid;
-            saveButton.classList.toggle('opacity-50', !isValid);
-            saveButton.classList.toggle('cursor-not-allowed', !isValid);
+            saveButton.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !isValid);
+            saveButton.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !isValid);
           }
         }, 100);
       },
-      'Search for network type...'
+      ManagerViewportPanels.PH_SEARCH_NETWORK_TYPE
     );
   }
 
@@ -468,19 +530,19 @@ export class ManagerViewportPanels {
    * Configure the interface field based on the selected network type.
    */
   private configureInterfaceField(networkType: string, nodeId: string, interfaceName: string): void {
-    if (networkType === 'dummy') return; // Dummy nodes don't have interfaces
+    if (networkType === ManagerViewportPanels.TYPE_DUMMY) return; // Dummy nodes don't have interfaces
 
     const interfaceInput = document.getElementById('panel-network-interface') as HTMLInputElement | null;
     const interfaceLabel = Array.from(document.querySelectorAll('.vscode-label')).find(el =>
-      el.textContent === 'Interface' || el.textContent === 'Bridge Name'
+      el.textContent === ManagerViewportPanels.LABEL_INTERFACE || el.textContent === ManagerViewportPanels.LABEL_BRIDGE_NAME
     );
 
-    const isBridge = networkType === 'bridge' || networkType === 'ovs-bridge';
-    const isHostLike = networkType === 'host' || networkType === 'mgmt-net' || networkType === 'macvlan';
+    const isBridge = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
+    const isHostLike = ManagerViewportPanels.HOSTY_TYPES.includes(networkType as any);
 
-    let labelText = 'Interface';
-    if (isBridge) labelText = 'Bridge Name';
-    else if (isHostLike) labelText = 'Host Interface';
+    let labelText = ManagerViewportPanels.LABEL_INTERFACE;
+    if (isBridge) labelText = ManagerViewportPanels.LABEL_BRIDGE_NAME;
+    else if (isHostLike) labelText = ManagerViewportPanels.LABEL_HOST_INTERFACE;
     const inputValue = isBridge ? nodeId : interfaceName;
 
     if (interfaceLabel) interfaceLabel.textContent = labelText;
@@ -499,7 +561,7 @@ export class ManagerViewportPanels {
     this.setInputValue('panel-network-mac', extraData.extMac ?? extraFallback.extMac);
     this.setInputValue('panel-network-mtu', extraData.extMtu ?? extraFallback.extMtu);
     const modeSelect = document.getElementById('panel-network-mode') as HTMLSelectElement | null;
-    if (modeSelect) modeSelect.value = extraData.extMode || 'bridge';
+    if (modeSelect) modeSelect.value = extraData.extMode || ManagerViewportPanels.TYPE_BRIDGE;
     this.setInputValue('panel-network-remote', extraData.extRemote);
     this.setInputValue('panel-network-vni', extraData.extVni);
     this.setInputValue('panel-network-udp-port', extraData.extUdpPort);
@@ -553,7 +615,7 @@ export class ManagerViewportPanels {
       if (input) {
         input.addEventListener('input', () => {
           const { isValid } = this.validateNetworkFields(networkType);
-          const saveButton = document.getElementById('panel-network-editor-save-button') as HTMLButtonElement;
+          const saveButton = document.getElementById(ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON) as HTMLButtonElement;
           if (saveButton) {
             saveButton.disabled = !isValid;
             saveButton.classList.toggle('opacity-50', !isValid);
@@ -563,7 +625,7 @@ export class ManagerViewportPanels {
       }
     });
 
-    const saveBtn = document.getElementById('panel-network-editor-save-button');
+    const saveBtn = document.getElementById(ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON);
     if (saveBtn) {
       const newSaveBtn = saveBtn.cloneNode(true) as HTMLElement;
       saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
@@ -591,7 +653,7 @@ export class ManagerViewportPanels {
    * Validate network editor fields. When showErrors is true, highlight missing values.
    */
   private validateNetworkFields(networkType: string, showErrors = false): { isValid: boolean; errors: string[] } {
-    const currentType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement)?.value || networkType;
+    const currentType = (document.getElementById(ManagerViewportPanels.ID_NETWORK_TYPE_FILTER_INPUT) as HTMLInputElement)?.value || networkType;
     this.clearNetworkValidationStyles();
     const errors = this.collectNetworkErrors(currentType, showErrors);
     if (showErrors) this.displayNetworkValidationErrors(errors); else this.hideNetworkValidationErrors();
@@ -605,7 +667,7 @@ export class ManagerViewportPanels {
   }
 
   private collectNetworkErrors(currentType: string, showErrors: boolean): string[] {
-    if (!['vxlan', 'vxlan-stitch'].includes(currentType)) return [];
+    if (!(ManagerViewportPanels.VX_TYPES as readonly string[]).includes(currentType)) return [];
     const fields = [
       { id: 'panel-network-remote', msg: 'Remote IP is required' },
       { id: 'panel-network-vni', msg: 'VNI is required' },
@@ -646,7 +708,7 @@ export class ManagerViewportPanels {
   public async panelNetworkEditor(node: cytoscape.NodeSingular): Promise<void> {
     this.nodeClicked = true;
 
-    const panelOverlays = document.getElementsByClassName('panel-overlay');
+    const panelOverlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
     Array.from(panelOverlays).forEach(panel => {
       (panel as HTMLElement).style.display = 'none';
     });
@@ -654,11 +716,11 @@ export class ManagerViewportPanels {
     const nodeId = node.data('id') as string;
     const nodeData = node.data();
     const parts = nodeId.split(':');
-    const networkType = nodeData.extraData?.kind || parts[0] || 'host';
+    const networkType = nodeData.extraData?.kind || parts[0] || ManagerViewportPanels.TYPE_HOST;
     let interfaceName: string;
-    if (networkType === 'bridge' || networkType === 'ovs-bridge') {
+    if (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) {
       interfaceName = nodeId;
-    } else if (networkType === 'dummy') {
+    } else if (networkType === ManagerViewportPanels.TYPE_DUMMY) {
       interfaceName = '';
     } else {
       interfaceName = parts[1] || 'eth1';
@@ -720,7 +782,7 @@ export class ManagerViewportPanels {
   }
 
   private hideAllPanels(): void {
-    const overlays = document.getElementsByClassName('panel-overlay');
+    const overlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
     Array.from(overlays).forEach(el => (el as HTMLElement).style.display = 'none');
   }
 
@@ -747,8 +809,8 @@ export class ManagerViewportPanels {
     const isVethLink = !sourceIsNetwork && !targetIsNetwork;
     const sourceNode = this.cy.getElementById(source);
     const targetNode = this.cy.getElementById(target);
-    const sourceIsBridge = sourceNode.length > 0 && (sourceNode.data('extraData')?.kind === 'bridge' || sourceNode.data('extraData')?.kind === 'ovs-bridge');
-    const targetIsBridge = targetNode.length > 0 && (targetNode.data('extraData')?.kind === 'bridge' || targetNode.data('extraData')?.kind === 'ovs-bridge');
+    const sourceIsBridge = sourceNode.length > 0 && ManagerViewportPanels.BRIDGE_TYPES.includes(sourceNode.data('extraData')?.kind as any);
+    const targetIsBridge = targetNode.length > 0 && ManagerViewportPanels.BRIDGE_TYPES.includes(targetNode.data('extraData')?.kind as any);
     return { source, target, sourceEP, targetEP, sourceIsNetwork, targetIsNetwork, isVethLink, sourceIsBridge, targetIsBridge };
   }
 
@@ -894,12 +956,12 @@ export class ManagerViewportPanels {
 
   private inferLinkContext(source: string, target: string): { inferredType: string; isVeth: boolean } {
     const special = (id: string): string | null => {
-      if (id === 'host' || id.startsWith('host:')) return 'host';
-      if (id === 'mgmt-net' || id.startsWith('mgmt-net:')) return 'mgmt-net';
+      if (id === ManagerViewportPanels.TYPE_HOST || id.startsWith(`${ManagerViewportPanels.TYPE_HOST}:`)) return ManagerViewportPanels.TYPE_HOST;
+      if (id === ManagerViewportPanels.TYPE_MGMT || id.startsWith(`${ManagerViewportPanels.TYPE_MGMT}:`)) return ManagerViewportPanels.TYPE_MGMT;
       if (id.startsWith('macvlan:')) return 'macvlan';
-      if (id.startsWith('vxlan:')) return 'vxlan';
-      if (id.startsWith('vxlan-stitch:')) return 'vxlan-stitch';
-      if (id.startsWith('dummy')) return 'dummy';
+      if (id.startsWith('vxlan:')) return ManagerViewportPanels.TYPE_VXLAN;
+      if (id.startsWith('vxlan-stitch:')) return ManagerViewportPanels.TYPE_VXLAN_STITCH;
+      if (id.startsWith('dummy')) return ManagerViewportPanels.TYPE_DUMMY;
       return null;
     };
     const sourceType = special(source);
@@ -1042,7 +1104,7 @@ export class ManagerViewportPanels {
     if (!isSpecialNodeOrBridge(nodeId, this.cy)) return false;
     const node = this.cy.getElementById(nodeId);
     const kind = node.data('extraData')?.kind;
-    return kind !== 'bridge' && kind !== 'ovs-bridge';
+    return !ManagerViewportPanels.BRIDGE_TYPES.includes(kind as any);
   }
 
   private buildLinkExtendedData(existing: any): any {
@@ -1174,7 +1236,7 @@ export class ManagerViewportPanels {
   }
 
   private getNetworkEditorInputs() {
-    const networkType = (document.getElementById('panel-network-type-dropdown-container-filter-input') as HTMLInputElement | null)?.value || 'host';
+    const networkType = (document.getElementById(ManagerViewportPanels.ID_NETWORK_TYPE_FILTER_INPUT) as HTMLInputElement | null)?.value || ManagerViewportPanels.TYPE_HOST;
     const interfaceName = (document.getElementById('panel-network-interface') as HTMLInputElement | null)?.value || 'eth1';
     return {
       networkType,
@@ -1191,17 +1253,17 @@ export class ManagerViewportPanels {
   private buildNetworkIdentifiers(currentData: any, networkType: string, interfaceName: string) {
     const oldId = currentData.id as string;
     const oldName = currentData.name as string;
-    const isBridgeType = networkType === 'bridge' || networkType === 'ovs-bridge';
-    const isDummyType = networkType === 'dummy';
+    const isBridgeType = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
+    const isDummyType = networkType === ManagerViewportPanels.TYPE_DUMMY;
     let newId = '';
     if (isBridgeType) {
       newId = interfaceName;
     } else if (isDummyType) {
-      newId = oldId.startsWith('dummy') ? oldId : this.generateUniqueDummyId();
+      newId = oldId.startsWith(ManagerViewportPanels.TYPE_DUMMY) ? oldId : this.generateUniqueDummyId();
     } else {
       newId = `${networkType}:${interfaceName}`;
     }
-    const newName = isDummyType ? 'dummy' : newId;
+    const newName = isDummyType ? ManagerViewportPanels.TYPE_DUMMY : newId;
     return { oldId, oldName, newId, newName };
   }
 
@@ -1214,12 +1276,12 @@ export class ManagerViewportPanels {
     const labels = this.collectDynamicEntries('network-labels');
     if (Object.keys(labels).length) extendedData.extLabels = labels;
     if (inputs.networkType === 'macvlan' && inputs.mode) extendedData.extMode = inputs.mode;
-    if (['vxlan', 'vxlan-stitch'].includes(inputs.networkType)) {
+    if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(inputs.networkType)) {
       if (inputs.remote) extendedData.extRemote = inputs.remote;
       if (inputs.vni) extendedData.extVni = Number(inputs.vni);
       if (inputs.udpPort) extendedData.extUdpPort = Number(inputs.udpPort);
     }
-    if (['host', 'mgmt-net', 'macvlan'].includes(inputs.networkType) && inputs.interfaceName) {
+    if ((ManagerViewportPanels.HOSTY_TYPES as readonly string[]).includes(inputs.networkType) && inputs.interfaceName) {
       extendedData.extHostInterface = inputs.interfaceName;
     }
     return extendedData;
@@ -1229,7 +1291,7 @@ export class ManagerViewportPanels {
     const updatedData = {
       ...currentData,
       name: newName,
-      topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
+      topoViewerRole: (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) ? 'bridge' : 'cloud',
       extraData: { ...extendedData, kind: networkType }
     };
     targetNode.data(updatedData);
@@ -1254,7 +1316,7 @@ export class ManagerViewportPanels {
       ...currentData,
       id: ids.newId,
       name: ids.newName,
-      topoViewerRole: (networkType === 'bridge' || networkType === 'ovs-bridge') ? 'bridge' : 'cloud',
+      topoViewerRole: (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) ? 'bridge' : 'cloud',
       extraData: { ...extendedData, kind: networkType }
     };
     this.cy.add({ group: 'nodes', data: newNodeData, position });
@@ -1281,7 +1343,7 @@ export class ManagerViewportPanels {
   private getNetworkExtendedPropertiesForEdge(networkType: string, nodeExtraData: any): any {
     const edgeExtData: any = this.pickCommonExtProps(nodeExtraData);
     this.addNetworkSpecificProps(edgeExtData, networkType, nodeExtraData);
-    if (networkType !== 'bridge' && networkType !== 'ovs-bridge') {
+    if (!ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) {
       edgeExtData.extType = networkType;
     }
     return edgeExtData;
@@ -1300,9 +1362,9 @@ export class ManagerViewportPanels {
     const copy = (prop: string) => {
       if (nodeExtraData[prop] !== undefined) target[prop] = nodeExtraData[prop];
     };
-    if (['host', 'mgmt-net', 'macvlan'].includes(networkType)) copy('extHostInterface');
+    if ((ManagerViewportPanels.HOSTY_TYPES as readonly string[]).includes(networkType)) copy('extHostInterface');
     if (networkType === 'macvlan') copy('extMode');
-    if (['vxlan', 'vxlan-stitch'].includes(networkType)) {
+    if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(networkType)) {
       ['extRemote', 'extVni', 'extUdpPort'].forEach(copy);
     }
   }
@@ -1492,7 +1554,7 @@ export class ManagerViewportPanels {
   public async panelAbout(): Promise<void> {
     try {
       // 1) Hide other overlays
-      const overlays = document.getElementsByClassName("panel-overlay");
+    const overlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
       Array.from(overlays).forEach(el => (el as HTMLElement).style.display = "none");
 
       // 2) Grab the static parts and initial data
