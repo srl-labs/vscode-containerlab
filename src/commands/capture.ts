@@ -118,7 +118,23 @@ async function ensureEdgesharkAvailable(): Promise<boolean> {
   );
   if (selectedOpt === "Yes") {
     await installEdgeshark();
-    return true;
+
+    const maxRetries = 30;
+    const delayMs = 1000;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const res = await fetch("http://127.0.0.1:5001/version");
+        if (res.ok) {
+          return true;
+        }
+      } catch {
+        // wait and retry
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    vscode.window.showErrorMessage("Edgeshark did not start in time. Please try again.");
+    return false;
   }
   return false;
 }
