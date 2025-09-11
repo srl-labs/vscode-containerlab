@@ -188,7 +188,14 @@ async function tryRunAsGroupMember(
     for (const grp of groupsToCheck) {
       if (groups.includes(grp)) {
         log(`User is in "${grp}". Running without sudo: ${command}`, outputChannel);
-        return runAndLog(command, description, outputChannel, returnOutput, includeStderr);
+        const result = await runAndLog(
+          command,
+          description,
+          outputChannel,
+          returnOutput,
+          includeStderr
+        );
+        return returnOutput ? (result as string) : "";
       }
     }
   } catch (err) {
