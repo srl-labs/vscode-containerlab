@@ -174,19 +174,22 @@ async function runAndLog(
   return returnOutput ? combined : undefined;
 }
 
-async function tryRunAsClabAdmin(
+async function tryRunAsGroupMember(
   command: string,
   description: string,
   outputChannel: vscode.LogOutputChannel,
   returnOutput: boolean,
-  includeStderr: boolean
+  includeStderr: boolean,
+  groupsToCheck: string[]
 ): Promise<string | void | undefined> {
   try {
     const { stdout } = await execAsync("id -nG");
     const groups = stdout.split(/\s+/);
-    if (groups.includes("clab_admins")) {
-      log(`User is in "clab_admins". Running without sudo: ${command}`, outputChannel);
-      return runAndLog(command, description, outputChannel, returnOutput, includeStderr);
+    for (const grp of groupsToCheck) {
+      if (groups.includes(grp)) {
+        log(`User is in "${grp}". Running without sudo: ${command}`, outputChannel);
+        return runAndLog(command, description, outputChannel, returnOutput, includeStderr);
+      }
     }
   } catch (err) {
     log(`Failed to check user groups: ${err}`, outputChannel);
@@ -194,11 +197,15 @@ async function tryRunAsClabAdmin(
   return undefined;
 }
 
-async function hasPasswordlessSudo(checkType: 'generic' | 'containerlab'): Promise<boolean> {
-  const checkCommand =
-    checkType === 'containerlab'
-      ? "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false"
-      : "sudo -n true";
+async function hasPasswordlessSudo(checkType: 'generic' | 'containerlab' | 'docker'): Promise<boolean> {
+  let checkCommand: string;
+  if (checkType === 'containerlab') {
+    checkCommand = "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false";
+  } else if (checkType === 'docker') {
+    checkCommand = "sudo -n docker ps >/dev/null 2>&1 && echo true || echo false";
+  } else {
+    checkCommand = "sudo -n true";
+  }
   try {
     await execAsync(checkCommand);
     return true;
@@ -266,10 +273,9 @@ async function runWithPasswordPrompt(
 }
 
 /**
- * Runs a command, checking for two possibilities in order:
- *   1) If checkType is "containerlab" and the user is NOT forced to always use sudo
- *      (i.e. settings do not force sudo) and the user is in the "clab_admins" group,
- *      run the command directly (i.e. without sudo).
+ * Runs a command, checking for these possibilities in order:
+ *   1) If sudo is not forced and the user belongs to an allowed group
+ *      ("clab_admins"/"docker" for containerlab or "docker" for docker), run it directly.
  *   2) If passwordless sudo is available, run with "sudo -E".
  *   3) Otherwise, prompt the user for their sudo password and run with it.
  *
@@ -279,7 +285,7 @@ export async function runWithSudo(
   command: string,
   description: string,
   outputChannel: vscode.LogOutputChannel,
-  checkType: 'generic' | 'containerlab' = 'containerlab',
+  checkType: 'generic' | 'containerlab' | 'docker' = 'containerlab',
   returnOutput: boolean = false,
   includeStderr: boolean = false
 ): Promise<string | void> {
@@ -287,16 +293,31 @@ export async function runWithSudo(
   // If the user has enabled "always use sudo" then getSudo() will return a non-empty string.
   const forcedSudo = getSudo();
 
-  if (checkType === 'containerlab' && forcedSudo === "") {
-    const direct = await tryRunAsClabAdmin(
-      command,
-      description,
-      outputChannel,
-      returnOutput,
-      includeStderr
-    );
-    if (typeof direct !== 'undefined') {
-      return direct;
+  if (forcedSudo === "") {
+    if (checkType === 'containerlab') {
+      const direct = await tryRunAsGroupMember(
+        command,
+        description,
+        outputChannel,
+        returnOutput,
+        includeStderr,
+        ['clab_admins', 'docker']
+      );
+      if (typeof direct !== 'undefined') {
+        return direct;
+      }
+    } else if (checkType === 'docker') {
+      const direct = await tryRunAsGroupMember(
+        command,
+        description,
+        outputChannel,
+        returnOutput,
+        includeStderr,
+        ['docker']
+      );
+      if (typeof direct !== 'undefined') {
+        return direct;
+      }
     }
   }
 

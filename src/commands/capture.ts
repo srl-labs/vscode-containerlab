@@ -192,13 +192,13 @@ function isDarkModeEnabled(themeSetting?: string): boolean {
 
 async function getEdgesharkNetwork(): Promise<string> {
   try {
-    const psOut = await utils.runWithSudo(`docker ps --filter "name=edgeshark" --format "{{.Names}}"`, 'List edgeshark containers', outputChannel, 'generic', true) as string;
+    const psOut = await utils.runWithSudo(`docker ps --filter "name=edgeshark" --format "{{.Names}}"`, 'List edgeshark containers', outputChannel, 'docker', true) as string;
     const firstName = (psOut || '').split(/\r?\n/).find(Boolean)?.trim() || '';
     if (firstName) {
-      const netsOut = await utils.runWithSudo(`docker inspect ${firstName} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, 'Inspect edgeshark networks', outputChannel, 'generic', true) as string;
+      const netsOut = await utils.runWithSudo(`docker inspect ${firstName} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, 'Inspect edgeshark networks', outputChannel, 'docker', true) as string;
       const networkId = (netsOut || '').trim().split(/\s+/)[0] || '';
       if (networkId) {
-        const nameOut = await utils.runWithSudo(`docker network inspect ${networkId} --format '{{.Name}}'`, 'Inspect network name', outputChannel, 'generic', true) as string;
+        const nameOut = await utils.runWithSudo(`docker network inspect ${networkId} --format '{{.Name}}'`, 'Inspect network name', outputChannel, 'docker', true) as string;
         const netName = (nameOut || '').trim();
         if (netName) return `--network ${netName}`;
       }
@@ -215,7 +215,7 @@ async function getVolumeMount(nodeName: string): Promise<string> {
       `docker inspect ${nodeName} --format '{{index .Config.Labels "clab-node-lab-dir"}}'`,
       'Inspect lab dir label',
       outputChannel,
-      'generic',
+      'docker',
       true
     ) as string;
     const labDir = (out || '').trim();
@@ -270,7 +270,7 @@ export async function captureEdgesharkVNC(
   let containerId = '';
   try {
     const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs || ''} --name ${ctrName} ${dockerImage}`;
-    const out = await utils.runWithSudo(command, 'Start Wireshark VNC', outputChannel, 'generic', true, true) as string;
+    const out = await utils.runWithSudo(command, 'Start Wireshark VNC', outputChannel, 'docker', true, true) as string;
     containerId = (out || '').trim().split(/\s+/)[0] || '';
   } catch (err: any) {
     vscode.window.showErrorMessage(`Starting Wireshark: ${err.message || String(err)}`);
@@ -292,7 +292,7 @@ export async function captureEdgesharkVNC(
   );
 
   panel.onDidDispose(() => {
-    void utils.runWithSudo(`docker rm -f ${containerId}`, 'Remove Wireshark container', outputChannel).catch(() => undefined);
+    void utils.runWithSudo(`docker rm -f ${containerId}`, 'Remove Wireshark container', outputChannel, 'docker').catch(() => undefined);
   })
 
   const iframeUrl = externalUri;
@@ -399,12 +399,12 @@ export async function killAllWiresharkVNCCtrs() {
       `docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}"`,
       'List Wireshark VNC containers',
       outputChannel,
-      'generic',
+      'docker',
       true
     ) as string;
     const ids = (idsOut || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     if (ids.length > 0) {
-      await utils.runWithSudo(`docker rm -f ${ids.join(' ')}`, 'Remove Wireshark VNC containers', outputChannel);
+      await utils.runWithSudo(`docker rm -f ${ids.join(' ')}`, 'Remove Wireshark VNC containers', outputChannel, 'docker');
     }
   } catch (err: any) {
     vscode.window.showErrorMessage(`Killing Wireshark container: ${err.message || String(err)}`);
