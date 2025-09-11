@@ -524,11 +524,10 @@ function filterObsoleteLinks(linksNode: YAML.YAMLSeq, payloadEdgeKeys: Set<strin
 }
 
 function createEndpointScalar(doc: YAML.Document.Parsed, value: string): YAML.Scalar {
-  const node = doc.createNode(value) as YAML.Scalar;
-  if (value.includes(':')) {
-    node.type = YAML.Scalar.QUOTE_DOUBLE;
-  }
-  return node;
+  const scalar = doc.createNode(value) as YAML.Scalar;
+  // Always use double quotes to ensure consistent endpoint formatting
+  scalar.type = 'QUOTE_DOUBLE';
+  return scalar;
 }
 
 function replaceEndpointValue(
@@ -544,13 +543,18 @@ function replaceEndpointValue(
     return item;
   }
   let endpointStr = String((item as any).value ?? item);
+  let replaced = false;
   if (endpointStr.includes(':')) {
     const [nodeKey, rest] = endpointStr.split(':');
-    if (updatedKeys.has(nodeKey)) endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+    if (updatedKeys.has(nodeKey)) {
+      endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+      replaced = true;
+    }
   } else if (updatedKeys.has(endpointStr)) {
     endpointStr = updatedKeys.get(endpointStr)!;
+    replaced = true;
   }
-  return createEndpointScalar(doc, endpointStr);
+  return replaced ? createEndpointScalar(doc, endpointStr) : item;
 }
 
 function updateEndpointsSeq(
@@ -579,6 +583,7 @@ function updateExistingLinks(
   doc: YAML.Document.Parsed,
   updatedKeys: Map<string, string>,
 ): void {
+  if (updatedKeys.size === 0) return;
   for (const linkItem of linksNode.items) {
     if (!YAML.isMap(linkItem)) continue;
     (linkItem as YAML.YAMLMap).flow = false;
@@ -597,12 +602,39 @@ function updateYamlLinks(payloadParsed: any[], doc: YAML.Document.Parsed, update
   updateExistingLinks(linksNode, doc, updatedKeys);
 }
 
+function canonicalize(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(canonicalize);
+  if (obj && typeof obj === 'object') {
+    const sorted: Record<string, any> = {};
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = canonicalize(obj[key]);
+    }
+    return sorted;
+  }
+  return obj;
+}
+
+function yamlStructurallyEqual(doc: YAML.Document.Parsed, existingYaml: string): boolean {
+  try {
+    const existingObj = YAML.parse(existingYaml);
+    const docObj = doc.toJS();
+    return JSON.stringify(canonicalize(existingObj)) === JSON.stringify(canonicalize(docObj));
+  } catch {
+    return existingYaml === doc.toString();
+  }
+}
+
 async function writeYamlFile(
   doc: YAML.Document.Parsed,
   yamlFilePath: string,
   setInternalUpdate?: (_arg: boolean) => void, // eslint-disable-line no-unused-vars
 ): Promise<void> {
   const updatedYamlString = doc.toString();
+  const existingYaml = await fs.promises.readFile(yamlFilePath, 'utf8').catch(() => '');
+  if (yamlStructurallyEqual(doc, existingYaml)) {
+    log.info('No YAML changes detected; skipping save');
+    return;
+  }
   if (setInternalUpdate) {
     setInternalUpdate(true);
     await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
@@ -886,7 +918,14 @@ function processEdge(element: any, linksNode: YAML.YAMLSeq, doc: YAML.Document.P
   const chosenType = determineChosenType(payloadKey, extra);
   const existing = findExistingLinkMap(linksNode, payloadKeyStr);
   if (existing) {
-    updateExistingLink(existing, data, extra, chosenType, payloadKey, payloadKeyStr, doc);
+    // Determine if applying the update would actually change the YAML. If not,
+    // we skip mutating the existing node to preserve its original formatting.
+    const tempDoc = new YAML.Document();
+    const clone = YAML.parseDocument(YAML.stringify(existing)).contents as YAML.YAMLMap;
+    updateExistingLink(clone, data, extra, chosenType, payloadKey, payloadKeyStr, tempDoc as any);
+    if (YAML.stringify(clone) !== YAML.stringify(existing)) {
+      updateExistingLink(existing, data, extra, chosenType, payloadKey, payloadKeyStr, doc);
+    }
   } else {
     createNewLink(linksNode, data, extra, chosenType, payloadKey, payloadKeyStr, doc);
   }
