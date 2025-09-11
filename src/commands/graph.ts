@@ -80,39 +80,46 @@ let currentTopoViewer: TopoViewer | undefined;
 let currentTopoViewerPanel: vscode.WebviewPanel | undefined;
 const activeTopoViewers: Set<TopoViewer> = new Set();
 
+function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: boolean } | undefined {
+  if (node && node.contextValue &&
+      (node.contextValue === 'containerlabLabDeployed' ||
+       node.contextValue === 'containerlabLabDeployedFavorite')) {
+    return { labPath: node.labPath?.absolute || '', isViewMode: true };
+  }
+
+  if (node?.labPath?.absolute) {
+    return { labPath: node.labPath.absolute, isViewMode: false };
+  }
+
+  const editor = vscode.window.activeTextEditor;
+  const topoFileRegex = /\.clab\.(yaml|yml)$/;
+  if (editor && topoFileRegex.test(editor.document.uri.fsPath)) {
+    return { labPath: editor.document.uri.fsPath, isViewMode: false };
+  }
+
+  vscode.window.showErrorMessage('No lab node or topology file selected');
+  return undefined;
+}
+
+function findActiveViewer(labPath: string, labName: string): TopoViewer | undefined {
+  for (const openViewer of activeTopoViewers) {
+    if (openViewer.currentPanel &&
+        (openViewer.lastYamlFilePath === labPath || openViewer.currentLabName === labName)) {
+      return openViewer;
+    }
+  }
+  return undefined;
+}
 
 export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.ExtensionContext) {
   // Get node if not provided
   node = await getSelectedLabNode(node);
 
-  let labPath: string = '';
-  let isViewMode = false;
-
-  // Check if this is a deployed lab (view mode)
-  if (node && node.contextValue &&
-      (node.contextValue === 'containerlabLabDeployed' ||
-       node.contextValue === 'containerlabLabDeployedFavorite')) {
-    isViewMode = true;
-    // Deployed labs might still have a labPath, but we treat them as view-only
-    labPath = node.labPath?.absolute || '';
-  } else if (node && node.labPath && node.labPath.absolute) {
-    // Undeployed lab with YAML file - edit mode
-    labPath = node.labPath.absolute;
-    isViewMode = false;
-  } else {
-    // Try to get from active editor
-    const editor = vscode.window.activeTextEditor;
-    if (editor && editor.document.uri.fsPath.match(/\.clab\.(yaml|yml)$/)) {
-      labPath = editor.document.uri.fsPath;
-      isViewMode = false; // Editor mode when opened from file
-    } else {
-      // No valid source, show error
-      vscode.window.showErrorMessage(
-        'No lab node or topology file selected'
-      );
-      return;
-    }
+  const labInfo = resolveLabInfo(node);
+  if (!labInfo) {
+    return;
   }
+  const { labPath, isViewMode } = labInfo;
 
   if (!context) {
     vscode.window.showErrorMessage('Extension context not available');
@@ -127,16 +134,12 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
       : 'Unknown Lab');
 
   // Check if a TopoViewer for this lab is already open
-  for (const openViewer of activeTopoViewers) {
-    if (
-      openViewer.currentPanel &&
-      (openViewer.lastYamlFilePath === labPath || openViewer.currentLabName === labName)
-    ) {
-      setCurrentTopoViewer(openViewer);
-      openViewer.currentPanel.reveal();
-      vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
-      return;
-    }
+  const existingViewer = findActiveViewer(labPath, labName);
+  if (existingViewer) {
+    setCurrentTopoViewer(existingViewer);
+    existingViewer.currentPanel!.reveal();
+    vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
+    return;
   }
 
   // 1) create a new TopoViewer

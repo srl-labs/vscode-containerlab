@@ -54,14 +54,14 @@ describe('copyLabPath command', () => {
 
   // Copies the absolute path of the lab file and notifies the user.
   it('copies the lab path to the clipboard and shows info message', async () => {
-    const node = { labPath: { absolute: '/tmp/lab.clab.yml' } } as any;
+    const node = { labPath: { absolute: '/home/user/lab.clab.yml' } } as any;
     copyLabPath(node);
 
     const clipSpy = vscodeStub.env.clipboard.writeText as sinon.SinonSpy;
     await clipSpy.returnValues[0];
     const msgSpy = vscodeStub.window.showInformationMessage as sinon.SinonSpy;
-    expect(clipSpy.calledOnceWith('/tmp/lab.clab.yml')).to.be.true;
-    expect(msgSpy.calledOnceWith('Copied file path of /tmp/lab.clab.yml to clipboard.')).to.be.true;
+    expect(clipSpy.calledOnceWith('/home/user/lab.clab.yml')).to.be.true;
+    expect(msgSpy.calledOnceWith('Copied file path of /home/user/lab.clab.yml to clipboard.')).to.be.true;
   });
 
   // Should error when no node is provided.

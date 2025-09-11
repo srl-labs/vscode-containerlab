@@ -10,17 +10,17 @@ export function getEdgesharkInstallCmd(): string {
         const envLines = extraEnvVars.split(',').map(env => env.trim()).filter(env => env);
         if (envLines.length > 0) {
             // Create a temporary file approach with proper YAML injection
-            const tmpFile = '/tmp/edgeshark-compose.yaml';
             const envSection = envLines.map(env => `          - ${env}`).join('\\n');
 
-            // Download, modify, and run the compose file
-            return `curl -sL https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml -o ${tmpFile} && \
+            // Download, modify, and run the compose file using a secure temp file
+            return `tmpFile="$(mktemp -t edgeshark-compose.XXXXXX)" && \
+curl -sL https://github.com/siemens/edgeshark/raw/main/deployments/wget/docker-compose.yaml -o "$tmpFile" && \
 sed -i '/gostwire:/,/^    [^ ]/ { /pull_policy:.*always/a\\        environment:\\n${envSection}
-}' ${tmpFile} && \
+}' "$tmpFile" && \
 sed -i '/edgeshark:/,/^    [^ ]/ { /pull_policy:.*always/a\\        environment:\\n${envSection}
-}' ${tmpFile} && \
-DOCKER_DEFAULT_PLATFORM= docker compose -f ${tmpFile} up -d && \
-rm -f ${tmpFile}`;
+}' "$tmpFile" && \
+DOCKER_DEFAULT_PLATFORM= docker compose -f "$tmpFile" up -d && \
+rm -f "$tmpFile"`;
         }
     }
 

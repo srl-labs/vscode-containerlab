@@ -108,7 +108,14 @@ async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
       let hostPort = '';
 
       // Look for format like "80/tcp -> 0.0.0.0:8080" or "80/tcp -> :8080"
-      const match = line.match(/(\d+)\/(\w+)\s+.*?:(\d+)$/);
+      const parts = line.trim().split(/\s+/);
+      const first = parts[0] || '';
+      const last = parts[parts.length - 1] || '';
+      const portProto = /^(\d+)\/(\w+)$/;
+      const hostPortRegex = /:(\d+)$/;
+      const ppMatch = portProto.exec(first);
+      const hpMatch = hostPortRegex.exec(last);
+      const match = ppMatch && hpMatch ? [first, ppMatch[1], ppMatch[2], hpMatch[1]] as unknown as RegExpExecArray : null;
 
       if (match) {
         containerPort = match[1];
@@ -152,9 +159,8 @@ function openPortInBrowser(mapping: PortMapping, containerName: string) {
   // Ensure the URL has a proper protocol so the system opens it in a browser
   vscode.env.openExternal(vscode.Uri.parse(url));
 
-  vscode.window.showInformationMessage(
-    `Opening port ${mapping.hostPort} in browser${mapping.description ? ` (${mapping.description})` : ''}`
-  );
+  const desc = mapping.description ? ` (${mapping.description})` : '';
+  vscode.window.showInformationMessage(`Opening port ${mapping.hostPort} in browser${desc}`);
 }
 
 /**

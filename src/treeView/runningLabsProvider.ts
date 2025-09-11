@@ -4,7 +4,8 @@ import * as c from "./common";
 import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
+import * as fs from "fs";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
 // Mode switching imports removed - now handled by command completion callbacks
@@ -28,6 +29,8 @@ interface ClabInsIntfJSON {
         }
     ]
 }
+
+type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
 
 export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabLabTreeNode | c.ClabContainerTreeNode> {
     private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | c.ClabContainerTreeNode | null | undefined>();
@@ -167,20 +170,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         const now = Date.now();
 
         // Check for expired caches
+        let anyInterfaceExpired = false;
         for (const value of this.containerInterfacesCache.values()) {
             if (now - value.timestamp > this.cacheTTL) {
-                return true;
+                anyInterfaceExpired = true;
+                break;
             }
         }
 
-        if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp >= this.cacheTTL) {
-            return true;
-        }
-
-        return false;
+        const labsExpired = !!(this.labsCache.inspect && (now - this.labsCache.inspect.timestamp >= this.cacheTTL));
+        return anyInterfaceExpired || labsExpired;
     }
 
-    getTreeItem(element: c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode): vscode.TreeItem {
+    getTreeItem(element: RunningTreeNode): vscode.TreeItem {
         return element;
     }
 
@@ -188,92 +190,65 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * Return tree children. If called with c.ClabLabTreeNode as args it will return the c.ClabLabTreeNode's
      * array of containers.
      */
-    async getChildren(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode): Promise<any> {
-        if (!this.treeItems.length) {
-            await this.discoverLabs();
-        }
+    async getChildren(element?: RunningTreeNode): Promise<any> {
+        if (!this.treeItems.length) await this.discoverLabs();
 
-        // Discover labs to populate tree
-        if (!element) {
-            let labs = [];
-            if (hideNonOwnedLabsState) {
-                labs = this.treeItems.filter(labNode => labNode.owner == username);
-            } else {
-                labs = this.treeItems;
-            }
-            if (this.treeFilter) {
-                const filter = FilterUtils.createFilter(this.treeFilter);
-                labs = labs.filter(lab => {
-                    const lbl = String(lab.label);
-                    if (filter(lbl)) return true;
-                    if (lab.containers) {
-                        return lab.containers.some(cn => {
-                            if (filter(String(cn.label))) {
-                                return true;
-                            }
-                            return cn.interfaces.some(it => filter(String(it.label)));
-                        });
-                    }
-                    return false;
-                });
-            }
-            vscode.commands.executeCommand(
-                'setContext',
-                'runningLabsEmpty',
-                labs.length == 0
-            );
-            return labs;
-        }
-        // Find containers belonging to a lab
-        if (element instanceof c.ClabLabTreeNode) {
-            let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode)[] = element.containers || [];
-            if (element.sshxNode) {
-                containers = [element.sshxNode, ...containers];
-            }
-            if (element.gottyNode) {
-                containers = [element.gottyNode, ...containers];
-            }
-            if (this.treeFilter) {
-                const filter = FilterUtils.createFilter(this.treeFilter);
-                const labMatch = filter(String(element.label));
-                if (!labMatch) {
-                    // Filter containers, but keep ALL interfaces for matching containers
-                    containers = containers.filter(cn => {
-                        if (filter(String(cn.label))) {
-                            return true; // Keep entire container with all interfaces
-                        }
-                        if ((cn as c.ClabContainerTreeNode).interfaces) {
-                            return (cn as c.ClabContainerTreeNode).interfaces.some(it =>
-                                filter(String(it.label))
-                            );
-                        }
-                        return false;
-                    });
-                }
-            }
-            return containers;
-        }
-        // Find interfaces belonging to a container
-        if (element instanceof c.ClabContainerTreeNode) {
-            // Ensure interfaces are fetched/updated if needed (or rely on existing cache logic)
-            // The existing discoverContainerInterfaces logic with caching should handle this.
-            let interfaces = element.interfaces;
-            if (this.treeFilter) {
-                const filter = FilterUtils.createFilter(this.treeFilter);
-                const containerMatches = filter(String(element.label));
-
-                if (containerMatches) {
-                    // Container name matches - show ALL interfaces
-                    return interfaces;
-                } else {
-                    // Container name doesn't match - filter to show only matching interfaces
-                    interfaces = interfaces.filter(it => filter(String(it.label)));
-                }
-            }
-            return interfaces;
-        }
-
+        if (!element) return this.getRootChildren();
+        if (element instanceof c.ClabLabTreeNode) return this.getLabChildren(element);
+        if (element instanceof c.ClabContainerTreeNode) return this.getContainerChildren(element);
         return undefined;
+    }
+
+    private getRootChildren(): RunningTreeNode[] {
+        const labs = hideNonOwnedLabsState
+            ? this.treeItems.filter(labNode => labNode.owner == username)
+            : this.treeItems;
+
+        const filtered = this.treeFilter
+            ? this.filterLabs(labs, this.treeFilter)
+            : labs;
+
+        vscode.commands.executeCommand('setContext', 'runningLabsEmpty', filtered.length == 0);
+        return filtered;
+    }
+
+    private filterLabs(labs: c.ClabLabTreeNode[], text: string): c.ClabLabTreeNode[] {
+        const filter = FilterUtils.createFilter(text);
+        return labs.filter(lab => this.labMatchesFilter(lab, filter));
+    }
+
+    private labMatchesFilter(lab: c.ClabLabTreeNode, filter: ReturnType<typeof FilterUtils.createFilter>): boolean {
+        if (filter(String(lab.label))) return true;
+        const containers = lab.containers || [];
+        return containers.some(cn => filter(String(cn.label)) ||
+            (cn as c.ClabContainerTreeNode).interfaces?.some(it => filter(String(it.label))));
+    }
+
+    private getLabChildren(element: c.ClabLabTreeNode) {
+        let containers: (c.ClabContainerTreeNode | c.ClabSshxLinkTreeNode | c.ClabGottyLinkTreeNode)[] = element.containers || [];
+        if (element.sshxNode) containers = [element.sshxNode, ...containers];
+        if (element.gottyNode) containers = [element.gottyNode, ...containers];
+        if (!this.treeFilter) return containers;
+
+        const filter = FilterUtils.createFilter(this.treeFilter);
+        const labMatch = filter(String(element.label));
+        if (labMatch) return containers;
+
+        return containers.filter(cn => this.containerMatchesFilter(cn as any, filter));
+    }
+
+    private containerMatchesFilter(cn: c.ClabContainerTreeNode, filter: ReturnType<typeof FilterUtils.createFilter>): boolean {
+        if (filter(String(cn.label))) return true; // Keep entire container with all interfaces
+        const ifaces = cn.interfaces || [];
+        return ifaces.some(it => filter(String(it.label)));
+    }
+
+    private getContainerChildren(element: c.ClabContainerTreeNode) {
+        let interfaces = element.interfaces;
+        if (!this.treeFilter) return interfaces;
+        const filter = FilterUtils.createFilter(this.treeFilter);
+        const containerMatches = filter(String(element.label));
+        return containerMatches ? interfaces : interfaces.filter(it => filter(String(it.label)));
     }
 
     private async discoverLabs() {
@@ -409,12 +384,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         const currentDataHash = this.createDataHash(inspectData);
 
         // Check if we have cached data and if the raw data hasn't changed
-        if (this.labsCache.inspect &&
-            this.labsCache.inspect.rawDataHash === currentDataHash &&
-            (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
-            console.log("[RunningLabTreeDataProvider]:\tUsing cached labs (data unchanged)");
-            return this.labsCache.inspect.data;
-        }
+        const cached = this.getCachedInspectIfFresh(currentDataHash);
+        if (cached) return cached;
 
         if (!inspectData) {
             this.updateBadge(0);
@@ -423,28 +394,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
 
         // --- Normalize inspectData into a flat list of containers ---
-        let allContainers: c.ClabJSON[] = [];
-
-        if (Array.isArray(inspectData)) {
-            // Old format: Flat array of containers
-            console.log("[RunningLabTreeDataProvider]:\tDetected old inspect format (flat container list).");
-            allContainers = inspectData;
-        } else if (inspectData.containers && Array.isArray(inspectData.containers)) {
-            // Old format: Top-level "containers" array
-            console.log("[RunningLabTreeDataProvider]:\tDetected old inspect format (flat container list with 'containers' key).");
-            allContainers = inspectData.containers;
-        } else if (typeof inspectData === 'object' && Object.keys(inspectData).length > 0) {
-            // New format: Object with lab names as keys
-            console.log("[RunningLabTreeDataProvider]:\tDetected new inspect format (grouped by lab).");
-            for (const labName in inspectData) {
-                if (Array.isArray(inspectData[labName])) {
-                    // Add containers from this lab to the flat list
-                    allContainers.push(...inspectData[labName]);
-                }
-            }
-        } else {
-            // Handle cases where inspectData is invalid, empty, or not the expected object/array
-            console.log("[RunningLabTreeDataProvider]:\tInspect data is empty or in an unexpected format.");
+        const allContainers = this.normalizeInspectData(inspectData);
+        if (!allContainers) {
             this.updateBadge(0);
             this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
             return undefined;
@@ -457,143 +408,156 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             return undefined;
         }
 
-        // Refresh SSHX session list if any SSHX container is detected and we don't already have a link
-        const sshxLabs = new Set(
-            allContainers
-                .filter(c => (c.name || '').includes('sshx'))
-                .map(c => c.lab_name)
-        );
-        const missingSessions = Array.from(sshxLabs).filter(lab => !sshxSessions.has(lab));
-        if (missingSessions.length > 0) {
-            await refreshSshxSessions();
-        }
-
-        // Refresh GoTTY session list if any GoTTY container is detected and we don't already have a link
-        const gottyLabs = new Set(
-            allContainers
-                .filter(c => (c.name || '').includes('gotty'))
-                .map(c => c.lab_name)
-        );
-        const missingGottySessions = Array.from(gottyLabs).filter(lab => !gottySessions.has(lab));
-        if (missingGottySessions.length > 0) {
-            await refreshGottySessions();
-        }
+        await this.refreshSessionLists(allContainers);
 
         // --- Process the flat allContainers list ---
-        const labs: Record<string, c.ClabLabTreeNode> = {};
-
-        allContainers.forEach((container: c.ClabJSON) => {
-            // Use absLabPath if available, otherwise normalize labPath as fallback
-            const normPath = container.absLabPath || utils.normalizeLabPath(container.labPath);
-
-            if (!labs[normPath]) {
-                // This is the first container we see for this lab path
-                const label = `${container.lab_name} (${container.owner})`;
-
-                const labPathObj: c.LabPath = {
-                    absolute: normPath,
-                    // Use relative path from the container data if possible, else calculate
-                    relative: utils.getRelativeFolderPath(normPath) // Or use a calculated relative path
-                };
-
-                // Filter the flat list to get all containers for *this specific lab path*
-                const containersForThisLab = allContainers.filter(
-                    (c: c.ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
-                );
-
-                // Discover the container nodes for this lab using the filtered list
-                const discoveredContainers: c.ClabContainerTreeNode[] =
-                    this.discoverContainers(containersForThisLab, labPathObj.absolute); // Pass filtered list
-
-                // Determine lab icon based on container states and health
-                let runningCount = 0;
-                let unhealthyCount = 0;
-                for (const c of discoveredContainers) {
-                    if (c.state === "running") {
-                        runningCount++;
-                        // Check if container is unhealthy based on status
-                        const status = c.status?.toLowerCase() || "";
-                        if (status.includes("health: starting") || status.includes("unhealthy")) {
-                            unhealthyCount++;
-                        }
-                    }
-                }
-
-                let icon: string;
-                if (runningCount === 0 && discoveredContainers.length > 0) {
-                    icon = c.CtrStateIcons.STOPPED;  // All containers stopped
-                } else if (runningCount === discoveredContainers.length && unhealthyCount === 0) {
-                    icon = c.CtrStateIcons.RUNNING;  // All containers running and healthy
-                } else if (runningCount === discoveredContainers.length && unhealthyCount > 0) {
-                    icon = c.CtrStateIcons.PARTIAL;  // All running but some unhealthy
-                } else if (discoveredContainers.length > 0) {
-                    icon = c.CtrStateIcons.PARTIAL;  // Some running, some stopped
-                } else {
-                    icon = c.CtrStateIcons.STOPPED;  // Default if no containers somehow
-                }
-
-                const isFav = favoriteLabs.has(normPath);
-                const contextVal = isFav
-                    ? "containerlabLabDeployedFavorite"
-                    : "containerlabLabDeployed";
-                const sshxLink = sshxSessions.get(container.lab_name);
-                const gottyLink = gottySessions.get(container.lab_name);
-
-                // Create label with sharing indicator if SSHX or GoTTY session exists
-                let labLabel = label;
-                if (sshxLink || gottyLink) {
-                    labLabel = `🔗 ${label}`; // Add link emoji to indicate sharing
-                }
-
-                const labNode = new c.ClabLabTreeNode(
-                    labLabel, // Use modified label with sharing indicator
-                    vscode.TreeItemCollapsibleState.Collapsed,
-                    labPathObj,
-                    container.lab_name,
-                    container.owner,
-                    discoveredContainers,
-                    contextVal,
-                    isFav,
-                    sshxLink,
-                    gottyLink
-                );
-
-                if (sshxLink) {
-                    labNode.sshxNode = new c.ClabSshxLinkTreeNode(container.lab_name, sshxLink);
-                    // Add sharing indicator to description instead of replacing icon
-                    labNode.description = `${labPathObj.relative} (Shared)`;
-                    // Set command for easy access to copy link
-                    labNode.command = {
-                        command: 'containerlab.lab.sshx.copyLink',
-                        title: 'Copy SSHX link',
-                        arguments: [sshxLink]
-                    };
-                } else if (gottyLink) {
-                    labNode.gottyNode = new c.ClabGottyLinkTreeNode(container.lab_name, gottyLink);
-                    // Add sharing indicator to description instead of replacing icon
-                    labNode.description = `${labPathObj.relative} (Shared)`;
-                    // Set command for easy access to copy link
-                    labNode.command = {
-                        command: 'containerlab.lab.gotty.copyLink',
-                        title: 'Copy GoTTY link',
-                        arguments: [gottyLink]
-                    };
-                } else {
-                    labNode.description = labPathObj.relative; // Show relative path
-                }
-
-                // Keep the original state icon (don't replace with sharing icon)
-                const iconUri = this.getResourceUri(icon);
-                labNode.iconPath = { light: iconUri, dark: iconUri };
-
-                labs[normPath] = labNode;
-            }
-        });
+        const labs = this.buildLabsFromContainers(allContainers);
 
         this.updateBadge(Object.keys(labs).length);
 
         this.labsCache.inspect = { data: labs, timestamp: Date.now(), rawDataHash: currentDataHash };
         return labs;
+    }
+
+    private getCachedInspectIfFresh(currentDataHash: string) {
+        if (this.labsCache.inspect &&
+            this.labsCache.inspect.rawDataHash === currentDataHash &&
+            (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
+            console.log("[RunningLabTreeDataProvider]:\tUsing cached labs (data unchanged)");
+            return this.labsCache.inspect.data;
+        }
+        return undefined;
+    }
+
+    private normalizeInspectData(inspectData: any): c.ClabJSON[] | undefined {
+        let allContainers: c.ClabJSON[] = [];
+        if (Array.isArray(inspectData)) {
+            console.log("[RunningLabTreeDataProvider]:\tDetected old inspect format (flat container list).");
+            return inspectData;
+        }
+        if (inspectData?.containers && Array.isArray(inspectData.containers)) {
+            console.log("[RunningLabTreeDataProvider]:\tDetected old inspect format (flat container list with 'containers' key).");
+            return inspectData.containers;
+        }
+        if (typeof inspectData === 'object' && Object.keys(inspectData).length > 0) {
+            console.log("[RunningLabTreeDataProvider]:\tDetected new inspect format (grouped by lab).");
+            for (const labName in inspectData) {
+                if (Array.isArray(inspectData[labName])) allContainers.push(...inspectData[labName]);
+            }
+            return allContainers;
+        }
+        console.log("[RunningLabTreeDataProvider]:\tInspect data is empty or in an unexpected format.");
+        return undefined;
+    }
+
+    private async refreshSessionLists(allContainers: c.ClabJSON[]) {
+        const sshxLabs = new Set(allContainers.filter(c => (c.name || '').includes('sshx')).map(c => c.lab_name));
+        const missingSessions = Array.from(sshxLabs).filter(lab => !sshxSessions.has(lab));
+        if (missingSessions.length > 0) await refreshSshxSessions();
+
+        const gottyLabs = new Set(allContainers.filter(c => (c.name || '').includes('gotty')).map(c => c.lab_name));
+        const missingGottySessions = Array.from(gottyLabs).filter(lab => !gottySessions.has(lab));
+        if (missingGottySessions.length > 0) await refreshGottySessions();
+    }
+
+    private buildLabsFromContainers(allContainers: c.ClabJSON[]): Record<string, c.ClabLabTreeNode> {
+        const labs: Record<string, c.ClabLabTreeNode> = {};
+        allContainers.forEach((container: c.ClabJSON) => {
+            const normPath = container.absLabPath || utils.normalizeLabPath(container.labPath);
+            if (!labs[normPath]) labs[normPath] = this.createLabNode(container, allContainers, normPath);
+        });
+        return labs;
+    }
+
+    private createLabNode(container: c.ClabJSON, allContainers: c.ClabJSON[], normPath: string): c.ClabLabTreeNode {
+        const label = `${container.lab_name} (${container.owner})`;
+        const labPathObj: c.LabPath = {
+            absolute: normPath,
+            relative: utils.getRelativeFolderPath(normPath)
+        };
+        const containersForThisLab = allContainers.filter(
+            (c: c.ClabJSON) => (c.absLabPath || utils.normalizeLabPath(c.labPath)) === normPath
+        );
+        const discoveredContainers = this.discoverContainers(containersForThisLab, labPathObj.absolute);
+        const { running, unhealthy } = this.getContainerHealth(discoveredContainers);
+        const icon = this.determineIcon(discoveredContainers.length, running, unhealthy);
+        const isFav = favoriteLabs.has(normPath);
+        const contextVal = isFav ? "containerlabLabDeployedFavorite" : "containerlabLabDeployed";
+        const sshxLink = sshxSessions.get(container.lab_name);
+        const gottyLink = gottySessions.get(container.lab_name);
+        let labLabel = label;
+        if (sshxLink || gottyLink) {
+            labLabel = `🔗 ${label}`;
+        }
+        const labNode = new c.ClabLabTreeNode(
+            labLabel,
+            vscode.TreeItemCollapsibleState.Collapsed,
+            labPathObj,
+            container.lab_name,
+            container.owner,
+            discoveredContainers,
+            contextVal,
+            isFav,
+            sshxLink,
+            gottyLink
+        );
+        this.decorateSharing(labNode, labPathObj.relative, sshxLink, gottyLink);
+        const iconUri = this.getResourceUri(icon);
+        labNode.iconPath = { light: iconUri, dark: iconUri };
+        return labNode;
+    }
+
+    private getContainerHealth(containers: c.ClabContainerTreeNode[]): { running: number; unhealthy: number } {
+        let running = 0;
+        let unhealthy = 0;
+        for (const ctr of containers) {
+            if (ctr.state === "running") {
+                running++;
+                const status = ctr.status?.toLowerCase() || "";
+                if (status.includes("health: starting") || status.includes("unhealthy")) {
+                    unhealthy++;
+                }
+            }
+        }
+        return { running, unhealthy };
+    }
+
+    private determineIcon(total: number, running: number, unhealthy: number): string {
+        if (running === 0 && total > 0) {
+            return c.CtrStateIcons.STOPPED;
+        }
+        if (running === total && unhealthy === 0) {
+            return c.CtrStateIcons.RUNNING;
+        }
+        if (running === total && unhealthy > 0) {
+            return c.CtrStateIcons.PARTIAL;
+        }
+        if (total > 0) {
+            return c.CtrStateIcons.PARTIAL;
+        }
+        return c.CtrStateIcons.STOPPED;
+    }
+
+    private decorateSharing(labNode: c.ClabLabTreeNode, relativePath: string, sshxLink?: string, gottyLink?: string) {
+        if (sshxLink) {
+            labNode.sshxNode = new c.ClabSshxLinkTreeNode(labNode.name!, sshxLink);
+            labNode.description = `${relativePath} (Shared)`;
+            labNode.command = {
+                command: 'containerlab.lab.sshx.copyLink',
+                title: 'Copy SSHX link',
+                arguments: [sshxLink]
+            };
+        } else if (gottyLink) {
+            labNode.gottyNode = new c.ClabGottyLinkTreeNode(labNode.name!, gottyLink);
+            labNode.description = `${relativePath} (Shared)`;
+            labNode.command = {
+                command: 'containerlab.lab.gotty.copyLink',
+                title: 'Copy GoTTY link',
+                arguments: [gottyLink]
+            };
+        } else {
+            labNode.description = relativePath;
+        }
     }
 
     private async getInspectData(): Promise<any> {
@@ -652,10 +616,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         flatContainers.forEach(container => {
             // Extract lab name from the container
-            let labName = "unknown";
-
-            // get the lab name from the containerlab item
-            labName = container.Labels['containerlab']
+            const labName = container.Labels['containerlab'] || "unknown";
 
             // Initialize array for this lab if it doesn't exist
             if (!result[labName]) {
@@ -669,6 +630,48 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return result;
     }
 
+    private buildTooltipParts(container: c.ClabJSON): string[] {
+        const tooltipParts = [
+            `Container: ${container.name}`,
+            `ID: ${container.container_id}`,
+            `State: ${container.state}`,
+            `Status: ${container.status || "Unknown"}`,
+            `Kind: ${container.kind}`,
+            `Image: ${container.image}`
+        ];
+
+        if (container.node_type) {
+            tooltipParts.push(`Type: ${container.node_type}`);
+        }
+
+        if (container.node_group && container.node_group.trim() !== '') {
+            tooltipParts.push(`Group: ${container.node_group}`);
+        }
+
+        const v4Addr = container.ipv4_address?.split('/')[0];
+        if (v4Addr && v4Addr !== "N/A") {
+            tooltipParts.push(`IPv4: ${v4Addr}`);
+        }
+
+        const v6Addr = container.ipv6_address?.split('/')[0];
+        if (v6Addr && v6Addr !== "N/A") {
+            tooltipParts.push(`IPv6: ${v6Addr}`);
+        }
+
+        return tooltipParts;
+    }
+
+    private getContainerIcon(container: c.ClabJSON): string {
+        if (container.state === "running") {
+            const status = container.status?.toLowerCase() || "";
+            if (status.includes("health: starting") || status.includes("unhealthy")) {
+                return c.CtrStateIcons.PARTIAL;
+            }
+            return c.CtrStateIcons.RUNNING;
+        }
+        return c.CtrStateIcons.STOPPED;
+    }
+
     /**
      * Discover containers that belong to a specific lab path.
      */
@@ -678,71 +681,23 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         let containerNodes: c.ClabContainerTreeNode[] = [];
 
         containersForThisLab.forEach((container: c.ClabJSON) => {
-            // Use name_short if available, otherwise extract from name
-            const name_short = container.name_short ||
-                container.name.replace(/^clab-[^-]+-/, '');
+            const name_short = container.name_short || container.name.replace(/^clab-[^-]+-/, '');
+            const tooltipParts = this.buildTooltipParts(container);
+            const icon = this.getContainerIcon(container);
 
-            let tooltipParts = [
-                `Container: ${container.name}`,
-                `ID: ${container.container_id}`,
-                `State: ${container.state}`,
-                `Status: ${container.status || "Unknown"}`,
-                `Kind: ${container.kind}`,
-                `Image: ${container.image}`
-            ];
-
-            // Add node type if available
-            if (container.node_type) {
-                tooltipParts.push(`Type: ${container.node_type}`);
-            }
-
-            // Add node group if available and not empty
-            if (container.node_group && container.node_group.trim() !== '') {
-                tooltipParts.push(`Group: ${container.node_group}`);
-            }
-
-            // Add IPs to tooltip if valid
-            const v4Addr = container.ipv4_address?.split('/')[0];
-            if (v4Addr && v4Addr !== "N/A") {
-                tooltipParts.push(`IPv4: ${v4Addr}`);
-            }
-            const v6Addr = container.ipv6_address?.split('/')[0];
-            if (v6Addr && v6Addr !== "N/A") {
-                tooltipParts.push(`IPv6: ${v6Addr}`);
-            }
-
-            // Determine icon based on state
-            let icon: string;
-            if (container.state === "running") {
-                // Check status for health information if available
-                const status = container.status?.toLowerCase() || "";
-                if (status.includes("health: starting") || status.includes("unhealthy")) {
-                    icon = c.CtrStateIcons.PARTIAL; // Reusing partial icon for unhealthy state
-                } else {
-                    icon = c.CtrStateIcons.RUNNING; // Default for running containers
-                }
-            } else {
-                icon = c.CtrStateIcons.STOPPED;
-            }
-
-            // Discover interfaces for this specific container
-            // The interface discovery logic already uses caching based on container ID and state
             const interfaces = this.discoverContainerInterfaces(
-                absLabPath, // Pass the absolute path of the lab file
+                absLabPath,
                 container.name,
                 container.container_id,
-                container.state // Pass container state for cache validation
-            ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); // Sort interfaces alphabetically
+                container.state
+            ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
-            // Determine collapsible state based on interfaces
             const collapsible = interfaces.length > 0
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None;
 
-            // if shortname is defined, use it for the label
             const label = container.name_short || container.name;
 
-            // Create the container node with optional fields
             const node = new c.ClabContainerTreeNode(
                 label,
                 collapsible,
@@ -752,21 +707,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 container.state,
                 container.kind,
                 container.image,
-                interfaces, // Assign discovered interfaces
-                { absolute: absLabPath, relative: utils.getRelLabFolderPath(container.labPath) }, // Lab path info
-                container.ipv4_address, // Full address with mask
-                container.ipv6_address, // Full address with mask
-                container.node_type, // Node type (if available)
-                container.node_group, // Node group (if available)
+                interfaces,
+                { absolute: absLabPath, relative: utils.getRelLabFolderPath(container.labPath) },
+                container.ipv4_address,
+                container.ipv6_address,
+                container.node_type,
+                container.node_group,
                 container.status,
-                "containerlabContainer" // Context value
+                "containerlabContainer"
             );
 
-            // Set description with status
             node.description = container.status ? ` ${container.status}` : "";
             node.tooltip = tooltipParts.join("\n");
 
-            // Set icon path
             const iconPath = this.getResourceUri(icon);
             node.iconPath = { light: iconPath, dark: iconPath };
 
@@ -783,124 +736,119 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         cID: string,
         containerState: string
     ): c.ClabInterfaceTreeNode[] {
-        // Use a consistent cache key including the absolute path
         const cacheKey = `${absLabPath}::${cName}::${cID}`;
-
-        // Cache validation check
-        if (this.containerInterfacesCache.has(cacheKey)) {
-            const cached = this.containerInterfacesCache.get(cacheKey)!;
-            // Check if container state matches and cache is not expired
-            const isValid = cached.state === containerState &&
-                (Date.now() - cached.timestamp < this.cacheTTL);
-
-            if (isValid) {
-                return cached.interfaces;
-            }
-        }
-
+        const cached = this.containerInterfacesCache.get(cacheKey);
+        const cachedValid = cached && cached.state === containerState &&
+            (Date.now() - cached.timestamp < this.cacheTTL);
+        if (cachedValid) return cached!.interfaces;
 
         let interfaces: c.ClabInterfaceTreeNode[] = [];
-
         try {
-            // IMPORTANT: Use the absolute lab path in the command
-            const cmd = `${utils.getSudo()}containerlab inspect interfaces -t "${absLabPath}" -f json -n ${cName}`;
-            // Use execSync for simplicity here, assuming it's fast enough. Add timeout if needed.
-            const clabStdout = execSync(
-                cmd,
-                { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 } // 10s timeout
-            ).toString();
-
-            const clabInsJSON: ClabInsIntfJSON[] = JSON.parse(clabStdout);
-
-            // Check if the expected structure is present
-            if (clabInsJSON && clabInsJSON.length > 0 && Array.isArray(clabInsJSON[0].interfaces)) {
-                clabInsJSON[0].interfaces.forEach(intf => {
-                    // Skip interfaces in 'unknown' state or loopback 'lo'
-                    if (intf.state === "unknown" || intf.name === "lo") return;
-
-                    let tooltipParts: string[] = [
-                        `Name: ${intf.name}`,
-                        `State: ${intf.state}`,
-                        `Type: ${intf.type}`,
-                        `MAC: ${intf.mac}`,
-                        `MTU: ${intf.mtu}`
-                    ];
-
-                    let label: string = intf.name;
-                    let description: string = intf.state.toUpperCase();
-
-                    // Use alias if available
-                    if (intf.alias) {
-                        label = intf.alias;
-                        tooltipParts.splice(1, 0, `Alias: ${intf.alias}`); // Insert alias after name
-                        description = `${intf.state.toUpperCase()} (${intf.name})`; // Show state and real name
-                    }
-
-                    // Determine icons and context value based on interface state
-                    let iconLight: vscode.Uri;
-                    let iconDark: vscode.Uri;
-                    const contextValue = this.getInterfaceContextValue(intf.state);
-
-                    switch (intf.state) {
-                        case "up":
-                            iconLight = this.getResourceUri(c.IntfStateIcons.UP);
-                            iconDark = this.getResourceUri(c.IntfStateIcons.UP);
-                            break;
-                        case "down":
-                            iconLight = this.getResourceUri(c.IntfStateIcons.DOWN);
-                            iconDark = this.getResourceUri(c.IntfStateIcons.DOWN);
-                            break;
-                        default: // Should not happen if we skip 'unknown'
-                            iconLight = this.getResourceUri(c.IntfStateIcons.LIGHT);
-                            iconDark = this.getResourceUri(c.IntfStateIcons.DARK);
-                            break;
-                    }
-
-                    const node = new c.ClabInterfaceTreeNode(
-                        label,
-                        vscode.TreeItemCollapsibleState.None,
-                        cName, // parent container name
-                        cID,   // parent container ID
-                        intf.name, // interface name
-                        intf.type,
-                        intf.alias,
-                        intf.mac,
-                        intf.mtu,
-                        intf.ifindex,
-                        intf.state, // Store raw state value
-                        contextValue
-                    );
-
-                    node.tooltip = tooltipParts.join("\n");
-                    node.description = description;
-                    node.iconPath = { light: iconLight, dark: iconDark };
-
-                    interfaces.push(node);
-                });
-            } else {
-                console.warn(`[RunningLabTreeDataProvider]: Unexpected JSON structure from inspect interfaces for ${cName}`);
-            }
-
-
-            // Update cache with current state and timestamp
+            const bin = this.findContainerlabBinary();
+            const clabInsJSON = this.getInterfacesJSON(bin, absLabPath, cName);
+            interfaces = this.buildInterfaceNodes(clabInsJSON, cName, cID);
             this.containerInterfacesCache.set(cacheKey, {
                 state: containerState,
                 timestamp: Date.now(),
                 interfaces
             });
-
         } catch (err: any) {
-            // Log specific errors
             if (err.killed || err.signal === 'SIGTERM') {
                 console.error(`[RunningLabTreeDataProvider]: Interface detection timed out for ${cName}. Cmd: ${err.cmd}`);
             } else {
                 console.error(`[RunningLabTreeDataProvider]: Interface detection failed for ${cName}. ${err.message || String(err)}`);
             }
-            // Clear cache entry on error to force refetch next time
             this.containerInterfacesCache.delete(cacheKey);
         }
+        return interfaces;
+    }
 
-        return interfaces; // Return potentially empty array on error
+    private findContainerlabBinary(): string {
+        const candidateBins = ['/usr/bin/containerlab', '/bin/containerlab', '/usr/local/bin/containerlab'];
+        return candidateBins.find(p => {
+            try { return fs.existsSync(p); } catch { return false; }
+        }) || 'containerlab';
+    }
+
+    private getInterfacesJSON(bin: string, absLabPath: string, cName: string): ClabInsIntfJSON[] {
+        const clabStdout = execFileSync(
+            bin,
+            ['inspect', 'interfaces', '-t', absLabPath, '-f', 'json', '-n', cName],
+            { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 }
+        ).toString();
+        return JSON.parse(clabStdout);
+    }
+
+    private buildInterfaceNodes(clabInsJSON: ClabInsIntfJSON[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
+        const interfaces: c.ClabInterfaceTreeNode[] = [];
+
+        if (!(clabInsJSON && clabInsJSON.length > 0 && Array.isArray(clabInsJSON[0].interfaces))) {
+            console.warn(`[RunningLabTreeDataProvider]: Unexpected JSON structure from inspect interfaces for ${cName}`);
+            return interfaces;
+        }
+
+        clabInsJSON[0].interfaces.forEach(intf => {
+            if (intf.state === 'unknown' || intf.name === 'lo') return;
+
+            const tooltipParts: string[] = [
+                `Name: ${intf.name}`,
+                `State: ${intf.state}`,
+                `Type: ${intf.type}`,
+                `MAC: ${intf.mac}`,
+                `MTU: ${intf.mtu}`
+            ];
+
+            let label: string = intf.name;
+            let description: string = intf.state.toUpperCase();
+
+            if (intf.alias) {
+                label = intf.alias;
+                tooltipParts.splice(1, 0, `Alias: ${intf.alias}`);
+                description = `${intf.state.toUpperCase()} (${intf.name})`;
+            }
+
+            let iconLight: vscode.Uri;
+            let iconDark: vscode.Uri;
+            const contextValue = this.getInterfaceContextValue(intf.state);
+
+            switch (intf.state) {
+                case 'up':
+                    iconLight = this.getResourceUri(c.IntfStateIcons.UP);
+                    iconDark = this.getResourceUri(c.IntfStateIcons.UP);
+                    break;
+                case 'down':
+                    iconLight = this.getResourceUri(c.IntfStateIcons.DOWN);
+                    iconDark = this.getResourceUri(c.IntfStateIcons.DOWN);
+                    break;
+                default:
+                    iconLight = this.getResourceUri(c.IntfStateIcons.LIGHT);
+                    iconDark = this.getResourceUri(c.IntfStateIcons.DARK);
+                    break;
+            }
+
+            const node = new c.ClabInterfaceTreeNode(
+                label,
+                vscode.TreeItemCollapsibleState.None,
+                cName,
+                cID,
+                intf.name,
+                intf.type,
+                intf.alias,
+                intf.mac,
+                intf.mtu,
+                intf.ifindex,
+                intf.state,
+                contextValue
+            );
+
+            node.tooltip = tooltipParts.join("\n");
+            node.description = description;
+            node.iconPath = { light: iconLight, dark: iconDark };
+
+            interfaces.push(node);
+        });
+
+        return interfaces;
     }
 
 

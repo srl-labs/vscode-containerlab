@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.17.2",
+  "version": "0.17.3",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.99.0"
@@ -77,7 +77,6 @@
         "when": "workbenchState == empty"
       }
     ],
-    
     "commands": [
       {
         "command": "containerlab.refresh",
@@ -1294,15 +1293,32 @@
           "items": {
             "type": "object",
             "properties": {
-              "name": { "type": "string" },
-              "kind": { "type": "string" },
-              "type": { "type": "string" },
-              "image": { "type": "string" },
-              "icon": { "type": "string" },
-              "baseName": { "type": "string" },
-              "setDefault": { "type": "boolean" }
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "baseName": {
+                "type": "string"
+              },
+              "setDefault": {
+                "type": "boolean"
+              }
             },
-            "required": ["name", "kind"],
+            "required": [
+              "name",
+              "kind"
+            ],
             "additionalProperties": true
           },
           "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
@@ -1349,6 +1365,7 @@
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
+    "@tailwindcss/postcss": "^4.1.11",
     "@types/chai": "^5.2.2",
     "@types/cytoscape": "^3.21.9",
     "@types/cytoscape-cxtmenu": "^3.4.4",
@@ -1376,7 +1393,9 @@
     "cytoscape-svg": "^0.4.0",
     "esbuild": "^0.25.9",
     "eslint": "^9.33.0",
+    "eslint-plugin-sonarjs": "^3.0.5",
     "fs-extra": "^11.3.1",
+    "jscpd": "^4.0.5",
     "leaflet": "^1.9.4",
     "mini-css-extract-plugin": "^2.9.3",
     "mocha": "^11.7.1",
@@ -1385,7 +1404,6 @@
     "postcss": "^8.5.6",
     "postcss-loader": "^8.1.1",
     "sinon": "^21.0.0",
-    "@tailwindcss/postcss": "^4.1.11",
     "tailwindcss": "^4.1.13",
     "tippy.js": "^6.3.7",
     "ts-loader": "^9.5.4",

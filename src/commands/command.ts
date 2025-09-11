@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as utils from '../helpers/utils';
-import { exec, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import { outputChannel } from '../extension';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -38,8 +38,36 @@ export function execCommandInTerminal(command: string, terminalName: string) {
  * @param stdoutCb Optional extra function to run on stdout data event. The process and cleaned stdout data is passed to the func.
  * @param stderrCb Optional extra function to run on stderr data. The process and Cleaned stderr data is passed to the func
  */
+function splitArgs(input: string): string[] {
+    const args: string[] = [];
+    let current = '';
+    let quote: '"' | "'" | null = null;
+
+    for (let i = 0; i < input.length; i++) {
+        const ch = input[i];
+
+        // Inside a quoted segment
+        if (quote) {
+            if (ch === quote) { quote = null; continue; }
+            current += ch; continue;
+        }
+
+        // Not in quotes
+        if (ch === '"' || ch === "'") { quote = ch as any; continue; }
+        if (ch === ' ') {
+            if (current) { args.push(current); current = ''; }
+            continue;
+        }
+        current += ch;
+    }
+
+    if (current) args.push(current);
+    return args;
+}
+
 export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: Function, stderrCb?: Function) {
-    let proc = exec(command);
+    const [cmd, ...args] = splitArgs(command);
+    const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (show) { outputChannel.show(); }
 
@@ -121,6 +149,54 @@ export class Command {
         }
     }
 
+    private getCwd(): string {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const cwd = workspaceFolder ?? path.join(os.homedir(), ".clab");
+        if (!workspaceFolder) {
+            try {
+                fs.mkdirSync(cwd, { recursive: true });
+            } catch {
+                // ignore errors creating fallback dir
+            }
+        }
+        return cwd;
+    }
+
+    private handleOutput(data: Buffer, progress: vscode.Progress<{ message?: string }>, toProgress: boolean) {
+        const lines = data.toString().split("\n");
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) { continue; }
+            const cleanLine = utils.stripAnsi(trimmed);
+            if (toProgress) {
+                progress.report({ message: cleanLine });
+            }
+            outputChannel.info(cleanLine);
+        }
+    }
+
+    private runChildProcess(cmd: string[], cwd: string, progress: vscode.Progress<{ message?: string }>, token: vscode.CancellationToken) {
+        return new Promise<void>((resolve, reject) => {
+            const child = spawn(cmd[0], cmd.slice(1), { cwd });
+
+            token.onCancellationRequested(() => {
+                child.kill();
+                reject(new Error(`User cancelled the '${this.command.toLowerCase()}' command.`));
+            });
+
+            child.stdout.on("data", (data: Buffer) => this.handleOutput(data, progress, true));
+            child.stderr.on("data", (data: Buffer) => this.handleOutput(data, progress, false));
+
+            child.on("close", (code) => {
+                if (code === 0) {
+                    resolve();
+                } else {
+                    reject(new Error(`Process exited with code ${code}`));
+                }
+            });
+        });
+    }
+
     private async execSpinner(cmd: string[]) {
         try {
             await vscode.window.withProgress(
@@ -130,68 +206,12 @@ export class Command {
                     cancellable: true
                 },
                 async (progress, token) => {
-
-                    progress.report({
-                        message: " [View Logs](command:containerlab.viewLogs)"
-                    });
-
-                    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-                    const cwd = workspaceFolder ?? path.join(os.homedir(), ".clab");
-                    if (!workspaceFolder) {
-                        try {
-                            fs.mkdirSync(cwd, { recursive: true });
-                        } catch {
-                            // ignore errors creating fallback dir
-                        }
-                    }
-
-                    return new Promise<void>((resolve, reject) => {
-                        const child = spawn(cmd[0], cmd.slice(1), { cwd });
-
-                        // If user clicks Cancel, kill the child process
-                        token.onCancellationRequested(() => {
-                            child.kill();
-                            reject(new Error(`User cancelled the '${this.command.toLowerCase()}' command.`));
-                        });
-
-                        // On stdout, parse lines and update spinner + output channel
-                        child.stdout.on("data", (data: Buffer) => {
-                            const lines = data.toString().split("\n");
-                            for (const line of lines) {
-                                const trimmed = line.trim();
-                                if (trimmed) {
-                                    const cleanLine = utils.stripAnsi(trimmed);
-                                    progress.report({ message: cleanLine });
-                                    outputChannel.info(cleanLine);
-                                }
-                            }
-                        });
-
-                        // stderr lines → output channel only
-                        child.stderr.on("data", (data: Buffer) => {
-                            const lines = data.toString().split("\n");
-                            for (const line of lines) {
-                                const trimmed = line.trim();
-                                if (trimmed) {
-                                    outputChannel.info(`${utils.stripAnsi(trimmed)}`);
-                                }
-                            }
-                        });
-
-                        // When the process completes
-                        child.on("close", (code) => {
-                            if (code === 0) {
-                                resolve();
-                            } else {
-                                reject(new Error(`Process exited with code ${code}`));
-                            }
-                        });
-                    });
+                    progress.report({ message: " [View Logs](command:containerlab.viewLogs)" });
+                    const cwd = this.getCwd();
+                    await this.runChildProcess(cmd, cwd, progress, token);
                 }
             );
 
-            // If we get here, the command succeeded
-            // Call the success callback NOW, when the success message appears
             if (this.onSuccessCallback) {
                 await this.onSuccessCallback();
             }
@@ -207,9 +227,8 @@ export class Command {
             await vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
             const command = this.useSudo ? cmd[2] : cmd[1];
-            const failMsg = this.spinnerMsg?.failMsg ? `this.spinnerMsg.failMsg. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
+            const failMsg = this.spinnerMsg?.failMsg ? `${this.spinnerMsg.failMsg}. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
-            // If view logs button was clicked.
             if (viewOutputBtn === "View logs") { outputChannel.show(); }
         }
     }

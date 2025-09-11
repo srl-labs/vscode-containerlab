@@ -34,6 +34,23 @@ export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
+function extractLabName(session: any, prefix: string): string | undefined {
+  if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
+    return session.network.slice(5);
+  }
+  if (typeof session.name !== 'string') {
+    return undefined;
+  }
+  const name = session.name;
+  if (name.startsWith(`${prefix}-`)) {
+    return name.slice(prefix.length + 1);
+  }
+  if (name.startsWith('clab-') && name.endsWith(`-${prefix}`)) {
+    return name.slice(5, -(prefix.length + 1));
+  }
+  return undefined;
+}
+
 export async function refreshSshxSessions() {
   try {
     const out = await utils.runWithSudo(
@@ -50,18 +67,7 @@ export async function refreshSshxSessions() {
         if (!s.link || s.link === 'N/A') {
           return;
         }
-        let lab: string | undefined;
-        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
-          lab = s.network.replace(/^clab-/, '');
-        }
-        if (!lab && typeof s.name === 'string') {
-          const name = s.name;
-          if (name.startsWith('sshx-')) {
-            lab = name.replace(/^sshx-/, '');
-          } else if (name.startsWith('clab-') && name.endsWith('-sshx')) {
-            lab = name.slice(5, -5);
-          }
-        }
+        const lab = extractLabName(s, 'sshx');
         if (lab) {
           sshxSessions.set(lab, s.link);
         }
@@ -91,19 +97,7 @@ export async function refreshGottySessions() {
         if (!s.port || !hostname) {
           return;
         }
-
-        let lab: string | undefined;
-        if (typeof s.network === 'string' && s.network.startsWith('clab-')) {
-          lab = s.network.replace(/^clab-/, '');
-        }
-        if (!lab && typeof s.name === 'string') {
-          const name = s.name;
-          if (name.startsWith('gotty-')) {
-            lab = name.replace(/^gotty-/, '');
-          } else if (name.startsWith('clab-') && name.endsWith('-gotty')) {
-            lab = name.slice(5, -6);
-          }
-        }
+        const lab = extractLabName(s, 'gotty');
         if (lab) {
           // Construct the URL using hostname and port
           const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
@@ -147,6 +141,233 @@ import * as sshUserJson from '../resources/ssh_users.json';
 
 export const execCmdMapping = execCmdJson;
 export const sshUserMapping = sshUserJson;
+
+function showOutputChannel() {
+  outputChannel.show(true);
+}
+
+async function refreshLabViews() {
+  await ins.update();
+  localLabsProvider.forceRefresh();
+  runningLabsProvider.refresh();
+}
+
+function manageImpairments(node: any) {
+  return cmd.manageNodeImpairments(node, extensionContext);
+}
+
+function graphTopoViewer(node: c.ClabLabTreeNode) {
+  return cmd.graphTopoviewer(node, extensionContext);
+}
+
+async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
+  const ctx = extensionContext;
+  if (!ctx) {
+    return;
+  }
+  if (!node) {
+    node = runningTreeView?.selection[0] || localTreeView?.selection[0];
+  }
+  let yamlUri: vscode.Uri | undefined;
+  if (node && node.labPath) {
+    yamlUri = vscode.Uri.file(node.labPath.absolute);
+  } else if (vscode.window.activeTextEditor) {
+    yamlUri = vscode.window.activeTextEditor.document.uri;
+  }
+  if (!yamlUri) {
+    vscode.window.showErrorMessage('No lab node or topology file selected');
+    return;
+  }
+  const baseName = path.basename(yamlUri.fsPath);
+  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+  const editor = new TopoViewerEditor(ctx);
+  setCurrentTopoViewer(editor);
+  editor.lastYamlFilePath = yamlUri.fsPath;
+  await editor.createWebviewPanel(ctx, yamlUri, labName);
+  if (editor.currentPanel) {
+    editor.currentPanel.onDidDispose(() => {
+      setCurrentTopoViewer(undefined);
+    });
+  }
+  await editor.openTemplateFile(yamlUri.fsPath);
+}
+
+async function createTopoViewerTemplateFileCommand() {
+  const ctx = extensionContext;
+  if (!ctx) {
+    return;
+  }
+  const uri = await vscode.window.showSaveDialog({
+    title: 'Enter containerlab topology template file name',
+    defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
+    saveLabel: 'Create Containerlab topology template file',
+    filters: { YAML: ['yaml', 'yml'] }
+  });
+  if (!uri) {
+    vscode.window.showWarningMessage('No file path selected. Operation canceled.');
+    return;
+  }
+  const baseName = path.basename(uri.fsPath);
+  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+  const editor = new TopoViewerEditor(ctx);
+  setCurrentTopoViewer(editor);
+  try {
+    await editor.createTemplateFile(uri);
+    await editor.createWebviewPanel(ctx, uri, labName);
+    if (editor.currentPanel) {
+      editor.currentPanel.onDidDispose(() => {
+        setCurrentTopoViewer(undefined);
+      });
+    }
+    await editor.openTemplateFile(editor.lastYamlFilePath);
+  } catch {
+    return;
+  }
+}
+
+function updateHideNonOwnedLabs(hide: boolean) {
+  hideNonOwnedLabsState = hide;
+  vscode.commands.executeCommand('setContext', 'containerlab:nonOwnedLabsHidden', hide);
+}
+
+function hideNonOwnedLabsCommand() {
+  runningLabsProvider.refreshWithoutDiscovery();
+  updateHideNonOwnedLabs(true);
+}
+
+function showNonOwnedLabsCommand() {
+  runningLabsProvider.refreshWithoutDiscovery();
+  updateHideNonOwnedLabs(false);
+}
+
+async function filterRunningLabsCommand() {
+  const val = await vscode.window.showInputBox({
+    placeHolder: 'Filter running labs',
+    prompt: 'use * for wildcard, # for numbers: "srl*", "spine#-leaf*", "^spine.*"'
+  });
+  if (val !== undefined) {
+    runningLabsProvider.setTreeFilter(val);
+  }
+}
+
+function clearRunningLabsFilterCommand() {
+  runningLabsProvider.clearTreeFilter();
+}
+
+async function filterLocalLabsCommand() {
+  const val = await vscode.window.showInputBox({
+    placeHolder: 'Filter local labs',
+    prompt: 'use * for wildcard, # for numbers: "spine", "*test*", "lab#", "^my-.*"'
+  });
+  if (val !== undefined) {
+    localLabsProvider.setTreeFilter(val);
+  }
+}
+
+function clearLocalLabsFilterCommand() {
+  localLabsProvider.clearTreeFilter();
+}
+
+function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
+  if (e.affectsConfiguration('containerlab.autoSync')) {
+    // Setting changed; no action required here
+  }
+}
+
+function refreshTask() {
+  ins.update().then(() => {
+    runningLabsProvider.softRefresh();
+  });
+}
+
+function registerCommands(context: vscode.ExtensionContext) {
+  const commands: Array<[string, any]> = [
+    ['containerlab.lab.openFile', cmd.openLabFile],
+    ['containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace],
+    ['containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow],
+    ['containerlab.lab.copyPath', cmd.copyLabPath],
+    ['containerlab.lab.cloneRepo', cmd.cloneRepo],
+    ['containerlab.lab.clonePopularRepo', cmd.clonePopularRepo],
+    ['containerlab.lab.toggleFavorite', cmd.toggleFavorite],
+    ['containerlab.lab.delete', cmd.deleteLab],
+    ['containerlab.lab.deploy', cmd.deploy],
+    ['containerlab.lab.deploy.cleanup', cmd.deployCleanup],
+    ['containerlab.lab.deploy.specificFile', cmd.deploySpecificFile],
+    ['containerlab.lab.deployPopular', cmd.deployPopularLab],
+    ['containerlab.lab.redeploy', cmd.redeploy],
+    ['containerlab.lab.redeploy.cleanup', cmd.redeployCleanup],
+    ['containerlab.lab.destroy', cmd.destroy],
+    ['containerlab.lab.destroy.cleanup', cmd.destroyCleanup],
+    ['containerlab.lab.save', cmd.saveLab],
+    ['containerlab.lab.sshx.attach', cmd.sshxAttach],
+    ['containerlab.lab.sshx.detach', cmd.sshxDetach],
+    ['containerlab.lab.sshx.reattach', cmd.sshxReattach],
+    ['containerlab.lab.sshx.copyLink', cmd.sshxCopyLink],
+    ['containerlab.lab.gotty.attach', cmd.gottyAttach],
+    ['containerlab.lab.gotty.detach', cmd.gottyDetach],
+    ['containerlab.lab.gotty.reattach', cmd.gottyReattach],
+    ['containerlab.lab.gotty.copyLink', cmd.gottyCopyLink],
+    ['containerlab.lab.sshToAllNodes', cmd.sshToLab],
+    ['containerlab.lab.graph.drawio.horizontal', cmd.graphDrawIOHorizontal],
+    ['containerlab.lab.graph.drawio.vertical', cmd.graphDrawIOVertical],
+    ['containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive],
+    ['containerlab.lab.graph.topoViewerReload', cmd.graphTopoviewerReload],
+    ['containerlab.node.start', cmd.startNode],
+    ['containerlab.node.stop', cmd.stopNode],
+    ['containerlab.node.save', cmd.saveNode],
+    ['containerlab.node.attachShell', cmd.attachShell],
+    ['containerlab.node.ssh', cmd.sshToNode],
+    ['containerlab.node.telnet', cmd.telnetToNode],
+    ['containerlab.node.showLogs', cmd.showLogs],
+    ['containerlab.node.openBrowser', cmd.openBrowser],
+    ['containerlab.node.copyIPv4Address', cmd.copyContainerIPv4Address],
+    ['containerlab.node.copyIPv6Address', cmd.copyContainerIPv6Address],
+    ['containerlab.node.copyName', cmd.copyContainerName],
+    ['containerlab.node.copyID', cmd.copyContainerID],
+    ['containerlab.node.copyKind', cmd.copyContainerKind],
+    ['containerlab.node.copyImage', cmd.copyContainerImage],
+    ['containerlab.interface.capture', cmd.captureInterface],
+    ['containerlab.interface.captureWithEdgeshark', cmd.captureInterfaceWithPacketflix],
+    ['containerlab.interface.captureWithEdgesharkVNC', cmd.captureEdgesharkVNC],
+    ['containerlab.interface.setDelay', cmd.setLinkDelay],
+    ['containerlab.interface.setJitter', cmd.setLinkJitter],
+    ['containerlab.interface.setLoss', cmd.setLinkLoss],
+    ['containerlab.interface.setRate', cmd.setLinkRate],
+    ['containerlab.interface.setCorruption', cmd.setLinkCorruption],
+    ['containerlab.interface.copyMACAddress', cmd.copyMACAddress],
+    ['containerlab.install.edgeshark', cmd.installEdgeshark],
+    ['containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark],
+    ['containerlab.capture.killAllWiresharkVNC', cmd.killAllWiresharkVNCCtrs],
+    ['containerlab.set.sessionHostname', cmd.setSessionHostname],
+    ['containerlab.openLink', cmd.openLink],
+    ['containerlab.lab.fcli.bgpPeers', cmd.fcliBgpPeers],
+    ['containerlab.lab.fcli.bgpRib', cmd.fcliBgpRib],
+    ['containerlab.lab.fcli.ipv4Rib', cmd.fcliIpv4Rib],
+    ['containerlab.lab.fcli.lldp', cmd.fcliLldp],
+    ['containerlab.lab.fcli.mac', cmd.fcliMac],
+    ['containerlab.lab.fcli.ni', cmd.fcliNi],
+    ['containerlab.lab.fcli.subif', cmd.fcliSubif],
+    ['containerlab.lab.fcli.sysInfo', cmd.fcliSysInfo],
+    ['containerlab.lab.fcli.custom', cmd.fcliCustom]
+  ];
+  commands.forEach(([name, handler]) => {
+    context.subscriptions.push(vscode.commands.registerCommand(name, handler));
+  });
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.refresh', refreshLabViews));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.viewLogs', showOutputChannel));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.manageImpairments', manageImpairments));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', graphTopoViewer));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor.open', openTopoViewerEditorCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', createTopoViewerTemplateFileCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(extensionContext)));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectOneLab', (node: c.ClabLabTreeNode) => cmd.inspectOneLab(node, extensionContext)));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.hideNonOwnedLabs', hideNonOwnedLabsCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.showNonOwnedLabs', showNonOwnedLabsCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.filter', filterRunningLabsCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.clearFilter', clearRunningLabsFilterCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.filter', filterLocalLabsCommand));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', clearLocalLabsFilterCommand));
+}
 
 /**
  * Called when VSCode activates your extension.
@@ -231,484 +452,14 @@ export async function activate(context: vscode.ExtensionContext) {
   registerClabImageCompletion(context);
 
   // Register commands
-
-  // Refresh the tree view
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.refresh', async () => {
-      // Update inspector data first to get latest running labs status
-      await ins.update();
-      // Force refresh local labs to invalidate cache and re-discover files
-      localLabsProvider.forceRefresh();
-      // Refresh running labs provider
-      runningLabsProvider.refresh();
-    })
-  );
-
-  // Lab file and workspace commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.openFile', cmd.openLabFile)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.copyPath', cmd.copyLabPath)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.cloneRepo', cmd.cloneRepo)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.clonePopularRepo', cmd.clonePopularRepo)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.toggleFavorite', cmd.toggleFavorite)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.delete', cmd.deleteLab)
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.viewLogs', () => {
-      outputChannel.show(true);
-    })
-  );
-
-  // Lab deployment commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deploy', cmd.deploy)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deploy.cleanup', cmd.deployCleanup)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deploy.specificFile', cmd.deploySpecificFile)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.deployPopular', cmd.deployPopularLab)
-  );
-
-  // Lab redeployment commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.redeploy', cmd.redeploy)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.redeploy.cleanup', cmd.redeployCleanup)
-  );
-
-  // Lab destruction commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.destroy', cmd.destroy)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.destroy.cleanup', cmd.destroyCleanup)
-  );
-
-  // Lab save command
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.save', cmd.saveLab)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.sshx.attach', cmd.sshxAttach)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.sshx.detach', cmd.sshxDetach)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.sshx.reattach', cmd.sshxReattach)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.sshx.copyLink', (link: string) => cmd.sshxCopyLink(link))
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.gotty.attach', cmd.gottyAttach)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.gotty.detach', cmd.gottyDetach)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.gotty.reattach', cmd.gottyReattach)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.gotty.copyLink', (link: string) => cmd.gottyCopyLink(link))
-  );
-
-  // Lab connecto to SSH
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.sshToAllNodes', cmd.sshToLab)
-  );
-
-  // Lab inspection commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.inspectAll', () =>
-      cmd.inspectAllLabs(context)
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.inspectOneLab', node =>
-      cmd.inspectOneLab(node, context)
-    )
-  );
-
-  // Lab graph commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.lab.graph.drawio.horizontal',
-      cmd.graphDrawIOHorizontal
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.lab.graph.drawio.vertical',
-      cmd.graphDrawIOVertical
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.lab.graph.drawio.interactive',
-      cmd.graphDrawIOInteractive
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', node =>
-      cmd.graphTopoviewer(node, context)
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.lab.graph.topoViewerReload',
-      cmd.graphTopoviewerReload
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.editor.topoViewerEditor.open',
-      async (node?: c.ClabLabTreeNode) => {
-        if (!node) {
-          node = runningTreeView?.selection[0] || localTreeView?.selection[0];
-        }
-
-        let yamlUri: vscode.Uri | undefined;
-        if (node && node.labPath) {
-          yamlUri = vscode.Uri.file(node.labPath.absolute);
-        } else if (vscode.window.activeTextEditor) {
-          yamlUri = vscode.window.activeTextEditor.document.uri;
-        }
-
-        if (!yamlUri) {
-          vscode.window.showErrorMessage('No lab node or topology file selected');
-          return;
-        }
-
-        // Extract lab name properly - remove .clab.yml or .clab.yaml
-        const baseName = path.basename(yamlUri.fsPath);
-        const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-
-        const editor = new TopoViewerEditor(context);
-
-        // Register globally so refresh can find it
-        setCurrentTopoViewer(editor);
-
-        editor.lastYamlFilePath = yamlUri.fsPath;
-
-        await editor.createWebviewPanel(context, yamlUri, labName);
-
-        // Track disposal to clear global reference
-        if (editor.currentPanel) {
-          editor.currentPanel.onDidDispose(() => {
-            setCurrentTopoViewer(undefined);
-          });
-        }
-
-        await editor.openTemplateFile(yamlUri.fsPath);
-      }
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', async () => {
-
-      // Show a single "Save As" dialog where they both pick the folder AND type the filename:
-      const uri = await vscode.window.showSaveDialog({
-        title: 'Enter containerlab topology template file name',
-        defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,  // start in first workspace folder otherwise in home directory
-        saveLabel: 'Create Containerlab topology template file',
-        filters: { 'YAML': ['yaml', 'yml'] }
-      })
-
-      if (!uri) {
-        vscode.window.showWarningMessage('No file path selected. Operation canceled.');
-        return;
-      }
-
-      // Derive the labName (without extension) from what they typed:
-      const baseName = path.basename(uri.fsPath);
-      const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-
-      // Delegate to your template‑writer helper:
-        const editor = new TopoViewerEditor(context);
-
-        // Register globally so refresh can find it
-        setCurrentTopoViewer(editor);
-
-        try {
-          await editor.createTemplateFile(uri);
-
-        // Open the webview panel topoViewerEditor.
-        await editor.createWebviewPanel(context, uri, labName)
-
-        // Track disposal to clear global reference
-        if (editor.currentPanel) {
-          editor.currentPanel.onDidDispose(() => {
-            setCurrentTopoViewer(undefined);
-          });
-        }
-
-        // Open the created file in a split editor.
-        await editor.openTemplateFile(editor.lastYamlFilePath);
-
-      } catch {
-        // createTemplateFile will have already shown an error
-        return;
-      }
-
-    })
-  );
-
-  // Register configuration for file watching
-  vscode.workspace.onDidChangeConfiguration(e => {
-    if (e.affectsConfiguration('containerlab.autoSync')) {
-      // Access the setting to trigger any watchers
-      void vscode.workspace.getConfiguration('containerlab').get('autoSync', true);
-    }
-  });
-
-  // Node commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.start', cmd.startNode)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.stop', cmd.stopNode)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.save', cmd.saveNode)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.attachShell', cmd.attachShell)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.ssh', cmd.sshToNode)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.telnet', cmd.telnetToNode)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.showLogs', cmd.showLogs)
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.openBrowser', cmd.openBrowser)
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.manageImpairments', node =>
-      cmd.manageNodeImpairments(node, context)
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.node.copyIPv4Address',
-      cmd.copyContainerIPv4Address
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.node.copyIPv6Address',
-      cmd.copyContainerIPv6Address
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyName', cmd.copyContainerName)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyID', cmd.copyContainerID)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyKind', cmd.copyContainerKind)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.node.copyImage', cmd.copyContainerImage)
-  );
-
-  // Interface commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.capture', cmd.captureInterface)
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.interface.captureWithEdgeshark',
-      (clickedNode, allSelectedNodes) => {
-        cmd.captureInterfaceWithPacketflix(clickedNode, allSelectedNodes);
-      }
-    )
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.interface.captureWithEdgesharkVNC',
-      (clickedNode, allSelectedNodes) => {
-        cmd.captureEdgesharkVNC(clickedNode, allSelectedNodes);
-      })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.setDelay', cmd.setLinkDelay)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.setJitter', cmd.setLinkJitter)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.setLoss', cmd.setLinkLoss)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.setRate', cmd.setLinkRate)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'containerlab.interface.setCorruption',
-      cmd.setLinkCorruption
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.interface.copyMACAddress', cmd.copyMACAddress)
-  );
-
-  // Edgeshark install/uninstall
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.install.edgeshark', cmd.installEdgeshark)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark)
-  );
-  // Kill Wireshark VNC
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.capture.killAllWiresharkVNC', cmd.killAllWiresharkVNCCtrs)
-  );
-
-  // Session hostname command
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.set.sessionHostname', cmd.setSessionHostname)
-  );
-
-  // Hide/show non-owned labs
-  const hideNonOwnedLabs = (hide: boolean) => {
-    hideNonOwnedLabsState = hide;
-    vscode.commands.executeCommand('setContext', 'containerlab:nonOwnedLabsHidden', hide);
-  };
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.runningLabs.hideNonOwnedLabs', () => {
-      runningLabsProvider.refreshWithoutDiscovery();
-      hideNonOwnedLabs(true);
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.runningLabs.showNonOwnedLabs', () => {
-      runningLabsProvider.refreshWithoutDiscovery();
-      hideNonOwnedLabs(false);
-    })
-  );
-
-  // Filter commands for running labs
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.runningLabs.filter', async () => {
-      const val = await vscode.window.showInputBox({
-        placeHolder: 'Filter running labs',
-        prompt: 'use * for wildcard, # for numbers: "srl*", "spine#-leaf*", "^spine.*"'
-      });
-      if (val !== undefined) {
-        runningLabsProvider.setTreeFilter(val);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.runningLabs.clearFilter', () => {
-      runningLabsProvider.clearTreeFilter();
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.localLabs.filter', async () => {
-      const val = await vscode.window.showInputBox({
-        placeHolder: 'Filter local labs',
-        prompt: 'use * for wildcard, # for numbers: "spine", "*test*", "lab#", "^my-.*'
-      });
-      if (val !== undefined) {
-        localLabsProvider.setTreeFilter(val);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', () => {
-      localLabsProvider.clearTreeFilter();
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.openLink', (url: string) => {
-      cmd.openLink(url);
-    })
-  );
-
-  // fcli commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.bgpPeers', cmd.fcliBgpPeers)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.bgpRib', cmd.fcliBgpRib)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.ipv4Rib', cmd.fcliIpv4Rib)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.lldp', cmd.fcliLldp)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.mac', cmd.fcliMac)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.ni', cmd.fcliNi)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.subif', cmd.fcliSubif)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.sysInfo', cmd.fcliSysInfo)
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('containerlab.lab.fcli.custom', cmd.fcliCustom)
-  );
+  registerCommands(context);
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onDidChangeConfiguration));
 
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
   const refreshInterval = config.get<number>('refreshInterval', 10000);
 
-  const refreshTaskID = setInterval(
-    async () => {
-      ins.update().then(() => {
-        // Only refresh running labs - local labs use file watchers
-        runningLabsProvider.softRefresh();
-      })
-    }, refreshInterval
-  )
-
+  const refreshTaskID = setInterval(refreshTask, refreshInterval);
   context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID) });
 }
 

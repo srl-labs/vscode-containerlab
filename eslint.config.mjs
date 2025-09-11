@@ -1,6 +1,8 @@
 // eslint.config.mjs  – works with ESLint 9+
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import sonarjs from 'eslint-plugin-sonarjs';
+import aggregateComplexity from './eslint-plugin-aggregate-complexity.mjs';
 
 export default [
   /* ─── files & globs ESLint must ignore ─────────────────────────── */
@@ -43,18 +45,28 @@ export default [
         fetch: 'readonly'
       }
     },
-    plugins: { '@typescript-eslint': tseslint.plugin },
+    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, 'aggregate-complexity': aggregateComplexity },
     // merge the two rule-sets
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
+      ...sonarjs.configs.recommended.rules,
       // disallow any trailing whitespace
 
       'no-trailing-spaces': ['error', {
         skipBlankLines: false,    // also flag lines that are purely whitespace
         ignoreComments: false     // also flag whitespace at end of comments
-      }]
+      }],
+      'complexity': ['error', { max: 15 }],
+      'sonarjs/cognitive-complexity': ['error', 15],
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/no-duplicate-string': 'error',
+      'sonarjs/no-hardcoded-ip': 'off',
+      'sonarjs/no-alphabetical-sort': 'off',
+      'aggregate-complexity/aggregate-complexity': ['error', { max: 15 }]
 
     }
   }
+
+  
 ];

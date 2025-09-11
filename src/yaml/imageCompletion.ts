@@ -1,6 +1,65 @@
 import * as vscode from 'vscode';
 import { DOCKER_IMAGES_STATE_KEY, refreshDockerImages } from '../extension';
 
+function isClabYamlFile(document: vscode.TextDocument): boolean {
+  const file = document.uri.fsPath.toLowerCase();
+  return file.endsWith('.clab.yml') || file.endsWith('.clab.yaml');
+}
+
+function lineContainsInlineImage(line: string, cursor: number): boolean {
+  const beforeCursor = line.slice(0, cursor);
+  const beforeNoComment = beforeCursor.split('#')[0];
+  const idx = beforeNoComment.toLowerCase().lastIndexOf('image:');
+  if (idx === -1) {
+    return false;
+  }
+  const pre = beforeNoComment.slice(0, idx).trim();
+  return pre === '' || pre === '-';
+}
+
+function getIndent(line: string): number {
+  const match = /^[ \t]*/.exec(line);
+  return match ? match[0].length : 0;
+}
+
+function hasPreviousLineEndingWithImage(
+  document: vscode.TextDocument,
+  fromLine: number,
+  currIndent: number
+): boolean {
+  for (let l = fromLine - 1; l >= 0 && l >= fromLine - 10; l--) {
+    const text = document
+      .lineAt(l)
+      .text.split('#')[0]
+      .trimEnd();
+    if (text.toLowerCase().endsWith('image:')) {
+      const prevIndent = ( /^[- \t]*/.exec(text) || [''])[0].length;
+      return currIndent > prevIndent;
+    }
+  }
+  return false;
+}
+
+function isCompletingImageValue(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): boolean {
+  const line = document.lineAt(position.line).text;
+  if (lineContainsInlineImage(line, position.character)) {
+    return true;
+  }
+  const currIndent = getIndent(line);
+  return hasPreviousLineEndingWithImage(document, position.line, currIndent);
+}
+
+async function getCachedImages(context: vscode.ExtensionContext): Promise<string[]> {
+  const cached = context.globalState.get<string[]>(DOCKER_IMAGES_STATE_KEY) || [];
+  if (cached.length === 0) {
+    await refreshDockerImages(context).catch(() => undefined);
+  }
+  return context.globalState.get<string[]>(DOCKER_IMAGES_STATE_KEY) || [];
+}
+
 /**
  * Registers YAML completion for the `image:` directive in clab.yml/clab.yaml files.
  * Suggests local Docker images cached in the extension's global state.
@@ -9,45 +68,14 @@ export function registerClabImageCompletion(context: vscode.ExtensionContext) {
   const provider: vscode.CompletionItemProvider = {
     async provideCompletionItems(document, position) {
       try {
-        // Only apply to files with .clab.yml or .clab.yaml extensions
-        const file = document.uri.fsPath.toLowerCase();
-        if (!(file.endsWith('.clab.yml') || file.endsWith('.clab.yaml'))) {
+        if (!isClabYamlFile(document) || !isCompletingImageValue(document, position)) {
           return undefined;
         }
 
-        // Heuristic to detect if we are completing an image value at any hierarchy depth
-        // 1) Current line contains `image:` (any indent, possibly after a dash)
-        const line = document.lineAt(position.line).text;
-        const beforeCursor = line.slice(0, position.character);
-        const imageThisLine = /(^|\s|-)image\s*:\s*[^#]*/.test(beforeCursor);
-
-        // 2) Or a recent previous non-empty line ends with `image:` and the current line is indented further
-        let imagePreviousLine = false;
-        if (!imageThisLine) {
-          for (let l = position.line - 1; l >= 0 && l >= position.line - 10; l--) {
-            const t = document.lineAt(l).text;
-            if (t.trim() === '') continue;
-            const m = t.match(/^(\s*-?\s*)image\s*:\s*$/);
-            if (m) {
-              const currIndent = line.match(/^(\s*)/)?.[1]?.length ?? 0;
-              const prevIndent = m[1].length;
-              imagePreviousLine = currIndent > prevIndent;
-              break;
-            }
-          }
-        }
-
-        if (!imageThisLine && !imagePreviousLine) {
+        const images = await getCachedImages(context);
+        if (images.length === 0) {
           return undefined;
         }
-
-        // Ensure we have a recent cache (fail silently on error)
-        const cached = context.globalState.get<string[]>(DOCKER_IMAGES_STATE_KEY) || [];
-        if (!cached || cached.length === 0) {
-          await refreshDockerImages(context).catch(() => undefined);
-        }
-        const images = context.globalState.get<string[]>(DOCKER_IMAGES_STATE_KEY) || [];
-        if (!images || images.length === 0) return undefined;
 
         const items: vscode.CompletionItem[] = images.map((img) => {
           const ci = new vscode.CompletionItem(img, vscode.CompletionItemKind.Value);

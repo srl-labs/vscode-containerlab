@@ -9,6 +9,13 @@ import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
 import { FilterUtils } from '../../helpers/filterUtils';
 
+// Common class and display constants
+const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+const CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
+const DISPLAY_BLOCK = 'block' as const;
+const DISPLAY_NONE = 'none' as const;
+const ERR_NO_CY = 'Cytoscape instance not available' as const;
+
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
 
@@ -41,14 +48,14 @@ export async function showPanelAbout(): Promise<void> {
     }
 
     // Check if panel is currently visible
-    if (aboutPanel.style.display === "block") {
+    if (aboutPanel.style.display === DISPLAY_BLOCK) {
       // Hide the panel
-      aboutPanel.style.display = "none";
+      aboutPanel.style.display = DISPLAY_NONE;
     } else {
       // Remove all overlay panels first
-      const panelOverlays = document.getElementsByClassName("panel-overlay");
+      const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
       for (let i = 0; i < panelOverlays.length; i++) {
-        (panelOverlays[i] as HTMLElement).style.display = "none";
+        (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
       }
 
       // Hide shortcuts panel if open
@@ -74,7 +81,7 @@ export async function showPanelAbout(): Promise<void> {
       }
 
       // Show the about panel
-      aboutPanel.style.display = "block";
+      aboutPanel.style.display = DISPLAY_BLOCK;
     }
   } catch (error) {
     log.error(`Error toggling about panel: ${error}`);
@@ -87,7 +94,7 @@ export async function showPanelAbout(): Promise<void> {
 export function viewportButtonsZoomToFit(): void {
   try {
     if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available');
+      log.error(ERR_NO_CY);
       return;
     }
 
@@ -110,16 +117,16 @@ export function viewportButtonsTopologyOverview(): void {
     }
 
     // Toggle visibility
-    if (overviewDrawer.style.display === "block") {
-      overviewDrawer.style.display = "none";
+    if (overviewDrawer.style.display === DISPLAY_BLOCK) {
+      overviewDrawer.style.display = DISPLAY_NONE;
     } else {
       // Hide all viewport drawers first
-      const viewportDrawer = document.getElementsByClassName("viewport-drawer");
+      const viewportDrawer = document.getElementsByClassName(CLASS_VIEWPORT_DRAWER);
       for (let i = 0; i < viewportDrawer.length; i++) {
-        (viewportDrawer[i] as HTMLElement).style.display = "none";
+        (viewportDrawer[i] as HTMLElement).style.display = DISPLAY_NONE;
       }
       // Show the topology overview drawer
-      overviewDrawer.style.display = "block";
+      overviewDrawer.style.display = DISPLAY_BLOCK;
     }
   } catch (error) {
     log.error(`Error in topology overview button: ${error}`);
@@ -145,19 +152,6 @@ export function viewportButtonsLabelEndpoint(): void {
     log.info(`Endpoint label visibility toggled to: ${topoViewerState.linkEndpointVisibility}`);
   } catch (error) {
     log.error(`Error toggling endpoint labels: ${error}`);
-  }
-}
-
-/**
- * Reload the topology by requesting fresh data from the VS Code extension backend.
- */
-export async function viewportButtonsReloadTopo(): Promise<void> {
-  try {
-    const sender = getMessageSender();
-    await sender.sendMessageToVscodeEndpointPost('reload-viewport', 'Empty Payload');
-    log.info('Reload viewport request sent');
-  } catch (error) {
-    log.error(`Error reloading topology: ${error}`);
   }
 }
 
@@ -210,7 +204,7 @@ export function viewportNodeFindEvent(): void {
     }
 
     if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available');
+      log.error(ERR_NO_CY);
       return;
     }
     const cy = topoViewerState.cy;
@@ -255,7 +249,7 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
   event.preventDefault();
   try {
     if (!topoViewerState.cy) {
-      log.error('Cytoscape instance not available');
+      log.error(ERR_NO_CY);
       return;
     }
 
@@ -295,162 +289,6 @@ export function viewportButtonsCaptureViewportAsSvg(): void {
   panel.style.display = 'block';
 }
 
-/**
- * Save topology data back to the backend
- * Updates node positions and group information before saving
- */
-export async function viewportButtonsSaveTopo(): Promise<void> {
-  try {
-    log.info('viewportButtonsSaveTopo triggered');
-
-    // Ensure Cytoscape instance is available
-    if (!topoViewerState.cy) {
-      log.error('Cytoscape instance "cy" is not defined.');
-      return;
-    }
-    const cy = topoViewerState.cy;
-
-    // Check if geo-map is active and update geo coordinates
-    const layoutManager = window.layoutManager;
-    const isGeoActive = layoutManager?.isGeoMapInitialized || false;
-
-    if (isGeoActive && layoutManager && typeof layoutManager.updateNodeGeoCoordinates === 'function') {
-      layoutManager.updateNodeGeoCoordinates();
-    }
-
-    // Process nodes: update each node's "position" property with the current position
-    const updatedNodes = cy.nodes().map((node: any) => {
-      const nodeJson = node.json();
-
-      // Update position property
-      let posX = node.position().x;
-      let posY = node.position().y;
-      if (isGeoActive) {
-        const origX = node.data('_origPosX');
-        const origY = node.data('_origPosY');
-        if (origX !== undefined && origY !== undefined) {
-          posX = origX;
-          posY = origY;
-        }
-      }
-      nodeJson.position = { x: posX, y: posY };
-
-      // Save geo coordinates if available
-      const lat = node.data('lat');
-      const lng = node.data('lng');
-      if (lat !== undefined && lng !== undefined) {
-        nodeJson.data = nodeJson.data || {};
-        // Mark geo layout active so backend can skip writing XY positions
-        nodeJson.data.geoLayoutActive = !!isGeoActive;
-        nodeJson.data.lat = lat.toString();
-        nodeJson.data.lng = lng.toString();
-      } else {
-        // Ensure flag is present when geo is active, even if lat/lng are missing
-        if (isGeoActive) {
-          nodeJson.data = nodeJson.data || {};
-          nodeJson.data.geoLayoutActive = true;
-        } else if (nodeJson.data?.geoLayoutActive) {
-          // Clean up flag when not in geo mode
-          delete nodeJson.data.geoLayoutActive;
-        }
-      }
-
-      // Update parent property
-      const parentId = node.parent().id();
-      if (parentId) {
-        nodeJson.parent = parentId;
-
-        // Check if extraData and labels exist before modifying
-        if (nodeJson.data?.extraData?.labels) {
-          const parentParts = parentId.split(':');
-          if (parentParts.length >= 2) {
-            nodeJson.data.extraData.labels['graph-group'] = parentParts[0];
-            nodeJson.data.extraData.labels['graph-level'] = parentParts[1];
-          }
-
-          // Get label position from parent's classes
-          const validLabelClasses = [
-            'top-center',
-            'top-left',
-            'top-right',
-            'bottom-center',
-            'bottom-left',
-            'bottom-right'
-          ];
-
-          // Get the parent's classes as array
-          const parentElement = cy.getElementById(parentId);
-          if (parentElement) {
-            const parentClasses = parentElement.classes();
-
-            // Filter the classes so that only valid entries remain
-            const validParentClasses = parentClasses.filter((cls: string) => validLabelClasses.includes(cls));
-
-            // Assign only the first valid class, or an empty string if none exists
-            nodeJson.data.groupLabelPos = validParentClasses.length > 0 ? validParentClasses[0] : '';
-          }
-        }
-      }
-
-      return nodeJson;
-    });
-
-    // Send updated topology data to backend
-    const sender = getMessageSender();
-    const response = await sender.sendMessageToVscodeEndpointPost('topo-viewport-save', updatedNodes);
-    log.info(`Topology saved successfully: ${JSON.stringify(response)}`);
-
-    // Also save free text annotations in view mode
-    // Filter out only the free text nodes from the updated nodes
-    const freeTextNodes = updatedNodes.filter((node: any) =>
-      node.data && node.data.topoViewerRole === 'freeText'
-    );
-    const groupStyles = topoViewerState.editorEngine?.groupStyleManager?.getGroupStyles() || [];
-
-    if (freeTextNodes.length > 0 || groupStyles.length > 0) {
-      if (freeTextNodes.length > 0) {
-        log.info(`Found ${freeTextNodes.length} free text nodes to save as annotations`);
-      }
-
-      // Convert free text nodes to annotations format
-      const annotations = freeTextNodes.map((node: any) => {
-        const data = node.data.freeTextData || {};
-        return {
-          id: node.data.id,
-          text: node.data.name || '',
-          position: node.position || { x: 0, y: 0 },
-          fontSize: data.fontSize || 14,
-          fontColor: data.fontColor || '#FFFFFF',
-          backgroundColor: data.backgroundColor || 'transparent',
-          fontWeight: data.fontWeight || 'normal',
-          fontStyle: data.fontStyle || 'normal',
-          textDecoration: data.textDecoration || 'none',
-          fontFamily: data.fontFamily || 'monospace'
-        };
-      });
-
-      // Send annotations and group styles to backend for saving
-      const annotationResponse = await sender.sendMessageToVscodeEndpointPost(
-        'topo-editor-save-annotations',
-        { annotations, groupStyles }
-      );
-      log.info(`Annotations save response: ${JSON.stringify(annotationResponse)}`);
-
-      // Reapply group styles after saving to maintain visual consistency
-      if (topoViewerState.editorEngine?.groupStyleManager) {
-        groupStyles.forEach((style: any) => {
-          topoViewerState.editorEngine.groupStyleManager.applyStyleToNode(style.id);
-        });
-        log.info('Reapplied group styles after save');
-      }
-    } else {
-      log.info('No annotations to save');
-    }
-
-  } catch (error) {
-    log.error(`Failed to save topology: ${error}`);
-  }
-}
 
 /**
  * Toggle split view with YAML editor
@@ -475,8 +313,6 @@ export async function viewportButtonsToggleSplit(event?: Event): Promise<void> {
 export function initializeGlobalHandlers(): void {
   // Make functions available globally for HTML onclick handlers
   (globalThis as any).showPanelAbout = showPanelAbout;
-  // Override the save handler for view mode to include annotation saving
-  (globalThis as any).viewportButtonsSaveTopo = viewportButtonsSaveTopo;
   // Note: Most viewport button handlers are now managed by TopologyWebviewController
   // Only set view-specific handlers here that are not provided by the controller
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;

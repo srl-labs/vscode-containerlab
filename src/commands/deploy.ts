@@ -1,68 +1,17 @@
 import { ClabLabTreeNode } from "../treeView/common";
-import { ClabCommand } from "./clabCommand";
 import * as vscode from "vscode";
 import { deployPopularLab } from "./deployPopular";
-import { getSelectedLabNode } from "../helpers/utils";
-import { notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
+import { runClabAction } from "./runClabAction";
 
 export async function deploy(node?: ClabLabTreeNode) {
-  node = await getSelectedLabNode(node);
-  if (!node) {
-    return;
-  }
-
-  const deployCmd = new ClabCommand(
-    "deploy",
-    node,
-    undefined, // spinnerMsg
-    undefined, // useTerminal
-    undefined, // terminalName
-    async () => {
-      // This callback is called when the success message appears
-      await notifyCurrentTopoViewerOfCommandSuccess('deploy');
-    }
-  );
-  await deployCmd.run();
+  await runClabAction("deploy", node);
 }
 
 export async function deployCleanup(node?: ClabLabTreeNode) {
-  node = await getSelectedLabNode(node);
-  if (!node) {
-    return;
-  }
-
-  const config = vscode.workspace.getConfiguration("containerlab");
-  const skipWarning = config.get<boolean>("skipCleanupWarning", false);
-  if (!skipWarning) {
-    const selection = await vscode.window.showWarningMessage(
-      "WARNING: Deploy (cleanup) will remove all configuration artifacts.. Are you sure you want to proceed?",
-      { modal: true },
-      "Yes", "Don't warn me again"
-    );
-    if (!selection) {
-      return; // user cancelled
-    }
-    if (selection === "Don't warn me again") {
-      await config.update("skipCleanupWarning", true, vscode.ConfigurationTarget.Global);
-    }
-  }
-
-  const deployCmd = new ClabCommand(
-    "deploy",
-    node,
-    undefined, // spinnerMsg
-    undefined, // useTerminal
-    undefined, // terminalName
-    async () => {
-      // This callback is called when the success message appears
-      await notifyCurrentTopoViewerOfCommandSuccess('deploy');
-    }
-  );
-  await deployCmd.run(["-c"]);
+  await runClabAction("deploy", node, true);
 }
 
 export async function deploySpecificFile() {
-  // Offer the user a choice between selecting a local file or providing a URL.
   const mode = await vscode.window.showQuickPick(
     ["Select local file", "Enter Git/HTTP URL", "Choose from popular labs"],
     { title: "Deploy from" }
@@ -108,4 +57,3 @@ export async function deploySpecificFile() {
   );
   deploy(tempNode);
 }
-

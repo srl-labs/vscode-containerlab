@@ -35,6 +35,24 @@
     <script> window.topologyKinds = {{topologyKinds}}; </script>
     <script> window.topologyGroups = {{topologyGroups}}; </script>
 
+    <template id="vars-section-template">
+      <div class="form-group">
+        <label class="block vscode-label mb-1">Vars</label>
+        <div class="space-y-2 vars-container"></div>
+        <button class="btn btn-small mt-2 add-var-btn"><i class="fas fa-plus mr-1"></i> Add Var</button>
+      </div>
+    </template>
+
+    <template id="editor-footer-template">
+      <div class="panel-block flex items-center">
+        <div class="w-1/5 pr-1"></div>
+        <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
+          <button class="btn btn-primary btn-small editor-save-btn">Save</button>
+          <button class="btn btn-outlined btn-small editor-close-btn">Close</button>
+        </div>
+      </div>
+    </template>
+
     <!-- Draggable Panels Script -->
     {{DRAGGABLE_PANELS}}
 

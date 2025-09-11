@@ -1,33 +1,10 @@
-import * as vscode from 'vscode';
 import { cloneRepoFromUrl } from './cloneRepo';
-import { fetchPopularRepos, fallbackRepos, PopularRepo } from '../helpers/popularLabs';
-
-async function getRepos(): Promise<PopularRepo[]> {
-  try {
-    return await fetchPopularRepos();
-  } catch {
-    return fallbackRepos;
-  }
-}
+import { pickPopularRepo } from '../helpers/popularLabs';
 
 export async function clonePopularRepo() {
-  const repos = await getRepos();
-
-  const items = repos.map((r) => ({
-    label: r.name,
-    description: r.description,
-    detail: `⭐ ${r.stargazers_count}`,
-    repo: r.html_url,
-  }));
-
-  const pick = await vscode.window.showQuickPick(items, {
-    title: 'Clone popular lab',
-    placeHolder: 'Select a repository to clone',
-  });
-
+  const pick = await pickPopularRepo('Clone popular lab', 'Select a repository to clone');
   if (!pick) {
     return;
   }
-
-  await cloneRepoFromUrl(pick.repo);
+  await cloneRepoFromUrl((pick as any).repo);
 }

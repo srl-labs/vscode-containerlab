@@ -33,6 +33,26 @@ import * as ins from '../../../src/treeView/inspector';
 const vscodeStub = require('../../helpers/vscode-stub');
 const extension = require('../../../src/extension');
 
+const LAB_B = '/workspace/b/lab2.clab.yaml';
+const LAB_A = '/workspace/a/lab1.clab.yml';
+
+const noop = () => {};
+const fileWatcherStub = {
+  onDidCreate: noop,
+  onDidDelete: noop,
+  onDidChange: noop,
+};
+function createFileWatcher() {
+  return fileWatcherStub;
+}
+async function emptyFindFiles() {
+  return [];
+}
+class EventEmitterStub {
+  public event = noop;
+  fire() {}
+}
+
 describe('LocalLabTreeDataProvider', () => {
   after(() => {
     (Module as any)._resolveFilename = originalResolve;
@@ -41,13 +61,9 @@ describe('LocalLabTreeDataProvider', () => {
   beforeEach(() => {
     vscodeStub.commands.executed.length = 0;
     vscodeStub.workspace.workspaceFolders = [{ uri: { fsPath: '/workspace', path: '/workspace' } }];
-    vscodeStub.workspace.createFileSystemWatcher = () => ({
-      onDidCreate: () => {},
-      onDidDelete: () => {},
-      onDidChange: () => {},
-    });
-    vscodeStub.workspace.findFiles = async () => [];
-    vscodeStub.EventEmitter = class { public event = () => {}; fire() {} } as any;
+    vscodeStub.workspace.createFileSystemWatcher = createFileWatcher;
+    vscodeStub.workspace.findFiles = emptyFindFiles;
+    vscodeStub.EventEmitter = EventEmitterStub as any;
     delete require.cache[require.resolve('../../../src/helpers/utils')];
     try {
       delete require.cache[require.resolve('../../helpers/utils-stub')];
@@ -80,11 +96,11 @@ describe('LocalLabTreeDataProvider', () => {
   // entries returned in alphabetical order with `localLabsEmpty` set to false.
   it('filters running labs and sorts results', async () => {
     sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
-      vscodeStub.Uri.file('/workspace/b/lab2.clab.yaml'),
-      vscodeStub.Uri.file('/workspace/a/lab1.clab.yml'),
+      vscodeStub.Uri.file(LAB_B),
+      vscodeStub.Uri.file(LAB_A),
     ]);
     (ins as any).rawInspectData = [
-      { Labels: { 'clab-topo-file': '/workspace/b/lab2.clab.yaml' } },
+      { Labels: { 'clab-topo-file': LAB_B } },
     ];
 
     const provider = new LocalLabTreeDataProvider();
@@ -97,7 +113,7 @@ describe('LocalLabTreeDataProvider', () => {
     expect(children).to.have.lengthOf(1);
     const node = children![0];
     expect(node.label).to.equal('lab1.clab.yml');
-    expect(node.labPath.absolute).to.equal('/workspace/a/lab1.clab.yml');
+    expect(node.labPath.absolute).to.equal(LAB_A);
     expect(node.description).to.equal('a');
     expect(vscodeStub.commands.executed).to.deep.include({
       command: 'setContext',
@@ -108,7 +124,7 @@ describe('LocalLabTreeDataProvider', () => {
   it('lists root-level labs before folders', async () => {
     sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
       vscodeStub.Uri.file('/workspace/root.clab.yml'),
-      vscodeStub.Uri.file('/workspace/a/lab1.clab.yml'),
+      vscodeStub.Uri.file(LAB_A),
     ]);
 
     const provider = new LocalLabTreeDataProvider();
@@ -121,11 +137,11 @@ describe('LocalLabTreeDataProvider', () => {
 
   it('places favorite labs first and keeps deploy context', async () => {
     sinon.stub(vscodeStub.workspace, 'findFiles').resolves([
-      vscodeStub.Uri.file('/workspace/b/lab2.clab.yaml'),
-      vscodeStub.Uri.file('/workspace/a/lab1.clab.yml'),
+      vscodeStub.Uri.file(LAB_B),
+      vscodeStub.Uri.file(LAB_A),
     ]);
 
-    extension.favoriteLabs.add('/workspace/b/lab2.clab.yaml');
+    extension.favoriteLabs.add(LAB_B);
 
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);

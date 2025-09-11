@@ -73,8 +73,23 @@ export class AnnotationsManager {
       const hasNodeAnnotations = annotations.nodeAnnotations && annotations.nodeAnnotations.length > 0;
       if (hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations) {
         const content = JSON.stringify(annotations, null, 2);
-        await fs.promises.writeFile(annotationsPath, content, 'utf8');
-        log.info(`Saved annotations to ${annotationsPath}`);
+
+        // Only write if content has changed to avoid touching the file unnecessarily
+        let shouldWrite = true;
+        try {
+          const existing = await fs.promises.readFile(annotationsPath, 'utf8');
+          if (existing === content) {
+            shouldWrite = false;
+            log.debug(`Annotations unchanged, skipping save for ${annotationsPath}`);
+          }
+        } catch {
+          // File might not exist, so we need to write
+        }
+
+        if (shouldWrite) {
+          await fs.promises.writeFile(annotationsPath, content, 'utf8');
+          log.info(`Saved annotations to ${annotationsPath}`);
+        }
       } else {
         // Delete the file if no annotations exist
         try {

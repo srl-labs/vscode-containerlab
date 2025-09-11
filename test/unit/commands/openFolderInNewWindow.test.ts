@@ -44,13 +44,13 @@ describe('openFolderInNewWindow command', () => {
 
   // Should open the lab folder in a separate VS Code window.
   it('opens the folder in a new window', async () => {
-    const node = { labPath: { absolute: '/tmp/lab.yml' } } as any;
+    const node = { labPath: { absolute: '/home/user/lab.yml' } } as any;
     await openFolderInNewWindow(node);
 
     const spy = (vscodeStub.commands.executeCommand as sinon.SinonSpy);
     expect(spy.calledOnce).to.be.true;
     expect(spy.firstCall.args[0]).to.equal('vscode.openFolder');
-    expect(spy.firstCall.args[1].fsPath).to.equal('/tmp');
+    expect(spy.firstCall.args[1].fsPath).to.equal('/home/user');
     expect(spy.firstCall.args[2]).to.deep.equal({ forceNewWindow: true });
   });
 

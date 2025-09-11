@@ -151,6 +151,7 @@ export interface GroupStyleAnnotation {
   borderStyle?: 'solid' | 'dotted' | 'dashed' | 'double';
   borderRadius?: number;
   color?: string;
+  labelPosition?: string;
 }
 
 export interface CloudNodeAnnotation {

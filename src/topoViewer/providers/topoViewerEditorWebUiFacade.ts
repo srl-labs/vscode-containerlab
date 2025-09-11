@@ -18,6 +18,21 @@ import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
 import { annotationsManager } from '../utilities/annotationsManager';
 import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
+import { sleep } from '../utilities/asyncUtils';
+
+// Common configuration section key used throughout this module
+const CONFIG_SECTION = 'containerlab.editor';
+
+interface WebviewMessage {
+  type?: string;
+  requestId?: string;
+  endpointName?: string;
+  payload?: string;
+  command?: string;
+  level?: string;
+  message?: string;
+  fileLine?: string;
+}
 
 /**
  * Class representing the TopoViewer Editor Webview Panel.
@@ -46,14 +61,63 @@ export class TopoViewerEditor {
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
   private isSplitViewOpen: boolean = false; // Track if YAML split view is open
+  /* eslint-disable no-unused-vars */
+  private readonly generalEndpointHandlers: Record<
+    string,
+    (
+      _payload: string | undefined,
+      _payloadObj: any,
+      _panel: vscode.WebviewPanel
+    ) => Promise<{ result: unknown; error: string | null }>
+  > = {
+    'topo-viewport-save': this.handleViewportSaveEndpoint.bind(this),
+    'lab-settings-get': this.handleLabSettingsGetEndpoint.bind(this),
+    'lab-settings-update': this.handleLabSettingsUpdateEndpoint.bind(this),
+    'topo-editor-get-node-config': this.handleGetNodeConfigEndpoint.bind(this),
+    'show-error-message': this.handleShowErrorMessageEndpoint.bind(this),
+    'topo-editor-viewport-save': this.handleViewportSaveEditEndpoint.bind(this),
+    'topo-editor-viewport-save-suppress-notification':
+      this.handleViewportSaveSuppressNotificationEndpoint.bind(this),
+    'topo-editor-undo': this.handleUndoEndpoint.bind(this),
+    'topo-editor-show-vscode-message': this.handleShowVscodeMessageEndpoint.bind(this),
+    'topo-switch-mode': this.handleSwitchModeEndpoint.bind(this),
+    'open-external': this.handleOpenExternalEndpoint.bind(this),
+    'topo-editor-load-annotations': this.handleLoadAnnotationsEndpoint.bind(this),
+    'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
+    'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
+    'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
+    showError: this.handleShowErrorEndpoint.bind(this),
+    'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
+    copyElements: this.handleCopyElementsEndpoint.bind(this),
+    getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this)
+  };
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private buildDefaultLabYaml(labName: string, savedPath?: string): string {
+    const saved = savedPath ? ` # saved as ${savedPath}` : '';
+    return `name: ${labName}${saved}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+    srl2:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+
+  links:
+    # inter-switch link
+    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
+    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
+`;
   }
 
   private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
@@ -217,26 +281,7 @@ export class TopoViewerEditor {
     this.lastFolderName = baseNameWithoutExt;
 
     // Build the template with the actual lab name - default topology with two SRL routers
-    const templateContent = `
-name: ${baseNameWithoutExt} # saved as ${targetFileUri.fsPath}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
+    const templateContent = this.buildDefaultLabYaml(baseNameWithoutExt, targetFileUri.fsPath);
 
     try {
       // Ensure the directory exists using the final URI's directory
@@ -248,7 +293,7 @@ topology:
       const data = Buffer.from(templateContent, 'utf8');
       this.isInternalUpdate = true;
       await vscode.workspace.fs.writeFile(targetFileUri, data);
-      await this.sleep(50);
+      await sleep(50);
       this.isInternalUpdate = false;
 
       // Remember the actual path where it was written
@@ -327,7 +372,10 @@ topology:
   /**
    * Core implementation of updating panel HTML
    */
-  private async updatePanelHtmlCore(panel: vscode.WebviewPanel | undefined, isInitialLoad: boolean = false): Promise<boolean> {
+  private async updatePanelHtmlCore(
+    panel: vscode.WebviewPanel | undefined,
+    isInitialLoad: boolean = false
+  ): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
     }
@@ -336,128 +384,152 @@ topology:
       perfMark('updatePanelHtmlCore_start');
     }
 
-    const yamlFilePath = this.lastYamlFilePath;
     const folderName = this.currentLabName;
-
-    let updatedClabTreeDataToTopoviewer = this.isViewMode
-      ? this.cacheClabTreeDataToTopoviewer
-      : undefined;
-    if (this.isViewMode) {
-      try {
-        updatedClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
-        this.cacheClabTreeDataToTopoviewer = updatedClabTreeDataToTopoviewer;
-      } catch (err) {
-        log.warn(`Failed to refresh running lab data: ${err}`);
-      }
-    }
+    const updatedTree = await this.getClabTreeData();
     log.debug(`Updating panel HTML for folderName: ${folderName}`);
 
-    let yamlContent: string = '';
-
-    // Always skip validation in view mode
-    if (this.isViewMode) {
-      log.info(`updatePanelHtml in view mode for ${folderName}`);
-      // Try to read YAML if available, but don't fail if invalid
-      if (yamlFilePath) {
-        try {
-          yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
-          log.info('Read YAML file in view mode, skipping validation');
-        } catch (err) {
-          log.warn(`Could not read YAML in view mode: ${err}`);
-        }
-      }
-
-      // If no YAML content, generate minimal one
-      if (!yamlContent) {
-        yamlContent = `name: ${this.currentLabName}\ntopology:\n  nodes: {}\n  links: []`;
-        log.info('Using minimal YAML for view mode');
-      }
-    } else {
-      // Edit mode - strict validation
-      if (!yamlFilePath) {
-        log.error('No YAML file path in edit mode');
-        return false;
-      }
-
-      try {
-        yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
-      } catch (err) {
-        log.error(`Failed to read YAML file: ${String(err)}`);
-        vscode.window.showErrorMessage(`Failed to read YAML file: ${err}`);
-        return false;
-      }
-
-      // Check if the file is empty or only contains whitespace
-      if (!yamlContent.trim()) {
-        // Extract lab name from file path
-        const baseName = path.basename(yamlFilePath);
-        const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-
-        // Use the default template content
-        const defaultContent = `name: ${labNameFromFile}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
-
-        // Write the default content to the file
-        this.isInternalUpdate = true;
-        await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
-        await this.sleep(50);
-        this.isInternalUpdate = false;
-
-        yamlContent = defaultContent;
-        log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
-      }
-
-      // Only validate in edit mode
-      if (!this.skipInitialValidation) {
-        const isValid = await this.validateYaml(yamlContent);
-        if (!isValid) {
-          log.error('YAML validation failed. Aborting updatePanelHtml.');
-          return false;
-        }
-      } else {
-        this.skipInitialValidation = false;
-      }
+    const yamlContent = await this.getYamlContentForUpdate();
+    if (yamlContent === undefined) {
+      return false;
     }
 
-    // Skip expensive operations on subsequent updates if content hasn't changed meaningfully
-    if (!isInitialLoad) {
-      // Check if we really need to regenerate everything
-      const cachedYaml = this.context.workspaceState.get<string>(`cachedYaml_${folderName}`);
-      if (cachedYaml === yamlContent && !this.isViewMode) {
-        // Content hasn't changed, skip regeneration
-        log.debug('Skipping topology regeneration - content unchanged');
-        return true;
-      }
+    if (this.shouldSkipUpdate(yamlContent, isInitialLoad)) {
+      return true;
     }
 
     const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
-      updatedClabTreeDataToTopoviewer,
+      updatedTree,
       this.lastYamlFilePath
     );
 
-    try {
-      // Write JSON files asynchronously without waiting
-      const writePromise = this.adaptor.createFolderAndWriteJson(this.context, folderName, cytoTopology, yamlContent);
+    const writeOk = await this.writeTopologyFiles(
+      folderName,
+      cytoTopology,
+      yamlContent,
+      isInitialLoad
+    );
+    if (!writeOk) {
+      return false;
+    }
 
-      // Don't wait for file write on initial load
+    if (!panel) {
+      log.error('Panel is undefined');
+      return false;
+    }
+
+    await this.setPanelHtml(panel, folderName, isInitialLoad);
+    return true;
+  }
+
+  private async getClabTreeData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    if (!this.isViewMode) {
+      return undefined;
+    }
+
+    try {
+      const labs = await runningLabsProvider.discoverInspectLabs();
+      this.cacheClabTreeDataToTopoviewer = labs;
+      return labs;
+    } catch (err) {
+      log.warn(`Failed to refresh running lab data: ${err}`);
+      return this.cacheClabTreeDataToTopoviewer;
+    }
+  }
+
+  private async getYamlContentForUpdate(): Promise<string | undefined> {
+    return this.isViewMode
+      ? this.getYamlContentViewMode()
+      : this.getYamlContentEditMode();
+  }
+
+  private async getYamlContentViewMode(): Promise<string> {
+    const yamlFilePath = this.lastYamlFilePath;
+    let yamlContent = '';
+    if (yamlFilePath) {
+      try {
+        yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+        log.info('Read YAML file in view mode, skipping validation');
+      } catch (err) {
+        log.warn(`Could not read YAML in view mode: ${err}`);
+      }
+    }
+
+    if (!yamlContent) {
+      yamlContent = `name: ${this.currentLabName}\ntopology:\n  nodes: {}\n  links: []`;
+      log.info('Using minimal YAML for view mode');
+    }
+    return yamlContent;
+  }
+
+  private async getYamlContentEditMode(): Promise<string | undefined> {
+    const yamlFilePath = this.lastYamlFilePath;
+    if (!yamlFilePath) {
+      log.error('No YAML file path in edit mode');
+      return undefined;
+    }
+
+    let yamlContent: string;
+    try {
+      yamlContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+    } catch (err) {
+      log.error(`Failed to read YAML file: ${String(err)}`);
+      vscode.window.showErrorMessage(`Failed to read YAML file: ${err}`);
+      return undefined;
+    }
+
+    if (!yamlContent.trim()) {
+      const baseName = path.basename(yamlFilePath);
+      const labNameFromFile = baseName
+        .replace(/\.clab\.(yml|yaml)$/i, '')
+        .replace(/\.(yml|yaml)$/i, '');
+      const defaultContent = this.buildDefaultLabYaml(labNameFromFile);
+      this.isInternalUpdate = true;
+      await fs.promises.writeFile(yamlFilePath, defaultContent, 'utf8');
+      await sleep(50);
+      this.isInternalUpdate = false;
+      yamlContent = defaultContent;
+      log.info(`Populated empty YAML file with default topology: ${yamlFilePath}`);
+    }
+
+    if (!this.skipInitialValidation) {
+      const isValid = await this.validateYaml(yamlContent);
+      if (!isValid) {
+        log.error('YAML validation failed. Aborting updatePanelHtml.');
+        return undefined;
+      }
+    } else {
+      this.skipInitialValidation = false;
+    }
+
+    return yamlContent;
+  }
+
+  private shouldSkipUpdate(yamlContent: string, isInitialLoad: boolean): boolean {
+    if (isInitialLoad || this.isViewMode) {
+      return false;
+    }
+    const cachedYaml = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);
+    if (cachedYaml === yamlContent) {
+      log.debug('Skipping topology regeneration - content unchanged');
+      return true;
+    }
+    return false;
+  }
+
+  private async writeTopologyFiles(
+    folderName: string,
+    cytoTopology: any,
+    yamlContent: string,
+    isInitialLoad: boolean
+  ): Promise<boolean> {
+    try {
+      const writePromise = this.adaptor.createFolderAndWriteJson(
+        this.context,
+        folderName,
+        cytoTopology,
+        yamlContent
+      );
       if (isInitialLoad) {
         writePromise.catch(err => {
           log.error(`Background write failed: ${String(err)}`);
@@ -465,9 +537,8 @@ topology:
       } else {
         await writePromise;
       }
-
-      // Cache the YAML content
       await this.context.workspaceState.update(`cachedYaml_${folderName}`, yamlContent);
+      return true;
     } catch (err) {
       log.error(`Failed to write topology files: ${String(err)}`);
       if (!isInitialLoad) {
@@ -475,115 +546,145 @@ topology:
       }
       return false;
     }
+  }
 
-    if (panel) {
-      perfMark('generateHtml_start');
-      const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
-      let templateParams: any = {};
+  private async setPanelHtml(
+    panel: vscode.WebviewPanel,
+    folderName: string,
+    isInitialLoad: boolean
+  ): Promise<void> {
+    perfMark('generateHtml_start');
+    const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
+    const templateParams =
+      mode === 'viewer'
+        ? this.getViewerTemplateParams()
+        : await this.getEditorTemplateParams();
 
-      if (mode === 'viewer') {
-        // For viewer mode, pass viewer-specific parameters
-        const viewerParams: Partial<ViewerTemplateParams> = {
-          deploymentState: this.deploymentState,
-          viewerMode: 'viewer',
-          currentLabPath: this.lastYamlFilePath,
-        };
-        templateParams = viewerParams;
-      } else {
-        // Ensure we have the latest docker images before building editor UI
-        await refreshDockerImages(this.context);
-        // For editor mode, pass editor-specific parameters
-        const ifacePatternMapping = vscode.workspace.getConfiguration('containerlab.editor').get<Record<string, string>>('interfacePatternMapping', {});
-        const updateLinkEndpointsOnKindChange = vscode.workspace.getConfiguration('containerlab.editor').get<boolean>('updateLinkEndpointsOnKindChange', true);
-        const customNodes = vscode.workspace.getConfiguration('containerlab.editor').get<any[]>('customNodes', []);
+    panel.webview.html = generateWebviewHtml(
+      this.context,
+      panel,
+      mode,
+      folderName,
+      this.adaptor,
+      templateParams
+    );
 
-        // Find the default custom node
-        const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
-        const defaultNode = defaultCustomNode?.name || '';
-
-        // Derive defaults from the default custom node or use fallbacks
-        const defaultKind = defaultCustomNode?.kind || 'nokia_srlinux';
-        const defaultType = defaultCustomNode?.type || '';
-
-        // Build image mapping from custom nodes
-        const imageMapping: Record<string, string> = {};
-        customNodes.forEach((node: any) => {
-          if (node.image && node.kind) {
-            imageMapping[node.kind] = node.image;
-          }
-        });
-
-        // Pull cached docker images from global state for image dropdown
-        const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
-
-        const editorParams: Partial<EditorTemplateParams> = {
-          imageMapping,
-          ifacePatternMapping,
-          defaultKind,
-          defaultType,
-          updateLinkEndpointsOnKindChange,
-          dockerImages,
-          customNodes,
-          defaultNode,
-          currentLabPath: this.lastYamlFilePath,
-          topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
-          topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
-          topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
-        };
-        templateParams = editorParams;
-      }
-
-      panel.webview.html = generateWebviewHtml(
-        this.context,
-        panel,
-        mode,
-        folderName,
-        this.adaptor,
-        templateParams
-      );
-
-      if (isInitialLoad) {
-        perfMeasure('generateHtml', 'generateHtml_start');
-        perfMeasure('updatePanelHtmlCore', 'updatePanelHtmlCore_start');
-      }
-
-    } else {
-      log.error('Panel is undefined');
-      return false;
+    if (isInitialLoad) {
+      perfMeasure('generateHtml', 'generateHtml_start');
+      perfMeasure('updatePanelHtmlCore', 'updatePanelHtmlCore_start');
     }
+  }
 
-    return true;
+  private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
+    return {
+      deploymentState: this.deploymentState,
+      viewerMode: 'viewer',
+      currentLabPath: this.lastYamlFilePath,
+    };
+  }
+
+  private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
+    await refreshDockerImages(this.context);
+    const CONFIG_SECTION = 'containerlab.editor';
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const ifacePatternMapping = config.get<Record<string, string>>('interfacePatternMapping', {});
+    const updateLinkEndpointsOnKindChange = config.get<boolean>(
+      'updateLinkEndpointsOnKindChange',
+      true
+    );
+    const customNodes = config.get<any[]>('customNodes', []);
+    const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
+    const imageMapping = this.buildImageMapping(customNodes);
+    const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+    return {
+      imageMapping,
+      ifacePatternMapping,
+      defaultKind,
+      defaultType,
+      updateLinkEndpointsOnKindChange,
+      dockerImages,
+      customNodes,
+      defaultNode,
+      currentLabPath: this.lastYamlFilePath,
+      topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
+      topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
+      topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
+    };
+  }
+
+  private getDefaultCustomNode(customNodes: any[]): {
+    defaultNode: string;
+    defaultKind: string;
+    defaultType: string;
+  } {
+    const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
+    return {
+      defaultNode: defaultCustomNode?.name || '',
+      defaultKind: defaultCustomNode?.kind || 'nokia_srlinux',
+      defaultType: defaultCustomNode?.type || '',
+    };
+  }
+
+  private buildImageMapping(customNodes: any[]): Record<string, string> {
+    const imageMapping: Record<string, string> = {};
+    customNodes.forEach((node: any) => {
+      if (node.image && node.kind) {
+        imageMapping[node.kind] = node.image;
+      }
+    });
+    return imageMapping;
   }
 
   /**
    * Creates a new webview panel or reveals the current one.
    * @param context The extension context.
    */
-  public async createWebviewPanel(context: vscode.ExtensionContext, fileUri: vscode.Uri, labName: string, viewMode: boolean = false): Promise<void> {
+  public async createWebviewPanel(
+    context: vscode.ExtensionContext,
+    fileUri: vscode.Uri,
+    labName: string,
+    viewMode: boolean = false
+  ): Promise<void> {
     perfMark('createWebviewPanel_start');
     this.currentLabName = labName;
     this.isViewMode = viewMode;
 
-    // Check deployment state
     this.deploymentState = await this.checkDeploymentState(labName);
-    if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
-      // If we have a lastYamlFilePath and it's different from the fileUri,
-      // create a new URI from the lastYamlFilePath
-      fileUri = vscode.Uri.file(this.lastYamlFilePath);
-      log.info(`Using corrected file path: ${fileUri.fsPath}`);
-    }
+    fileUri = this.normalizeFileUri(fileUri);
 
-    const column = vscode.window.activeTextEditor
-      ? vscode.window.activeTextEditor.viewColumn
-      : undefined;
+    const column = vscode.window.activeTextEditor?.viewColumn;
+    if (this.revealIfPanelExists(column)) return;
 
-    // If a panel already exists, reveal it.
-    if (this.currentPanel) {
-      this.currentPanel.reveal(column);
+    const panel = this.initPanel(labName, column);
+    this.currentPanel = panel;
+
+    try {
+      await this.initializePanelData(fileUri, labName);
+    } catch {
       return;
     }
 
-    // Otherwise, create a new webview panel.
+    this.startUpdatePanelHtml();
+    this.setupFileHandlers();
+    this.registerPanelListeners(panel, context);
+  }
+
+  private normalizeFileUri(fileUri: vscode.Uri): vscode.Uri {
+    if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
+      const corrected = vscode.Uri.file(this.lastYamlFilePath);
+      log.info(`Using corrected file path: ${corrected.fsPath}`);
+      return corrected;
+    }
+    return fileUri;
+  }
+
+  private revealIfPanelExists(column: vscode.ViewColumn | undefined): boolean {
+    if (!this.currentPanel) return false;
+    this.currentPanel.reveal(column);
+    return true;
+  }
+
+  private initPanel(labName: string, column: vscode.ViewColumn | undefined): vscode.WebviewPanel {
     const panel = vscode.window.createWebviewPanel(
       this.viewType,
       labName,
@@ -591,147 +692,53 @@ topology:
       {
         enableScripts: true,
         localResourceRoots: [
-          // Dynamic data folder.
           vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', labName),
-          // Compiled JS directory.
           vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-          // Schema directory for YAML validation and dropdown data.
           vscode.Uri.joinPath(this.context.extensionUri, 'schema'),
         ],
         retainContextWhenHidden: true,
       }
     );
-
     const iconUri = vscode.Uri.joinPath(
       this.context.extensionUri,
       'resources',
       'containerlab.png'
     );
     panel.iconPath = iconUri;
+    return panel;
+  }
 
-    this.currentPanel = panel;
-
+  private async initializePanelData(fileUri: vscode.Uri, labName: string): Promise<void> {
     try {
-      let yaml: string = '';
-
+      await this.loadInitialYaml(fileUri, labName);
       if (this.isViewMode) {
-        // View mode - be flexible with YAML
-        log.info(`Creating panel in view mode for lab: ${labName}`);
-
-        // Try to read YAML if we have a path
-        if (fileUri && fileUri.fsPath) {
-          try {
-            yaml = await fs.promises.readFile(fileUri.fsPath, 'utf8');
-            this.lastYamlFilePath = fileUri.fsPath;
-            log.info('Read YAML file for view mode');
-          } catch (err) {
-            log.warn(`Could not read YAML in view mode: ${err}`);
-            this.lastYamlFilePath = '';
-          }
-        }
-
-        // If no YAML, use minimal
-        if (!yaml) {
-          yaml = `name: ${labName}\ntopology:\n  nodes: {}\n  links: []`;
-          log.info('Using minimal YAML for view mode');
-        }
-
-        // Always skip validation in view mode
-        this.skipInitialValidation = true;
-      } else {
-        // Edit mode - strict handling
-        if (!fileUri || !fileUri.fsPath) {
-          throw new Error('No file URI provided for edit mode');
-        }
-
-        // Check if file exists
-        try {
-          await vscode.workspace.fs.stat(fileUri);
-          this.lastYamlFilePath = fileUri.fsPath;
-        } catch {
-          if (this.lastYamlFilePath) {
-            fileUri = vscode.Uri.file(this.lastYamlFilePath);
-            log.info(`Using cached file path: ${this.lastYamlFilePath}`);
-          } else {
-            throw new Error(`File not found: ${fileUri.fsPath}`);
-          }
-        }
-
-        // Read the YAML
-        yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
-
-        // Check if the file is empty or only contains whitespace
-        if (!yaml.trim()) {
-          // Extract lab name from file path
-          const baseName = path.basename(this.lastYamlFilePath);
-          const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-
-          // Use the default template content
-          const defaultContent = `name: ${labNameFromFile}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixrd1
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
-
-          // Write the default content to the file
-          this.isInternalUpdate = true;
-          await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
-          await this.sleep(50);
-          this.isInternalUpdate = false;
-
-          yaml = defaultContent;
-          log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
-        }
-
-        // Validate unless explicitly skipped
-        if (!this.skipInitialValidation) {
-          const isValid = await this.validateYaml(yaml);
-          if (!isValid) {
-            log.error('YAML validation failed. Aborting createWebviewPanel.');
-            return;
-          }
-        }
-      }
-
-      // Skip initial processing - updatePanelHtmlInternal will handle it
-      // This avoids duplicate YAML processing and file writes
-      if (this.isViewMode) {
-        try {
-          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
-        } catch (err) {
-          log.warn(`Failed to load running lab data: ${err}`);
-        }
+        await this.loadRunningLabData();
       }
     } catch (e) {
-      if (!this.isViewMode) {
-        vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
-        return;
-      } else {
-        log.warn(`Failed to load topology in view mode, continuing: ${(e as Error).message}`);
-      }
+      this.handleInitialLoadError(e);
+      throw e;
     }
+  }
 
+  private async loadRunningLabData(): Promise<void> {
+    try {
+      this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
+    } catch (err) {
+      log.warn(`Failed to load running lab data: ${err}`);
+    }
+  }
 
+  private handleInitialLoadError(e: unknown): void {
+    if (!this.isViewMode) {
+      vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
+    } else {
+      log.warn(`Failed to load topology in view mode, continuing: ${(e as Error).message}`);
+    }
+  }
 
-    // Start loading the panel HTML immediately
+  private startUpdatePanelHtml(): void {
     perfMark('updatePanelHtml_start');
     const updatePromise = this.updatePanelHtmlInternal(this.currentPanel);
-
-    // Don't block on the update for initial load
     updatePromise
       .then(() => {
         perfMeasure('updatePanelHtml', 'updatePanelHtml_start');
@@ -741,1049 +748,969 @@ topology:
       .catch(err => {
         log.error(`Failed to update panel HTML: ${err}`);
       });
+  }
 
-    // Only setup file watchers and save listeners in edit mode
-    if (!this.isViewMode && this.lastYamlFilePath) {
-      this.setupFileWatcher();
-      this.setupSaveListener();
-    }
+  private setupFileHandlers(): void {
+    if (this.isViewMode || !this.lastYamlFilePath) return;
+    this.setupFileWatcher();
+    this.setupSaveListener();
+  }
 
-    // Clean up when the panel is disposed.
+  private registerPanelListeners(panel: vscode.WebviewPanel, context: vscode.ExtensionContext): void {
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
-      if (this.fileWatcher) {
-        this.fileWatcher.dispose();
-        this.fileWatcher = undefined;
-      }
-      if (this.saveListener) {
-        this.saveListener.dispose();
-        this.saveListener = undefined;
-      }
+      this.disposeFileHandlers();
     }, null, context.subscriptions);
 
-    /**
-    * Interface for messages received from the webview.
-    */
-    interface WebviewMessage {
-      type?: string;
-      requestId?: string;
-      endpointName?: string;
-      payload?: string;
-      command?: string;
-      level?: string;
-      message?: string;
-      fileLine?: string;
+    panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
+      await this.handleWebviewMessage(msg, panel);
+    });
+  }
+
+  private disposeFileHandlers(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.dispose();
+      this.fileWatcher = undefined;
+    }
+    if (this.saveListener) {
+      this.saveListener.dispose();
+      this.saveListener = undefined;
+    }
+  }
+
+  private async loadInitialYaml(fileUri: vscode.Uri, labName: string): Promise<void> {
+    if (this.isViewMode) {
+      await this.loadYamlViewMode(fileUri, labName);
+      return;
+    }
+    await this.loadYamlEditMode(fileUri);
+  }
+
+  private async loadYamlViewMode(fileUri: vscode.Uri, labName: string): Promise<void> {
+    log.info(`Creating panel in view mode for lab: ${labName}`);
+    if (fileUri?.fsPath) {
+      try {
+        await fs.promises.readFile(fileUri.fsPath, 'utf8');
+        this.lastYamlFilePath = fileUri.fsPath;
+        log.info('Read YAML file for view mode');
+      } catch (err) {
+        log.warn(`Could not read YAML in view mode: ${err}`);
+        this.lastYamlFilePath = '';
+      }
+    }
+    if (!this.lastYamlFilePath) log.info('Using minimal YAML for view mode');
+    this.skipInitialValidation = true;
+  }
+
+  private async loadYamlEditMode(fileUri: vscode.Uri): Promise<void> {
+    if (!fileUri?.fsPath) throw new Error('No file URI provided for edit mode');
+    try {
+      await vscode.workspace.fs.stat(fileUri);
+      this.lastYamlFilePath = fileUri.fsPath;
+    } catch {
+      if (this.lastYamlFilePath) log.info(`Using cached file path: ${this.lastYamlFilePath}`);
+      else throw new Error(`File not found: ${fileUri.fsPath}`);
+    }
+    let yaml = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+    if (!yaml.trim()) {
+      const baseName = path.basename(this.lastYamlFilePath);
+      const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+      const defaultContent = `name: ${labNameFromFile}\n\n` +
+`topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
+      this.isInternalUpdate = true;
+      await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
+      await sleep(50);
+      this.isInternalUpdate = false;
+      yaml = defaultContent;
+      log.info(`Populated empty YAML file with default topology: ${this.lastYamlFilePath}`);
+    }
+    if (!this.skipInitialValidation) {
+      const isValid = await this.validateYaml(yaml);
+      if (!isValid) throw new Error('YAML validation failed. Aborting createWebviewPanel.');
+    }
+  }
+
+  private async handleWebviewMessage(msg: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    if (!msg || typeof msg !== 'object') {
+      log.error('Invalid message received.');
+      return;
     }
 
-    // Listen for incoming messages from the webview.
-    panel.webview.onDidReceiveMessage(async (msg: WebviewMessage) => {
-      if (!msg || typeof msg !== 'object') {
-        log.error('Invalid message received.');
-        return;
-      }
-
-      if (msg.command === 'topoViewerLog') {
-        const { level, message, fileLine } = msg;
-        const text = fileLine ? `${fileLine} - ${message}` : message;
-        switch (level) {
-          case 'error':
-            log.error(text);
-            break;
-          case 'warn':
-            log.warn(text);
-            break;
-          case 'debug':
-            log.debug(text);
-            break;
-          default:
-            log.info(text);
-        }
-        return;
-      }
-
-      log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
-
-      // Process only messages of type 'POST'.
-      if (msg.type !== 'POST') {
-        log.warn(`Unrecognized message type: ${msg.type}`);
-        return;
-      }
-
-      const { requestId, endpointName, payload } = msg;
-      const payloadObj = payload ? JSON.parse(payload) : undefined;
-      if (payloadObj !== undefined) {
-        log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
-      }
-      if (!requestId || !endpointName) {
-        const missingFields = [];
-        if (!requestId) missingFields.push('requestId');
-        if (!endpointName) missingFields.push('endpointName');
-        const errorMessage = `Missing required field(s): ${missingFields.join(', ')}`;
-        log.error(errorMessage);
-        panel.webview.postMessage({
-          type: 'POST_RESPONSE',
-          requestId: requestId ?? null,
-          result: null,
-          error: errorMessage,
-        });
-        return;
-      }
-
-      let result: unknown = null;
-      let error: string | null = null;
-
-      try {
-        switch (endpointName) {
-
-          case 'topo-editor-reload-viewport': {
-            try {
-              // Skip reload if mode switching is in progress
-              if (this.isSwitchingMode) {
-                result = 'Reload skipped - mode switch in progress';
-                log.debug(result);
-                break;
-              }
-
-              // Refresh deployment state
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-              // Refresh the webview content.
-              const success = await this.updatePanelHtml(this.currentPanel);
-              if (success) {
-                result = `Endpoint "${endpointName}" executed successfully.`;
-                log.info(result);
-              } else {
-                result = `Panel update failed - check logs for details`;
-                // updatePanelHtml returns false for various reasons
-                // The actual error message (if any) has already been shown
-                log.debug('Panel update returned false during reload');
-              }
-            } catch (innerError) {
-              result = `Error executing endpoint "${endpointName}".`;
-              log.error(`Error executing endpoint "${endpointName}": ${JSON.stringify(innerError, null, 2)}`);
-          }
-          break;
-        }
-
-        case 'topo-viewport-save': {
-          try {
-            await saveViewport({
-              yamlFilePath: this.lastYamlFilePath,
-              payload: payload as string,
-              mode: 'view'
-            });
-            result = `Saved viewport positions successfully.`;
-            log.info(result);
-          } catch (error) {
-            log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(error, null, 2)}`);
-          }
-          break;
-        }
-
-        case 'lab-settings-get': {
-          try {
-            // Read current YAML content
-            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-            const parsed = YAML.parse(yamlContent) as any;
-
-            // Extract lab settings
-            const settings = {
-              name: parsed.name,
-              prefix: parsed.prefix,
-              mgmt: parsed.mgmt
-            };
-
-            result = { success: true, settings };
-            log.info('Lab settings retrieved successfully');
-          } catch (error) {
-            result = { success: false, error: String(error) };
-            log.error(`Error getting lab settings: ${error}`);
-          }
-          break;
-        }
-
-        case 'lab-settings-update': {
-          try {
-            // Read current YAML content
-            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-            const doc = YAML.parseDocument(yamlContent);
-
-            // Parse payload if it's a string
-            const settings = typeof payload === 'string' ? JSON.parse(payload) : payload;
-
-            // First, update existing fields
-            if (settings.name !== undefined && settings.name !== '') {
-              doc.set('name', settings.name);
-            }
-
-            const hadPrefix = doc.has('prefix');
-            const hadMgmt = doc.has('mgmt');
-
-            // Update prefix if it already exists
-            if (settings.prefix !== undefined && hadPrefix) {
-              if (settings.prefix === null) {
-                doc.delete('prefix');
-              } else {
-                // Set prefix even if it's an empty string
-                doc.set('prefix', settings.prefix);
-              }
-            }
-
-            // Update mgmt if it already exists
-            if (settings.mgmt !== undefined && hadMgmt) {
-              if (settings.mgmt === null || (typeof settings.mgmt === 'object' && Object.keys(settings.mgmt).length === 0)) {
-                doc.delete('mgmt');
-              } else {
-                doc.set('mgmt', settings.mgmt);
-              }
-            }
-
-            // Convert to string first
-            let updatedYaml = doc.toString();
-
-            // Now handle new field insertions by string manipulation
-            // Add prefix if it's new and has a value (including empty string)
-            if (settings.prefix !== undefined && settings.prefix !== null && !hadPrefix) {
-              const lines = updatedYaml.split('\n');
-              const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-              if (nameIndex !== -1) {
-                // Insert prefix right after name
-                // For empty string, use quotes to make it valid YAML
-                const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
-                lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
-                updatedYaml = lines.join('\n');
-              }
-            }
-
-            // Add mgmt if it's new and has values
-            if (settings.mgmt !== undefined && !hadMgmt && settings.mgmt && Object.keys(settings.mgmt).length > 0) {
-              const lines = updatedYaml.split('\n');
-              // Find where to insert mgmt (after prefix if exists, otherwise after name)
-              let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
-              if (insertIndex === -1) {
-                insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-              }
-
-              if (insertIndex !== -1) {
-                // Build mgmt YAML section
-                const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
-                const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
-                // Add empty line before mgmt if needed
-                const nextLine = lines[insertIndex + 1];
-                if (nextLine && nextLine.trim() !== '') {
-                  lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
-                } else {
-                  lines.splice(insertIndex + 1, 0, ...mgmtLines);
-                }
-                updatedYaml = lines.join('\n');
-              }
-            }
-            this.isInternalUpdate = true;
-            await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
-
-            // Send the updated YAML content to the webview
-            if (this.currentPanel) {
-              this.currentPanel.webview.postMessage({
-                type: 'yaml-content-updated',
-                yamlContent: updatedYaml
-              });
-            }
-
-            result = { success: true, yamlContent: updatedYaml };
-            this.isInternalUpdate = false;
-          } catch (error) {
-            result = { success: false, error: String(error) };
-            log.error(`Error updating lab settings: ${error}`);
-            vscode.window.showErrorMessage(`Failed to update lab settings: ${error}`);
-            this.isInternalUpdate = false;
-          }
-          break;
-        }
-
-        case 'topo-editor-get-node-config': {
-          try {
-            const nodeName =
-              typeof payloadObj === 'string'
-                ? payloadObj
-                : payloadObj?.node || payloadObj?.nodeName;
-            if (!nodeName) {
-              throw new Error('Node name is required');
-            }
-            if (!this.lastYamlFilePath) {
-              throw new Error('No lab YAML file loaded');
-            }
-
-            const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-            const topo = YAML.parse(yamlContent) as any;
-            this.adaptor.currentClabTopo = topo;
-
-            const nodeObj = topo.topology?.nodes?.[nodeName] || {};
-            const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
-            const nodePropKeys = new Set(Object.keys(nodeObj || {}));
-            const inheritedProps = Object.keys(mergedNode).filter(
-              (k) => !nodePropKeys.has(k)
-            );
-
-            result = { ...mergedNode, inherited: inheritedProps };
-            log.info(`Node config retrieved for ${nodeName}`);
-          } catch (err) {
-            error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
-            log.error(error);
-          }
-          break;
-        }
-
-        case 'show-error-message': {
-          const data = payload as any;
-          if (data && data.message) {
-            vscode.window.showErrorMessage(data.message);
-          }
-          result = { success: true };
-          break;
-        }
-
-        case 'topo-editor-viewport-save': {
-          try {
-            await saveViewport({
-              adaptor: this.adaptor,
-              yamlFilePath: this.lastYamlFilePath,
-                payload: payload as string,
-                mode: 'edit',
-                setInternalUpdate: v => {
-                  this.isInternalUpdate = v;
-                },
-              });
-              result = `Saved topology with preserved comments!`;
-              log.info(result);
-            } catch (error) {
-                log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(error, null, 2)}`);
-              this.isInternalUpdate = false;
-            }
-            break;
-          }
-
-          case 'topo-editor-viewport-save-suppress-notification': {
-            try {
-              await saveViewport({
-                adaptor: this.adaptor,
-                yamlFilePath: this.lastYamlFilePath,
-                payload: payload as string,
-                mode: 'edit',
-                setInternalUpdate: v => {
-                  this.isInternalUpdate = v;
-                },
-              });
-            } catch (error) {
-                result = `Error executing endpoint "topo-editor-viewport-save-suppress-notification".`;
-                log.error(
-                  `Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(error, null, 2)}`
-                );
-              this.isInternalUpdate = false;
-            }
-            break;
-          }
-
-          case 'topo-editor-undo': {
-            try {
-              // Get the document for the YAML file
-              const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
-
-              // Store the currently active editor to restore focus later
-              const currentActiveEditor = vscode.window.activeTextEditor;
-
-              // Find if there's already an editor with this document open
-              const existingEditor = vscode.window.visibleTextEditors.find(
-                editor => editor.document.uri.fsPath === document.uri.fsPath
-              );
-
-              if (existingEditor) {
-                // Make the existing editor active temporarily
-                await vscode.window.showTextDocument(document, {
-                  viewColumn: existingEditor.viewColumn,
-                  preview: false,
-                  preserveFocus: false
-                });
-              } else {
-                // Open in a side column (beside the webview) without stealing focus
-                const targetColumn = vscode.ViewColumn.Beside;
-                await vscode.window.showTextDocument(document, {
-                  viewColumn: targetColumn,
-                  preview: false,
-                  preserveFocus: false
-                });
-              }
-
-              // Small delay to ensure the editor is fully active
-              await this.sleep(50);
-
-              // Execute undo command on the now-active editor
-              await vscode.commands.executeCommand('undo');
-
-              // Save the document to trigger file watcher update
-              await document.save();
-
-              // Restore focus to the previously active editor (usually the webview)
-              if (currentActiveEditor && !existingEditor) {
-                await vscode.window.showTextDocument(currentActiveEditor.document, {
-                  viewColumn: currentActiveEditor.viewColumn,
-                  preview: false,
-                  preserveFocus: false
-                });
-              }
-
-              result = 'Undo operation completed successfully';
-              log.info('Undo operation executed on YAML file');
-            } catch (error) {
-              result = `Error executing undo operation`;
-              log.error(`Error executing undo operation: ${JSON.stringify(error, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'clab-node-connect-ssh': {
-            try {
-              const nodeName = payloadObj as string;
-              const node = {
-                label: nodeName,
-                name: nodeName,
-                name_short: nodeName,
-                cID: nodeName,
-                state: '',
-                kind: '',
-                image: '',
-                interfaces: [],
-                labPath: { absolute: '', relative: '' }
-              } as any;
-              await vscode.commands.executeCommand('containerlab.node.ssh', node);
-              result = `SSH connection executed for ${nodeName}`;
-            } catch (innerError) {
-              error = `Error executing SSH connection: ${innerError}`;
-              log.error(`Error executing SSH connection: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'clab-node-attach-shell': {
-            try {
-              const nodeName = payloadObj as string;
-              const node = (await this.getContainerNode(nodeName)) ?? {
-                label: nodeName,
-                name: nodeName,
-                name_short: nodeName,
-                cID: nodeName,
-                state: '',
-                kind: '',
-                image: '',
-                interfaces: [],
-                labPath: { absolute: '', relative: '' }
-              } as any;
-              await vscode.commands.executeCommand('containerlab.node.attachShell', node);
-              result = `Attach shell executed for ${nodeName}`;
-            } catch (innerError) {
-              error = `Error executing attach shell: ${innerError}`;
-              log.error(`Error executing attach shell: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'clab-node-view-logs': {
-            try {
-              const nodeName = payloadObj as string;
-              const node = {
-                label: nodeName,
-                name: nodeName,
-                name_short: nodeName,
-                cID: nodeName,
-                state: '',
-                kind: '',
-                image: '',
-                interfaces: [],
-                labPath: { absolute: '', relative: '' }
-              } as any;
-              await vscode.commands.executeCommand('containerlab.node.showLogs', node);
-              result = `Show logs executed for ${nodeName}`;
-            } catch (innerError) {
-              error = `Error executing show logs: ${innerError}`;
-              log.error(`Error executing show logs: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'clab-interface-capture': {
-            try {
-              const data = payloadObj as { nodeName: string; interfaceName: string };
-
-              // Try to resolve the interface alias to actual name if we have tree data
-              let actualInterfaceName = data.interfaceName;
-              if (runningLabsProvider) {
-                const treeData = await runningLabsProvider.discoverInspectLabs();
-                if (treeData) {
-                  // Find the interface by name or alias
-                  for (const lab of Object.values(treeData)) {
-                    const container = (lab as any).containers?.find(
-                      (c: any) => c.name === data.nodeName || c.name_short === data.nodeName
-                    );
-                    if (container && container.interfaces) {
-                      const intf = container.interfaces.find(
-                        (i: any) => i.name === data.interfaceName || i.alias === data.interfaceName
-                      );
-                      if (intf) {
-                        // Use the actual interface name, not the alias
-                        actualInterfaceName = intf.name;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-
-              const iface = {
-                label: actualInterfaceName,
-                parentName: data.nodeName,
-                cID: data.nodeName,
-                name: actualInterfaceName,
-                type: '',
-                alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
-                mac: '',
-                mtu: 0,
-                ifIndex: 0,
-                state: ''
-              } as any;
-              // Use the default capture method (same as tree view)
-              await vscode.commands.executeCommand('containerlab.interface.capture', iface);
-              result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
-            } catch (innerError) {
-              error = `Error executing capture: ${innerError}`;
-              log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'clab-link-capture': {
-            try {
-              const data = payloadObj as { nodeName: string; interfaceName: string };
-
-              // Try to resolve the interface alias to actual name if we have tree data
-              let actualInterfaceName = data.interfaceName;
-              if (runningLabsProvider) {
-                const treeData = await runningLabsProvider.discoverInspectLabs();
-                if (treeData) {
-                  // Find the interface by name or alias
-                  for (const lab of Object.values(treeData)) {
-                    const container = (lab as any).containers?.find(
-                      (c: any) => c.name === data.nodeName || c.name_short === data.nodeName
-                    );
-                    if (container && container.interfaces) {
-                      const intf = container.interfaces.find(
-                        (i: any) => i.name === data.interfaceName || i.alias === data.interfaceName
-                      );
-                      if (intf) {
-                        // Use the actual interface name, not the alias
-                        actualInterfaceName = intf.name;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-
-              const iface = {
-                label: actualInterfaceName,
-                parentName: data.nodeName,
-                cID: data.nodeName,
-                name: actualInterfaceName,
-                type: '',
-                alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
-                mac: '',
-                mtu: 0,
-                ifIndex: 0,
-                state: ''
-              } as any;
-              await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
-              result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
-            } catch (innerError) {
-              error = `Error executing capture: ${innerError}`;
-              log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'clab-link-capture-edgeshark-vnc': {
-            try {
-              const data = payloadObj as { nodeName: string; interfaceName: string };
-
-              // Try to resolve the interface alias to actual name if we have tree data
-              let actualInterfaceName = data.interfaceName;
-              if (runningLabsProvider) {
-                const treeData = await runningLabsProvider.discoverInspectLabs();
-                if (treeData) {
-                  // Find the interface by name or alias
-                  for (const lab of Object.values(treeData)) {
-                    const container = (lab as any).containers?.find(
-                      (c: any) => c.name === data.nodeName || c.name_short === data.nodeName
-                    );
-                    if (container && container.interfaces) {
-                      const intf = container.interfaces.find(
-                        (i: any) => i.name === data.interfaceName || i.alias === data.interfaceName
-                      );
-                      if (intf) {
-                        // Use the actual interface name, not the alias
-                        actualInterfaceName = intf.name;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-
-              const iface = {
-                label: actualInterfaceName,
-                parentName: data.nodeName,
-                cID: data.nodeName,
-                name: actualInterfaceName,
-                type: '',
-                alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
-                mac: '',
-                mtu: 0,
-                ifIndex: 0,
-                state: ''
-              } as any;
-              await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
-              result = `VNC capture executed for ${data.nodeName}/${actualInterfaceName}`;
-            } catch (innerError) {
-              error = `Error executing VNC capture: ${innerError}`;
-              log.error(`Error executing VNC capture: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'topo-editor-show-vscode-message': {
-            try {
-              // Parse the payload from the webview
-              const data = JSON.parse(payload as string) as {
-                type: 'info' | 'warning' | 'error';
-                message: string;
-              };
-
-              // Display the message based on its type
-              switch (data.type) {
-                case 'info':
-                  await vscode.window.showInformationMessage(data.message);
-                  break;
-                case 'warning':
-                  await vscode.window.showWarningMessage(data.message);
-                  break;
-                case 'error':
-                  await vscode.window.showErrorMessage(data.message);
-                  break;
-                default:
-                  // throw new Error(`Unsupported message type: ${data.type}`);
-
-                  log.error(
-                    `Unsupported message type: ${JSON.stringify(data.type, null, 2)}`
-                  );
-              }
-              result = `Displayed ${data.type} message: ${data.message}`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error executing endpoint "clab-show-vscode-message".`;
-              log.error(
-                `Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(innerError, null, 2)}`
-              );
-            }
-            break;
-          }
-
-          case 'topo-switch-mode': {
-            try {
-              // Prevent concurrent mode switches
-              if (this.isSwitchingMode) {
-                error = 'Mode switch already in progress';
-                log.debug('Mode switch already in progress');
-                break;
-              }
-
-              log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
-              this.isSwitchingMode = true;
-
-              // Switch between view and edit modes
-              const data = payload ? JSON.parse(payload as string) : { mode: 'toggle' };
-              if (data.mode === 'toggle') {
-                this.isViewMode = !this.isViewMode;
-              } else if (data.mode === 'view') {
-                this.isViewMode = true;
-              } else if (data.mode === 'edit') {
-                this.isViewMode = false;
-              }
-
-              // Update deployment state
-              this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-
-              // Update the panel HTML to reflect the new mode
-              const success = await this.updatePanelHtmlInternal(this.currentPanel);
-              if (success) {
-                result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
-                log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
-              } else {
-                error = 'Failed to switch mode';
-              }
-
-              // Add a small delay to ensure any concurrent operations see the flag
-              await this.sleep(100);
-            } catch (innerError) {
-              error = `Error switching mode: ${innerError}`;
-              log.error(`Error switching mode: ${JSON.stringify(innerError, null, 2)}`);
-            } finally {
-              this.isSwitchingMode = false;
-              log.debug(`Mode switch completed, flag cleared`);
-            }
-            break;
-          }
-
-          case 'open-external': {
-            try {
-              const url: string = JSON.parse(payload as string);
-              await vscode.env.openExternal(vscode.Uri.parse(url));
-              result = `Opened external URL: ${url}`;
-              log.info(result);
-            } catch (innerError) {
-              result = `Error executing endpoint "open-external".`;
-              log.error(`Error executing endpoint "open-external": ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-          case 'topo-editor-load-annotations': {
-            try {
-              const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-              result = {
-                annotations: annotations.freeTextAnnotations || [],
-                groupStyles: annotations.groupStyleAnnotations || []
-              };
-              log.info(
-                `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
-              );
-            } catch (innerError) {
-              result = { annotations: [], groupStyles: [] };
-              log.error(`Error loading annotations: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'topo-editor-save-annotations': {
-            try {
-              const data = payloadObj;
-              const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-              await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-                freeTextAnnotations: data.annotations,
-                groupStyleAnnotations: data.groupStyles,
-                cloudNodeAnnotations: existing.cloudNodeAnnotations,
-                nodeAnnotations: existing.nodeAnnotations
-              });
-              result = { success: true };
-              log.info(
-                `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
-              );
-            } catch (innerError) {
-              error = `Error saving annotations: ${innerError}`;
-              log.error(`Error saving annotations: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'topo-editor-save-custom-node': {
-            try {
-              const data = payloadObj;
-              const config = vscode.workspace.getConfiguration('containerlab.editor');
-              let customNodes = config.get<any[]>('customNodes', []);
-
-              // If setDefault is true, clear it from all other nodes
-              if (data.setDefault) {
-                customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
-              }
-
-              // If oldName is provided, we're editing an existing node
-              if (data.oldName) {
-                // Find and replace the old node
-                const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
-                if (oldIndex >= 0) {
-                  // Remove the oldName field before saving
-                  const nodeData = { ...data };
-                  delete nodeData.oldName;
-                  customNodes[oldIndex] = nodeData;
-                } else {
-                  // Old node not found, add as new
-                  const nodeData = { ...data };
-                  delete nodeData.oldName;
-                  customNodes.push(nodeData);
-                }
-              } else {
-                // Creating a new node - check if name already exists
-                const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
-                if (existingIndex >= 0) {
-                  customNodes[existingIndex] = data;
-                } else {
-                  customNodes.push(data);
-                }
-              }
-
-              await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
-
-              // Find the current default node
-              const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
-
-              result = {
-                customNodes,
-                defaultNode: defaultCustomNode?.name || ''
-              };
-              log.info(`Saved custom node ${data.name}`);
-            } catch (innerError) {
-              error = `Error saving custom node: ${innerError}`;
-              log.error(`Error saving custom node: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'topo-editor-delete-custom-node': {
-            try {
-              const data = payloadObj;
-              const config = vscode.workspace.getConfiguration('containerlab.editor');
-              const customNodes = config.get<any[]>('customNodes', []);
-              const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
-              await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
-
-              // Find the current default node from remaining nodes
-              const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
-
-              result = {
-                customNodes: filteredNodes,
-                defaultNode: defaultCustomNode?.name || ''
-              };
-              log.info(`Deleted custom node ${data.name}`);
-            } catch (innerError) {
-              error = `Error deleting custom node: ${innerError}`;
-              log.error(`Error deleting custom node: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'deployLab': {
-            try {
-              const labPath = payloadObj as string;
-              if (!labPath) {
-                error = 'No lab path provided for deployment';
-                break;
-              }
-
-              // Create a temporary lab node for the deploy command
-              const { ClabLabTreeNode } = await import('../../treeView/common');
-              const tempNode = new ClabLabTreeNode(
-                '',
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: labPath, relative: '' }
-              );
-
-              // Execute the command and wait for it to complete
-              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
-              vscode.commands.executeCommand('containerlab.lab.deploy', tempNode);
-              result = `Lab deployment initiated for ${labPath}`;
-            } catch (innerError) {
-              error = `Error deploying lab: ${innerError}`;
-              log.error(`Error deploying lab: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'destroyLab': {
-            try {
-              const labPath = payloadObj as string;
-              if (!labPath) {
-                error = 'No lab path provided for destruction';
-                break;
-              }
-
-              // Create a temporary lab node for the destroy command
-              const { ClabLabTreeNode } = await import('../../treeView/common');
-              const tempNode = new ClabLabTreeNode(
-                '',
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: labPath, relative: '' }
-              );
-
-              // Execute the command and wait for it to complete
-              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
-              vscode.commands.executeCommand('containerlab.lab.destroy', tempNode);
-              result = `Lab destruction initiated for ${labPath}`;
-            } catch (innerError) {
-              error = `Error destroying lab: ${innerError}`;
-              log.error(`Error destroying lab: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'deployLabCleanup': {
-            try {
-              const labPath = payloadObj as string;
-              if (!labPath) {
-                error = 'No lab path provided for deployment with cleanup';
-                break;
-              }
-
-              // Create a temporary lab node for the deploy with cleanup command
-              const { ClabLabTreeNode } = await import('../../treeView/common');
-              const tempNode = new ClabLabTreeNode(
-                '',
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: labPath, relative: '' }
-              );
-
-              // Execute the command and wait for it to complete
-              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
-              vscode.commands.executeCommand('containerlab.lab.deploy.cleanup', tempNode);
-              result = `Lab deployment with cleanup initiated for ${labPath}`;
-            } catch (innerError) {
-              error = `Error deploying lab with cleanup: ${innerError}`;
-              log.error(`Error deploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'destroyLabCleanup': {
-            try {
-              const labPath = payloadObj as string;
-              if (!labPath) {
-                error = 'No lab path provided for destruction with cleanup';
-                break;
-              }
-
-              // Create a temporary lab node for the destroy with cleanup command
-              const { ClabLabTreeNode } = await import('../../treeView/common');
-              const tempNode = new ClabLabTreeNode(
-                '',
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: labPath, relative: '' }
-              );
-
-              // Execute the command and wait for it to complete
-              // The command will notify us via notifyCurrentTopoViewerOfCommandSuccess when done
-              vscode.commands.executeCommand('containerlab.lab.destroy.cleanup', tempNode);
-              result = `Lab destruction with cleanup initiated for ${labPath}`;
-            } catch (innerError) {
-              error = `Error destroying lab with cleanup: ${innerError}`;
-              log.error(`Error destroying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'redeployLab': {
-            try {
-              const labPath = payloadObj as string;
-              if (!labPath) {
-                error = 'No lab path provided for redeploy';
-                break;
-              }
-
-              // Create a temporary lab node for the redeploy command
-              const { ClabLabTreeNode } = await import('../../treeView/common');
-              const tempNode = new ClabLabTreeNode(
-                '',
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: labPath, relative: '' }
-              );
-
-              // Execute the command and wait for it to complete
-              vscode.commands.executeCommand('containerlab.lab.redeploy', tempNode);
-              result = `Lab redeploy initiated for ${labPath}`;
-            } catch (innerError) {
-              error = `Error redeploying lab: ${innerError}`;
-              log.error(`Error redeploying lab: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'redeployLabCleanup': {
-            try {
-              const labPath = payloadObj as string;
-              if (!labPath) {
-                error = 'No lab path provided for redeploy with cleanup';
-                break;
-              }
-
-              // Create a temporary lab node for the redeploy with cleanup command
-              const { ClabLabTreeNode } = await import('../../treeView/common');
-              const tempNode = new ClabLabTreeNode(
-                '',
-                vscode.TreeItemCollapsibleState.None,
-                { absolute: labPath, relative: '' }
-              );
-
-              // Execute the command and wait for it to complete
-              vscode.commands.executeCommand('containerlab.lab.redeploy.cleanup', tempNode);
-              result = `Lab redeploy with cleanup initiated for ${labPath}`;
-            } catch (innerError) {
-              error = `Error redeploying lab with cleanup: ${innerError}`;
-              log.error(`Error redeploying lab with cleanup: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'showError': {
-            try {
-              const message = payloadObj as string;
-              await vscode.window.showErrorMessage(message);
-              result = 'Error message displayed';
-            } catch (innerError) {
-              error = `Error showing error message: ${innerError}`;
-              log.error(`Error showing error message: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'topo-toggle-split-view': {
-            try {
-              await this.toggleSplitView();
-              result = { splitViewOpen: this.isSplitViewOpen };
-              log.info(`Split view toggled: ${this.isSplitViewOpen ? 'opened' : 'closed'}`);
-            } catch (innerError) {
-              error = `Error toggling split view: ${innerError}`;
-              log.error(`Error toggling split view: ${JSON.stringify(innerError, null, 2)}`);
-            }
-            break;
-          }
-
-          case 'copyElements': {
-            this.context.globalState.update('topoClipboard', payloadObj);
-            result = 'Elements copied';
-            break;
-          }
-
-          case 'getCopiedElements': {
-            const clipboard = this.context.globalState.get('topoClipboard') || [];
-            panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
-            result = 'Clipboard sent';
-            break;
-          }
-
-          default: {
-            error = `Unknown endpoint "${endpointName}".`;
-            log.error(error);
-          }
-        }
-      } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
-        log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err, null, 2)}`);
-      }
-
-      log.info("########################################################### RESULT in RESPONSE");
-      log.info(`${JSON.stringify(result, null, 2)}`);
-
-      // Send the response back to the webview.
+    if (msg.command === 'topoViewerLog') {
+      this.processLogMessage(msg);
+      return;
+    }
+
+    if (msg.type !== 'POST') {
+      log.warn(`Unrecognized message type: ${msg.type}`);
+      return;
+    }
+
+    await this.processPostMessage(msg, panel);
+  }
+
+  private processLogMessage(msg: WebviewMessage): void {
+    const { level, message, fileLine } = msg;
+    const text = fileLine ? `${fileLine} - ${message}` : message;
+    switch (level) {
+      case 'error':
+        log.error(text);
+        break;
+      case 'warn':
+        log.warn(text);
+        break;
+      case 'debug':
+        log.debug(text);
+        break;
+      default:
+        log.info(text);
+    }
+  }
+
+  private async processPostMessage(msg: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    log.info(`Received POST message from frontEnd: ${JSON.stringify(msg, null, 2)}`);
+    const { requestId, endpointName, payload } = msg;
+    const payloadObj = payload ? JSON.parse(payload) : undefined;
+    if (payloadObj !== undefined) {
+      log.info(`Received POST message from frontEnd Pretty Payload:\n${JSON.stringify(payloadObj, null, 2)}`);
+    }
+    if (!requestId || !endpointName) {
+      const missingFields: string[] = [];
+      if (!requestId) missingFields.push('requestId');
+      if (!endpointName) missingFields.push('endpointName');
+      const errorMessage = `Missing required field(s): ${missingFields.join(', ')}`;
+      log.error(errorMessage);
       panel.webview.postMessage({
         type: 'POST_RESPONSE',
-        requestId,
-        result,
-        error,
+        requestId: requestId ?? null,
+        result: null,
+        error: errorMessage,
       });
-    });
+      return;
+    }
 
+    let result: unknown = null;
+    let error: string | null = null;
+    try {
+      if (endpointName.startsWith('clab-node-')) {
+        ({ result, error } = await this.handleNodeEndpoint(endpointName, payloadObj));
+      } else if (
+        endpointName.startsWith('clab-interface-') ||
+        endpointName.startsWith('clab-link-')
+      ) {
+        ({ result, error } = await this.handleInterfaceEndpoint(endpointName, payloadObj));
+      } else if (
+        ['deployLab', 'destroyLab', 'deployLabCleanup', 'destroyLabCleanup', 'redeployLab', 'redeployLabCleanup'].includes(
+          endpointName
+        )
+      ) {
+        ({ result, error } = await this.handleLabLifecycleEndpoint(endpointName, payloadObj));
+      } else {
+        ({ result, error } = await this.handleGeneralEndpoint(endpointName, payload, payloadObj, panel));
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+      log.error(`Error processing message for endpoint "${endpointName}": ${JSON.stringify(err, null, 2)}`);
+    }
+
+    log.info('########################################################### RESULT in RESPONSE');
+    log.info(`${JSON.stringify(result, null, 2)}`);
+    panel.webview.postMessage({
+      type: 'POST_RESPONSE',
+      requestId,
+      result,
+      error,
+    });
+  }
+
+  private async updateLabSettings(settings: any): Promise<{ success: boolean; yamlContent?: string; error?: string }> {
+    try {
+      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+      const doc = YAML.parseDocument(yamlContent);
+      const { hadPrefix, hadMgmt } = this.applyExistingSettings(doc, settings);
+      let updatedYaml = doc.toString();
+      updatedYaml = this.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
+      this.isInternalUpdate = true;
+      await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
+      if (this.currentPanel) {
+        this.currentPanel.webview.postMessage({
+          type: 'yaml-content-updated',
+          yamlContent: updatedYaml,
+        });
+      }
+      this.isInternalUpdate = false;
+      return { success: true, yamlContent: updatedYaml };
+    } catch (err) {
+      this.isInternalUpdate = false;
+      log.error(`Error updating lab settings: ${err}`);
+      vscode.window.showErrorMessage(`Failed to update lab settings: ${err}`);
+      return { success: false, error: String(err) };
+    }
+  }
+
+  private applyExistingSettings(doc: YAML.Document, settings: any): { hadPrefix: boolean; hadMgmt: boolean } {
+    if (settings.name !== undefined && settings.name !== '') {
+      doc.set('name', settings.name);
+    }
+    const hadPrefix = doc.has('prefix');
+    const hadMgmt = doc.has('mgmt');
+    if (settings.prefix !== undefined && hadPrefix) {
+      if (settings.prefix === null) {
+        doc.delete('prefix');
+      } else {
+        doc.set('prefix', settings.prefix);
+      }
+    }
+    if (settings.mgmt !== undefined && hadMgmt) {
+      if (settings.mgmt === null || (typeof settings.mgmt === 'object' && Object.keys(settings.mgmt).length === 0)) {
+        doc.delete('mgmt');
+      } else {
+        doc.set('mgmt', settings.mgmt);
+      }
+    }
+    return { hadPrefix, hadMgmt };
+  }
+
+  private insertMissingSettings(
+    updatedYaml: string,
+    settings: any,
+    hadPrefix: boolean,
+    hadMgmt: boolean
+  ): string {
+    updatedYaml = this.maybeInsertPrefix(updatedYaml, settings, hadPrefix);
+    updatedYaml = this.maybeInsertMgmt(updatedYaml, settings, hadMgmt);
+    return updatedYaml;
+  }
+
+  private maybeInsertPrefix(updatedYaml: string, settings: any, hadPrefix: boolean): string {
+    if (settings.prefix === undefined || settings.prefix === null || hadPrefix) return updatedYaml;
+    const lines = updatedYaml.split('\n');
+    const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+    if (nameIndex === -1) return updatedYaml;
+    const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
+    lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
+    return lines.join('\n');
+  }
+
+  private maybeInsertMgmt(updatedYaml: string, settings: any, hadMgmt: boolean): string {
+    if (settings.mgmt === undefined || hadMgmt || !settings.mgmt || Object.keys(settings.mgmt).length === 0) {
+      return updatedYaml;
+    }
+    const lines = updatedYaml.split('\n');
+    let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
+    if (insertIndex === -1) insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
+    if (insertIndex === -1) return updatedYaml;
+    const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
+    const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
+    const nextLine = lines[insertIndex + 1];
+    if (nextLine && nextLine.trim() !== '') lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
+    else lines.splice(insertIndex + 1, 0, ...mgmtLines);
+    return lines.join('\n');
+  }
+  private async handleGeneralEndpoint(
+    endpointName: string,
+    payload: string | undefined,
+    payloadObj: any,
+    panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const handler = this.generalEndpointHandlers[endpointName];
+    if (!handler) {
+      const error = `Unknown endpoint "${endpointName}".`;
+      log.error(error);
+      return { result: null, error };
+    }
+    return handler(payload, payloadObj, panel);
+  }
+
+  private async handleViewportSaveEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await saveViewport({ yamlFilePath: this.lastYamlFilePath, payload: payload as string, mode: 'view' });
+      const result = 'Saved viewport positions successfully.';
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error: null };
+    }
+  }
+
+  private async handleLabSettingsGetEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+      const parsed = YAML.parse(yamlContent) as any;
+      const settings = { name: parsed.name, prefix: parsed.prefix, mgmt: parsed.mgmt };
+      log.info('Lab settings retrieved successfully');
+      return { result: { success: true, settings }, error: null };
+    } catch (err) {
+      log.error(`Error getting lab settings: ${err}`);
+      return { result: { success: false, error: String(err) }, error: null };
+    }
+  }
+
+  private async handleLabSettingsUpdateEndpoint(
+    payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const settings = typeof payload === 'string' ? JSON.parse(payload) : payloadObj;
+    const res = await this.updateLabSettings(settings);
+    return {
+      result: res.success ? { success: true, yamlContent: res.yamlContent } : { success: false, error: res.error },
+      error: null
+    };
+  }
+
+  private async handleGetNodeConfigEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const nodeName = typeof payloadObj === 'string' ? payloadObj : payloadObj?.node || payloadObj?.nodeName;
+      if (!nodeName) {
+        throw new Error('Node name is required');
+      }
+      if (!this.lastYamlFilePath) {
+        throw new Error('No lab YAML file loaded');
+      }
+      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
+      const topo = YAML.parse(yamlContent) as any;
+      this.adaptor.currentClabTopo = topo;
+      const nodeObj = topo.topology?.nodes?.[nodeName] || {};
+      const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
+      const nodePropKeys = new Set(Object.keys(nodeObj || {}));
+      const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
+      log.info(`Node config retrieved for ${nodeName}`);
+      return { result: { ...mergedNode, inherited: inheritedProps }, error: null };
+    } catch (err) {
+      const error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
+      log.error(error);
+      return { result: null, error };
+    }
+  }
+
+  private async handleShowErrorMessageEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const data = payload as any;
+    if (data && data.message) {
+      vscode.window.showErrorMessage(data.message);
+    }
+    return { result: { success: true }, error: null };
+  }
+
+  private async handleViewportSaveEditEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await saveViewport({
+        adaptor: this.adaptor,
+        yamlFilePath: this.lastYamlFilePath,
+        payload: payload as string,
+        mode: 'edit',
+        setInternalUpdate: v => {
+          this.isInternalUpdate = v;
+        }
+      });
+      const result = 'Saved topology with preserved comments!';
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(err, null, 2)}`);
+      this.isInternalUpdate = false;
+      return { result: null, error: null };
+    }
+  }
+
+  private async handleViewportSaveSuppressNotificationEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await saveViewport({
+        adaptor: this.adaptor,
+        yamlFilePath: this.lastYamlFilePath,
+        payload: payload as string,
+        mode: 'edit',
+        setInternalUpdate: v => {
+          this.isInternalUpdate = v;
+        }
+      });
+      return { result: null, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "topo-editor-viewport-save-suppress-notification".';
+      log.error(
+        `Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(err, null, 2)}`
+      );
+      this.isInternalUpdate = false;
+      return { result, error: null };
+    }
+  }
+
+  private async handleUndoEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
+      const currentActiveEditor = vscode.window.activeTextEditor;
+      const existingEditor = vscode.window.visibleTextEditors.find(
+        editor => editor.document.uri.fsPath === document.uri.fsPath
+      );
+      if (existingEditor) {
+        await vscode.window.showTextDocument(document, {
+          viewColumn: existingEditor.viewColumn,
+          preview: false,
+          preserveFocus: false
+        });
+      } else {
+        const targetColumn = vscode.ViewColumn.Beside;
+        await vscode.window.showTextDocument(document, {
+          viewColumn: targetColumn,
+          preview: false,
+          preserveFocus: false
+        });
+      }
+      await sleep(50);
+      await vscode.commands.executeCommand('undo');
+      await document.save();
+      if (currentActiveEditor && !existingEditor) {
+        await vscode.window.showTextDocument(currentActiveEditor.document, {
+          viewColumn: currentActiveEditor.viewColumn,
+          preview: false,
+          preserveFocus: false
+        });
+      }
+      const result = 'Undo operation completed successfully';
+      log.info('Undo operation executed on YAML file');
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing undo operation';
+      log.error(`Error executing undo operation: ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleShowVscodeMessageEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = JSON.parse(payload as string) as { type: 'info' | 'warning' | 'error'; message: string };
+      switch (data.type) {
+        case 'info':
+          await vscode.window.showInformationMessage(data.message);
+          break;
+        case 'warning':
+          await vscode.window.showWarningMessage(data.message);
+          break;
+        case 'error':
+          await vscode.window.showErrorMessage(data.message);
+          break;
+        default:
+          log.error(`Unsupported message type: ${JSON.stringify(data.type, null, 2)}`);
+      }
+      const result = `Displayed ${data.type} message: ${data.message}`;
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "clab-show-vscode-message".';
+      log.error(`Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleSwitchModeEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      if (this.isSwitchingMode) {
+        const error = 'Mode switch already in progress';
+        log.debug('Mode switch already in progress');
+        return { result: null, error };
+      }
+      log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
+      this.isSwitchingMode = true;
+      const data = payload ? JSON.parse(payload as string) : { mode: 'toggle' };
+      if (data.mode === 'toggle') {
+        this.isViewMode = !this.isViewMode;
+      } else if (data.mode === 'view') {
+        this.isViewMode = true;
+      } else if (data.mode === 'edit') {
+        this.isViewMode = false;
+      }
+      this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+      const success = await this.updatePanelHtmlInternal(this.currentPanel);
+      if (success) {
+        const result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
+        log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
+        return { result, error: null };
+      }
+      const error = 'Failed to switch mode';
+      return { result: null, error };
+    } catch (err) {
+      const error = `Error switching mode: ${err}`;
+      log.error(`Error switching mode: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    } finally {
+      this.isSwitchingMode = false;
+      log.debug(`Mode switch completed, flag cleared`);
+      await sleep(100);
+    }
+  }
+
+  private async handleOpenExternalEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const url: string = JSON.parse(payload as string);
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+      const result = `Opened external URL: ${url}`;
+      log.info(result);
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "open-external".';
+      log.error(`Error executing endpoint "open-external": ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleLoadAnnotationsEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const result = {
+        annotations: annotations.freeTextAnnotations || [],
+        groupStyles: annotations.groupStyleAnnotations || []
+      };
+      log.info(
+        `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
+      );
+      return { result, error: null };
+    } catch (err) {
+      log.error(`Error loading annotations: ${JSON.stringify(err, null, 2)}`);
+      return { result: { annotations: [], groupStyles: [] }, error: null };
+    }
+  }
+
+  private async handleSaveAnnotationsEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
+        freeTextAnnotations: data.annotations,
+        groupStyleAnnotations: data.groupStyles,
+        cloudNodeAnnotations: existing.cloudNodeAnnotations,
+        nodeAnnotations: existing.nodeAnnotations
+      });
+      log.info(
+        `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
+      );
+      return { result: { success: true }, error: null };
+    } catch (err) {
+      const error = `Error saving annotations: ${err}`;
+      log.error(`Error saving annotations: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleSaveCustomNodeEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+      let customNodes = config.get<any[]>('customNodes', []);
+      if (data.setDefault) {
+        customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
+      }
+      if (data.oldName) {
+        const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
+        const nodeData = { ...data };
+        delete nodeData.oldName;
+        if (oldIndex >= 0) {
+          customNodes[oldIndex] = nodeData;
+        } else {
+          customNodes.push(nodeData);
+        }
+      } else {
+        const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
+        if (existingIndex >= 0) {
+          customNodes[existingIndex] = data;
+        } else {
+          customNodes.push(data);
+        }
+      }
+      await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
+      const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
+      log.info(`Saved custom node ${data.name}`);
+      return { result: { customNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
+    } catch (err) {
+      const error = `Error saving custom node: ${err}`;
+      log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleDeleteCustomNodeEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+      const customNodes = config.get<any[]>('customNodes', []);
+      const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
+      await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
+      const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
+      log.info(`Deleted custom node ${data.name}`);
+      return { result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
+    } catch (err) {
+      const error = `Error deleting custom node: ${err}`;
+      log.error(`Error deleting custom node: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleShowErrorEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const message = payloadObj as string;
+      await vscode.window.showErrorMessage(message);
+      const result = 'Error message displayed';
+      return { result, error: null };
+    } catch (err) {
+      const error = `Error showing error message: ${err}`;
+      log.error(`Error showing error message: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleToggleSplitViewEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await this.toggleSplitView();
+      const result = { splitViewOpen: this.isSplitViewOpen };
+      log.info(`Split view toggled: ${this.isSplitViewOpen ? 'opened' : 'closed'}`);
+      return { result, error: null };
+    } catch (err) {
+      const error = `Error toggling split view: ${err}`;
+      log.error(`Error toggling split view: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleCopyElementsEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    this.context.globalState.update('topoClipboard', payloadObj);
+    return { result: 'Elements copied', error: null };
+  }
+
+  private async handleGetCopiedElementsEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    const clipboard = this.context.globalState.get('topoClipboard') || [];
+    panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
+    return { result: 'Clipboard sent', error: null };
+  }
+
+  /* eslint-enable no-unused-vars */
+  private async handleNodeEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
+    let result: unknown = null;
+    let error: string | null = null;
+
+    switch (endpointName) {
+      case 'clab-node-connect-ssh': {
+        try {
+          const nodeName = payloadObj as string;
+          const node = {
+            label: nodeName,
+            name: nodeName,
+            name_short: nodeName,
+            cID: nodeName,
+            state: '',
+            kind: '',
+            image: '',
+            interfaces: [],
+            labPath: { absolute: '', relative: '' }
+          } as any;
+          await vscode.commands.executeCommand('containerlab.node.ssh', node);
+          result = `SSH connection executed for ${nodeName}`;
+        } catch (innerError) {
+          error = `Error executing SSH connection: ${innerError}`;
+          log.error(`Error executing SSH connection: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
+      case 'clab-node-attach-shell': {
+        try {
+          const nodeName = payloadObj as string;
+          const node = (await this.getContainerNode(nodeName)) ?? {
+            label: nodeName,
+            name: nodeName,
+            name_short: nodeName,
+            cID: nodeName,
+            state: '',
+            kind: '',
+            image: '',
+            interfaces: [],
+            labPath: { absolute: '', relative: '' }
+          } as any;
+          await vscode.commands.executeCommand('containerlab.node.attachShell', node);
+          result = `Attach shell executed for ${nodeName}`;
+        } catch (innerError) {
+          error = `Error executing attach shell: ${innerError}`;
+          log.error(`Error executing attach shell: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
+      case 'clab-node-view-logs': {
+        try {
+          const nodeName = payloadObj as string;
+          const node = {
+            label: nodeName,
+            name: nodeName,
+            name_short: nodeName,
+            cID: nodeName,
+            state: '',
+            kind: '',
+            image: '',
+            interfaces: [],
+            labPath: { absolute: '', relative: '' }
+          } as any;
+          await vscode.commands.executeCommand('containerlab.node.showLogs', node);
+          result = `Show logs executed for ${nodeName}`;
+        } catch (innerError) {
+          error = `Error executing show logs: ${innerError}`;
+          log.error(`Error executing show logs: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
+      default: {
+        error = `Unknown endpoint "${endpointName}".`;
+        log.error(error);
+      }
+    }
+
+    return { result, error };
+  }
+  private async handleInterfaceEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
+    let result: unknown = null;
+    let error: string | null = null;
+
+    const resolveInterface = (nodeName: string, interfaceName: string) => this.resolveInterfaceName(nodeName, interfaceName);
+
+    switch (endpointName) {
+      case 'clab-interface-capture': {
+        try {
+          const data = payloadObj as { nodeName: string; interfaceName: string };
+          const actualInterfaceName = await resolveInterface(data.nodeName, data.interfaceName);
+          const iface = {
+            label: actualInterfaceName,
+            parentName: data.nodeName,
+            cID: data.nodeName,
+            name: actualInterfaceName,
+            type: '',
+            alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
+            mac: '',
+            mtu: 0,
+            ifIndex: 0,
+            state: ''
+          } as any;
+          await vscode.commands.executeCommand('containerlab.interface.capture', iface);
+          result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
+        } catch (innerError) {
+          error = `Error executing capture: ${innerError}`;
+          log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
+      case 'clab-link-capture': {
+        try {
+          const data = payloadObj as { nodeName: string; interfaceName: string };
+          const actualInterfaceName = await resolveInterface(data.nodeName, data.interfaceName);
+          const iface = {
+            label: actualInterfaceName,
+            parentName: data.nodeName,
+            cID: data.nodeName,
+            name: actualInterfaceName,
+            type: '',
+            alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
+            mac: '',
+            mtu: 0,
+            ifIndex: 0,
+            state: ''
+          } as any;
+          await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
+          result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
+        } catch (innerError) {
+          error = `Error executing capture: ${innerError}`;
+          log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
+      case 'clab-link-capture-edgeshark-vnc': {
+        try {
+          const data = payloadObj as { nodeName: string; interfaceName: string };
+          const actualInterfaceName = await resolveInterface(data.nodeName, data.interfaceName);
+          const iface = {
+            label: actualInterfaceName,
+            parentName: data.nodeName,
+            cID: data.nodeName,
+            name: actualInterfaceName,
+            type: '',
+            alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
+            mac: '',
+            mtu: 0,
+            ifIndex: 0,
+            state: ''
+          } as any;
+          await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
+          result = `VNC capture executed for ${data.nodeName}/${actualInterfaceName}`;
+        } catch (innerError) {
+          error = `Error executing VNC capture: ${innerError}`;
+          log.error(`Error executing VNC capture: ${JSON.stringify(innerError, null, 2)}`);
+        }
+        break;
+      }
+
+      default: {
+        error = `Unknown endpoint "${endpointName}".`;
+        log.error(error);
+      }
+    }
+
+    return { result, error };
+  }
+
+  private async resolveInterfaceName(nodeName: string, interfaceName: string): Promise<string> {
+    if (!runningLabsProvider) return interfaceName;
+    const treeData = await runningLabsProvider.discoverInspectLabs();
+    if (!treeData) return interfaceName;
+    for (const lab of Object.values(treeData)) {
+      const container = (lab as any).containers?.find((c: any) => c.name === nodeName || c.name_short === nodeName);
+      const intf = container?.interfaces?.find((i: any) => i.name === interfaceName || i.alias === interfaceName);
+      if (intf) return intf.name;
+    }
+    return interfaceName;
+  }
+  private async handleLabLifecycleEndpoint(
+    endpointName: string,
+    payloadObj: any
+  ): Promise<{ result: unknown; error: string | null }> {
+    const actions: Record<
+      string,
+      { command: string; resultMsg: string; errorMsg: string; noLabPath: string }
+    > = {
+      deployLab: {
+        command: 'containerlab.lab.deploy',
+        resultMsg: 'Lab deployment initiated',
+        errorMsg: 'Error deploying lab',
+        noLabPath: 'No lab path provided for deployment',
+      },
+      destroyLab: {
+        command: 'containerlab.lab.destroy',
+        resultMsg: 'Lab destruction initiated',
+        errorMsg: 'Error destroying lab',
+        noLabPath: 'No lab path provided for destruction',
+      },
+      deployLabCleanup: {
+        command: 'containerlab.lab.deploy.cleanup',
+        resultMsg: 'Lab deployment with cleanup initiated',
+        errorMsg: 'Error deploying lab with cleanup',
+        noLabPath: 'No lab path provided for deployment with cleanup',
+      },
+      destroyLabCleanup: {
+        command: 'containerlab.lab.destroy.cleanup',
+        resultMsg: 'Lab destruction with cleanup initiated',
+        errorMsg: 'Error destroying lab with cleanup',
+        noLabPath: 'No lab path provided for destruction with cleanup',
+      },
+      redeployLab: {
+        command: 'containerlab.lab.redeploy',
+        resultMsg: 'Lab redeploy initiated',
+        errorMsg: 'Error redeploying lab',
+        noLabPath: 'No lab path provided for redeploy',
+      },
+      redeployLabCleanup: {
+        command: 'containerlab.lab.redeploy.cleanup',
+        resultMsg: 'Lab redeploy with cleanup initiated',
+        errorMsg: 'Error redeploying lab with cleanup',
+        noLabPath: 'No lab path provided for redeploy with cleanup',
+      },
+    };
+
+    const action = actions[endpointName];
+    if (!action) {
+      const error = `Unknown endpoint "${endpointName}".`;
+      log.error(error);
+      return { result: null, error };
+    }
+
+    const labPath = payloadObj as string;
+    if (!labPath) {
+      return { result: null, error: action.noLabPath };
+    }
+
+    try {
+      const { ClabLabTreeNode } = await import('../../treeView/common');
+      const tempNode = new ClabLabTreeNode(
+        '',
+        vscode.TreeItemCollapsibleState.None,
+        { absolute: labPath, relative: '' }
+      );
+      vscode.commands.executeCommand(action.command, tempNode);
+      return { result: `${action.resultMsg} for ${labPath}`, error: null };
+    } catch (innerError) {
+      const error = `${action.errorMsg}: ${innerError}`;
+      log.error(`${action.errorMsg}: ${JSON.stringify(innerError, null, 2)}`);
+      return { result: null, error };
+    }
   }
 
 
@@ -1801,43 +1728,36 @@ topology:
    */
   public async checkDeploymentState(labName: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
-      // Update the inspector data
       await inspector.update();
-
-      // Check if the lab exists in the raw inspect data
-      if (inspector.rawInspectData) {
-        // First try exact name match
-        if (labName in inspector.rawInspectData) {
-          return 'deployed';
-        }
-
-        // If we have a YAML file path, also check by comparing lab paths
-        if (this.lastYamlFilePath) {
-          const normalizedYamlPath = this.lastYamlFilePath.replace(/\\/g, '/');
-
-          for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData)) {
-            const deployedLab = labData as any;
-            // Check if the lab's topo-file matches our YAML path
-            if (deployedLab['topo-file']) {
-              const normalizedTopoFile = deployedLab['topo-file'].replace(/\\/g, '/');
-              if (normalizedTopoFile === normalizedYamlPath) {
-                // Update the currentLabName to match the deployed lab name
-                if (this.currentLabName !== deployedLabName) {
-                  log.info(`Updating lab name from '${this.currentLabName}' to '${deployedLabName}' based on topo-file match`);
-                  this.currentLabName = deployedLabName;
-                }
-                return 'deployed';
-              }
-            }
-          }
-        }
-
-        return 'undeployed';
-      }
+      if (!inspector.rawInspectData) return 'unknown';
+      if (this.labExistsByName(labName)) return 'deployed';
+      if (this.lastYamlFilePath && this.updateLabNameFromTopoFileMatch()) return 'deployed';
+      return 'undeployed';
     } catch (err) {
       log.warn(`Failed to check deployment state: ${err}`);
+      return 'unknown';
     }
-    return 'unknown';
+  }
+
+  private labExistsByName(labName: string): boolean {
+    return labName in (inspector.rawInspectData as any);
+  }
+
+  private updateLabNameFromTopoFileMatch(): boolean {
+    const normalizedYamlPath = this.lastYamlFilePath!.replace(/\\/g, '/');
+    for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData as any)) {
+      const topo = (labData as any)['topo-file'];
+      if (!topo) continue;
+      const normalizedTopoFile = (topo as string).replace(/\\/g, '/');
+      if (normalizedTopoFile === normalizedYamlPath) {
+        if (this.currentLabName !== deployedLabName) {
+          log.info(`Updating lab name from '${this.currentLabName}' to '${deployedLabName}' based on topo-file match`);
+          this.currentLabName = deployedLabName;
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -1856,7 +1776,7 @@ topology:
       });
 
       // Wait for the editor to be fully rendered
-      await this.sleep(100);
+      await sleep(100);
 
       // Set a custom layout with the topology editor taking 60% and YAML taking 40%
       // This provides a good balance - the topology editor has more space while

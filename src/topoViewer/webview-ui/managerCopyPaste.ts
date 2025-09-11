@@ -5,6 +5,7 @@ import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { isSpecialEndpoint } from '../utilities/specialNodes';
 import { log } from '../logging/logger';
 import { TopologyAnnotations } from '../types/topoViewerGraph';
+import { getUniqueId } from './utilities/idUtils';
 
 // Constants for copy/paste operations
 const PASTE_OFFSET = {
@@ -12,10 +13,6 @@ const PASTE_OFFSET = {
   Y: 20
 } as const;
 
-const ID_GENERATION = {
-  RADIX: 36,
-  SUBSTRING_LENGTH: 9
-} as const;
 
 interface CopyData {
   elements: any[];
@@ -111,82 +108,15 @@ export class CopyPasteManager {
 
   /**
    * Creates new elements with unique IDs and applies positioning offsets.
-   * @param data - The copy data containing elements and annotations.
-   * @returns The collection of newly added elements.
-   */
+  * @param data - The copy data containing elements and annotations.
+  * @returns The collection of newly added elements.
+  */
   public performPaste(data: CopyData): any {
-    if (!data?.elements?.length) return this.cy.collection();
+    if (!data?.elements?.length) {
+      return this.cy.collection();
+    }
 
-    const idMap = new Map();
-    const usedIds = new Set<string>(this.cy.nodes().map((n: any) => n.id()));
-    const usedNames = new Set<string>(this.cy.nodes().map((n: any) => n.data('name')));
-    const newElements: any[] = [];
-
-    // Generate unique IDs for nodes (excluding free text nodes - they're handled separately)
-    data.elements.forEach((el: any) => {
-      if (el.group === 'nodes' && el.data.topoViewerRole !== 'freeText') {
-        // For nodes with nodeId- prefix (custom template nodes), generate new ID and name separately
-        const isTemplateNode = el.data.id.startsWith('nodeId-');
-        let newId: string;
-        let nodeName: string;
-
-        if (isTemplateNode && el.data.name) {
-          // This is a node from a custom template - generate unique name based on existing names
-          nodeName = this.getUniqueId(el.data.name, usedNames, false);
-          // Generate a new nodeId for it
-          const existingNodeIds = Array.from(usedIds).filter(id => id.startsWith('nodeId-'));
-          const maxId = existingNodeIds
-            .map(id => parseInt(id.replace('nodeId-', ''), 10))
-            .filter(num => !isNaN(num))
-            .reduce((max, current) => Math.max(max, current), 0);
-          newId = `nodeId-${maxId + 1}`;
-        } else {
-          // Regular node - use the existing logic
-          newId = this.getUniqueId(el.data.name || el.data.id, usedIds, el.data.topoViewerRole === 'group');
-          nodeName = newId;
-        }
-
-        idMap.set(el.data.id, newId);
-        usedIds.add(newId);
-        usedNames.add(nodeName); // Track the name to avoid duplicates
-
-        // Handle name/label for different node types
-        let nodeLabel = nodeName;
-
-        // For dummy nodes, always use "dummy" as both name and label
-        if (newId.startsWith('dummy')) {
-          nodeName = 'dummy';  // Always use "dummy" as name
-          nodeLabel = 'dummy';  // Always use "dummy" as label
-        }
-        // For network-nodes with adapters, use the full ID as both name and label
-        else if (isSpecialEndpoint(newId) && newId.includes(':')) {
-          nodeName = newId;
-          nodeLabel = newId;
-        }
-
-        const newData = {
-          ...el.data,
-          id: newId,
-          name: nodeName,
-          label: nodeLabel
-        };
-        if (el.data.topoViewerRole === 'group' && newData.extraData) {
-          const [group, level] = newId.split(':');
-          newData.extraData.topoViewerGroup = group;
-          newData.extraData.topoViewerGroupLevel = level;
-        }
-        newElements.push({ group: 'nodes', data: newData, position: { ...el.position } });
-      }
-    });
-
-    // Update parent refs and add edges
-    newElements.forEach(el => el.data.parent && idMap.has(el.data.parent) && (el.data.parent = idMap.get(el.data.parent)));
-    data.elements.forEach((el: any) => {
-      if (el.group === 'edges' && idMap.has(el.data.source) && idMap.has(el.data.target)) {
-        const src = idMap.get(el.data.source), tgt = idMap.get(el.data.target);
-        newElements.push({ group: 'edges', data: { ...el.data, id: `${src}-${tgt}`, source: src, target: tgt } });
-      }
-    });
+    const { newElements, idMap } = this.buildNewElements(data.elements);
 
     if (data.originalCenter) {
       this.applyPasteOffsetAndCenter(newElements, data.originalCenter);
@@ -204,6 +134,94 @@ export class CopyPasteManager {
   }
 
   /**
+   * Build new node and edge elements based on copied data.
+   * @param elements - Array of copied elements.
+   * @returns Object containing new elements array and id map.
+   */
+  private buildNewElements(elements: any[]): { newElements: any[]; idMap: Map<string, string> } {
+    const idMap = new Map<string, string>();
+    const usedIds = new Set<string>(this.cy.nodes().map((n: any) => n.id()));
+    const usedNames = new Set<string>(this.cy.nodes().map((n: any) => n.data('name')));
+    const newElements: any[] = [];
+
+    elements.forEach(el => {
+      if (el.group === 'nodes' && el.data.topoViewerRole !== 'freeText') {
+        const { newNode, newId, nodeName } = this.createNode(el, usedIds, usedNames);
+        idMap.set(el.data.id, newId);
+        usedIds.add(newId);
+        usedNames.add(nodeName);
+        newElements.push(newNode);
+      }
+    });
+
+    newElements.forEach(el => {
+      if (el.data.parent && idMap.has(el.data.parent)) {
+        el.data.parent = idMap.get(el.data.parent);
+      }
+    });
+
+    elements.forEach(el => {
+      if (el.group === 'edges' && idMap.has(el.data.source) && idMap.has(el.data.target)) {
+        const src = idMap.get(el.data.source)!;
+        const tgt = idMap.get(el.data.target)!;
+        newElements.push({ group: 'edges', data: { ...el.data, id: `${src}-${tgt}`, source: src, target: tgt } });
+      }
+    });
+
+    return { newElements, idMap };
+  }
+
+  /**
+   * Create a node element with a unique id and name.
+   * @param el - Original element.
+   * @param usedIds - Set of ids already used in the graph.
+   * @param usedNames - Set of names already used in the graph.
+   */
+  private createNode(el: any, usedIds: Set<string>, usedNames: Set<string>) {
+    const isTemplateNode = el.data.id.startsWith('nodeId-');
+    let newId: string;
+    let nodeName: string;
+
+    if (isTemplateNode && el.data.name) {
+      nodeName = this.getUniqueId(el.data.name, usedNames, false);
+      const existingNodeIds = Array.from(usedIds).filter(id => id.startsWith('nodeId-'));
+      const maxId = existingNodeIds
+        .map(id => parseInt(id.replace('nodeId-', ''), 10))
+        .filter(num => !isNaN(num))
+        .reduce((max, current) => Math.max(max, current), 0);
+      newId = `nodeId-${maxId + 1}`;
+    } else {
+      newId = this.getUniqueId(el.data.name || el.data.id, usedIds, el.data.topoViewerRole === 'group');
+      nodeName = newId;
+    }
+
+    let nodeLabel = nodeName;
+    if (newId.startsWith('dummy')) {
+      nodeName = 'dummy';
+      nodeLabel = 'dummy';
+    } else if (isSpecialEndpoint(newId) && newId.includes(':')) {
+      nodeName = newId;
+      nodeLabel = newId;
+    }
+
+    const newData = {
+      ...el.data,
+      id: newId,
+      name: nodeName,
+      label: nodeLabel
+    };
+
+    if (el.data.topoViewerRole === 'group' && newData.extraData) {
+      const [group, level] = newId.split(':');
+      newData.extraData.topoViewerGroup = group;
+      newData.extraData.topoViewerGroupLevel = level;
+    }
+
+    const newNode = { group: 'nodes', data: newData, position: { ...el.position } };
+    return { newNode, newId, nodeName };
+  }
+
+  /**
    * Generates a unique ID based on the base name and existing IDs.
    * For groups, appends ":1" suffix. For regular nodes, increments numeric suffix.
    * For network-nodes (host:eth0, macvlan:eth1, etc.), preserves the adapter suffix.
@@ -213,86 +231,9 @@ export class CopyPasteManager {
    * @returns A unique ID string.
    */
   private getUniqueId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
-    // Check if this is a network-node (special endpoint)
-    const isNetworkNode = isSpecialEndpoint(baseName);
-
-    if (isNetworkNode) {
-      // Handle dummy nodes (dummy1, dummy2, etc.)
-      if (baseName.startsWith('dummy')) {
-        const match = baseName.match(/^(dummy)(\d*)$/);
-        const base = match?.[1] || 'dummy';
-        let num = parseInt(match?.[2] || '1') || 1;
-        while (usedIds.has(`${base}${num}`)) num++;
-        return `${base}${num}`;
-      }
-
-      // Handle network-nodes with adapter suffix (host:eth0, macvlan:eth1, etc.)
-      if (baseName.includes(':')) {
-        const [nodeType, adapter] = baseName.split(':');
-
-        // Extract the base adapter name and number (e.g., eth0 -> eth, 0)
-        const adapterMatch = adapter.match(/^([a-zA-Z]+)(\d+)$/);
-        if (adapterMatch) {
-          const adapterBase = adapterMatch[1];
-          let adapterNum = parseInt(adapterMatch[2]);
-          let name = baseName;
-
-          // Increment the adapter number until we find an unused one
-          while (usedIds.has(name)) {
-            adapterNum++;
-            name = `${nodeType}:${adapterBase}${adapterNum}`;
-          }
-          return name;
-        } else {
-          // If adapter doesn't follow the pattern, just append a number
-          let name = baseName;
-          let counter = 1;
-          while (usedIds.has(name)) {
-            name = `${nodeType}:${adapter}${counter}`;
-            counter++;
-          }
-          return name;
-        }
-      }
-
-      // Handle other special nodes (bridge:br0, ovs-bridge:ovs0, etc.)
-      let name = baseName;
-      while (usedIds.has(name)) {
-        const match = name.match(/^(.*?)(\d*)$/);
-        const base = match?.[1] || name;
-        let num = parseInt(match?.[2] || '0') || 0;
-        name = base + (++num);
-      }
-      return name;
-    }
-
-    // Original logic for regular nodes and groups
-    // Use greedy match to properly extract base and number (e.g., "srl1" -> "srl" + "1")
-    const match = baseName.match(/^(.*)(\d+)$/);
-    const base = match?.[1] || baseName;
-    let num = match?.[2] ? parseInt(match[2]) : 0;
-
-    if (isGroup) {
-      while (usedIds.has(`${base}${num || ''}:1`)) num++;
-      return `${base}${num || ''}:1`;
-    } else {
-      // Start with the extracted base and find the next available number
-      if (match) {
-        // If the name already has a number, find the next available one
-        while (usedIds.has(`${base}${num}`)) num++;
-        return `${base}${num}`;
-      } else {
-        // If no number in the name, start from 1
-        let name = baseName;
-        num = 1;
-        while (usedIds.has(name)) {
-          name = `${base}${num}`;
-          num++;
-        }
-        return name;
-      }
-    }
+    return getUniqueId(baseName, usedIds, isGroup);
   }
+
 
   /**
    * Calculates the position delta for paste operations.
@@ -355,11 +296,9 @@ export class CopyPasteManager {
    * @param annotations - The annotations to apply to the new elements.
    */
   private postProcess(added: any, idMap: Map<string, string>, annotations: TopologyAnnotations): void {
-    try {
-      loadCytoStyle(this.cy);
-    } catch (error) {
+    loadCytoStyle(this.cy).catch((error) => {
       log.error(`Failed to load cytoscape styles during paste operation: ${error}`);
-    }
+    });
 
     // Apply group styles from annotations
     try {
@@ -405,7 +344,11 @@ export class CopyPasteManager {
 
     const usedNums = new Set(node.connectedEdges().map((e: any) => {
       const ep = e.data().source === nodeId ? e.data().sourceEndpoint : e.data().targetEndpoint;
-      return ep ? parseInt(ep.match(/\d+$/)?.[0] || '0') : 0;
+      if (!ep || typeof ep !== 'string') return 0;
+      let i = ep.length - 1;
+      while (i >= 0 && ep[i] >= '0' && ep[i] <= '9') i--;
+      const digits = ep.slice(i + 1);
+      return digits ? parseInt(digits, 10) : 0;
     }).filter((n: number) => n > 0));
 
     let num = 1;
@@ -425,7 +368,7 @@ export class CopyPasteManager {
 
     // Handle free text annotations with position adjustment
     annotations.freeTextAnnotations?.forEach(annotation => {
-      const newId = `freeText_${Date.now()}_${Math.random().toString(ID_GENERATION.RADIX).substring(2, 2 + ID_GENERATION.SUBSTRING_LENGTH)}`;
+      const newId = `freeText_${Date.now()}_${this.pasteCounter}`;
       const newAnnotation = {
         ...annotation,
         id: newId,

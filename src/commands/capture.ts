@@ -1,9 +1,9 @@
 import * as vscode from "vscode"
-import { exec, execSync } from "child_process";
+import * as os from "os";
 import { outputChannel } from "../extension";
 import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
-import { getEdgesharkInstallCmd } from "./edgeshark";
+import { installEdgeshark } from "./edgeshark";
 
 let sessionHostname: string = "";
 
@@ -41,23 +41,10 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   }
   outputChannel.debug(`captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
 
-  // Check edgeshark is available on the host
-  // - make a simple API call to get version of packetflix
-  let edgesharkOk = false
-  try {
-    const res = await fetch('http://127.0.0.1:5001/version');
-    edgesharkOk = res.ok
-  } catch {
-    // Port is probably closed, edgeshark not running
-  }
-  if(!edgesharkOk) {
-    const selectedOpt = await vscode.window.showInformationMessage("Capture: Edgeshark is not running. Would you like to start it?", { modal: false }, "Yes")
-    if(selectedOpt === "Yes") {
-      execSync(getEdgesharkInstallCmd())
-    }
-    else {
-      return
-    }
+  // Ensure Edgeshark is running/available
+  const edgesharkReady = await ensureEdgesharkAvailable();
+  if (!edgesharkReady) {
+    return;
   }
 
   // If user multi‐selected items, we capture them all.
@@ -112,6 +99,46 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   return [uri, bracketed]
 }
 
+// Ensure Edgeshark API is up; optionally prompt to start it
+async function ensureEdgesharkAvailable(): Promise<boolean> {
+  // - make a simple API call to get version of packetflix
+  let edgesharkOk = false;
+  try {
+    const res = await fetch("http://127.0.0.1:5001/version");
+    edgesharkOk = res.ok;
+  } catch {
+    // Port is probably closed, edgeshark not running
+  }
+  if (edgesharkOk) return true;
+
+  const selectedOpt = await vscode.window.showInformationMessage(
+    "Capture: Edgeshark is not running. Would you like to start it?",
+    { modal: false },
+    "Yes"
+  );
+  if (selectedOpt === "Yes") {
+    await installEdgeshark();
+
+    const maxRetries = 30;
+    const delayMs = 1000;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const res = await fetch("http://127.0.0.1:5001/version");
+        if (res.ok) {
+          return true;
+        }
+      } catch {
+        // wait and retry
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    vscode.window.showErrorMessage("Edgeshark did not start in time. Please try again.");
+    return false;
+  }
+  return false;
+}
+
 // Capture multiple interfaces with Edgeshark
 async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
   const base = nodes[0];
@@ -163,6 +190,74 @@ export async function captureInterfaceWithPacketflix(
   vscode.env.openExternal(vscode.Uri.parse(packetflixUri[0]));
 }
 
+function isDarkModeEnabled(themeSetting?: string): boolean {
+  switch (themeSetting) {
+    case "Dark":
+      return true
+    case "Light":
+      return false
+    default: {
+      const vscThemeKind = vscode.window.activeColorTheme.kind
+      return (
+        vscThemeKind === vscode.ColorThemeKind.Dark ||
+        vscThemeKind === vscode.ColorThemeKind.HighContrast
+      )
+    }
+  }
+}
+
+async function getEdgesharkNetwork(): Promise<string> {
+  try {
+    const psOut = await utils.runWithSudo(`docker ps --filter "name=edgeshark" --format "{{.Names}}"`, 'List edgeshark containers', outputChannel, 'docker', true) as string;
+    const firstName = (psOut || '').split(/\r?\n/).find(Boolean)?.trim() || '';
+    if (firstName) {
+      const netsOut = await utils.runWithSudo(`docker inspect ${firstName} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, 'Inspect edgeshark networks', outputChannel, 'docker', true) as string;
+      const networkId = (netsOut || '').trim().split(/\s+/)[0] || '';
+      if (networkId) {
+        const nameOut = await utils.runWithSudo(`docker network inspect ${networkId} --format '{{.Name}}'`, 'Inspect network name', outputChannel, 'docker', true) as string;
+        const netName = (nameOut || '').trim();
+        if (netName) return `--network ${netName}`;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return ""
+}
+
+async function getVolumeMount(nodeName: string): Promise<string> {
+  try {
+    const out = await utils.runWithSudo(
+      `docker inspect ${nodeName} --format '{{index .Config.Labels "clab-node-lab-dir"}}'`,
+      'Inspect lab dir label',
+      outputChannel,
+      'docker',
+      true
+    ) as string;
+    const labDir = (out || '').trim();
+    if (labDir && labDir !== '<no value>') {
+      const pathParts = labDir.split('/')
+      pathParts.pop()
+      pathParts.pop()
+      const labRootDir = pathParts.join('/')
+      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`)
+      return `-v "${labRootDir}:/pcaps"`
+    }
+  } catch {
+    // ignore
+  }
+  return ""
+}
+
+function adjustPacketflixHost(uri: string, edgesharkNetwork: string): string {
+  if (uri.includes('localhost') || uri.includes('127.0.0.1')) {
+    return edgesharkNetwork
+      ? uri.replace(/localhost|127\.0\.0\.1/g, 'edgeshark-edgeshark-1')
+      : uri.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal')
+  }
+  return uri
+}
+
 // Capture using Edgeshark + Wireshark via VNC in a webview
 export async function captureEdgesharkVNC(
   node: ClabInterfaceTreeNode,
@@ -181,91 +276,22 @@ export async function captureEdgesharkVNC(
   const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme")
   const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground")
 
-  let darkModeEnabled = false;
-
-  switch (wiresharkThemeSetting) {
-    case "Dark":
-      darkModeEnabled = true
-      break;
-    case "Light":
-      darkModeEnabled = false
-      break;
-    default: {
-      // Follow VS Code system theme
-      const vscThemeKind = vscode.window.activeColorTheme.kind
-      switch (vscThemeKind) {
-        case vscode.ColorThemeKind.Dark:
-          darkModeEnabled = true
-          break;
-        case vscode.ColorThemeKind.HighContrast:
-          darkModeEnabled = true
-          break;
-        default:
-          darkModeEnabled = false
-          break;
-      }
-    }
-  }
-
-  const darkModeSetting = darkModeEnabled ? "-e DARK_MODE=1" : "";
-
-  // Check if Edgeshark is running and get its network
-  let edgesharkNetwork = "";
-  try {
-    const edgesharkInfo = execSync(`docker ps --filter "name=edgeshark" --format "{{.Names}}" | head -1`, { encoding: 'utf-8' }).trim();
-    if (edgesharkInfo) {
-      const networks = execSync(`docker inspect ${edgesharkInfo} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, { encoding: 'utf-8' }).trim();
-      const networkId = networks.split(' ')[0];
-      if (networkId) {
-        const networkName = execSync(`docker network inspect ${networkId} --format '{{.Name}}'`, { encoding: 'utf-8' }).trim();
-        edgesharkNetwork = `--network ${networkName}`;
-      }
-    }
-  } catch {
-    // If we can't find the network, continue without it
-  }
-
-  // Get the lab directory from the container labels to mount for saving pcap files
-  let volumeMount = "";
-  try {
-    const labDir = execSync(`docker inspect ${node.parentName} --format '{{index .Config.Labels "clab-node-lab-dir"}}' 2>/dev/null`, { encoding: 'utf-8' }).trim();
-    if (labDir && labDir !== '<no value>') {
-      // Go up two levels to get the actual lab directory (from node-specific dir to lab root)
-      const pathParts = labDir.split('/');
-      pathParts.pop(); // Remove node name (e.g., "srl1")
-      pathParts.pop(); // Remove lab name (e.g., "clab-vlan")
-      const labRootDir = pathParts.join('/');
-      volumeMount = `-v "${labRootDir}:/pcaps"`;
-      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`);
-    }
-  } catch {
-    // If we can't get the lab directory, continue without mounting
-  }
-
-  // Replace localhost with host.docker.internal or the actual host IP
-  let modifiedPacketflixUri = packetflixUri[0];
-  if (modifiedPacketflixUri.includes('localhost') || modifiedPacketflixUri.includes('127.0.0.1')) {
-    // When using the edgeshark network, we need to use the edgeshark container name
-    if (edgesharkNetwork) {
-      modifiedPacketflixUri = modifiedPacketflixUri.replace(/localhost|127\.0\.0\.1/g, 'edgeshark-edgeshark-1');
-    } else {
-      // Otherwise use host.docker.internal which works on Docker Desktop
-      modifiedPacketflixUri = modifiedPacketflixUri.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal');
-    }
-  }
+  const darkModeSetting = isDarkModeEnabled(wiresharkThemeSetting) ? "-e DARK_MODE=1" : ""
+  const edgesharkNetwork = await getEdgesharkNetwork()
+  const volumeMount = await getVolumeMount(node.parentName)
+  const modifiedPacketflixUri = adjustPacketflixHost(packetflixUri[0], edgesharkNetwork)
 
   const port = await utils.getFreePort()
   const ctrName = utils.sanitize(`clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()}`)
-  const containerId = await new Promise<string>((resolve, reject) => {
-    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs} --name ${ctrName} ${dockerImage}`;
-    exec(command, { encoding: 'utf-8' }, (err, stdout, stderr) => {
-      if (err) {
-        vscode.window.showErrorMessage(`Starting Wireshark: ${stderr}`);
-        return reject(err);
-      }
-      resolve(stdout.trim());
-    });
-  })
+  let containerId = '';
+  try {
+    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs || ''} --name ${ctrName} ${dockerImage}`;
+    const out = await utils.runWithSudo(command, 'Start Wireshark VNC', outputChannel, 'docker', true, true) as string;
+    containerId = (out || '').trim().split(/\s+/)[0] || '';
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Starting Wireshark: ${err.message || String(err)}`);
+    return;
+  }
 
   // let vscode port forward for us
   const localUri = vscode.Uri.parse(`http://localhost:${port}`);
@@ -282,7 +308,7 @@ export async function captureEdgesharkVNC(
   );
 
   panel.onDidDispose(() => {
-    execSync(`docker rm -f ${containerId}`)
+    void utils.runWithSudo(`docker rm -f ${containerId}`, 'Remove Wireshark container', outputChannel, 'docker').catch(() => undefined);
   })
 
   const iframeUrl = externalUri;
@@ -384,11 +410,21 @@ export async function captureEdgesharkVNC(
 
 export async function killAllWiresharkVNCCtrs() {
   const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
-  exec(`docker rm -f $(docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}")`, (err, _stdout, stderr) => {
-    if (err) {
-      vscode.window.showErrorMessage(`Killing Wireshark container: ${stderr}`);
+  try {
+    const idsOut = await utils.runWithSudo(
+      `docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}"`,
+      'List Wireshark VNC containers',
+      outputChannel,
+      'docker',
+      true
+    ) as string;
+    const ids = (idsOut || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if (ids.length > 0) {
+      await utils.runWithSudo(`docker rm -f ${ids.join(' ')}`, 'Remove Wireshark VNC containers', outputChannel, 'docker');
     }
-  })
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Killing Wireshark container: ${err.message || String(err)}`);
+  }
 }
 
 /**
@@ -415,6 +451,20 @@ export async function setSessionHostname(): Promise<boolean> {
   sessionHostname = val.trim();
   vscode.window.showInformationMessage(`Session hostname is set to: ${sessionHostname}`);
   return true;
+}
+
+function resolveOrbstackIPv4(): string | undefined {
+  try {
+    const nets = os.networkInterfaces();
+    const eth0 = nets["eth0"] ?? [];
+    const v4 = (eth0 as any[]).find(
+      (n: any) => (n.family === "IPv4" || n.family === 4) && !n.internal
+    );
+    return v4?.address as string | undefined;
+  } catch (e: any) {
+    outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`);
+    return undefined;
+  }
 }
 
 /**
@@ -447,26 +497,12 @@ export async function getHostname(): Promise<string> {
 
   // 3. If in an Orbstack environment (whether SSH or not), always use IPv4.
   if (utils.isOrbstack()) {
-    try {
-      const ipOutput = execSync("ip -4 add show eth0", {
-        stdio: ["pipe", "pipe", "ignore"],
-      }).toString();
-      const ipMatch = ipOutput.match(/inet (\d+\.\d+\.\d+\.\d+)/);
-      if (ipMatch && ipMatch[1]) {
-        outputChannel.debug(
-          `(Orbstack) Using IPv4 from 'ip -4 add show eth0': ${ipMatch[1]}`
-        );
-        return ipMatch[1];
-      } else {
-        outputChannel.debug(
-          "(Orbstack) Could not extract IPv4 address from 'ip -4 add show eth0'"
-        );
-      }
-    } catch (e: any) {
-      outputChannel.debug(
-        `(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`
-      );
+    const v4 = resolveOrbstackIPv4();
+    if (v4) {
+      outputChannel.debug(`(Orbstack) Using IPv4 from networkInterfaces: ${v4}`);
+      return v4;
     }
+    outputChannel.debug("(Orbstack) Could not determine IPv4 from networkInterfaces");
   }
 
   // 4. If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.

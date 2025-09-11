@@ -7,7 +7,9 @@ export function setOutput(out: string) {
 
 export async function runWithSudo(command: string, ..._args: any[]): Promise<string> {
   calls.push(command);
-  void _args;
+  if (_args.length > 0) {
+    // no-op to consume args for linter
+  }
   return output;
 }
 

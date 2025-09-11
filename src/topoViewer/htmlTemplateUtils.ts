@@ -82,9 +82,9 @@ function loadPartials(partialsDir: string, sharedPartialsDir?: string): Record<s
 }
 
 function resolvePartials(content: string, partials: Record<string, string>): string {
-  return content.replace(/{{([A-Z0-9_]+)}}/g, (_, key) => {
-    const replacement = partials[key];
-    if (replacement !== undefined) {
+  return content.replace(/{{([A-Z0-9_]+)}}/g, (_: string, key: string) => {
+    if (Object.prototype.hasOwnProperty.call(partials, key)) {
+      const replacement = partials[key] as string;
       return resolvePartials(replacement, partials);
     }
     return '';
@@ -120,29 +120,82 @@ function resolveTemplatePaths(): { templatePath: string; partialsDir: string; sh
   throw new Error(`Template file not found. Attempted paths: ${attemptedPaths}`);
 }
 
+function buildCacheKey(
+  mode: TemplateMode,
+  params: ViewerTemplateParams | EditorTemplateParams
+): string {
+  const baseKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}`;
+  if (mode === 'viewer') {
+    return `${baseKey}_${(params as ViewerTemplateParams).deploymentState}`;
+  }
+  const editorParams = params as EditorTemplateParams;
+  const customNodesKey = editorParams.customNodes
+    .map(n => `${n.name}-${n.kind}-${n.type}-${n.image}-${n.setDefault}`)
+    .join('|');
+  return `${baseKey}_${customNodesKey}_${editorParams.defaultNode}`;
+}
+
+function ensurePartials(partials: Record<string, string>, mode: TemplateMode): void {
+  const required = ['WIRESHARK_MODAL', 'CSS_EXTEND', 'SCRIPTS_EXTEND'];
+  for (const key of required) {
+    if (!partials[key]) {
+      partials[key] = '';
+    }
+  }
+  if (mode === 'viewer' && !partials.FLOATING_ACTION_PANEL) {
+    partials.FLOATING_ACTION_PANEL = '';
+  }
+}
+
+function buildReplacements(
+  mode: TemplateMode,
+  params: ViewerTemplateParams | EditorTemplateParams,
+  base: Record<string, string>
+): Record<string, string> {
+  if (mode === 'viewer') {
+    const viewerParams = params as ViewerTemplateParams;
+    return {
+      ...base,
+      deploymentState: viewerParams.deploymentState,
+      viewerMode: viewerParams.viewerMode,
+      imageMapping: '{}',
+      ifacePatternMapping: '{}',
+      defaultKind: 'nokia_srlinux',
+      defaultType: 'ixrd1',
+      updateLinkEndpointsOnKindChange: 'true',
+      customNodes: '[]',
+      defaultNode: '',
+      topologyDefaults: '{}',
+      topologyKinds: '{}',
+      topologyGroups: '{}'
+    };
+  }
+
+  const editorParams = params as EditorTemplateParams;
+  const repl: Record<string, string> = {
+    ...base,
+    imageMapping: JSON.stringify(editorParams.imageMapping),
+    ifacePatternMapping: JSON.stringify(editorParams.ifacePatternMapping),
+    defaultKind: editorParams.defaultKind,
+    defaultType: editorParams.defaultType,
+    updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
+    customNodes: JSON.stringify(editorParams.customNodes),
+    defaultNode: editorParams.defaultNode,
+    topologyDefaults: JSON.stringify(editorParams.topologyDefaults || {}),
+    topologyKinds: JSON.stringify(editorParams.topologyKinds || {}),
+    topologyGroups: JSON.stringify(editorParams.topologyGroups || {})
+  };
+  (repl as any).dockerImages = JSON.stringify(editorParams.dockerImages || []);
+  return repl;
+}
+
 export function generateHtmlTemplate(
   mode: TemplateMode,
   params: ViewerTemplateParams | EditorTemplateParams
 ): string {
-  // Try to use cached template for similar params
-  const baseCacheKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}`;
-
-  // For viewer mode, also include deployment state in cache key
-  let finalCacheKey: string;
-  if (mode === 'viewer') {
-    finalCacheKey = `${baseCacheKey}_${(params as ViewerTemplateParams).deploymentState}`;
-  } else {
-    const editorParams = params as EditorTemplateParams;
-    const customNodesKey = editorParams.customNodes
-      .map(n => `${n.name}-${n.kind}-${n.type}-${n.image}-${n.setDefault}`)
-      .join('|');
-    finalCacheKey = `${baseCacheKey}_${customNodesKey}_${editorParams.defaultNode}`;
-  }
-
-  // Check if we have a cached version with matching dynamic params
-  const cachedBase = templateCache.get(finalCacheKey);
+  const cacheKey = buildCacheKey(mode, params);
+  const cachedBase = templateCache.get(cacheKey);
   if (cachedBase) {
-    // Just update the dynamic URLs that change per session
     return cachedBase
       .replace(/{{jsonFileUrlDataCytoMarshall}}/g, params.jsonFileUrlDataCytoMarshall)
       .replace(/{{jsonFileUrlDataEnvironment}}/g, params.jsonFileUrlDataEnvironment)
@@ -164,26 +217,10 @@ export function generateHtmlTemplate(
 
   let template = fs.readFileSync(templatePath, 'utf8');
   const partials = loadPartials(partialsDir, sharedPartialsDir);
-
-  // Ensure all unresolved placeholders are replaced with empty strings
-  if (!partials.WIRESHARK_MODAL) {
-    partials.WIRESHARK_MODAL = '';
-  }
-  if (!partials.CSS_EXTEND) {
-    partials.CSS_EXTEND = '';
-  }
-  if (!partials.SCRIPTS_EXTEND) {
-    partials.SCRIPTS_EXTEND = '';
-  }
-
-  // Mode-specific handling
-  if (mode === 'viewer' && !partials.FLOATING_ACTION_PANEL) {
-    partials.FLOATING_ACTION_PANEL = '';
-  }
-
+  ensurePartials(partials, mode);
   template = resolvePartials(template, partials);
 
-  const logoFile = params.isDarkTheme ? 'containerlab.svg' : 'containerlab-dark.svg';
+  const logoFile = 'containerlab.svg';
 
   const baseReplacements: Record<string, string> = {
     cssUri: params.cssUri,
@@ -199,55 +236,17 @@ export function generateHtmlTemplate(
     logoFile,
     navSubtitle: mode === 'viewer' ? 'TopoViewer' : 'TopoEditor',
     pageTitle: mode === 'viewer' ? 'TopoViewer' : 'TopoViewer Editor',
-    cssBundle: 'topoViewerEditorStyles.css', // Use the same CSS for both modes
-    topoViewerMode: mode, // Add the mode so JS can access it
-    currentLabPath: params.currentLabPath || '',
+    cssBundle: 'topoViewerEditorStyles.css',
+    topoViewerMode: mode,
+    currentLabPath: params.currentLabPath || ''
   };
 
-  let replacements: Record<string, string>;
-
-  if (mode === 'viewer') {
-    const viewerParams = params as ViewerTemplateParams;
-    replacements = {
-      ...baseReplacements,
-      deploymentState: viewerParams.deploymentState,
-      viewerMode: viewerParams.viewerMode,
-      // Provide default values for editor-specific settings in viewer mode
-      imageMapping: '{}',
-      ifacePatternMapping: '{}',
-      defaultKind: 'nokia_srlinux',
-      defaultType: 'ixrd1',
-      updateLinkEndpointsOnKindChange: 'true',
-      customNodes: '[]',
-      defaultNode: '',
-      topologyDefaults: '{}',
-      topologyKinds: '{}',
-      topologyGroups: '{}'
-    };
-  } else {
-    const editorParams = params as EditorTemplateParams;
-    replacements = {
-      ...baseReplacements,
-      imageMapping: JSON.stringify(editorParams.imageMapping),
-      ifacePatternMapping: JSON.stringify(editorParams.ifacePatternMapping),
-      defaultKind: editorParams.defaultKind,
-      defaultType: editorParams.defaultType,
-      updateLinkEndpointsOnKindChange: editorParams.updateLinkEndpointsOnKindChange.toString(),
-      customNodes: JSON.stringify(editorParams.customNodes),
-      defaultNode: editorParams.defaultNode,
-      topologyDefaults: JSON.stringify(editorParams.topologyDefaults || {}),
-      topologyKinds: JSON.stringify(editorParams.topologyKinds || {}),
-      topologyGroups: JSON.stringify(editorParams.topologyGroups || {})
-    };
-    // Inject docker images if provided
-    (replacements as any).dockerImages = JSON.stringify(editorParams.dockerImages || []);
-  }
+  const replacements = buildReplacements(mode, params, baseReplacements);
 
   for (const [key, value] of Object.entries(replacements)) {
     template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
   }
 
-  // Cache the generated template (before URL replacements for reusability)
   const baseTemplate = template
     .replace(params.jsonFileUrlDataCytoMarshall, '{{jsonFileUrlDataCytoMarshall}}')
     .replace(params.jsonFileUrlDataEnvironment, '{{jsonFileUrlDataEnvironment}}')
@@ -257,7 +256,7 @@ export function generateHtmlTemplate(
     .replace(params.jsOutDir, '{{jsOutDir}}')
     .replace(params.imagesUri, '{{imagesUri}}');
 
-  templateCache.set(finalCacheKey, baseTemplate);
+  templateCache.set(cacheKey, baseTemplate);
 
   return template;
 }

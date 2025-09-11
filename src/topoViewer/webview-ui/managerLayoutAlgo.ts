@@ -2,6 +2,27 @@ import cytoscape from 'cytoscape';
 import topoViewerState from '../state';
 import { log } from '../logging/logger';
 import { loadExtension } from '../cytoscapeInstanceFactory';
+import { buildGridGuideOptions } from '../utilities/gridGuide';
+
+// Common Cytoscape style keys reused in this module
+const STYLE_TEXT_OUTLINE_WIDTH = 'text-outline-width' as const;
+const STYLE_TEXT_BACKGROUND_PADDING = 'text-background-padding' as const;
+const STYLE_SOURCE_TEXT_OFFSET = 'source-text-offset' as const;
+const STYLE_TARGET_TEXT_OFFSET = 'target-text-offset' as const;
+const STYLE_FONT_SIZE = 'font-size' as const;
+const STYLE_BORDER_WIDTH = 'border-width' as const;
+const STYLE_ARROW_SCALE = 'arrow-scale' as const;
+
+// Common DOM class/value literals
+const DISPLAY_BLOCK = 'block' as const;
+const CLASS_HIDDEN = 'hidden' as const;
+const CLASS_LEAFLET_ACTIVE = 'leaflet-active' as const;
+const COLOR_TRANSPARENT = 'transparent' as const;
+const ID_CY_LEAFLET = 'cy-leaflet' as const;
+const DATA_ORIG_POS_X = '_origPosX' as const;
+const DATA_ORIG_POS_Y = '_origPosY' as const;
+const POS_X = 'x' as const;
+const POS_Y = 'y' as const;
 
 // Use globally registered style loader to avoid duplicating implementations
 function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
@@ -115,6 +136,138 @@ export class ManagerLayoutAlgo {
     this.applyGeoScale(true, factor);
   };
 
+  private captureBaseTextMetrics(cy: cytoscape.Core): void {
+    if (this.baseNodeTextOutlineWidth !== 0 || this.baseNodeTextBgPadding !== 0) {
+      return;
+    }
+
+    const node: any = cy.nodes()[0];
+    const edge: any = cy.edges()[0];
+
+    const parse = (el: any, style: string, fallback: number): number => {
+      if (!el) return fallback;
+      const val = parseFloat(el.style(style));
+      return isNaN(val) ? fallback : val;
+    };
+
+    this.baseNodeTextOutlineWidth = parse(node, STYLE_TEXT_OUTLINE_WIDTH, 0.1);
+    this.baseNodeTextBgPadding = parse(node, STYLE_TEXT_BACKGROUND_PADDING, 0.1);
+    this.baseEdgeTextOutlineWidth = parse(edge, STYLE_TEXT_OUTLINE_WIDTH, 0.1);
+    this.baseEdgeTextBgPadding = parse(edge, STYLE_TEXT_BACKGROUND_PADDING, 0.1);
+    this.baseEdgeSourceTextOffset = parse(edge, STYLE_SOURCE_TEXT_OFFSET, 0.1);
+    this.baseEdgeTargetTextOffset = parse(edge, STYLE_TARGET_TEXT_OFFSET, 0.1);
+  }
+
+  private ensureNumericData(
+    ele: cytoscape.NodeSingular | cytoscape.EdgeSingular,
+    dataKey: string,
+    styleKey: string,
+    fallback = 0
+  ): number {
+    let val = ele.data(dataKey);
+    if (val === undefined) {
+      const parsed = parseFloat(ele.style(styleKey));
+      val = isNaN(parsed) ? fallback : parsed;
+      ele.data(dataKey, val);
+    }
+    return val;
+  }
+
+  private ensureFontSize(
+    ele: cytoscape.NodeSingular | cytoscape.EdgeSingular,
+    dataKey: string
+  ): number {
+    let size = ele.data(dataKey);
+    if (size !== undefined) return size;
+
+    let fsStr: any = (ele as any).renderedStyle ? (ele as any).renderedStyle(STYLE_FONT_SIZE) : ele.style(STYLE_FONT_SIZE);
+    if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
+    let fsNum = parseFloat(fsStr);
+    if (isNaN(fsNum)) {
+      const raw = ele.style(STYLE_FONT_SIZE);
+      const rawNum = parseFloat(raw);
+      if (isNaN(rawNum)) {
+        fsNum = 12;
+      } else if (String(raw).includes('em')) {
+        fsNum = rawNum * 16;
+      } else {
+        fsNum = rawNum;
+      }
+    }
+    ele.data(dataKey, fsNum);
+    return fsNum;
+  }
+
+  private scaleNode(n: cytoscape.NodeSingular, factor: number, labelFactor: number): void {
+    const origW = this.ensureNumericData(n, '_origWidth', 'width');
+    const origH = this.ensureNumericData(n, '_origHeight', 'height');
+    const origFont = this.ensureFontSize(n, '_origFont');
+    this.ensureNumericData(n, '_origTextOutlineWidth', STYLE_TEXT_OUTLINE_WIDTH);
+    this.ensureNumericData(n, '_origTextBgPadding', STYLE_TEXT_BACKGROUND_PADDING);
+    let origBorder: number | undefined;
+    if (n.data('topoViewerRole') === 'group') {
+      origBorder = this.ensureNumericData(n, '_origBorderWidth', STYLE_BORDER_WIDTH);
+    }
+
+    n.style({
+      width: origW * factor,
+      height: origH * factor,
+      [STYLE_FONT_SIZE]: `${origFont * labelFactor}px`
+    });
+    if (origBorder !== undefined) {
+      n.style(STYLE_BORDER_WIDTH, origBorder * factor);
+    }
+  }
+
+  private scaleEdge(e: cytoscape.EdgeSingular, factor: number, labelFactor: number): void {
+    const origWidth = this.ensureNumericData(e, '_origWidth', 'width');
+    const origFont = this.ensureFontSize(e, '_origFont');
+    const origArrow = this.ensureNumericData(e, '_origArrow', STYLE_ARROW_SCALE);
+    this.ensureNumericData(e, '_origTextOutlineWidth', STYLE_TEXT_OUTLINE_WIDTH);
+    this.ensureNumericData(e, '_origTextBgPadding', STYLE_TEXT_BACKGROUND_PADDING);
+    this.ensureNumericData(e, '_origSourceTextOffset', STYLE_SOURCE_TEXT_OFFSET);
+    this.ensureNumericData(e, '_origTargetTextOffset', STYLE_TARGET_TEXT_OFFSET);
+
+    if (origWidth) e.style('width', origWidth * factor);
+    if (origFont) e.style(STYLE_FONT_SIZE, `${origFont * labelFactor}px`);
+    if (origArrow) e.style(STYLE_ARROW_SCALE, origArrow * factor);
+  }
+
+  private resetNode(n: cytoscape.NodeSingular): void {
+    const w = n.data('_origWidth');
+    const h = n.data('_origHeight');
+    const fs = n.data('_origFont');
+    const bw = n.data('_origBorderWidth');
+    if (w !== undefined) n.style('width', w);
+    if (h !== undefined) n.style('height', h);
+    if (fs !== undefined && fs !== 0) n.style('font-size', `${fs}px`);
+    if (bw !== undefined && n.data('topoViewerRole') === 'group') {
+      n.style('border-width', bw);
+    }
+    n.removeData('_origWidth');
+    n.removeData('_origHeight');
+    n.removeData('_origFont');
+    n.removeData('_origBorderWidth');
+    n.removeData('_origTextOutlineWidth');
+    n.removeData('_origTextBgPadding');
+  }
+
+  private resetEdge(e: cytoscape.EdgeSingular): void {
+    const w = e.data('_origWidth');
+    const fs = e.data('_origFont');
+    const ar = e.data('_origArrow');
+    if (w !== undefined) e.style('width', w);
+    if (fs !== undefined && fs !== 0) e.style('font-size', `${fs}px`);
+    if (ar !== undefined) e.style('arrow-scale', ar);
+    e.removeData('_origWidth');
+    e.removeData('_origFont');
+    e.removeData('_origArrow');
+    e.removeData('_origTextOutlineWidth');
+    e.removeData('_origTextBgPadding');
+    e.removeData('_origSourceTextOffset');
+    e.removeData('_origTargetTextOffset');
+  }
+
   /**
    * Increase node, label and edge sizes fourfold when the Geo map is active.
    * Original styles are restored when the map is disabled.
@@ -125,190 +278,46 @@ export class ManagerLayoutAlgo {
 
     log.debug(`[GeoScale] apply ${enable} factor ${factor}`);
 
-    if (enable) {
-      // Capture baseline label metrics once for stylesheet-based scaling
-      if (this.baseNodeTextOutlineWidth === 0 && this.baseNodeTextBgPadding === 0) {
-        const nodes = cy.nodes();
-        const edges = cy.edges();
-        const anyNode: any = nodes.nonempty() ? nodes[0] : undefined;
-        const anyEdge: any = edges.nonempty() ? edges[0] : undefined;
-        const nTow = anyNode ? parseFloat(anyNode.style('text-outline-width')) : NaN;
-        const nTbp = anyNode ? parseFloat(anyNode.style('text-background-padding')) : NaN;
-        const eTow = anyEdge ? parseFloat(anyEdge.style('text-outline-width')) : NaN;
-        const eTbp = anyEdge ? parseFloat(anyEdge.style('text-background-padding')) : NaN;
-        const eSo = anyEdge ? parseFloat(anyEdge.style('source-text-offset')) : NaN;
-        const eTo = anyEdge ? parseFloat(anyEdge.style('target-text-offset')) : NaN;
-        this.baseNodeTextOutlineWidth = isNaN(nTow) ? 0.1 : nTow;
-        this.baseNodeTextBgPadding = isNaN(nTbp) ? 0.1 : nTbp;
-        this.baseEdgeTextOutlineWidth = isNaN(eTow) ? 0.1 : eTow;
-        this.baseEdgeTextBgPadding = isNaN(eTbp) ? 0.1 : eTbp;
-        this.baseEdgeSourceTextOffset = isNaN(eSo) ? 0.1 : eSo;
-        this.baseEdgeTargetTextOffset = isNaN(eTo) ? 0.1 : eTo;
-      }
+    const labelFactor = factor * this.geoLabelScaleBias;
 
-      const labelFactor = factor * this.geoLabelScaleBias;
-      cy.nodes().forEach((n) => {
-        let origW = n.data('_origWidth');
-        let origH = n.data('_origHeight');
-        let origFont = n.data('_origFont');
-        let origBorder = n.data('_origBorderWidth');
-        let origTextOutline = n.data('_origTextOutlineWidth');
-        let origTextBgPad = n.data('_origTextBgPadding');
-        if (origW === undefined) {
-          origW = n.width();
-          n.data('_origWidth', origW);
-        }
-        if (origH === undefined) {
-          origH = n.height();
-          n.data('_origHeight', origH);
-        }
-        if (origFont === undefined) {
-          // Prefer rendered pixel size for reliable scaling (stylesheet may specify em)
-          let fsStr: any = (n as any).renderedStyle ? (n as any).renderedStyle('font-size') : n.style('font-size');
-          if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
-          let fsNum = parseFloat(fsStr);
-          if (isNaN(fsNum)) {
-            // Fallback: attempt to convert em to px assuming 16px base
-            const raw = n.style('font-size');
-            const rawNum = parseFloat(raw);
-            fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
-          }
-          origFont = fsNum;
-          n.data('_origFont', origFont);
-        }
-        if (origBorder === undefined && n.data('topoViewerRole') === 'group') {
-          const bw = parseFloat(n.style('border-width'));
-          origBorder = isNaN(bw) ? 0 : bw;
-          n.data('_origBorderWidth', origBorder);
-        }
-        if (origTextOutline === undefined) {
-          const tow = parseFloat(n.style('text-outline-width'));
-          origTextOutline = isNaN(tow) ? 0 : tow;
-          n.data('_origTextOutlineWidth', origTextOutline);
-        }
-        if (origTextBgPad === undefined) {
-          const tbp = parseFloat(n.style('text-background-padding'));
-          origTextBgPad = isNaN(tbp) ? 0 : tbp;
-          n.data('_origTextBgPadding', origTextBgPad);
-        }
-        n.style({
-          width: origW * factor,
-          height: origH * factor,
-          'font-size': origFont ? `${origFont * labelFactor}px` : n.style('font-size')
-        });
-        if (n.data('topoViewerRole') === 'group' && origBorder !== undefined) {
-          n.style('border-width', origBorder * factor);
-        }
-        // Text outline and background padding are handled via stylesheet-level scaling below
-      });
-      cy.edges().forEach((e) => {
-        let origWidth = e.data('_origWidth');
-        let origFont = e.data('_origFont');
-        let origArrow = e.data('_origArrow');
-        let origTextOutline = e.data('_origTextOutlineWidth');
-        let origTextBgPad = e.data('_origTextBgPadding');
-        let origSrcOffset = e.data('_origSourceTextOffset');
-        let origTgtOffset = e.data('_origTargetTextOffset');
-        if (origWidth === undefined) {
-          const width = parseFloat(e.style('width'));
-          origWidth = isNaN(width) ? 0 : width;
-          e.data('_origWidth', origWidth);
-        }
-        if (origFont === undefined) {
-          let fsStr: any = (e as any).renderedStyle ? (e as any).renderedStyle('font-size') : e.style('font-size');
-          if (typeof fsStr !== 'string') fsStr = String(fsStr || '');
-          let fsNum = parseFloat(fsStr);
-          if (isNaN(fsNum)) {
-            const raw = e.style('font-size');
-            const rawNum = parseFloat(raw);
-            fsNum = isNaN(rawNum) ? 12 : (String(raw).includes('em') ? rawNum * 16 : rawNum);
-          }
-          origFont = fsNum;
-          e.data('_origFont', origFont);
-        }
-        if (origArrow === undefined) {
-          const arrow = parseFloat(e.style('arrow-scale'));
-          origArrow = isNaN(arrow) ? 0 : arrow;
-          e.data('_origArrow', origArrow);
-        }
-        if (origTextOutline === undefined) {
-          const tow = parseFloat(e.style('text-outline-width'));
-          origTextOutline = isNaN(tow) ? 0 : tow;
-          e.data('_origTextOutlineWidth', origTextOutline);
-        }
-        if (origTextBgPad === undefined) {
-          const tbp = parseFloat(e.style('text-background-padding'));
-          origTextBgPad = isNaN(tbp) ? 0 : tbp;
-          e.data('_origTextBgPadding', origTextBgPad);
-        }
-        if (origSrcOffset === undefined) {
-          const so = parseFloat(e.style('source-text-offset'));
-          origSrcOffset = isNaN(so) ? 0 : so;
-          e.data('_origSourceTextOffset', origSrcOffset);
-        }
-        if (origTgtOffset === undefined) {
-          const to = parseFloat(e.style('target-text-offset'));
-          origTgtOffset = isNaN(to) ? 0 : to;
-          e.data('_origTargetTextOffset', origTgtOffset);
-        }
-        e.style({
-          width: origWidth ? origWidth * factor : e.style('width'),
-          'font-size': origFont ? `${origFont * labelFactor}px` : e.style('font-size'),
-          'arrow-scale': origArrow ? origArrow * factor : e.style('arrow-scale')
-        });
-        // Text metrics and label offsets handled via stylesheet-level scaling below
-      });
-      this.geoScaleApplied = true;
-      this.lastGeoScale = factor;
-    } else if (!enable && this.geoScaleApplied) {
-      cy.nodes().forEach((n) => {
-        const w = n.data('_origWidth');
-        const h = n.data('_origHeight');
-        const fs = n.data('_origFont');
-        const bw = n.data('_origBorderWidth');
-        if (w !== undefined) n.style('width', w);
-        if (h !== undefined) n.style('height', h);
-        if (fs !== undefined && fs !== 0) n.style('font-size', `${fs}px`);
-        if (bw !== undefined && n.data('topoViewerRole') === 'group') {
-          n.style('border-width', bw);
-        }
-        // Reset of outline/background padding handled via stylesheet-level reset below
-        n.removeData('_origWidth');
-        n.removeData('_origHeight');
-        n.removeData('_origFont');
-        n.removeData('_origBorderWidth');
-        n.removeData('_origTextOutlineWidth');
-        n.removeData('_origTextBgPadding');
-      });
-      cy.edges().forEach((e) => {
-        const w = e.data('_origWidth');
-        const fs = e.data('_origFont');
-        const ar = e.data('_origArrow');
-        if (w !== undefined) e.style('width', w);
-        if (fs !== undefined && fs !== 0) e.style('font-size', `${fs}px`);
-        if (ar !== undefined) e.style('arrow-scale', ar);
-        // Reset of outline/background padding and offsets via stylesheet-level reset below
-        e.removeData('_origWidth');
-        e.removeData('_origFont');
-        e.removeData('_origArrow');
-        e.removeData('_origTextOutlineWidth');
-        e.removeData('_origTextBgPadding');
-        e.removeData('_origSourceTextOffset');
-        e.removeData('_origTargetTextOffset');
-      });
-      // Reset stylesheet-level label metrics back to baseline
+    if (enable) {
+      this.captureBaseTextMetrics(cy);
+
+      cy.nodes().forEach((n) => this.scaleNode(n, factor, labelFactor));
+      cy.edges().forEach((e) => this.scaleEdge(e, factor, labelFactor));
+
       const sty = cy.style();
-      sty.selector('node')
-        .style('text-outline-width', `${this.baseNodeTextOutlineWidth}px`)
-        .style('text-background-padding', `${this.baseNodeTextBgPadding}px`);
-      sty.selector('edge')
-        .style('text-outline-width', `${this.baseEdgeTextOutlineWidth}px`)
-        .style('text-background-padding', `${this.baseEdgeTextBgPadding}px`)
-        .style('source-text-offset', this.baseEdgeSourceTextOffset)
-        .style('target-text-offset', this.baseEdgeTargetTextOffset)
+      sty
+        .selector('node')
+        .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseNodeTextOutlineWidth * labelFactor}px`)
+        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseNodeTextBgPadding * labelFactor}px`);
+      sty
+        .selector('edge')
+        .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseEdgeTextOutlineWidth * labelFactor}px`)
+        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseEdgeTextBgPadding * labelFactor}px`)
+        .style(STYLE_SOURCE_TEXT_OFFSET, this.baseEdgeSourceTextOffset * factor)
+        .style(STYLE_TARGET_TEXT_OFFSET, this.baseEdgeTargetTextOffset * factor)
         .update();
 
-      // Clear baselines for next enable
+      this.geoScaleApplied = true;
+      this.lastGeoScale = factor;
+    } else if (this.geoScaleApplied) {
+      cy.nodes().forEach((n) => this.resetNode(n));
+      cy.edges().forEach((e) => this.resetEdge(e));
+
+      const sty = cy.style();
+      sty
+        .selector('node')
+        .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseNodeTextOutlineWidth}px`)
+        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseNodeTextBgPadding}px`);
+      sty
+        .selector('edge')
+        .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseEdgeTextOutlineWidth}px`)
+        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseEdgeTextBgPadding}px`)
+        .style(STYLE_SOURCE_TEXT_OFFSET, this.baseEdgeSourceTextOffset)
+        .style(STYLE_TARGET_TEXT_OFFSET, this.baseEdgeTargetTextOffset)
+        .update();
+
       this.baseNodeTextOutlineWidth = 0;
       this.baseNodeTextBgPadding = 0;
       this.baseEdgeTextOutlineWidth = 0;
@@ -334,90 +343,34 @@ export class ManagerLayoutAlgo {
   private disableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
-    const theme = topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light';
-    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    (cy as any).gridGuide({
-      drawGrid: false,
-      snapToGridOnRelease: false,
-      snapToGridDuringDrag: false,
-      snapToAlignmentLocationOnRelease: false,
-      snapToAlignmentLocationDuringDrag: false,
-      distributionGuidelines: false,
-      geometricGuideline: false,
-      initPosAlignment: false,
-      centerToEdgeAlignment: false,
-      resize: false,
-      parentPadding: false,
-      gridSpacing: 10,
-      snapToGridCenter: false,
-      zoomDash: false,
-      panGrid: false,
-      gridStackOrder: -1,
-      gridColor,
-      lineWidth: 0.5,
-      guidelinesStackOrder: 4,
-      guidelinesTolerance: 2.0,
-      guidelinesStyle: {
-        strokeStyle: "#8b7d6b",
-        geometricGuidelineRange: 400,
-        range: 100,
-        minDistRange: 10,
-        distGuidelineOffset: 10,
-        horizontalDistColor: "#ff0000",
-        verticalDistColor: "#00ff00",
-        initPosAlignmentColor: "#0000ff",
-        lineDash: [0, 0],
-        horizontalDistLine: [0, 0],
-        verticalDistLine: [0, 0],
-        initPosAlignmentLine: [0, 0],
-      },
-      parentSpacing: -1
-    });
+    const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
+    (cy as any).gridGuide(
+      buildGridGuideOptions(theme, {
+        drawGrid: false,
+        snapToGridOnRelease: false,
+        snapToAlignmentLocationOnRelease: false,
+        snapToGridCenter: false,
+        zoomDash: false,
+        panGrid: false,
+      })
+    );
   }
 
   /** Re-enable grid guide overlay and snapping */
   private enableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
-    const theme = topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light';
-    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    (cy as any).gridGuide({
-      drawGrid: true,
-      snapToGridOnRelease: true,
-      snapToGridDuringDrag: false,
-      snapToAlignmentLocationOnRelease: true,
-      snapToAlignmentLocationDuringDrag: false,
-      distributionGuidelines: false,
-      geometricGuideline: false,
-      initPosAlignment: false,
-      centerToEdgeAlignment: false,
-      resize: false,
-      parentPadding: false,
-      gridSpacing: 10,
-      snapToGridCenter: true,
-      zoomDash: true,
-      panGrid: true,
-      gridStackOrder: -1,
-      gridColor,
-      lineWidth: 0.5,
-      guidelinesStackOrder: 4,
-      guidelinesTolerance: 2.0,
-      guidelinesStyle: {
-        strokeStyle: "#8b7d6b",
-        geometricGuidelineRange: 400,
-        range: 100,
-        minDistRange: 10,
-        distGuidelineOffset: 10,
-        horizontalDistColor: "#ff0000",
-        verticalDistColor: "#00ff00",
-        initPosAlignmentColor: "#0000ff",
-        lineDash: [0, 0],
-        horizontalDistLine: [0, 0],
-        verticalDistLine: [0, 0],
-        initPosAlignmentLine: [0, 0],
-      },
-      parentSpacing: -1
-    });
+    const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
+    (cy as any).gridGuide(
+      buildGridGuideOptions(theme, {
+        drawGrid: true,
+        snapToGridOnRelease: true,
+        snapToAlignmentLocationOnRelease: true,
+        snapToGridCenter: true,
+        zoomDash: true,
+        panGrid: true,
+      })
+    );
   }
 
   /**
@@ -427,55 +380,15 @@ export class ManagerLayoutAlgo {
    * all nodes have valid geographic coordinates before Geo positioning is
    * enabled. Existing values are normalised while missing ones are generated
    * using the average of known coordinates or fall back defaults.
-   */
+  */
   public assignMissingLatLng(): void {
     const cy = this.getCy();
     if (!cy) return;
-
-    // Stuttgart, Germany as default center (Europe)
-    const DEFAULT_AVERAGE_LAT = 48.684826888402256;
-    const DEFAULT_AVERAGE_LNG = 9.007895390625677;
-
-    const existingLats: number[] = [];
-    const existingLngs: number[] = [];
-
-    cy.nodes().forEach(node => {
-      const lat = parseFloat(node.data('lat'));
-      if (!isNaN(lat)) existingLats.push(lat);
-
-      const lng = parseFloat(node.data('lng'));
-      if (!isNaN(lng)) existingLngs.push(lng);
-    });
-
-    let averageLat = existingLats.length > 0
-      ? existingLats.reduce((a, b) => a + b, 0) / existingLats.length
-      : DEFAULT_AVERAGE_LAT;
-    let averageLng = existingLngs.length > 0
-      ? existingLngs.reduce((a, b) => a + b, 0) / existingLngs.length
-      : DEFAULT_AVERAGE_LNG;
-
-    const useDefaultLat = existingLats.length === 0;
-    const useDefaultLng = existingLngs.length === 0;
-
-    cy.nodes().forEach(node => {
-      let lat = parseFloat(node.data('lat'));
-      if (!node.data('lat') || isNaN(lat)) {
-        // Spread nodes around the center with smaller random offset
-        lat = (useDefaultLat ? DEFAULT_AVERAGE_LAT : averageLat) + (Math.random() - 0.5) * 0.2;
-      }
-      let lng = parseFloat(node.data('lng'));
-      if (!node.data('lng') || isNaN(lng)) {
-        // Spread nodes around the center with smaller random offset
-        lng = (useDefaultLng ? DEFAULT_AVERAGE_LNG : averageLng) + (Math.random() - 0.5) * 0.3;
-      }
-
-      const latStr = lat.toFixed(15);
-      const lngStr = lng.toFixed(15);
-      node.data('lat', latStr);
-      node.data('lng', lngStr);
-
-    });
+    const { assignMissingLatLngToCy } = require('../utilities/geoUtils');
+    assignMissingLatLngToCy(cy);
   }
+
+  // Lat/Lng helpers moved to utilities/geoUtils
 
   public viewportButtonsLayoutAlgo(event?: Event): void {
     // Prevent event from bubbling up
@@ -487,7 +400,7 @@ export class ManagerLayoutAlgo {
     const layoutDrawer = document.getElementById('viewport-drawer-layout');
     if (layoutDrawer) {
       // Toggle the drawer visibility
-      if (layoutDrawer.style.display === 'block') {
+      if (layoutDrawer.style.display === DISPLAY_BLOCK) {
         layoutDrawer.style.display = 'none';
       } else {
         // Hide all other drawers first
@@ -496,7 +409,7 @@ export class ManagerLayoutAlgo {
           (drawers[i] as HTMLElement).style.display = 'none';
         }
         // Show the layout drawer
-        layoutDrawer.style.display = 'block';
+        layoutDrawer.style.display = DISPLAY_BLOCK;
       }
     }
   }
@@ -545,7 +458,150 @@ export class ManagerLayoutAlgo {
 
   private showPanel(id: string): void {
     const el = document.getElementById(id);
-    if (el) (el as HTMLElement).style.display = 'block';
+    if (el) (el as HTMLElement).style.display = DISPLAY_BLOCK;
+  }
+
+  private async ensureLeafletExtension(): Promise<boolean> {
+    try {
+      await loadExtension('leaflet');
+      return true;
+    } catch (err) {
+      log.error(`[GeoMap] Failed to load leaflet extension: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
+    }
+  }
+
+  private showExistingGeoMap(): void {
+    const leafletContainer = document.getElementById(ID_CY_LEAFLET);
+    if (leafletContainer) {
+      leafletContainer.classList.remove(CLASS_HIDDEN);
+      leafletContainer.style.display = DISPLAY_BLOCK;
+    }
+    this.showGeoMapButtons();
+  }
+
+  private storeOriginalPositions(cy: cytoscape.Core): void {
+    cy.nodes().forEach((node) => {
+      node.data(DATA_ORIG_POS_X, node.position(POS_X));
+      node.data(DATA_ORIG_POS_Y, node.position(POS_Y));
+    });
+  }
+
+  private prepareGeoModeAppearance(cy: cytoscape.Core): void {
+    this.geoTheme = 'light';
+    loadCytoStyle(cy, 'light');
+    cy.container()?.classList.add(CLASS_LEAFLET_ACTIVE);
+    if (cy.container()) {
+      (cy.container() as HTMLElement).style.background = COLOR_TRANSPARENT;
+    }
+    this.disableGridGuide();
+  }
+
+  private precomputeMissingNodeCoords(cy: cytoscape.Core): void {
+    const cyContainer = cy.container() as HTMLElement;
+    const tempDiv = document.createElement('div');
+    tempDiv.style.width = `${cyContainer.clientWidth}px`;
+    tempDiv.style.height = `${cyContainer.clientHeight}px`;
+    document.body.appendChild(tempDiv);
+    const tempMap = window.L.map(tempDiv, { zoomControl: false, zoomSnap: 0 });
+    tempMap.setView([48.684826888402256, 9.007895390625677], 10);
+    cy.nodes().forEach((node) => {
+      const data = node.data();
+      if (data.lat === undefined || data.lng === undefined || data.lat === '' || data.lng === '') {
+        const latlng = tempMap.containerPointToLatLng({
+          x: node.position().x,
+          y: node.position().y
+        });
+        node.data('lat', latlng.lat.toString());
+        node.data('lng', latlng.lng.toString());
+      }
+    });
+    tempMap.remove();
+    tempDiv.remove();
+    this.assignMissingLatLng();
+  }
+
+  private getOrCreateLeafletContainer(): HTMLElement {
+    let container = document.getElementById(ID_CY_LEAFLET);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = ID_CY_LEAFLET;
+      container.className = 'absolute inset-0 pt-10 pb-0 px-10 z-0';
+      const rootDiv = document.getElementById('root-div');
+      if (rootDiv) {
+        rootDiv.insertBefore(container, rootDiv.firstChild);
+      }
+    }
+    container.classList.remove(CLASS_HIDDEN);
+    (container as HTMLElement).style.display = DISPLAY_BLOCK;
+    return container as HTMLElement;
+  }
+
+  private setupCytoscapeLeaflet(cy: cytoscape.Core, container: HTMLElement): boolean {
+    try {
+      const cyRect = cy.container()?.getBoundingClientRect();
+      log.info({
+        msg: '[GeoMap] Cytoscape container dimensions',
+        width: cyRect?.width,
+        height: cyRect?.height
+      });
+      this.cytoscapeLeafletLeaf = (cy as any).leaflet({
+        container,
+        cyContainer: cy.container()
+      });
+      if (this.cytoscapeLeafletLeaf.defaultTileLayer) {
+        this.cytoscapeLeafletLeaf.map.removeLayer(this.cytoscapeLeafletLeaf.defaultTileLayer);
+      }
+      this.cytoscapeLeafletMap = this.cytoscapeLeafletLeaf.map;
+    } catch (error) {
+      log.error(`[GeoMap] Error initializing cytoscape-leaflet: ${error}`);
+      return false;
+    }
+    if (!window.L) {
+      log.error('[GeoMap] Leaflet library (L) not available');
+      return false;
+    }
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(this.cytoscapeLeafletMap);
+
+    const origGetNodeLatLng = this.cytoscapeLeafletLeaf.getNodeLatLng;
+    this.cytoscapeLeafletLeaf.getNodeLatLng = (n: any) => {
+      const data = n.data();
+      if (data.lat === undefined || data.lng === undefined) {
+        const pos = n.position();
+        return this.cytoscapeLeafletMap.containerPointToLatLng({ x: pos.x, y: pos.y });
+      }
+      return origGetNodeLatLng.call(this.cytoscapeLeafletLeaf, n);
+    };
+    this.isGeoMapInitialized = true;
+    this.geoScaleBaseZoom = this.cytoscapeLeafletMap.getZoom() || 1;
+    this.cytoscapeLeafletMap.on('zoom', this.onLeafletZoomBound);
+    this.cytoscapeLeafletMap.on('zoomend', this.onLeafletZoomEndBound);
+    return true;
+  }
+
+  private async initializeGeoMapElements(cy: cytoscape.Core): Promise<boolean> {
+    this.precomputeMissingNodeCoords(cy);
+    const container = this.getOrCreateLeafletContainer();
+    const containerRect = container.getBoundingClientRect();
+    log.info({
+      msg: '[GeoMap] Leaflet container created/shown',
+      width: containerRect.width,
+      height: containerRect.height,
+      display: (container as HTMLElement).style.display,
+      className: container.className
+    });
+    return this.setupCytoscapeLeaflet(cy, container);
+  }
+
+  private showGeoMapButtons(): void {
+    const geoMapButtons = document.getElementsByClassName('viewport-geo-map');
+    for (let i = 0; i < geoMapButtons.length; i++) {
+      geoMapButtons[i].classList.remove(CLASS_HIDDEN);
+    }
   }
 
   public async viewportDrawerLayoutGeoMap(): Promise<void> {
@@ -555,176 +611,26 @@ export class ManagerLayoutAlgo {
       return;
     }
 
-    // Ensure the Cytoscape-Leaflet extension is registered (post "ludicrous speed" lazy-loading change)
-    try {
-      await loadExtension('leaflet');
-    } catch (err) {
-      log.error(`[GeoMap] Failed to load leaflet extension: ${err instanceof Error ? err.message : String(err)}`);
-      return;
-    }
+    if (!(await this.ensureLeafletExtension())) return;
 
-    // If already initialized, just ensure it's visible
     if (this.isGeoMapInitialized) {
       log.info('[GeoMap] Geo-map already initialized, ensuring visibility');
-      const leafletContainer = document.getElementById('cy-leaflet');
-      if (leafletContainer) {
-        leafletContainer.classList.remove('hidden');
-        leafletContainer.style.display = 'block';
-      }
-      // Show the geo-map buttons
-      const geoMapButtons = document.getElementsByClassName('viewport-geo-map');
-      for (let i = 0; i < geoMapButtons.length; i++) {
-        geoMapButtons[i].classList.remove('hidden');
-      }
+      this.showExistingGeoMap();
       return;
     }
 
     log.info('[GeoMap] Initializing geo-positioning layout');
 
-    this.viewportDrawerDisableGeoMap();
+    await this.viewportDrawerDisableGeoMap();
+    this.storeOriginalPositions(cy);
+    this.prepareGeoModeAppearance(cy);
 
-    // Store current positions so they can be restored when Geo layout is disabled
-    cy.nodes().forEach((node) => {
-      node.data('_origPosX', node.position('x'));
-      node.data('_origPosY', node.position('y'));
-    });
-
-    // Apply light theme styles when Geo layout is active
-    this.geoTheme = 'light';
-    loadCytoStyle(cy, 'light');
-
-    // Add class to cy container to indicate leaflet is active
-    cy.container()?.classList.add('leaflet-active');
-    // Make cytoscape container transparent
-    if (cy.container()) {
-      (cy.container() as HTMLElement).style.background = 'transparent';
-    }
-
-    // Disable grid guide interactions when the map overlay is active
-    this.disableGridGuide();
-
-    if (!this.isGeoMapInitialized) {
-      // Pre-compute geographic coordinates for nodes lacking them so the
-      // Cytoscape-Leaflet plugin doesn't fail during initialisation.
-      const cyContainer = cy.container() as HTMLElement;
-      const tempDiv = document.createElement('div');
-      tempDiv.style.width = `${cyContainer.clientWidth}px`;
-      tempDiv.style.height = `${cyContainer.clientHeight}px`;
-      document.body.appendChild(tempDiv);
-      const tempMap = window.L.map(tempDiv, { zoomControl: false, zoomSnap: 0 });
-      // Center on Stuttgart, Germany (Europe) instead of Toronto
-      tempMap.setView([48.684826888402256, 9.007895390625677], 10);
-      cy.nodes().forEach((node) => {
-        const data = node.data();
-        if (data.lat === undefined || data.lng === undefined || data.lat === '' || data.lng === '') {
-          const latlng = tempMap.containerPointToLatLng({
-            x: node.position().x,
-            y: node.position().y
-          });
-          node.data('lat', latlng.lat.toString());
-          node.data('lng', latlng.lng.toString());
-        }
-      });
-      tempMap.remove();
-      tempDiv.remove();
-
-      // Normalise or generate any still-missing coordinates
-      this.assignMissingLatLng();
-
-      let leafletContainer = document.getElementById('cy-leaflet');
-      if (!leafletContainer) {
-        leafletContainer = document.createElement('div');
-        leafletContainer.id = 'cy-leaflet';
-        leafletContainer.className = 'absolute inset-0 pt-10 pb-0 px-10 z-0';
-        const rootDiv = document.getElementById('root-div');
-        if (rootDiv) {
-          rootDiv.insertBefore(leafletContainer, rootDiv.firstChild);
-        }
-      }
-      // Remove hidden class and ensure it's visible
-      leafletContainer.classList.remove('hidden');
-      (leafletContainer as HTMLElement).style.display = 'block';
-
-      // Ensure the container has proper dimensions
-      const containerRect = leafletContainer.getBoundingClientRect();
-      log.info({
-        msg: '[GeoMap] Leaflet container created/shown',
-        width: containerRect.width,
-        height: containerRect.height,
-        display: (leafletContainer as HTMLElement).style.display,
-        className: leafletContainer.className
-      });
-      log.info('[GeoMap] Initializing cytoscape-leaflet plugin');
-      try {
-        // Make sure cy is visible and has dimensions
-        const cyRect = cy.container()?.getBoundingClientRect();
-        log.info({
-          msg: '[GeoMap] Cytoscape container dimensions',
-          width: cyRect?.width,
-          height: cyRect?.height
-        });
-
-        this.cytoscapeLeafletLeaf = (cy as any).leaflet({
-          container: leafletContainer,
-          cyContainer: cy.container()
-        });
-
-        if (this.cytoscapeLeafletLeaf.defaultTileLayer) {
-          this.cytoscapeLeafletLeaf.map.removeLayer(this.cytoscapeLeafletLeaf.defaultTileLayer);
-        }
-        this.cytoscapeLeafletMap = this.cytoscapeLeafletLeaf.map;
-        log.info({
-          msg: '[GeoMap] Cytoscape-leaflet initialized successfully',
-          map: this.cytoscapeLeafletMap,
-          leaf: this.cytoscapeLeafletLeaf
-        });
-      } catch (error) {
-        log.error(`[GeoMap] Error initializing cytoscape-leaflet: ${error}`);
-        return;
-      }
-      // add basic tile layer
-      if (!window.L) {
-        log.error('[GeoMap] Leaflet library (L) not available');
-        return;
-      }
-      log.info('[GeoMap] Adding tile layer');
-      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
-      }).addTo(this.cytoscapeLeafletMap);
-
-      // Patch getNodeLatLng so nodes missing coordinates return a value derived
-      // from the node's current position. Updating the node data here would
-      // trigger Cytoscape events and can lead to recursion inside the plugin,
-      // so we only compute the coordinates without modifying the node.
-      const origGetNodeLatLng = this.cytoscapeLeafletLeaf.getNodeLatLng;
-      this.cytoscapeLeafletLeaf.getNodeLatLng = (n: any) => {
-        const data = n.data();
-        if (data.lat === undefined || data.lng === undefined) {
-          const pos = n.position();
-          return this.cytoscapeLeafletMap.containerPointToLatLng({
-            x: pos.x,
-            y: pos.y
-          });
-        }
-        return origGetNodeLatLng.call(this.cytoscapeLeafletLeaf, n);
-      };
-      this.isGeoMapInitialized = true;
-      this.geoScaleBaseZoom = this.cytoscapeLeafletMap.getZoom() || 1;
-      this.cytoscapeLeafletMap.on('zoom', this.onLeafletZoomBound);
-      this.cytoscapeLeafletMap.on('zoomend', this.onLeafletZoomEndBound);
-
-      // Let cytoscape-leaflet handle position synchronization
-      // We only need to handle scaling
-    }
+    if (!(await this.initializeGeoMapElements(cy))) return;
 
     log.info('[GeoMap] Applying preset layout with geo positions');
 
-    // First, ensure all nodes have valid lat/lng before applying layout
     cy.nodes().forEach((node) => {
       const data = node.data();
-      // Check if lat/lng are already set and valid
       const lat = parseFloat(data.lat);
       const lng = parseFloat(data.lng);
       if (isNaN(lat) || isNaN(lng)) {
@@ -742,29 +648,22 @@ export class ManagerLayoutAlgo {
         const data = node.data();
         const lat = parseFloat(data.lat);
         const lng = parseFloat(data.lng);
-
-        // If we have valid coordinates, use them
         if (!isNaN(lat) && !isNaN(lng)) {
           const point = this.cytoscapeLeafletMap.latLngToContainerPoint([lat, lng]);
           return { x: point.x, y: point.y };
         }
-
-        // This should not happen as assignMissingLatLng was called earlier
         log.error(`[GeoMap] Node ${node.id()} still missing geo coordinates during layout`);
-        // Keep current position to avoid jumping to ocean
         return { x: node.position().x, y: node.position().y };
       }
     } as any).run();
 
     log.info('[GeoMap] Layout applied, fitting map');
 
-    // Give the map time to render before fitting
     setTimeout(() => {
       if (this.cytoscapeLeafletLeaf && this.cytoscapeLeafletLeaf.fit) {
         this.cytoscapeLeafletLeaf.fit();
         log.info('[GeoMap] Map fitted to nodes');
       }
-
       const factor = this.calculateGeoScale();
       this.applyGeoScale(true, factor);
       log.info(`[GeoMap] Scale applied with factor: ${factor}`);
@@ -772,10 +671,7 @@ export class ManagerLayoutAlgo {
 
     cy.on('add', this.onElementAddedBound);
     cy.on('render', this.onCyRenderBound);
-    const geoMapButtons = document.getElementsByClassName('viewport-geo-map');
-    for (let i = 0; i < geoMapButtons.length; i++) {
-      geoMapButtons[i].classList.remove('hidden');
-    }
+    this.showGeoMapButtons();
 
     log.info('[GeoMap] Geo-positioning layout initialization complete');
   }
@@ -787,7 +683,7 @@ export class ManagerLayoutAlgo {
     log.info('[GeoMap] Disabling geo-positioning layout');
 
     // Remove the leaflet-active class and restore background
-    cy.container()?.classList.remove('leaflet-active');
+    cy.container()?.classList.remove(CLASS_LEAFLET_ACTIVE);
     if (cy.container()) {
       (cy.container() as HTMLElement).style.background = '';
     }
@@ -795,38 +691,11 @@ export class ManagerLayoutAlgo {
     // Persist node geographic coordinates before destroying the overlay
     this.updateNodeGeoCoordinates();
 
-    // Restore original graph positions captured when Geo layout was activated
-    cy.nodes().forEach((node) => {
-      const x = node.data('_origPosX');
-      const y = node.data('_origPosY');
-      if (x !== undefined && y !== undefined) {
-        node.position({ x, y });
-        node.removeData('_origPosX');
-        node.removeData('_origPosY');
-      }
-    });
+    this.restoreOriginalPositions(cy);
+    this.hideAndRemoveLeafletContainer();
+    this.removeLeafletHandlers(cy);
+    this.clearRenderDebounce();
 
-    const leafletContainer = document.getElementById('cy-leaflet');
-    if (leafletContainer) {
-      leafletContainer.style.display = 'none';
-      leafletContainer.classList.add('hidden');
-      // Remove the container entirely to ensure a clean reinitialisation later
-      if (leafletContainer.parentNode) {
-        leafletContainer.parentNode.removeChild(leafletContainer);
-      }
-    }
-    if (this.cytoscapeLeafletMap) {
-      this.cytoscapeLeafletMap.off('zoom', this.onLeafletZoomBound);
-      this.cytoscapeLeafletMap.off('zoomend', this.onLeafletZoomEndBound);
-    }
-    cy.off('add', this.onElementAddedBound);
-    cy.off('render', this.onCyRenderBound);
-
-    // Clear any pending render debounce timer
-    if (this.renderDebounceTimer !== null) {
-      window.clearTimeout(this.renderDebounceTimer);
-      this.renderDebounceTimer = null;
-    }
     this.cytoscapeLeafletLeaf.destroy();
     this.cytoscapeLeafletLeaf = undefined as any;
     this.cytoscapeLeafletMap = undefined as any;
@@ -835,27 +704,9 @@ export class ManagerLayoutAlgo {
     this.applyGeoScale(false);
 
     // Optionally start a Cola layout after disabling Geo mode, unless skipped
-    if (!options?.skipPostLayout) {
-      try {
-        await loadExtension('cola');
-      } catch (err) {
-        log.error(`[GeoMap] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
-      }
+    if (!options?.skipPostLayout) await this.runPostColaLayout(cy);
 
-      cy.layout({
-        name: 'cola',
-        nodeGap: 5,
-        edgeLength: 100,
-        animate: true,
-        randomize: false,
-        maxSimulationTime: 1500
-      } as any).run();
-    }
-
-    const overlays = document.getElementsByClassName('viewport-geo-map');
-    for (let i = 0; i < overlays.length; i++) {
-      if (!overlays[i].classList.contains('hidden')) overlays[i].classList.add('hidden');
-    }
+    this.hideGeoOverlays();
 
     this.isGeoMapInitialized = false;
 
@@ -864,6 +715,64 @@ export class ManagerLayoutAlgo {
     // Restore theme-based styles when leaving Geo layout
     this.geoTheme = null;
     loadCytoStyle(cy);
+  }
+
+  private restoreOriginalPositions(cy: cytoscape.Core) {
+    cy.nodes().forEach((node) => {
+      const x = node.data(DATA_ORIG_POS_X);
+      const y = node.data(DATA_ORIG_POS_Y);
+      if (x !== undefined && y !== undefined) {
+        node.position({ x, y });
+        node.removeData(DATA_ORIG_POS_X);
+        node.removeData(DATA_ORIG_POS_Y);
+      }
+    });
+  }
+
+  private hideAndRemoveLeafletContainer() {
+    const leafletContainer = document.getElementById(ID_CY_LEAFLET);
+    if (!leafletContainer) return;
+    leafletContainer.style.display = 'none';
+    leafletContainer.classList.add(CLASS_HIDDEN);
+    if (leafletContainer.parentNode) leafletContainer.parentNode.removeChild(leafletContainer);
+  }
+
+  private removeLeafletHandlers(cy: cytoscape.Core) {
+    if (this.cytoscapeLeafletMap) {
+      this.cytoscapeLeafletMap.off('zoom', this.onLeafletZoomBound);
+      this.cytoscapeLeafletMap.off('zoomend', this.onLeafletZoomEndBound);
+    }
+    cy.off('add', this.onElementAddedBound);
+    cy.off('render', this.onCyRenderBound);
+  }
+
+  private clearRenderDebounce() {
+    if (this.renderDebounceTimer === null) return;
+    window.clearTimeout(this.renderDebounceTimer);
+    this.renderDebounceTimer = null;
+  }
+
+  private async runPostColaLayout(cy: cytoscape.Core) {
+    try {
+      await loadExtension('cola');
+    } catch (err) {
+      log.error(`[GeoMap] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    cy.layout({
+      name: 'cola',
+      nodeGap: 5,
+      edgeLength: 100,
+      animate: true,
+      randomize: false,
+      maxSimulationTime: 1500
+    } as any).run();
+  }
+
+  private hideGeoOverlays() {
+    const overlays = document.getElementsByClassName('viewport-geo-map');
+    for (let i = 0; i < overlays.length; i++) {
+      if (!overlays[i].classList.contains(CLASS_HIDDEN)) overlays[i].classList.add(CLASS_HIDDEN);
+    }
   }
 
   public async viewportDrawerLayoutForceDirected(): Promise<void> {
@@ -937,41 +846,10 @@ export class ManagerLayoutAlgo {
     const cy = this.getCy();
     if (!cy) return;
 
-    const nodeGap = parseFloat((document.getElementById('vertical-layout-slider-node-v-gap') as HTMLInputElement)?.value || '1');
-    const groupGap = parseFloat((document.getElementById('vertical-layout-slider-group-v-gap') as HTMLInputElement)?.value || '100');
+    const nodeGap = this.parseInputValue('vertical-layout-slider-node-v-gap', '1');
+    const groupGap = this.parseInputValue('vertical-layout-slider-group-v-gap', '100');
 
-    setTimeout(() => {
-      cy.nodes().forEach((node) => {
-        if (node.isParent()) {
-          const children = node.children();
-          const cellWidth = node.width() / children.length;
-          children.forEach((child, i) => {
-            child.position({ x: i * (cellWidth + nodeGap), y: 0 });
-          });
-        }
-      });
-
-      const sortedParents = cy.nodes().filter((n) => n.isParent()).sort((a, b) => {
-        const aLevel = parseInt(a.data('extraData')?.topoViewerGroupLevel || '0', 10);
-        const bLevel = parseInt(b.data('extraData')?.topoViewerGroupLevel || '0', 10);
-        if (aLevel !== bLevel) return aLevel - bLevel;
-        return (a.data('id') || '').localeCompare(b.data('id') || '');
-      });
-
-      let y = 0;
-      let maxWidth = 0;
-      cy.nodes().forEach((node) => { if (node.isParent()) maxWidth = Math.max(maxWidth, node.width()); });
-      const centerX = 0;
-      const divFactor = maxWidth / 2;
-
-      sortedParents.forEach((parent) => {
-        const x = centerX - parent.width() / divFactor;
-        parent.position({ x, y });
-        y += groupGap;
-      });
-
-      cy.fit();
-    }, 100);
+    this.applyDrawerLayout(cy, 'vertical', nodeGap, groupGap);
   }
 
   public viewportDrawerLayoutHorizontal(): void {
@@ -979,41 +857,99 @@ export class ManagerLayoutAlgo {
     const cy = this.getCy();
     if (!cy) return;
 
-    const nodeGap = parseFloat((document.getElementById('horizontal-layout-slider-node-h-gap') as HTMLInputElement)?.value || '10') * 10;
-    const groupGap = parseFloat((document.getElementById('horizontal-layout-slider-group-h-gap') as HTMLInputElement)?.value || '100');
+    const nodeGap = this.parseInputValue('horizontal-layout-slider-node-h-gap', '10', 10);
+    const groupGap = this.parseInputValue('horizontal-layout-slider-group-h-gap', '100');
 
+    this.applyDrawerLayout(cy, 'horizontal', nodeGap, groupGap);
+  }
+
+  private parseInputValue(id: string, fallback: string, multiplier = 1): number {
+    const value = (document.getElementById(id) as HTMLInputElement)?.value ?? fallback;
+    return parseFloat(value || fallback) * multiplier;
+  }
+
+  private applyDrawerLayout(
+    cy: cytoscape.Core,
+    orientation: 'vertical' | 'horizontal',
+    nodeGap: number,
+    groupGap: number
+  ): void {
     setTimeout(() => {
-      cy.nodes().forEach((node) => {
-        if (node.isParent()) {
-          const children = node.children();
-          const cellHeight = node.height() / children.length;
-          children.forEach((child, i) => {
-            child.position({ x: 0, y: i * (cellHeight + nodeGap) });
-          });
-        }
-      });
+      this.positionChildren(cy, orientation, nodeGap);
+      const sortedParents = this.sortParentNodes(cy);
+      const maxSize = this.getMaxParentSize(cy, orientation);
+      this.positionParentNodes(sortedParents, orientation, groupGap, maxSize);
+      cy.fit();
+    }, 100);
+  }
 
-      const sortedParents = cy.nodes().filter((n) => n.isParent()).sort((a, b) => {
+  private positionChildren(
+    cy: cytoscape.Core,
+    orientation: 'vertical' | 'horizontal',
+    nodeGap: number
+  ): void {
+    cy.nodes()
+      .filter(n => n.isParent())
+      .forEach(node => {
+        const children = node.children();
+        const cell = orientation === 'vertical'
+          ? node.width() / children.length
+          : node.height() / children.length;
+        children.forEach((child, i) => {
+          if (orientation === 'vertical') {
+            child.position({ x: i * (cell + nodeGap), y: 0 });
+          } else {
+            child.position({ x: 0, y: i * (cell + nodeGap) });
+          }
+        });
+      });
+  }
+
+  private sortParentNodes(cy: cytoscape.Core): cytoscape.CollectionReturnValue {
+    return cy
+      .nodes()
+      .filter(n => n.isParent())
+      .sort((a, b) => {
         const aLevel = parseInt(a.data('extraData')?.topoViewerGroupLevel || '0', 10);
         const bLevel = parseInt(b.data('extraData')?.topoViewerGroupLevel || '0', 10);
         if (aLevel !== bLevel) return aLevel - bLevel;
         return (a.data('id') || '').localeCompare(b.data('id') || '');
       });
+  }
 
-      let x = 0;
-      let maxHeight = 0;
-      cy.nodes().forEach((node) => { if (node.isParent()) maxHeight = Math.max(maxHeight, node.height()); });
-      const centerY = 0;
-      const divFactor = maxHeight / 2;
-
-      sortedParents.forEach((parent) => {
-        const y = centerY - parent.height() / divFactor;
-        parent.position({ x, y });
-        x += groupGap;
+  private getMaxParentSize(
+    cy: cytoscape.Core,
+    orientation: 'vertical' | 'horizontal'
+  ): number {
+    let maxSize = 0;
+    cy
+      .nodes()
+      .filter(n => n.isParent())
+      .forEach(node => {
+        const size = orientation === 'vertical' ? node.width() : node.height();
+        if (size > maxSize) maxSize = size;
       });
+    return maxSize;
+  }
 
-      cy.fit();
-    }, 100);
+  private positionParentNodes(
+    parents: cytoscape.CollectionReturnValue,
+    orientation: 'vertical' | 'horizontal',
+    groupGap: number,
+    maxSize: number
+  ): void {
+    const center = 0;
+    const divFactor = maxSize / 2;
+    let axis = 0;
+    parents.forEach(parent => {
+      const pos = center - (orientation === 'vertical' ? parent.width() : parent.height()) / divFactor;
+      if (orientation === 'vertical') {
+        parent.position({ x: pos, y: axis });
+      } else {
+        parent.position({ x: axis, y: pos });
+      }
+      axis += groupGap;
+    });
   }
 
   public async viewportDrawerPreset(): Promise<void> {

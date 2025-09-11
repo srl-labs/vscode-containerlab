@@ -696,26 +696,15 @@
     // Listen for mode changes
     document.addEventListener('topo-mode-changed', updateUnifiedPanelState);
 
-    // Handle window resize to keep panel in bounds
-    window.addEventListener('resize', function () {
-      if (panel) {
-        const rect = panel.getBoundingClientRect();
-        const navbar = document.querySelector('.navbar');
-        const navbarHeight = navbar ? navbar.offsetHeight : 72; // Default to 72px if not found
-        const maxLeft = window.innerWidth - rect.width;
-        const maxTop = window.innerHeight - rect.height;
-        const minTop = navbarHeight; // Can't go above navbar
-
-        let newLeft = Math.max(0, Math.min(rect.left, maxLeft));
-        let newTop = Math.max(minTop, Math.min(rect.top, maxTop));
-
-        if (newLeft !== rect.left || newTop !== rect.top) {
-          panel.style.left = newLeft + 'px';
-          panel.style.top = newTop + 'px';
-          savePanelState();
+      // Handle window resize to keep panel in bounds
+      window.addEventListener('resize', function () {
+        if (panel && window.keepPanelWithinBounds) {
+          const result = window.keepPanelWithinBounds(panel);
+          if (result.changed) {
+            savePanelState();
+          }
         }
-      }
-      updateDrawerDirection();
-    });
+        updateDrawerDirection();
+      });
   });
 </script>

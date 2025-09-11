@@ -2,9 +2,12 @@ import * as vscode from "vscode";
 import * as utils from "../helpers/utils";
 import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
 
+const ERR_NO_LAB_NODE = 'No lab node selected.';
+const ERR_NO_IFACE_NODE = 'No interface node selected.';
+
 export function copyLabPath(node: ClabLabTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -23,7 +26,7 @@ export function copyLabPath(node: ClabLabTreeNode) {
 
 export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -43,7 +46,7 @@ export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
 
 export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -63,7 +66,7 @@ export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
 
 export function copyContainerName(node: ClabContainerTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -82,7 +85,7 @@ export function copyContainerName(node: ClabContainerTreeNode) {
 
 export function copyContainerID(node: ClabContainerTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -102,7 +105,7 @@ export function copyContainerID(node: ClabContainerTreeNode) {
 
 export function copyContainerKind(node: ClabContainerTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -122,7 +125,7 @@ export function copyContainerKind(node: ClabContainerTreeNode) {
 
 export function copyContainerImage(node: ClabContainerTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage(ERR_NO_LAB_NODE);
     return;
   }
 
@@ -142,7 +145,7 @@ export function copyContainerImage(node: ClabContainerTreeNode) {
 
 export function copyMACAddress(node: ClabInterfaceTreeNode) {
   if (!node) {
-    vscode.window.showErrorMessage('No interface node selected.');
+    vscode.window.showErrorMessage(ERR_NO_IFACE_NODE);
     return;
   }
 

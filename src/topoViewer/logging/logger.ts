@@ -44,9 +44,9 @@ function getCallerFileLine(): string {
   const lines = stack.split('\n');
   const callSite = lines[3] || lines[4] || '';
 
-  const match =
-    callSite.match(/\((.*?):(\d+):\d+\)/) ||
-    callSite.match(/at (.*?):(\d+):\d+/);
+  const reParen = /\(([^():]+):(\d+):\d+\)/;
+  const reAt = /at ([^():]+):(\d+):\d+/;
+  const match = reParen.exec(callSite) || reAt.exec(callSite);
   if (!match) return 'unknown:0';
 
   const filePath = match[1];
@@ -128,4 +128,3 @@ export const logInfo = log.info;
 export const logDebug = log.debug;
 export const logWarn = log.warn;
 export const logError = log.error;
-

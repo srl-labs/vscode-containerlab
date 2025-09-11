@@ -48,3 +48,4 @@ memory/**
 .claude/**
 .claude-flow/**
 patch.sh
+report/

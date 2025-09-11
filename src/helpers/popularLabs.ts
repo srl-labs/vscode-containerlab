@@ -1,4 +1,5 @@
 import * as https from 'https';
+import * as vscode from 'vscode';
 
 export interface PopularRepo {
   name: string;
@@ -75,4 +76,23 @@ export function fetchPopularRepos(): Promise<PopularRepo[]> {
 
     req.end();
   });
+}
+
+async function getRepos(): Promise<PopularRepo[]> {
+  try {
+    return await fetchPopularRepos();
+  } catch {
+    return fallbackRepos;
+  }
+}
+
+export async function pickPopularRepo(title: string, placeHolder: string) {
+  const repos = await getRepos();
+  const items = repos.map((r) => ({
+    label: r.name,
+    description: r.description,
+    detail: `⭐ ${r.stargazers_count}`,
+    repo: r.html_url,
+  }));
+  return vscode.window.showQuickPick(items, { title, placeHolder });
 }

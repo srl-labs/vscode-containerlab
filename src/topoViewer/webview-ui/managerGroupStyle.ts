@@ -3,6 +3,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import type { GroupStyleAnnotation } from '../types/topoViewerGraph';
 import type { ManagerFreeText } from './managerFreeText';
+import { debounce } from '../utilities/asyncUtils';
 
 export class ManagerGroupStyle {
   private cy: cytoscape.Core;
@@ -17,7 +18,7 @@ export class ManagerGroupStyle {
     this.cy = cy;
     this.messageSender = messageSender;
     this.freeTextManager = freeTextManager;
-    this.saveDebounced = this.debounce(() => {
+    this.saveDebounced = debounce(() => {
       this.saveAnnotations();
     }, 300);
   }
@@ -26,13 +27,7 @@ export class ManagerGroupStyle {
     this.freeTextManager = manager;
   }
 
-  private debounce(func: Function, wait: number) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: any[]) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  }
+  // debounce provided by utilities/asyncUtils
 
   public getGroupStyles(): GroupStyleAnnotation[] {
     return Array.from(this.groupStyles.values());
@@ -63,6 +58,7 @@ export class ManagerGroupStyle {
         'corner-radius': '',
         color: ''
       });
+      this.applyLabelPositionClass(node, '');
     }
     this.saveDebounced();
   }
@@ -72,39 +68,46 @@ export class ManagerGroupStyle {
     if (!style) return;
 
     let node = this.cy.getElementById(id);
-
-    // If node doesn't exist, create it (for empty groups)
     if (node.empty()) {
-      const [groupName, level] = id.split(':');
-      if (groupName && level) {
-        const pos = this.cy.nodes().length > 0
-          ? { x: this.cy.extent().x1 + 100, y: this.cy.extent().y1 + 100 }
-          : { x: 100, y: 100 };
-
-        node = this.cy.add({
-          group: 'nodes',
-          data: {
-            id, name: groupName, weight: '1000', topoViewerRole: 'group',
-            extraData: {
-              clabServerUsername: 'asad', weight: '2', name: '',
-              topoViewerGroup: groupName, topoViewerGroupLevel: level
-            }
-          },
-          position: pos,
-          classes: 'empty-group'
-        });
-        log.debug(`Created missing group: ${id}`);
-      } else {
-        return;
-      }
+      node = this.createMissingGroupNode(id);
+      if (node.empty()) return;
     }
 
+    node.style(this.buildCssFromStyle(style));
+    if (style.labelPosition) {
+      this.applyLabelPositionClass(node, style.labelPosition);
+    }
+  }
+
+  private createMissingGroupNode(id: string) {
+    const [groupName, level] = id.split(':');
+    if (!groupName || !level) return this.cy.collection();
+
+    const pos = this.cy.nodes().length > 0
+      ? { x: this.cy.extent().x1 + 100, y: this.cy.extent().y1 + 100 }
+      : { x: 100, y: 100 };
+
+    const node = this.cy.add({
+      group: 'nodes',
+      data: {
+        id, name: groupName, weight: '1000', topoViewerRole: 'group',
+        extraData: {
+          clabServerUsername: 'asad', weight: '2', name: '',
+          topoViewerGroup: groupName, topoViewerGroupLevel: level
+        }
+      },
+      position: pos,
+      classes: 'empty-group'
+    });
+    log.debug(`Created missing group: ${id}`);
+    return node;
+  }
+
+  private buildCssFromStyle(style: GroupStyleAnnotation): any {
     const css: any = {};
     if (style.backgroundColor) {
       css['background-color'] = style.backgroundColor;
-      if (style.backgroundOpacity !== undefined) {
-        css['background-opacity'] = style.backgroundOpacity / 100;
-      }
+      if (style.backgroundOpacity !== undefined) css['background-opacity'] = style.backgroundOpacity / 100;
     }
     if (style.borderColor) css['border-color'] = style.borderColor;
     if (style.borderWidth !== undefined) css['border-width'] = `${style.borderWidth}px`;
@@ -114,7 +117,19 @@ export class ManagerGroupStyle {
       css['corner-radius'] = `${style.borderRadius}px`;
     }
     if (style.color) css['color'] = style.color;
-    node.style(css);
+    return css;
+  }
+
+  private applyLabelPositionClass(node: cytoscape.NodeSingular, labelPos: string): void {
+    const validLabelClasses = ['top-center', 'top-left', 'top-right', 'bottom-center', 'bottom-left', 'bottom-right'];
+    validLabelClasses.forEach(cls => node.removeClass(cls));
+    if (validLabelClasses.includes(labelPos)) {
+      node.addClass(labelPos);
+      node.data('groupLabelPos', labelPos);
+      log.debug(`Applied label position '${labelPos}' to group node ${node.id()}`);
+    } else {
+      node.removeData('groupLabelPos');
+    }
   }
 
   public async loadGroupStyles(): Promise<void> {

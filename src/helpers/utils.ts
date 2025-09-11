@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { exec, execSync } from "child_process";
+import { exec } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
 import { ClabLabTreeNode } from "../treeView/common";
@@ -97,10 +97,7 @@ export function getSudo() {
  */
 export function isOrbstack(): boolean {
   try {
-    const kernel = execSync("uname -r")
-      .toString()
-      .trim()
-      .toLowerCase();
+    const kernel = os.release().toLowerCase();
     // If "orbstack" is in the kernel, assume OrbStack environment
     return kernel.includes("orbstack");
   } catch {
@@ -111,7 +108,7 @@ export function isOrbstack(): boolean {
 export function getUsername(): string {
   let username = "";
   try {
-    username = execSync("whoami").toString("utf-8").trim();
+    username = os.userInfo().username;
   } catch {
     throw new Error(
       "Could not determine user. Failed to execute command: whoami",
@@ -161,82 +158,97 @@ function escapeDoubleQuotes(input: string): string {
   return input.replace(/"/g, '\\"');
 }
 
-/**
- * Runs a command, checking for two possibilities in order:
- *   1) If checkType is "containerlab" and the user is NOT forced to always use sudo
- *      (i.e. settings do not force sudo) and the user is in the "clab_admins" group,
- *      run the command directly (i.e. without sudo).
- *   2) If passwordless sudo is available, run with "sudo -E".
- *   3) Otherwise, prompt the user for their sudo password and run with it.
- *
- * If `returnOutput` is true, the function returns the command’s stdout as a string.
- */
-export async function runWithSudo(
+async function runAndLog(
+  cmd: string,
+  description: string,
+  outputChannel: vscode.LogOutputChannel,
+  returnOutput: boolean,
+  includeStderr: boolean
+): Promise<string | void> {
+  const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmd);
+  if (cmdOut) outputChannel.info(cmdOut);
+  if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
+  const combined = includeStderr && returnOutput
+    ? [cmdOut, cmdErr].filter(Boolean).join("\n")
+    : cmdOut;
+  return returnOutput ? combined : undefined;
+}
+
+async function tryRunAsGroupMember(
   command: string,
   description: string,
   outputChannel: vscode.LogOutputChannel,
-  checkType: 'generic' | 'containerlab' = 'containerlab',
-  returnOutput: boolean = false,
-  includeStderr: boolean = false
-): Promise<string | void> {
-  // Get forced sudo setting from user configuration.
-  // If the user has enabled "always use sudo" then getSudo() will return a non-empty string.
-  const forcedSudo = getSudo();
-
-  // --- 1) For containerlab commands, if NOT forced to use sudo, check if the user is in "clab_admins"
-  if (checkType === 'containerlab' && forcedSudo === "") {
-    try {
-      const { stdout } = await execAsync("id -nG");
-      const groups = stdout.split(/\s+/);
-      if (groups.includes("clab_admins")) {
-        log(`User is in "clab_admins". Running without sudo: ${command}`, outputChannel);
-        const { stdout: cmdOut, stderr: cmdErr } = await execAsync(command);
-        if (cmdOut) outputChannel.info(cmdOut);
-        if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
-        const combined = includeStderr && returnOutput
-          ? [cmdOut, cmdErr].filter(Boolean).join('\n')
-          : cmdOut;
-        return returnOutput ? combined : undefined;
+  returnOutput: boolean,
+  includeStderr: boolean,
+  groupsToCheck: string[]
+): Promise<string | void | undefined> {
+  try {
+    const { stdout } = await execAsync("id -nG");
+    const groups = stdout.split(/\s+/);
+    for (const grp of groupsToCheck) {
+      if (groups.includes(grp)) {
+        log(`User is in "${grp}". Running without sudo: ${command}`, outputChannel);
+        const result = await runAndLog(
+          command,
+          description,
+          outputChannel,
+          returnOutput,
+          includeStderr
+        );
+        return returnOutput ? (result as string) : "";
       }
-    } catch (err) {
-      log(`Failed to check user groups: ${err}`, outputChannel);
-      // Continue with sudo logic if group check fails.
     }
+  } catch (err) {
+    log(`Failed to check user groups: ${err}`, outputChannel);
   }
+  return undefined;
+}
 
-  // --- 2) Check if passwordless sudo is available.
-  let checkCommand =
-    checkType === 'containerlab'
-      ? "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false"
-      : "sudo -n true";
-
-  let passwordlessAvailable = false;
+async function hasPasswordlessSudo(checkType: 'generic' | 'containerlab' | 'docker'): Promise<boolean> {
+  let checkCommand: string;
+  if (checkType === 'containerlab') {
+    checkCommand = "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false";
+  } else if (checkType === 'docker') {
+    checkCommand = "sudo -n docker ps >/dev/null 2>&1 && echo true || echo false";
+  } else {
+    checkCommand = "sudo -n true";
+  }
   try {
     await execAsync(checkCommand);
-    passwordlessAvailable = true;
+    return true;
   } catch {
-    passwordlessAvailable = false;
+    return false;
   }
+}
 
-  if (passwordlessAvailable) {
-    log(`Passwordless sudo available. Trying with -E: ${command}`, outputChannel);
-    const escapedCommand = escapeDoubleQuotes(command);
-    const cmdToRun = `sudo -E bash -c "${escapedCommand}"`;
-    try {
-      const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmdToRun);
-      if (cmdOut) outputChannel.info(cmdOut);
-      if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
-      const combined = includeStderr && returnOutput
-        ? [cmdOut, cmdErr].filter(Boolean).join('\n')
-        : cmdOut;
-      return returnOutput ? combined : undefined;
-    } catch (err) {
-      throw new Error(`Command failed: ${cmdToRun}\n${(err as Error).message}`);
-    }
+async function runWithPasswordless(
+  command: string,
+  description: string,
+  outputChannel: vscode.LogOutputChannel,
+  returnOutput: boolean,
+  includeStderr: boolean
+): Promise<string | void> {
+  log(`Passwordless sudo available. Trying with -E: ${command}`, outputChannel);
+  const escapedCommand = escapeDoubleQuotes(command);
+  const cmdToRun = `sudo -E bash -c "${escapedCommand}"`;
+  try {
+    return await runAndLog(cmdToRun, description, outputChannel, returnOutput, includeStderr);
+  } catch (err) {
+    throw new Error(`Command failed: ${cmdToRun}\n${(err as Error).message}`);
   }
+}
 
-  // --- 3) Prompt user for a sudo password.
-  log(`Passwordless sudo not available for "${description}". Prompting for password.`, outputChannel);
+async function runWithPasswordPrompt(
+  command: string,
+  description: string,
+  outputChannel: vscode.LogOutputChannel,
+  returnOutput: boolean,
+  includeStderr: boolean
+): Promise<string | void> {
+  log(
+    `Passwordless sudo not available for "${description}". Prompting for password.`,
+    outputChannel
+  );
   const shouldProceed = await vscode.window.showWarningMessage(
     `The command "${description}" requires sudo privileges. Proceed?`,
     { modal: true },
@@ -259,16 +271,80 @@ export async function runWithSudo(
   const escapedCommand = escapeDoubleQuotes(command);
   const cmdToRun = `echo '${password}' | sudo -S -E bash -c "${escapedCommand}"`;
   try {
-    const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmdToRun);
-    if (cmdOut) outputChannel.info(cmdOut);
-    if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
-    const combined = includeStderr && returnOutput
-      ? [cmdOut, cmdErr].filter(Boolean).join('\n')
-      : cmdOut;
-    return returnOutput ? combined : undefined;
+    return await runAndLog(cmdToRun, description, outputChannel, returnOutput, includeStderr);
   } catch (err) {
-    throw new Error(`Command failed: runWithSudo [non-passwordless]\n${(err as Error).message}`);
+    throw new Error(
+      `Command failed: runWithSudo [non-passwordless]\n${(err as Error).message}`
+    );
   }
+}
+
+/**
+ * Runs a command, checking for these possibilities in order:
+ *   1) If sudo is not forced and the user belongs to an allowed group
+ *      ("clab_admins"/"docker" for containerlab or "docker" for docker), run it directly.
+ *   2) If passwordless sudo is available, run with "sudo -E".
+ *   3) Otherwise, prompt the user for their sudo password and run with it.
+ *
+ * If `returnOutput` is true, the function returns the command’s stdout as a string.
+ */
+export async function runWithSudo(
+  command: string,
+  description: string,
+  outputChannel: vscode.LogOutputChannel,
+  checkType: 'generic' | 'containerlab' | 'docker' = 'containerlab',
+  returnOutput: boolean = false,
+  includeStderr: boolean = false
+): Promise<string | void> {
+  // Get forced sudo setting from user configuration.
+  // If the user has enabled "always use sudo" then getSudo() will return a non-empty string.
+  const forcedSudo = getSudo();
+
+  if (forcedSudo === "") {
+    if (checkType === 'containerlab') {
+      const direct = await tryRunAsGroupMember(
+        command,
+        description,
+        outputChannel,
+        returnOutput,
+        includeStderr,
+        ['clab_admins', 'docker']
+      );
+      if (typeof direct !== 'undefined') {
+        return direct;
+      }
+    } else if (checkType === 'docker') {
+      const direct = await tryRunAsGroupMember(
+        command,
+        description,
+        outputChannel,
+        returnOutput,
+        includeStderr,
+        ['docker']
+      );
+      if (typeof direct !== 'undefined') {
+        return direct;
+      }
+    }
+  }
+
+  if (await hasPasswordlessSudo(checkType)) {
+    return runWithPasswordless(
+      command,
+      description,
+      outputChannel,
+      returnOutput,
+      includeStderr
+    );
+  }
+
+  return runWithPasswordPrompt(
+    command,
+    description,
+    outputChannel,
+    returnOutput,
+    includeStderr
+  );
 }
 
 /**
@@ -379,10 +455,10 @@ export async function checkAndUpdateClabIfNeeded(
         if (selection === 'Update Now') {
           vscode.commands.executeCommand(updateCommandId);
         } else if (selection === 'View Release Notes') {
-          const urlRegex = /https?:\/\/[^\s]+/g;
-          const match = versionOutput.match(urlRegex);
-          if (match && match.length > 0) {
-            vscode.env.openExternal(vscode.Uri.parse(match[0]));
+          const urlRegex = /(https?:\/\/\S+)/;
+          const m = urlRegex.exec(versionOutput);
+          if (m) {
+            vscode.env.openExternal(vscode.Uri.parse(m[1]));
           } else {
             vscode.window.showInformationMessage("No release notes URL found.");
           }
@@ -435,36 +511,29 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 // Rules: only [A-Za-z0-9_.-], must start with alnum, no trailing '.'/'-'.
 export function sanitize(
   raw: string,
-  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {}
+  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {},
 ): string {
   if (!raw) return "container";
 
-  const allowed = /[A-Za-z0-9_.-]/;
-  let out = "";
-  let lastDash = false;
+  // Replace all disallowed characters (including "/") with "-"
+  let out = raw.replace(/[^A-Za-z0-9_.-]+/g, "-");
 
-  for (const ch of raw) {
-    if (allowed.test(ch) && ch !== "/") { // '/' is not allowed in --name
-      out += ch;
-      lastDash = false;
-    } else {
-      if (!lastDash) {
-        out += "-";
-        lastDash = true;
-      }
-    }
+  // Remove leading or trailing separators
+  while (out.startsWith("-") || out.startsWith(".")) out = out.substring(1);
+  while (out.endsWith("-") || out.endsWith(".")) out = out.slice(0, -1);
+
+  // Ensure the name starts with an alphanumeric character
+  if (!/^[A-Za-z0-9]/.test(out)) {
+    out = `c-${out}`;
   }
 
-  // Trim leading/trailing separators not allowed at ends
-  out = out.replace(/^[-.]+/, "").replace(/[-.]+$/, "");
+  // Enforce maximum length and trim any trailing separators again
+  if (out.length > maxLen) {
+    out = out.slice(0, maxLen);
+    while (out.endsWith("-") || out.endsWith(".")) out = out.slice(0, -1);
+  }
 
-  // Must start with alphanumeric
-  if (!out || !/^[A-Za-z0-9]/.test(out)) out = `c-${out}`;
-
-  // Enforce length and avoid bad trailing chars after cut
-  if (out.length > maxLen) out = out.slice(0, maxLen);
-  out = out.replace(/[-.]+$/, "");
   if (!out) out = "container";
-
   return lower ? out.toLowerCase() : out;
 }
+

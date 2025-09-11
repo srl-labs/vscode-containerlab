@@ -91,23 +91,12 @@
           <input type="number" id="panel-link-ext-mtu" class="input-field w-full" placeholder="e.g., 1500">
         </div>
 
-        <!-- Vars -->
-        <div class="form-group">
-          <label class="block vscode-label mb-1">Vars</label>
-          <div id="panel-link-ext-vars-container" class="space-y-2">
-            <!-- Dynamic var entries will be added here -->
-          </div>
-          <button class="btn btn-small mt-2" onclick="addLinkVarEntry()">
-            <i class="fas fa-plus mr-1"></i> Add Var
-          </button>
-        </div>
+          <div id="panel-link-vars-placeholder"></div>
 
         <!-- Labels -->
         <div class="form-group">
           <label class="block vscode-label mb-1">Labels</label>
-          <div id="panel-link-ext-labels-container" class="space-y-2">
-            <!-- Dynamic label entries will be added here -->
-          </div>
+          <div id="panel-link-ext-labels-container" class="space-y-2"></div>
           <button class="btn btn-small mt-2" onclick="addLinkLabelEntry()">
             <i class="fas fa-plus mr-1"></i> Add Label
           </button>
@@ -130,12 +119,34 @@
     </div>
   </div>
 
-  <!-- Footer with Save/Cancel buttons -->
-  <div class="panel-block flex items-center">
-    <div class="w-1/5 pr-1"></div>
-    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
-      <button id="panel-link-editor-save-button" class="btn btn-primary btn-small">Save</button>
-      <button id="panel-link-editor-close-button" class="btn btn-outlined btn-small">Close</button>
-    </div>
-  </div>
+    <div id="panel-link-footer-placeholder"></div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const varsTpl = document.getElementById('vars-section-template');
+        const footerTpl = document.getElementById('editor-footer-template');
+        if (varsTpl && footerTpl) {
+          const varsFrag = varsTpl.content.cloneNode(true);
+          const varsContainer = varsFrag.querySelector('.vars-container');
+          const addBtn = varsFrag.querySelector('.add-var-btn');
+          if (varsContainer) {
+            varsContainer.id = 'panel-link-ext-vars-container';
+          }
+          if (addBtn) {
+            addBtn.setAttribute('onclick', 'addLinkVarEntry()');
+          }
+          document.getElementById('panel-link-vars-placeholder')?.appendChild(varsFrag);
+
+          const footerFrag = footerTpl.content.cloneNode(true);
+          const saveBtn = footerFrag.querySelector('.editor-save-btn');
+          const closeBtn = footerFrag.querySelector('.editor-close-btn');
+          if (saveBtn) {
+            saveBtn.id = 'panel-link-editor-save-button';
+          }
+          if (closeBtn) {
+            closeBtn.id = 'panel-link-editor-close-button';
+          }
+          document.getElementById('panel-link-footer-placeholder')?.appendChild(footerFrag);
+        }
+      });
+    </script>
 </div>
