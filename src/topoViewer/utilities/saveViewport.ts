@@ -489,7 +489,10 @@ function applyExtraProps(
 
 function ensureLinksNode(doc: YAML.Document.Parsed): YAML.YAMLSeq {
   const maybeLinksNode = doc.getIn(['topology', 'links'], true);
-  if (YAML.isSeq(maybeLinksNode)) return maybeLinksNode;
+  if (YAML.isSeq(maybeLinksNode)) {
+    maybeLinksNode.flow = false;
+    return maybeLinksNode;
+  }
   const linksNode = new YAML.YAMLSeq();
   const topologyNode = doc.getIn(['topology'], true);
   if (YAML.isMap(topologyNode)) topologyNode.set('links', linksNode);
