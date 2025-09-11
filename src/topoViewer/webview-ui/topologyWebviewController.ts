@@ -86,6 +86,12 @@ class TopologyWebviewController {
   private static readonly KIND_BRIDGE = 'bridge' as const;
   private static readonly KIND_OVS_BRIDGE = 'ovs-bridge' as const;
   private interfaceCounters: Record<string, number> = {};
+  private labLocked = true;
+  private currentMode: 'edit' | 'view' = 'edit';
+  private nodeMenu: any;
+  private edgeMenu: any;
+  private groupMenu: any;
+  private freeTextMenu: any;
   // eslint-disable-next-line no-unused-vars
   private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
     delete: (event) => {
@@ -172,6 +178,9 @@ class TopologyWebviewController {
         log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
       }
     })();
+
+    this.labLocked = this.getInitialLockState();
+    this.applyLockState(this.labLocked);
 
     this.registerEvents(mode);
     if (mode === 'edit') {
@@ -304,11 +313,17 @@ class TopologyWebviewController {
    */
   constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
     perfMark('topoViewer_init_start');
+    this.currentMode = mode;
+    (topoViewerState as any).currentMode = mode;
     const container = this.getContainer(containerId);
     this.messageSender = new VscodeMessageSender();
     const theme = this.detectColorScheme();
     this.initializeCytoscape(container, theme);
     this.initializeManagers(mode);
+
+    window.addEventListener('topology-lock-change', (e: any) => {
+      this.applyLockState(!!e.detail);
+    });
   }
 
   private getContainer(containerId: string): HTMLElement {
@@ -392,6 +407,10 @@ class TopologyWebviewController {
 
   private registerDoubleClickHandlers(): void {
     this.cy.on('dblclick', 'node[topoViewerRole != "freeText"]', (event) => {
+      if (this.labLocked && this.currentMode === 'edit') {
+        this.showLockedMessage();
+        return;
+      }
       const node = event.target;
       if (node.data('topoViewerRole') === 'group') {
         this.groupManager.showGroupEditor(node);
@@ -404,6 +423,10 @@ class TopologyWebviewController {
       }
     });
     this.cy.on('dblclick', 'edge', (event) => {
+      if (this.labLocked && this.currentMode === 'edit') {
+        this.showLockedMessage();
+        return;
+      }
       const edge = event.target;
       this.viewportPanels?.panelEdgeEditor(edge);
     });
@@ -544,18 +567,22 @@ class TopologyWebviewController {
    */
   private async initializeContextMenu(mode: 'edit' | 'view' = 'edit'): Promise<void> {
     await loadExtension('cxtmenu');
-    this.initializeFreeTextContextMenu();
+    if (mode === 'edit' && this.labLocked) {
+      return;
+    }
     if (mode === 'edit') {
-      this.initializeNodeContextMenu();
-      this.initializeGroupContextMenu();
-      this.initializeEdgeContextMenu();
+      this.freeTextMenu = this.initializeFreeTextContextMenu();
+      this.nodeMenu = this.initializeNodeContextMenu();
+      this.groupMenu = this.initializeGroupContextMenu();
+      this.edgeMenu = this.initializeEdgeContextMenu();
     } else {
+      this.initializeFreeTextContextMenu();
       this.initializeViewerMenus();
     }
   }
 
-  private initializeFreeTextContextMenu(): void {
-    this.cy.cxtmenu({
+  private initializeFreeTextContextMenu(): any {
+    return this.cy.cxtmenu({
       selector: 'node[topoViewerRole = "freeText"]',
       commands: [
         {
@@ -596,8 +623,8 @@ class TopologyWebviewController {
     });
   }
 
-  private initializeNodeContextMenu(): void {
-    this.cy.cxtmenu({
+  private initializeNodeContextMenu(): any {
+    return this.cy.cxtmenu({
       selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"]',
       commands: (ele: cytoscape.Singular) => this.buildNodeMenuCommands(ele),
       menuRadius: 110,
@@ -690,8 +717,8 @@ class TopologyWebviewController {
     return node.data('extraData')?.longname || node.data('name') || node.id();
   }
 
-  private initializeGroupContextMenu(): void {
-    this.cy.cxtmenu({
+  private initializeGroupContextMenu(): any {
+    return this.cy.cxtmenu({
       selector: 'node:parent, node[topoViewerRole = "group"]',
       commands: [
         {
@@ -741,8 +768,8 @@ class TopologyWebviewController {
     });
   }
 
-  private initializeEdgeContextMenu(): void {
-    this.cy.cxtmenu({
+  private initializeEdgeContextMenu(): any {
+    return this.cy.cxtmenu({
       selector: 'edge',
       commands: () => this.buildEditEdgeMenuCommands(),
       menuRadius: 80,
@@ -829,62 +856,6 @@ class TopologyWebviewController {
       atMouse: false,
       outsideMenuCancel: 10,
     });
-
-    this.cy.cxtmenu({
-      selector: 'node:parent, node[topoViewerRole = "group"]',
-      commands: [
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Group</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            setTimeout(() => {
-              let groupId: string;
-              if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
-                groupId = ele.id();
-              } else {
-                return;
-              }
-              this.groupManager.showGroupEditor(groupId);
-            }, 50);
-          },
-        },
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Group</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            setTimeout(() => {
-              let groupId: string;
-              if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
-                groupId = ele.id();
-              } else {
-                return;
-              }
-              this.groupManager.directGroupRemoval(groupId);
-            }, 50);
-          },
-        },
-      ],
-      menuRadius: 80,
-      fillColor: TopologyWebviewController.UI_FILL_COLOR,
-      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
-      activePadding: 5,
-      indicatorSize: 0,
-      separatorWidth: 3,
-      spotlightPadding: 0,
-      adaptativeNodeSpotlightRadius: true,
-      minSpotlightRadius: 0,
-      maxSpotlightRadius: 0,
-      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT,
-      itemColor: TopologyWebviewController.UI_ITEM_COLOR,
-      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
-      zIndex: 9999,
-      atMouse: false,
-      outsideMenuCancel: 10,
-    });
   }
 
   private buildViewerNodeCommands(ele: cytoscape.Singular): any[] {
@@ -908,15 +879,6 @@ class TopologyWebviewController {
         setTimeout(() => this.showNodePropertiesPanel(node as unknown as cytoscape.Singular), 50);
       })
     ];
-    if (ele.isNode() && ele.parent().nonempty()) {
-      commands.push(
-        this.createNodeMenuItem('fas fa-users-slash', 'Release from Group', (node) => {
-          setTimeout(() => {
-            this.groupManager.orphaningNode(node);
-          }, 50);
-        })
-      );
-    }
     return commands;
   }
 
@@ -1011,6 +973,10 @@ class TopologyWebviewController {
   }
 
   private handleCanvasClick(event: cytoscape.EventObject): void {
+    if (this.labLocked) {
+      this.showLockedMessage();
+      return;
+    }
     const mouseEvent = event.originalEvent as MouseEvent;
     if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
       log.debug('Canvas clicked with Shift key - adding node.');
@@ -1025,6 +991,10 @@ class TopologyWebviewController {
   }
 
   private handleEditModeEdgeClick(event: cytoscape.EventObject): void {
+    if (this.labLocked) {
+      this.showLockedMessage();
+      return;
+    }
     const edge = event.target;
     const originalEvent = event.originalEvent as MouseEvent;
     if (originalEvent.altKey && this.isViewportDrawerClabEditorChecked) {
@@ -1042,6 +1012,33 @@ class TopologyWebviewController {
     });
   }
 
+  private applyLockState(locked: boolean): void {
+    this.labLocked = locked;
+    if (locked) {
+      this.cy.nodes().lock();
+      if (this.currentMode === 'edit') {
+        this.nodeMenu?.destroy();
+        this.edgeMenu?.destroy();
+        this.groupMenu?.destroy();
+        this.freeTextMenu?.destroy();
+        this.nodeMenu = this.edgeMenu = this.groupMenu = this.freeTextMenu = undefined;
+      }
+    } else {
+      this.cy.nodes().unlock();
+      if (this.currentMode === 'edit') {
+        void this.initializeContextMenu('edit');
+      }
+    }
+  }
+
+  private getInitialLockState(): boolean {
+    return true;
+  }
+
+  private showLockedMessage(): void {
+    (window as any).showLabLockedMessage?.();
+  }
+
   private async registerEditModeEvents(): Promise<void> {
     registerCyEventHandlers({
       cy: this.cy,
@@ -1053,6 +1050,23 @@ class TopologyWebviewController {
       onEdgeClick: (event) => {
         this.viewportPanels!.edgeClicked = true; // prevent panels from closing
         this.handleEditModeEdgeClick(event);
+      }
+    });
+
+    const blockContextMenu = (e: cytoscape.EventObject) => {
+      if (this.labLocked) {
+        this.showLockedMessage();
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    this.cy.on('cxttapstart', '*', blockContextMenu);
+    this.cy.on('cxttap', '*', blockContextMenu);
+
+    this.cy.on('grab', 'node', (e) => {
+      if (this.labLocked) {
+        this.showLockedMessage();
+        e.preventDefault();
       }
     });
 
@@ -1115,6 +1129,10 @@ class TopologyWebviewController {
 
 
   private async handleEditModeNodeClick(event: cytoscape.EventObject): Promise<void> {
+    if (this.labLocked) {
+      this.showLockedMessage();
+      return;
+    }
     const node = event.target;
     log.debug(`Node clicked: ${node.id()}`);
     const originalEvent = event.originalEvent as MouseEvent;
@@ -1162,6 +1180,10 @@ class TopologyWebviewController {
 
   private handleKeyDown(event: KeyboardEvent): void {
     if (!this.shouldHandleKeyboardEvent(event)) {
+      return;
+    }
+    if (this.labLocked) {
+      this.showLockedMessage();
       return;
     }
     const key = event.key.toLowerCase();
