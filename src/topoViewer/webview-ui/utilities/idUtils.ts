@@ -47,6 +47,16 @@ export function generateSpecialNodeId(baseName: string, usedIds: Set<string>): s
 }
 
 export function generateRegularNodeId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
+  if (isGroup) {
+    let num = 1;
+    let id = `${baseName}:${num}`;
+    while (usedIds.has(id)) {
+      num++;
+      id = `${baseName}:${num}`;
+    }
+    return id;
+  }
+
   let i = baseName.length - 1;
   while (i >= 0 && baseName[i] >= '0' && baseName[i] <= '9') i--;
   const hasNumber = i < baseName.length - 1;
@@ -55,12 +65,7 @@ export function generateRegularNodeId(baseName: string, usedIds: Set<string>, is
   if (hasNumber) {
     num = parseInt(baseName.slice(i + 1), 10);
   } else {
-    num = isGroup ? 0 : 1;
-  }
-
-  if (isGroup) {
-    while (usedIds.has(`${base}${num || ''}:1`)) num++;
-    return `${base}${num || ''}:1`;
+    num = 1;
   }
   while (usedIds.has(`${base}${num}`)) num++;
   return `${base}${num}`;

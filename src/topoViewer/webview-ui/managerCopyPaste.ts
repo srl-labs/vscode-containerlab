@@ -177,6 +177,7 @@ export class CopyPasteManager {
    * @param usedIds - Set of ids already used in the graph.
    * @param usedNames - Set of names already used in the graph.
    */
+  // eslint-disable-next-line aggregate-complexity/aggregate-complexity
   private createNode(el: any, usedIds: Set<string>, usedNames: Set<string>) {
     const isTemplateNode = el.data.id.startsWith('nodeId-');
     let newId: string;
@@ -191,11 +192,16 @@ export class CopyPasteManager {
         .reduce((max, current) => Math.max(max, current), 0);
       newId = `nodeId-${maxId + 1}`;
     } else {
-      newId = this.getUniqueId(el.data.name || el.data.id, usedIds, el.data.topoViewerRole === 'group');
-      nodeName = newId;
+      const isGroup = el.data.topoViewerRole === 'group';
+      newId = this.getUniqueId(el.data.name || el.data.id, usedIds, isGroup);
+      if (isGroup) {
+        nodeName = el.data.name || el.data.label || newId.split(':')[0];
+      } else {
+        nodeName = newId;
+      }
     }
 
-    let nodeLabel = nodeName;
+    let nodeLabel = el.data.label || nodeName;
     if (newId.startsWith('dummy')) {
       nodeName = 'dummy';
       nodeLabel = 'dummy';
