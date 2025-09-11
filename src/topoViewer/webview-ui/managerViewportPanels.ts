@@ -1195,7 +1195,14 @@ export class ManagerViewportPanels {
     const targetNode = this.ensureSingleNode(node);
     const inputs = this.getNetworkEditorInputs();
     const currentData = targetNode.data();
-    const idInfo = this.buildNetworkIdentifiers(currentData, inputs.networkType, inputs.interfaceName);
+    const idInfo = this.buildNetworkIdentifiers(
+      currentData,
+      inputs.networkType,
+      inputs.interfaceName,
+      inputs.remote,
+      inputs.vni,
+      inputs.udpPort
+    );
     const extendedData = this.buildNetworkExtendedData(inputs, currentData.extraData || {});
 
     if (idInfo.oldId === idInfo.newId) {
@@ -1274,7 +1281,14 @@ export class ManagerViewportPanels {
     };
   }
 
-  private buildNetworkIdentifiers(currentData: any, networkType: string, interfaceName: string) {
+  private buildNetworkIdentifiers(
+    currentData: any,
+    networkType: string,
+    interfaceName: string,
+    remote?: string,
+    vni?: string,
+    udpPort?: string
+  ) {
     const oldId = currentData.id as string;
     const oldName = currentData.name as string;
     const isBridgeType = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
@@ -1284,6 +1298,8 @@ export class ManagerViewportPanels {
       newId = interfaceName;
     } else if (isDummyType) {
       newId = oldId.startsWith(ManagerViewportPanels.TYPE_DUMMY) ? oldId : this.generateUniqueDummyId();
+    } else if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(networkType)) {
+      newId = `${networkType}:${remote ?? ''}/${vni ?? ''}/${udpPort ?? ''}`;
     } else {
       newId = `${networkType}:${interfaceName}`;
     }
