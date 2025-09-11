@@ -360,7 +360,16 @@ function updateNodeYaml(
   const desiredImage = extraData.image ?? originalImage;
   const desiredType = extraData.type;
 
-  applyBasicProps(doc, nodeMap, groupName, desiredKind, desiredImage, desiredType, baseInherit, inherit);
+  applyBasicProps(
+    doc,
+    nodeMap,
+    groupName,
+    desiredKind,
+    desiredImage,
+    desiredType,
+    baseInherit,
+    inherit,
+  );
   applyExtraProps(doc, nodeMap, extraData, inherit);
 
   const newKey = element.data.name;
@@ -381,24 +390,39 @@ function applyBasicProps(
   baseInherit: any,
   inherit: any,
 ): void {
-  if (groupName) nodeMap.set('group', doc.createNode(groupName));
-  else nodeMap.delete('group');
-
-  if (desiredKind && desiredKind !== baseInherit.kind) nodeMap.set('kind', doc.createNode(desiredKind));
-  else nodeMap.delete('kind');
-
-  if (desiredImage && desiredImage !== inherit.image) nodeMap.set('image', doc.createNode(desiredImage));
-  else nodeMap.delete('image');
+  updateScalarProp(doc, nodeMap, 'group', groupName);
+  updateScalarProp(doc, nodeMap, 'kind', desiredKind, baseInherit.kind);
+  updateScalarProp(doc, nodeMap, 'image', desiredImage, inherit.image);
 
   const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+  const currentType = nodeMap.get('type', true) as any;
   if (nokiaKinds.includes(desiredKind)) {
     if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
-      nodeMap.set('type', doc.createNode(desiredType));
-    } else {
+      if (!currentType || currentType.value !== desiredType) {
+        nodeMap.set('type', doc.createNode(desiredType));
+      }
+    } else if (currentType) {
       nodeMap.delete('type');
     }
-  } else {
+  } else if (currentType) {
     nodeMap.delete('type');
+  }
+}
+
+function updateScalarProp(
+  doc: YAML.Document.Parsed,
+  nodeMap: YAML.YAMLMap,
+  key: string,
+  newValue: any,
+  compareValue?: any,
+): void {
+  const current = nodeMap.get(key, true) as any;
+  if (newValue && (compareValue === undefined || newValue !== compareValue)) {
+    if (!current || current.value !== newValue) {
+      nodeMap.set(key, doc.createNode(newValue));
+    }
+  } else if (current) {
+    nodeMap.delete(key);
   }
 }
 
@@ -435,13 +459,25 @@ function applyExtraProp(
 ): void {
   const val = (extraData as any)[prop];
   const inheritedVal = (inherit as any)[prop];
-  if (shouldPersist(val) && !deepEqualNormalized(val, inheritedVal)) {
-    const node = doc.createNode(val) as any;
-    if (node && typeof node === 'object') node.flow = false;
-    nodeMap.set(prop, node);
-  } else {
+  const currentNode = nodeMap.get(prop, true) as any;
+
+  if (val === undefined) {
     nodeMap.delete(prop);
+    return;
   }
+
+  if (!shouldPersist(val) || deepEqualNormalized(val, inheritedVal)) {
+    nodeMap.delete(prop);
+    return;
+  }
+
+  if (currentNode && deepEqualNormalized(currentNode.toJSON(), val)) {
+    return;
+  }
+
+  const node = doc.createNode(val) as any;
+  if (node && typeof node === 'object') node.flow = false;
+  nodeMap.set(prop, node);
 }
 
 function applyExtraProps(

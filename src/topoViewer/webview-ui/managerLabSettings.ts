@@ -191,7 +191,7 @@ export class ManagerLabSettings {
    */
   public static updateYamlWithSettings(yamlContent: string, settings: LabSettings): string {
     try {
-      const doc = YAML.parseDocument(yamlContent);
+      const doc = YAML.parseDocument(yamlContent, { keepCstNodes: true } as any);
 
       // Update fields
       if (settings.name !== undefined) {

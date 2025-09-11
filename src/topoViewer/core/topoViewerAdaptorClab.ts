@@ -113,7 +113,7 @@ export class TopoViewerAdaptorClab {
 
       const parsed = YAML.parse(yamlContent) as ClabTopology;
       this.currentClabTopo = parsed;
-      this.currentClabDoc = YAML.parseDocument(yamlContent); // <-- store the raw Document
+      this.currentClabDoc = YAML.parseDocument(yamlContent, { keepCstNodes: true } as any); // <-- store the raw Document
 
       const clabName = parsed.name;
       let clabPrefix = parsed.prefix ?? 'clab';
