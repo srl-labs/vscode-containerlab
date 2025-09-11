@@ -926,7 +926,7 @@ topology:
   private async updateLabSettings(settings: any): Promise<{ success: boolean; yamlContent?: string; error?: string }> {
     try {
       const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-      const doc = YAML.parseDocument(yamlContent);
+      const doc = YAML.parseDocument(yamlContent, { keepCstNodes: true } as any);
       const { hadPrefix, hadMgmt } = this.applyExistingSettings(doc, settings);
       let updatedYaml = doc.toString();
       updatedYaml = this.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);

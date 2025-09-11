@@ -1,6 +1,13 @@
 # Change Log
 
-## [0.17.0] - 2025-09-06
+## [0.17.3] - 2025-09-11
+- Refactor
+- Fixes
+
+## [0.17.2] - 2025-09-09
+- Fixes
+
+## [0.17.1] - 2025-09-06
 
 - TopoViewer/editor:
   - Lab settings panel for topology-wide configuration

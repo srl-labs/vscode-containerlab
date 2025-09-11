@@ -360,7 +360,16 @@ function updateNodeYaml(
   const desiredImage = extraData.image ?? originalImage;
   const desiredType = extraData.type;
 
-  applyBasicProps(doc, nodeMap, groupName, desiredKind, desiredImage, desiredType, baseInherit, inherit);
+  applyBasicProps(
+    doc,
+    nodeMap,
+    groupName,
+    desiredKind,
+    desiredImage,
+    desiredType,
+    baseInherit,
+    inherit,
+  );
   applyExtraProps(doc, nodeMap, extraData, inherit);
 
   const newKey = element.data.name;
@@ -381,24 +390,39 @@ function applyBasicProps(
   baseInherit: any,
   inherit: any,
 ): void {
-  if (groupName) nodeMap.set('group', doc.createNode(groupName));
-  else nodeMap.delete('group');
-
-  if (desiredKind && desiredKind !== baseInherit.kind) nodeMap.set('kind', doc.createNode(desiredKind));
-  else nodeMap.delete('kind');
-
-  if (desiredImage && desiredImage !== inherit.image) nodeMap.set('image', doc.createNode(desiredImage));
-  else nodeMap.delete('image');
+  updateScalarProp(doc, nodeMap, 'group', groupName);
+  updateScalarProp(doc, nodeMap, 'kind', desiredKind, baseInherit.kind);
+  updateScalarProp(doc, nodeMap, 'image', desiredImage, inherit.image);
 
   const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+  const currentType = nodeMap.get('type', true) as any;
   if (nokiaKinds.includes(desiredKind)) {
     if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
-      nodeMap.set('type', doc.createNode(desiredType));
-    } else {
+      if (!currentType || currentType.value !== desiredType) {
+        nodeMap.set('type', doc.createNode(desiredType));
+      }
+    } else if (currentType) {
       nodeMap.delete('type');
     }
-  } else {
+  } else if (currentType) {
     nodeMap.delete('type');
+  }
+}
+
+function updateScalarProp(
+  doc: YAML.Document.Parsed,
+  nodeMap: YAML.YAMLMap,
+  key: string,
+  newValue: any,
+  compareValue?: any,
+): void {
+  const current = nodeMap.get(key, true) as any;
+  if (newValue && (compareValue === undefined || newValue !== compareValue)) {
+    if (!current || current.value !== newValue) {
+      nodeMap.set(key, doc.createNode(newValue));
+    }
+  } else if (current) {
+    nodeMap.delete(key);
   }
 }
 
@@ -435,13 +459,25 @@ function applyExtraProp(
 ): void {
   const val = (extraData as any)[prop];
   const inheritedVal = (inherit as any)[prop];
-  if (shouldPersist(val) && !deepEqualNormalized(val, inheritedVal)) {
-    const node = doc.createNode(val) as any;
-    if (node && typeof node === 'object') node.flow = false;
-    nodeMap.set(prop, node);
-  } else {
+  const currentNode = nodeMap.get(prop, true) as any;
+
+  if (val === undefined) {
     nodeMap.delete(prop);
+    return;
   }
+
+  if (!shouldPersist(val) || deepEqualNormalized(val, inheritedVal)) {
+    nodeMap.delete(prop);
+    return;
+  }
+
+  if (currentNode && deepEqualNormalized(currentNode.toJSON(), val)) {
+    return;
+  }
+
+  const node = doc.createNode(val) as any;
+  if (node && typeof node === 'object') node.flow = false;
+  nodeMap.set(prop, node);
 }
 
 function applyExtraProps(
@@ -524,11 +560,10 @@ function filterObsoleteLinks(linksNode: YAML.YAMLSeq, payloadEdgeKeys: Set<strin
 }
 
 function createEndpointScalar(doc: YAML.Document.Parsed, value: string): YAML.Scalar {
-  const node = doc.createNode(value) as YAML.Scalar;
-  if (value.includes(':')) {
-    node.type = YAML.Scalar.QUOTE_DOUBLE;
-  }
-  return node;
+  const scalar = doc.createNode(value) as YAML.Scalar;
+  // Always use double quotes to ensure consistent endpoint formatting
+  scalar.type = 'QUOTE_DOUBLE';
+  return scalar;
 }
 
 function replaceEndpointValue(
@@ -544,13 +579,18 @@ function replaceEndpointValue(
     return item;
   }
   let endpointStr = String((item as any).value ?? item);
+  let replaced = false;
   if (endpointStr.includes(':')) {
     const [nodeKey, rest] = endpointStr.split(':');
-    if (updatedKeys.has(nodeKey)) endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+    if (updatedKeys.has(nodeKey)) {
+      endpointStr = `${updatedKeys.get(nodeKey)}:${rest}`;
+      replaced = true;
+    }
   } else if (updatedKeys.has(endpointStr)) {
     endpointStr = updatedKeys.get(endpointStr)!;
+    replaced = true;
   }
-  return createEndpointScalar(doc, endpointStr);
+  return replaced ? createEndpointScalar(doc, endpointStr) : item;
 }
 
 function updateEndpointsSeq(
@@ -579,6 +619,7 @@ function updateExistingLinks(
   doc: YAML.Document.Parsed,
   updatedKeys: Map<string, string>,
 ): void {
+  if (updatedKeys.size === 0) return;
   for (const linkItem of linksNode.items) {
     if (!YAML.isMap(linkItem)) continue;
     (linkItem as YAML.YAMLMap).flow = false;
@@ -597,12 +638,39 @@ function updateYamlLinks(payloadParsed: any[], doc: YAML.Document.Parsed, update
   updateExistingLinks(linksNode, doc, updatedKeys);
 }
 
+function canonicalize(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(canonicalize);
+  if (obj && typeof obj === 'object') {
+    const sorted: Record<string, any> = {};
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = canonicalize(obj[key]);
+    }
+    return sorted;
+  }
+  return obj;
+}
+
+function yamlStructurallyEqual(doc: YAML.Document.Parsed, existingYaml: string): boolean {
+  try {
+    const existingObj = YAML.parse(existingYaml);
+    const docObj = doc.toJS();
+    return JSON.stringify(canonicalize(existingObj)) === JSON.stringify(canonicalize(docObj));
+  } catch {
+    return existingYaml === doc.toString();
+  }
+}
+
 async function writeYamlFile(
   doc: YAML.Document.Parsed,
   yamlFilePath: string,
   setInternalUpdate?: (_arg: boolean) => void, // eslint-disable-line no-unused-vars
 ): Promise<void> {
   const updatedYamlString = doc.toString();
+  const existingYaml = await fs.promises.readFile(yamlFilePath, 'utf8').catch(() => '');
+  if (yamlStructurallyEqual(doc, existingYaml)) {
+    log.info('No YAML changes detected; skipping save');
+    return;
+  }
   if (setInternalUpdate) {
     setInternalUpdate(true);
     await fs.promises.writeFile(yamlFilePath, updatedYamlString, 'utf8');
@@ -886,7 +954,14 @@ function processEdge(element: any, linksNode: YAML.YAMLSeq, doc: YAML.Document.P
   const chosenType = determineChosenType(payloadKey, extra);
   const existing = findExistingLinkMap(linksNode, payloadKeyStr);
   if (existing) {
-    updateExistingLink(existing, data, extra, chosenType, payloadKey, payloadKeyStr, doc);
+    // Determine if applying the update would actually change the YAML. If not,
+    // we skip mutating the existing node to preserve its original formatting.
+    const tempDoc = new YAML.Document();
+    const clone = YAML.parseDocument(YAML.stringify(existing)).contents as YAML.YAMLMap;
+    updateExistingLink(clone, data, extra, chosenType, payloadKey, payloadKeyStr, tempDoc as any);
+    if (YAML.stringify(clone) !== YAML.stringify(existing)) {
+      updateExistingLink(existing, data, extra, chosenType, payloadKey, payloadKeyStr, doc);
+    }
   } else {
     createNewLink(linksNode, data, extra, chosenType, payloadKey, payloadKeyStr, doc);
   }

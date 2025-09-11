@@ -7,7 +7,7 @@ const PANEL_EL_PREFIX = 'panel-node-editor-parent-' as const;
 const LABEL_BUTTON_TEXT_ID = `${PANEL_EL_PREFIX}label-dropdown-button-text` as const;
 const CLASS_EMPTY_GROUP = 'empty-group' as const;
 const DEFAULT_LABEL_POS = 'top-center' as const;
-import type { ParentNodeData, ParentNodeExtraData } from '../types/topoViewerGraph';
+import type { ParentNodeData, ParentNodeExtraData, GroupStyleAnnotation } from '../types/topoViewerGraph';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 import { GROUP_LABEL_POSITIONS } from '../utilities/labelPositions';
 
@@ -155,20 +155,28 @@ export class ManagerGroupManagement {
       this.updateGroupEmptyStatus(newParent); // Update status after adding child
     }
 
-    // Save default style for the new group
-    const defaultStyle = {
-      id: newParentId,
-      backgroundColor: '#d9d9d9',
-      backgroundOpacity: 20,
-      borderColor: '#dddddd',
-      borderWidth: 0.5,
-      borderStyle: 'solid' as 'solid',
-      borderRadius: 0,
-      color: '#ebecf0',
-      labelPosition: DEFAULT_LABEL_POS
-    };
-    this.updateLabelPositionClass(newParent, DEFAULT_LABEL_POS);
-    this.groupStyleManager.updateGroupStyle(newParentId, defaultStyle);
+    // Determine style for the new group using the last style if available
+    const lastStyle = this.groupStyleManager.getGroupStyles().slice(-1)[0];
+    const style: GroupStyleAnnotation = lastStyle
+      ? { ...lastStyle, id: newParentId }
+      : {
+        id: newParentId,
+        backgroundColor: '#d9d9d9',
+        backgroundOpacity: 20,
+        borderColor: '#dddddd',
+        borderWidth: 0.5,
+        borderStyle: 'solid' as 'solid',
+        borderRadius: 0,
+        color: '#ebecf0',
+        labelPosition: DEFAULT_LABEL_POS
+      };
+
+    if (!style.labelPosition) {
+      style.labelPosition = DEFAULT_LABEL_POS;
+    }
+
+    this.updateLabelPositionClass(newParent, style.labelPosition);
+    this.groupStyleManager.updateGroupStyle(newParentId, style);
 
     this.showGroupEditor(newParentId);
 
@@ -546,10 +554,19 @@ export class ManagerGroupManagement {
     }
   }
 
-  private ensureUniqueParentId(newParentId: string): void {
-    if (!this.cy.getElementById(newParentId).empty()) {
-      throw new Error(`A node with the new parent ID "${newParentId}" already exists.`);
+  private ensureUniqueParentId(newParentId: string): string {
+    const [group, levelStr] = newParentId.split(':');
+    let level = parseInt(levelStr, 10);
+    if (!level || isNaN(level)) level = 1;
+    let candidate = `${group}:${level}`;
+    while (!this.cy.getElementById(candidate).empty()) {
+      level++;
+      candidate = `${group}:${level}`;
     }
+    if (candidate !== newParentId) {
+      log.debug(`Adjusted parent ID to ensure uniqueness: ${candidate}`);
+    }
+    return candidate;
   }
 
   private replaceParentNode(
@@ -611,7 +628,7 @@ export class ManagerGroupManagement {
         throw new Error('Graph group or graph level input is empty.');
       }
 
-      const newParentId = `${graphGroup}:${graphLevel}`;
+      let newParentId = `${graphGroup}:${graphLevel}`;
       const labelPos = inputs.labelPositionEl.textContent?.trim().toLowerCase() || '';
       const style = this.buildParentStyle(newParentId, inputs);
 
@@ -624,7 +641,7 @@ export class ManagerGroupManagement {
         return;
       }
 
-      this.ensureUniqueParentId(newParentId);
+      newParentId = this.ensureUniqueParentId(newParentId);
       this.replaceParentNode(oldParentNode, parentNodeId, newParentId, graphGroup, graphLevel, style, labelPos);
       inputs.parentIdEl.textContent = newParentId;
       log.info(`Parent node updated successfully. New parent ID: ${newParentId}`);

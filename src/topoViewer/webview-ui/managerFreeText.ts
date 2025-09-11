@@ -243,29 +243,34 @@ export class ManagerFreeText {
 
   /**
    * Add free text at a specific position
-   */
+  */
   private async addFreeTextAtPosition(position: cytoscape.Position): Promise<void> {
     const id = `freeText_${Date.now()}_${++this.idCounter}`;
-    const defaultAnnotation: FreeTextAnnotation = {
+    const defaultAnnotation = this.buildDefaultAnnotation(id, position);
+
+    const result = await this.promptForTextWithFormatting('Add Text', defaultAnnotation);
+    if (!result || !result.text) return;
+
+    this.addFreeTextAnnotation(result);
+  }
+
+  private buildDefaultAnnotation(id: string, position: cytoscape.Position): FreeTextAnnotation {
+    const lastAnnotation = Array.from(this.annotations.values()).slice(-1)[0];
+    return {
       id,
       text: '',
       position: {
         x: Math.round(position.x),
         y: Math.round(position.y)
       },
-      fontSize: 14,
-      fontColor: '#FFFFFF',
-      backgroundColor: 'transparent',
-      fontWeight: 'normal',
-      fontStyle: 'normal',
-      textDecoration: 'none',
-      fontFamily: 'monospace'
+      fontSize: lastAnnotation?.fontSize ?? 14,
+      fontColor: lastAnnotation?.fontColor ?? '#FFFFFF',
+      backgroundColor: lastAnnotation?.backgroundColor ?? 'transparent',
+      fontWeight: lastAnnotation?.fontWeight ?? 'normal',
+      fontStyle: lastAnnotation?.fontStyle ?? 'normal',
+      textDecoration: lastAnnotation?.textDecoration ?? 'none',
+      fontFamily: lastAnnotation?.fontFamily ?? 'monospace'
     };
-
-    const result = await this.promptForTextWithFormatting('Add Text', defaultAnnotation);
-    if (!result || !result.text) return;
-
-    this.addFreeTextAnnotation(result);
   }
 
   /**
