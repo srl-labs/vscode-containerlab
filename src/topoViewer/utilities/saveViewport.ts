@@ -192,8 +192,8 @@ function canonicalFromPair(a: CanonicalEndpoint, b: CanonicalEndpoint): Canonica
 function buildEndpointMap(doc: YAML.Document.Parsed, ep: CanonicalEndpoint): YAML.YAMLMap {
   const m = new YAML.YAMLMap();
   (m as any).flow = false;
-  m.set('node', doc.createNode(ep.node));
-  if (ep.iface) m.set('interface', doc.createNode(ep.iface));
+  m.set('node', createEndpointScalar(doc, ep.node));
+  if (ep.iface) m.set('interface', createEndpointScalar(doc, ep.iface));
   return m;
 }
 
@@ -523,6 +523,14 @@ function filterObsoleteLinks(linksNode: YAML.YAMLSeq, payloadEdgeKeys: Set<strin
   });
 }
 
+function createEndpointScalar(doc: YAML.Document.Parsed, value: string): YAML.Scalar {
+  const node = doc.createNode(value) as YAML.Scalar;
+  if (value.includes(':')) {
+    node.type = YAML.Scalar.QUOTE_DOUBLE;
+  }
+  return node;
+}
+
 function replaceEndpointValue(
   item: any,
   doc: YAML.Document.Parsed,
@@ -532,7 +540,7 @@ function replaceEndpointValue(
     const n = (item as YAML.YAMLMap).get('node', true) as any;
     const nodeVal = String(n?.value ?? n ?? '');
     const updated = updatedKeys.get(nodeVal);
-    if (updated) (item as YAML.YAMLMap).set('node', doc.createNode(updated));
+    if (updated) (item as YAML.YAMLMap).set('node', createEndpointScalar(doc, updated));
     return item;
   }
   let endpointStr = String((item as any).value ?? item);
@@ -542,7 +550,7 @@ function replaceEndpointValue(
   } else if (updatedKeys.has(endpointStr)) {
     endpointStr = updatedKeys.get(endpointStr)!;
   }
-  return doc.createNode(endpointStr);
+  return createEndpointScalar(doc, endpointStr);
 }
 
 function updateEndpointsSeq(
@@ -563,7 +571,7 @@ function updateEndpointMap(
   const n = endpoint.get('node', true) as any;
   const nodeVal = String(n?.value ?? n ?? '');
   const updated = updatedKeys.get(nodeVal);
-  if (updated) endpoint.set('node', doc.createNode(updated));
+  if (updated) endpoint.set('node', createEndpointScalar(doc, updated));
 }
 
 function updateExistingLinks(
@@ -648,8 +656,10 @@ function applyBriefFormat(map: YAML.YAMLMap, data: any, doc: YAML.Document.Parse
   if ((map as any).has && (map as any).has('type', true)) (map as any).delete('type');
   const srcStr = data.sourceEndpoint ? `${data.source}:${data.sourceEndpoint}` : data.source;
   const dstStr = data.targetEndpoint ? `${data.target}:${data.targetEndpoint}` : data.target;
-  const endpointsNode = doc.createNode([srcStr, dstStr]) as YAML.YAMLSeq;
+  const endpointsNode = new YAML.YAMLSeq();
   endpointsNode.flow = true;
+  endpointsNode.add(createEndpointScalar(doc, srcStr));
+  endpointsNode.add(createEndpointScalar(doc, dstStr));
   map.set('endpoints', endpointsNode);
   if ((map as any).has && (map as any).has('endpoint', true)) (map as any).delete('endpoint');
   BRIEF_REMOVE_KEYS.forEach(k => {
