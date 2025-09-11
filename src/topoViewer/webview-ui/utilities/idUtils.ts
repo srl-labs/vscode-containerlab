@@ -51,23 +51,19 @@ export function generateRegularNodeId(baseName: string, usedIds: Set<string>, is
   while (i >= 0 && baseName[i] >= '0' && baseName[i] <= '9') i--;
   const hasNumber = i < baseName.length - 1;
   const base = hasNumber ? baseName.slice(0, i + 1) : baseName;
-  let num = hasNumber ? parseInt(baseName.slice(i + 1), 10) : 0;
+  let num: number;
+  if (hasNumber) {
+    num = parseInt(baseName.slice(i + 1), 10);
+  } else {
+    num = isGroup ? 0 : 1;
+  }
 
   if (isGroup) {
     while (usedIds.has(`${base}${num || ''}:1`)) num++;
     return `${base}${num || ''}:1`;
   }
-  if (hasNumber) {
-    while (usedIds.has(`${base}${num}`)) num++;
-    return `${base}${num}`;
-  }
-  let name = baseName;
-  num = 1;
-  while (usedIds.has(name)) {
-    name = `${base}${num}`;
-    num++;
-  }
-  return name;
+  while (usedIds.has(`${base}${num}`)) num++;
+  return `${base}${num}`;
 }
 
 export function getUniqueId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
