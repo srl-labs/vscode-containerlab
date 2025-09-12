@@ -32,6 +32,16 @@
   /* The above activation rule sets transform to 0 regardless of side */
 
   /* remove click-to-open; hover-only per main button */
+
+  /* Shake animation for lock button when actions are blocked */
+  @keyframes lock-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  .lock-shake {
+    animation: lock-shake 0.3s;
+  }
 </style>
 <div id="unified-floating-panel"
   class="fixed bottom-5 left-5 z-[99999] bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)] rounded-md shadow-[0_4px_16px_var(--vscode-widget-shadow)] border border-[var(--vscode-panel-border)] p-2 flex flex-col gap-1 !w-[44px] !max-w-[44px] !min-w-[44px] cursor-grab select-none !box-border !shrink-0 !grow-0 overflow-visible">
@@ -280,17 +290,16 @@
       }
     }
 
-    // Show a temporary message indicating the lab is locked
+    // Briefly shake the lock button to indicate actions are blocked
     function showLockedMessage() {
       const lockBtn = document.getElementById('lock-panel-btn');
-      if (!lockBtn || !window.tippy) return;
-      const instance = window.tippy(lockBtn, {
-        content: 'Lab locked',
-        trigger: 'manual',
-        placement: 'right'
-      });
-      instance.show();
-      setTimeout(() => instance.destroy(), 1500);
+      if (!lockBtn) return;
+      lockBtn.classList.add('lock-shake');
+      lockBtn.addEventListener(
+        'animationend',
+        () => lockBtn.classList.remove('lock-shake'),
+        { once: true }
+      );
     }
     window.showLabLockedMessage = showLockedMessage;
 

@@ -980,7 +980,6 @@ class TopologyWebviewController {
 
   private handleCanvasClick(event: cytoscape.EventObject): void {
     if (this.labLocked) {
-      this.showLockedMessage();
       return;
     }
     const mouseEvent = event.originalEvent as MouseEvent;
