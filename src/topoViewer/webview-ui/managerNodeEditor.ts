@@ -1354,9 +1354,10 @@ export class ManagerNodeEditor {
       } else {
         base = imageInitial;
       }
-      if (!this.imageVersionMap.has(base) && baseImages.length > 0) {
-        base = baseImages[0];
-        version = 'latest';
+      // If the image isn't in our known list, keep the user-provided base and
+      // version so the dropdown shows the custom image
+      if (!this.imageVersionMap.has(base)) {
+        return { base, version };
       }
     } else if (baseImages.length > 0) {
       base = baseImages[0];
