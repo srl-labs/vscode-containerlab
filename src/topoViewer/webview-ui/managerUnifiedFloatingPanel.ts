@@ -1,6 +1,11 @@
 import tippy from 'tippy.js';
 import { log } from '../logging/logger';
 
+// Expose tippy globally for HTML scripts that rely on window.tippy
+if (typeof window !== 'undefined') {
+  (window as any).tippy = (window as any).tippy || tippy;
+}
+
 // Common literals for custom node editor
 const TEMP_CUSTOM_ID = 'temp-custom-node' as const;
 const EDIT_CUSTOM_ID = 'edit-custom-node' as const;

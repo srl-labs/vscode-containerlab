@@ -4,6 +4,9 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const editorConfig = {
   mode: 'production', // or 'development' for debugging
   target: 'web',
+  cache: {
+    type: 'filesystem'
+  },
   entry: './src/topoViewer/webview-ui/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -17,7 +20,11 @@ const editorConfig = {
     rules: [
       {
         test: /\.ts$/,
-        use: 'ts-loader',
+        loader: 'esbuild-loader',
+        options: {
+          loader: 'ts',
+          target: 'es2017'
+        },
         exclude: /node_modules/
       },
       {
