@@ -407,7 +407,7 @@ class TopologyWebviewController {
 
   private registerDoubleClickHandlers(): void {
     this.cy.on('dblclick', 'node[topoViewerRole != "freeText"]', (event) => {
-      if (this.labLocked && this.currentMode === 'edit') {
+      if (this.labLocked) {
         this.showLockedMessage();
         return;
       }
@@ -423,7 +423,7 @@ class TopologyWebviewController {
       }
     });
     this.cy.on('dblclick', 'edge', (event) => {
-      if (this.labLocked && this.currentMode === 'edit') {
+      if (this.labLocked) {
         this.showLockedMessage();
         return;
       }
@@ -970,6 +970,12 @@ class TopologyWebviewController {
     } else {
       this.registerViewModeEvents();
     }
+    this.cy.on('tapstart', 'node', (e) => {
+      if (this.labLocked) {
+        this.showLockedMessage();
+        e.preventDefault();
+      }
+    });
   }
 
   private handleCanvasClick(event: cytoscape.EventObject): void {
@@ -1062,13 +1068,6 @@ class TopologyWebviewController {
     };
     this.cy.on('cxttapstart', '*', blockContextMenu);
     this.cy.on('cxttap', '*', blockContextMenu);
-
-    this.cy.on('grab', 'node', (e) => {
-      if (this.labLocked) {
-        this.showLockedMessage();
-        e.preventDefault();
-      }
-    });
 
     this.registerEdgehandlesLifecycleEvents();
     document.addEventListener('keydown', (event) => this.handleKeyDown(event));

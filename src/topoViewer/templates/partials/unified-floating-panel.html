@@ -235,7 +235,7 @@
 
       if (isLocked) {
         lockBtnRef.innerHTML = '<i class="fas fa-lock text-[10px]"></i>';
-        lockBtnRef.setAttribute('data-tippy-content', 'Unlock Panel');
+        lockBtnRef.setAttribute('data-tippy-content', 'Unlock Lab');
         lockBtnRef.style.background = 'var(--color-red-500)';
         lockBtnRef.style.color = 'var(--vscode-button-foreground)';
 
@@ -244,7 +244,7 @@
         if (dragHandle) dragHandle.style.cursor = 'default';
       } else {
         lockBtnRef.innerHTML = '<i class="fas fa-unlock text-[10px]"></i>';
-        lockBtnRef.setAttribute('data-tippy-content', 'Lock Panel');
+        lockBtnRef.setAttribute('data-tippy-content', 'Lock Lab');
         lockBtnRef.style.background = 'var(--vscode-button-secondaryBackground)';
         lockBtnRef.style.color = 'var(--vscode-button-secondaryForeground)';
 
