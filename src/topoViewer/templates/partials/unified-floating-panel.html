@@ -234,11 +234,13 @@
           if (isLocked) {
             btn.setAttribute('disabled', 'true');
             btn.style.opacity = '0.5';
-            btn.style.pointerEvents = 'none';
+            btn.classList.remove('cursor-pointer');
+            btn.classList.add('cursor-not-allowed');
           } else {
             btn.removeAttribute('disabled');
             btn.style.opacity = '1';
-            btn.style.pointerEvents = 'auto';
+            btn.classList.add('cursor-pointer');
+            btn.classList.remove('cursor-not-allowed');
           }
         }
       });
