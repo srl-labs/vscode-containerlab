@@ -1365,7 +1365,7 @@
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
-    "@tailwindcss/postcss": "^4.1.11",
+    "@tailwindcss/postcss": "^4.1.13",
     "@types/chai": "^5.2.2",
     "@types/cytoscape": "^3.21.9",
     "@types/cytoscape-cxtmenu": "^3.4.4",
