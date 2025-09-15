@@ -32,6 +32,16 @@
   /* The above activation rule sets transform to 0 regardless of side */
 
   /* remove click-to-open; hover-only per main button */
+
+  /* Shake animation for lock button when actions are blocked */
+  @keyframes lock-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  .lock-shake {
+    animation: lock-shake 0.3s;
+  }
 </style>
 <div id="unified-floating-panel"
   class="fixed bottom-5 left-5 z-[99999] bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)] rounded-md shadow-[0_4px_16px_var(--vscode-widget-shadow)] border border-[var(--vscode-panel-border)] p-2 flex flex-col gap-1 !w-[44px] !max-w-[44px] !min-w-[44px] cursor-grab select-none !box-border !shrink-0 !grow-0 overflow-visible">
@@ -43,7 +53,7 @@
   <button id="lock-panel-btn"
     class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]"
     data-tippy-content="Lock Panel">
-    <i class="fas fa-unlock text-[10px]"></i>
+    <i class="fas fa-lock text-[10px]"></i>
   </button>
 
   <!-- Panel Content -->
@@ -149,7 +159,7 @@
     const collapseBtn = document.getElementById('collapse-panel-btn');
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
-    let isLocked = false;
+    let isLocked = true;
     let isCollapsed = false;
 
     // Initialize panel dimensions immediately to prevent sizing issues
@@ -188,14 +198,14 @@
       const savedState = localStorage.getItem('unifiedPanelState');
       if (savedState && panel) {
         const state = JSON.parse(savedState);
-        panel.style.inset = `${state.top}px auto auto ${state.left}px`
-        isLocked = state.locked || false;
+        panel.style.inset = `${state.top}px auto auto ${state.left}px`;
         isCollapsed = state.collapsed || false;
-
-        updateLockState();
-        updateCollapseState();
-        updateDrawerDirection();
       }
+      // Always start locked regardless of saved state
+      isLocked = true;
+      updateLockState();
+      updateCollapseState();
+      updateDrawerDirection();
     }
 
     // Save panel state to localStorage
@@ -217,9 +227,27 @@
       const lockBtnRef = document.getElementById('lock-panel-btn');
       if (!lockBtnRef || !panel) return;
 
+      const buttonsToToggle = ['add-node-btn', 'add-network-btn', 'add-group-btn', 'add-text-btn', 'add-bulk-link-btn', 'collapse-panel-btn', 'viewport-lab-settings', 'viewport-layout'];
+      buttonsToToggle.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          if (isLocked) {
+            btn.setAttribute('disabled', 'true');
+            btn.style.opacity = '0.5';
+            btn.classList.remove('cursor-pointer');
+            btn.classList.add('cursor-not-allowed');
+          } else {
+            btn.removeAttribute('disabled');
+            btn.style.opacity = '1';
+            btn.classList.add('cursor-pointer');
+            btn.classList.remove('cursor-not-allowed');
+          }
+        }
+      });
+
       if (isLocked) {
         lockBtnRef.innerHTML = '<i class="fas fa-lock text-[10px]"></i>';
-        lockBtnRef.setAttribute('data-tippy-content', 'Unlock Panel');
+        lockBtnRef.setAttribute('data-tippy-content', 'Unlock Lab');
         lockBtnRef.style.background = 'var(--color-red-500)';
         lockBtnRef.style.color = 'var(--vscode-button-foreground)';
 
@@ -228,7 +256,7 @@
         if (dragHandle) dragHandle.style.cursor = 'default';
       } else {
         lockBtnRef.innerHTML = '<i class="fas fa-unlock text-[10px]"></i>';
-        lockBtnRef.setAttribute('data-tippy-content', 'Lock Panel');
+        lockBtnRef.setAttribute('data-tippy-content', 'Lock Lab');
         lockBtnRef.style.background = 'var(--vscode-button-secondaryBackground)';
         lockBtnRef.style.color = 'var(--vscode-button-secondaryForeground)';
 
@@ -236,6 +264,10 @@
         const dragHandle = panel.querySelector('.drag-handle');
         if (dragHandle) dragHandle.style.cursor = 'grab';
       }
+
+      // Notify other scripts about lock state changes
+      window.topologyLocked = isLocked;
+      window.dispatchEvent(new CustomEvent('topology-lock-change', { detail: isLocked }));
     }
 
     // Update collapse button and panel content visibility
@@ -259,6 +291,19 @@
         if (divider) divider.style.display = 'block';
       }
     }
+
+    // Briefly shake the lock button to indicate actions are blocked
+    function showLockedMessage() {
+      const lockBtn = document.getElementById('lock-panel-btn');
+      if (!lockBtn) return;
+      lockBtn.classList.add('lock-shake');
+      lockBtn.addEventListener(
+        'animationend',
+        () => lockBtn.classList.remove('lock-shake'),
+        { once: true }
+      );
+    }
+    window.showLabLockedMessage = showLockedMessage;
 
     // Initialize drag functionality
     function initializeDrag() {

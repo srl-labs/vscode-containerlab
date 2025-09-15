@@ -149,6 +149,10 @@ export class ManagerFreeText {
     this.cy.on('dblclick', SELECTOR_FREE_TEXT, (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if ((window as any).topologyLocked) {
+        (window as any).showLabLockedMessage?.();
+        return;
+      }
       const node = event.target;
       this.editFreeText(node.id());
     });
@@ -157,6 +161,10 @@ export class ManagerFreeText {
     this.cy.on('dbltap', SELECTOR_FREE_TEXT, (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if ((window as any).topologyLocked) {
+        (window as any).showLabLockedMessage?.();
+        return;
+      }
       const node = event.target;
       this.editFreeText(node.id());
     });
@@ -610,6 +618,10 @@ export class ManagerFreeText {
       grabbable: true,
       selectable: true
     });
+
+    if ((window as any).topologyLocked) {
+      node.lock();
+    }
 
     // Apply custom styles based on annotation properties with a slight delay to ensure node is rendered
     this.applyTextNodeStyles(node, annotation);
