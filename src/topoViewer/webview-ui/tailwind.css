@@ -639,15 +639,63 @@
   .panel-tabs {
     display: flex;
     border-bottom: 1px solid var(--vscode-panel-border);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Default: allow simple horizontal scroll where used */
+  .panel-tabs:not(.panel-tabs--with-arrows) {
     overflow-x: auto;
     overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin; /* Firefox */
   }
 
   /* Prevent tab buttons from shrinking; enable horizontal scroll */
   .panel-tabs .panel-tab-button {
     flex: 0 0 auto;
+  }
+
+  /* Scrollable Tab Bar with Arrow Buttons */
+  .panel-tabs--with-arrows {
+    align-items: center;
+    gap: 4px;
+  }
+
+  .panel-tabs--with-arrows .tab-scroll-viewport {
+    position: relative;
+    flex: 1 1 auto;
+    overflow-x: auto; /* scroll happens here */
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox: hide */
+  }
+
+  .panel-tabs--with-arrows .tab-strip {
+    display: flex;
+    width: max-content; /* shrink to content so viewport can scroll */
+    gap: 0; /* buttons already have padding */
+  }
+
+  .panel-tabs--with-arrows .tab-scroll-viewport::-webkit-scrollbar {
+    display: none; /* Chrome/Safari: hide */
+  }
+
+  .tab-scroll-btn {
+    appearance: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .tab-scroll-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .tab-scroll-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   .panel-tab-button {

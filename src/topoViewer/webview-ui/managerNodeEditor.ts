@@ -39,6 +39,11 @@ const ID_PANEL_NODE_EDITOR_ID = 'panel-node-editor-id' as const;
 const ID_TAB_COMPONENTS_BUTTON = 'tab-components-button' as const;
 const ID_TAB_COMPONENTS_CONTENT = 'tab-components' as const;
 const ID_NODE_COMPONENTS_CONTAINER = 'node-components-container' as const;
+// Tab scroll controls
+const ID_TAB_SCROLL_LEFT = 'node-editor-tab-scroll-left' as const;
+const ID_TAB_SCROLL_RIGHT = 'node-editor-tab-scroll-right' as const;
+const ID_TAB_VIEWPORT = 'node-editor-tab-viewport' as const;
+const ID_TAB_STRIP = 'node-editor-tab-strip' as const;
 
 // Frequently used Node Editor element IDs
 const ID_NODE_KIND_DROPDOWN = 'node-kind-dropdown-container' as const;
@@ -991,6 +996,8 @@ export class ManagerNodeEditor {
 
     // Initialize tab switching
     this.setupTabSwitching();
+    // Initialize tab scroll arrows
+    this.setupTabScrollArrows();
 
     // Initialize event handlers
     this.setupEventHandlers();
@@ -1005,6 +1012,69 @@ export class ManagerNodeEditor {
     this.setupInheritanceChangeListeners();
 
     log.debug('Enhanced node editor panel initialized');
+  }
+
+  /**
+   * Setup scrollable tab bar with arrow buttons
+   */
+  private setupTabScrollArrows(): void {
+    const viewport = document.getElementById(ID_TAB_VIEWPORT) as HTMLElement | null;
+    const leftBtn = document.getElementById(ID_TAB_SCROLL_LEFT) as HTMLButtonElement | null;
+    const rightBtn = document.getElementById(ID_TAB_SCROLL_RIGHT) as HTMLButtonElement | null;
+
+    if (!viewport || !leftBtn || !rightBtn) return;
+
+    const scrollByAmount = (dir: -1 | 1) => {
+      const delta = Math.max(120, Math.floor(viewport.clientWidth * 0.6));
+      viewport.scrollBy({ left: dir * delta, behavior: 'smooth' });
+    };
+
+    leftBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollByAmount(-1);
+    });
+    rightBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollByAmount(1);
+    });
+
+    viewport.addEventListener('scroll', () => this.updateTabScrollButtons(), { passive: true });
+    window.addEventListener('resize', () => this.updateTabScrollButtons());
+
+    // Initial state
+    setTimeout(() => { this.ensureActiveTabVisible(); this.updateTabScrollButtons(); }, 0);
+  }
+
+  /** Ensure the active tab button is visible inside the viewport */
+  private ensureActiveTabVisible(): void {
+    const viewport = document.getElementById(ID_TAB_VIEWPORT) as HTMLElement | null;
+    const strip = document.getElementById(ID_TAB_STRIP) as HTMLElement | null;
+    if (!viewport || !strip) return;
+    const active = strip.querySelector(`.${CLASS_PANEL_TAB_BUTTON}.${CLASS_TAB_ACTIVE}`) as HTMLElement | null;
+    if (!active) return;
+    const vpLeft = viewport.scrollLeft;
+    const vpRight = vpLeft + viewport.clientWidth;
+    const elLeft = active.offsetLeft;
+    const elRight = elLeft + active.offsetWidth;
+    if (elLeft < vpLeft) {
+      viewport.scrollTo({ left: Math.max(0, elLeft - 16), behavior: 'smooth' });
+    } else if (elRight > vpRight) {
+      viewport.scrollTo({ left: elRight - viewport.clientWidth + 16, behavior: 'smooth' });
+    }
+  }
+
+  /** Show/hide left/right scroll buttons based on overflow */
+  private updateTabScrollButtons(): void {
+    const viewport = document.getElementById(ID_TAB_VIEWPORT) as HTMLElement | null;
+    const leftBtn = document.getElementById(ID_TAB_SCROLL_LEFT) as HTMLButtonElement | null;
+    const rightBtn = document.getElementById(ID_TAB_SCROLL_RIGHT) as HTMLButtonElement | null;
+    if (!viewport || !leftBtn || !rightBtn) return;
+    const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const current = viewport.scrollLeft;
+    const canLeft = current > 1;
+    const canRight = current < maxScroll - 1;
+    leftBtn.classList.toggle('hidden', !canLeft);
+    rightBtn.classList.toggle('hidden', !canRight);
   }
 
   private initializeStaticDropdowns(): void {
@@ -1233,6 +1303,10 @@ export class ManagerNodeEditor {
             content.classList.add(CLASS_HIDDEN);
           }
         });
+
+        // Keep tab visible and update scroll buttons
+        this.ensureActiveTabVisible();
+        this.updateTabScrollButtons();
       });
     });
   }
@@ -1393,6 +1467,23 @@ export class ManagerNodeEditor {
     this.loadNodeData(node);
     this.alignKindSelection(node);
     this.panel.style.display = 'block';
+    // After the panel becomes visible, update tab scroll UI once layout is ready
+    const afterVisible = () => {
+      try {
+        this.ensureActiveTabVisible();
+        this.updateTabScrollButtons();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        log.debug(`Post-open tab scroll update skipped: ${msg}`);
+      }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => afterVisible());
+      // Also schedule a secondary tick to be safe after dynamic content inflates
+      setTimeout(afterVisible, 50);
+    } else {
+      setTimeout(afterVisible, 0);
+    }
     log.debug(`Opened enhanced node editor for node: ${node.id()}`);
   }
 
