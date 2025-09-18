@@ -7,14 +7,24 @@
     Node Editor
   </p>
 
-  <!-- Tab Navigation -->
-  <div class="panel-tabs">
-    <button class="panel-tab-button tab-active" data-tab="basic">Basic</button>
-    <button class="panel-tab-button hidden" data-tab="components" id="tab-components-button">Components</button>
-    <button class="panel-tab-button" data-tab="config">Configuration</button>
-    <button class="panel-tab-button" data-tab="runtime">Runtime</button>
-    <button class="panel-tab-button" data-tab="network">Network</button>
-    <button class="panel-tab-button" data-tab="advanced">Advanced</button>
+  <!-- Tab Navigation (Scrollable with Arrow Buttons) -->
+  <div class="panel-tabs panel-tabs--with-arrows">
+    <button class="tab-scroll-btn" id="node-editor-tab-scroll-left" aria-label="Scroll tabs left" title="Scroll left">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <div class="tab-scroll-viewport" id="node-editor-tab-viewport">
+      <div class="tab-strip" id="node-editor-tab-strip">
+        <button class="panel-tab-button tab-active" data-tab="basic">Basic</button>
+        <button class="panel-tab-button hidden" data-tab="components" id="tab-components-button">Components</button>
+        <button class="panel-tab-button" data-tab="config">Configuration</button>
+        <button class="panel-tab-button" data-tab="runtime">Runtime</button>
+        <button class="panel-tab-button" data-tab="network">Network</button>
+        <button class="panel-tab-button" data-tab="advanced">Advanced</button>
+      </div>
+    </div>
+    <button class="tab-scroll-btn" id="node-editor-tab-scroll-right" aria-label="Scroll tabs right" title="Scroll right">
+      <i class="fas fa-chevron-right"></i>
+    </button>
   </div>
 
     <!-- Tab Content Container -->
