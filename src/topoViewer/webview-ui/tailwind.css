@@ -163,7 +163,8 @@
   }
 
   .btn-danger:hover {
-    background-color: var(--bg-hover);
+    background-color: var(--error);
+    color: var(--color-vscode-button-fg)
   }
   
   .btn-small {
