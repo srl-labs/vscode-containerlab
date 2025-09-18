@@ -27,6 +27,10 @@ const CLASS_INPUT_FIELD = 'input-field' as const;
 const HTML_TRASH_ICON = '<i class="fas fa-trash"></i>' as const;
 const CLASS_COMPONENT_ENTRY = 'component-entry' as const;
 const CLASS_COMPONENT_MDA_ENTRY = 'component-mda-entry' as const;
+const SELECTOR_COMPONENT_BODY = '[data-role="component-body"]' as const;
+const SELECTOR_COMPONENT_CARET = '[data-role="component-caret"]' as const;
+const ICON_CHEVRON_RIGHT = 'fa-chevron-right' as const;
+const ICON_CHEVRON_DOWN = 'fa-chevron-down' as const;
 
 const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
@@ -349,6 +353,7 @@ export class ManagerNodeEditor {
   private componentKinds: Set<string> = new Set(['nokia_srsim']);
   private componentEntryCounter: number = 0;
   private componentMdaCounters: Map<number, number> = new Map();
+  private pendingExpandedComponentSlots: Set<string> | undefined;
   // enums to be filled from schema
   private srosSfmTypes: string[] = [];
   private srosXiomTypes: string[] = [];
@@ -486,7 +491,7 @@ export class ManagerNodeEditor {
     content.classList.add(CLASS_HIDDEN);
   }
 
-  private loadComponentsFromNode(): void {
+  private loadComponentsFromNode(expandedSlots?: Set<string>): void {
     if (!this.currentNode) return;
     const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
     if (!container) return;
@@ -498,7 +503,16 @@ export class ManagerNodeEditor {
     if (comps.length === 0) return;
     // Sort components by slot: A, B, then numeric ascending (1,2,3...)
     const sorted = [...comps].sort((a, b) => this.compareComponentSlots(a?.slot, b?.slot));
-    sorted.forEach(comp => this.addComponentEntry(comp));
+    const expandSet = expandedSlots ?? this.pendingExpandedComponentSlots;
+    // reset pending once read
+    this.pendingExpandedComponentSlots = undefined;
+    sorted.forEach(comp => {
+      const idx = this.addComponentEntry(comp);
+      if (idx > 0 && expandSet) {
+        const key = this.normalizeComponentSlot(String(comp?.slot ?? ''));
+        if (key && expandSet.has(key)) this.expandComponentEntry(idx);
+      }
+    });
   }
 
   private compareComponentSlots(a: unknown, b: unknown): number {
@@ -520,10 +534,10 @@ export class ManagerNodeEditor {
     return ra[0] !== rb[0] ? ra[0] - rb[0] : ra[1] - rb[1];
   }
 
-  private addComponentEntry(prefill?: any): void {
+  private addComponentEntry(prefill?: any): number {
     const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
     const tpl = document.getElementById('tpl-component-entry') as HTMLTemplateElement | null;
-    if (!container || !tpl) return;
+    if (!container || !tpl) return -1;
     // Compute suggested unique slot prior to render
     const suggestedSlot = this.findNextAvailableComponentSlot();
     const idx = ++this.componentEntryCounter;
@@ -551,6 +565,13 @@ export class ManagerNodeEditor {
 
     // Prefill MDAs
     if (Array.isArray(prefill?.mda)) prefill.mda.forEach((m: any) => this.addMdaEntry(idx, m));
+
+    // Expand newly added entry by default when user adds a slot
+    if (!prefill) {
+      this.expandComponentEntry(idx);
+    }
+
+    return idx;
   }
 
   private normalizeComponentSlot(v: string): string {
@@ -632,8 +653,8 @@ export class ManagerNodeEditor {
     const addMdaBtn = entry.querySelector('[data-action="add-mda"]') as HTMLButtonElement;
     const removeComponentBtn = entry.querySelector('[data-action="remove-component"]') as HTMLButtonElement;
     const header = entry.querySelector('[data-action="toggle-component"]') as HTMLElement | null;
-    const caret = entry.querySelector('[data-role="component-caret"]') as HTMLElement | null;
-    const body = entry.querySelector('[data-role="component-body"]') as HTMLElement | null;
+    const caret = entry.querySelector(SELECTOR_COMPONENT_CARET) as HTMLElement | null;
+    const body = entry.querySelector(SELECTOR_COMPONENT_BODY) as HTMLElement | null;
 
     slotInput.id = `component-${idx}-slot`;
     typeHidden.id = `component-${idx}-type`;
@@ -749,17 +770,46 @@ export class ManagerNodeEditor {
       if (isHidden) {
         body.classList.remove(CLASS_HIDDEN);
         if (caret) {
-          caret.classList.remove('fa-chevron-right');
-          caret.classList.add('fa-chevron-down');
+          caret.classList.remove(ICON_CHEVRON_RIGHT);
+          caret.classList.add(ICON_CHEVRON_DOWN);
         }
       } else {
         body.classList.add(CLASS_HIDDEN);
         if (caret) {
-          caret.classList.remove('fa-chevron-down');
-          caret.classList.add('fa-chevron-right');
+          caret.classList.remove(ICON_CHEVRON_DOWN);
+          caret.classList.add(ICON_CHEVRON_RIGHT);
         }
       }
     });
+  }
+
+  private expandComponentEntry(idx: number): void {
+    const entry = document.getElementById(`component-entry-${idx}`);
+    if (!entry) return;
+    const body = entry.querySelector(SELECTOR_COMPONENT_BODY) as HTMLElement | null;
+    const caret = entry.querySelector(SELECTOR_COMPONENT_CARET) as HTMLElement | null;
+    if (body && body.classList.contains(CLASS_HIDDEN)) body.classList.remove(CLASS_HIDDEN);
+    if (caret) {
+      caret.classList.remove(ICON_CHEVRON_RIGHT);
+      caret.classList.add(ICON_CHEVRON_DOWN);
+    }
+  }
+
+  private collectExpandedComponentSlots(): Set<string> {
+    const set = new Set<string>();
+    const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
+    if (!container) return set;
+    const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
+    entries.forEach(entry => {
+      const idx = this.extractIndex(entry.id, /component-entry-(\d+)/);
+      if (idx == null) return;
+      const body = entry.querySelector(SELECTOR_COMPONENT_BODY) as HTMLElement | null;
+      const slotInput = document.getElementById(`component-${idx}-slot`) as HTMLInputElement | null;
+      const raw = slotInput?.value ?? '';
+      const key = this.normalizeComponentSlot(raw);
+      if (key && body && !body.classList.contains(CLASS_HIDDEN)) set.add(key);
+    });
+    return set;
   }
 
   private attachXiomListener(xiomHidden: HTMLInputElement, mdaList: HTMLElement, idx: number): void {
@@ -2500,6 +2550,8 @@ export class ManagerNodeEditor {
     }
 
     try {
+      // Remember which component slots are currently expanded
+      const expanded = this.collectExpandedComponentSlots();
       // Ensure all filterable dropdowns (esp. components) commit their values
       this.commitComponentDropdowns();
       const nodeProps = this.collectNodeProperties();
@@ -2507,7 +2559,7 @@ export class ManagerNodeEditor {
       if (handled || this.isCustomTemplateNode()) {
         return;
       }
-      await this.updateNode(nodeProps);
+      await this.updateNode(nodeProps, expanded);
     } catch (error) {
       log.error(`Failed to save node properties: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -2824,7 +2876,7 @@ export class ManagerNodeEditor {
     return nodeId === ID_TEMP_CUSTOM_NODE || nodeId === ID_EDIT_CUSTOM_NODE;
   }
 
-  private async updateNode(nodeProps: NodeProperties): Promise<void> {
+  private async updateNode(nodeProps: NodeProperties, expandedSlots?: Set<string>): Promise<void> {
     const currentData = this.currentNode!.data();
     const { updatedExtraData, inheritedProps } = this.mergeNodeData(nodeProps, currentData);
     const iconValue =
@@ -2833,7 +2885,7 @@ export class ManagerNodeEditor {
     const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
     this.currentNode!.data(updatedData);
     await this.saveManager.saveTopo(this.cy, false);
-    await this.refreshNodeData();
+    await this.refreshNodeData(expandedSlots);
     this.updateInheritedBadges(inheritedProps);
     log.info(`Node ${this.currentNode!.id()} updated with enhanced properties`);
   }
@@ -2921,7 +2973,7 @@ export class ManagerNodeEditor {
     return true;
   }
 
-  private async refreshNodeData(): Promise<void> {
+  private async refreshNodeData(expandedSlots?: Set<string>): Promise<void> {
     try {
       const sender = this.saveManager.getMessageSender();
       const nodeName = this.currentNode!.data('name') || this.currentNode!.id();
@@ -2929,6 +2981,8 @@ export class ManagerNodeEditor {
       if (freshData && typeof freshData === 'object') {
         this.currentNode!.data('extraData', freshData);
         this.clearAllDynamicEntries();
+        // Defer restoration to the next components render that happens in handleKindChange
+        this.pendingExpandedComponentSlots = expandedSlots;
         this.loadNodeData(this.currentNode!);
       }
     } catch (err) {
