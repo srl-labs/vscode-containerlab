@@ -639,6 +639,15 @@
   .panel-tabs {
     display: flex;
     border-bottom: 1px solid var(--vscode-panel-border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin; /* Firefox */
+  }
+
+  /* Prevent tab buttons from shrinking; enable horizontal scroll */
+  .panel-tabs .panel-tab-button {
+    flex: 0 0 auto;
   }
 
   .panel-tab-button {
