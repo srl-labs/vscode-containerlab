@@ -10,6 +10,7 @@
   <!-- Tab Navigation -->
   <div class="panel-tabs">
     <button class="panel-tab-button tab-active" data-tab="basic">Basic</button>
+    <button class="panel-tab-button hidden" data-tab="components" id="tab-components-button">Components</button>
     <button class="panel-tab-button" data-tab="config">Configuration</button>
     <button class="panel-tab-button" data-tab="runtime">Runtime</button>
     <button class="panel-tab-button" data-tab="network">Network</button>
@@ -74,6 +75,101 @@
 
       </div>
     </div>
+
+      <!-- Components Tab -->
+      <div class="tab-content hidden" id="tab-components">
+        <div class="space-y-3">
+
+          <div id="node-components-container" class="space-y-3">
+            <!-- Component entries go here dynamically -->
+          </div>
+          <button class="btn btn-small" onclick="addComponentEntry()">
+            <i class="fas fa-plus mr-1"></i> Add Component
+          </button>
+
+          <template id="tpl-component-entry">
+            <div class="component-entry my-2 p-2 rounded-lg bg-[var(--bg-primary)]" data-idx>
+              <!-- Accordion Header -->
+              <div class="component-header flex items-center justify-between cursor-pointer select-none bg-bg-primary" data-action="toggle-component">
+                <div class="flex items-center gap-2">
+                  <i class="fas text-sm fa-chevron-right" data-role="component-caret"></i>
+                  <label class="vscode-label">Slot</label>
+                  <input type="text" class="px-2 py-1 w-10 bg-transparent border-b border-[var(--vscode-input-border)] outline-none outline-offset-0 ring-0 shadow-none focus:outline-none focus-visible:outline-none focus:outline-offset-0 focus:ring-0 focus-visible:ring-0 focus:shadow-none focus-visible:shadow-none focus:border-[var(--vscode-input-border)]" data-role="component-slot"/>
+                </div>
+                <button type="button" class="btn btn-small btn-danger" data-action="remove-component">
+                  <i class="fas fa-trash mr-1"></i> Remove
+                </button>
+              </div>
+
+              <!-- Body -->
+              <div class="component-body mt-2 hidden" data-role="component-body">
+                <div class="grid grid-flow-row gap-2">
+                  <div class="form-group">
+                    <label class="block vscode-label mb-1">Type</label>
+                    <input type="hidden" data-role="component-type-value" />
+                    <div data-role="component-type-dropdown"></div>
+                  </div>
+                  <div class="flex flex-row gap-1">
+                    <div class="form-group basis-2/3">
+                      <label class="block vscode-label mb-1">XIOM</label>
+                      <input type="hidden" data-role="component-xiom-value" />
+                      <div data-role="component-xiom-dropdown"></div>
+                    </div>
+                    <div class="form-group basis-1/3">
+                      <label class="block vscode-label mb-1">SFM</label>
+                      <input type="hidden" data-role="component-sfm-value" />
+                      <div data-role="component-sfm-dropdown"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group mt-2">
+                  <label class="block vscode-label mb-1">MDA</label>
+                  <div data-role="mda-list" class="space-y-2"></div>
+                  <button type="button" class="btn btn-small mt-2" data-action="add-mda">
+                    <i class="fas fa-plus mr-1"></i> Add MDA
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template id="tpl-mda-entry">
+            <div class="component-mda-entry">
+              <!-- Labels for mda -->
+              <div class="grid grid-cols-10 gap-2 items-stretch">
+                <div class="col-span-2">
+                  <label class="block vscode-label mb-1 w-full h-full">Slot</label>
+                </div>
+                <div class="col-span-7">
+                  <label class="block vscode-label mb-1 w-full h-full">Type</label>
+                </div>
+                <div class="col-span-1 w-full h-full"></div>
+              </div>
+
+              <!-- mda input vals + delete btn -->
+              <div class="grid grid-cols-10 gap-2 items-stretch">
+                <div class="col-span-2">
+                  <div class="w-full min-w-0 h-full flex items-stretch overflow-hidden border border-[var(--vscode-input-border)] rounded-md bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)]">
+                    <span class="px-1 select-none pointer-events-none text-[var(--text-secondary)] flex items-center" data-role="mda-card-slot">-</span>
+                    <span class="px-0 select-none pointer-events-none text-[var(--text-secondary)] flex items-center">/</span>
+                    <input type="number" min="1" step="1" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 px-2" data-role="mda-slot"/>
+                  </div>
+                </div>
+                <div class="col-span-7">
+                  <input type="hidden" data-role="mda-type-value" />
+                  <div data-role="mda-type-dropdown" class="w-full h-full"></div>
+                </div>
+                <div class="col-span-1">
+                  <button type="button" class="btn btn-small btn-danger w-full h-full" data-action="remove-mda" aria-label="Remove MDA">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
 
       <!-- Configuration Tab -->
       <div class="tab-content hidden" id="tab-config">
