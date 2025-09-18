@@ -519,6 +519,7 @@ function applyExtraProps(
     'healthcheck',
     'image-pull-policy',
     'runtime',
+    'components',
     'stages',
   ].forEach(prop => applyExtraProp(doc, nodeMap, extraData, inherit, prop));
 }
