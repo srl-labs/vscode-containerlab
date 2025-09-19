@@ -44,7 +44,6 @@ import { isSpecialNodeOrBridge, isSpecialEndpoint } from '../utilities/specialNo
 
 
 
-
 /**
  * TopologyWebviewController is responsible for initializing the Cytoscape instance,
  * managing edge creation, node editing and viewport panels/buttons.
@@ -1624,21 +1623,95 @@ class TopologyWebviewController {
     }
   }
 
-  public async bulkCreateLinks(sourceFilterText: string, targetFilterText: string): Promise<void> {
-    const sourceFilter = FilterUtils.createFilter(sourceFilterText);
-    const targetFilter = FilterUtils.createFilter(targetFilterText);
-    const sources = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]').filter((node) => sourceFilter(node.data('name')));
-    const targets = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]').filter((node) => targetFilter(node.data('name')));
+  private applyBackreferences(pattern: string, match: RegExpMatchArray | null): string {
+    if (!pattern) {
+      return pattern;
+    }
 
-    // Calculate potential links to show in confirmation
-    let potentialLinks = 0;
-    sources.forEach((source) => {
-      targets.forEach((target) => {
-        if (source.id() !== target.id() && !source.edgesTo(target).nonempty()) {
-          potentialLinks++;
+    return pattern.replace(/\$\$|\$<([^>]+)>|\$(\d+)/g, (fullMatch: string, namedGroup?: string, numberedGroup?: string) => {
+      if (fullMatch === '$$') {
+        return '$';
+      }
+
+      if (!match) {
+        return fullMatch;
+      }
+
+      if (fullMatch.startsWith('$<')) {
+        if (namedGroup && match.groups && Object.prototype.hasOwnProperty.call(match.groups, namedGroup)) {
+          const value = match.groups[namedGroup];
+          return value ?? '';
         }
+        return fullMatch;
+      }
+
+      if (numberedGroup) {
+        const index = Number(numberedGroup);
+        if (!Number.isNaN(index) && index < match.length) {
+          return match[index] ?? '';
+        }
+        return fullMatch;
+      }
+
+      return fullMatch;
+    });
+  }
+
+  private getSourceMatch(
+    name: string,
+    sourceRegex: RegExp | null,
+    fallbackFilter: ReturnType<typeof FilterUtils.createFilter> | null
+  ): RegExpMatchArray | null | undefined {
+    if (sourceRegex) {
+      const execResult = sourceRegex.exec(name);
+      return execResult ?? undefined;
+    }
+
+    if (!fallbackFilter) {
+      return null;
+    }
+
+    return fallbackFilter(name) ? null : undefined;
+  }
+
+  public async bulkCreateLinks(sourceFilterText: string, targetFilterText: string): Promise<void> {
+    const nodes = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]');
+    const candidateLinks: Array<{ source: cytoscape.NodeSingular; target: cytoscape.NodeSingular }> = [];
+
+    const sourceRegex = FilterUtils.tryCreateRegExp(sourceFilterText);
+    const sourceFallbackFilter = sourceRegex ? null : FilterUtils.createFilter(sourceFilterText);
+
+    nodes.forEach((sourceNode) => {
+      const match = this.getSourceMatch(
+        sourceNode.data('name'),
+        sourceRegex,
+        sourceFallbackFilter
+      );
+
+      if (match === undefined) {
+        return;
+      }
+
+      const substitutedTargetPattern = this.applyBackreferences(targetFilterText, match);
+      const targetFilter = FilterUtils.createFilter(substitutedTargetPattern);
+
+      nodes.forEach((targetNode) => {
+        if (
+          sourceNode.id() === targetNode.id() ||
+          !targetFilter(targetNode.data('name')) ||
+          sourceNode.edgesTo(targetNode).nonempty()
+        ) {
+          return;
+        }
+
+        candidateLinks.push({
+          source: sourceNode,
+          target: targetNode
+        });
       });
     });
+
+    const potentialLinks = candidateLinks.length;
 
     if (potentialLinks === 0) {
       (window as any).showConfirmDialog({
@@ -1664,25 +1737,21 @@ class TopologyWebviewController {
       return;
     }
 
-    sources.forEach((source) => {
-      targets.forEach((target) => {
-        if (source.id() !== target.id() && !source.edgesTo(target).nonempty()) {
-          const edgeData = {
-            id: `${source.id()}-${target.id()}`,
-            source: source.id(),
-            target: target.id(),
-            sourceEndpoint: this.getNextEndpoint(source.id()),
-            targetEndpoint: this.getNextEndpoint(target.id()),
-            editor: 'true'
-          };
-          const isStubLink =
-            this.isNetworkNode(source.id()) || this.isNetworkNode(target.id());
-          this.cy.add({
-            group: 'edges',
-            data: edgeData,
-            classes: isStubLink ? 'stub-link' : undefined
-          });
-        }
+    candidateLinks.forEach(({ source, target }) => {
+      const edgeData = {
+        id: `${source.id()}-${target.id()}`,
+        source: source.id(),
+        target: target.id(),
+        sourceEndpoint: this.getNextEndpoint(source.id()),
+        targetEndpoint: this.getNextEndpoint(target.id()),
+        editor: 'true'
+      };
+      const isStubLink =
+        this.isNetworkNode(source.id()) || this.isNetworkNode(target.id());
+      this.cy.add({
+        group: 'edges',
+        data: edgeData,
+        classes: isStubLink ? 'stub-link' : undefined
       });
     });
     this.saveManager.saveTopo(this.cy, true);

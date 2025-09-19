@@ -9,16 +9,27 @@ export class FilterUtils {
             return () => true;
         }
 
-        // Convert user-friendly patterns to regex
+        const regex = this.tryCreateRegExp(filterText);
+        if (regex) {
+            return (value: string) => regex.test(value);
+        }
+
+        // Invalid regex -> fall back simple string
+        const searchText = filterText.toLowerCase();
+        return (value: string) => value.toLowerCase().includes(searchText);
+    }
+
+    static tryCreateRegExp(filterText: string, flags = 'i'): RegExp | null {
+        if (!filterText) {
+            return null;
+        }
+
         const processedPattern = this.convertUserFriendlyPattern(filterText);
 
         try {
-            const regex = new RegExp(processedPattern, 'i');
-            return (value: string) => regex.test(value);
+            return new RegExp(processedPattern, flags);
         } catch {
-            // Invalid regex -> fall back simple string
-            const searchText = filterText.toLowerCase();
-            return (value: string) => value.toLowerCase().includes(searchText);
+            return null;
         }
     }
 
