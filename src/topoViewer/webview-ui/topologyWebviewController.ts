@@ -396,6 +396,7 @@ class TopologyWebviewController {
     this.layoutAlgoManager = layoutAlgoManagerSingleton;
     this.zoomToFitManager = zoomToFitManagerSingleton;
     this.labelEndpointManager = labelEndpointManagerSingleton;
+    this.labelEndpointManager.initialize(this.cy);
     this.isViewportDrawerClabEditorChecked = mode === 'edit';
     this.captureViewportManager = {
       viewportButtonsCaptureViewportAsSvg: () => {
@@ -445,7 +446,6 @@ class TopologyWebviewController {
     window.viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
     window.viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
-    window.viewportButtonsLabelEndpoint = () => this.labelEndpointManager.viewportButtonsLabelEndpoint(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
   }

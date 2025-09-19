@@ -387,10 +387,67 @@
     border-radius: 0.375rem;
     outline: none;
   }
-  
+
   .input-field:focus {
     border-color: var(--vscode-focusBorder);
     box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+  }
+
+  .navbar-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.25rem);
+    min-width: 14rem;
+    padding: 0.25rem 0;
+    background-color: var(--vscode-menu-background, var(--vscode-dropdown-background, var(--vscode-editorWidget-background)));
+    color: var(--vscode-menu-foreground, var(--vscode-foreground));
+    border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
+    border-radius: 0.375rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    z-index: 30;
+  }
+
+  .navbar-menu-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    gap: 0.5rem;
+    transition: background-color 0.1s ease, color 0.1s ease;
+  }
+
+  .navbar-menu-option span {
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .navbar-menu-option:hover,
+  .navbar-menu-option:focus {
+    background-color: var(--vscode-menu-selectionBackground, rgba(64, 166, 255, 0.18));
+    color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
+    outline: none;
+  }
+
+  .navbar-menu-option[data-selected="true"] {
+    background-color: var(--vscode-menu-selectionBackground, rgba(64, 166, 255, 0.18));
+    color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
+  }
+
+  .navbar-menu-option-check {
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+  }
+
+  .navbar-menu-option[data-selected="true"] .navbar-menu-option-check {
+    opacity: 1;
   }
   
   /* Label styles */

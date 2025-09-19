@@ -23,7 +23,10 @@ declare global {
     viewportButtonsGeoMapEdit?: (..._args: any[]) => void;
     viewportButtonsTopologyOverview?: (..._args: any[]) => void;
     viewportButtonsZoomToFit?: () => void;
-    viewportButtonsLabelEndpoint?: () => void;
+    viewportSetLinkLabelMode?: (mode: string) => void;
+    viewportToggleLinkLabelMenu?: (event?: MouseEvent) => void;
+    viewportSelectLinkLabelMode?: (mode: string) => void;
+    viewportCloseLinkLabelMenu?: () => void;
     viewportButtonsCaptureViewportAsSvg?: () => void;
     viewportButtonsUndo?: () => void;
     showPanelAbout?: () => void;

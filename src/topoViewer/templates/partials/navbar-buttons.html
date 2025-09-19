@@ -46,12 +46,31 @@
 </p>
 
 <p class="m-0 p-0">
-  <button id="viewport-label-endpoint" title="Toggle Endpoint Label" onclick="viewportButtonsLabelEndpoint()"
-    class="btn-icon-hover-clean">
-    <span class="inline-flex items-center justify-center text-xl">
-      <i class="fas fa-tag"></i>
-    </span>
-  </button>
+  <div class="relative inline-block">
+    <button id="viewport-link-label-button" title="Link labels" aria-haspopup="true" aria-expanded="false"
+      onclick="viewportToggleLinkLabelMenu(event)" class="btn-icon-hover-clean">
+      <span class="inline-flex items-center justify-center text-xl">
+        <i class="fas fa-tag"></i>
+      </span>
+    </button>
+    <div id="viewport-link-label-menu" class="navbar-menu hidden" role="menu" aria-labelledby="viewport-link-label-button">
+      <button type="button" class="navbar-menu-option" data-mode="show-all"
+        onclick="viewportSelectLinkLabelMode('show-all')" role="menuitemradio" aria-checked="false">
+        <span>Show Labels</span>
+        <i class="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="navbar-menu-option" data-mode="on-select"
+        onclick="viewportSelectLinkLabelMode('on-select')" role="menuitemradio" aria-checked="false">
+        <span>Show Link Labels on Select</span>
+        <i class="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="navbar-menu-option" data-mode="hide"
+        onclick="viewportSelectLinkLabelMode('hide')" role="menuitemradio" aria-checked="false">
+        <span>No Labels</span>
+        <i class="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
 </p>
 
 <p class="m-0 p-0">

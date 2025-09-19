@@ -1,10 +1,11 @@
 import type cytoscape from 'cytoscape';
+import type { LinkLabelMode } from './linkLabelMode';
 
 export interface TopoViewerState {
   cy: cytoscape.Core | null;
   selectedNode: string | null;
   selectedEdge: string | null;
-  linkEndpointVisibility: boolean;
+  linkLabelMode: LinkLabelMode;
   nodeContainerStatusVisibility: boolean;
   labName: string;
   prefixName: string;
