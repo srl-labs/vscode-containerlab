@@ -8,6 +8,7 @@ import { exportViewportAsSvg } from './utils';
 import topoViewerState from '../state';
 import { zoomToFitManager } from '../core/managerRegistry';
 import { FilterUtils } from '../../helpers/filterUtils';
+import { normalizeLinkLabelMode, linkLabelModeLabel, type LinkLabelMode } from '../types/linkLabelMode';
 
 // Common class and display constants
 const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
@@ -15,9 +16,91 @@ const CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
 const DISPLAY_BLOCK = 'block' as const;
 const DISPLAY_NONE = 'none' as const;
 const ERR_NO_CY = 'Cytoscape instance not available' as const;
+const LINK_LABEL_MENU_ID = 'viewport-link-label-menu' as const;
+const LINK_LABEL_TRIGGER_ID = 'viewport-link-label-button' as const;
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
+let linkLabelMenuListenersInitialized = false;
+
+function getLinkLabelMenu(): HTMLElement | null {
+  return document.getElementById(LINK_LABEL_MENU_ID);
+}
+
+function getLinkLabelTrigger(): HTMLButtonElement | null {
+  return document.getElementById(LINK_LABEL_TRIGGER_ID) as HTMLButtonElement | null;
+}
+
+function updateLinkLabelMenuSelection(mode: LinkLabelMode): void {
+  const menu = getLinkLabelMenu();
+  if (menu) {
+    const options = menu.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    options.forEach(option => {
+      const optionMode = normalizeLinkLabelMode(option.dataset.mode ?? '');
+      const isSelected = optionMode === mode;
+      option.dataset.selected = isSelected ? 'true' : 'false';
+      option.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+    });
+  }
+
+  const trigger = getLinkLabelTrigger();
+  if (trigger) {
+    const label = linkLabelModeLabel(mode);
+    const description = `Link labels: ${label}`;
+    trigger.dataset.mode = mode;
+    trigger.setAttribute('aria-label', description);
+    trigger.setAttribute('title', description);
+  }
+}
+
+function setTriggerExpanded(expanded: boolean): void {
+  const trigger = getLinkLabelTrigger();
+  if (trigger) {
+    trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+}
+
+function openLinkLabelMenu(): void {
+  const menu = getLinkLabelMenu();
+  if (menu) {
+    menu.classList.remove('hidden');
+  }
+  setTriggerExpanded(true);
+}
+
+function closeLinkLabelMenu(): void {
+  const menu = getLinkLabelMenu();
+  if (menu) {
+    menu.classList.add('hidden');
+  }
+  setTriggerExpanded(false);
+}
+
+function ensureLinkLabelMenuListeners(): void {
+  if (linkLabelMenuListenersInitialized) {
+    return;
+  }
+  linkLabelMenuListenersInitialized = true;
+
+  document.addEventListener('click', event => {
+    const menu = getLinkLabelMenu();
+    if (!menu || menu.classList.contains('hidden')) {
+      return;
+    }
+    const trigger = getLinkLabelTrigger();
+    const target = event.target as Node | null;
+    if (trigger?.contains(target) || menu.contains(target)) {
+      return;
+    }
+    closeLinkLabelMenu();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeLinkLabelMenu();
+    }
+  });
+}
 
 // Initialize message sender on first use
 function getMessageSender(): VscodeMessageSender {
@@ -134,25 +217,52 @@ export function viewportButtonsTopologyOverview(): void {
 }
 
 /**
- * Toggle endpoint label visibility
+ * Update the link label display mode across the viewer.
  */
-export function viewportButtonsLabelEndpoint(): void {
+export function viewportSetLinkLabelMode(rawMode: string | LinkLabelMode): void {
   try {
-    topoViewerState.linkEndpointVisibility = !topoViewerState.linkEndpointVisibility;
+    const normalized = typeof rawMode === 'string' ? normalizeLinkLabelMode(rawMode) : rawMode;
+    const manager = topoViewerState.editorEngine?.labelEndpointManager;
+    if (manager) {
+      manager.setMode(normalized);
+    } else {
+      topoViewerState.linkLabelMode = normalized;
+      updateLinkLabelMenuSelection(normalized);
+    }
+  } catch (error) {
+    log.error(`Error updating link label mode: ${error}`);
+  }
+}
 
-    const cy = topoViewerState.cy;
-
-    if (cy) {
-      // Trigger style update if loadCytoStyle is available
-      if (typeof (globalThis as any).loadCytoStyle === 'function') {
-        (globalThis as any).loadCytoStyle(cy);
-      }
+export function viewportToggleLinkLabelMenu(event?: MouseEvent): void {
+  try {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const menu = getLinkLabelMenu();
+    if (!menu) {
+      log.warn('Link label menu element not found');
+      return;
     }
 
-    log.info(`Endpoint label visibility toggled to: ${topoViewerState.linkEndpointVisibility}`);
+    ensureLinkLabelMenuListeners();
+    if (menu.classList.contains('hidden')) {
+      updateLinkLabelMenuSelection(topoViewerState.linkLabelMode);
+      openLinkLabelMenu();
+    } else {
+      closeLinkLabelMenu();
+    }
   } catch (error) {
-    log.error(`Error toggling endpoint labels: ${error}`);
+    log.error(`Error toggling link label menu: ${error}`);
   }
+}
+
+export function viewportSelectLinkLabelMode(mode: string): void {
+  viewportSetLinkLabelMode(mode);
+  closeLinkLabelMenu();
+}
+
+export function viewportCloseLinkLabelMenu(): void {
+  closeLinkLabelMenu();
 }
 
 /**
@@ -318,6 +428,10 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
   (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
   (globalThis as any).viewportButtonsToggleSplit = viewportButtonsToggleSplit;
+  (globalThis as any).viewportSetLinkLabelMode = viewportSetLinkLabelMode;
+  (globalThis as any).viewportToggleLinkLabelMenu = viewportToggleLinkLabelMenu;
+  (globalThis as any).viewportSelectLinkLabelMode = viewportSelectLinkLabelMode;
+  (globalThis as any).viewportCloseLinkLabelMenu = viewportCloseLinkLabelMenu;
 
   log.info('Global UI handlers initialized');
 }

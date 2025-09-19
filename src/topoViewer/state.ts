@@ -1,10 +1,13 @@
 import type { TopoViewerState } from './types/topoViewerState';
+import type { LinkLabelMode } from './types/linkLabelMode';
+
+const DEFAULT_LINK_LABEL_MODE: LinkLabelMode = 'show-all';
 
 export const topoViewerState: TopoViewerState = {
   cy: null,
   selectedNode: null,
   selectedEdge: null,
-  linkEndpointVisibility: true,
+  linkLabelMode: DEFAULT_LINK_LABEL_MODE,
   nodeContainerStatusVisibility: false,
   labName: '',
   prefixName: 'clab',
@@ -23,7 +26,7 @@ export function resetState(): void {
   topoViewerState.cy = null;
   topoViewerState.selectedNode = null;
   topoViewerState.selectedEdge = null;
-  topoViewerState.linkEndpointVisibility = true;
+  topoViewerState.linkLabelMode = DEFAULT_LINK_LABEL_MODE;
   topoViewerState.nodeContainerStatusVisibility = false;
   topoViewerState.multiLayerViewPortState = false;
   topoViewerState.isGeoMapInitialized = false;
