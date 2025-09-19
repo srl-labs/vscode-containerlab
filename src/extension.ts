@@ -380,10 +380,27 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel.info(process.platform);
 
   // Allow activation only on Linux or when connected via WSL.
+  // Provide a more helpful message for macOS users with a workaround link.
   if (process.platform !== "linux" && vscode.env.remoteName !== "wsl") {
-    vscode.window.showWarningMessage(
-      "The Containerlab extension is only supported on Linux or WSL. It will not be activated on this system."
-    );
+    if (process.platform === "darwin") {
+      const openDocs = "Open macOS guide";
+      vscode.window
+        .showWarningMessage(
+          "Containerlab is not supported for native installation on macOS. See workarounds to run it on macOS.",
+          openDocs
+        )
+        .then((selection) => {
+          if (selection === openDocs) {
+            vscode.env.openExternal(
+              vscode.Uri.parse("https://containerlab.dev/macos/#containerlab-on-macos")
+            );
+          }
+        });
+    } else {
+      vscode.window.showWarningMessage(
+        "The Containerlab extension is only supported on Linux or WSL. It will not be activated on this system."
+      );
+    }
     return; // Do not activate the extension.
   }
 
