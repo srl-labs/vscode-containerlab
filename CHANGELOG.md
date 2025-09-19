@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.17.5] - 2025-09-19
+- TopoViewer/editor:
+  - Lock the lab by default
+  - Fixes
+
 ## [0.17.3] - 2025-09-11
 - Refactor
 - Fixes

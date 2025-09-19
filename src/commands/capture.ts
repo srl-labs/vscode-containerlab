@@ -34,7 +34,8 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
 
 // Build the packetflix:ws: URI
 async function genPacketflixURI(node: ClabInterfaceTreeNode,
-  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
+  allSelectedNodes?: ClabInterfaceTreeNode[],  // [CHANGED]
+  forVNC?: boolean
 ) {
   if (!node) {
     return vscode.window.showErrorMessage("No interface to capture found.");
@@ -72,8 +73,8 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
   // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
   outputChannel.debug(`captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
 
-  // Make sure we have a valid hostname
-  const hostname = await getHostname();
+  // For VNC capture, use 127.0.0.1 which will be adjusted later
+  const hostname = forVNC ? "127.0.0.1" : await getHostname();
   if (!hostname) {
     return vscode.window.showErrorMessage(
       "No known hostname/IP address to connect to for packet capture."
@@ -264,7 +265,7 @@ export async function captureEdgesharkVNC(
   allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
 ) {
 
-  const packetflixUri = await genPacketflixURI(node, allSelectedNodes)
+  const packetflixUri = await genPacketflixURI(node, allSelectedNodes, true)
   if (!packetflixUri) {
     return
   }
