@@ -1395,7 +1395,7 @@
     "esbuild-loader": "^4.3.0",
     "eslint": "^9.35.0",
     "eslint-plugin-sonarjs": "^3.0.5",
-    "fs-extra": "^11.3.1",
+    "fs-extra": "^11.3.2",
     "jscpd": "^4.0.5",
     "leaflet": "^1.9.4",
     "mini-css-extract-plugin": "^2.9.3",
