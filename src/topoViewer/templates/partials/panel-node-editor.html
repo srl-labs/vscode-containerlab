@@ -120,17 +120,21 @@
                     <div data-role="component-type-dropdown"></div>
                   </div>
                   <div class="flex flex-row gap-1">
-                    <div class="form-group basis-2/3">
-                      <label class="block vscode-label mb-1">XIOM</label>
-                      <input type="hidden" data-role="component-xiom-value" />
-                      <div data-role="component-xiom-dropdown"></div>
-                    </div>
                     <div class="form-group basis-1/3">
                       <label class="block vscode-label mb-1">SFM</label>
                       <input type="hidden" data-role="component-sfm-value" />
                       <div data-role="component-sfm-dropdown"></div>
                     </div>
                   </div>
+                </div>
+
+                <!-- XIOM list -->
+                <div class="form-group mt-2">
+                  <label class="block vscode-label mb-1">XIOM</label>
+                  <div data-role="xiom-list" class="space-y-2"></div>
+                  <button type="button" class="btn btn-small mt-2" data-action="add-xiom">
+                    <i class="fas fa-plus mr-1"></i> Add XIOM
+                  </button>
                 </div>
 
                 <div class="form-group mt-2">
@@ -144,6 +148,87 @@
             </div>
           </template>
 
+          <!-- XIOM entry template -->
+          <template id="tpl-xiom-entry">
+            <div class="component-xiom-entry">
+              <!-- Labels for xiom -->
+              <div class="grid grid-cols-10 gap-2 items-stretch">
+                <div class="col-span-2">
+                  <label class="block vscode-label mb-1 w-full h-full">XIOM Slot</label>
+                </div>
+                <div class="col-span-7">
+                  <label class="block vscode-label mb-1 w-full h-full">XIOM Type</label>
+                </div>
+                <div class="col-span-1 w-full h-full"></div>
+              </div>
+
+              <!-- xiom input vals + delete btn -->
+              <div class="grid grid-cols-10 gap-2 items-stretch">
+                <div class="col-span-2">
+                  <div class="w-full min-w-0 h-full flex items-stretch overflow-hidden border border-[var(--vscode-input-border)] rounded-md bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)]">
+                    <span class="px-1 select-none pointer-events-none text-[var(--text-secondary)] flex items-center" data-role="xiom-card-slot">-</span>
+                    <span class="px-0 select-none pointer-events-none text-[var(--text-secondary)] flex items-center">/</span>
+                    <input type="hidden" data-role="xiom-slot-value" />
+                    <div data-role="xiom-slot-dropdown" class="flex-1 min-w-0"></div>
+                  </div>
+                </div>
+                <div class="col-span-7">
+                  <input type="hidden" data-role="xiom-type-value" />
+                  <div data-role="xiom-type-dropdown" class="w-full h-full"></div>
+                </div>
+                <div class="col-span-1">
+                  <button type="button" class="btn btn-small btn-danger w-full h-full" data-action="remove-xiom" aria-label="Remove XIOM">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- XIOM-scoped MDA list -->
+              <div class="form-group mt-2">
+                <label class="block vscode-label mb-1">MDA (under XIOM)</label>
+                <div data-role="xiom-mda-list" class="space-y-2"></div>
+                <button type="button" class="btn btn-small mt-2" data-action="add-xiom-mda">
+                  <i class="fas fa-plus mr-1"></i> Add MDA
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <!-- XIOM MDA entry template -->
+          <template id="tpl-xiom-mda-entry">
+            <div class="component-xiom-mda-entry">
+              <!-- Labels for xiom mda -->
+              <div class="grid grid-cols-10 gap-2 items-stretch">
+                <div class="col-span-2">
+                  <label class="block vscode-label mb-1 w-full h-full">Slot</label>
+                </div>
+                <div class="col-span-7">
+                  <label class="block vscode-label mb-1 w-full h-full">Type</label>
+                </div>
+                <div class="col-span-1 w-full h-full"></div>
+              </div>
+
+              <!-- xiom mda input vals + delete btn -->
+              <div class="grid grid-cols-10 gap-2 items-stretch">
+                <div class="col-span-2">
+                  <div class="w-full min-w-0 h-full flex items-stretch overflow-hidden border border-[var(--vscode-input-border)] rounded-md bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)]">
+                    <span class="px-1 select-none pointer-events-none text-[var(--text-secondary)] flex items-center" data-role="xiom-mda-card-slot">-</span>
+                    <span class="px-0 select-none pointer-events-none text-[var(--text-secondary)] flex items-center">/</span>
+                    <input type="number" min="1" step="1" class="flex-1 min-w-0 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 px-2" data-role="xiom-mda-slot"/>
+                  </div>
+                </div>
+                <div class="col-span-7">
+                  <input type="hidden" data-role="xiom-mda-type-value" />
+                  <div data-role="xiom-mda-type-dropdown" class="w-full h-full"></div>
+                </div>
+                <div class="col-span-1">
+                  <button type="button" class="btn btn-small btn-danger w-full h-full" data-action="remove-xiom-mda" aria-label="Remove MDA">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
           <template id="tpl-mda-entry">
             <div class="component-mda-entry">
               <!-- Labels for mda -->
