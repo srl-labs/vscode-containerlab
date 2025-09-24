@@ -1462,26 +1462,29 @@ export class ManagerNodeEditor {
 
       // Check if click is on a delete button or its child (the icon)
       const deleteBtn = target.closest(`.${CLASS_DYNAMIC_DELETE_BTN}`);
-      if (deleteBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+      if (!deleteBtn) return;
 
-        // Get the container and entry ID from the button's data attributes
-        const containerName = deleteBtn.getAttribute(DATA_ATTR_CONTAINER);
-        const entryId = deleteBtn.getAttribute(DATA_ATTR_ENTRY_ID);
+      // Get the container and entry ID from the button's data attributes
+      const containerName = deleteBtn.getAttribute(DATA_ATTR_CONTAINER);
+      const entryId = deleteBtn.getAttribute(DATA_ATTR_ENTRY_ID);
 
-        log.debug(`Delete button clicked via delegation: ${containerName}-${entryId}`);
-
-        if (containerName && entryId) {
-          // Mark panel as clicked to prevent closing
-          if ((window as any).viewportPanels) {
-            (window as any).viewportPanels.setNodeClicked(true);
-          }
-
-          // Remove the entry
-          this.removeEntry(containerName, parseInt(entryId));
-        }
+      if (!containerName || !entryId) {
+        // Let other click handlers (e.g., component removal) process the event
+        return;
       }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      log.debug(`Delete button clicked via delegation: ${containerName}-${entryId}`);
+
+      // Mark panel as clicked to prevent closing
+      if ((window as any).viewportPanels) {
+        (window as any).viewportPanels.setNodeClicked(true);
+      }
+
+      // Remove the entry
+      this.removeEntry(containerName, parseInt(entryId));
     }, true); // Use capture phase to ensure we get the event first
 
     // Initialize tab switching
