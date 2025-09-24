@@ -724,6 +724,17 @@
     border-color: var(--vscode-errorForeground, var(--vscode-notificationsErrorIcon-foreground, #f48771));
   }
 
+  .xiom-mda-section {
+    margin-left: 1.5rem;
+    padding-left: 1rem;
+    border-left: 1px solid var(--border);
+  }
+
+  .add-xiom-btn {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+
   /* Panel tab navigation */
   .panel-tabs {
     display: flex;
