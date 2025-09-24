@@ -140,8 +140,9 @@
                     class="px-2 py-1 w-10 bg-transparent border-b border-[var(--vscode-input-border)] outline-none outline-offset-0 ring-0 shadow-none focus:outline-none focus-visible:outline-none focus:outline-offset-0 focus:ring-0 focus-visible:ring-0 focus:shadow-none focus-visible:shadow-none focus:border-[var(--vscode-input-border)]"
                     data-role="component-slot" />
                 </div>
-                <button type="button" class="btn btn-small btn-danger" data-action="remove-component">
-                  <i class="fas fa-trash mr-1"></i> Remove
+                <button type="button" class="dynamic-delete-btn" data-action="remove-component"
+                  aria-label="Remove component">
+                  <i class="fas fa-trash"></i>
                 </button>
               </div>
 
@@ -216,8 +217,8 @@
                   <input type="hidden" data-role="xiom-type-value" />
                   <div data-role="xiom-type-dropdown" class="w-full h-full"></div>
                 </div>
-                <div class="col-span-1">
-                  <button type="button" class="btn btn-small btn-danger w-full h-full" data-action="remove-xiom"
+                <div class="col-span-1 flex items-center justify-end">
+                  <button type="button" class="dynamic-delete-btn" data-action="remove-xiom"
                     aria-label="Remove XIOM">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -261,8 +262,8 @@
                   <input type="hidden" data-role="xiom-mda-type-value" />
                   <div data-role="xiom-mda-type-dropdown" class="w-full h-full"></div>
                 </div>
-                <div class="col-span-1">
-                  <button type="button" class="btn btn-small btn-danger w-full h-full" data-action="remove-xiom-mda"
+                <div class="col-span-1 flex items-center justify-end">
+                  <button type="button" class="dynamic-delete-btn" data-action="remove-xiom-mda"
                     aria-label="Remove MDA">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -295,8 +296,8 @@
                   <input type="hidden" data-role="mda-type-value" />
                   <div data-role="mda-type-dropdown" class="w-full h-full"></div>
                 </div>
-                <div class="col-span-1">
-                  <button type="button" class="btn btn-small btn-danger w-full h-full" data-action="remove-mda"
+                <div class="col-span-1 flex items-center justify-end">
+                  <button type="button" class="dynamic-delete-btn" data-action="remove-mda"
                     aria-label="Remove MDA">
                     <i class="fas fa-trash"></i>
                   </button>
