@@ -379,6 +379,95 @@
   }
   
   /* Input styles */
+  .slot-field-shell {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    min-width: 6.5rem;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 0.375rem;
+    background-color: var(--vscode-input-background);
+    overflow: visible;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .slot-field-shell:focus-within {
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+  }
+
+  .slot-dropdown {
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .slot-dropdown .filterable-dropdown {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .slot-field-shell .filterable-dropdown-input-container {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .slot-field-shell .filterable-dropdown-input-container .input-field {
+    flex: 1 1 auto;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.375rem 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .slot-field-shell .filterable-dropdown-input-container .input-field:focus {
+    border: none;
+    box-shadow: none;
+  }
+
+  .slot-badge {
+    min-width: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0.375rem 0.45rem 0.375rem 0.2rem;
+    border-right: 1px solid var(--vscode-input-border);
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-editor-foreground);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .slot-number-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.375rem 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+  }
+
+  .slot-number-input:focus {
+    border: none;
+    box-shadow: none;
+    outline: none;
+  }
+
   .input-field {
     background-color: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
