@@ -735,6 +735,16 @@
     align-self: flex-start;
   }
 
+  .component-section-label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25rem;
+  }
+
   /* Panel tab navigation */
   .panel-tabs {
     display: flex;
