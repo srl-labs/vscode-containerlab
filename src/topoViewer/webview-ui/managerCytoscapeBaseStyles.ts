@@ -2,6 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
+import { labelEndpointManager as labelEndpointManagerSingleton } from '../core/managerRegistry';
 import { generateEncodedSVG, NodeType } from './managerSvgGenerator';
 import topoViewerState from '../state';
 
@@ -146,6 +147,33 @@ const cytoscapeStylesBase: any[] = [
   },
   {
     selector: 'edge:selected',
+  },
+  {
+    selector: '.link-label-highlight-node',
+    style: {
+      'border-width': '2px',
+      'border-style': 'solid',
+      'border-color': '#40A6FF',
+      'border-opacity': '1',
+      'overlay-color': '#40A6FF',
+      'overlay-opacity': '0.25',
+      'overlay-padding': '6px',
+      'z-index': '9'
+    }
+  },
+  {
+    selector: '.link-label-highlight-edge',
+    style: {
+      'line-color': '#40A6FF',
+      'target-arrow-color': '#40A6FF',
+      'source-arrow-color': '#40A6FF',
+      'width': '3px',
+      'opacity': '1',
+      'overlay-color': '#40A6FF',
+      'overlay-opacity': '0.15',
+      'overlay-padding': '4px',
+      'z-index': '9'
+    }
   },
   // Status indicator nodes
   {
@@ -434,7 +462,7 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
 
   const styles = cytoscapeStylesBase.map((def: any) => {
     const clone: any = { selector: def.selector, style: { ...(def.style || {}) } };
-  if (def.selector === SELECTOR_GROUP) {
+    if (def.selector === SELECTOR_GROUP) {
       if (theme === 'light') {
         clone.style['background-color'] = '#a6a6a6';
         clone.style['background-opacity'] = '0.4';
@@ -469,6 +497,18 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
       clone.style['z-index'] = '10';
     }
 
+    if (def.selector === '.link-label-highlight-node') {
+      clone.style['border-color'] = selectionColor;
+      clone.style['overlay-color'] = selectionColor;
+    }
+
+    if (def.selector === '.link-label-highlight-edge') {
+      clone.style['line-color'] = selectionColor;
+      clone.style['target-arrow-color'] = selectionColor;
+      clone.style['source-arrow-color'] = selectionColor;
+      clone.style['overlay-color'] = selectionColor;
+    }
+
     // Theme-aware selection box (for multi-select)
     if (def.selector === 'core') {
       clone.style['selection-box-color'] = selectionBoxColor;
@@ -479,10 +519,13 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
     return clone;
   });
 
-  const vis = topoViewerState.linkEndpointVisibility;
-  if (typeof vis === 'boolean' && !vis) {
-    const edgeStyle = styles.find((s: any) => s.selector === 'edge');
-    if (edgeStyle) {
+  const edgeStyle = styles.find((s: any) => s.selector === 'edge');
+  if (edgeStyle) {
+    const mode = topoViewerState.linkLabelMode;
+    if (mode === 'show-all') {
+      edgeStyle.style['text-opacity'] = 1;
+      edgeStyle.style['text-background-opacity'] = 0.7;
+    } else {
       edgeStyle.style['text-opacity'] = 0;
       edgeStyle.style['text-background-opacity'] = 0;
     }
@@ -516,6 +559,7 @@ export default async function loadCytoStyle(
     const selectedTheme = theme || forced || (engine?.detectColorScheme?.() || detect());
     const styles = getCytoscapeStyles(selectedTheme === 'light' ? 'light' : 'dark');
     cy.style().fromJson(styles).update();
+    labelEndpointManagerSingleton.refreshAfterStyle();
     log.info('Cytoscape styles applied successfully.');
 
     const layoutMgr = topoViewerState.editorEngine?.layoutAlgoManager;
