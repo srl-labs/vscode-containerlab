@@ -23,34 +23,34 @@
   --color-vscode-dropdown-border: var(--vscode-dropdown-border);
   --color-vscode-link: var(--vscode-textLink-foreground);
   --color-vscode-link-hover: var(--vscode-textLink-activeForeground);
-  
+
   /* Dark theme colors */
   --color-dark-navbar: rgb(24, 24, 24);
   --color-dark-panel: rgb(40, 40, 40);
   --color-dark-border: #363636;
   --color-dark-text: #ffffff;
   --color-dark-text-muted: #b5b5b5;
-  
+
   /* Light theme colors */
   --color-light-navbar: rgb(70, 86, 246);
   --color-light-panel: #ffffff;
   --color-light-border: #dbdbdb;
   --color-light-text: #000000;
   --color-light-text-muted: #4a4a4a;
-  
+
   /* Custom font sizes */
   --font-size-xxs: 0.625rem;
-  
+
   /* Custom spacing */
   --spacing-18: 4.5rem;
   --spacing-88: 22rem;
-  
+
   /* Custom box shadows */
   --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.15);
   --shadow-panel-dark: 0 8px 24px rgba(0, 0, 0, 0.3);
   --shadow-navbar: 0px 3px 6px rgba(0, 0, 0, 0.1);
   --shadow-navbar-dark: 0px 3px 6px rgba(0, 0, 0, 0.4);
-  
+
   /* Custom z-index values */
   --z-9: 9;
   --z-99: 99;
@@ -88,7 +88,9 @@
 }
 
 @layer base {
-  html, body {
+
+  html,
+  body {
     height: 100%;
     width: 100%;
     margin: 0;
@@ -103,10 +105,12 @@
 
 /* Custom component classes using Tailwind */
 @layer components {
+
   /* Ensure filterable dropdown menus don't propagate scroll to parents */
   .filterable-dropdown-menu {
     overscroll-behavior: contain;
   }
+
   /* Button styles */
   .btn {
     display: inline-flex;
@@ -122,17 +126,17 @@
     background-color: var(--vscode-button-secondaryBackground);
     color: var(--vscode-button-secondaryForeground);
   }
-  
+
   .btn:hover {
     background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
     cursor: pointer;
   }
-  
+
   .btn-primary {
     background-color: var(--accent);
     color: var(--vscode-button-foreground);
   }
-  
+
   .btn-primary:hover {
     background-color: var(--accent-hover);
   }
@@ -151,7 +155,7 @@
     color: var(--accent);
     background-color: transparent;
   }
-  
+
   .btn-outlined:hover {
     background-color: var(--bg-hover);
   }
@@ -163,9 +167,10 @@
   }
 
   .btn-danger:hover {
-    background-color: var(--bg-hover);
+    background-color: var(--error);
+    color: var(--color-vscode-button-fg)
   }
-  
+
   .btn-small {
     padding: 0.25rem 0.75rem;
   }
@@ -195,37 +200,34 @@
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
-  
-  .panel-heading, .panel-header {
+
+  .panel-heading,
+  .panel-header {
     background-color: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
     font-weight: 600;
     font-size: 0.875rem;
   }
-  
+
   .panel-block {
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
   }
 
   /*only the footer (last direct child of .panel) removes it */
-  .panel > .panel-block:last-child {
+  .panel>.panel-block:last-child {
     border-bottom: 0;
   }
-  
+
   /* Dropdown styles */
   .dropdown-menu {
-    background-color: var(
-      --vscode-dropdown-background,
-      var(--vscode-editor-background)
-    );
-    border: 1px solid var(
-      --vscode-dropdown-border,
-      var(--vscode-editor-foreground)
-    );
+    background-color: var(--vscode-dropdown-background,
+        var(--vscode-editor-background));
+    border: 1px solid var(--vscode-dropdown-border,
+        var(--vscode-editor-foreground));
     position: absolute;
     z-index: 50;
     margin-top: 0.25rem;
@@ -241,28 +243,20 @@
     border-radius: 0.25rem;
     display: inline-flex;
     align-items: center;
-    background-color: var(
-      --vscode-dropdown-background,
-      var(--vscode-editor-background)
-    );
-    color: var(
-      --vscode-dropdown-foreground,
-      var(--text-primary)
-    );
+    background-color: var(--vscode-dropdown-background,
+        var(--vscode-editor-background));
+    color: var(--vscode-dropdown-foreground,
+        var(--text-primary));
   }
 
   .dropdown-button:hover {
-    background-color: var(
-      --vscode-list-hoverBackground,
-      var(--bg-hover)
-    );
+    background-color: var(--vscode-list-hoverBackground,
+        var(--bg-hover));
   }
 
   .dropdown-item {
-    color: var(
-      --vscode-dropdown-foreground,
-      var(--text-primary)
-    );
+    color: var(--vscode-dropdown-foreground,
+        var(--text-primary));
     display: block;
     padding: 0.5rem 1rem;
     font-size: var(--vscode-font-size);
@@ -270,10 +264,8 @@
   }
 
   .dropdown-item:hover {
-    background-color: var(
-      --vscode-list-hoverBackground,
-      var(--bg-hover)
-    );
+    background-color: var(--vscode-list-hoverBackground,
+        var(--bg-hover));
   }
 
   /* Tippy.js theme for add node menu */
@@ -296,7 +288,7 @@
   .tippy-box[data-theme~='dropdown-menu'] .tippy-arrow {
     color: var(--vscode-dropdown-background) !important;
   }
-  
+
   .tippy-box[data-theme~='dropdown-menu'] .tippy-backdrop {
     background-color: var(--vscode-dropdown-background) !important;
   }
@@ -372,12 +364,101 @@
     border-color: var(--vscode-focusBorder) !important;
     outline: none !important;
   }
-  
+
   .filterable-item {
     transition: background-color 0.1s ease;
   }
-  
+
   /* Input styles */
+  .slot-field-shell {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    min-width: 6.5rem;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 0.375rem;
+    background-color: var(--vscode-input-background);
+    overflow: visible;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .slot-field-shell:focus-within {
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+  }
+
+  .slot-dropdown {
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .slot-dropdown .filterable-dropdown {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .slot-field-shell .filterable-dropdown-input-container {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .slot-field-shell .filterable-dropdown-input-container .input-field {
+    flex: 1 1 auto;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.375rem 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .slot-field-shell .filterable-dropdown-input-container .input-field:focus {
+    border: none;
+    box-shadow: none;
+  }
+
+  .slot-badge {
+    min-width: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0.375rem 0.45rem 0.375rem 0.2rem;
+    border-right: 1px solid var(--vscode-input-border);
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-editor-foreground);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .slot-number-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.375rem 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+  }
+
+  .slot-number-input:focus {
+    border: none;
+    box-shadow: none;
+    outline: none;
+  }
+
   .input-field {
     background-color: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
@@ -387,19 +468,19 @@
     border-radius: 0.375rem;
     outline: none;
   }
-  
+
   .input-field:focus {
     border-color: var(--vscode-focusBorder);
     box-shadow: 0 0 0 2px var(--vscode-focusBorder);
   }
-  
+
   /* Label styles */
   .label {
     color: var(--text-primary);
     display: block;
     font-weight: 500;
   }
-  
+
   /* Modal styles */
   .modal-backdrop {
     background-color: rgba(0, 0, 0, 0.5);
@@ -410,7 +491,7 @@
     left: 0;
     z-index: 50;
   }
-  
+
   .modal-content {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -419,14 +500,14 @@
     left: 50%;
     transform: translate(-50%, -50%);
     border-radius: 0.5rem;
-    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
     z-index: 50;
     max-width: 42rem;
     width: 100%;
     max-height: 90vh;
     overflow: auto;
   }
-  
+
   /* Loading spinner */
   .loading-spinner {
     border-color: var(--vscode-progressBar-background);
@@ -438,7 +519,7 @@
     border-radius: 9999px;
     animation: spin 1s linear infinite;
   }
-  
+
   /* Navbar styles */
   .navbar {
     background-color: var(--vscode-tab-activeBackground);
@@ -452,88 +533,88 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.5rem 1rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
-  
+
   .navbar-brand {
     display: flex;
     align-items: center;
     gap: 0.75rem;
   }
-  
+
   .navbar-end {
     margin-left: auto;
     display: flex;
     align-items: center;
   }
-  
+
   /* Column utilities */
   .column {
     background-color: var(--vscode-panel-background);
     flex: 1 1 0%;
   }
-  
+
   .columns {
     display: flex;
     flex-wrap: wrap;
     margin-left: -0.5rem;
     margin-right: -0.5rem;
   }
-  
-  .columns > * {
+
+  .columns>* {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
-  
+
   /* Size utilities matching Bulma */
   .is-size-7 {
     font-size: 0.75rem;
   }
-  
+
   .is-size-6 {
     font-size: 0.875rem;
   }
-  
+
   .is-size-5 {
     font-size: 1rem;
   }
-  
+
   .is-size-4 {
     font-size: 1.125rem;
   }
-  
+
   /* Visibility utilities */
   .is-hidden {
     display: none;
   }
-  
+
   /* Flex utilities matching Bulma */
   .is-flex {
     display: flex;
   }
-  
+
   .is-flex-direction-column {
     flex-direction: column;
   }
-  
+
   .is-justify-content-space-between {
     justify-content: space-between;
   }
-  
+
   .is-justify-content-center {
     justify-content: center;
   }
-  
+
   .is-justify-content-flex-end {
     justify-content: flex-end;
   }
-  
+
   .is-align-items-center {
     align-items: center;
   }
 
   /* VSCode Theme Components - Reusable across all panels */
-  
+
   /* VSCode-compliant checkbox styling */
   .vscode-checkbox {
     width: 18px;
@@ -618,7 +699,9 @@
   .dynamic-delete-btn {
     padding: 0.25rem 0.5rem;
     background: transparent;
-    color: var(--vscode-errorForeground, var(--vscode-notificationsErrorIcon-foreground, #f48771));
+    /* Use descriptionForeground as base with reduced opacity for subtle appearance */
+    color: var(--vscode-descriptionForeground, var(--vscode-foreground));
+    opacity: 0.7;
     border: 1px solid var(--vscode-input-border);
     border-radius: 0.25rem;
     cursor: pointer;
@@ -630,14 +713,103 @@
 
   .dynamic-entry button:hover,
   .dynamic-delete-btn:hover {
-    background: var(--vscode-inputValidation-errorBackground, rgba(244, 135, 113, 0.1));
-    border-color: var(--vscode-errorForeground, var(--vscode-notificationsErrorIcon-foreground, #f48771));
+    /* Force red color - try VSCode variables first, then fallback to hard red */
+    color: #dc3545 !important;
+    /* Bootstrap danger red - guaranteed to be visible */
+    opacity: 1 !important;
+    /* Use list hover background which is consistently defined across themes */
+    background: var(--vscode-list-hoverBackground, rgba(220, 53, 69, 0.1)) !important;
+    border-color: var(--vscode-focusBorder, #dc3545) !important;
+  }
+
+  .xiom-mda-section {
+    margin-left: 1.5rem;
+    padding-left: 1rem;
+    border-left: 1px solid var(--border);
+  }
+
+  .add-xiom-btn {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+
+  .component-section-label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25rem;
   }
 
   /* Panel tab navigation */
   .panel-tabs {
     display: flex;
     border-bottom: 1px solid var(--vscode-panel-border);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Default: allow simple horizontal scroll where used */
+  .panel-tabs:not(.panel-tabs--with-arrows) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    /* Firefox */
+  }
+
+  /* Prevent tab buttons from shrinking; enable horizontal scroll */
+  .panel-tabs .panel-tab-button {
+    flex: 0 0 auto;
+  }
+
+  /* Scrollable Tab Bar with Arrow Buttons */
+  .panel-tabs--with-arrows {
+    align-items: center;
+    gap: 4px;
+  }
+
+  .panel-tabs--with-arrows .tab-scroll-viewport {
+    position: relative;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    /* scroll happens here */
+    overflow-y: hidden;
+    scrollbar-width: none;
+    /* Firefox: hide */
+  }
+
+  .panel-tabs--with-arrows .tab-strip {
+    display: flex;
+    width: max-content;
+    /* shrink to content so viewport can scroll */
+    gap: 0;
+    /* buttons already have padding */
+  }
+
+  .panel-tabs--with-arrows .tab-scroll-viewport::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari: hide */
+  }
+
+  .tab-scroll-btn {
+    appearance: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .tab-scroll-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .tab-scroll-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   .panel-tab-button {
@@ -693,7 +865,7 @@
     border: 1px solid var(--vscode-editorWidget-border) !important;
     position: fixed;
     z-index: 9999;
-    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
   }
 
   .navbar-element-4a {
@@ -703,13 +875,13 @@
   .ViewPortDrawer {
     background-color: var(--vscode-panel-background);
     border: 1px solid var(--vscode-panel-border);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
   .box {
     background-color: var(--vscode-panel-background);
     border: 1px solid var(--vscode-panel-border);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
   .panel-tabContainer {
@@ -743,49 +915,50 @@
 
 /* Custom utility classes */
 @layer utilities {
+
   /* Text utilities */
   .has-text-weight-normal {
     font-weight: 400;
   }
-  
+
   .has-text-weight-medium {
     font-weight: 500;
   }
-  
+
   .has-text-weight-semibold {
     font-weight: 600;
   }
-  
+
   .has-text-weight-bold {
     font-weight: 700;
   }
-  
+
   .has-text-weight-light {
     font-weight: 300;
   }
-  
+
   .has-text-white {
     color: #ffffff;
   }
-  
+
   .has-text-left {
     text-align: left;
   }
-  
+
   .has-text-right {
     text-align: right;
   }
-  
+
   .has-text-center {
     text-align: center;
   }
-  
+
   /* Background utilities */
   .has-background-4a {
     background-color: var(--vscode-titleBar-activeBackground);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
-  
+
   /* Unselectable text */
   .is-unselectable {
     user-select: none;
@@ -800,34 +973,38 @@
   }
 
   /* Allow text selection in input fields, textareas, and editable content */
-  input, textarea, [contenteditable="true"], .selectable-text {
+  input,
+  textarea,
+  [contenteditable="true"],
+  .selectable-text {
     user-select: text;
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
   }
-  
+
   /* Field utilities */
   .field {
     margin-bottom: 1rem;
   }
-  
+
   /* Form group utility */
   .form-group {
-    padding-bottom: 0.5rem; /* same as Tailwind pb-2 */
+    padding-bottom: 0.5rem;
+    /* same as Tailwind pb-2 */
   }
-  
+
   .control {
     position: relative;
   }
-  
+
   .has-icons-left .icon {
     position: absolute;
     left: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
   }
-  
+
   .has-icons-left .input-field {
     padding-left: 2.5rem;
   }
