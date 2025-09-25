@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.18.0] - 2025-09-25
+- TopoViewer/editor:
+  - Add SR-SIM component support to TopoViewer
+  - Add regex capture groups to bulk link creation
+  - Show labels on select option
+
 ## [0.17.5] - 2025-09-19
 - TopoViewer/editor:
   - Lock the lab by default
