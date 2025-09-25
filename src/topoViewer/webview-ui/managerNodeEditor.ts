@@ -25,6 +25,19 @@ const CLASS_DYNAMIC_ENTRY = 'dynamic-entry' as const;
 const CLASS_DYNAMIC_DELETE_BTN = 'dynamic-delete-btn' as const;
 const CLASS_INPUT_FIELD = 'input-field' as const;
 const HTML_TRASH_ICON = '<i class="fas fa-trash"></i>' as const;
+const CLASS_COMPONENT_ENTRY = 'component-entry' as const;
+const CLASS_COMPONENT_SFM_ENTRY = 'component-sfm-entry' as const;
+const CLASS_COMPONENT_MDA_ENTRY = 'component-mda-entry' as const;
+const CLASS_COMPONENT_XIOM_ENTRY = 'component-xiom-entry' as const;
+const CLASS_COMPONENT_XIOM_MDA_ENTRY = 'component-xiom-mda-entry' as const;
+const SELECTOR_COMPONENT_BODY = '[data-role="component-body"]' as const;
+const SELECTOR_COMPONENT_CARET = '[data-role="component-caret"]' as const;
+const SELECTOR_FORM_GROUP = '.form-group' as const;
+const ICON_CHEVRON_RIGHT = 'fa-chevron-right' as const;
+const ICON_CHEVRON_DOWN = 'fa-chevron-down' as const;
+const ATTR_ARIA_HIDDEN = 'aria-hidden' as const;
+const SELECTOR_SFM_VALUE = '[data-role="sfm-value"]' as const;
+const SELECTOR_SFM_DROPDOWN = '[data-role="sfm-dropdown"]' as const;
 
 const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
@@ -34,6 +47,20 @@ const ID_NODE_CERT_ISSUE = 'node-cert-issue' as const;
 const ID_CERT_OPTIONS = 'cert-options' as const;
 const ID_PANEL_NODE_EDITOR_HEADING = 'panel-node-editor-heading' as const;
 const ID_PANEL_NODE_EDITOR_ID = 'panel-node-editor-id' as const;
+const ID_TAB_COMPONENTS_BUTTON = 'tab-components-button' as const;
+const ID_TAB_COMPONENTS_CONTENT = 'tab-components' as const;
+const ID_NODE_COMPONENTS_CONTAINER = 'node-components-container' as const;
+const ID_NODE_COMPONENTS_CPM_CONTAINER = 'node-components-cpm-container' as const;
+const ID_NODE_COMPONENTS_CARD_CONTAINER = 'node-components-card-container' as const;
+const ID_NODE_COMPONENTS_SFM_CONTAINER = 'node-components-sfm-container' as const;
+const ID_ADD_CPM_BUTTON = 'btn-add-cpm' as const;
+const ID_ADD_CARD_BUTTON = 'btn-add-card' as const;
+const SFM_ENTRY_ID_PREFIX = 'sfm-entry-' as const;
+// Tab scroll controls
+const ID_TAB_SCROLL_LEFT = 'node-editor-tab-scroll-left' as const;
+const ID_TAB_SCROLL_RIGHT = 'node-editor-tab-scroll-right' as const;
+const ID_TAB_VIEWPORT = 'node-editor-tab-viewport' as const;
+const ID_TAB_STRIP = 'node-editor-tab-strip' as const;
 
 // Frequently used Node Editor element IDs
 const ID_NODE_KIND_DROPDOWN = 'node-kind-dropdown-container' as const;
@@ -286,6 +313,7 @@ export interface NodeProperties {
   };
   'image-pull-policy'?: ImagePullPolicy;
   runtime?: Runtime;
+  components?: any[];
 
   // Metadata
   inherited?: string[];
@@ -334,6 +362,20 @@ export class ManagerNodeEditor {
   private imageVersionMap: Map<string, string[]> = new Map();
   private messageSender: VscodeMessageSender;
   private nodeTypeOptions: Map<string, string[]> = new Map();
+  // can add other kind which use components later...
+  private componentKinds: Set<string> = new Set(['nokia_srsim']);
+  private componentEntryCounter: number = 0;
+  private componentMdaCounters: Map<number, number> = new Map();
+  private componentXiomCounters: Map<number, number> = new Map();
+  private xiomMdaCounters: Map<string, number> = new Map();
+  private pendingExpandedComponentSlots: Set<string> | undefined;
+  // enums to be filled from schema
+  private srosSfmTypes: string[] = [];
+  private srosXiomTypes: string[] = [];
+  private srosCpmTypes: string[] = [];
+  private srosCardTypes: string[] = [];
+  private srosXiomMdaTypes: string[] = [];
+  private srosMdaTypes: string[] = [];
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
@@ -414,7 +456,7 @@ export class ManagerNodeEditor {
    * Handle kind change and update type field visibility
    */
   private handleKindChange(selectedKind: string): void {
-    const typeFormGroup = document.getElementById(ID_NODE_TYPE)?.closest('.form-group') as HTMLElement;
+    const typeFormGroup = document.getElementById(ID_NODE_TYPE)?.closest(SELECTOR_FORM_GROUP) as HTMLElement;
     const typeDropdownContainer = document.getElementById(ID_NODE_TYPE_DROPDOWN);
     const typeInput = document.getElementById(ID_NODE_TYPE) as HTMLInputElement;
 
@@ -427,7 +469,922 @@ export class ManagerNodeEditor {
       this.toggleTypeInputForKind(selectedKind, typeFormGroup, typeDropdownContainer, typeInput);
     }
 
+    // show/hide components based on kind
+    this.updateComponentsTabVisibility(selectedKind);
+
     log.debug(`Kind changed to ${selectedKind}, type field visibility: ${typeFormGroup?.style.display}`);
+  }
+
+  private updateComponentsTabVisibility(kind: string): void {
+    const btn = document.getElementById(ID_TAB_COMPONENTS_BUTTON) as HTMLElement | null;
+    const content = document.getElementById(ID_TAB_COMPONENTS_CONTENT) as HTMLElement | null;
+    if (!btn || !content) return;
+
+    if (this.componentKinds.has(kind)) {
+      this.showComponentsTab(btn, content);
+      this.loadComponentsFromNode();
+      return;
+    }
+    this.hideComponentsTab(btn, content);
+  }
+
+  private showComponentsTab(btn: HTMLElement, content: HTMLElement): void {
+    btn.classList.remove(CLASS_HIDDEN);
+    // Only reveal content if currently active tab
+    if (btn.classList.contains(CLASS_TAB_ACTIVE)) {
+      content.classList.remove(CLASS_HIDDEN);
+    } else {
+      content.classList.add(CLASS_HIDDEN);
+    }
+  }
+
+  private hideComponentsTab(btn: HTMLElement, content: HTMLElement): void {
+    if (btn.classList.contains(CLASS_TAB_ACTIVE)) {
+      this.switchToTab('basic');
+    }
+    btn.classList.add(CLASS_HIDDEN);
+    content.classList.add(CLASS_HIDDEN);
+  }
+
+  private getComponentContainers(): { cpmContainer: HTMLElement; cardContainer: HTMLElement; sfmContainer: HTMLElement } | null {
+    const cpmContainer = document.getElementById(ID_NODE_COMPONENTS_CPM_CONTAINER) as HTMLElement | null;
+    const cardContainer = document.getElementById(ID_NODE_COMPONENTS_CARD_CONTAINER) as HTMLElement | null;
+    const sfmContainer = document.getElementById(ID_NODE_COMPONENTS_SFM_CONTAINER) as HTMLElement | null;
+    if (!cpmContainer || !cardContainer || !sfmContainer) return null;
+    return { cpmContainer, cardContainer, sfmContainer };
+  }
+
+  private loadComponentsFromNode(expandedSlots?: Set<string>): void {
+    if (!this.currentNode) return;
+    const containers = this.getComponentContainers();
+    if (!containers) return;
+    this.resetComponentContainers(containers);
+
+    const components = this.getComponentsForCurrentNode();
+    this.ensureSfmEntry(components);
+    if (components.length === 0) {
+      this.updateComponentAddButtonStates();
+      return;
+    }
+
+    const expandSet = this.resolveExpandedComponentSlots(expandedSlots);
+    this.renderComponentEntries(components, expandSet);
+
+    this.updateComponentAddButtonStates();
+  }
+
+  private resetComponentContainers(containers: { cpmContainer: HTMLElement; cardContainer: HTMLElement; sfmContainer: HTMLElement }): void {
+    const { cpmContainer, cardContainer, sfmContainer } = containers;
+    cpmContainer.innerHTML = '';
+    cardContainer.innerHTML = '';
+    sfmContainer.innerHTML = '';
+    this.componentEntryCounter = 0;
+    this.componentMdaCounters.clear();
+    this.componentXiomCounters.clear();
+    this.xiomMdaCounters.clear();
+  }
+
+  private getComponentsForCurrentNode(): any[] {
+    if (!this.currentNode) return [];
+    const extra = this.currentNode.data('extraData') || {};
+    return Array.isArray(extra.components) ? extra.components : [];
+  }
+
+  private ensureSfmEntry(components: any[]): void {
+    const initialSfm = this.extractSharedSfmValue(components);
+    this.addSfmEntry(initialSfm);
+  }
+
+  private resolveExpandedComponentSlots(expandedSlots?: Set<string>): Set<string> | undefined {
+    const resolved = expandedSlots ?? this.pendingExpandedComponentSlots;
+    this.pendingExpandedComponentSlots = undefined;
+    return resolved;
+  }
+
+  private renderComponentEntries(components: any[], expandSet?: Set<string>): void {
+    const sorted = [...components].sort((a, b) => this.compareComponentSlots(a?.slot, b?.slot));
+    sorted.forEach(comp => {
+      const slotVal = String(comp?.slot ?? '');
+      const slotType = this.isCpmSlot(slotVal) ? 'cpm' : 'card';
+      const prefill = this.createComponentPrefill(comp);
+      const idx = this.addComponentEntry(prefill, { slotType });
+      if (idx > 0 && expandSet) {
+        const key = this.normalizeComponentSlot(slotVal);
+        if (key && expandSet.has(key)) this.expandComponentEntry(idx);
+      }
+    });
+  }
+
+  private createComponentPrefill(comp: any): any {
+    if (!comp || typeof comp !== 'object') return {};
+    const prefill = { ...comp } as any;
+    delete prefill.sfm;
+    return prefill;
+  }
+
+  private extractSharedSfmValue(components: any[]): string | undefined {
+    if (!Array.isArray(components) || components.length === 0) return undefined;
+    for (const comp of components) {
+      const sfmVal = typeof comp?.sfm === 'string' ? comp.sfm.trim() : '';
+      if (sfmVal) return sfmVal;
+    }
+    return undefined;
+  }
+
+  private compareComponentSlots(a: unknown, b: unknown): number {
+    const rank = (v: unknown): [number, number] => {
+      if (typeof v === 'string') {
+        const t = v.trim().toUpperCase();
+        if (t === 'A') return [0, 0];
+        if (t === 'B') return [1, 0];
+        const n = parseInt(t, 10);
+        if (!Number.isNaN(n)) return [2, n];
+      } else if (typeof v === 'number' && Number.isFinite(v)) {
+        return [2, v];
+      }
+      // Unknown or empty -> push to end
+      return [3, Number.POSITIVE_INFINITY];
+    };
+    const ra = rank(a);
+    const rb = rank(b);
+    return ra[0] !== rb[0] ? ra[0] - rb[0] : ra[1] - rb[1];
+  }
+
+  private addComponentEntry(prefill?: any, options?: { slotType?: 'cpm' | 'card' }): number {
+    const tpl = document.getElementById('tpl-component-entry') as HTMLTemplateElement | null;
+    if (!tpl) return -1;
+
+    const prefillSlot = prefill?.slot;
+    const defaultType = this.isCpmSlot(String(prefillSlot ?? '')) ? 'cpm' : 'card';
+    const slotType = options?.slotType ?? defaultType;
+    const containerId = slotType === 'cpm' ? ID_NODE_COMPONENTS_CPM_CONTAINER : ID_NODE_COMPONENTS_CARD_CONTAINER;
+    const container = document.getElementById(containerId);
+    if (!container) return -1;
+
+    // Compute suggested unique slot prior to render
+    const suggestedSlot = this.findNextAvailableSlot(slotType);
+    const idx = ++this.componentEntryCounter;
+    this.componentMdaCounters.set(idx, 0);
+
+    const frag = tpl.content.cloneNode(true) as DocumentFragment;
+    const entry = frag.querySelector(`.${CLASS_COMPONENT_ENTRY}`) as HTMLElement;
+    entry.id = `component-entry-${idx}`;
+    this.initializeComponentEntry(entry, idx, prefill);
+
+    // Append to DOM
+    container.appendChild(frag);
+
+    this.autofillComponentSlotIfNeeded(idx, prefill, suggestedSlot);
+    this.initComponentDropdownsAndValidators(idx);
+    this.prefillSubcomponents(idx, prefill);
+
+    // Expand newly added entry by default when user adds a slot
+    if (!prefill) {
+      this.expandComponentEntry(idx);
+    }
+
+    this.updateComponentAddButtonStates();
+
+    return idx;
+  }
+
+  private autofillComponentSlotIfNeeded(idx: number, prefill: any, suggestedSlot: string): void {
+    if (prefill && prefill.slot != null && String(prefill.slot).trim() !== '') return;
+    const slot = document.getElementById(`component-${idx}-slot`) as HTMLInputElement | null;
+    if (slot && suggestedSlot) slot.value = suggestedSlot;
+  }
+
+  private initComponentDropdownsAndValidators(idx: number): void {
+    this.initComponentTypeDropdown(idx);
+    this.enforceComponentSlotPattern(`component-${idx}-slot`);
+    this.updateXiomSectionVisibility(idx);
+    this.updateMdaSectionVisibility(idx);
+  }
+
+  private prefillSubcomponents(idx: number, prefill: any): void {
+    const slotVal = (document.getElementById(`component-${idx}-slot`) as HTMLInputElement | null)?.value || '';
+    const isCpm = this.isCpmSlot(slotVal);
+    if (!isCpm && Array.isArray(prefill?.mda)) prefill.mda.forEach((m: any) => this.addMdaEntry(idx, m));
+    if (isCpm) return;
+    if (Array.isArray(prefill?.xiom)) prefill.xiom.forEach((x: any) => this.addXiomEntry(idx, x));
+    else if (typeof prefill?.xiom === 'string' && prefill.xiom) this.addXiomEntry(idx, { slot: 1, type: String(prefill.xiom) });
+  }
+
+  private normalizeComponentSlot(v: string): string {
+    const t = (v || '').trim();
+    if (t.toUpperCase() === 'A') return 'A';
+    if (t.toUpperCase() === 'B') return 'B';
+    if (/^[1-9]\d*$/.test(t)) return String(parseInt(t, 10));
+    return '';
+  }
+
+  private collectUsedComponentSlots(excludeIdx?: number): Set<string> {
+    const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
+    const used = new Set<string>();
+    if (!container) return used;
+    const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
+    entries.forEach(entry => {
+      const idx = this.extractIndex(entry.id, /component-entry-(\d+)/);
+      if (excludeIdx != null && idx === excludeIdx) return;
+      const input = entry.querySelector('[data-role="component-slot"]') as HTMLInputElement | null;
+      const norm = this.normalizeComponentSlot(input?.value || '');
+      if (norm) used.add(norm);
+    });
+    return used;
+  }
+
+  private sequenceValueByIndex(i: number): string {
+    if (i <= 0) return 'A';
+    if (i === 1) return 'B';
+    return String(i - 1);
+  }
+
+  private sequenceIndexOf(val: string): number {
+    const v = this.normalizeComponentSlot(val);
+    if (v === 'A') return 0;
+    if (v === 'B') return 1;
+    if (/^[1-9]\d*$/.test(v)) return parseInt(v, 10) + 1; // 1 -> 2, 2 -> 3
+    return 0;
+  }
+
+  private findNextAvailableSlot(slotType: 'cpm' | 'card'): string {
+    const used = this.collectUsedComponentSlots();
+    if (slotType === 'cpm') {
+      if (!used.has('A')) return 'A';
+      if (!used.has('B')) return 'B';
+      return '';
+    }
+
+    const nums: number[] = [];
+    used.forEach(v => {
+      if (/^[1-9]\d*$/.test(v)) nums.push(parseInt(v, 10));
+    });
+    if (nums.length === 0) return '1';
+    const next = Math.max(...nums) + 1;
+    return String(next);
+  }
+
+  private stepComponentSlot(current: string, direction: 1 | -1, excludeIdx?: number): string {
+    const used = this.collectUsedComponentSlots(excludeIdx);
+    let idx = this.sequenceIndexOf(current);
+    // Iterate to find next/prev unused slot; cap bounds at 0 when going backwards
+    for (let guard = 0; guard < 1000; guard++) {
+      idx = Math.max(0, idx + direction);
+      const candidate = this.sequenceValueByIndex(idx);
+      if (!used.has(candidate)) return candidate;
+      if (direction === -1 && idx === 0) break;
+    }
+    return current;
+  }
+
+  private updateComponentAddButtonStates(): void {
+    const addCpmBtn = document.getElementById(ID_ADD_CPM_BUTTON) as HTMLButtonElement | null;
+    const addCardBtn = document.getElementById(ID_ADD_CARD_BUTTON) as HTMLButtonElement | null;
+    const used = this.collectUsedComponentSlots();
+    const cpmSlots: Array<'A' | 'B'> = ['A', 'B'];
+    const cpmCount = cpmSlots.filter(slot => used.has(slot)).length;
+
+    if (addCpmBtn) {
+      const maxCpms = cpmSlots.length;
+      addCpmBtn.disabled = cpmCount >= maxCpms;
+      addCpmBtn.title = addCpmBtn.disabled
+        ? 'CPM slots A and B are already defined'
+        : 'Add a CPM slot (A or B)';
+    }
+
+    if (addCardBtn) {
+      addCardBtn.disabled = false;
+      addCardBtn.title = 'Add a line card slot';
+    }
+
+  }
+
+  private addSfmEntry(prefill?: string): number {
+    const container = document.getElementById(ID_NODE_COMPONENTS_SFM_CONTAINER) as HTMLElement | null;
+    const tpl = document.getElementById('tpl-sfm-entry') as HTMLTemplateElement | null;
+    if (!container || !tpl) return -1;
+
+    let entry = container.querySelector(`.${CLASS_COMPONENT_SFM_ENTRY}`) as HTMLElement | null;
+    if (!entry) {
+      const frag = tpl.content.cloneNode(true) as DocumentFragment;
+      entry = frag.querySelector(`.${CLASS_COMPONENT_SFM_ENTRY}`) as HTMLElement | null;
+      if (!entry) return -1;
+      entry.id = `${SFM_ENTRY_ID_PREFIX}1`;
+
+      const hidden = entry.querySelector(SELECTOR_SFM_VALUE) as HTMLInputElement | null;
+      const dropdown = entry.querySelector(SELECTOR_SFM_DROPDOWN) as HTMLElement | null;
+      if (hidden) hidden.id = `${SFM_ENTRY_ID_PREFIX}1-value`;
+      if (dropdown) dropdown.id = `${SFM_ENTRY_ID_PREFIX}1-dropdown`;
+
+      container.appendChild(frag);
+      this.initSfmEntryDropdown(1);
+      entry = container.querySelector(`.${CLASS_COMPONENT_SFM_ENTRY}`) as HTMLElement | null;
+    }
+
+    const hidden = entry?.querySelector(SELECTOR_SFM_VALUE) as HTMLInputElement | null;
+    if (hidden) hidden.value = prefill ?? '';
+    this.refreshSfmDropdown();
+    this.updateComponentAddButtonStates();
+    return 1;
+  }
+
+  private initSfmEntryDropdown(entryId: number): void {
+    const hiddenId = `${SFM_ENTRY_ID_PREFIX}${entryId}-value`;
+    const dropdownId = `${SFM_ENTRY_ID_PREFIX}${entryId}-dropdown`;
+    const initial = this.getInputValue(hiddenId);
+    createFilterableDropdown(
+      dropdownId,
+      this.srosSfmTypes,
+      initial,
+      (selected: string) => this.setInputValue(hiddenId, selected),
+      PH_SEARCH_TYPE,
+      true
+    );
+  }
+
+  private refreshSfmDropdown(): void {
+    const container = document.getElementById(ID_NODE_COMPONENTS_SFM_CONTAINER);
+    if (!container) return;
+    const entry = container.querySelector(`.${CLASS_COMPONENT_SFM_ENTRY}`) as HTMLElement | null;
+    if (!entry) return;
+    this.initSfmEntryDropdown(1);
+  }
+
+  private commitSfmDropdown(): void {
+    const container = document.getElementById(ID_NODE_COMPONENTS_SFM_CONTAINER);
+    if (!container) return;
+    const entry = container.querySelector(`.${CLASS_COMPONENT_SFM_ENTRY}`) as HTMLElement | null;
+    if (!entry) return;
+    const hidden = document.getElementById(`${SFM_ENTRY_ID_PREFIX}1-value`) as HTMLInputElement | null;
+    const filter = document.getElementById(`${SFM_ENTRY_ID_PREFIX}1-dropdown-filter-input`) as HTMLInputElement | null;
+    if (hidden && filter) hidden.value = filter.value;
+  }
+
+  private getSfmValue(): string {
+    const container = document.getElementById(ID_NODE_COMPONENTS_SFM_CONTAINER);
+    if (!container) return '';
+    const hidden = container.querySelector(SELECTOR_SFM_VALUE) as HTMLInputElement | null;
+    return hidden?.value?.trim() ?? '';
+  }
+
+  private applySfmToComponents(components: any[], sfmVal: string): void {
+    const normalized = (sfmVal || '').trim();
+    components.forEach(comp => {
+      if (!comp || typeof comp !== 'object') return;
+      if (!normalized) {
+        if ('sfm' in comp) delete comp.sfm;
+        return;
+      }
+      comp.sfm = normalized;
+    });
+  }
+
+  private relocateComponentEntryIfNeeded(idx: number): void {
+    const entry = document.getElementById(`component-entry-${idx}`);
+    if (!entry) return;
+    const slotVal = this.getInputValue(`component-${idx}-slot`).trim();
+    const targetContainerId = this.isCpmSlot(slotVal) ? ID_NODE_COMPONENTS_CPM_CONTAINER : ID_NODE_COMPONENTS_CARD_CONTAINER;
+    const targetContainer = document.getElementById(targetContainerId);
+    if (!targetContainer || entry.parentElement === targetContainer) return;
+    targetContainer.appendChild(entry);
+  }
+
+  private initializeComponentEntry(entry: HTMLElement, idx: number, prefill?: any): void {
+    const slotInput = entry.querySelector('[data-role="component-slot"]') as HTMLInputElement;
+    const typeHidden = entry.querySelector('[data-role="component-type-value"]') as HTMLInputElement;
+    const typeDropdown = entry.querySelector('[data-role="component-type-dropdown"]') as HTMLElement;
+    const xiomList = entry.querySelector('[data-role="xiom-list"]') as HTMLElement;
+    const addXiomBtn = entry.querySelector('[data-action="add-xiom"]') as HTMLButtonElement;
+    const mdaList = entry.querySelector('[data-role="mda-list"]') as HTMLElement;
+    const addMdaBtn = entry.querySelector('[data-action="add-mda"]') as HTMLButtonElement;
+    const removeComponentBtn = entry.querySelector('[data-action="remove-component"]') as HTMLButtonElement;
+    const header = entry.querySelector('[data-action="toggle-component"]') as HTMLElement | null;
+    const caret = entry.querySelector(SELECTOR_COMPONENT_CARET) as HTMLElement | null;
+    const body = entry.querySelector(SELECTOR_COMPONENT_BODY) as HTMLElement | null;
+
+    slotInput.id = `component-${idx}-slot`;
+    typeHidden.id = `component-${idx}-type`;
+    typeDropdown.id = `component-${idx}-type-dropdown`;
+    xiomList.id = `component-${idx}-xiom-container`;
+    mdaList.id = `component-${idx}-mda-container`;
+
+    slotInput.value = String(prefill?.slot ?? '');
+    typeHidden.value = String(prefill?.type ?? '');
+
+    this.wireComponentActions(idx, addMdaBtn, addXiomBtn, removeComponentBtn);
+    // Prevent header toggle when interacting with the slot input (works before append)
+    if (slotInput) {
+      const stop = (e: Event) => e.stopPropagation();
+      // Stop both capture and bubble to be safe across listeners
+      slotInput.addEventListener('click', stop, true);
+      slotInput.addEventListener('mousedown', stop, true);
+      slotInput.addEventListener('pointerdown', stop, true);
+      slotInput.addEventListener('focus', stop, true);
+      slotInput.addEventListener('click', stop);
+      slotInput.addEventListener('mousedown', stop);
+      slotInput.addEventListener('pointerdown', stop);
+      slotInput.addEventListener('focus', stop);
+      slotInput.addEventListener('keydown', stop);
+      slotInput.addEventListener('keyup', stop);
+    }
+    this.wireComponentSlotIncDec(idx, entry);
+    this.attachAccordion(header, body, caret);
+    // Initialize card-slot labels for existing MDAs (if any)
+    this.updateMdaCardSlotLabels(idx);
+    this.updateMdaSectionVisibility(idx);
+  }
+
+  private wireComponentSlotIncDec(idx: number, entry: HTMLElement): void {
+    const slotInput = document.getElementById(`component-${idx}-slot`) as HTMLInputElement | null;
+    const decBtn = entry.querySelector('[data-action="component-slot-dec"]') as HTMLButtonElement | null;
+    const incBtn = entry.querySelector('[data-action="component-slot-inc"]') as HTMLButtonElement | null;
+    if (!slotInput) return;
+    // Prevent header accordion from toggling when interacting with slot input
+    slotInput.addEventListener('click', (e) => e.stopPropagation());
+    slotInput.addEventListener('mousedown', (e) => e.stopPropagation());
+    slotInput.addEventListener('pointerdown', (e) => e.stopPropagation());
+    decBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const next = this.stepComponentSlot(slotInput.value, -1, idx);
+      slotInput.value = next;
+      this.initComponentTypeDropdown(idx);
+      this.updateMdaCardSlotLabels(idx);
+      this.updateXiomSectionVisibility(idx);
+      this.updateMdaSectionVisibility(idx);
+      this.relocateComponentEntryIfNeeded(idx);
+      this.updateComponentAddButtonStates();
+    });
+    incBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const next = this.stepComponentSlot(slotInput.value, 1, idx);
+      slotInput.value = next;
+      this.initComponentTypeDropdown(idx);
+      this.updateMdaCardSlotLabels(idx);
+      this.updateXiomSectionVisibility(idx);
+      this.updateMdaSectionVisibility(idx);
+      this.relocateComponentEntryIfNeeded(idx);
+      this.updateComponentAddButtonStates();
+    });
+
+    // Enforce uniqueness and pattern on manual input
+    let lastValid = this.normalizeComponentSlot(slotInput.value);
+    slotInput.addEventListener('input', () => {
+      const norm = this.normalizeComponentSlot(slotInput.value);
+      if (!norm) {
+        // allow empty while typing
+        lastValid = '';
+        this.updateComponentAddButtonStates();
+        return;
+      }
+      const used = this.collectUsedComponentSlots(idx);
+      if (used.has(norm)) {
+        slotInput.value = lastValid;
+      } else {
+        lastValid = norm;
+        slotInput.value = norm;
+      }
+      this.initComponentTypeDropdown(idx);
+      this.updateMdaCardSlotLabels(idx);
+      this.updateXiomSectionVisibility(idx);
+      this.updateMdaSectionVisibility(idx);
+      this.relocateComponentEntryIfNeeded(idx);
+      this.updateComponentAddButtonStates();
+    });
+  }
+
+  private updateMdaCardSlotLabels(componentIdx: number): void {
+    const container = document.getElementById(`component-${componentIdx}-mda-container`);
+    if (!container) return;
+    const rawSlot = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    const hasSlot = rawSlot.length > 0;
+    const slotPrefix = hasSlot ? `${rawSlot}/` : '--';
+    container.querySelectorAll('[data-role="mda-card-slot"]').forEach((el) => {
+      (el as HTMLElement).textContent = slotPrefix;
+    });
+    // Also update labels on XIOM-scoped MDA entries to include component slot and xiom slot
+    const xiomContainer = document.getElementById(`component-${componentIdx}-xiom-container`);
+    if (xiomContainer) {
+      const xiomRows = Array.from(xiomContainer.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`)) as HTMLElement[];
+      xiomRows.forEach(row => {
+        const xiomId = this.extractIndex(row.id, /component-\d+-xiom-entry-(\d+)/);
+        if (xiomId == null) return;
+        // Update the XIOM entry's left label with the component slot
+        const xiomSlotLabel = row.querySelector('[data-role="xiom-card-slot"]') as HTMLElement | null;
+        if (xiomSlotLabel) xiomSlotLabel.textContent = slotPrefix;
+        const xiomSlotRaw = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-slot`).trim();
+        const xiomDisplay = xiomSlotRaw ? `x${xiomSlotRaw}` : '';
+        let xiomPrefix = '--';
+        if (hasSlot) {
+          xiomPrefix = `${rawSlot}/`;
+          if (xiomDisplay) {
+            xiomPrefix = `${rawSlot}/${xiomDisplay}`;
+          }
+        }
+        row.querySelectorAll('[data-role="xiom-mda-card-slot"]').forEach((el) => {
+          (el as HTMLElement).textContent = xiomPrefix;
+        });
+      });
+    }
+  }
+
+  private isCpmSlot(v: string): boolean { return /^[aAbB]$/.test((v || '').trim()); }
+
+  private updateXiomSectionVisibility(componentIdx: number): void {
+    const slotVal = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    const container = document.getElementById(`component-${componentIdx}-xiom-container`);
+    if (!container) return;
+    const group = (container.closest(SELECTOR_FORM_GROUP) as HTMLElement | null) || container;
+    const isCpm = this.isCpmSlot(slotVal);
+    if (isCpm) {
+      group.classList.add(CLASS_HIDDEN);
+      // Remove any XIOM entries and reset counters
+      const rows = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`)) as HTMLElement[];
+      rows.forEach(r => r.remove());
+      this.componentXiomCounters.set(componentIdx, 0);
+      Array.from(this.xiomMdaCounters.keys()).forEach(k => { if (k.startsWith(`${componentIdx}:`)) this.xiomMdaCounters.delete(k); });
+    } else {
+      group.classList.remove(CLASS_HIDDEN);
+    }
+    this.updateXiomAddButtonState(componentIdx);
+  }
+
+  private updateMdaSectionVisibility(componentIdx: number): void {
+    const slotVal = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    const entry = document.getElementById(`component-entry-${componentIdx}`);
+    if (!entry) return;
+    const group = entry.querySelector('[data-role="component-mda-group"]') as HTMLElement | null;
+    const list = document.getElementById(`component-${componentIdx}-mda-container`);
+    const addBtn = entry.querySelector('[data-action="add-mda"]') as HTMLButtonElement | null;
+    if (!group || !list) return;
+    const isCpm = this.isCpmSlot(slotVal);
+    if (isCpm) {
+      group.classList.add(CLASS_HIDDEN);
+      group.setAttribute(ATTR_ARIA_HIDDEN, 'true');
+      Array.from(list.querySelectorAll(`.${CLASS_COMPONENT_MDA_ENTRY}`)).forEach(el => el.remove());
+      this.componentMdaCounters.set(componentIdx, 0);
+    } else {
+      group.classList.remove(CLASS_HIDDEN);
+      group.setAttribute(ATTR_ARIA_HIDDEN, 'false');
+    }
+    if (addBtn) addBtn.disabled = isCpm;
+  }
+
+  private wireComponentActions(idx: number, addMdaBtn: HTMLButtonElement, addXiomBtn: HTMLButtonElement, removeComponentBtn: HTMLButtonElement): void {
+    addMdaBtn.onclick = () => this.addMdaEntry(idx);
+    addXiomBtn.onclick = () => this.addXiomEntry(idx);
+    if (removeComponentBtn) {
+      removeComponentBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.removeComponentEntry(idx);
+      };
+    }
+  }
+
+  private attachAccordion(header: HTMLElement | null, body: HTMLElement | null, caret: HTMLElement | null): void {
+    if (!header || !body) return;
+    header.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-action="remove-component"]')) return;
+      // Do not toggle when clicking interactive controls (e.g., slot input)
+      if (target.closest('input, textarea, select, [contenteditable], [data-role="component-slot"]')) return;
+      const isHidden = body.classList.contains(CLASS_HIDDEN);
+      if (isHidden) {
+        body.classList.remove(CLASS_HIDDEN);
+        if (caret) {
+          caret.classList.remove(ICON_CHEVRON_RIGHT);
+          caret.classList.add(ICON_CHEVRON_DOWN);
+        }
+      } else {
+        body.classList.add(CLASS_HIDDEN);
+        if (caret) {
+          caret.classList.remove(ICON_CHEVRON_DOWN);
+          caret.classList.add(ICON_CHEVRON_RIGHT);
+        }
+      }
+    });
+  }
+
+  private expandComponentEntry(idx: number): void {
+    const entry = document.getElementById(`component-entry-${idx}`);
+    if (!entry) return;
+    const body = entry.querySelector(SELECTOR_COMPONENT_BODY) as HTMLElement | null;
+    const caret = entry.querySelector(SELECTOR_COMPONENT_CARET) as HTMLElement | null;
+    if (body && body.classList.contains(CLASS_HIDDEN)) body.classList.remove(CLASS_HIDDEN);
+    if (caret) {
+      caret.classList.remove(ICON_CHEVRON_RIGHT);
+      caret.classList.add(ICON_CHEVRON_DOWN);
+    }
+  }
+
+  private collectExpandedComponentSlots(): Set<string> {
+    const set = new Set<string>();
+    const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
+    if (!container) return set;
+    const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
+    entries.forEach(entry => {
+      const idx = this.extractIndex(entry.id, /component-entry-(\d+)/);
+      if (idx == null) return;
+      const body = entry.querySelector(SELECTOR_COMPONENT_BODY) as HTMLElement | null;
+      const slotInput = document.getElementById(`component-${idx}-slot`) as HTMLInputElement | null;
+      const raw = slotInput?.value ?? '';
+      const key = this.normalizeComponentSlot(raw);
+      if (key && body && !body.classList.contains(CLASS_HIDDEN)) set.add(key);
+    });
+    return set;
+  }
+
+  // Removed legacy XIOM listener (handled per-XIOM entry now)
+
+  private removeComponentEntry(idx: number): void {
+    const entry = document.getElementById(`component-entry-${idx}`);
+    entry?.remove();
+    this.componentMdaCounters.delete(idx);
+    this.componentXiomCounters.delete(idx);
+    Array.from(this.xiomMdaCounters.keys()).forEach(k => { if (k.startsWith(`${idx}:`)) this.xiomMdaCounters.delete(k); });
+    this.updateComponentAddButtonStates();
+  }
+
+  private addMdaEntry(componentIdx: number, prefill?: any): void {
+    const list = document.getElementById(`component-${componentIdx}-mda-container`);
+    const tpl = document.getElementById('tpl-mda-entry') as HTMLTemplateElement | null;
+    if (!list || !tpl) return;
+    const next = (this.componentMdaCounters.get(componentIdx) || 0) + 1;
+    this.componentMdaCounters.set(componentIdx, next);
+    const mdaId = next;
+
+    const frag = tpl.content.cloneNode(true) as DocumentFragment;
+    const row = frag.querySelector('.component-mda-entry') as HTMLElement;
+    row.id = `component-${componentIdx}-mda-entry-${mdaId}`;
+    const slot = row.querySelector('[data-role="mda-slot"]') as HTMLInputElement;
+    const hiddenType = row.querySelector('[data-role="mda-type-value"]') as HTMLInputElement;
+    const typeDropdown = row.querySelector('[data-role="mda-type-dropdown"]') as HTMLElement;
+    // Card slot label will be set globally after append
+    const delBtn = row.querySelector('[data-action="remove-mda"]') as HTMLButtonElement;
+
+    slot.id = `component-${componentIdx}-mda-${mdaId}-slot`;
+    // Autofill MDA slot index starting at 1; respect provided prefill
+    slot.value = prefill?.slot != null ? String(prefill.slot) : String(mdaId);
+    hiddenType.id = `component-${componentIdx}-mda-${mdaId}-type`;
+    hiddenType.value = prefill?.type != null ? String(prefill.type) : '';
+    typeDropdown.id = `component-${componentIdx}-mda-${mdaId}-type-dropdown`;
+    delBtn.onclick = () => this.removeMdaEntry(componentIdx, mdaId);
+
+    list.appendChild(frag);
+
+    // Initialize MDA dropdown options based on XIOM presence
+    this.initMdaTypeDropdown(componentIdx, mdaId);
+    // Ensure card slot labels are up to date for all rows
+    this.updateMdaCardSlotLabels(componentIdx);
+  }
+
+  private removeMdaEntry(componentIdx: number, mdaId: number): void {
+    const row = document.getElementById(`component-${componentIdx}-mda-entry-${mdaId}`);
+    row?.remove();
+  }
+
+  private enforceComponentSlotPattern(inputId: string): void {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (!input) return;
+    let lastValid = input.value || '';
+    const re = /^([aAbB]|[1-9]\d*)?$/; // allow A/B or positive integers; empty while typing
+    input.addEventListener('input', () => {
+      const v = input.value;
+      if (re.test(v)) {
+        lastValid = v;
+      } else {
+        input.value = lastValid;
+      }
+    });
+  }
+
+  private initComponentTypeDropdown(componentIdx: number): void {
+    const slotVal = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    const isCpm = /^[aAbB]$/.test(slotVal);
+    const options = isCpm ? this.srosCpmTypes : this.srosCardTypes;
+    const initial = this.getInputValue(`component-${componentIdx}-type`);
+    createFilterableDropdown(
+      `component-${componentIdx}-type-dropdown`,
+      options,
+      initial,
+      (selected: string) => this.setInputValue(`component-${componentIdx}-type`, selected),
+      PH_SEARCH_TYPE,
+      true
+    );
+    // Re-init on slot change
+    const slotInput = document.getElementById(`component-${componentIdx}-slot`) as HTMLInputElement | null;
+    slotInput?.addEventListener('input', () => this.initComponentTypeDropdown(componentIdx));
+  }
+
+  private initMdaTypeDropdown(componentIdx: number, mdaId: number): void {
+    const initial = this.getInputValue(`component-${componentIdx}-mda-${mdaId}-type`);
+    createFilterableDropdown(
+      `component-${componentIdx}-mda-${mdaId}-type-dropdown`,
+      this.srosMdaTypes,
+      initial,
+      (selected: string) => this.setInputValue(`component-${componentIdx}-mda-${mdaId}-type`, selected),
+      PH_SEARCH_TYPE,
+      true
+    );
+  }
+
+  private addXiomEntry(componentIdx: number, prefill?: any): void {
+    const list = document.getElementById(`component-${componentIdx}-xiom-container`);
+    const tpl = document.getElementById('tpl-xiom-entry') as HTMLTemplateElement | null;
+    if (!list || !tpl) return;
+    if (this.shouldBlockAddXiom(componentIdx)) return;
+    const next = (this.componentXiomCounters.get(componentIdx) || 0) + 1;
+    this.componentXiomCounters.set(componentIdx, next);
+    const xiomId = next;
+
+    const frag = tpl.content.cloneNode(true) as DocumentFragment;
+    const row = frag.querySelector(`.${CLASS_COMPONENT_XIOM_ENTRY}`) as HTMLElement;
+    row.id = `component-${componentIdx}-xiom-entry-${xiomId}`;
+    const slotHidden = row.querySelector('[data-role="xiom-slot-value"]') as HTMLInputElement;
+    const slotDropdown = row.querySelector('[data-role="xiom-slot-dropdown"]') as HTMLElement;
+    const hiddenType = row.querySelector('[data-role="xiom-type-value"]') as HTMLInputElement;
+    const typeDropdown = row.querySelector('[data-role="xiom-type-dropdown"]') as HTMLElement;
+    const delBtn = row.querySelector('[data-action="remove-xiom"]') as HTMLButtonElement;
+    const xiomMdaList = row.querySelector('[data-role="xiom-mda-list"]') as HTMLElement;
+    const addXiomMdaBtn = row.querySelector('[data-action="add-xiom-mda"]') as HTMLButtonElement;
+
+    slotHidden.id = `component-${componentIdx}-xiom-${xiomId}-slot`;
+    // Decide slot value (1 or 2)
+    slotHidden.value = String(this.computeInitialXiomSlot(componentIdx, prefill));
+    hiddenType.id = `component-${componentIdx}-xiom-${xiomId}-type`;
+    hiddenType.value = prefill?.type != null ? String(prefill.type) : '';
+    typeDropdown.id = `component-${componentIdx}-xiom-${xiomId}-type-dropdown`;
+    xiomMdaList.id = `component-${componentIdx}-xiom-${xiomId}-mda-container`;
+    delBtn.onclick = () => this.removeXiomEntry(componentIdx, xiomId);
+    addXiomMdaBtn.onclick = () => this.addXiomMdaEntry(componentIdx, xiomId);
+
+    // Assign ID to slot dropdown container and append
+    this.setXiomSlotDropdownId(componentIdx, xiomId, slotDropdown);
+    list.appendChild(frag);
+
+    this.initXiomTypeDropdown(componentIdx, xiomId);
+    // Initialize XIOM slot dropdown with x1/x2, writing 1/2 into hidden
+    this.initXiomSlotDropdown(componentIdx, xiomId);
+    this.maybePrefillXiomMdas(componentIdx, xiomId, prefill);
+    this.updateMdaCardSlotLabels(componentIdx);
+    this.updateXiomAddButtonState(componentIdx);
+  }
+
+  private shouldBlockAddXiom(componentIdx: number): boolean {
+    const slotVal = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    if (this.isCpmSlot(slotVal)) return true;
+    return this.countXioms(componentIdx) >= 2;
+  }
+
+  private computeInitialXiomSlot(componentIdx: number, prefill?: any): number {
+    const desired = (prefill?.slot != null ? Number(prefill.slot) : this.findNextAvailableXiomSlot(componentIdx)) || 1;
+    return desired === 2 ? 2 : 1;
+  }
+
+  private maybePrefillXiomMdas(componentIdx: number, xiomId: number, prefill?: any): void {
+    if (Array.isArray(prefill?.mda)) prefill.mda.forEach((m: any) => this.addXiomMdaEntry(componentIdx, xiomId, m));
+  }
+
+  private setXiomSlotDropdownId(componentIdx: number, xiomId: number, el: HTMLElement | null): void {
+    if (el) el.id = `component-${componentIdx}-xiom-${xiomId}-slot-dropdown`;
+  }
+
+  private removeXiomEntry(componentIdx: number, xiomId: number): void {
+    const row = document.getElementById(`component-${componentIdx}-xiom-entry-${xiomId}`);
+    row?.remove();
+    this.xiomMdaCounters.delete(`${componentIdx}:${xiomId}`);
+    this.updateMdaCardSlotLabels(componentIdx);
+    this.updateXiomAddButtonState(componentIdx);
+  }
+
+  private initXiomTypeDropdown(componentIdx: number, xiomId: number): void {
+    const initial = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-type`);
+    createFilterableDropdown(
+      `component-${componentIdx}-xiom-${xiomId}-type-dropdown`,
+      this.srosXiomTypes,
+      initial,
+      (selected: string) => this.setInputValue(`component-${componentIdx}-xiom-${xiomId}-type`, selected),
+      PH_SEARCH_TYPE,
+      true
+    );
+  }
+
+  private addXiomMdaEntry(componentIdx: number, xiomId: number, prefill?: any): void {
+    const list = document.getElementById(`component-${componentIdx}-xiom-${xiomId}-mda-container`);
+    const tpl = document.getElementById('tpl-xiom-mda-entry') as HTMLTemplateElement | null;
+    if (!list || !tpl) return;
+    const key = `${componentIdx}:${xiomId}`;
+    const next = (this.xiomMdaCounters.get(key) || 0) + 1;
+    this.xiomMdaCounters.set(key, next);
+    const mdaId = next;
+
+    const frag = tpl.content.cloneNode(true) as DocumentFragment;
+    const row = frag.querySelector(`.${CLASS_COMPONENT_XIOM_MDA_ENTRY}`) as HTMLElement;
+    row.id = `component-${componentIdx}-xiom-${xiomId}-mda-entry-${mdaId}`;
+    const slot = row.querySelector('[data-role="xiom-mda-slot"]') as HTMLInputElement;
+    const hiddenType = row.querySelector('[data-role="xiom-mda-type-value"]') as HTMLInputElement;
+    const typeDropdown = row.querySelector('[data-role="xiom-mda-type-dropdown"]') as HTMLElement;
+    const delBtn = row.querySelector('[data-action="remove-xiom-mda"]') as HTMLButtonElement;
+
+    slot.id = `component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-slot`;
+    slot.value = prefill?.slot != null ? String(prefill.slot) : String(mdaId);
+    hiddenType.id = `component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-type`;
+    hiddenType.value = prefill?.type != null ? String(prefill.type) : '';
+    typeDropdown.id = `component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-type-dropdown`;
+    delBtn.onclick = () => this.removeXiomMdaEntry(componentIdx, xiomId, mdaId);
+
+    list.appendChild(frag);
+
+    this.initXiomMdaTypeDropdown(componentIdx, xiomId, mdaId);
+    this.updateMdaCardSlotLabels(componentIdx);
+  }
+
+  private removeXiomMdaEntry(componentIdx: number, xiomId: number, mdaId: number): void {
+    const row = document.getElementById(`component-${componentIdx}-xiom-${xiomId}-mda-entry-${mdaId}`);
+    row?.remove();
+  }
+
+  private initXiomMdaTypeDropdown(componentIdx: number, xiomId: number, mdaId: number): void {
+    const initial = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-type`);
+    createFilterableDropdown(
+      `component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-type-dropdown`,
+      this.srosXiomMdaTypes,
+      initial,
+      (selected: string) => this.setInputValue(`component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-type`, selected),
+      PH_SEARCH_TYPE,
+      true
+    );
+  }
+
+  private countXioms(componentIdx: number): number {
+    const container = document.getElementById(`component-${componentIdx}-xiom-container`);
+    if (!container) return 0;
+    return container.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`).length;
+  }
+
+  private getUsedXiomSlots(componentIdx: number, excludeXiomId?: number): Set<number> {
+    const used = new Set<number>();
+    const container = document.getElementById(`component-${componentIdx}-xiom-container`);
+    if (!container) return used;
+    const rows = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`)) as HTMLElement[];
+    rows.forEach(row => {
+      const xiomId = this.extractIndex(row.id, /component-\d+-xiom-entry-(\d+)/);
+      if (excludeXiomId != null && xiomId === excludeXiomId) return;
+      const v = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-slot`).trim();
+      const n = parseInt(v, 10);
+      if (n === 1 || n === 2) used.add(n);
+    });
+    return used;
+  }
+
+  private findNextAvailableXiomSlot(componentIdx: number): number {
+    const used = this.getUsedXiomSlots(componentIdx);
+    if (!used.has(1)) return 1;
+    if (!used.has(2)) return 2;
+    return 1; // default fallback
+  }
+
+  private initXiomSlotDropdown(componentIdx: number, xiomId: number): void {
+    const hidden = document.getElementById(`component-${componentIdx}-xiom-${xiomId}-slot`) as HTMLInputElement | null;
+    if (!hidden) return;
+    const initialDigit = hidden.value === '2' ? '2' : '1';
+    const initialLabel = initialDigit === '2' ? 'x2' : 'x1';
+    const containerId = `component-${componentIdx}-xiom-${xiomId}-slot-dropdown`;
+    const options = ['x1', 'x2'];
+    createFilterableDropdown(
+      containerId,
+      options,
+      initialLabel,
+      (selected: string) => {
+        const chosen = selected === 'x2' ? 2 : 1;
+        // Enforce uniqueness across XIOMs for this component
+        const used = this.getUsedXiomSlots(componentIdx, xiomId);
+        if (used.has(chosen)) {
+          // Flip to other if available
+          const other = chosen === 1 ? 2 : 1;
+          if (!used.has(other)) {
+            hidden.value = String(other);
+            // also set the visible field to 'x' + other
+            const filter = document.getElementById(`${containerId}-filter-input`) as HTMLInputElement | null;
+            if (filter) filter.value = `x${other}`;
+          }
+        } else {
+          hidden.value = String(chosen);
+        }
+        this.updateXiomAddButtonState(componentIdx);
+        this.updateMdaCardSlotLabels(componentIdx);
+      },
+      PH_SEARCH_TYPE,
+      false
+    );
+  }
+
+  private updateXiomAddButtonState(componentIdx: number): void {
+    const entry = document.getElementById(`component-entry-${componentIdx}`);
+    if (!entry) return;
+    const btn = entry.querySelector('[data-action="add-xiom"]') as HTMLButtonElement | null;
+    if (!btn) return;
+    const slotVal = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    btn.disabled = this.isCpmSlot(slotVal) || this.countXioms(componentIdx) >= 2;
   }
 
   private showTypeDropdown(
@@ -505,30 +1462,35 @@ export class ManagerNodeEditor {
 
       // Check if click is on a delete button or its child (the icon)
       const deleteBtn = target.closest(`.${CLASS_DYNAMIC_DELETE_BTN}`);
-      if (deleteBtn) {
-        e.preventDefault();
-        e.stopPropagation();
+      if (!deleteBtn) return;
 
-        // Get the container and entry ID from the button's data attributes
-        const containerName = deleteBtn.getAttribute(DATA_ATTR_CONTAINER);
-        const entryId = deleteBtn.getAttribute(DATA_ATTR_ENTRY_ID);
+      // Get the container and entry ID from the button's data attributes
+      const containerName = deleteBtn.getAttribute(DATA_ATTR_CONTAINER);
+      const entryId = deleteBtn.getAttribute(DATA_ATTR_ENTRY_ID);
 
-        log.debug(`Delete button clicked via delegation: ${containerName}-${entryId}`);
-
-        if (containerName && entryId) {
-          // Mark panel as clicked to prevent closing
-          if ((window as any).viewportPanels) {
-            (window as any).viewportPanels.setNodeClicked(true);
-          }
-
-          // Remove the entry
-          this.removeEntry(containerName, parseInt(entryId));
-        }
+      if (!containerName || !entryId) {
+        // Let other click handlers (e.g., component removal) process the event
+        return;
       }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      log.debug(`Delete button clicked via delegation: ${containerName}-${entryId}`);
+
+      // Mark panel as clicked to prevent closing
+      if ((window as any).viewportPanels) {
+        (window as any).viewportPanels.setNodeClicked(true);
+      }
+
+      // Remove the entry
+      this.removeEntry(containerName, parseInt(entryId));
     }, true); // Use capture phase to ensure we get the event first
 
     // Initialize tab switching
     this.setupTabSwitching();
+    // Initialize tab scroll arrows
+    this.setupTabScrollArrows();
 
     // Initialize event handlers
     this.setupEventHandlers();
@@ -543,6 +1505,69 @@ export class ManagerNodeEditor {
     this.setupInheritanceChangeListeners();
 
     log.debug('Enhanced node editor panel initialized');
+  }
+
+  /**
+   * Setup scrollable tab bar with arrow buttons
+   */
+  private setupTabScrollArrows(): void {
+    const viewport = document.getElementById(ID_TAB_VIEWPORT) as HTMLElement | null;
+    const leftBtn = document.getElementById(ID_TAB_SCROLL_LEFT) as HTMLButtonElement | null;
+    const rightBtn = document.getElementById(ID_TAB_SCROLL_RIGHT) as HTMLButtonElement | null;
+
+    if (!viewport || !leftBtn || !rightBtn) return;
+
+    const scrollByAmount = (dir: -1 | 1) => {
+      const delta = Math.max(120, Math.floor(viewport.clientWidth * 0.6));
+      viewport.scrollBy({ left: dir * delta, behavior: 'smooth' });
+    };
+
+    leftBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollByAmount(-1);
+    });
+    rightBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      scrollByAmount(1);
+    });
+
+    viewport.addEventListener('scroll', () => this.updateTabScrollButtons(), { passive: true });
+    window.addEventListener('resize', () => this.updateTabScrollButtons());
+
+    // Initial state
+    setTimeout(() => { this.ensureActiveTabVisible(); this.updateTabScrollButtons(); }, 0);
+  }
+
+  /** Ensure the active tab button is visible inside the viewport */
+  private ensureActiveTabVisible(): void {
+    const viewport = document.getElementById(ID_TAB_VIEWPORT) as HTMLElement | null;
+    const strip = document.getElementById(ID_TAB_STRIP) as HTMLElement | null;
+    if (!viewport || !strip) return;
+    const active = strip.querySelector(`.${CLASS_PANEL_TAB_BUTTON}.${CLASS_TAB_ACTIVE}`) as HTMLElement | null;
+    if (!active) return;
+    const vpLeft = viewport.scrollLeft;
+    const vpRight = vpLeft + viewport.clientWidth;
+    const elLeft = active.offsetLeft;
+    const elRight = elLeft + active.offsetWidth;
+    if (elLeft < vpLeft) {
+      viewport.scrollTo({ left: Math.max(0, elLeft - 16), behavior: 'smooth' });
+    } else if (elRight > vpRight) {
+      viewport.scrollTo({ left: elRight - viewport.clientWidth + 16, behavior: 'smooth' });
+    }
+  }
+
+  /** Show/hide left/right scroll buttons based on overflow */
+  private updateTabScrollButtons(): void {
+    const viewport = document.getElementById(ID_TAB_VIEWPORT) as HTMLElement | null;
+    const leftBtn = document.getElementById(ID_TAB_SCROLL_LEFT) as HTMLButtonElement | null;
+    const rightBtn = document.getElementById(ID_TAB_SCROLL_RIGHT) as HTMLButtonElement | null;
+    if (!viewport || !leftBtn || !rightBtn) return;
+    const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const current = viewport.scrollLeft;
+    const canLeft = current > 1;
+    const canRight = current < maxScroll - 1;
+    leftBtn.classList.toggle('hidden', !canLeft);
+    rightBtn.classList.toggle('hidden', !canRight);
   }
 
   private initializeStaticDropdowns(): void {
@@ -643,6 +1668,7 @@ export class ManagerNodeEditor {
 
       const json = await this.fetchSchema(url);
       this.extractTypeOptionsFromSchema(json);
+      this.extractComponentEnumsFromSchema(json);
 
       const kinds = this.getSortedKinds(json);
       if (kinds.length === 0) {
@@ -669,6 +1695,54 @@ export class ManagerNodeEditor {
     } catch (e) {
       log.error(`populateKindsFromSchema error: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }
+
+  private extractComponentEnumsFromSchema(schema: any): void {
+    const defs = schema?.definitions || {};
+    this.srosSfmTypes = defs['sros-sfm-types']?.enum || [];
+    this.srosXiomTypes = defs['sros-xiom-types']?.enum || [];
+    this.srosCpmTypes = defs['sros-cpm-types']?.enum || [];
+    this.srosCardTypes = defs['sros-card-types']?.enum || [];
+    this.srosXiomMdaTypes = defs['sros-xiom-mda-types']?.enum || [];
+    this.srosMdaTypes = defs['sros-mda-types']?.enum || [];
+
+    // If Components are already rendered, ensure dropdowns get initialized now that enums are present
+    this.refreshComponentsDropdowns();
+  }
+
+  private refreshComponentsDropdowns(): void {
+    const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
+    if (!container) return;
+    const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
+    entries.forEach(entry => {
+      const idx = this.extractIndex(entry.id, /component-entry-(\d+)/);
+      if (idx === null) return;
+      this.initComponentTypeDropdown(idx);
+      // Initialize XIOM dropdowns for existing XIOM entries
+      const xiomContainer = document.getElementById(`component-${idx}-xiom-container`);
+      if (xiomContainer) {
+        const xiomRows = Array.from(xiomContainer.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`)) as HTMLElement[];
+        xiomRows.forEach(row => {
+          const xiomId = this.extractIndex(row.id, /component-\d+-xiom-entry-(\d+)/);
+          if (xiomId !== null) {
+            this.initXiomTypeDropdown(idx, xiomId);
+            const xmdaRows = Array.from(row.querySelectorAll(`.${CLASS_COMPONENT_XIOM_MDA_ENTRY}`)) as HTMLElement[];
+            xmdaRows.forEach(xmda => {
+              const mdaId = this.extractIndex(xmda.id, /component-\d+-xiom-\d+-mda-entry-(\d+)/);
+              if (mdaId !== null) this.initXiomMdaTypeDropdown(idx, xiomId, mdaId);
+        });
+      }
+    });
+    this.refreshSfmDropdown();
+  }
+      const mdaContainer = document.getElementById(`component-${idx}-mda-container`);
+      if (!mdaContainer) return;
+      const rows = Array.from(mdaContainer.querySelectorAll(`.${CLASS_COMPONENT_MDA_ENTRY}`)) as HTMLElement[];
+      rows.forEach(row => {
+        const mdaId = this.extractIndex(row.id, /component-\d+-mda-entry-(\d+)/);
+        if (mdaId !== null) this.initMdaTypeDropdown(idx, mdaId);
+      });
+    });
   }
 
   /**
@@ -737,6 +1811,10 @@ export class ManagerNodeEditor {
             content.classList.add(CLASS_HIDDEN);
           }
         });
+
+        // Keep tab visible and update scroll buttons
+        this.ensureActiveTabVisible();
+        this.updateTabScrollButtons();
       });
     });
   }
@@ -785,6 +1863,7 @@ export class ManagerNodeEditor {
     (window as any).addSysctlEntry = () => this.addDynamicKeyValueEntry(CN_SYSCTLS, PH_SYSCTL_KEY, PH_VALUE);
     (window as any).addDeviceEntry = () => this.addDynamicEntry(CN_DEVICES, PH_DEVICE);
     (window as any).addSanEntry = () => this.addDynamicEntry(CN_SANS, PH_SAN);
+    this.registerComponentEntryHandlers();
 
     // Register remove entry function globally (no longer needed with event listeners)
     // but keeping for backward compatibility if any inline handlers remain
@@ -793,6 +1872,12 @@ export class ManagerNodeEditor {
       this.removeEntry(containerName, entryId);
       return false; // Prevent default behavior
     };
+  }
+
+  private registerComponentEntryHandlers(): void {
+    (window as any).addComponentEntry = () => { this.addComponentEntry(undefined, { slotType: 'card' }); };
+    (window as any).addCpmComponentEntry = () => { this.addComponentEntry(undefined, { slotType: 'cpm' }); };
+    (window as any).addCardComponentEntry = () => { this.addComponentEntry(undefined, { slotType: 'card' }); };
   }
 
   /**
@@ -896,6 +1981,23 @@ export class ManagerNodeEditor {
     this.loadNodeData(node);
     this.alignKindSelection(node);
     this.panel.style.display = 'block';
+    // After the panel becomes visible, update tab scroll UI once layout is ready
+    const afterVisible = () => {
+      try {
+        this.ensureActiveTabVisible();
+        this.updateTabScrollButtons();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        log.debug(`Post-open tab scroll update skipped: ${msg}`);
+      }
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => afterVisible());
+      // Also schedule a secondary tick to be safe after dynamic content inflates
+      setTimeout(afterVisible, 50);
+    } else {
+      setTimeout(afterVisible, 0);
+    }
     log.debug(`Opened enhanced node editor for node: ${node.id()}`);
   }
 
@@ -1520,7 +2622,7 @@ export class ManagerNodeEditor {
    */
   private markFieldInheritance(fieldId: string, inherited: boolean): void {
     const el = document.getElementById(fieldId) as HTMLElement | null;
-    const formGroup = el?.closest('.form-group') as HTMLElement | null;
+    const formGroup = el?.closest(SELECTOR_FORM_GROUP) as HTMLElement | null;
     if (!formGroup) return;
     let badge = formGroup.querySelector('.inherited-badge') as HTMLElement | null;
     if (inherited) {
@@ -1912,14 +3014,80 @@ export class ManagerNodeEditor {
     }
 
     try {
+      // Remember which component slots are currently expanded
+      const expanded = this.collectExpandedComponentSlots();
+      // Ensure all filterable dropdowns (esp. components) commit their values
+      this.commitComponentDropdowns();
       const nodeProps = this.collectNodeProperties();
       const handled = await this.handleCustomNode(nodeProps);
       if (handled || this.isCustomTemplateNode()) {
         return;
       }
-      await this.updateNode(nodeProps);
+      await this.updateNode(nodeProps, expanded);
     } catch (error) {
       log.error(`Failed to save node properties: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Commit visible dropdown input values into their hidden fields for components/MDAs.
+   * Without this, typing into the dropdown and clicking Save may not update hidden inputs.
+   */
+  private commitComponentDropdowns(): void {
+    const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
+    if (!container) return;
+    const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
+    for (const entry of entries) {
+      const idx = this.extractIndex(entry.id, /component-entry-(\d+)/);
+      if (idx === null) continue;
+      this.commitComponentBaseDropdowns(idx);
+      this.commitXiomDropdowns(idx);
+      this.commitMdaDropdowns(idx);
+    }
+    this.commitSfmDropdown();
+  }
+
+  private commitComponentBaseDropdowns(idx: number): void {
+    const typeFilter = document.getElementById(`component-${idx}-type-dropdown-filter-input`) as HTMLInputElement | null;
+    const typeHidden = document.getElementById(`component-${idx}-type`) as HTMLInputElement | null;
+    if (typeFilter && typeHidden) typeHidden.value = typeFilter.value;
+  }
+
+  private commitXiomDropdowns(idx: number): void {
+    const xiomContainer = document.getElementById(`component-${idx}-xiom-container`);
+    if (!xiomContainer) return;
+    const xiomRows = Array.from(xiomContainer.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`)) as HTMLElement[];
+    for (const row of xiomRows) {
+      const xiomId = this.extractIndex(row.id, /component-\d+-xiom-entry-(\d+)/);
+      if (xiomId === null) continue;
+      const xiomTypeFilter = document.getElementById(`component-${idx}-xiom-${xiomId}-type-dropdown-filter-input`) as HTMLInputElement | null;
+      const xiomTypeHidden = document.getElementById(`component-${idx}-xiom-${xiomId}-type`) as HTMLInputElement | null;
+      if (xiomTypeFilter && xiomTypeHidden) xiomTypeHidden.value = xiomTypeFilter.value;
+      this.commitXiomMdaDropdowns(idx, xiomId, row);
+    }
+  }
+
+  private commitXiomMdaDropdowns(idx: number, xiomId: number, xiomRow: HTMLElement): void {
+    const xmdaRows = Array.from(xiomRow.querySelectorAll(`.${CLASS_COMPONENT_XIOM_MDA_ENTRY}`)) as HTMLElement[];
+    for (const xmda of xmdaRows) {
+      const mdaId = this.extractIndex(xmda.id, /component-\d+-xiom-\d+-mda-entry-(\d+)/);
+      if (mdaId === null) continue;
+      const mdaFilter = document.getElementById(`component-${idx}-xiom-${xiomId}-mda-${mdaId}-type-dropdown-filter-input`) as HTMLInputElement | null;
+      const mdaHidden = document.getElementById(`component-${idx}-xiom-${xiomId}-mda-${mdaId}-type`) as HTMLInputElement | null;
+      if (mdaFilter && mdaHidden) mdaHidden.value = mdaFilter.value;
+    }
+  }
+
+  private commitMdaDropdowns(idx: number): void {
+    const mdaContainer = document.getElementById(`component-${idx}-mda-container`);
+    if (!mdaContainer) return;
+    const rows = Array.from(mdaContainer.querySelectorAll(`.${CLASS_COMPONENT_MDA_ENTRY}`)) as HTMLElement[];
+    for (const row of rows) {
+      const mdaId = this.extractIndex(row.id, /component-\d+-mda-entry-(\d+)/);
+      if (mdaId === null) continue;
+      const mdaFilter = document.getElementById(`component-${idx}-mda-${mdaId}-type-dropdown-filter-input`) as HTMLInputElement | null;
+      const mdaHidden = document.getElementById(`component-${idx}-mda-${mdaId}-type`) as HTMLInputElement | null;
+      if (mdaFilter && mdaHidden) mdaHidden.value = mdaFilter.value;
     }
   }
 
@@ -1937,8 +3105,115 @@ export class ManagerNodeEditor {
     this.collectAdvancedProps(nodeProps);
     this.collectCertificateProps(nodeProps);
     this.collectHealthcheckProps(nodeProps);
+    this.collectComponentsProps(nodeProps);
 
     return nodeProps;
+  }
+
+  private collectComponentsProps(nodeProps: NodeProperties): void {
+    const kind = nodeProps.kind || (this.currentNode?.data('extraData')?.kind as string | undefined);
+    if (!kind || !this.componentKinds.has(kind)) return;
+    const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
+    if (!container) return;
+    const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
+    const components = entries
+      .map((entry) => this.buildComponentFromEntry(entry))
+      .filter((c): c is any => !!c);
+    const sfmVal = this.getSfmValue();
+    this.applySfmToComponents(components, sfmVal);
+    if (components.length > 0) nodeProps.components = components;
+  }
+
+  private buildComponentFromEntry(entryEl: HTMLElement): any | null {
+    const idx = this.extractIndex(entryEl.id, /component-entry-(\d+)/);
+    if (idx === null) return null;
+
+    const comp: any = {};
+    const slotRaw = this.getInputValue(`component-${idx}-slot`).trim();
+    const slotParsed = this.parseComponentSlot(slotRaw);
+    if (slotParsed && slotParsed.value !== undefined) comp.slot = slotParsed.value;
+
+    const typeVal = this.getInputValue(`component-${idx}-type`).trim();
+    if (typeVal) comp.type = typeVal;
+
+    // Collect XIOMs (array)
+    const xioms = this.collectXioms(idx);
+    if (xioms.length > 0) comp.xiom = xioms;
+
+    const mdaList = this.collectMdas(idx);
+    if (mdaList.length > 0) comp.mda = mdaList;
+
+    return Object.keys(comp).length > 0 ? comp : null;
+  }
+
+  private parseComponentSlot(value: string): { value?: string | number } | null {
+    if (!value) return null;
+    if (/^[aAbB]$/.test(value)) return { value: value.toUpperCase() };
+    if (/^\d+$/.test(value)) return { value: parseInt(value, 10) };
+    return null;
+  }
+
+  private collectMdas(componentIdx: number): any[] {
+    const container = document.getElementById(`component-${componentIdx}-mda-container`);
+    if (!container) return [];
+    const rows = Array.from(container.querySelectorAll('.component-mda-entry')) as HTMLElement[];
+    const list: any[] = [];
+    for (const row of rows) {
+      const mdaId = this.extractIndex(row.id, /component-\d+-mda-entry-(\d+)/);
+      if (mdaId === null) continue;
+      const slotRaw = this.getInputValue(`component-${componentIdx}-mda-${mdaId}-slot`).trim();
+      const typeVal = this.getInputValue(`component-${componentIdx}-mda-${mdaId}-type`).trim();
+      const mda: any = {};
+      if (/^\d+$/.test(slotRaw)) mda.slot = parseInt(slotRaw, 10);
+      if (typeVal) mda.type = typeVal;
+      if (mda.slot != null && mda.type) list.push(mda);
+    }
+    return list;
+  }
+
+  private collectXioms(componentIdx: number): any[] {
+    const compSlot = this.getInputValue(`component-${componentIdx}-slot`).trim();
+    if (this.isCpmSlot(compSlot)) return [];
+    const container = document.getElementById(`component-${componentIdx}-xiom-container`);
+    if (!container) return [];
+    const rows = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_XIOM_ENTRY}`)) as HTMLElement[];
+    const list: any[] = [];
+    for (const row of rows) {
+      const xiomId = this.extractIndex(row.id, /component-\d+-xiom-entry-(\d+)/);
+      if (xiomId === null) continue;
+      const slotRaw = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-slot`).trim();
+      const typeVal = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-type`).trim();
+      const xiom: any = {};
+      if (/^\d+$/.test(slotRaw)) xiom.slot = parseInt(slotRaw, 10);
+      if (typeVal) xiom.type = typeVal;
+      const xmda = this.collectXiomMdas(componentIdx, xiomId);
+      if (xmda.length > 0) xiom.mda = xmda;
+      if (xiom.slot != null && xiom.type) list.push(xiom);
+    }
+    return list;
+  }
+
+  private collectXiomMdas(componentIdx: number, xiomId: number): any[] {
+    const container = document.getElementById(`component-${componentIdx}-xiom-${xiomId}-mda-container`);
+    if (!container) return [];
+    const rows = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_XIOM_MDA_ENTRY}`)) as HTMLElement[];
+    const list: any[] = [];
+    for (const row of rows) {
+      const mdaId = this.extractIndex(row.id, /component-\d+-xiom-\d+-mda-entry-(\d+)/);
+      if (mdaId === null) continue;
+      const slotRaw = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-slot`).trim();
+      const typeVal = this.getInputValue(`component-${componentIdx}-xiom-${xiomId}-mda-${mdaId}-type`).trim();
+      const mda: any = {};
+      if (/^\d+$/.test(slotRaw)) mda.slot = parseInt(slotRaw, 10);
+      if (typeVal) mda.type = typeVal;
+      if (mda.slot != null && mda.type) list.push(mda);
+    }
+    return list;
+  }
+
+  private extractIndex(id: string, re: RegExp): number | null {
+    const m = re.exec(id);
+    return m ? parseInt(m[1], 10) : null;
   }
 
   private collectImage(nodeProps: NodeProperties): void {
@@ -2129,7 +3404,7 @@ export class ManagerNodeEditor {
     return nodeId === ID_TEMP_CUSTOM_NODE || nodeId === ID_EDIT_CUSTOM_NODE;
   }
 
-  private async updateNode(nodeProps: NodeProperties): Promise<void> {
+  private async updateNode(nodeProps: NodeProperties, expandedSlots?: Set<string>): Promise<void> {
     const currentData = this.currentNode!.data();
     const { updatedExtraData, inheritedProps } = this.mergeNodeData(nodeProps, currentData);
     const iconValue =
@@ -2138,7 +3413,7 @@ export class ManagerNodeEditor {
     const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
     this.currentNode!.data(updatedData);
     await this.saveManager.saveTopo(this.cy, false);
-    await this.refreshNodeData();
+    await this.refreshNodeData(expandedSlots);
     this.updateInheritedBadges(inheritedProps);
     log.info(`Node ${this.currentNode!.id()} updated with enhanced properties`);
   }
@@ -2177,7 +3452,7 @@ export class ManagerNodeEditor {
       'entrypoint', 'cmd', 'exec', PROP_RESTART_POLICY, PROP_AUTO_REMOVE, PROP_STARTUP_DELAY,
       PROP_MGMT_IPV4, PROP_MGMT_IPV6, PROP_NETWORK_MODE, PROP_PORTS, PROP_DNS, PROP_ALIASES,
       PROP_MEMORY, PROP_CPU, PROP_CPU_SET, PROP_SHM_SIZE, PROP_CAP_ADD, PROP_SYSCTLS, PROP_DEVICES,
-      PROP_CERTIFICATE, 'healthcheck', PROP_IMAGE_PULL_POLICY, PROP_RUNTIME, 'inherited'
+      PROP_CERTIFICATE, 'healthcheck', PROP_IMAGE_PULL_POLICY, PROP_RUNTIME, 'components', 'inherited'
     ];
     formManagedProperties.forEach(prop => { delete updatedExtraData[prop]; });
     Object.assign(updatedExtraData, nodeProps);
@@ -2226,7 +3501,7 @@ export class ManagerNodeEditor {
     return true;
   }
 
-  private async refreshNodeData(): Promise<void> {
+  private async refreshNodeData(expandedSlots?: Set<string>): Promise<void> {
     try {
       const sender = this.saveManager.getMessageSender();
       const nodeName = this.currentNode!.data('name') || this.currentNode!.id();
@@ -2234,6 +3509,8 @@ export class ManagerNodeEditor {
       if (freshData && typeof freshData === 'object') {
         this.currentNode!.data('extraData', freshData);
         this.clearAllDynamicEntries();
+        // Defer restoration to the next components render that happens in handleKindChange
+        this.pendingExpandedComponentSlots = expandedSlots;
         this.loadNodeData(this.currentNode!);
       }
     } catch (err) {

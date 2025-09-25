@@ -19,6 +19,7 @@ CLAUDE.md
 AGENTS.md
 patch.sh
 labs/**
+license.txt
 
 # Claude Flow generated files
 .claude/settings.local.json
