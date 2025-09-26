@@ -6,6 +6,12 @@ import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 import { log } from '../logging/logger';
 import { isSpecialNodeOrBridge } from '../utilities/specialNodes';
+import {
+  DEFAULT_INTERFACE_PATTERN,
+  generateInterfaceName,
+  getInterfaceIndex,
+  parseInterfacePattern,
+} from './utilities/interfacePatternUtils';
 
 
 /**
@@ -1424,16 +1430,13 @@ export class ManagerViewportPanels {
     newKind: string
   ): void {
     const ifaceMap = window.ifacePatternMapping || {};
-    const oldPattern = ifaceMap[oldKind] || 'eth{n}';
-    const newPattern = ifaceMap[newKind] || 'eth{n}';
+    const extraData = node.data('extraData') as { interfacePattern?: unknown } | undefined;
+    const overridePattern = typeof extraData?.interfacePattern === 'string' ? extraData.interfacePattern.trim() : '';
+    const oldPattern = overridePattern || ifaceMap[oldKind] || DEFAULT_INTERFACE_PATTERN;
+    const newPattern = overridePattern || ifaceMap[newKind] || DEFAULT_INTERFACE_PATTERN;
+    const oldParsed = parseInterfacePattern(oldPattern);
+    const newParsed = parseInterfacePattern(newPattern);
     const nodeId = node.id();
-
-    const placeholder = '__N__';
-    const escaped = oldPattern
-      .replace('{n}', placeholder)
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regexStr = '^' + escaped.replace(placeholder, '(\\d+)') + '$';
-    const patternRegex = new RegExp(regexStr);
 
     const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
     edges.forEach(edge => {
@@ -1443,9 +1446,9 @@ export class ManagerViewportPanels {
           (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
           (edge.data('target') === nodeId && key === 'targetEndpoint');
         if (!endpoint || !isNodeEndpoint) return;
-        const m = patternRegex.exec(endpoint);
-        if (m) {
-          const newEndpoint = newPattern.replace('{n}', m[1]);
+        const index = getInterfaceIndex(oldParsed, endpoint);
+        if (index !== null) {
+          const newEndpoint = generateInterfaceName(newParsed, index);
           edge.data(key, newEndpoint);
         }
       });

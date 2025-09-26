@@ -48,6 +48,12 @@
             <label class="block vscode-label mb-1 mt-2">Base Name (for canvas)</label>
             <input type="text" id="node-base-name" class="input-field w-full"
               placeholder="e.g., srl (will become srl1, srl2, etc.)">
+            <label class="block vscode-label mb-1 mt-2">Interface Pattern</label>
+            <input type="text" id="node-interface-pattern" class="input-field w-full"
+              placeholder="e.g., e1-{n} or Gi0/0/{n:0}">
+            <p class="text-xs text-[var(--text-secondary)] mt-1">
+              Supports optional start values (<code>{n:0}</code>), ranges (<code>{n:1-6}</code>), and comma-separated sequences.
+            </p>
             <div class="flex items-center mt-1">
               <input type="checkbox" id="node-custom-default" class="vscode-checkbox mr-2">
               <label for="node-custom-default" class="checkbox-label">Set as default</label>

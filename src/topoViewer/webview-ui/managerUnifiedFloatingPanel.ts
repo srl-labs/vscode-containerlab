@@ -911,55 +911,64 @@ export class ManagerUnifiedFloatingPanel {
 
   private handleEditCustomNode(customNode: any): void {
     // Open the node editor panel to edit an existing custom node template
-    if (this.nodeEditor) {
-      // Create a temporary node data with the custom node's properties
-      const tempNodeData = {
-        id: EDIT_CUSTOM_ID,
-        name: EDIT_CUSTOM_ID,
-        topoViewerRole: customNode.icon || DEFAULT_ROLE_PE,  // Add icon to the node data
-        extraData: {
-          kind: customNode.kind,
-          type: customNode.type,
-          image: customNode.image,
-          icon: customNode.icon || DEFAULT_ROLE_PE,  // Also include icon in extraData for the editor
-          // Include any other properties from the custom node
-          ...Object.fromEntries(
-            Object.entries(customNode).filter(([key]) =>
-              !['name', 'kind', 'type', 'image', 'setDefault', 'icon'].includes(key)
-            )
-          ),
-          // Mark this as editing an existing custom node
-          editingCustomNodeName: customNode.name
-        }
-      };
-
-      // Create a mock node object for the editor
-      const mockNode = {
-        id: () => 'edit-custom-node',
-        data: () => tempNodeData,
-        parent: () => ({ nonempty: () => false })
-      };
-
-      void this.nodeEditor.open(mockNode as any);
-
-      // Pre-fill the custom node name field
-      setTimeout(() => {
-        const input = document.getElementById('node-custom-name') as HTMLInputElement | null;
-        if (input) {
-          input.value = customNode.name;
-        }
-        const baseNameInput = document.getElementById('node-base-name') as HTMLInputElement | null;
-        if (baseNameInput && customNode.baseName) {
-          baseNameInput.value = customNode.baseName;
-        }
-        const checkbox = document.getElementById('node-custom-default') as HTMLInputElement | null;
-        if (checkbox && customNode.setDefault) {
-          checkbox.checked = customNode.setDefault;
-        }
-      }, 150);
-    } else {
+    if (!this.nodeEditor) {
       log.error('NodeEditor not available for custom node editing');
+      return;
     }
+
+    // Create a temporary node data with the custom node's properties
+    const tempNodeData = {
+      id: EDIT_CUSTOM_ID,
+      name: EDIT_CUSTOM_ID,
+      topoViewerRole: customNode.icon || DEFAULT_ROLE_PE,  // Add icon to the node data
+      extraData: {
+        kind: customNode.kind,
+        type: customNode.type,
+        image: customNode.image,
+        icon: customNode.icon || DEFAULT_ROLE_PE,  // Also include icon in extraData for the editor
+        // Include any other properties from the custom node
+        ...Object.fromEntries(
+          Object.entries(customNode).filter(([key]) =>
+            !['name', 'kind', 'type', 'image', 'setDefault', 'icon'].includes(key)
+          )
+        ),
+        // Mark this as editing an existing custom node
+        editingCustomNodeName: customNode.name
+      }
+    };
+
+    // Create a mock node object for the editor
+    const mockNode = {
+      id: () => 'edit-custom-node',
+      data: () => tempNodeData,
+      parent: () => ({ nonempty: () => false })
+    };
+
+    void this.nodeEditor.open(mockNode as any);
+
+    // Pre-fill the custom node fields
+    setTimeout(() => this.populateCustomNodeEditorFields(customNode), 150);
+  }
+
+  private populateCustomNodeEditorFields(customNode: any): void {
+    this.setInputValueIfPresent('node-custom-name', customNode.name, true);
+    this.setInputValueIfPresent('node-base-name', customNode.baseName, false);
+    this.setInputValueIfPresent('node-interface-pattern', customNode.interfacePattern ?? '', true);
+    this.setCheckboxIfPresent('node-custom-default', Boolean(customNode.setDefault));
+  }
+
+  private setInputValueIfPresent(elementId: string, value: string | undefined, always: boolean): void {
+    const el = document.getElementById(elementId) as HTMLInputElement | null;
+    if (!el) return;
+    if (value !== undefined || always) {
+      el.value = value ?? '';
+    }
+  }
+
+  private setCheckboxIfPresent(elementId: string, checked: boolean): void {
+    const el = document.getElementById(elementId) as HTMLInputElement | null;
+    if (!el) return;
+    el.checked = checked;
   }
 
   private async handleDeleteCustomNode(nodeName: string): Promise<void> {

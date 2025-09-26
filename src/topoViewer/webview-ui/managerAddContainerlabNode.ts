@@ -14,7 +14,15 @@ export class ManagerAddContainerlabNode {
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject,
-    template?: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string }
+    template?: {
+      kind: string;
+      type?: string;
+      image?: string;
+      name?: string;
+      icon?: string;
+      baseName?: string;
+      interfacePattern?: string;
+    }
   ): void {
     this.initializeNodeCounter(cy);
     const newNodeId = this.generateNodeId();
@@ -60,7 +68,17 @@ export class ManagerAddContainerlabNode {
   private createNodeData(
     newNodeId: string,
     nodeName: string,
-    template: { kind: string; type?: string; image?: string; name?: string; icon?: string; baseName?: string } | undefined,
+    template:
+      | {
+          kind: string;
+          type?: string;
+          image?: string;
+          name?: string;
+          icon?: string;
+          baseName?: string;
+          interfacePattern?: string;
+        }
+      | undefined,
     kind: string
   ): NodeData {
     const extraData: NodeExtraData = {
