@@ -177,11 +177,58 @@ export class ManagerAddContainerlabNode {
 
   public viewportButtonsAddNetworkNode(
     cy: cytoscape.Core,
-    event: cytoscape.EventObject
+    event: cytoscape.EventObject,
+    networkType: string = 'host'
   ): void {
-    const networkType = 'host';
+    const { nodeId, nodeName, topoViewerRole, extraData } = this.generateNetworkNodeMetadata(
+      cy,
+      networkType
+    );
 
-    // Determine next available host interface number (eth1, eth2, ...)
+    const newNodeData: NodeData = {
+      id: nodeId,
+      editor: 'true',
+      weight: '30',
+      name: nodeName,
+      parent: '',
+      topoViewerRole,
+      sourceEndpoint: '',
+      targetEndpoint: '',
+      containerDockerExtraAttribute: { state: '', status: '' },
+      extraData
+    };
+
+    const position = this.determinePosition(cy, event);
+    cy.add({ group: 'nodes', data: newNodeData, position });
+    this.applyGeoCoordinates(cy, nodeId, position);
+  }
+
+  private generateNetworkNodeMetadata(
+    cy: cytoscape.Core,
+    requestedType: string
+  ): { nodeId: string; nodeName: string; topoViewerRole: string; extraData: NodeExtraData } {
+    const type = (requestedType || 'host').toLowerCase();
+    if (['host', 'mgmt-net', 'macvlan'].includes(type)) {
+      return this.buildHostLikeNetworkNode(cy, type as 'host' | 'mgmt-net' | 'macvlan');
+    }
+    if (type === 'dummy') {
+      return this.buildDummyNetworkNode(cy);
+    }
+    if (type === 'bridge' || type === 'ovs-bridge') {
+      return this.buildBridgeNetworkNode(cy, type);
+    }
+    if (type === 'vxlan' || type === 'vxlan-stitch') {
+      return this.buildVxlanNetworkNode(cy, type);
+    }
+
+    // Fallback to host network if the provided type is unsupported
+    return this.buildHostLikeNetworkNode(cy, 'host');
+  }
+
+  private buildHostLikeNetworkNode(
+    cy: cytoscape.Core,
+    networkType: 'host' | 'mgmt-net' | 'macvlan'
+  ): { nodeId: string; nodeName: string; topoViewerRole: string; extraData: NodeExtraData } {
     const existingNodeIds = cy.nodes().map(node => node.id());
     const hostRegex = new RegExp(`^${networkType}:eth(\\d+)$`);
     const usedNumbers = existingNodeIds
@@ -192,29 +239,107 @@ export class ManagerAddContainerlabNode {
       .filter((n): n is number => n !== null);
     const nextInterface = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
     const interfaceName = `eth${nextInterface}`;
+    const nodeId = `${networkType}:${interfaceName}`;
 
-    const newNodeId = `${networkType}:${interfaceName}`;
-
-    const newNodeData: NodeData = {
-      id: newNodeId,
-      editor: 'true',
-      weight: '30',
-      name: newNodeId,
-      parent: '',
-      topoViewerRole: 'cloud',
-      sourceEndpoint: '',
-      targetEndpoint: '',
-      containerDockerExtraAttribute: { state: '', status: '' },
-      extraData: {
-        kind: networkType,
-        longname: '',
-        image: '',
-        networkInterface: interfaceName // add this for future need
-      }
+    const extraData: NodeExtraData = {
+      kind: networkType,
+      longname: '',
+      image: '',
+      networkInterface: interfaceName,
+      extHostInterface: interfaceName
     };
 
-    let position = this.determinePosition(cy, event);
-    cy.add({ group: 'nodes', data: newNodeData, position });
-    this.applyGeoCoordinates(cy, newNodeId, position);
+    return {
+      nodeId,
+      nodeName: nodeId,
+      topoViewerRole: 'cloud',
+      extraData
+    };
+  }
+
+  private buildDummyNetworkNode(
+    cy: cytoscape.Core
+  ): { nodeId: string; nodeName: string; topoViewerRole: string; extraData: NodeExtraData } {
+    const existingIds = new Set(cy.nodes().map(node => node.id()));
+    let counter = 1;
+    while (existingIds.has(`dummy${counter}`)) {
+      counter++;
+    }
+    const nodeId = `dummy${counter}`;
+    const extraData: NodeExtraData = {
+      kind: 'dummy',
+      longname: '',
+      image: ''
+    };
+
+    return {
+      nodeId,
+      nodeName: nodeId,
+      topoViewerRole: 'cloud',
+      extraData
+    };
+  }
+
+  private buildBridgeNetworkNode(
+    cy: cytoscape.Core,
+    networkType: 'bridge' | 'ovs-bridge'
+  ): { nodeId: string; nodeName: string; topoViewerRole: string; extraData: NodeExtraData } {
+    const existingIds = new Set(cy.nodes().map(node => node.id()));
+    const baseName = networkType === 'bridge' ? 'bridge' : 'ovs-bridge';
+    let counter = 1;
+    let candidate = `${baseName}${counter}`;
+    while (existingIds.has(candidate)) {
+      counter++;
+      candidate = `${baseName}${counter}`;
+    }
+
+    const extraData: NodeExtraData = {
+      kind: networkType,
+      longname: '',
+      image: ''
+    };
+
+    return {
+      nodeId: candidate,
+      nodeName: candidate,
+      topoViewerRole: 'bridge',
+      extraData
+    };
+  }
+
+  private buildVxlanNetworkNode(
+    cy: cytoscape.Core,
+    networkType: 'vxlan' | 'vxlan-stitch'
+  ): { nodeId: string; nodeName: string; topoViewerRole: string; extraData: NodeExtraData } {
+    const existingIds = cy.nodes().map(node => node.id());
+    const vxlanRegex = new RegExp(`^${networkType}:auto(\\d+)-`);
+    const usedNumbers = existingIds
+      .map(id => {
+        const m = vxlanRegex.exec(id);
+        return m ? parseInt(m[1], 10) : null;
+      })
+      .filter((n): n is number => n !== null);
+    const nextId = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
+
+    const remote = `remote${nextId}`;
+    const vni = 1000 + nextId;
+    const udpPort = 4789;
+    const nodeId = `${networkType}:auto${nextId}-${remote}/${vni}/${udpPort}`;
+
+    const extraData: NodeExtraData = {
+      kind: networkType,
+      longname: '',
+      image: '',
+      extRemote: remote,
+      extVni: vni,
+      extUdpPort: udpPort
+    };
+
+    return {
+      nodeId,
+      nodeName: nodeId,
+      topoViewerRole: 'cloud',
+      extraData
+    };
   }
 }

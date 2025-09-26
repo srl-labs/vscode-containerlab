@@ -11,6 +11,24 @@ const TEMP_CUSTOM_ID = 'temp-custom-node' as const;
 const EDIT_CUSTOM_ID = 'edit-custom-node' as const;
 const DEFAULT_ROLE_PE = 'pe' as const;
 const DEFAULT_KIND_SR = 'nokia_srlinux' as const;
+const FLEX_COLUMN_CLASS = 'flex flex-col' as const;
+interface NetworkTypeDefinition {
+  readonly type: string;
+  readonly label: string;
+  readonly isDefault?: boolean;
+  readonly addDivider?: boolean;
+}
+
+const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
+  { type: 'host', label: 'Host network', isDefault: true },
+  { type: 'mgmt-net', label: 'Management network' },
+  { type: 'macvlan', label: 'Macvlan network' },
+  { type: 'vxlan', label: 'VXLAN network', addDivider: true },
+  { type: 'vxlan-stitch', label: 'VXLAN Stitch network' },
+  { type: 'dummy', label: 'Dummy network', addDivider: true },
+  { type: 'bridge', label: 'Bridge', addDivider: true },
+  { type: 'ovs-bridge', label: 'OVS bridge' }
+];
 import { VscodeMessageSender } from './managerVscodeWebview';
 import cytoscape from 'cytoscape';
 import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
@@ -28,6 +46,7 @@ export class ManagerUnifiedFloatingPanel {
   private nodeEditor: ManagerNodeEditor | null = null;
   private isProcessing: boolean = false;
   private addNodeMenuTippy: any = null;
+  private addNetworkMenuTippy: any = null;
   // Refs (actions/tooltips only; UI styles live in HTML)
   private deployBtn: HTMLButtonElement | null = null;
   private redeployBtn: HTMLButtonElement | null = null;
@@ -75,6 +94,7 @@ export class ManagerUnifiedFloatingPanel {
     // Set up interactions (drawer expansion via CSS)
     this.setupActionButtons();
     this.setupAddNodeMenu();
+    this.setupAddNetworkMenu();
     // Delegate mode-driven UI (viewer/editor) to HTML script
     (window as any).updateUnifiedPanelState?.();
     document.addEventListener('topo-mode-changed', () => this.updateState());
@@ -82,6 +102,8 @@ export class ManagerUnifiedFloatingPanel {
     // Re-initialize tooltips after HTML script potentially modifies attributes
     setTimeout(() => {
       this.initializeTooltips();
+      this.setupAddNodeMenu();
+      this.setupAddNetworkMenu();
     }, 200);
 
     log.debug('Unified floating panel initialized');
@@ -100,7 +122,6 @@ export class ManagerUnifiedFloatingPanel {
       this.deployCleanupBtn,
       this.destroyCleanupBtn,
       this.redeployCleanupBtn,
-      this.addNetworkBtn,
       this.addGroupBtn,
       this.addTextBtn,
       this.addBulkLinkBtn,
@@ -199,30 +220,74 @@ export class ManagerUnifiedFloatingPanel {
       onShow(instance) {
         instance.setContent(self.buildAddNodeMenu(instance));
         // Force update the background color to match current theme
-        const box = instance.popper.querySelector('.tippy-box') as HTMLElement;
-        if (box) {
-          const computedStyle = window.getComputedStyle(document.documentElement);
-          box.style.backgroundColor = computedStyle.getPropertyValue('--vscode-dropdown-background').trim() ||
-                                      computedStyle.getPropertyValue('--vscode-editor-background').trim();
-          box.style.color = computedStyle.getPropertyValue('--vscode-dropdown-foreground').trim() ||
-                           computedStyle.getPropertyValue('--vscode-editor-foreground').trim();
-          box.style.borderColor = computedStyle.getPropertyValue('--vscode-dropdown-border').trim() ||
-                                 computedStyle.getPropertyValue('--vscode-widget-border').trim();
-        }
+        const box = instance.popper.querySelector('.tippy-box') as HTMLElement | null;
+        self.applyDropdownTheme(box);
       },
       theme: 'dropdown-menu',
       content: ''
     });
   }
 
-  private createFilterInput(container: HTMLElement): HTMLInputElement {
+  private setupAddNetworkMenu(): void {
+    if (!this.addNetworkBtn) return;
+
+    if (this.addNetworkMenuTippy) {
+      this.addNetworkMenuTippy.destroy();
+      this.addNetworkMenuTippy = null;
+    }
+
+    const self = this;
+    this.addNetworkMenuTippy = tippy(this.addNetworkBtn, {
+      trigger: 'mouseenter',
+      interactive: true,
+      appendTo: document.body,
+      placement: 'right-start',
+      delay: [100, 300],
+      interactiveBorder: 10,
+      onShow(instance) {
+        instance.setContent(self.buildAddNetworkMenu(instance));
+        const box = instance.popper.querySelector('.tippy-box') as HTMLElement | null;
+        self.applyDropdownTheme(box);
+      },
+      theme: 'dropdown-menu',
+      content: ''
+    });
+  }
+
+  private applyDropdownTheme(box: HTMLElement | null): void {
+    if (!box) {
+      return;
+    }
+    const computedStyle = window.getComputedStyle(document.documentElement);
+    const background = computedStyle.getPropertyValue('--vscode-dropdown-background').trim() ||
+                      computedStyle.getPropertyValue('--vscode-editor-background').trim();
+    const foreground = computedStyle.getPropertyValue('--vscode-dropdown-foreground').trim() ||
+                      computedStyle.getPropertyValue('--vscode-editor-foreground').trim();
+    const border = computedStyle.getPropertyValue('--vscode-dropdown-border').trim() ||
+                  computedStyle.getPropertyValue('--vscode-widget-border').trim();
+
+    if (background) {
+      box.style.backgroundColor = background;
+    }
+    if (foreground) {
+      box.style.color = foreground;
+    }
+    if (border) {
+      box.style.borderColor = border;
+    }
+  }
+
+  private createFilterInput(
+    container: HTMLElement,
+    placeholder: string = 'Filter nodes...'
+  ): HTMLInputElement {
     const filterContainer = document.createElement('div');
     filterContainer.className = 'filter-container';
     filterContainer.style.padding = '8px';
 
     const filterInput = document.createElement('input');
     filterInput.type = 'text';
-    filterInput.placeholder = 'Filter nodes...';
+    filterInput.placeholder = placeholder;
     filterInput.className = 'filter-input';
     filterInput.style.width = '100%';
     filterInput.style.padding = '4px 8px';
@@ -241,7 +306,7 @@ export class ManagerUnifiedFloatingPanel {
 
   private createMenuContainer(container: HTMLElement): HTMLElement {
     const menu = document.createElement('div');
-    menu.className = 'flex flex-col';
+    menu.className = FLEX_COLUMN_CLASS;
     menu.style.maxHeight = '300px';
     menu.style.overflowY = 'auto';
     container.appendChild(menu);
@@ -480,7 +545,7 @@ export class ManagerUnifiedFloatingPanel {
 
   private buildAddNodeMenu(instance: any): HTMLElement {
     const container = document.createElement('div');
-    container.className = 'flex flex-col';
+    container.className = FLEX_COLUMN_CLASS;
 
     const filterInput = this.createFilterInput(container);
     const menu = this.createMenuContainer(container);
@@ -507,6 +572,58 @@ export class ManagerUnifiedFloatingPanel {
     this.attachFilterHandlers(filterInput, allItems, instance);
 
     return container;
+  }
+
+  private buildAddNetworkMenu(instance: any): HTMLElement {
+    const container = document.createElement('div');
+    container.className = FLEX_COLUMN_CLASS;
+
+    const filterInput = this.createFilterInput(container, 'Filter networks...');
+    const menu = this.createMenuContainer(container);
+
+    const allItems: { element: HTMLElement; label: string; isDefault?: boolean }[] = [];
+
+    NETWORK_TYPE_DEFINITIONS.forEach((definition, index) => {
+      const label = `${definition.label} (${definition.type})`;
+      const addTopDivider = definition.addDivider === true && index !== 0;
+      this.createNetworkMenuItem(
+        menu,
+        allItems,
+        label,
+        definition.type,
+        instance,
+        Boolean(definition.isDefault),
+        addTopDivider
+      );
+    });
+
+    this.attachFilterHandlers(filterInput, allItems, instance);
+
+    return container;
+  }
+
+  private createNetworkMenuItem(
+    menu: HTMLElement,
+    allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
+    label: string,
+    networkType: string,
+    instance: any,
+    isDefault = false,
+    addTopDivider = false
+  ): void {
+    const item = document.createElement('button');
+    item.className = 'add-node-menu-item text-left filterable-item';
+    if (addTopDivider) {
+      item.classList.add('add-node-menu-item--top-divider');
+    }
+    item.textContent = label;
+    item.type = 'button';
+    item.addEventListener('click', () => {
+      this.handleAddNetwork(networkType);
+      this.refocusFilterInput(instance);
+    });
+    menu.appendChild(item);
+    allItems.push({ element: item, label: label.toLowerCase(), isDefault });
   }
 
   // All UI class/style updates are handled in HTML
@@ -878,11 +995,11 @@ export class ManagerUnifiedFloatingPanel {
     }
   }
 
-  private handleAddNetwork(): void {
-    log.debug('Adding new network via unified panel');
+  private handleAddNetwork(networkType: string = 'host'): void {
+    log.debug(`Adding new network via unified panel (${networkType})`);
 
     const syntheticEvent = this.createCenterEvent();
-    this.addNodeManager.viewportButtonsAddNetworkNode(this.cy, syntheticEvent);
+    this.addNodeManager.viewportButtonsAddNetworkNode(this.cy, syntheticEvent, networkType);
 
     const newNode = this.cy.nodes().last();
     const state = (window as any).topoViewerState;
@@ -892,7 +1009,7 @@ export class ManagerUnifiedFloatingPanel {
       }, 100);
     }
 
-    log.info('Added new network via unified panel');
+    log.info(`Added new network via unified panel (${networkType})`);
   }
 
   /**
