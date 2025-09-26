@@ -39,6 +39,8 @@ export class ManagerUnifiedFloatingPanel {
   private addGroupBtn: HTMLButtonElement | null = null;
   private addTextBtn: HTMLButtonElement | null = null;
   private addBulkLinkBtn: HTMLButtonElement | null = null;
+  private lockBtn: HTMLButtonElement | null = null;
+  private collapseBtn: HTMLButtonElement | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: ManagerAddContainerlabNode, nodeEditor?: ManagerNodeEditor) {
     this.cy = cy;
@@ -63,6 +65,8 @@ export class ManagerUnifiedFloatingPanel {
     this.addGroupBtn = document.getElementById('add-group-btn') as HTMLButtonElement | null;
     this.addTextBtn = document.getElementById('add-text-btn') as HTMLButtonElement | null;
     this.addBulkLinkBtn = document.getElementById('add-bulk-link-btn') as HTMLButtonElement | null;
+    this.lockBtn = document.getElementById('lock-panel-btn') as HTMLButtonElement | null;
+    this.collapseBtn = document.getElementById('collapse-panel-btn') as HTMLButtonElement | null;
     // No JS refs needed for drawer expansion
 
     // Initialize tooltips
@@ -99,7 +103,9 @@ export class ManagerUnifiedFloatingPanel {
       this.addNetworkBtn,
       this.addGroupBtn,
       this.addTextBtn,
-      this.addBulkLinkBtn
+      this.addBulkLinkBtn,
+      this.lockBtn,
+      this.collapseBtn
     ];
 
     buttons.forEach(btn => {
@@ -118,7 +124,8 @@ export class ManagerUnifiedFloatingPanel {
     if (this.addGroupBtn) tippy(this.addGroupBtn, tooltipOptions);
     if (this.addTextBtn) tippy(this.addTextBtn, tooltipOptions);
     if (this.addBulkLinkBtn) tippy(this.addBulkLinkBtn, tooltipOptions);
-    // Lock/Collapse tooltips handled by HTML
+    if (this.lockBtn) tippy(this.lockBtn, tooltipOptions);
+    if (this.collapseBtn) tippy(this.collapseBtn, tooltipOptions);
   }
 
   private isViewerMode(): boolean {
