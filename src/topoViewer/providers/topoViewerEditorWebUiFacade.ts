@@ -86,6 +86,7 @@ export class TopoViewerEditor {
     'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
     'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
     'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
+    'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
     showError: this.handleShowErrorEndpoint.bind(this),
     'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
     copyElements: this.handleCopyElementsEndpoint.bind(this),
@@ -635,6 +636,24 @@ topology:
     return imageMapping;
   }
 
+  private async updateCachedYamlFromCurrentDoc(): Promise<void> {
+    if (!this.currentLabName) {
+      return;
+    }
+
+    const doc = this.adaptor.currentClabDoc;
+    if (!doc) {
+      return;
+    }
+
+    try {
+      const yaml = doc.toString();
+      await this.context.workspaceState.update(`cachedYaml_${this.currentLabName}`, yaml);
+    } catch (err) {
+      log.warn(`Failed to update cached YAML after save: ${err}`);
+    }
+  }
+
   /**
    * Creates a new webview panel or reveals the current one.
    * @param context The extension context.
@@ -1124,6 +1143,7 @@ topology:
           this.isInternalUpdate = v;
         }
       });
+      await this.updateCachedYamlFromCurrentDoc();
       const result = 'Saved topology with preserved comments!';
       log.info(result);
       return { result, error: null };
@@ -1149,6 +1169,7 @@ topology:
           this.isInternalUpdate = v;
         }
       });
+      await this.updateCachedYamlFromCurrentDoc();
       return { result: null, error: null };
     } catch (err) {
       const result = 'Error executing endpoint "topo-editor-viewport-save-suppress-notification".';
@@ -1376,6 +1397,49 @@ topology:
     } catch (err) {
       const error = `Error saving custom node: ${err}`;
       log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleSetDefaultCustomNodeEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj as { name?: string };
+      if (!data?.name) {
+        throw new Error('Missing custom node name');
+      }
+
+      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+      const customNodes = config.get<any[]>('customNodes', []);
+
+      let found = false;
+      const updatedNodes = customNodes.map((node: any) => {
+        const updated = { ...node, setDefault: false };
+        if (node.name === data.name) {
+          found = true;
+          updated.setDefault = true;
+        }
+        return updated;
+      });
+
+      if (!found) {
+        throw new Error(`Custom node ${data.name} not found`);
+      }
+
+      await config.update('customNodes', updatedNodes, vscode.ConfigurationTarget.Global);
+      const defaultCustomNode = updatedNodes.find((n: any) => n.setDefault === true);
+      log.info(`Set default custom node ${data.name}`);
+
+      return {
+        result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name || '' },
+        error: null
+      };
+    } catch (err) {
+      const error = `Error setting default custom node: ${err}`;
+      log.error(`Error setting default custom node: ${JSON.stringify(err, null, 2)}`);
       return { result: null, error };
     }
   }
