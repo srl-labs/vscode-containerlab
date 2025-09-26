@@ -8,6 +8,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { extractNodeIcons } from './managerCytoscapeBaseStyles';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import type { ClabTopology } from '../types/topoViewerType';
+import { DEFAULT_INTERFACE_PATTERN } from './utilities/interfacePatternUtils';
 
 // Reuse common literal types to avoid duplicate strings
 type ExecTarget = 'container' | 'host';
@@ -75,6 +76,7 @@ const ID_NODE_RP_FILTER_INPUT = 'node-restart-policy-dropdown-container-filter-i
 const ID_NODE_NM_DROPDOWN = 'node-network-mode-dropdown-container' as const;
 const ID_NODE_NM_FILTER_INPUT = 'node-network-mode-dropdown-container-filter-input' as const;
 const ID_NODE_CUSTOM_DEFAULT = 'node-custom-default' as const;
+const ID_NODE_INTERFACE_PATTERN = 'node-interface-pattern' as const;
 
 const ID_NODE_IPP_DROPDOWN = 'node-image-pull-policy-dropdown-container' as const;
 const ID_NODE_IPP_FILTER_INPUT = 'node-image-pull-policy-dropdown-container-filter-input' as const;
@@ -262,6 +264,7 @@ export interface NodeProperties {
   type?: string;
   image?: string;
   group?: string;
+  interfacePattern?: string;
 
   // Configuration properties
   license?: string;
@@ -475,6 +478,15 @@ export class ManagerNodeEditor {
 
     // show/hide components based on kind
     this.updateComponentsTabVisibility(selectedKind);
+
+    if (this.isCustomTemplateNode()) {
+      const ifaceMap = (window as any).ifacePatternMapping || {};
+      const defaultPattern = ifaceMap[selectedKind] || DEFAULT_INTERFACE_PATTERN;
+      const ifaceInput = document.getElementById(ID_NODE_INTERFACE_PATTERN) as HTMLInputElement | null;
+      if (ifaceInput && !ifaceInput.value) {
+        ifaceInput.value = defaultPattern;
+      }
+    }
 
     log.debug(`Kind changed to ${selectedKind}, type field visibility: ${typeFormGroup?.style.display}`);
   }
@@ -2195,6 +2207,7 @@ export class ManagerNodeEditor {
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {
     this.setInputValue(ID_NODE_CUSTOM_NAME, '');
     this.setCheckboxValue(ID_NODE_CUSTOM_DEFAULT, false);
+    this.setInputValue(ID_NODE_INTERFACE_PATTERN, '');
 
     const customNameGroup = document.getElementById(ID_NODE_CUSTOM_NAME_GROUP);
     const nodeNameGroup = document.getElementById(ID_NODE_NAME_GROUP);
@@ -2987,6 +3000,7 @@ export class ManagerNodeEditor {
 
       // Get the base name value
       const baseName = this.getInputValue('node-base-name') || '';
+      const interfacePattern = this.getInputValue(ID_NODE_INTERFACE_PATTERN).trim();
 
       const payload: any = {
         name,
@@ -2999,6 +3013,10 @@ export class ManagerNodeEditor {
         // Include the old name if we're editing an existing template
         ...(oldName && { oldName })
       };
+
+      if (interfacePattern) {
+        payload.interfacePattern = interfacePattern;
+      }
 
       // Always save all properties from nodeProps (excluding basic ones that are already set)
       Object.keys(nodeProps).forEach(key => {
@@ -3119,6 +3137,11 @@ export class ManagerNodeEditor {
       kind: (document.getElementById(ID_NODE_KIND_FILTER_INPUT) as HTMLInputElement | null)?.value || undefined,
       type: this.getTypeFieldValue() || undefined,
     };
+
+    const interfacePatternValue = this.getInputValue(ID_NODE_INTERFACE_PATTERN).trim();
+    if (interfacePatternValue) {
+      nodeProps.interfacePattern = interfacePatternValue;
+    }
 
     this.collectImage(nodeProps);
     this.collectConfigurationProps(nodeProps);

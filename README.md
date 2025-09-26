@@ -110,12 +110,12 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `editor.customNodes` | array | See below* | Custom node templates for TopoViewer |
-| `editor.interfacePatternMapping` | object | See below** | Interface naming patterns<br/>Use `{n}` as counter |
+| `editor.interfacePatternMapping` | object | See below** | Interface naming patterns<br/>Supports counters, start offsets, ranges, and sequences |
 | `editor.updateLinkEndpointsOnKindChange` | boolean | `true` | Auto-update link endpoints on kind change |
 | `drawioDefaultTheme` | string | `nokia_modern` | Draw.io theme (`nokia_modern`, `nokia`, `grafana`) |
 
 *Default custom nodes include SRLinux and Network Multitool templates  
-**Default patterns: `nokia_srlinux: "e1-{n}"`, `cisco_xrd: "Gi0-0-0-{n}"`, etc.
+**Default patterns: `nokia_srlinux: "e1-{n}"`, `cisco_xrd: "Gi0-0-0-{n}"`, etc. Patterns accept optional start indices (`{n:0}`), finite ranges (`{n:1-6}`), and comma-separated fallbacks (`1/1/c{n:1-6}/1, 2/1/c{n:1-12}/1`). Custom node templates expose an Interface Pattern field to override the defaults per template.
 
 ### 📦 Packet Capture
 

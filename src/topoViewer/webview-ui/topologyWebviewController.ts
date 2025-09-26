@@ -39,6 +39,12 @@ import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
 import { isSpecialNodeOrBridge, isSpecialEndpoint } from '../utilities/specialNodes';
+import {
+  DEFAULT_INTERFACE_PATTERN,
+  generateInterfaceName,
+  getInterfaceIndex,
+  parseInterfacePattern,
+} from './utilities/interfacePatternUtils';
 
 // Grid guide options now come from shared builder in utilities/gridGuide
 
@@ -85,6 +91,7 @@ class TopologyWebviewController {
   private static readonly KIND_BRIDGE = 'bridge' as const;
   private static readonly KIND_OVS_BRIDGE = 'ovs-bridge' as const;
   private interfaceCounters: Record<string, number> = {};
+  private interfacePatternCache: Map<string, ReturnType<typeof parseInterfacePattern>> = new Map();
   private labLocked = true;
   private currentMode: 'edit' | 'view' = 'edit';
   private nodeMenu: any;
@@ -405,6 +412,32 @@ class TopologyWebviewController {
     };
   }
 
+  private getParsedInterfacePattern(pattern: string): ReturnType<typeof parseInterfacePattern> {
+    const key = (pattern || DEFAULT_INTERFACE_PATTERN).trim() || DEFAULT_INTERFACE_PATTERN;
+    let parsed = this.interfacePatternCache.get(key);
+    if (!parsed) {
+      parsed = parseInterfacePattern(key);
+      this.interfacePatternCache.set(key, parsed);
+    }
+    return parsed;
+  }
+
+  private resolveInterfacePattern(
+    node: cytoscape.NodeSingular | undefined,
+    ifaceMap: Record<string, string>
+  ): string {
+    const hasNode = node && !node.empty();
+    const extraData = hasNode
+      ? (node!.data('extraData') as { interfacePattern?: unknown; kind?: unknown } | undefined)
+      : undefined;
+    const customPattern = typeof extraData?.interfacePattern === 'string' ? extraData.interfacePattern.trim() : '';
+    if (customPattern) {
+      return customPattern;
+    }
+    const kind = typeof extraData?.kind === 'string' && extraData.kind ? (extraData.kind as string) : 'default';
+    return ifaceMap[kind] || DEFAULT_INTERFACE_PATTERN;
+  }
+
   private registerDoubleClickHandlers(): void {
     this.cy.on('dblclick', 'node[topoViewerRole != "freeText"]', (event) => {
       if (this.labLocked) {
@@ -512,6 +545,7 @@ class TopologyWebviewController {
    */
   private async initializeEdgehandles(): Promise<void> {
     // Load edgehandles extension lazily
+    this.interfaceCounters = {};
     await loadExtension('edgehandles');
     const edgehandlesOptions = {
       hoverDelay: 50,
@@ -535,22 +569,26 @@ class TopologyWebviewController {
       },
       edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => {
         const ifaceMap = window.ifacePatternMapping || {};
-        const srcKind = sourceNode.data('extraData')?.kind || 'default';
-        const dstKind = targetNode.data('extraData')?.kind || 'default';
-        const srcPattern: string = ifaceMap[srcKind] || 'eth{n}';
-        const dstPattern: string = ifaceMap[dstKind] || 'eth{n}';
+        const srcPattern = this.resolveInterfacePattern(sourceNode, ifaceMap);
+        const dstPattern = this.resolveInterfacePattern(targetNode, ifaceMap);
+        const srcParsed = this.getParsedInterfacePattern(srcPattern);
+        const dstParsed = this.getParsedInterfacePattern(dstPattern);
 
-        const srcCount = (this.interfaceCounters[sourceNode.id()] ?? 0) + 1;
-        this.interfaceCounters[sourceNode.id()] = srcCount;
-        const dstCount = (this.interfaceCounters[targetNode.id()] ?? 0) + 1;
-        this.interfaceCounters[targetNode.id()] = dstCount;
+        const srcIndex = this.interfaceCounters[sourceNode.id()] ?? 0;
+        const dstIndex = this.interfaceCounters[targetNode.id()] ?? 0;
+
+        const sourceEndpoint = generateInterfaceName(srcParsed, srcIndex);
+        const targetEndpoint = generateInterfaceName(dstParsed, dstIndex);
+
+        this.interfaceCounters[sourceNode.id()] = srcIndex + 1;
+        this.interfaceCounters[targetNode.id()] = dstIndex + 1;
 
         return {
           id: `${sourceNode.id()}-${targetNode.id()}`,
           source: sourceNode.id(),
           target: targetNode.id(),
-          sourceEndpoint: srcPattern.replace('{n}', srcCount.toString()),
-          targetEndpoint: dstPattern.replace('{n}', dstCount.toString()),
+          sourceEndpoint,
+          targetEndpoint,
         };
       },
     };
@@ -1511,18 +1549,11 @@ class TopologyWebviewController {
 
     const ifaceMap = window.ifacePatternMapping || {};
     const node = this.cy.getElementById(nodeId);
-    const kind = node.data('extraData')?.kind || 'default';
-    const pattern = ifaceMap[kind] || 'eth{n}';
-
-    const placeholder = '__N__';
-    const escaped = pattern
-      .replace('{n}', placeholder)
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regexStr = '^' + escaped.replace(placeholder, '(\\d+)') + '$';
-    const patternRegex = new RegExp(regexStr);
+    const pattern = this.resolveInterfacePattern(node, ifaceMap);
+    const parsedPattern = this.getParsedInterfacePattern(pattern);
 
     const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-    const usedNumbers = new Set<number>();
+    const usedIndices = new Set<number>();
     edges.forEach(edge => {
       ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
         const endpoint = edge.data(key);
@@ -1530,19 +1561,19 @@ class TopologyWebviewController {
           (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
           (edge.data('target') === nodeId && key === 'targetEndpoint');
         if (!endpoint || !isNodeEndpoint) return;
-        const match = endpoint.match(patternRegex);
-        if (match) {
-          usedNumbers.add(parseInt(match[1], 10));
+        const matchIndex = getInterfaceIndex(parsedPattern, endpoint);
+        if (matchIndex !== null) {
+          usedIndices.add(matchIndex);
         }
       });
     });
 
-    let endpointNum = 1;
-    while (usedNumbers.has(endpointNum)) {
-      endpointNum++;
+    let nextIndex = 0;
+    while (usedIndices.has(nextIndex)) {
+      nextIndex++;
     }
 
-    return pattern.replace('{n}', endpointNum.toString());
+    return generateInterfaceName(parsedPattern, nextIndex);
   }
 
   /**
