@@ -250,6 +250,9 @@
         lockBtnRef.setAttribute('data-tippy-content', 'Unlock Lab');
         lockBtnRef.style.background = 'var(--color-red-500)';
         lockBtnRef.style.color = 'var(--vscode-button-foreground)';
+        if (lockBtnRef._tippy) {
+          lockBtnRef._tippy.setContent('Unlock Lab');
+        }
 
         panel.style.cursor = 'default';
         const dragHandle = panel.querySelector('.drag-handle');
@@ -259,6 +262,9 @@
         lockBtnRef.setAttribute('data-tippy-content', 'Lock Lab');
         lockBtnRef.style.background = 'var(--vscode-button-secondaryBackground)';
         lockBtnRef.style.color = 'var(--vscode-button-secondaryForeground)';
+        if (lockBtnRef._tippy) {
+          lockBtnRef._tippy.setContent('Lock Lab');
+        }
 
         panel.style.cursor = 'grab';
         const dragHandle = panel.querySelector('.drag-handle');
@@ -278,6 +284,9 @@
       if (isCollapsed) {
         collapseBtnRef.innerHTML = '<i class="fas fa-chevron-down text-[10px]"></i>';
         collapseBtnRef.setAttribute('data-tippy-content', 'Expand Panel');
+        if (collapseBtnRef._tippy) {
+          collapseBtnRef._tippy.setContent('Expand Panel');
+        }
         panelContent.style.display = 'none';
         // Also hide the bottom divider
         const divider = document.getElementById('panel-divider-collapse');
@@ -285,6 +294,9 @@
       } else {
         collapseBtnRef.innerHTML = '<i class="fas fa-chevron-up text-[10px]"></i>';
         collapseBtnRef.setAttribute('data-tippy-content', 'Collapse Panel');
+        if (collapseBtnRef._tippy) {
+          collapseBtnRef._tippy.setContent('Collapse Panel');
+        }
         panelContent.style.display = 'flex';
         // Show the bottom divider
         const divider = document.getElementById('panel-divider-collapse');

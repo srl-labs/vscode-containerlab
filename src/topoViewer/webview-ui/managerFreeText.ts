@@ -4,6 +4,12 @@ import { FreeTextAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/logger';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 
+// Keep the saved font size small by default, but boost the preview to better match
+// the appearance on the Cytoscape canvas where text renders larger than the modal.
+const MIN_FREE_TEXT_FONT_SIZE = 1;
+const DEFAULT_FREE_TEXT_FONT_SIZE = 8;
+const PREVIEW_FONT_SCALE = 2;
+
 interface FreeTextModalElements {
   backdrop: HTMLDivElement;
   dialog: HTMLDivElement;
@@ -219,7 +225,7 @@ export class ManagerFreeText {
       if (target !== this.cy) {
         // If clicked on a group or parent node, cancel text mode
         if (target.isParent?.() ||
-            target.data?.('topoViewerRole') === 'group') {
+          target.data?.('topoViewerRole') === 'group') {
           this.disableAddTextMode();
           log.debug('Text addition cancelled - cannot add text to groups');
           return;
@@ -271,7 +277,7 @@ export class ManagerFreeText {
         x: Math.round(position.x),
         y: Math.round(position.y)
       },
-      fontSize: lastAnnotation?.fontSize ?? 14,
+      fontSize: this.normalizeFontSize(lastAnnotation?.fontSize),
       fontColor: lastAnnotation?.fontColor ?? '#FFFFFF',
       backgroundColor: lastAnnotation?.backgroundColor ?? 'transparent',
       fontWeight: lastAnnotation?.fontWeight ?? 'normal',
@@ -366,7 +372,8 @@ export class ManagerFreeText {
 
     titleEl.textContent = title;
     this.applyTextInputStyles(textInput, annotation);
-    fontSizeInput.value = String(annotation.fontSize ?? 14);
+    fontSizeInput.min = String(MIN_FREE_TEXT_FONT_SIZE);
+    fontSizeInput.value = String(this.normalizeFontSize(annotation.fontSize));
     this.populateFontFamilySelect(fontFamilySelect, annotation.fontFamily);
     fontColorInput.value = annotation.fontColor ?? '#FFFFFF';
     bgColorInput.value = this.resolveBackgroundColor(annotation.backgroundColor, true);
@@ -375,12 +382,25 @@ export class ManagerFreeText {
   private applyTextInputStyles(textInput: HTMLTextAreaElement, annotation: FreeTextAnnotation): void {
     textInput.value = annotation.text ?? '';
     textInput.style.fontFamily = annotation.fontFamily ?? 'monospace';
-    textInput.style.fontSize = `${annotation.fontSize ?? 14}px`;
+    this.applyPreviewFontSize(textInput, annotation.fontSize);
     textInput.style.fontWeight = annotation.fontWeight ?? 'normal';
     textInput.style.fontStyle = annotation.fontStyle ?? 'normal';
     textInput.style.textDecoration = annotation.textDecoration ?? 'none';
     textInput.style.color = annotation.fontColor ?? '#FFFFFF';
     textInput.style.background = this.resolveBackgroundColor(annotation.backgroundColor, false);
+  }
+
+  private normalizeFontSize(fontSize?: number): number {
+    const numeric = Number.isFinite(fontSize) && (fontSize as number) > 0
+      ? Math.round(fontSize as number)
+      : DEFAULT_FREE_TEXT_FONT_SIZE;
+    return Math.max(MIN_FREE_TEXT_FONT_SIZE, numeric);
+  }
+
+  private applyPreviewFontSize(textInput: HTMLTextAreaElement, fontSize?: number): void {
+    const baseSize = this.normalizeFontSize(fontSize);
+    const previewSize = Math.max(baseSize, Math.round(baseSize * PREVIEW_FONT_SCALE));
+    textInput.style.fontSize = `${previewSize}px`;
   }
 
   private populateFontFamilySelect(select: HTMLSelectElement, selectedFamily?: string): void {
@@ -416,7 +436,8 @@ export class ManagerFreeText {
   private configureFontInputs(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
     const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, textInput } = els;
     this.bindHandler(fontSizeInput, 'oninput', () => {
-      textInput.style.fontSize = fontSizeInput.value + 'px';
+      const size = Number.parseInt(fontSizeInput.value, 10);
+      this.applyPreviewFontSize(textInput, this.normalizeFontSize(size));
     }, cleanupTasks);
     this.bindHandler(fontFamilySelect, 'onchange', () => {
       textInput.style.fontFamily = fontFamilySelect.value;
@@ -548,7 +569,7 @@ export class ManagerFreeText {
     return {
       ...annotation,
       text,
-      fontSize: parseInt(fontSizeInput.value),
+      fontSize: this.normalizeFontSize(Number.parseInt(fontSizeInput.value, 10)),
       fontColor: fontColorInput.value,
       backgroundColor: state.isTransparentBg ? 'transparent' : bgColorInput.value,
       fontWeight: state.isBold ? 'bold' : 'normal',
@@ -646,7 +667,7 @@ export class ManagerFreeText {
     const styles: any = {};
 
     // Font size
-    const fontSize = annotation.fontSize || 14;
+    const fontSize = this.normalizeFontSize(annotation.fontSize);
     styles['font-size'] = fontSize;
 
     // Text color
