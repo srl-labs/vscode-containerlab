@@ -119,6 +119,7 @@ const PH_SEARCH_KEY_SIZE = 'Search key size...' as const;
 const PH_BIND = 'Bind mount (host:container)' as const;
 const PH_ENV_KEY = 'ENV_NAME' as const;
 const PH_VALUE = 'value' as const;
+const PH_ENV_FILE = 'Path to env file' as const;
 const PH_LABEL_KEY = 'label-key' as const;
 const PH_LABEL_VALUE = 'label-value' as const;
 const PH_EXEC = 'Command to execute' as const;
@@ -172,6 +173,7 @@ const ID_NODE_SUPPRESS_STARTUP_CONFIG = 'node-suppress-startup-config' as const;
 const ID_NODE_LICENSE = 'node-license' as const;
 const ID_NODE_BINDS_CONTAINER = 'node-binds-container' as const;
 const ID_NODE_ENV_CONTAINER = 'node-env-container' as const;
+const ID_NODE_ENV_FILES_CONTAINER = 'node-env-files-container' as const;
 const ID_NODE_LABELS_CONTAINER = 'node-labels-container' as const;
 const ID_NODE_USER = 'node-user' as const;
 const ID_NODE_ENTRYPOINT = 'node-entrypoint' as const;
@@ -195,6 +197,7 @@ const ID_NODE_SHM_SIZE = 'node-shm-size' as const;
 // Dynamic container names
 const CN_BINDS = 'binds' as const;
 const CN_ENV = 'env' as const;
+const CN_ENV_FILES = 'env-files' as const;
 const CN_LABELS = 'labels' as const;
 const CN_EXEC = 'exec' as const;
 const CN_PORTS = 'ports' as const;
@@ -221,6 +224,7 @@ const FIELD_MAPPINGS_BASE: FieldMapping[] = [
   { id: ID_NODE_LICENSE, prop: 'license' },
   { id: ID_NODE_BINDS_CONTAINER, prop: CN_BINDS },
   { id: ID_NODE_ENV_CONTAINER, prop: CN_ENV },
+  { id: ID_NODE_ENV_FILES_CONTAINER, prop: CN_ENV_FILES },
   { id: ID_NODE_LABELS_CONTAINER, prop: CN_LABELS },
   { id: ID_NODE_USER, prop: 'user' },
   { id: ID_NODE_ENTRYPOINT, prop: 'entrypoint' },
@@ -1854,6 +1858,7 @@ export class ManagerNodeEditor {
     // Expose functions globally for onclick handlers in HTML
     (window as any).addBindEntry = () => this.addDynamicEntry(CN_BINDS, PH_BIND);
     (window as any).addEnvEntry = () => this.addDynamicKeyValueEntry(CN_ENV, PH_ENV_KEY, PH_VALUE);
+    (window as any).addEnvFileEntry = () => this.addDynamicEntry(CN_ENV_FILES, PH_ENV_FILE);
     (window as any).addLabelEntry = () => this.addDynamicKeyValueEntry(CN_LABELS, PH_LABEL_KEY, PH_LABEL_VALUE);
     (window as any).addExecEntry = () => this.addDynamicEntry(CN_EXEC, PH_EXEC);
     (window as any).addPortEntry = () => this.addDynamicEntry(CN_PORTS, PH_PORT);
@@ -2032,7 +2037,7 @@ export class ManagerNodeEditor {
    */
   private clearAllDynamicEntries(): void {
     const containers = [
-      CN_BINDS, CN_ENV, CN_LABELS, CN_EXEC, CN_PORTS, CN_DNS_SERVERS,
+      CN_BINDS, CN_ENV, CN_ENV_FILES, CN_LABELS, CN_EXEC, CN_PORTS, CN_DNS_SERVERS,
       CN_ALIASES, CN_CAP_ADD, CN_SYSCTLS, CN_DEVICES, CN_SANS
     ];
 
@@ -2225,24 +2230,41 @@ export class ManagerNodeEditor {
     this.setInputValue(ID_NODE_LICENSE, extraData.license || '');
     this.markFieldInheritance(ID_NODE_LICENSE, actualInherited.includes('license'));
 
-    if (extraData.binds && Array.isArray(extraData.binds)) {
-      extraData.binds.forEach((bind: string) => this.addDynamicEntryWithValue(CN_BINDS, bind, PH_BIND));
-    }
-    this.markFieldInheritance(ID_NODE_BINDS_CONTAINER, actualInherited.includes(CN_BINDS));
+    this.populateArrayProperty(extraData, CN_BINDS, CN_BINDS, PH_BIND, ID_NODE_BINDS_CONTAINER, actualInherited);
+    this.populateKeyValueProperty(extraData, CN_ENV, CN_ENV, ID_NODE_ENV_CONTAINER, actualInherited);
+    this.populateArrayProperty(extraData, CN_ENV_FILES, CN_ENV_FILES, PH_ENV_FILE, ID_NODE_ENV_FILES_CONTAINER, actualInherited);
+    this.populateKeyValueProperty(extraData, CN_LABELS, CN_LABELS, ID_NODE_LABELS_CONTAINER, actualInherited);
+  }
 
-    if (extraData.env && typeof extraData.env === 'object') {
-      Object.entries(extraData.env).forEach(([key, value]) =>
-        this.addDynamicKeyValueEntryWithValue(CN_ENV, key, value as string),
+  private populateArrayProperty(
+    source: Record<string, any>,
+    propName: string,
+    containerName: string,
+    placeholder: string,
+    containerId: string,
+    actualInherited: string[],
+  ): void {
+    const values = source[propName];
+    if (Array.isArray(values)) {
+      values.forEach((value: string) => this.addDynamicEntryWithValue(containerName, value, placeholder));
+    }
+    this.markFieldInheritance(containerId, actualInherited.includes(propName));
+  }
+
+  private populateKeyValueProperty(
+    source: Record<string, any>,
+    propName: string,
+    containerName: string,
+    containerId: string,
+    actualInherited: string[],
+  ): void {
+    const mapEntries = source[propName];
+    if (mapEntries && typeof mapEntries === 'object' && !Array.isArray(mapEntries)) {
+      Object.entries(mapEntries).forEach(([key, value]) =>
+        this.addDynamicKeyValueEntryWithValue(containerName, key, value as string),
       );
     }
-    this.markFieldInheritance(ID_NODE_ENV_CONTAINER, actualInherited.includes(CN_ENV));
-
-    if (extraData.labels && typeof extraData.labels === 'object') {
-      Object.entries(extraData.labels).forEach(([key, value]) =>
-        this.addDynamicKeyValueEntryWithValue(CN_LABELS, key, value as string),
-      );
-    }
-    this.markFieldInheritance(ID_NODE_LABELS_CONTAINER, actualInherited.includes(CN_LABELS));
+    this.markFieldInheritance(containerId, actualInherited.includes(propName));
   }
 
   private loadRuntimeTab(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -3254,6 +3276,9 @@ export class ManagerNodeEditor {
     const env = this.collectDynamicKeyValueEntries('env');
     if (Object.keys(env).length > 0) nodeProps.env = env;
 
+    const envFiles = this.collectDynamicEntries(CN_ENV_FILES);
+    if (envFiles.length > 0) nodeProps[CN_ENV_FILES] = envFiles;
+
     const labels = this.collectDynamicKeyValueEntries('labels');
     if (Object.keys(labels).length > 0) nodeProps.labels = labels;
   }
@@ -3448,7 +3473,7 @@ export class ManagerNodeEditor {
     const formManagedProperties = [
       'name', 'kind', 'type', 'image',
       PROP_STARTUP_CONFIG, PROP_ENFORCE_STARTUP_CONFIG, PROP_SUPPRESS_STARTUP_CONFIG,
-      'license', CN_BINDS, CN_ENV, CN_LABELS, 'user',
+      'license', CN_BINDS, CN_ENV, CN_ENV_FILES, CN_LABELS, 'user',
       'entrypoint', 'cmd', 'exec', PROP_RESTART_POLICY, PROP_AUTO_REMOVE, PROP_STARTUP_DELAY,
       PROP_MGMT_IPV4, PROP_MGMT_IPV6, PROP_NETWORK_MODE, PROP_PORTS, PROP_DNS, PROP_ALIASES,
       PROP_MEMORY, PROP_CPU, PROP_CPU_SET, PROP_SHM_SIZE, PROP_CAP_ADD, PROP_SYSCTLS, PROP_DEVICES,
