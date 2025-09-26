@@ -212,7 +212,6 @@ export class ManagerUnifiedFloatingPanel {
     const filterContainer = document.createElement('div');
     filterContainer.className = 'filter-container';
     filterContainer.style.padding = '8px';
-    filterContainer.style.borderBottom = '1px solid var(--vscode-widget-border, var(--vscode-dropdown-border))';
 
     const filterInput = document.createElement('input');
     filterInput.type = 'text';
@@ -248,10 +247,14 @@ export class ManagerUnifiedFloatingPanel {
     label: string,
     handler: () => void,
     instance: any,
-    isDefault = false
+    isDefault = false,
+    addTopDivider = false
   ): void {
     const item = document.createElement('button');
     item.className = 'add-node-menu-item text-left filterable-item';
+    if (addTopDivider) {
+      item.classList.add('add-node-menu-item--top-divider');
+    }
     item.textContent = label;
     if (isDefault) {
       item.style.fontWeight = '600';
@@ -273,15 +276,42 @@ export class ManagerUnifiedFloatingPanel {
     const item = document.createElement('div');
     item.className = 'add-node-menu-item filterable-item';
 
+    const isDefault = node.setDefault === true;
+    const labelText = isDefault ? `${node.name} (default)` : node.name;
+
     const btn = document.createElement('button');
-    btn.textContent = node.name;
+    btn.textContent = labelText;
     btn.className = 'flex-1 text-left bg-transparent border-none cursor-pointer';
     btn.style.color = 'inherit';
     btn.style.fontFamily = 'inherit';
     btn.style.fontSize = 'inherit';
+    if (isDefault) {
+      btn.style.fontWeight = '600';
+    }
     btn.addEventListener('click', () => {
       this.handleAddNodeTemplate(node);
       instance.hide();
+    });
+
+    const defaultBtn = document.createElement('button');
+    defaultBtn.innerHTML = isDefault ? '★' : '☆';
+    defaultBtn.className = 'add-node-default-btn';
+    if (isDefault) {
+      defaultBtn.classList.add('is-default');
+      defaultBtn.title = 'Default node';
+      defaultBtn.setAttribute('aria-pressed', 'true');
+    } else {
+      defaultBtn.title = 'Set as default node';
+      defaultBtn.setAttribute('aria-pressed', 'false');
+    }
+    defaultBtn.type = 'button';
+    defaultBtn.setAttribute('aria-label', isDefault ? 'Default node' : 'Set as default node');
+    defaultBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (isDefault) {
+        return;
+      }
+      await this.handleSetDefaultCustomNode(node.name, instance);
     });
 
     const editBtn = document.createElement('button');
@@ -305,18 +335,38 @@ export class ManagerUnifiedFloatingPanel {
     });
 
     item.appendChild(btn);
+    item.appendChild(defaultBtn);
     item.appendChild(editBtn);
     item.appendChild(deleteBtn);
     menu.appendChild(item);
-    allItems.push({ element: item, label: node.name.toLowerCase() });
+    allItems.push({ element: item, label: labelText.toLowerCase() });
+  }
+
+  private async handleSetDefaultCustomNode(nodeName: string, instance: any): Promise<void> {
+    try {
+      const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
+        'topo-editor-set-default-custom-node',
+        { name: nodeName }
+      );
+
+      if (resp?.customNodes) {
+        (window as any).customNodes = resp.customNodes;
+      }
+      if (resp?.defaultNode !== undefined) {
+        (window as any).defaultNode = resp.defaultNode;
+      }
+
+      instance.setContent(this.buildAddNodeMenu(instance));
+      log.info(`Set default custom node: ${nodeName}`);
+    } catch (err) {
+      log.error(`Failed to set default custom node: ${err instanceof Error ? err.message : String(err)}`);
+      await this.showError('Failed to set default custom node');
+    }
   }
 
   private attachFilterHandlers(
     filterInput: HTMLInputElement,
     allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
-    customNodes: any[],
-    separator: HTMLElement | null,
-    separator2: HTMLElement | null,
     instance: any
   ): void {
     let currentFocusIndex = -1;
@@ -326,10 +376,7 @@ export class ManagerUnifiedFloatingPanel {
       this.filterMenuItems(
         (e.target as HTMLInputElement).value,
         allItems,
-        visibleItems,
-        customNodes,
-        separator,
-        separator2
+        visibleItems
       );
       currentFocusIndex = -1;
     });
@@ -349,10 +396,7 @@ export class ManagerUnifiedFloatingPanel {
   private filterMenuItems(
     searchText: string,
     allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
-    visibleItems: HTMLElement[],
-    customNodes: any[],
-    separator: HTMLElement | null,
-    separator2: HTMLElement | null
+    visibleItems: HTMLElement[]
   ): void {
     const search = searchText.toLowerCase();
     visibleItems.length = 0;
@@ -366,13 +410,6 @@ export class ManagerUnifiedFloatingPanel {
       }
     });
 
-    if (separator && separator2) {
-      const hasVisibleCustomNodes = customNodes.some((n: any) =>
-        search === '' || n.name.toLowerCase().includes(search)
-      );
-      separator.style.display = hasVisibleCustomNodes ? '' : 'none';
-      separator2.style.display = hasVisibleCustomNodes ? '' : 'none';
-    }
   }
 
   private applyFocus(
@@ -437,27 +474,23 @@ export class ManagerUnifiedFloatingPanel {
     const customNodes = (window as any).customNodes || [];
     const allItems: { element: HTMLElement; label: string; isDefault?: boolean }[] = [];
 
-    const defaultName = (window as any).defaultNode;
-    this.createAddNodeMenuItem(menu, allItems, defaultName ? `Default (${defaultName})` : 'Default', () => this.handleAddNode(), instance, true);
-
-    let separator: HTMLElement | null = null;
     if (customNodes.length > 0) {
-      separator = document.createElement('div');
-      separator.className = 'add-node-menu-separator';
-      menu.appendChild(separator);
-
       customNodes.forEach((n: any) => {
         this.createCustomNodeMenuItem(menu, allItems, n, instance);
       });
     }
 
-    const separator2 = document.createElement('div');
-    separator2.className = 'add-node-menu-separator';
-    menu.appendChild(separator2);
+    this.createAddNodeMenuItem(
+      menu,
+      allItems,
+      'New custom node…',
+      () => this.handleCreateCustomNode(),
+      instance,
+      false,
+      customNodes.length > 0
+    );
 
-    this.createAddNodeMenuItem(menu, allItems, 'New custom node…', () => this.handleCreateCustomNode(), instance);
-
-    this.attachFilterHandlers(filterInput, allItems, customNodes, separator, separator2, instance);
+    this.attachFilterHandlers(filterInput, allItems, instance);
 
     return container;
   }
