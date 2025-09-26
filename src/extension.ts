@@ -6,7 +6,7 @@ import * as c from './treeView/common';
 import * as path from 'path';
 
 import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
-import { setCurrentTopoViewer } from './commands/graph';
+import { refreshAllTopoViewers, setCurrentTopoViewer } from './commands/graph';
 
 
 import { WelcomePage } from './welcomePage';
@@ -33,6 +33,8 @@ export let gottySessions: Map<string, string> = new Map();
 export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
+
+const CONFIG_SECTION = 'containerlab.editor';
 
 function extractLabName(session: any, prefix: string): string | undefined {
   if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
@@ -268,6 +270,17 @@ function clearLocalLabsFilterCommand() {
   localLabsProvider.clearTreeFilter();
 }
 
+async function toggleHideDummyLinksCommand(): Promise<void> {
+  const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+  const current = config.get<boolean>('hideDummyLinks', false);
+  const updated = !current;
+  await config.update('hideDummyLinks', updated, vscode.ConfigurationTarget.Global);
+  void vscode.window.showInformationMessage(
+    updated ? 'TopoViewer dummy links hidden' : 'TopoViewer dummy links shown'
+  );
+  await refreshAllTopoViewers();
+}
+
 function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
   if (e.affectsConfiguration('containerlab.autoSync')) {
     // Setting changed; no action required here
@@ -312,6 +325,7 @@ function registerCommands(context: vscode.ExtensionContext) {
     ['containerlab.lab.graph.drawio.vertical', cmd.graphDrawIOVertical],
     ['containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive],
     ['containerlab.lab.graph.topoViewerReload', cmd.graphTopoviewerReload],
+    ['containerlab.editor.toggleHideDummyLinks', toggleHideDummyLinksCommand],
     ['containerlab.node.start', cmd.startNode],
     ['containerlab.node.stop', cmd.stopNode],
     ['containerlab.node.save', cmd.saveNode],

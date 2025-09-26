@@ -112,6 +112,7 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 | `editor.customNodes` | array | See below* | Custom node templates for TopoViewer |
 | `editor.interfacePatternMapping` | object | See below** | Interface naming patterns<br/>Use `{n}` as counter |
 | `editor.updateLinkEndpointsOnKindChange` | boolean | `true` | Auto-update link endpoints on kind change |
+| `editor.hideDummyLinks` | boolean | `false` | Hide dummy links and synthetic nodes in TopoViewer without modifying the lab YAML |
 | `drawioDefaultTheme` | string | `nokia_modern` | Draw.io theme (`nokia_modern`, `nokia`, `grafana`) |
 
 *Default custom nodes include SRLinux and Network Multitool templates  

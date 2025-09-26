@@ -19,15 +19,15 @@ const originalResolve = (Module as any)._resolveFilename;
 import { TopoViewerAdaptorClab } from '../../../src/topoViewer/core/topoViewerAdaptorClab';
 import * as treeUtils from '../../../src/topoViewer/utilities/treeUtils';
 
+after(() => {
+  (Module as any)._resolveFilename = originalResolve;
+});
+
+afterEach(() => {
+  sinon.restore();
+});
+
 describe('buildCytoscapeElements delegation', () => {
-  after(() => {
-    (Module as any)._resolveFilename = originalResolve;
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
   it('delegates for both converter methods', async () => {
     const adaptor = new TopoViewerAdaptorClab();
     const spy = sinon.spy(adaptor as any, 'buildCytoscapeElements');
@@ -60,6 +60,9 @@ describe('buildCytoscapeElements delegation', () => {
     expect(edge?.classes).to.equal('');
   });
 
+});
+
+describe('dummy network visibility', () => {
   it('assigns unique ids to multiple dummy networks', async () => {
     const adaptor = new TopoViewerAdaptorClab();
     const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1: {}\n  links:\n    - type: dummy\n      endpoint: node1:eth0\n    - type: dummy\n      endpoint: node1:eth1\n`;
@@ -69,5 +72,15 @@ describe('buildCytoscapeElements delegation', () => {
     expect(dummyNodes[0].data.name).to.equal('dummy');
     expect(dummyNodes[1].data.name).to.equal('dummy');
     expect(dummyNodes[0].data.id).to.not.equal(dummyNodes[1].data.id);
+  });
+
+  it('omits dummy links when hideDummyLinks option is enabled', async () => {
+    const adaptor = new TopoViewerAdaptorClab();
+    const yaml = `\nname: demo\ntopology:\n  nodes:\n    node1: {}\n  links:\n    - type: dummy\n      endpoint: node1:eth0\n    - type: dummy\n      endpoint: node1:eth1\n`;
+    const elements = await adaptor.clabYamlToCytoscapeElementsEditor(yaml, undefined, { hideDummyLinks: true });
+    const dummyNodes = elements.filter((e: any) => e.group === 'nodes' && e.data.id.startsWith('dummy'));
+    const dummyEdges = elements.filter((e: any) => e.group === 'edges' && e.data.extraData?.extType === 'dummy');
+    expect(dummyNodes).to.have.length(0);
+    expect(dummyEdges).to.have.length(0);
   });
 });

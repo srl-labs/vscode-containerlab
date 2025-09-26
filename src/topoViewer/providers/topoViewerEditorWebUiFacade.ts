@@ -320,7 +320,7 @@ topology:
    * Internal method to update panel HTML without mode switch checks (used during panel creation)
    */
   private async updatePanelHtmlInternal(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
-    return this.updatePanelHtmlCore(panel, true);
+    return this.updatePanelHtmlCore(panel, { isInitialLoad: true });
   }
 
   /**
@@ -332,7 +332,7 @@ topology:
     this.isUpdating = false;
 
     // Force the update
-    return this.updatePanelHtmlCore(panel, true);
+    return this.updatePanelHtmlCore(panel, { isInitialLoad: true });
   }
 
   /**
@@ -344,7 +344,10 @@ topology:
    * @param panel - The active WebviewPanel to update.
    * @returns A promise that resolves when the panel has been updated.
    */
-  public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
+  public async updatePanelHtml(
+    panel: vscode.WebviewPanel | undefined,
+    options?: { forceRegenerate?: boolean }
+  ): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
     }
@@ -363,7 +366,7 @@ topology:
 
     this.isUpdating = true;
     try {
-      return await this.updatePanelHtmlCore(panel);
+      return await this.updatePanelHtmlCore(panel, { forceRegenerate: options?.forceRegenerate === true });
     } finally {
       this.isUpdating = false;
     }
@@ -374,8 +377,9 @@ topology:
    */
   private async updatePanelHtmlCore(
     panel: vscode.WebviewPanel | undefined,
-    isInitialLoad: boolean = false
+    options: { isInitialLoad?: boolean; forceRegenerate?: boolean } = {}
   ): Promise<boolean> {
+    const { isInitialLoad = false, forceRegenerate = false } = options;
     if (!this.currentLabName) {
       return false;
     }
@@ -393,14 +397,17 @@ topology:
       return false;
     }
 
-    if (this.shouldSkipUpdate(yamlContent, isInitialLoad)) {
+    if (this.shouldSkipUpdate(yamlContent, isInitialLoad, forceRegenerate)) {
       return true;
     }
 
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const hideDummyLinks = config.get<boolean>('hideDummyLinks', false);
     const cytoTopology = await this.adaptor.clabYamlToCytoscapeElements(
       yamlContent,
       updatedTree,
-      this.lastYamlFilePath
+      this.lastYamlFilePath,
+      { hideDummyLinks }
     );
 
     const writeOk = await this.writeTopologyFiles(
@@ -505,8 +512,12 @@ topology:
     return yamlContent;
   }
 
-  private shouldSkipUpdate(yamlContent: string, isInitialLoad: boolean): boolean {
-    if (isInitialLoad || this.isViewMode) {
+  private shouldSkipUpdate(
+    yamlContent: string,
+    isInitialLoad: boolean,
+    forceRegenerate: boolean
+  ): boolean {
+    if (isInitialLoad || forceRegenerate || this.isViewMode) {
       return false;
     }
     const cachedYaml = this.context.workspaceState.get<string>(`cachedYaml_${this.currentLabName}`);

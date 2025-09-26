@@ -194,6 +194,11 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.editor.toggleHideDummyLinks",
+        "title": "TopoViewer: Toggle Dummy Links",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.editor.topoViewerEditor",
         "title": "New topology file",
         "icon": "$(new-file)",
@@ -1341,6 +1346,11 @@
             "cisco_iol": "e0/{n}"
           },
           "markdownDescription": "Interface name pattern used when creating links in the TopoViewer edit mode.. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
+        },
+        "containerlab.editor.hideDummyLinks": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "When enabled, TopoViewer hides dummy links and their synthetic nodes without modifying the lab YAML file."
         },
         "containerlab.editor.updateLinkEndpointsOnKindChange": {
           "type": "boolean",

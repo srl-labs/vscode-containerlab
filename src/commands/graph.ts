@@ -197,6 +197,27 @@ export async function graphTopoviewerReload() {
 }
 
 /**
+ * Refresh every active TopoViewer instance.
+ */
+export async function refreshAllTopoViewers(): Promise<void> {
+  for (const viewer of activeTopoViewers) {
+    const panel = viewer.currentPanel as vscode.WebviewPanel | undefined;
+    if (!panel) {
+      continue;
+    }
+    try {
+      if (typeof viewer.updatePanelHtml === 'function') {
+        await viewer.updatePanelHtml(panel, { forceRegenerate: true });
+      } else {
+        await viewer.forceUpdateAfterCommand?.(panel);
+      }
+    } catch (err) {
+      console.error(`Failed to refresh TopoViewer: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+}
+
+/**
  * Get the current TopoViewer instance
  */
 export function getCurrentTopoViewer(): TopoViewer | undefined {

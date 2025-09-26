@@ -30,6 +30,13 @@ const TYPES = {
   DUMMY: 'dummy',
 } as const;
 type SpecialNodeType = typeof TYPES[keyof typeof TYPES];
+type ConversionOptions = { hideDummyLinks?: boolean };
+type BuildOptions = {
+  includeContainerData: boolean;
+  clabTreeData?: Record<string, ClabLabTreeNode>;
+  annotations?: any;
+  hideDummyLinks?: boolean;
+};
 
 // Common string literals used across this adaptor
 const PREFIX_MACVLAN = 'macvlan:';
@@ -200,13 +207,23 @@ export class TopoViewerAdaptorClab {
    * @param yamlFilePath - The path to the YAML file (for loading annotations).
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
-  public async clabYamlToCytoscapeElements(yamlContent: string, clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined, yamlFilePath?: string): Promise<CyElement[]> {
+  public async clabYamlToCytoscapeElements(
+    yamlContent: string,
+    clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined,
+    yamlFilePath?: string,
+    options?: ConversionOptions
+  ): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
     const annotationsManager = await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager);
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
     annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath, annotationsManager);
 
-    return this.buildCytoscapeElements(parsed, { includeContainerData: true, clabTreeData: clabTreeDataToTopoviewer, annotations });
+    return this.buildCytoscapeElements(parsed, {
+      includeContainerData: true,
+      clabTreeData: clabTreeDataToTopoviewer,
+      annotations,
+      hideDummyLinks: options?.hideDummyLinks,
+    });
   }
 
 
@@ -223,13 +240,21 @@ export class TopoViewerAdaptorClab {
    * @param yamlFilePath - The path to the YAML file (for loading annotations).
    * @returns An array of Cytoscape elements (`CyElement[]`) representing nodes and edges.
    */
-  public async clabYamlToCytoscapeElementsEditor(yamlContent: string, yamlFilePath?: string): Promise<CyElement[]> {
+  public async clabYamlToCytoscapeElementsEditor(
+    yamlContent: string,
+    yamlFilePath?: string,
+    options?: ConversionOptions
+  ): Promise<CyElement[]> {
     const parsed = YAML.parse(yamlContent) as ClabTopology;
     const annotationsManager = await import('./../../topoViewer/utilities/annotationsManager').then(m => m.annotationsManager);
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
     annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath, annotationsManager);
 
-    return this.buildCytoscapeElements(parsed, { includeContainerData: false, annotations });
+    return this.buildCytoscapeElements(parsed, {
+      includeContainerData: false,
+      annotations,
+      hideDummyLinks: options?.hideDummyLinks,
+    });
   }
 
   private async migrateGraphLabelsToAnnotations(
@@ -661,7 +686,8 @@ export class TopoViewerAdaptorClab {
 
   private collectSpecialNodes(
     parsed: ClabTopology,
-    ctx: DummyContext
+    ctx: DummyContext,
+    opts: BuildOptions
   ): {
     specialNodes: Map<string, { type: SpecialNodeType; label: string }>;
     specialNodeProps: Map<string, any>;
@@ -672,12 +698,15 @@ export class TopoViewerAdaptorClab {
     if (!links) return { specialNodes, specialNodeProps };
 
     for (const linkObj of links) {
+      if (opts.hideDummyLinks && this.isDummyLink(linkObj)) {
+        continue;
+      }
       const norm = this.normalizeLinkToTwoEndpoints(linkObj, ctx);
       if (!norm) continue;
       const { endA, endB } = norm;
-      this.registerEndpoint(specialNodes, endA);
-      this.registerEndpoint(specialNodes, endB);
-      this.mergeSpecialNodeProps(linkObj, endA, endB, specialNodeProps);
+      this.registerEndpoint(specialNodes, endA, opts.hideDummyLinks);
+      this.registerEndpoint(specialNodes, endB, opts.hideDummyLinks);
+      this.mergeSpecialNodeProps(linkObj, endA, endB, specialNodeProps, opts.hideDummyLinks);
     }
 
     return { specialNodes, specialNodeProps };
@@ -696,20 +725,25 @@ export class TopoViewerAdaptorClab {
 
   private registerEndpoint(
     specialNodes: Map<string, { type: string; label: string }>,
-    end: any
+    end: any,
+    hideDummyLinks?: boolean
   ): void {
     const { node, iface } = this.splitEndpoint(end);
-    const info = this.determineSpecialNode(node, iface);
+    const info = this.determineSpecialNode(node, iface, hideDummyLinks);
     if (info) specialNodes.set(info.id, { type: info.type, label: info.label });
   }
 
-  private determineSpecialNode(node: string, iface: string): { id: string; type: string; label: string } | null {
+  private determineSpecialNode(
+    node: string,
+    iface: string,
+    hideDummyLinks?: boolean
+  ): { id: string; type: string; label: string } | null {
     if (node === 'host') return { id: `host:${iface}`, type: 'host', label: `host:${iface || 'host'}` };
     if (node === 'mgmt-net') return { id: `mgmt-net:${iface}`, type: 'mgmt-net', label: `mgmt-net:${iface || 'mgmt-net'}` };
     if (node.startsWith(PREFIX_MACVLAN)) return { id: node, type: 'macvlan', label: node };
     if (node.startsWith(PREFIX_VXLAN_STITCH)) return { id: node, type: TYPES.VXLAN_STITCH, label: node };
     if (node.startsWith('vxlan:')) return { id: node, type: 'vxlan', label: node };
-    if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: 'dummy' };
+    if (!hideDummyLinks && node.startsWith('dummy')) return { id: node, type: 'dummy', label: 'dummy' };
     return null;
   }
 
@@ -717,12 +751,13 @@ export class TopoViewerAdaptorClab {
     linkObj: any,
     endA: any,
     endB: any,
-    specialNodeProps: Map<string, any>
+    specialNodeProps: Map<string, any>,
+    hideDummyLinks?: boolean
   ): void {
     const linkType = typeof linkObj?.type === 'string' ? String(linkObj.type) : '';
     if (!linkType || linkType === 'veth') return;
 
-    const ids = [this.getSpecialId(endA), this.getSpecialId(endB)];
+    const ids = [this.getSpecialId(endA, hideDummyLinks), this.getSpecialId(endB, hideDummyLinks)];
     const baseProps: any = this.buildBaseProps(linkObj, linkType);
     ids.forEach(id => {
       if (!id) return;
@@ -731,14 +766,14 @@ export class TopoViewerAdaptorClab {
     });
   }
 
-  private getSpecialId(end: any): string | null {
+  private getSpecialId(end: any, hideDummyLinks?: boolean): string | null {
     const { node, iface } = this.splitEndpoint(end);
     if (node === 'host') return `host:${iface}`;
     if (node === 'mgmt-net') return `mgmt-net:${iface}`;
     if (node.startsWith(PREFIX_MACVLAN)) return node;
     if (node.startsWith(PREFIX_VXLAN_STITCH)) return node;
     if (node.startsWith('vxlan:')) return node;
-    if (node.startsWith('dummy')) return node;
+    if (!hideDummyLinks && node.startsWith('dummy')) return node;
     return null;
   }
 
@@ -774,7 +809,7 @@ export class TopoViewerAdaptorClab {
   private addCloudNodes(
     specialNodes: Map<string, { type: SpecialNodeType; label: string }>,
     specialNodeProps: Map<string, any>,
-    opts: { annotations?: any },
+    opts: BuildOptions,
     elements: CyElement[]
   ): void {
     for (const [nodeId, nodeInfo] of specialNodes) {
@@ -958,7 +993,7 @@ export class TopoViewerAdaptorClab {
 
   private addEdgeElements(
     parsed: ClabTopology,
-    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> },
+    opts: BuildOptions,
     fullPrefix: string,
     clabName: string,
     specialNodes: Map<string, { type: SpecialNodeType; label: string }>,
@@ -969,6 +1004,9 @@ export class TopoViewerAdaptorClab {
     if (!topology.links) return;
     let linkIndex = 0;
     for (const linkObj of topology.links) {
+      if (opts.hideDummyLinks && this.isDummyLink(linkObj)) {
+        continue;
+      }
       const norm = this.normalizeLinkToTwoEndpoints(linkObj, ctx);
       if (!norm) {
         log.warn('Link does not have both endpoints. Skipping.');
@@ -1110,6 +1148,11 @@ export class TopoViewerAdaptorClab {
     };
   }
 
+  private isDummyLink(linkObj: any): boolean {
+    const type = typeof linkObj?.type === 'string' ? linkObj.type.toLowerCase() : '';
+    return type === TYPES.DUMMY;
+  }
+
   private buildEdgeClasses(
     edgeClass: string,
     specialNodes: Map<string, { type: string; label: string }>,
@@ -1246,7 +1289,7 @@ export class TopoViewerAdaptorClab {
 
   private buildCytoscapeElements(
     parsed: ClabTopology,
-    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: any }
+    opts: BuildOptions
   ): CyElement[] {
     const elements: CyElement[] = [];
     if (!parsed.topology) {
@@ -1264,7 +1307,7 @@ export class TopoViewerAdaptorClab {
     this.addGroupNodes(parentMap, elements);
 
     const ctx: DummyContext = { dummyCounter: 0, dummyLinkMap: new Map<any, string>() };
-    const { specialNodes, specialNodeProps } = this.collectSpecialNodes(parsed, ctx);
+    const { specialNodes, specialNodeProps } = this.collectSpecialNodes(parsed, ctx, opts);
     this.addCloudNodes(specialNodes, specialNodeProps, opts, elements);
     this.addEdgeElements(parsed, opts, fullPrefix, clabName, specialNodes, ctx, elements);
 

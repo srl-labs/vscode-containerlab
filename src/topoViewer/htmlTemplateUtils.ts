@@ -277,14 +277,16 @@ export function generateWebviewHtml(
 
   const mediaPath = vscode.Uri.joinPath(context.extensionUri, 'topoViewerData', folderName);
   const jsonFileUriDataCytoMarshall = vscode.Uri.joinPath(mediaPath, 'dataCytoMarshall.json');
-  const jsonFileUrlDataCytoMarshall = panel.webview
-    .asWebviewUri(jsonFileUriDataCytoMarshall)
-    .toString();
-
   const jsonFileUriDataEnvironment = vscode.Uri.joinPath(mediaPath, 'environment.json');
-  const jsonFileUrlDataEnvironment = panel.webview
-    .asWebviewUri(jsonFileUriDataEnvironment)
-    .toString();
+
+  // Always append a cache-busting query so the webview fetches the latest generated topology files
+  const cacheBustQuery = `?v=${Date.now()}`;
+  const jsonFileUrlDataCytoMarshall = (
+    panel.webview.asWebviewUri(jsonFileUriDataCytoMarshall).toString() + cacheBustQuery
+  );
+  const jsonFileUrlDataEnvironment = (
+    panel.webview.asWebviewUri(jsonFileUriDataEnvironment).toString() + cacheBustQuery
+  );
 
   const schemaUri = panel.webview
     .asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'schema', 'clab.schema.json'))
