@@ -290,7 +290,7 @@ export class ManagerUnifiedFloatingPanel {
     }
     btn.addEventListener('click', () => {
       this.handleAddNodeTemplate(node);
-      instance.hide();
+      this.refocusFilterInput(instance);
     });
 
     const defaultBtn = document.createElement('button');
@@ -391,6 +391,13 @@ export class ManagerUnifiedFloatingPanel {
     });
 
     setTimeout(() => filterInput.focus(), 50);
+  }
+
+  private refocusFilterInput(instance: any): void {
+    const filterInput = instance?.popper?.querySelector?.('.filter-input') as HTMLInputElement | null;
+    if (filterInput) {
+      setTimeout(() => filterInput.focus(), 0);
+    }
   }
 
   private filterMenuItems(
