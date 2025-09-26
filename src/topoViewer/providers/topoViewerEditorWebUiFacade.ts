@@ -635,6 +635,24 @@ topology:
     return imageMapping;
   }
 
+  private async updateCachedYamlFromCurrentDoc(): Promise<void> {
+    if (!this.currentLabName) {
+      return;
+    }
+
+    const doc = this.adaptor.currentClabDoc;
+    if (!doc) {
+      return;
+    }
+
+    try {
+      const yaml = doc.toString();
+      await this.context.workspaceState.update(`cachedYaml_${this.currentLabName}`, yaml);
+    } catch (err) {
+      log.warn(`Failed to update cached YAML after save: ${err}`);
+    }
+  }
+
   /**
    * Creates a new webview panel or reveals the current one.
    * @param context The extension context.
@@ -1124,6 +1142,7 @@ topology:
           this.isInternalUpdate = v;
         }
       });
+      await this.updateCachedYamlFromCurrentDoc();
       const result = 'Saved topology with preserved comments!';
       log.info(result);
       return { result, error: null };
@@ -1149,6 +1168,7 @@ topology:
           this.isInternalUpdate = v;
         }
       });
+      await this.updateCachedYamlFromCurrentDoc();
       return { result: null, error: null };
     } catch (err) {
       const result = 'Error executing endpoint "topo-editor-viewport-save-suppress-notification".';
