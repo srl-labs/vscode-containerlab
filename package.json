@@ -1345,7 +1345,7 @@
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "npm-run-all lint:ts lint:html",
-    "lint:ts": "eslint --ext .ts,.tsx .",
+    "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
     "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
     "lint:html": "prettier --check \"src/topoViewer/templates/**/*.html\"",
     "lint:fix": "npm-run-all lint:ts:fix format:html",
