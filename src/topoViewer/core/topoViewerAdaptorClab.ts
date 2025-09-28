@@ -12,7 +12,7 @@ import { resolveNodeConfig } from './nodeConfig';
 
 import { version as topoViewerVersion } from '../../../package.json';
 
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from "../../treeView/common";
 import { findContainerNode, findInterfaceNode } from '../utilities/treeUtils';
 // log.info(ClabTreeDataProvider.)
 
@@ -860,6 +860,231 @@ export class TopoViewerAdaptorClab {
     return fullPrefix ? `${fullPrefix}-${node}` : node;
   }
 
+  private resolveContainerAndInterface(params: {
+    parsed: ClabTopology;
+    nodeName: string;
+    actualNodeName: string;
+    ifaceName: string;
+    fullPrefix: string;
+    clabName: string;
+    includeContainerData: boolean;
+    clabTreeData?: Record<string, ClabLabTreeNode>;
+  }): { containerName: string; ifaceData?: ClabInterfaceTreeNode } {
+    const {
+      parsed,
+      nodeName,
+      actualNodeName,
+      ifaceName,
+      fullPrefix,
+      clabName,
+      includeContainerData,
+      clabTreeData,
+    } = params;
+
+    const containerName = this.buildContainerName(nodeName, actualNodeName, fullPrefix);
+
+    if (!includeContainerData) {
+      return { containerName };
+    }
+
+    const directIface = findInterfaceNode(clabTreeData ?? {}, containerName, ifaceName, clabName);
+    if (directIface) {
+      return { containerName, ifaceData: directIface };
+    }
+
+    const topologyNode = parsed.topology?.nodes?.[nodeName] ?? {};
+    const resolvedNode = resolveNodeConfig(parsed, topologyNode || {});
+
+    if (this.isDistributedSrosNode(resolvedNode)) {
+      const distributedMatch = this.findDistributedSrosInterface({
+        baseNodeName: nodeName,
+        ifaceName,
+        fullPrefix,
+        clabName,
+        clabTreeData,
+        components: resolvedNode.components ?? [],
+      });
+      if (distributedMatch) {
+        return distributedMatch;
+      }
+    }
+
+    return { containerName };
+  }
+
+  private isDistributedSrosNode(node: ClabNode | undefined): boolean {
+    if (!node) return false;
+    if (node.kind !== 'nokia_srsim') return false;
+    return Array.isArray((node as any).components) && (node as any).components.length > 0;
+  }
+
+  private findDistributedSrosInterface(params: {
+    baseNodeName: string;
+    ifaceName: string;
+    fullPrefix: string;
+    clabName: string;
+    clabTreeData?: Record<string, ClabLabTreeNode>;
+    components: any[];
+  }): { containerName: string; ifaceData?: ClabInterfaceTreeNode } | undefined {
+    const { baseNodeName, ifaceName, fullPrefix, clabName, clabTreeData, components } = params;
+    if (!clabTreeData || !Array.isArray(components) || components.length === 0) {
+      return undefined;
+    }
+
+    const candidateNames = this.buildDistributedCandidateNames(baseNodeName, fullPrefix, components);
+    const directMatch = this.findInterfaceByCandidateNames({
+      candidateNames,
+      ifaceName,
+      clabTreeData,
+      clabName,
+    });
+    if (directMatch) {
+      return directMatch;
+    }
+
+    return this.scanAllDistributedContainers({
+      baseNodeName,
+      ifaceName,
+      fullPrefix,
+      clabTreeData,
+      clabName,
+    });
+  }
+
+  private buildDistributedCandidateNames(
+    baseNodeName: string,
+    fullPrefix: string,
+    components: any[]
+  ): string[] {
+    const names: string[] = [];
+    for (const comp of components) {
+      const slotRaw = typeof comp?.slot === 'string' ? comp.slot.trim() : '';
+      if (!slotRaw) continue;
+      const suffix = slotRaw.toLowerCase();
+      const longName = fullPrefix ? `${fullPrefix}-${baseNodeName}-${suffix}` : `${baseNodeName}-${suffix}`;
+      names.push(longName, `${baseNodeName}-${suffix}`);
+    }
+    return names;
+  }
+
+  private findInterfaceByCandidateNames(params: {
+    candidateNames: string[];
+    ifaceName: string;
+    clabTreeData: Record<string, ClabLabTreeNode>;
+    clabName: string;
+  }): { containerName: string; ifaceData?: ClabInterfaceTreeNode } | undefined {
+    const { candidateNames, ifaceName, clabTreeData, clabName } = params;
+    for (const candidate of candidateNames) {
+      const container = findContainerNode(clabTreeData, candidate, clabName);
+      if (!container) continue;
+      const ifaceData = this.matchInterfaceInContainer(container, ifaceName);
+      if (ifaceData) {
+        return { containerName: container.name, ifaceData };
+      }
+    }
+    return undefined;
+  }
+
+  private scanAllDistributedContainers(params: {
+    baseNodeName: string;
+    ifaceName: string;
+    fullPrefix: string;
+    clabTreeData: Record<string, ClabLabTreeNode>;
+    clabName: string;
+  }): { containerName: string; ifaceData?: ClabInterfaceTreeNode } | undefined {
+    const { baseNodeName, ifaceName, fullPrefix, clabTreeData, clabName } = params;
+    for (const lab of Object.values(clabTreeData)) {
+      if (clabName && lab.name !== clabName) continue;
+      for (const container of lab.containers ?? []) {
+        if (!this.containerBelongsToDistributedNode(container, baseNodeName, fullPrefix)) continue;
+        const ifaceData = this.matchInterfaceInContainer(container, ifaceName);
+        if (ifaceData) {
+          return { containerName: container.name, ifaceData };
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private containerBelongsToDistributedNode(
+    container: ClabContainerTreeNode,
+    baseNodeName: string,
+    fullPrefix: string
+  ): boolean {
+    const prefix = fullPrefix ? `${fullPrefix}-${baseNodeName}` : baseNodeName;
+    const shortPrefix = `${baseNodeName}`;
+    return (
+      container.name.startsWith(`${prefix}-`) ||
+      container.name_short.startsWith(`${shortPrefix}-`) ||
+      (typeof container.label === 'string' && container.label.startsWith(`${shortPrefix}-`))
+    );
+  }
+
+  private matchInterfaceInContainer(
+    container: ClabContainerTreeNode,
+    ifaceName: string
+  ): ClabInterfaceTreeNode | undefined {
+    if (!container.interfaces) return undefined;
+    const candidates = this.getCandidateInterfaceNames(ifaceName);
+    for (const iface of container.interfaces) {
+      const labelStr = this.treeItemLabelToString(iface.label);
+      if (candidates.includes(iface.name) || candidates.includes(iface.alias) || (labelStr && candidates.includes(labelStr))) {
+        return iface;
+      }
+    }
+    return undefined;
+  }
+
+  private getCandidateInterfaceNames(ifaceName: string): string[] {
+    const unique = new Set<string>();
+    if (ifaceName) {
+      unique.add(ifaceName);
+    }
+    const mapped = this.mapSrosInterfaceName(ifaceName);
+    if (mapped) {
+      unique.add(mapped);
+    }
+    return Array.from(unique);
+  }
+
+  private mapSrosInterfaceName(ifaceName: string): string | undefined {
+    if (!ifaceName) return undefined;
+    const trimmed = ifaceName.trim();
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith('eth')) {
+      return trimmed;
+    }
+    const regex = /^(\d+)\/(?:x(\d+)\/)?(\d+)(?:\/c(\d+))?\/(\d+)$/;
+    const res = regex.exec(trimmed);
+    if (!res) {
+      return undefined;
+    }
+    const [, card, xiom, mda, connector, port] = res;
+    if (!card || !mda || !port) {
+      return undefined;
+    }
+    if (xiom && connector) {
+      return `e${card}-x${xiom}-${mda}-c${connector}-${port}`;
+    }
+    if (xiom) {
+      return `e${card}-x${xiom}-${mda}-${port}`;
+    }
+    if (connector) {
+      return `e${card}-${mda}-c${connector}-${port}`;
+    }
+    return `e${card}-${mda}-${port}`;
+  }
+
+  private treeItemLabelToString(label: string | vscode.TreeItemLabel | undefined): string {
+    if (!label) {
+      return '';
+    }
+    if (typeof label === 'string') {
+      return label;
+    }
+    return label.label ?? '';
+  }
+
   private computeEdgeClass(
     sourceNode: string,
     targetNode: string,
@@ -979,14 +1204,28 @@ export class TopoViewerAdaptorClab {
       const { node: targetNode, iface: targetIface } = this.splitEndpoint(endB);
       const actualSourceNode = this.resolveActualNode(sourceNode, sourceIface);
       const actualTargetNode = this.resolveActualNode(targetNode, targetIface);
-      const sourceContainerName = this.buildContainerName(sourceNode, actualSourceNode, fullPrefix);
-      const targetContainerName = this.buildContainerName(targetNode, actualTargetNode, fullPrefix);
-      const sourceIfaceData = opts.includeContainerData
-        ? findInterfaceNode(opts.clabTreeData ?? {}, sourceContainerName, sourceIface, clabName)
-        : undefined;
-      const targetIfaceData = opts.includeContainerData
-        ? findInterfaceNode(opts.clabTreeData ?? {}, targetContainerName, targetIface, clabName)
-        : undefined;
+      const sourceInfo = this.resolveContainerAndInterface({
+        parsed,
+        nodeName: sourceNode,
+        actualNodeName: actualSourceNode,
+        ifaceName: sourceIface,
+        fullPrefix,
+        clabName,
+        includeContainerData: opts.includeContainerData,
+        clabTreeData: opts.clabTreeData,
+      });
+      const targetInfo = this.resolveContainerAndInterface({
+        parsed,
+        nodeName: targetNode,
+        actualNodeName: actualTargetNode,
+        ifaceName: targetIface,
+        fullPrefix,
+        clabName,
+        includeContainerData: opts.includeContainerData,
+        clabTreeData: opts.clabTreeData,
+      });
+      const { containerName: sourceContainerName, ifaceData: sourceIfaceData } = sourceInfo;
+      const { containerName: targetContainerName, ifaceData: targetIfaceData } = targetInfo;
       const edgeId = `Clab-Link${linkIndex}`;
       const edgeClass = opts.includeContainerData
         ? this.computeEdgeClass(sourceNode, targetNode, sourceIfaceData, targetIfaceData, topology)
