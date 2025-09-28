@@ -48,16 +48,39 @@
             <label class="block vscode-label mb-1 mt-2">Base Name (for canvas)</label>
             <input type="text" id="node-base-name" class="input-field w-full"
               placeholder="e.g., srl (will become srl1, srl2, etc.)">
-            <label class="block vscode-label mb-1 mt-2">Interface Pattern</label>
-            <input type="text" id="node-interface-pattern" class="input-field w-full"
-              placeholder="e.g., e1-{n} or Gi0/0/{n:0}">
-            <p class="text-xs text-[var(--text-secondary)] mt-1">
-              Supports optional start values (<code>{n:0}</code>), ranges (<code>{n:1-6}</code>), and comma-separated sequences.
-            </p>
-            <div class="flex items-center mt-1">
+            <div class="flex items-center mt-2">
               <input type="checkbox" id="node-custom-default" class="vscode-checkbox mr-2">
               <label for="node-custom-default" class="checkbox-label">Set as default</label>
             </div>
+            <label class="block vscode-label mb-1 mt-2">
+              Interface Pattern
+              <span class="relative inline-flex items-center ml-1">
+                <button type="button"
+                  class="peer inline-flex items-center justify-center text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)] focus-visible:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
+                  aria-label="Interface pattern help" aria-describedby="interface-pattern-help-tooltip">
+                  <i class="fas fa-info-circle" aria-hidden="true"></i>
+                </button>
+                <span role="tooltip" id="interface-pattern-help-tooltip"
+                  class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-fit -translate-x-1/2 translate-y-1 rounded-md border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] px-3 py-2 text-left text-sm leading-relaxed text-[var(--vscode-editorHoverWidget-foreground)] shadow-lg opacity-0 transition duration-150 ease-out peer-hover:translate-y-0 peer-hover:opacity-100 peer-focus:translate-y-0 peer-focus:opacity-100 peer-focus-visible:translate-y-0 peer-focus-visible:opacity-100"
+                  style="max-width: min(24rem, calc(100vw - 3rem));">
+                  <span class="pointer-events-none absolute inset-x-0 -top-2 flex justify-center">
+                    <span class="h-3 w-3 rotate-45 border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] shadow-lg"></span>
+                  </span>
+                  <div class="relative z-10">
+                    <span class="block font-semibold">Interface pattern tips</span>
+                    <span class="block mt-1">Use <code class="whitespace-nowrap">{n}</code> placeholders to expand sequential interface names:</span>
+                    <ul class="mt-2 space-y-1 list-disc pl-4">
+                      <li><code class="whitespace-nowrap">xe-{n}</code> &rarr; xe-1, xe-2, xe-3 …</li>
+                      <li><code class="whitespace-nowrap">xe-{n:0}</code> starts numbering at 0.</li>
+                      <li><code class="whitespace-nowrap">xe-{n:1-4}</code> caps numbering between 1 and 4.</li>
+                      <li><code class="whitespace-nowrap">e1-{n:1-2}, e2-{n:1-2}</code> generates multiple blocks (e1-1, e1-2, e2-1, e2-2).</li>
+                    </ul>
+                  </div>
+                </span>
+              </span>
+            </label>
+            <input type="text" id="node-interface-pattern" class="input-field w-full"
+              placeholder="e.g., e1-{n} or Gi0/0/{n:0}">
           </div>
 
           <!-- Kind -->

@@ -1279,6 +1279,7 @@
               "image": "ghcr.io/nokia/srlinux:latest",
               "icon": "router",
               "baseName": "srl",
+              "interfacePattern": "e1-{n}",
               "setDefault": true
             },
             {
@@ -1287,6 +1288,7 @@
               "image": "ghcr.io/srl-labs/network-multitool:latest",
               "icon": "client",
               "baseName": "client",
+              "interfacePattern": "eth{n}",
               "setDefault": false
             }
           ],
@@ -1311,6 +1313,9 @@
               "baseName": {
                 "type": "string"
               },
+              "interfacePattern": {
+                "type": "string"
+              },
               "setDefault": {
                 "type": "boolean"
               }
@@ -1322,25 +1327,6 @@
             "additionalProperties": true
           },
           "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
-        },
-        "containerlab.editor.interfacePatternMapping": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "default": {
-            "nokia_srlinux": "e1-{n}",
-            "nokia_srsim": "1/1/c{n}/1",
-            "nokia_sros": "1/1/{n}",
-            "cisco_xrd": "Gi0-0-0-{n}",
-            "cisco_xrv": "Gi0/0/0/{n}",
-            "cisco_xrv9k": "Gi0/0/0/{n}",
-            "cisco_csr1000v": "Gi{n}",
-            "cisco_c8000v": "Gi{n}",
-            "cisco_cat9kv": "Gi1/0/{n}",
-            "cisco_iol": "e0/{n}"
-          },
-          "markdownDescription": "Interface name pattern used when creating links in the TopoViewer edit mode.. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
         },
         "containerlab.editor.updateLinkEndpointsOnKindChange": {
           "type": "boolean",

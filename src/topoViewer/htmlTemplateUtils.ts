@@ -35,7 +35,16 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   defaultType: string;
   updateLinkEndpointsOnKindChange: boolean;
   dockerImages?: string[];
-  customNodes: Array<{ name: string; kind: string; type?: string; image?: string; setDefault?: boolean }>;
+  customNodes: Array<{
+    name: string;
+    kind: string;
+    type?: string;
+    image?: string;
+    baseName?: string;
+    icon?: string;
+    interfacePattern?: string;
+    setDefault?: boolean;
+  }>;
   defaultNode: string;
   topologyDefaults?: Record<string, any>;
   topologyKinds?: Record<string, any>;
