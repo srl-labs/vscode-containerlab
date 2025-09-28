@@ -85,7 +85,7 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 |---------|------|---------|-------------|
 | `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
 | `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
-| `refreshInterval` | number | `10000` | Auto-refresh interval in milliseconds |
+| `refreshInterval` | number | `5000` | Auto-refresh interval in milliseconds |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
 
