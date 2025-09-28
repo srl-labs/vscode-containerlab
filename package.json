@@ -1279,6 +1279,7 @@
               "image": "ghcr.io/nokia/srlinux:latest",
               "icon": "router",
               "baseName": "srl",
+              "interfacePattern": "e1-{n}",
               "setDefault": true
             },
             {
@@ -1287,6 +1288,7 @@
               "image": "ghcr.io/srl-labs/network-multitool:latest",
               "icon": "client",
               "baseName": "client",
+              "interfacePattern": "eth{n}",
               "setDefault": false
             }
           ],
@@ -1311,6 +1313,9 @@
               "baseName": {
                 "type": "string"
               },
+              "interfacePattern": {
+                "type": "string"
+              },
               "setDefault": {
                 "type": "boolean"
               }
@@ -1322,25 +1327,6 @@
             "additionalProperties": true
           },
           "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
-        },
-        "containerlab.editor.interfacePatternMapping": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "default": {
-            "nokia_srlinux": "e1-{n}",
-            "nokia_srsim": "1/1/c{n}/1",
-            "nokia_sros": "1/1/{n}",
-            "cisco_xrd": "Gi0-0-0-{n}",
-            "cisco_xrv": "Gi0/0/0/{n}",
-            "cisco_xrv9k": "Gi0/0/0/{n}",
-            "cisco_csr1000v": "Gi{n}",
-            "cisco_c8000v": "Gi{n}",
-            "cisco_cat9kv": "Gi1/0/{n}",
-            "cisco_iol": "e0/{n}"
-          },
-          "markdownDescription": "Interface name pattern used when creating links in the TopoViewer edit mode.. Use `{n}` as the incrementing counter. Example: `{ \"nokia_srlinux\": \"e1-{n}\" }`"
         },
         "containerlab.editor.updateLinkEndpointsOnKindChange": {
           "type": "boolean",
@@ -1358,8 +1344,13 @@
     "package": "rm -rf dist && npm run lint && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
-    "lint": "eslint --ext .ts,.tsx .",
-    "lint:fix": "npm run lint -- --fix",
+    "lint": "npm-run-all lint:ts lint:html",
+    "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
+    "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
+    "lint:html": "prettier --check \"src/topoViewer/templates/**/*.html\"",
+    "lint:fix": "npm-run-all lint:ts:fix format:html",
+    "format": "npm run format:html",
+    "format:html": "prettier --write \"src/topoViewer/templates/**/*.html\"",
     "test": "npm run test:compile && mocha --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
     "test:compile": "tsc -p test/tsconfig.json"
   },
@@ -1404,6 +1395,7 @@
     "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
     "postcss-loader": "^8.2.0",
+    "prettier": "^3.6.2",
     "sinon": "^21.0.0",
     "tailwindcss": "^4.1.13",
     "tippy.js": "^6.3.7",

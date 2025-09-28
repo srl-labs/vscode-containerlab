@@ -11,6 +11,7 @@ export interface NodeExtraData {
   longname?: string;
   mgmtIpv4Address?: string;
   networkInterface?: string;
+  interfacePattern?: string;
   fromCustomTemplate?: boolean;
   editingCustomNodeName?: string;
 

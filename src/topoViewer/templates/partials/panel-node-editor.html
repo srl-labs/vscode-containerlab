@@ -1,29 +1,39 @@
 <!-- Node Editor Panel with Tabs -->
 <div
   class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
-  id="panel-node-editor" style="display: none;">
-
-  <p class="panel-heading" id="panel-node-editor-heading">
-    Node Editor
-  </p>
+  id="panel-node-editor"
+  style="display: none"
+>
+  <p class="panel-heading" id="panel-node-editor-heading">Node Editor</p>
 
   <!-- Tab Navigation (Scrollable with Arrow Buttons) -->
   <div class="panel-tabs panel-tabs--with-arrows">
-    <button class="tab-scroll-btn" id="node-editor-tab-scroll-left" aria-label="Scroll tabs left" title="Scroll left">
+    <button
+      class="tab-scroll-btn"
+      id="node-editor-tab-scroll-left"
+      aria-label="Scroll tabs left"
+      title="Scroll left"
+    >
       <i class="fas fa-chevron-left"></i>
     </button>
     <div class="tab-scroll-viewport" id="node-editor-tab-viewport">
       <div class="tab-strip" id="node-editor-tab-strip">
         <button class="panel-tab-button tab-active" data-tab="basic">Basic</button>
-        <button class="panel-tab-button hidden" data-tab="components" id="tab-components-button">Components</button>
+        <button class="panel-tab-button hidden" data-tab="components" id="tab-components-button">
+          Components
+        </button>
         <button class="panel-tab-button" data-tab="config">Configuration</button>
         <button class="panel-tab-button" data-tab="runtime">Runtime</button>
         <button class="panel-tab-button" data-tab="network">Network</button>
         <button class="panel-tab-button" data-tab="advanced">Advanced</button>
       </div>
     </div>
-    <button class="tab-scroll-btn" id="node-editor-tab-scroll-right" aria-label="Scroll tabs right"
-      title="Scroll right">
+    <button
+      class="tab-scroll-btn"
+      id="node-editor-tab-scroll-right"
+      aria-label="Scroll tabs right"
+      title="Scroll right"
+    >
       <i class="fas fa-chevron-right"></i>
     </button>
   </div>
@@ -31,27 +41,92 @@
   <!-- Tab Content Container -->
   <div class="panel-block p-0">
     <div class="p-2 max-h-[420px] overflow-y-auto">
-
       <!-- Basic Tab -->
       <div class="tab-content" id="tab-basic">
         <div class="space-y-3">
           <!-- Node Name -->
           <div class="form-group" id="node-name-group">
             <label class="block vscode-label mb-1">Node Name</label>
-            <input type="text" id="node-name" class="input-field w-full">
+            <input type="text" id="node-name" class="input-field w-full" />
           </div>
 
           <!-- Custom Node Name -->
           <div class="form-group" id="node-custom-name-group">
             <label class="block vscode-label mb-1">Custom Node Name</label>
-            <input type="text" id="node-custom-name" class="input-field w-full" placeholder="Template name">
+            <input
+              type="text"
+              id="node-custom-name"
+              class="input-field w-full"
+              placeholder="Template name"
+            />
             <label class="block vscode-label mb-1 mt-2">Base Name (for canvas)</label>
-            <input type="text" id="node-base-name" class="input-field w-full"
-              placeholder="e.g., srl (will become srl1, srl2, etc.)">
-            <div class="flex items-center mt-1">
-              <input type="checkbox" id="node-custom-default" class="vscode-checkbox mr-2">
+            <input
+              type="text"
+              id="node-base-name"
+              class="input-field w-full"
+              placeholder="e.g., srl (will become srl1, srl2, etc.)"
+            />
+            <div class="flex items-center mt-2">
+              <input type="checkbox" id="node-custom-default" class="vscode-checkbox mr-2" />
               <label for="node-custom-default" class="checkbox-label">Set as default</label>
             </div>
+            <label class="block vscode-label mb-1 mt-2">
+              Interface Pattern
+              <span class="relative inline-flex items-center ml-1">
+                <button
+                  type="button"
+                  class="peer inline-flex items-center justify-center text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)] focus-visible:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--vscode-focusBorder)]"
+                  aria-label="Interface pattern help"
+                  aria-describedby="interface-pattern-help-tooltip"
+                >
+                  <i class="fas fa-info-circle" aria-hidden="true"></i>
+                </button>
+                <span
+                  role="tooltip"
+                  id="interface-pattern-help-tooltip"
+                  class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-fit -translate-x-1/2 translate-y-1 rounded-md border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] px-3 py-2 text-left text-sm leading-relaxed text-[var(--vscode-editorHoverWidget-foreground)] shadow-lg opacity-0 transition duration-150 ease-out peer-hover:translate-y-0 peer-hover:opacity-100 peer-focus:translate-y-0 peer-focus:opacity-100 peer-focus-visible:translate-y-0 peer-focus-visible:opacity-100"
+                  style="max-width: min(24rem, calc(100vw - 3rem))"
+                >
+                  <span class="pointer-events-none absolute inset-x-0 -top-2 flex justify-center">
+                    <span
+                      class="h-3 w-3 rotate-45 border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] shadow-lg"
+                    ></span>
+                  </span>
+                  <div class="relative z-10">
+                    <span class="block font-semibold">Interface pattern tips</span>
+                    <span class="block mt-1">
+                      Use
+                      <code class="whitespace-nowrap">{n}</code>
+                      placeholders to expand sequential interface names:
+                    </span>
+                    <ul class="mt-2 space-y-1 list-disc pl-4">
+                      <li>
+                        <code class="whitespace-nowrap">xe-{n}</code>
+                        &rarr; xe-1, xe-2, xe-3 …
+                      </li>
+                      <li>
+                        <code class="whitespace-nowrap">xe-{n:0}</code>
+                        starts numbering at 0.
+                      </li>
+                      <li>
+                        <code class="whitespace-nowrap">xe-{n:1-4}</code>
+                        caps numbering between 1 and 4.
+                      </li>
+                      <li>
+                        <code class="whitespace-nowrap">e1-{n:1-2}, e2-{n:1-2}</code>
+                        generates multiple blocks (e1-1, e1-2, e2-1, e2-2).
+                      </li>
+                    </ul>
+                  </div>
+                </span>
+              </span>
+            </label>
+            <input
+              type="text"
+              id="node-interface-pattern"
+              class="input-field w-full"
+              placeholder="e.g., e1-{n} or Gi0/0/{n:0}"
+            />
           </div>
 
           <!-- Kind -->
@@ -63,9 +138,14 @@
           <!-- Type -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Type</label>
-            <div id="panel-node-type-dropdown-container" style="display: none;"></div>
-            <input type="text" id="node-type" class="input-field w-full" placeholder="e.g., ixrd1, ixr-d2l"
-              style="display: block;">
+            <div id="panel-node-type-dropdown-container" style="display: none"></div>
+            <input
+              type="text"
+              id="node-type"
+              class="input-field w-full"
+              placeholder="e.g., ixrd1, ixr-d2l"
+              style="display: block"
+            />
           </div>
 
           <!-- Image and Version in same row -->
@@ -85,27 +165,38 @@
             <label class="block vscode-label mb-1">Icon</label>
             <div id="panel-node-topoviewerrole-dropdown-container"></div>
           </div>
-
         </div>
       </div>
 
       <!-- Components Tab -->
       <div class="tab-content hidden" id="tab-components">
         <div class="space-y-3">
-
           <div class="space-y-4">
             <div class="flex flex-wrap gap-2">
-              <button type="button" class="btn btn-small" id="btn-add-cpm" onclick="addCpmComponentEntry()">
-                <i class="fas fa-plus mr-1"></i> Add CPM
+              <button
+                type="button"
+                class="btn btn-small"
+                id="btn-add-cpm"
+                onclick="addCpmComponentEntry()"
+              >
+                <i class="fas fa-plus mr-1"></i>
+                Add CPM
               </button>
-              <button type="button" class="btn btn-small" id="btn-add-card" onclick="addCardComponentEntry()">
-                <i class="fas fa-plus mr-1"></i> Add Card
+              <button
+                type="button"
+                class="btn btn-small"
+                id="btn-add-card"
+                onclick="addCardComponentEntry()"
+              >
+                <i class="fas fa-plus mr-1"></i>
+                Add Card
               </button>
             </div>
             <div id="node-components-container" class="space-y-4">
               <div>
                 <p class="vscode-label mb-1">CPM</p>
-                <p class="text-xs text-[var(--text-secondary)]">Slots A and B represent the chassis control processors.
+                <p class="text-xs text-[var(--text-secondary)]">
+                  Slots A and B represent the chassis control processors.
                 </p>
                 <div id="node-components-cpm-container" class="mt-2 space-y-3">
                   <!-- CPM entries go here dynamically -->
@@ -113,35 +204,49 @@
               </div>
               <div>
                 <p class="vscode-label mb-1">Line Cards</p>
-                <p class="text-xs text-[var(--text-secondary)]">Define card slots and attach IOM/XCM, MDA, and XIOM
-                  components.</p>
+                <p class="text-xs text-[var(--text-secondary)]">
+                  Define card slots and attach IOM/XCM, MDA, and XIOM components.
+                </p>
                 <div id="node-components-card-container" class="mt-2 space-y-3">
                   <!-- Line card entries go here dynamically -->
                 </div>
               </div>
               <div>
                 <p class="vscode-label mb-1">SFM</p>
-                <p class="text-xs text-[var(--text-secondary)]">Overrides the default SFM when set.</p>
+                <p class="text-xs text-[var(--text-secondary)]">
+                  Overrides the default SFM when set.
+                </p>
                 <div id="node-components-sfm-container" class="space-y-3 mt-1"></div>
               </div>
-              <div id="node-components-validation-anchor" class="border border-transparent rounded-md"></div>
+              <div
+                id="node-components-validation-anchor"
+                class="border border-transparent rounded-md"
+              ></div>
             </div>
           </div>
 
           <template id="tpl-component-entry">
             <div class="component-entry my-2 p-2 rounded-lg bg-[var(--bg-primary)]" data-idx>
               <!-- Accordion Header -->
-              <div class="component-header flex items-center justify-between cursor-pointer select-none bg-bg-primary"
-                data-action="toggle-component">
+              <div
+                class="component-header flex items-center justify-between cursor-pointer select-none bg-bg-primary"
+                data-action="toggle-component"
+              >
                 <div class="flex items-center gap-2">
                   <i class="fas text-sm fa-chevron-right" data-role="component-caret"></i>
                   <label class="vscode-label">Slot</label>
-                  <input type="text"
+                  <input
+                    type="text"
                     class="px-2 py-1 w-10 bg-transparent border-b border-[var(--vscode-input-border)] outline-none outline-offset-0 ring-0 shadow-none focus:outline-none focus-visible:outline-none focus:outline-offset-0 focus:ring-0 focus-visible:ring-0 focus:shadow-none focus-visible:shadow-none focus:border-[var(--vscode-input-border)]"
-                    data-role="component-slot" />
+                    data-role="component-slot"
+                  />
                 </div>
-                <button type="button" class="dynamic-delete-btn" data-action="remove-component"
-                  aria-label="Remove component">
+                <button
+                  type="button"
+                  class="dynamic-delete-btn"
+                  data-action="remove-component"
+                  aria-label="Remove component"
+                >
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -160,8 +265,13 @@
                 <div class="form-group mt-2">
                   <label class="block vscode-label component-section-label">XIOM</label>
                   <div data-role="xiom-list" class="space-y-2"></div>
-                  <button type="button" class="btn btn-small mt-2 add-xiom-btn" data-action="add-xiom">
-                    <i class="fas fa-plus mr-1"></i> Add XIOM
+                  <button
+                    type="button"
+                    class="btn btn-small mt-2 add-xiom-btn"
+                    data-action="add-xiom"
+                  >
+                    <i class="fas fa-plus mr-1"></i>
+                    Add XIOM
                   </button>
                 </div>
 
@@ -169,7 +279,8 @@
                   <label class="block vscode-label component-section-label">MDA</label>
                   <div data-role="mda-list" class="space-y-2"></div>
                   <button type="button" class="btn btn-small mt-2" data-action="add-mda">
-                    <i class="fas fa-plus mr-1"></i> Add MDA
+                    <i class="fas fa-plus mr-1"></i>
+                    Add MDA
                   </button>
                 </div>
               </div>
@@ -218,7 +329,12 @@
                   <div data-role="xiom-type-dropdown" class="w-full h-full"></div>
                 </div>
                 <div class="col-span-1 flex items-center justify-end">
-                  <button type="button" class="dynamic-delete-btn" data-action="remove-xiom" aria-label="Remove XIOM">
+                  <button
+                    type="button"
+                    class="dynamic-delete-btn"
+                    data-action="remove-xiom"
+                    aria-label="Remove XIOM"
+                  >
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -229,7 +345,8 @@
                 <label class="block vscode-label mb-1">MDA (under XIOM)</label>
                 <div data-role="xiom-mda-list" class="space-y-2"></div>
                 <button type="button" class="btn btn-small mt-2" data-action="add-xiom-mda">
-                  <i class="fas fa-plus mr-1"></i> Add MDA
+                  <i class="fas fa-plus mr-1"></i>
+                  Add MDA
                 </button>
               </div>
             </div>
@@ -254,7 +371,13 @@
                 <div class="col-span-2">
                   <div class="slot-field-shell">
                     <span class="slot-badge" data-role="xiom-mda-card-slot">-</span>
-                    <input type="number" min="1" step="1" class="slot-number-input" data-role="xiom-mda-slot" />
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      class="slot-number-input"
+                      data-role="xiom-mda-slot"
+                    />
                   </div>
                 </div>
                 <div class="col-span-7 pl-5">
@@ -262,8 +385,12 @@
                   <div data-role="xiom-mda-type-dropdown" class="w-full h-full"></div>
                 </div>
                 <div class="col-span-1 flex items-center justify-end">
-                  <button type="button" class="dynamic-delete-btn" data-action="remove-xiom-mda"
-                    aria-label="Remove MDA">
+                  <button
+                    type="button"
+                    class="dynamic-delete-btn"
+                    data-action="remove-xiom-mda"
+                    aria-label="Remove MDA"
+                  >
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -288,7 +415,13 @@
                 <div class="col-span-2">
                   <div class="slot-field-shell">
                     <span class="slot-badge" data-role="mda-card-slot">-</span>
-                    <input type="number" min="1" step="1" class="slot-number-input" data-role="mda-slot" />
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      class="slot-number-input"
+                      data-role="mda-slot"
+                    />
                   </div>
                 </div>
                 <div class="col-span-7 pl-3">
@@ -296,7 +429,12 @@
                   <div data-role="mda-type-dropdown" class="w-full h-full"></div>
                 </div>
                 <div class="col-span-1 flex items-center justify-end">
-                  <button type="button" class="dynamic-delete-btn" data-action="remove-mda" aria-label="Remove MDA">
+                  <button
+                    type="button"
+                    class="dynamic-delete-btn"
+                    data-action="remove-mda"
+                    aria-label="Remove MDA"
+                  >
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -312,21 +450,43 @@
           <!-- Startup Config -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Startup Config</label>
-            <input type="text" id="node-startup-config" class="input-field w-full" placeholder="Path to config file">
+            <input
+              type="text"
+              id="node-startup-config"
+              class="input-field w-full"
+              placeholder="Path to config file"
+            />
             <div class="flex items-center mt-1">
-              <input type="checkbox" id="node-enforce-startup-config" class="vscode-checkbox mr-2">
-              <label for="node-enforce-startup-config" class="checkbox-label">Enforce startup config</label>
+              <input
+                type="checkbox"
+                id="node-enforce-startup-config"
+                class="vscode-checkbox mr-2"
+              />
+              <label for="node-enforce-startup-config" class="checkbox-label">
+                Enforce startup config
+              </label>
             </div>
             <div class="flex items-center mt-1">
-              <input type="checkbox" id="node-suppress-startup-config" class="vscode-checkbox mr-2">
-              <label for="node-suppress-startup-config" class="checkbox-label">Suppress startup config</label>
+              <input
+                type="checkbox"
+                id="node-suppress-startup-config"
+                class="vscode-checkbox mr-2"
+              />
+              <label for="node-suppress-startup-config" class="checkbox-label">
+                Suppress startup config
+              </label>
             </div>
           </div>
 
           <!-- License -->
           <div class="form-group">
             <label class="block vscode-label mb-1">License File</label>
-            <input type="text" id="node-license" class="input-field w-full" placeholder="Path to license file">
+            <input
+              type="text"
+              id="node-license"
+              class="input-field w-full"
+              placeholder="Path to license file"
+            />
           </div>
 
           <!-- Binds -->
@@ -336,7 +496,8 @@
               <!-- Dynamic bind entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addBindEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Bind
+              <i class="fas fa-plus mr-1"></i>
+              Add Bind
             </button>
           </div>
 
@@ -347,7 +508,8 @@
               <!-- Dynamic env entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addEnvEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Variable
+              <i class="fas fa-plus mr-1"></i>
+              Add Variable
             </button>
           </div>
 
@@ -358,7 +520,8 @@
               <!-- Dynamic env file entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addEnvFileEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Env File
+              <i class="fas fa-plus mr-1"></i>
+              Add Env File
             </button>
           </div>
 
@@ -369,7 +532,8 @@
               <!-- Dynamic label entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addLabelEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Label
+              <i class="fas fa-plus mr-1"></i>
+              Add Label
             </button>
           </div>
         </div>
@@ -381,19 +545,34 @@
           <!-- User -->
           <div class="form-group">
             <label class="block vscode-label mb-1">User</label>
-            <input type="text" id="node-user" class="input-field w-full" placeholder="Container user">
+            <input
+              type="text"
+              id="node-user"
+              class="input-field w-full"
+              placeholder="Container user"
+            />
           </div>
 
           <!-- Entrypoint -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Entrypoint</label>
-            <input type="text" id="node-entrypoint" class="input-field w-full" placeholder="Container entrypoint">
+            <input
+              type="text"
+              id="node-entrypoint"
+              class="input-field w-full"
+              placeholder="Container entrypoint"
+            />
           </div>
 
           <!-- CMD -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Command</label>
-            <input type="text" id="node-cmd" class="input-field w-full" placeholder="Container command">
+            <input
+              type="text"
+              id="node-cmd"
+              class="input-field w-full"
+              placeholder="Container command"
+            />
           </div>
 
           <!-- Exec Commands -->
@@ -403,7 +582,8 @@
               <!-- Dynamic exec entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addExecEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Command
+              <i class="fas fa-plus mr-1"></i>
+              Add Command
             </button>
           </div>
 
@@ -416,15 +596,23 @@
           <!-- Auto Remove -->
           <div class="form-group">
             <div class="flex items-center">
-              <input type="checkbox" id="node-auto-remove" class="vscode-checkbox mr-2">
-              <label for="node-auto-remove" class="checkbox-label">Auto-remove container on exit</label>
+              <input type="checkbox" id="node-auto-remove" class="vscode-checkbox mr-2" />
+              <label for="node-auto-remove" class="checkbox-label">
+                Auto-remove container on exit
+              </label>
             </div>
           </div>
 
           <!-- Startup Delay -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Startup Delay (seconds)</label>
-            <input type="number" id="node-startup-delay" class="input-field w-full" min="0" placeholder="0">
+            <input
+              type="number"
+              id="node-startup-delay"
+              class="input-field w-full"
+              min="0"
+              placeholder="0"
+            />
           </div>
         </div>
       </div>
@@ -435,13 +623,23 @@
           <!-- Management IPv4 -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Management IPv4</label>
-            <input type="text" id="node-mgmt-ipv4" class="input-field w-full" placeholder="e.g., 172.20.20.100">
+            <input
+              type="text"
+              id="node-mgmt-ipv4"
+              class="input-field w-full"
+              placeholder="e.g., 172.20.20.100"
+            />
           </div>
 
           <!-- Management IPv6 -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Management IPv6</label>
-            <input type="text" id="node-mgmt-ipv6" class="input-field w-full" placeholder="e.g., 2001:db8::100">
+            <input
+              type="text"
+              id="node-mgmt-ipv6"
+              class="input-field w-full"
+              placeholder="e.g., 2001:db8::100"
+            />
           </div>
 
           <!-- Network Mode -->
@@ -457,7 +655,8 @@
               <!-- Dynamic port entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addPortEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Port
+              <i class="fas fa-plus mr-1"></i>
+              Add Port
             </button>
           </div>
 
@@ -468,7 +667,8 @@
               <!-- Dynamic DNS server entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addDnsServerEntry()">
-              <i class="fas fa-plus mr-1"></i> Add DNS Server
+              <i class="fas fa-plus mr-1"></i>
+              Add DNS Server
             </button>
           </div>
 
@@ -479,7 +679,8 @@
               <!-- Dynamic alias entries will be added here -->
             </div>
             <button class="btn btn-small mt-2" onclick="addAliasEntry()">
-              <i class="fas fa-plus mr-1"></i> Add Alias
+              <i class="fas fa-plus mr-1"></i>
+              Add Alias
             </button>
           </div>
         </div>
@@ -489,37 +690,58 @@
       <div class="tab-content hidden" id="tab-advanced">
         <div class="space-y-3">
           <!-- Resources Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
             <h3 class="vscode-section-header mb-2">Resource Limits</h3>
             <div class="grid grid-cols-2 gap-2">
               <!-- CPU -->
               <div class="form-group">
                 <label class="block vscode-label mb-1">CPU Limit</label>
-                <input type="number" id="node-cpu" class="input-field w-full" step="0.1" min="0"
-                  placeholder="e.g., 1.5">
+                <input
+                  type="number"
+                  id="node-cpu"
+                  class="input-field w-full"
+                  step="0.1"
+                  min="0"
+                  placeholder="e.g., 1.5"
+                />
               </div>
 
               <!-- CPU Set -->
               <div class="form-group">
                 <label class="block vscode-label mb-1">CPU Set</label>
-                <input type="text" id="node-cpu-set" class="input-field w-full" placeholder="e.g., 0-3, 0,3">
+                <input
+                  type="text"
+                  id="node-cpu-set"
+                  class="input-field w-full"
+                  placeholder="e.g., 0-3, 0,3"
+                />
               </div>
               <!-- Memory -->
               <div class="form-group">
                 <label class="block vscode-label mb-1">Memory Limit</label>
-                <input type="text" id="node-memory" class="input-field w-full" placeholder="e.g., 1Gb, 512Mb">
+                <input
+                  type="text"
+                  id="node-memory"
+                  class="input-field w-full"
+                  placeholder="e.g., 1Gb, 512Mb"
+                />
               </div>
 
               <!-- Shared Memory Size -->
               <div class="form-group">
                 <label class="block vscode-label mb-1">Shared Memory Size</label>
-                <input type="text" id="node-shm-size" class="input-field w-full" placeholder="e.g., 256MB">
+                <input
+                  type="text"
+                  id="node-shm-size"
+                  class="input-field w-full"
+                  placeholder="e.g., 256MB"
+                />
               </div>
             </div>
           </div>
 
           <!-- Capabilities Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
             <h3 class="vscode-section-header mb-2">Capabilities</h3>
 
             <!-- Cap Add -->
@@ -529,13 +751,14 @@
                 <!-- Dynamic capability entries will be added here -->
               </div>
               <button class="btn btn-small mt-2" onclick="addCapabilityEntry()">
-                <i class="fas fa-plus mr-1"></i> Add Capability
+                <i class="fas fa-plus mr-1"></i>
+                Add Capability
               </button>
             </div>
           </div>
 
           <!-- Sysctls Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
             <h3 class="vscode-section-header mb-2">Sysctls</h3>
 
             <div class="form-group">
@@ -543,13 +766,14 @@
                 <!-- Dynamic sysctl entries will be added here -->
               </div>
               <button class="btn btn-small mt-2" onclick="addSysctlEntry()">
-                <i class="fas fa-plus mr-1"></i> Add Sysctl
+                <i class="fas fa-plus mr-1"></i>
+                Add Sysctl
               </button>
             </div>
           </div>
 
           <!-- Devices Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
             <h3 class="vscode-section-header mb-2">Devices</h3>
 
             <div class="form-group">
@@ -557,19 +781,22 @@
                 <!-- Dynamic device entries will be added here -->
               </div>
               <button class="btn btn-small mt-2" onclick="addDeviceEntry()">
-                <i class="fas fa-plus mr-1"></i> Add Device
+                <i class="fas fa-plus mr-1"></i>
+                Add Device
               </button>
             </div>
           </div>
 
           <!-- Certificate Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
             <h3 class="vscode-section-header mb-2">TLS Certificate</h3>
 
             <div class="form-group">
               <div class="flex items-center">
-                <input type="checkbox" id="node-cert-issue" class="vscode-checkbox mr-2">
-                <label for="node-cert-issue" class="checkbox-label">Auto-generate TLS certificate</label>
+                <input type="checkbox" id="node-cert-issue" class="vscode-checkbox mr-2" />
+                <label for="node-cert-issue" class="checkbox-label">
+                  Auto-generate TLS certificate
+                </label>
               </div>
             </div>
 
@@ -581,7 +808,12 @@
 
               <div class="form-group">
                 <label class="block vscode-label mb-1">Validity Duration</label>
-                <input type="text" id="node-cert-validity" class="input-field w-full" placeholder="e.g., 1h, 30d, 1y">
+                <input
+                  type="text"
+                  id="node-cert-validity"
+                  class="input-field w-full"
+                  placeholder="e.g., 1h, 30d, 1y"
+                />
               </div>
 
               <div class="form-group">
@@ -590,39 +822,67 @@
                   <!-- Dynamic SAN entries will be added here -->
                 </div>
                 <button class="btn btn-small mt-2" onclick="addSanEntry()">
-                  <i class="fas fa-plus mr-1"></i> Add SAN
+                  <i class="fas fa-plus mr-1"></i>
+                  Add SAN
                 </button>
               </div>
             </div>
           </div>
 
           <!-- Healthcheck Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border);">
+          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
             <h3 class="vscode-section-header mb-2">Health Check</h3>
 
             <div class="form-group">
               <label class="block vscode-label mb-1">Test Command</label>
-              <input type="text" id="node-healthcheck-test" class="input-field w-full"
-                placeholder="e.g., CMD-SHELL cat /etc/os-release">
+              <input
+                type="text"
+                id="node-healthcheck-test"
+                class="input-field w-full"
+                placeholder="e.g., CMD-SHELL cat /etc/os-release"
+              />
             </div>
 
             <div class="grid grid-cols-2 gap-2">
               <div class="form-group">
                 <label class="block vscode-label mb-1">Start Period (s)</label>
-                <input type="number" id="node-healthcheck-start-period" class="input-field w-full" min="0"
-                  placeholder="0">
+                <input
+                  type="number"
+                  id="node-healthcheck-start-period"
+                  class="input-field w-full"
+                  min="0"
+                  placeholder="0"
+                />
               </div>
               <div class="form-group">
                 <label class="block vscode-label mb-1">Interval (s)</label>
-                <input type="number" id="node-healthcheck-interval" class="input-field w-full" min="0" placeholder="30">
+                <input
+                  type="number"
+                  id="node-healthcheck-interval"
+                  class="input-field w-full"
+                  min="0"
+                  placeholder="30"
+                />
               </div>
               <div class="form-group">
                 <label class="block vscode-label mb-1">Timeout (s)</label>
-                <input type="number" id="node-healthcheck-timeout" class="input-field w-full" min="0" placeholder="30">
+                <input
+                  type="number"
+                  id="node-healthcheck-timeout"
+                  class="input-field w-full"
+                  min="0"
+                  placeholder="30"
+                />
               </div>
               <div class="form-group">
                 <label class="block vscode-label mb-1">Retries</label>
-                <input type="number" id="node-healthcheck-retries" class="input-field w-full" min="0" placeholder="3">
+                <input
+                  type="number"
+                  id="node-healthcheck-retries"
+                  class="input-field w-full"
+                  min="0"
+                  placeholder="3"
+                />
               </div>
             </div>
           </div>
@@ -641,26 +901,24 @@
         </div>
       </div>
     </div>
-
   </div>
 
   <div id="panel-node-footer-placeholder"></div>
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const footerTpl = document.getElementById('editor-footer-template');
+    document.addEventListener("DOMContentLoaded", function () {
+      const footerTpl = document.getElementById("editor-footer-template");
       if (footerTpl) {
         const footerFrag = footerTpl.content.cloneNode(true);
-        const saveBtn = footerFrag.querySelector('.editor-save-btn');
-        const closeBtn = footerFrag.querySelector('.editor-close-btn');
+        const saveBtn = footerFrag.querySelector(".editor-save-btn");
+        const closeBtn = footerFrag.querySelector(".editor-close-btn");
         if (saveBtn) {
-          saveBtn.id = 'panel-node-editor-save';
+          saveBtn.id = "panel-node-editor-save";
         }
         if (closeBtn) {
-          closeBtn.id = 'panel-node-editor-cancel';
+          closeBtn.id = "panel-node-editor-cancel";
         }
-        document.getElementById('panel-node-footer-placeholder')?.appendChild(footerFrag);
+        document.getElementById("panel-node-footer-placeholder")?.appendChild(footerFrag);
       }
     });
   </script>
-
 </div>

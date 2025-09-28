@@ -55,7 +55,16 @@ declare global {
     updateLinkEndpointsOnKindChange?: boolean;
     defaultKind?: string;
     defaultType?: string;
-    customNodes?: Array<{ name: string; kind: string; type?: string; image?: string }>;
+    customNodes?: Array<{
+      name: string;
+      kind: string;
+      type?: string;
+      image?: string;
+      baseName?: string;
+      icon?: string;
+      interfacePattern?: string;
+      setDefault?: boolean;
+    }>;
     defaultNode?: string;
     topologyDefaults?: Record<string, any>;
     topologyKinds?: Record<string, any>;

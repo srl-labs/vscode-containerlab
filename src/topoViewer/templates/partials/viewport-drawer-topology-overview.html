@@ -1,59 +1,72 @@
-    <!-- Topology Overview Drawer -->
-    <div id="viewport-drawer-topology-overview" class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-[300px] z-[90] p-1" style="display: none;">
-      <div class="p-2 pb-2">
-        <div class="flex flex-col">
-          <div class="pb-0">
-            <label class="vscode-label vscode-section-header">Topology Overview</label>
-          </div>
-          <div class="pb-0">
-            <div class="mb-2 vscode-label">
-              <p>
-                This panel allows to search node in the topology.
-              </p>
-            </div>
-          </div>
-        </div>
+<!-- Topology Overview Drawer -->
+<div
+  id="viewport-drawer-topology-overview"
+  class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-[300px] z-[90] p-1"
+  style="display: none"
+>
+  <div class="p-2 pb-2">
+    <div class="flex flex-col">
+      <div class="pb-0">
+        <label class="vscode-label vscode-section-header">Topology Overview</label>
       </div>
-      <div class="layout-algo p-2 block" id="viewport-drawer-topology-overview-content">
-        <div class="space-y-3">
-          <div>
-            <div class="relative">
-              <input type="text" id="viewport-drawer-topology-overview-content-edit"
-                placeholder="Search for nodes ..." 
-                class="input-field pl-8 pr-3 text-sm" autofocus />
-              <span class="absolute left-2 top-1/2 transform -translate-y-1/2">
-                <i class="fas fa-search" aria-hidden="true"></i>
-              </span>
-            </div>
-          </div>
-          <script>
-            (function(){
-              const drawer = document.getElementById('viewport-drawer-topology-overview');
-              const input = document.getElementById('viewport-drawer-topology-overview-content-edit');
-              if (!drawer || !input) return;
-              const focusInput = () => setTimeout(() => { input.focus(); input.select(); }, 50);
-              if (getComputedStyle(drawer).display !== 'none') focusInput();
-              new MutationObserver(() => {
-                if (getComputedStyle(drawer).display !== 'none') focusInput();
-              }).observe(drawer, { attributes: true, attributeFilter: ['style', 'class'] });
-              drawer.addEventListener('open', focusInput);
-              // CTRL/CMD + F to open overview
-              document.addEventListener('keydown', (ev) => {
-                if ((ev.ctrlKey || ev.metaKey) && ev.key && ev.key.toLowerCase() === 'f') {
-                  if (getComputedStyle(drawer).display === 'none') {
-                    drawer.style.display = 'block';
-                    focusInput();
-                  }
-                }
-              }, { passive: false });
-            })();
-          </script>
-          <div>
-            <button class="btn btn-primary btn-small" onclick="viewportNodeFindEvent()">
-              Search Node
-            </button>
-          </div>
+      <div class="pb-0">
+        <div class="mb-2 vscode-label">
+          <p>This panel allows to search node in the topology.</p>
         </div>
       </div>
     </div>
-
+  </div>
+  <div class="layout-algo p-2 block" id="viewport-drawer-topology-overview-content">
+    <div class="space-y-3">
+      <div>
+        <div class="relative">
+          <input
+            type="text"
+            id="viewport-drawer-topology-overview-content-edit"
+            placeholder="Search for nodes ..."
+            class="input-field pl-8 pr-3 text-sm"
+            autofocus
+          />
+          <span class="absolute left-2 top-1/2 transform -translate-y-1/2">
+            <i class="fas fa-search" aria-hidden="true"></i>
+          </span>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const drawer = document.getElementById("viewport-drawer-topology-overview");
+          const input = document.getElementById("viewport-drawer-topology-overview-content-edit");
+          if (!drawer || !input) return;
+          const focusInput = () =>
+            setTimeout(() => {
+              input.focus();
+              input.select();
+            }, 50);
+          if (getComputedStyle(drawer).display !== "none") focusInput();
+          new MutationObserver(() => {
+            if (getComputedStyle(drawer).display !== "none") focusInput();
+          }).observe(drawer, { attributes: true, attributeFilter: ["style", "class"] });
+          drawer.addEventListener("open", focusInput);
+          // CTRL/CMD + F to open overview
+          document.addEventListener(
+            "keydown",
+            (ev) => {
+              if ((ev.ctrlKey || ev.metaKey) && ev.key && ev.key.toLowerCase() === "f") {
+                if (getComputedStyle(drawer).display === "none") {
+                  drawer.style.display = "block";
+                  focusInput();
+                }
+              }
+            },
+            { passive: false }
+          );
+        })();
+      </script>
+      <div>
+        <button class="btn btn-primary btn-small" onclick="viewportNodeFindEvent()">
+          Search Node
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

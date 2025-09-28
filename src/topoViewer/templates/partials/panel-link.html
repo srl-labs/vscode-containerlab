@@ -1,14 +1,14 @@
 <!-- Link Properties Panel -->
-<section class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
-  id="panel-link" style="display: none;">
-  <p class="panel-heading text-base font-bold">
-    Link Properties
-  </p>
+<section
+  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+  id="panel-link"
+  style="display: none"
+>
+  <p class="panel-heading text-base font-bold">Link Properties</p>
 
   <div class="p-0 pl-4 pb-2">
     <div class="panel-block p-0">
       <div class="px-0">
-
         <!-- Link Name -->
         <div class="my-1">
           <div class="p-0.5">
@@ -24,7 +24,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -35,23 +34,22 @@
         <div class="px-0 endpoint-fields"></div>
       </div>
     </template>
-
   </div>
 </section>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const endpoints = ['a', 'b'];
-      const container = document.getElementById('panel-link-endpoints');
-      const template = document.getElementById('link-endpoint-template');
-      if (!container || !(template instanceof HTMLTemplateElement)) {
-        return;
-      }
+  document.addEventListener("DOMContentLoaded", function () {
+    const endpoints = ["a", "b"];
+    const container = document.getElementById("panel-link-endpoints");
+    const template = document.getElementById("link-endpoint-template");
+    if (!container || !(template instanceof HTMLTemplateElement)) {
+      return;
+    }
 
-      function createField(labelText, id) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'my-1';
-        wrapper.innerHTML = `
+    function createField(labelText, id) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "my-1";
+      wrapper.innerHTML = `
           <div class="p-0.5">
             <div class="flex items-center">
               <div class="w-2/5 pr-1">
@@ -62,24 +60,24 @@
               </div>
             </div>
           </div>`;
-        return wrapper;
-      }
+      return wrapper;
+    }
 
-      endpoints.forEach(letter => {
-        const fragment = template.content.cloneNode(true);
-        const block = fragment.querySelector('.panel-block');
-        const fields = fragment.querySelector('.endpoint-fields');
-        const prefix = `panel-link-endpoint-${letter}`;
-        if (block) {
-          block.id = prefix;
-        }
-        if (fields) {
-          fields.appendChild(createField(`Endpoint-${letter.toUpperCase()}`, `${prefix}-name`));
-          fields.appendChild(createField('MAC address', `${prefix}-mac-address`));
-          fields.appendChild(createField('MTU', `${prefix}-mtu`));
-          fields.appendChild(createField('Type', `${prefix}-type`));
-        }
-        container.appendChild(fragment);
-      });
+    endpoints.forEach((letter) => {
+      const fragment = template.content.cloneNode(true);
+      const block = fragment.querySelector(".panel-block");
+      const fields = fragment.querySelector(".endpoint-fields");
+      const prefix = `panel-link-endpoint-${letter}`;
+      if (block) {
+        block.id = prefix;
+      }
+      if (fields) {
+        fields.appendChild(createField(`Endpoint-${letter.toUpperCase()}`, `${prefix}-name`));
+        fields.appendChild(createField("MAC address", `${prefix}-mac-address`));
+        fields.appendChild(createField("MTU", `${prefix}-mtu`));
+        fields.appendChild(createField("Type", `${prefix}-type`));
+      }
+      container.appendChild(fragment);
     });
-  </script>
+  });
+</script>

@@ -19,6 +19,7 @@ import { saveViewport } from '../utilities/saveViewport';
 import { annotationsManager } from '../utilities/annotationsManager';
 import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
 import { sleep } from '../utilities/asyncUtils';
+import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
 
 // Common configuration section key used throughout this module
 const CONFIG_SECTION = 'containerlab.editor';
@@ -586,14 +587,23 @@ topology:
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
     await refreshDockerImages(this.context);
-    const CONFIG_SECTION = 'containerlab.editor';
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-    const ifacePatternMapping = config.get<Record<string, string>>('interfacePatternMapping', {});
+    const legacyIfacePatternMapping = this.getLegacyInterfacePatternMapping(config);
     const updateLinkEndpointsOnKindChange = config.get<boolean>(
       'updateLinkEndpointsOnKindChange',
       true
     );
-    const customNodes = config.get<any[]>('customNodes', []);
+    const rawCustomNodes = config.get<unknown>('customNodes', []);
+    const normalizedCustomNodes = Array.isArray(rawCustomNodes) ? rawCustomNodes : [];
+    const customNodes = await this.ensureCustomNodeInterfacePatterns(
+      config,
+      normalizedCustomNodes,
+      legacyIfacePatternMapping
+    );
+    const ifacePatternMapping = this.buildInterfacePatternMapping(
+      customNodes,
+      legacyIfacePatternMapping
+    );
     const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
     const imageMapping = this.buildImageMapping(customNodes);
     const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
@@ -634,6 +644,90 @@ topology:
       }
     });
     return imageMapping;
+  }
+
+  private getLegacyInterfacePatternMapping(
+    config: vscode.WorkspaceConfiguration
+  ): Record<string, string> {
+    const legacy = config.get<Record<string, string> | undefined>('interfacePatternMapping');
+    if (!legacy || typeof legacy !== 'object') {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(legacy)
+        .filter(([key, value]) => typeof key === 'string' && typeof value === 'string')
+        .map(([key, value]) => [key, value.trim()])
+        .filter(([, value]) => value.length > 0)
+    );
+  }
+
+  private async ensureCustomNodeInterfacePatterns(
+    config: vscode.WorkspaceConfiguration,
+    customNodes: any[],
+    legacyIfacePatternMapping: Record<string, string>
+  ): Promise<any[]> {
+    let didUpdate = false;
+
+    const normalized = customNodes.map(node => {
+      if (!node || typeof node !== 'object') {
+        return node;
+      }
+
+      const kind = typeof node.kind === 'string' ? node.kind : '';
+      const rawPattern = typeof node.interfacePattern === 'string' ? node.interfacePattern : '';
+      const trimmedPattern = rawPattern.trim();
+
+      if (trimmedPattern.length > 0) {
+        if (trimmedPattern !== rawPattern) {
+          didUpdate = true;
+          return { ...node, interfacePattern: trimmedPattern };
+        }
+        return node;
+      }
+
+      if (!kind) {
+        return node;
+      }
+
+      const fallback =
+        legacyIfacePatternMapping[kind] || DEFAULT_INTERFACE_PATTERNS[kind];
+      if (!fallback) {
+        return node;
+      }
+
+      didUpdate = true;
+      return { ...node, interfacePattern: fallback };
+    });
+
+    if (didUpdate) {
+      await config.update('customNodes', normalized, vscode.ConfigurationTarget.Global);
+    }
+
+    return normalized;
+  }
+
+  private buildInterfacePatternMapping(
+    customNodes: any[],
+    legacyIfacePatternMapping: Record<string, string>
+  ): Record<string, string> {
+    const mapping: Record<string, string> = {
+      ...DEFAULT_INTERFACE_PATTERNS,
+      ...legacyIfacePatternMapping,
+    };
+
+    customNodes.forEach(node => {
+      if (!node || typeof node !== 'object') {
+        return;
+      }
+      const kind = typeof node.kind === 'string' ? node.kind : '';
+      const pattern = typeof node.interfacePattern === 'string' ? node.interfacePattern.trim() : '';
+      if (!kind || !pattern) {
+        return;
+      }
+      mapping[kind] = pattern;
+    });
+
+    return mapping;
   }
 
   private async updateCachedYamlFromCurrentDoc(): Promise<void> {

@@ -1,38 +1,51 @@
-    <!-- Export SVG Drawer -->
-    <div id="viewport-drawer-capture-sceenshoot" class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-[300px] z-[90] p-1" style="display: none;">
-      <div class="p-2 pb-2">
-        <div class="flex flex-col">
-          <div class="pb-0">
-            <label class="vscode-label vscode-section-header">Export SVG</label>
-          </div>
-          <div class="pb-0">
-            <div class="mb-2 vscode-label">
-              <p>
-                Configure options for exporting the topology as an SVG.
-              </p>
-            </div>
-          </div>
-        </div>
+<!-- Export SVG Drawer -->
+<div
+  id="viewport-drawer-capture-sceenshoot"
+  class="panel viewport-drawer fixed top-[4.5rem] right-[1rem] w-[300px] z-[90] p-1"
+  style="display: none"
+>
+  <div class="p-2 pb-2">
+    <div class="flex flex-col">
+      <div class="pb-0">
+        <label class="vscode-label vscode-section-header">Export SVG</label>
       </div>
-      <div id="viewport-drawer-capture-sceenshoot-content" class="layout-algo p-2 block">
-        <div class="space-y-3">
-          <div class="flex items-center">
-            <label class="vscode-label w-32 text-right pr-3">Border Zoom (%)</label>
-            <input id="export-border-zoom" type="number" class="input-field text-sm w-24" value="100" min="10" max="300">
-          </div>
-          <div class="flex items-center">
-            <label class="vscode-label w-32 text-right pr-3">Border Padding (px)</label>
-            <input id="export-border-padding" type="number" class="input-field text-sm w-24" value="0" min="0">
-          </div>
-        </div>
-      </div>
-      <div class="layout-algo p-2 pb-2 block" id="viewport-drawer-capture-sceenshoot-button">
-        <div class="flex justify-end gap-2">
-          <button onclick="viewportDrawerCaptureFunc(event)"
-            class="btn btn-primary btn-small">
-            Export
-          </button>
+      <div class="pb-0">
+        <div class="mb-2 vscode-label">
+          <p>Configure options for exporting the topology as an SVG.</p>
         </div>
       </div>
     </div>
-
+  </div>
+  <div id="viewport-drawer-capture-sceenshoot-content" class="layout-algo p-2 block">
+    <div class="space-y-3">
+      <div class="flex items-center">
+        <label class="vscode-label w-32 text-right pr-3">Border Zoom (%)</label>
+        <input
+          id="export-border-zoom"
+          type="number"
+          class="input-field text-sm w-24"
+          value="100"
+          min="10"
+          max="300"
+        />
+      </div>
+      <div class="flex items-center">
+        <label class="vscode-label w-32 text-right pr-3">Border Padding (px)</label>
+        <input
+          id="export-border-padding"
+          type="number"
+          class="input-field text-sm w-24"
+          value="0"
+          min="0"
+        />
+      </div>
+    </div>
+  </div>
+  <div class="layout-algo p-2 pb-2 block" id="viewport-drawer-capture-sceenshoot-button">
+    <div class="flex justify-end gap-2">
+      <button onclick="viewportDrawerCaptureFunc(event)" class="btn btn-primary btn-small">
+        Export
+      </button>
+    </div>
+  </div>
+</div>
