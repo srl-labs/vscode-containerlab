@@ -1,15 +1,13 @@
 <!-- Reusable Confirm Dialog -->
-<div id="confirm-dialog-backdrop" class="modal-backdrop" style="display: none;">
+<div id="confirm-dialog-backdrop" class="modal-backdrop" style="display: none">
   <div id="confirm-dialog" class="modal-content p-6 rounded-lg max-w-md">
     <!-- Icon Container -->
-    <div id="confirm-dialog-icon" class="flex justify-center mb-4" style="display: none;">
+    <div id="confirm-dialog-icon" class="flex justify-center mb-4" style="display: none">
       <i id="confirm-dialog-icon-element" class="text-4xl"></i>
     </div>
 
     <!-- Title -->
-    <h3 id="confirm-dialog-title" class="text-lg font-semibold text-center mb-2">
-      Confirm Action
-    </h3>
+    <h3 id="confirm-dialog-title" class="text-lg font-semibold text-center mb-2">Confirm Action</h3>
 
     <!-- Message -->
     <p id="confirm-dialog-message" class="text-sm text-center mb-6 text-secondary">
@@ -18,302 +16,309 @@
 
     <!-- Buttons Container -->
     <div id="confirm-dialog-buttons" class="flex justify-center gap-3">
-      <button id="confirm-dialog-cancel" class="btn btn-secondary">
-        Cancel
-      </button>
-      <button id="confirm-dialog-confirm" class="btn btn-primary">
-        Confirm
-      </button>
+      <button id="confirm-dialog-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="confirm-dialog-confirm" class="btn btn-primary">Confirm</button>
     </div>
   </div>
 </div>
 
 <script>
-(function() {
-  'use strict';
+  (function () {
+    "use strict";
 
-  let confirmResolve = null;
-  let isDialogOpen = false;
+    let confirmResolve = null;
+    let isDialogOpen = false;
 
-  const backdrop = document.getElementById('confirm-dialog-backdrop');
-  const dialog = document.getElementById('confirm-dialog');
-  const iconContainer = document.getElementById('confirm-dialog-icon');
-  const iconElement = document.getElementById('confirm-dialog-icon-element');
-  const titleElement = document.getElementById('confirm-dialog-title');
-  const messageElement = document.getElementById('confirm-dialog-message');
-  const cancelButton = document.getElementById('confirm-dialog-cancel');
-  const confirmButton = document.getElementById('confirm-dialog-confirm');
+    const backdrop = document.getElementById("confirm-dialog-backdrop");
+    const dialog = document.getElementById("confirm-dialog");
+    const iconContainer = document.getElementById("confirm-dialog-icon");
+    const iconElement = document.getElementById("confirm-dialog-icon-element");
+    const titleElement = document.getElementById("confirm-dialog-title");
+    const messageElement = document.getElementById("confirm-dialog-message");
+    const cancelButton = document.getElementById("confirm-dialog-cancel");
+    const confirmButton = document.getElementById("confirm-dialog-confirm");
 
-  function closeDialog(result) {
-    if (!isDialogOpen) return;
+    function closeDialog(result) {
+      if (!isDialogOpen) return;
 
-    isDialogOpen = false;
-    backdrop.style.display = 'none';
-    document.removeEventListener('keydown', handleKeydown);
+      isDialogOpen = false;
+      backdrop.style.display = "none";
+      document.removeEventListener("keydown", handleKeydown);
 
-    if (confirmResolve) {
-      confirmResolve(result);
-      confirmResolve = null;
-    }
-  }
-
-  function handleKeydown(event) {
-    if (!isDialogOpen) return;
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeDialog(false);
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      closeDialog(true);
-    }
-  }
-
-  // Show confirmation dialog
-  window.showConfirmDialog = function(options = {}) {
-    return new Promise((resolve) => {
-      if (isDialogOpen) {
-        resolve(false);
-        return;
-      }
-
-      confirmResolve = resolve;
-      isDialogOpen = true;
-
-      // Set title
-      titleElement.textContent = options.title || 'Confirm Action';
-
-      // Set message
-      messageElement.textContent = options.message || 'Are you sure you want to proceed?';
-
-      // Set icon
-      if (options.icon) {
-        iconElement.className = `text-4xl ${options.icon}`;
-        iconContainer.style.display = 'flex';
-      } else {
-        iconContainer.style.display = 'none';
-      }
-
-      // Set button texts and styles
-      const cancelText = options.cancelText || 'Cancel';
-      const confirmText = options.confirmText || 'Confirm';
-      const confirmStyle = options.confirmStyle || 'btn-primary';
-
-      cancelButton.textContent = cancelText;
-      confirmButton.textContent = confirmText;
-
-      // Reset button classes and apply new style
-      confirmButton.className = `btn ${confirmStyle}`;
-
-      // Show dialog
-      backdrop.style.display = 'flex';
-
-      // Focus default button
-      if (options.focusCancel) {
-        cancelButton.focus();
-      } else {
-        confirmButton.focus();
-      }
-
-      // Add keyboard listener
-      document.addEventListener('keydown', handleKeydown);
-    });
-  };
-
-  // Predefined dialog types for common actions
-  window.showDeleteConfirm = function(itemName, count = 1) {
-    const message = count > 1
-      ? `Are you sure you want to delete ${count} selected items?`
-      : itemName
-        ? `Are you sure you want to delete "${itemName}"?`
-        : 'Are you sure you want to delete this item?';
-
-    return window.showConfirmDialog({
-      title: 'Confirm Deletion',
-      message: message,
-      icon: 'fas fa-exclamation-triangle text-yellow-500',
-      confirmText: 'Delete',
-      confirmStyle: 'btn-danger',
-      cancelText: 'Cancel (esc)',
-      focusCancel: true
-    });
-  };
-
-
-
-  window.showBulkActionConfirm = function(actionName, sourcePattern, targetPattern, estimatedCount = null) {
-    let message = `Create links between devices matching "${sourcePattern}" and "${targetPattern}"?`;
-    if (estimatedCount) {
-      message += ` This will create approximately ${estimatedCount} links.`;
-    }
-
-    return window.showConfirmDialog({
-      title: `Confirm ${actionName}`,
-      message: message,
-      icon: 'fas fa-link text-blue-500',
-      confirmText: 'Create Links',
-      confirmStyle: 'btn-primary',
-      cancelText: 'Cancel (esc)'
-    });
-  };
-
-  // Event listeners for buttons
-  cancelButton.addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    closeDialog(false);
-  });
-
-  confirmButton.addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    closeDialog(true);
-  });
-
-  // Click outside to cancel
-  backdrop.addEventListener('click', function(e) {
-    if (e.target === backdrop) {
-      closeDialog(false);
-    }
-  });
-
-})();
-
-// Global panel keyboard handler for ESC/ENTER functionality
-(function() {
-  'use strict';
-
-  // Global keyboard handler for all panels
-  function handleGlobalPanelKeys(event) {
-    // Skip if confirm dialog is open
-    const confirmBackdrop = document.getElementById('confirm-dialog-backdrop');
-    if (confirmBackdrop && confirmBackdrop.style.display !== 'none') {
-      return;
-    }
-
-    // Find currently visible panel
-    const visiblePanel = findVisiblePanel();
-    if (!visiblePanel) {
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      // ESC always closes the panel
-      event.preventDefault();
-      closePanel(visiblePanel);
-    } else if (event.key === 'Enter') {
-      // ENTER works for form submission
-      event.preventDefault();
-      triggerPrimaryAction(visiblePanel);
-    }
-  }
-
-  // Find the currently visible panel
-  function findVisiblePanel() {
-    const panelSelectors = [
-      '#panel-bulk-link',
-      '#panel-node-editor-parent',
-      '#panel-topoviewer-about',
-      '#panel-network-editor',
-      '#panel-lab-settings',
-      '#panel-node-editor',
-      '#panel-link-editor',
-      '#panel-link',
-      '#panel-node',
-      '#viewport-drawer-topology-overview',
-      '#viewport-drawer-capture-sceenshoot',
-      '#viewport-drawer-layout',
-      '#shortcuts-panel'
-    ];
-
-    for (const selector of panelSelectors) {
-      const panel = document.querySelector(selector);
-      if (panel && panel.style.display === 'block') {
-        return panel;
+      if (confirmResolve) {
+        confirmResolve(result);
+        confirmResolve = null;
       }
     }
-    return null;
-  }
 
-  // Close a panel
-  function closePanel(panel) {
-    panel.style.display = 'none';
+    function handleKeydown(event) {
+      if (!isDialogOpen) return;
 
-    // For viewport drawers, also hide all other drawers
-    if (panel.id.startsWith('viewport-drawer-')) {
-      const viewportDrawers = document.getElementsByClassName('viewport-drawer');
-      for (let i = 0; i < viewportDrawers.length; i++) {
-        viewportDrawers[i].style.display = 'none';
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDialog(false);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        closeDialog(true);
       }
     }
-  }
 
-  // Trigger the primary action button in a panel
-  function triggerPrimaryAction(panel) {
-    console.log('triggerPrimaryAction called for panel:', panel.id);
+    // Show confirmation dialog
+    window.showConfirmDialog = function (options = {}) {
+      return new Promise((resolve) => {
+        if (isDialogOpen) {
+          resolve(false);
+          return;
+        }
 
-    // First try specific known button IDs for each panel
-    const panelSpecificButtons = {
-      'panel-bulk-link': '#bulk-link-apply',
-      'panel-node-editor': '#panel-node-editor-save-button',
-      'panel-node-editor-parent': 'button[onclick*="nodeParentPropertiesUpdate()"]',
-      'panel-link-editor': '#panel-link-editor-save-button',
-      'panel-network-editor': 'button[onclick*="Apply"]'
+        confirmResolve = resolve;
+        isDialogOpen = true;
+
+        // Set title
+        titleElement.textContent = options.title || "Confirm Action";
+
+        // Set message
+        messageElement.textContent = options.message || "Are you sure you want to proceed?";
+
+        // Set icon
+        if (options.icon) {
+          iconElement.className = `text-4xl ${options.icon}`;
+          iconContainer.style.display = "flex";
+        } else {
+          iconContainer.style.display = "none";
+        }
+
+        // Set button texts and styles
+        const cancelText = options.cancelText || "Cancel";
+        const confirmText = options.confirmText || "Confirm";
+        const confirmStyle = options.confirmStyle || "btn-primary";
+
+        cancelButton.textContent = cancelText;
+        confirmButton.textContent = confirmText;
+
+        // Reset button classes and apply new style
+        confirmButton.className = `btn ${confirmStyle}`;
+
+        // Show dialog
+        backdrop.style.display = "flex";
+
+        // Focus default button
+        if (options.focusCancel) {
+          cancelButton.focus();
+        } else {
+          confirmButton.focus();
+        }
+
+        // Add keyboard listener
+        document.addEventListener("keydown", handleKeydown);
+      });
     };
 
-    const panelId = panel.id;
-    if (panelSpecificButtons[panelId]) {
-      const selector = panelSpecificButtons[panelId];
-      const button = panel.querySelector(selector);
-      console.log('Specific selector for', panelId, ':', selector);
-      console.log('Found button:', button);
-      if (button && !button.disabled && button.style.display !== 'none') {
-        console.log('Clicking specific button:', button.textContent.trim());
-        button.click();
+    // Predefined dialog types for common actions
+    window.showDeleteConfirm = function (itemName, count = 1) {
+      const message =
+        count > 1
+          ? `Are you sure you want to delete ${count} selected items?`
+          : itemName
+            ? `Are you sure you want to delete "${itemName}"?`
+            : "Are you sure you want to delete this item?";
+
+      return window.showConfirmDialog({
+        title: "Confirm Deletion",
+        message: message,
+        icon: "fas fa-exclamation-triangle text-yellow-500",
+        confirmText: "Delete",
+        confirmStyle: "btn-danger",
+        cancelText: "Cancel (esc)",
+        focusCancel: true
+      });
+    };
+
+    window.showBulkActionConfirm = function (
+      actionName,
+      sourcePattern,
+      targetPattern,
+      estimatedCount = null
+    ) {
+      let message = `Create links between devices matching "${sourcePattern}" and "${targetPattern}"?`;
+      if (estimatedCount) {
+        message += ` This will create approximately ${estimatedCount} links.`;
+      }
+
+      return window.showConfirmDialog({
+        title: `Confirm ${actionName}`,
+        message: message,
+        icon: "fas fa-link text-blue-500",
+        confirmText: "Create Links",
+        confirmStyle: "btn-primary",
+        cancelText: "Cancel (esc)"
+      });
+    };
+
+    // Event listeners for buttons
+    cancelButton.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeDialog(false);
+    });
+
+    confirmButton.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeDialog(true);
+    });
+
+    // Click outside to cancel
+    backdrop.addEventListener("click", function (e) {
+      if (e.target === backdrop) {
+        closeDialog(false);
+      }
+    });
+  })();
+
+  // Global panel keyboard handler for ESC/ENTER functionality
+  (function () {
+    "use strict";
+
+    // Global keyboard handler for all panels
+    function handleGlobalPanelKeys(event) {
+      // Skip if confirm dialog is open
+      const confirmBackdrop = document.getElementById("confirm-dialog-backdrop");
+      if (confirmBackdrop && confirmBackdrop.style.display !== "none") {
         return;
+      }
+
+      // Find currently visible panel
+      const visiblePanel = findVisiblePanel();
+      if (!visiblePanel) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        // ESC always closes the panel
+        event.preventDefault();
+        closePanel(visiblePanel);
+      } else if (event.key === "Enter") {
+        // ENTER works for form submission
+        event.preventDefault();
+        triggerPrimaryAction(visiblePanel);
       }
     }
 
-    // Look for common primary action buttons (in order of preference)
-    const primaryButtonSelectors = [
-      '.btn-primary:not([style*="display: none"])',
-      'button[id*="apply"]:not([style*="display: none"])',
-      'button[id*="save"]:not([style*="display: none"])',
-      'button[id*="update"]:not([style*="display: none"])',
-      'button[onclick*="Apply"]:not([style*="display: none"])',
-      'button[onclick*="Update"]:not([style*="display: none"])',
-      'button[onclick*="Save"]:not([style*="display: none"])',
-      'button[type="submit"]:not([style*="display: none"])'
-    ];
+    // Find the currently visible panel
+    function findVisiblePanel() {
+      const panelSelectors = [
+        "#panel-bulk-link",
+        "#panel-node-editor-parent",
+        "#panel-topoviewer-about",
+        "#panel-network-editor",
+        "#panel-lab-settings",
+        "#panel-node-editor",
+        "#panel-link-editor",
+        "#panel-link",
+        "#panel-node",
+        "#viewport-drawer-topology-overview",
+        "#viewport-drawer-capture-sceenshoot",
+        "#viewport-drawer-layout",
+        "#shortcuts-panel"
+      ];
 
-    console.log('Trying fallback selectors...');
-    for (const selector of primaryButtonSelectors) {
-      const button = panel.querySelector(selector);
-      console.log('Selector:', selector, 'found:', button);
-      if (button && !button.disabled) {
-        console.log('Clicking fallback button:', button.textContent.trim());
-        button.click();
-        return;
+      for (const selector of panelSelectors) {
+        const panel = document.querySelector(selector);
+        if (panel && panel.style.display === "block") {
+          return panel;
+        }
+      }
+      return null;
+    }
+
+    // Close a panel
+    function closePanel(panel) {
+      panel.style.display = "none";
+
+      // For viewport drawers, also hide all other drawers
+      if (panel.id.startsWith("viewport-drawer-")) {
+        const viewportDrawers = document.getElementsByClassName("viewport-drawer");
+        for (let i = 0; i < viewportDrawers.length; i++) {
+          viewportDrawers[i].style.display = "none";
+        }
       }
     }
 
-    // Final fallback: find any visible button that looks like a primary action
-    console.log('Trying final fallback...');
-    const buttons = panel.querySelectorAll('button:not(.btn-secondary):not(.btn-danger):not([id*="cancel"]):not([id*="close"])');
-    console.log('Final fallback buttons found:', buttons.length);
-    for (const button of buttons) {
-      console.log('Final fallback button:', button.textContent.trim(), 'disabled:', button.disabled, 'display:', button.style.display);
-      if (!button.disabled && button.style.display !== 'none') {
-        console.log('Clicking final fallback button:', button.textContent.trim());
-        button.click();
-        return;
+    // Trigger the primary action button in a panel
+    function triggerPrimaryAction(panel) {
+      console.log("triggerPrimaryAction called for panel:", panel.id);
+
+      // First try specific known button IDs for each panel
+      const panelSpecificButtons = {
+        "panel-bulk-link": "#bulk-link-apply",
+        "panel-node-editor": "#panel-node-editor-save-button",
+        "panel-node-editor-parent": 'button[onclick*="nodeParentPropertiesUpdate()"]',
+        "panel-link-editor": "#panel-link-editor-save-button",
+        "panel-network-editor": 'button[onclick*="Apply"]'
+      };
+
+      const panelId = panel.id;
+      if (panelSpecificButtons[panelId]) {
+        const selector = panelSpecificButtons[panelId];
+        const button = panel.querySelector(selector);
+        console.log("Specific selector for", panelId, ":", selector);
+        console.log("Found button:", button);
+        if (button && !button.disabled && button.style.display !== "none") {
+          console.log("Clicking specific button:", button.textContent.trim());
+          button.click();
+          return;
+        }
       }
+
+      // Look for common primary action buttons (in order of preference)
+      const primaryButtonSelectors = [
+        '.btn-primary:not([style*="display: none"])',
+        'button[id*="apply"]:not([style*="display: none"])',
+        'button[id*="save"]:not([style*="display: none"])',
+        'button[id*="update"]:not([style*="display: none"])',
+        'button[onclick*="Apply"]:not([style*="display: none"])',
+        'button[onclick*="Update"]:not([style*="display: none"])',
+        'button[onclick*="Save"]:not([style*="display: none"])',
+        'button[type="submit"]:not([style*="display: none"])'
+      ];
+
+      console.log("Trying fallback selectors...");
+      for (const selector of primaryButtonSelectors) {
+        const button = panel.querySelector(selector);
+        console.log("Selector:", selector, "found:", button);
+        if (button && !button.disabled) {
+          console.log("Clicking fallback button:", button.textContent.trim());
+          button.click();
+          return;
+        }
+      }
+
+      // Final fallback: find any visible button that looks like a primary action
+      console.log("Trying final fallback...");
+      const buttons = panel.querySelectorAll(
+        'button:not(.btn-secondary):not(.btn-danger):not([id*="cancel"]):not([id*="close"])'
+      );
+      console.log("Final fallback buttons found:", buttons.length);
+      for (const button of buttons) {
+        console.log(
+          "Final fallback button:",
+          button.textContent.trim(),
+          "disabled:",
+          button.disabled,
+          "display:",
+          button.style.display
+        );
+        if (!button.disabled && button.style.display !== "none") {
+          console.log("Clicking final fallback button:", button.textContent.trim());
+          button.click();
+          return;
+        }
+      }
+      console.log("No button found for ENTER action");
     }
-    console.log('No button found for ENTER action');
-  }
 
-  // Add global event listener
-  document.addEventListener('keydown', handleGlobalPanelKeys);
-
-})();
+    // Add global event listener
+    document.addEventListener("keydown", handleGlobalPanelKeys);
+  })();
 </script>

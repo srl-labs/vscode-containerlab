@@ -35,65 +35,90 @@
 
   /* Shake animation for lock button when actions are blocked */
   @keyframes lock-shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-3px); }
-    75% { transform: translateX(3px); }
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-3px);
+    }
+    75% {
+      transform: translateX(3px);
+    }
   }
   .lock-shake {
     animation: lock-shake 0.3s;
   }
 </style>
-<div id="unified-floating-panel"
-  class="fixed bottom-5 left-5 z-[99999] bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)] rounded-md shadow-[0_4px_16px_var(--vscode-widget-shadow)] border border-[var(--vscode-panel-border)] p-2 flex flex-col gap-1 !w-[44px] !max-w-[44px] !min-w-[44px] cursor-grab select-none !box-border !shrink-0 !grow-0 overflow-visible">
+<div
+  id="unified-floating-panel"
+  class="fixed bottom-5 left-5 z-[99999] bg-[var(--vscode-editor-background)] text-[var(--vscode-foreground)] rounded-md shadow-[0_4px_16px_var(--vscode-widget-shadow)] border border-[var(--vscode-panel-border)] p-2 flex flex-col gap-1 !w-[44px] !max-w-[44px] !min-w-[44px] cursor-grab select-none !box-border !shrink-0 !grow-0 overflow-visible"
+>
   <!-- Drag Handle -->
-  <div class="drag-handle w-full h-[4px] bg-[var(--vscode-panel-border)] rounded-[2px] -mt-[2px] mb-1 cursor-grab">
-  </div>
+  <div
+    class="drag-handle w-full h-[4px] bg-[var(--vscode-panel-border)] rounded-[2px] -mt-[2px] mb-1 cursor-grab"
+  ></div>
 
   <!-- Lock/Unlock Button -->
-  <button id="lock-panel-btn"
+  <button
+    id="lock-panel-btn"
     class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]"
-    data-tippy-content="Lock Panel">
+    data-tippy-content="Lock Panel"
+  >
     <i class="fas fa-lock text-[10px]"></i>
   </button>
 
   <!-- Panel Content -->
   <div id="panel-content" class="flex flex-col gap-1">
-
     <!-- Deploy/Destroy Button Group -->
-    <div id="deploy-button-group"
-      class="group relative flex items-center justify-start w-[28px] h-[28px] overflow-visible">
+    <div
+      id="deploy-button-group"
+      class="group relative flex items-center justify-start w-[28px] h-[28px] overflow-visible"
+    >
       <!-- Main Deploy/Destroy Button -->
-      <button id="deploy-destroy-btn"
+      <button
+        id="deploy-destroy-btn"
         class="bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] relative z-50 hover:bg-[var(--vscode-button-hoverBackground)] hover:-translate-y-[1px]"
-        data-tippy-content="Deploy Lab">
+        data-tippy-content="Deploy Lab"
+      >
         <i class="fas fa-play text-[10px]"></i>
       </button>
 
       <!-- Drawer with options -->
-      <div id="deploy-drawer"
-        class="absolute pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 pointer-events-none transition-all ease-out duration-200 z-20">
+      <div
+        id="deploy-drawer"
+        class="absolute pl-[calc(100%+6px)] h-[32px] flex items-center gap-1 px-1 bg-none border border-none opacity-0 pointer-events-none transition-all ease-out duration-200 z-20"
+      >
         <!-- Deploy (cleanup) - editor mode -->
-        <button id="deploy-cleanup-btn"
+        <button
+          id="deploy-cleanup-btn"
           class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]"
-          data-tippy-content="Deploy (cleanup)">
+          data-tippy-content="Deploy (cleanup)"
+        >
           <i class="fas fa-broom text-[10px]"></i>
         </button>
         <!-- Destroy (cleanup) - viewer mode -->
-        <button id="destroy-cleanup-btn"
+        <button
+          id="destroy-cleanup-btn"
           class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]"
-          data-tippy-content="Destroy (cleanup)">
+          data-tippy-content="Destroy (cleanup)"
+        >
           <i class="fas fa-broom text-[10px]"></i>
         </button>
         <!-- Redeploy - viewer mode -->
-        <button id="redeploy-btn"
+        <button
+          id="redeploy-btn"
           class="hidden bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
-          data-tippy-content="Redeploy">
+          data-tippy-content="Redeploy"
+        >
           <i class="fas fa-redo text-[10px]"></i>
         </button>
         <!-- Redeploy (cleanup) - viewer mode -->
-        <button id="redeploy-cleanup-btn"
+        <button
+          id="redeploy-cleanup-btn"
           class="hidden bg-red-500 hover:bg-red-600 text-[var(--vscode-button-foreground)] border border-transparent rounded p-[6px] cursor-pointer items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:-translate-y-[1px]"
-          data-tippy-content="Redeploy (cleanup)">
+          data-tippy-content="Redeploy (cleanup)"
+        >
           <i class="fas fa-redo text-[10px]"></i>
         </button>
       </div>
@@ -103,60 +128,73 @@
     <div id="panel-divider-editor" class="h-px bg-[var(--vscode-panel-border)] my-[2px]"></div>
 
     <!-- Add Node Button -->
-    <button id="add-node-btn"
+    <button
+      id="add-node-btn"
       class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
-      data-tippy-content="Add Node">
+      data-tippy-content="Add Node"
+    >
       <i class="fas fa-plus text-[10px]"></i>
     </button>
 
     <!-- Add Network Button -->
-    <button id="add-network-btn"
+    <button
+      id="add-network-btn"
       class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
-      data-tippy-content="Add Network">
+      data-tippy-content="Add Network"
+    >
       <i class="fas fa-cloud text-[10px]"></i>
     </button>
 
     <!-- Add Group Button -->
-    <button id="add-group-btn"
+    <button
+      id="add-group-btn"
       class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
-      data-tippy-content="Add Group">
+      data-tippy-content="Add Group"
+    >
       <i class="fas fa-layer-group text-[10px]"></i>
     </button>
 
     <!-- Add Text Button -->
-    <button id="add-text-btn"
+    <button
+      id="add-text-btn"
       class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
-      data-tippy-content="Add Text">
+      data-tippy-content="Add Text"
+    >
       <i class="fas fa-font text-[10px]"></i>
     </button>
 
     <!-- Add Bulk Link Button -->
-    <button id="add-bulk-link-btn"
+    <button
+      id="add-bulk-link-btn"
       class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
-      data-tippy-content="Bulk Link Devices">
+      data-tippy-content="Bulk Link Devices"
+    >
       <i class="fas fa-link text-[10px]"></i>
     </button>
-  </div> <!-- End panel-content -->
+  </div>
+  <!-- End panel-content -->
 
   <!-- Collapse Control Section -->
   <div id="panel-divider-collapse" class="h-px bg-[var(--vscode-panel-border)] my-[2px]"></div>
 
   <!-- Collapse/Expand Button -->
-  <button id="collapse-panel-btn"
+  <button
+    id="collapse-panel-btn"
     class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px]"
-    data-tippy-content="Collapse Panel">
+    data-tippy-content="Collapse Panel"
+  >
     <i class="fas fa-chevron-up text-[10px]"></i>
   </button>
 </div>
 
 <script>
   // Unified Floating Panel Event Handlers
-  document.addEventListener('DOMContentLoaded', function () {
-    const panel = document.getElementById('unified-floating-panel');
-    const panelContent = document.getElementById('panel-content');
-    const deployButtonGroup = document.getElementById('deploy-button-group');
-    const lockBtn = document.getElementById('lock-panel-btn');
-    const collapseBtn = document.getElementById('collapse-panel-btn');
+  document.addEventListener("DOMContentLoaded", function () {
+    const panel = document.getElementById("unified-floating-panel");
+    const panelContent = document.getElementById("panel-content");
+    const deployButtonGroup = document.getElementById("deploy-button-group");
+    const lockBtn = document.getElementById("lock-panel-btn");
+    const collapseBtn = document.getElementById("collapse-panel-btn");
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
     let isLocked = true;
@@ -164,13 +202,13 @@
 
     // Initialize panel dimensions immediately to prevent sizing issues
     if (panel) {
-      panel.style.setProperty('width', '44px', 'important');
-      panel.style.setProperty('max-width', '44px', 'important');
-      panel.style.setProperty('min-width', '44px', 'important');
-      panel.style.setProperty('min-height', 'none', 'important');
-      panel.style.setProperty('max-height', 'auto', 'important');
-      panel.style.setProperty('box-sizing', 'border-box', 'important');
-      panel.style.overflow = 'visible';
+      panel.style.setProperty("width", "44px", "important");
+      panel.style.setProperty("max-width", "44px", "important");
+      panel.style.setProperty("min-width", "44px", "important");
+      panel.style.setProperty("min-height", "none", "important");
+      panel.style.setProperty("max-height", "auto", "important");
+      panel.style.setProperty("box-sizing", "border-box", "important");
+      panel.style.overflow = "visible";
 
       // Force immediate layout
       panel.offsetWidth;
@@ -184,18 +222,18 @@
       const viewportMidX = window.innerWidth / 2;
       if (panelCenterX > viewportMidX) {
         // Panel is on right half; open drawer to the left
-        deployButtonGroup.classList.add('drawer-left');
-        deployButtonGroup.classList.remove('drawer-right');
+        deployButtonGroup.classList.add("drawer-left");
+        deployButtonGroup.classList.remove("drawer-right");
       } else {
         // Panel is on left half; open drawer to the right
-        deployButtonGroup.classList.add('drawer-right');
-        deployButtonGroup.classList.remove('drawer-left');
+        deployButtonGroup.classList.add("drawer-right");
+        deployButtonGroup.classList.remove("drawer-left");
       }
     }
 
     // Load saved state from localStorage
     function loadPanelState() {
-      const savedState = localStorage.getItem('unifiedPanelState');
+      const savedState = localStorage.getItem("unifiedPanelState");
       if (savedState && panel) {
         const state = JSON.parse(savedState);
         panel.style.inset = `${state.top}px auto auto ${state.left}px`;
@@ -218,102 +256,109 @@
           locked: isLocked,
           collapsed: isCollapsed
         };
-        localStorage.setItem('unifiedPanelState', JSON.stringify(state));
+        localStorage.setItem("unifiedPanelState", JSON.stringify(state));
       }
     }
 
     // Update lock button and panel cursor
     function updateLockState() {
-      const lockBtnRef = document.getElementById('lock-panel-btn');
+      const lockBtnRef = document.getElementById("lock-panel-btn");
       if (!lockBtnRef || !panel) return;
 
-      const buttonsToToggle = ['add-node-btn', 'add-network-btn', 'add-group-btn', 'add-text-btn', 'add-bulk-link-btn', 'collapse-panel-btn', 'viewport-lab-settings', 'viewport-layout'];
-      buttonsToToggle.forEach(id => {
+      const buttonsToToggle = [
+        "add-node-btn",
+        "add-network-btn",
+        "add-group-btn",
+        "add-text-btn",
+        "add-bulk-link-btn",
+        "collapse-panel-btn",
+        "viewport-lab-settings",
+        "viewport-layout"
+      ];
+      buttonsToToggle.forEach((id) => {
         const btn = document.getElementById(id);
         if (btn) {
           if (isLocked) {
-            btn.setAttribute('disabled', 'true');
-            btn.style.opacity = '0.5';
-            btn.classList.remove('cursor-pointer');
-            btn.classList.add('cursor-not-allowed');
+            btn.setAttribute("disabled", "true");
+            btn.style.opacity = "0.5";
+            btn.classList.remove("cursor-pointer");
+            btn.classList.add("cursor-not-allowed");
           } else {
-            btn.removeAttribute('disabled');
-            btn.style.opacity = '1';
-            btn.classList.add('cursor-pointer');
-            btn.classList.remove('cursor-not-allowed');
+            btn.removeAttribute("disabled");
+            btn.style.opacity = "1";
+            btn.classList.add("cursor-pointer");
+            btn.classList.remove("cursor-not-allowed");
           }
         }
       });
 
       if (isLocked) {
         lockBtnRef.innerHTML = '<i class="fas fa-lock text-[10px]"></i>';
-        lockBtnRef.setAttribute('data-tippy-content', 'Unlock Lab');
-        lockBtnRef.style.background = 'var(--color-red-500)';
-        lockBtnRef.style.color = 'var(--vscode-button-foreground)';
+        lockBtnRef.setAttribute("data-tippy-content", "Unlock Lab");
+        lockBtnRef.style.background = "var(--color-red-500)";
+        lockBtnRef.style.color = "var(--vscode-button-foreground)";
         if (lockBtnRef._tippy) {
-          lockBtnRef._tippy.setContent('Unlock Lab');
+          lockBtnRef._tippy.setContent("Unlock Lab");
         }
 
-        panel.style.cursor = 'default';
-        const dragHandle = panel.querySelector('.drag-handle');
-        if (dragHandle) dragHandle.style.cursor = 'default';
+        panel.style.cursor = "default";
+        const dragHandle = panel.querySelector(".drag-handle");
+        if (dragHandle) dragHandle.style.cursor = "default";
       } else {
         lockBtnRef.innerHTML = '<i class="fas fa-unlock text-[10px]"></i>';
-        lockBtnRef.setAttribute('data-tippy-content', 'Lock Lab');
-        lockBtnRef.style.background = 'var(--vscode-button-secondaryBackground)';
-        lockBtnRef.style.color = 'var(--vscode-button-secondaryForeground)';
+        lockBtnRef.setAttribute("data-tippy-content", "Lock Lab");
+        lockBtnRef.style.background = "var(--vscode-button-secondaryBackground)";
+        lockBtnRef.style.color = "var(--vscode-button-secondaryForeground)";
         if (lockBtnRef._tippy) {
-          lockBtnRef._tippy.setContent('Lock Lab');
+          lockBtnRef._tippy.setContent("Lock Lab");
         }
 
-        panel.style.cursor = 'grab';
-        const dragHandle = panel.querySelector('.drag-handle');
-        if (dragHandle) dragHandle.style.cursor = 'grab';
+        panel.style.cursor = "grab";
+        const dragHandle = panel.querySelector(".drag-handle");
+        if (dragHandle) dragHandle.style.cursor = "grab";
       }
 
       // Notify other scripts about lock state changes
       window.topologyLocked = isLocked;
-      window.dispatchEvent(new CustomEvent('topology-lock-change', { detail: isLocked }));
+      window.dispatchEvent(new CustomEvent("topology-lock-change", { detail: isLocked }));
     }
 
     // Update collapse button and panel content visibility
     function updateCollapseState() {
-      const collapseBtnRef = document.getElementById('collapse-panel-btn');
+      const collapseBtnRef = document.getElementById("collapse-panel-btn");
       if (!collapseBtnRef || !panelContent) return;
 
       if (isCollapsed) {
         collapseBtnRef.innerHTML = '<i class="fas fa-chevron-down text-[10px]"></i>';
-        collapseBtnRef.setAttribute('data-tippy-content', 'Expand Panel');
+        collapseBtnRef.setAttribute("data-tippy-content", "Expand Panel");
         if (collapseBtnRef._tippy) {
-          collapseBtnRef._tippy.setContent('Expand Panel');
+          collapseBtnRef._tippy.setContent("Expand Panel");
         }
-        panelContent.style.display = 'none';
+        panelContent.style.display = "none";
         // Also hide the bottom divider
-        const divider = document.getElementById('panel-divider-collapse');
-        if (divider) divider.style.display = 'none';
+        const divider = document.getElementById("panel-divider-collapse");
+        if (divider) divider.style.display = "none";
       } else {
         collapseBtnRef.innerHTML = '<i class="fas fa-chevron-up text-[10px]"></i>';
-        collapseBtnRef.setAttribute('data-tippy-content', 'Collapse Panel');
+        collapseBtnRef.setAttribute("data-tippy-content", "Collapse Panel");
         if (collapseBtnRef._tippy) {
-          collapseBtnRef._tippy.setContent('Collapse Panel');
+          collapseBtnRef._tippy.setContent("Collapse Panel");
         }
-        panelContent.style.display = 'flex';
+        panelContent.style.display = "flex";
         // Show the bottom divider
-        const divider = document.getElementById('panel-divider-collapse');
-        if (divider) divider.style.display = 'block';
+        const divider = document.getElementById("panel-divider-collapse");
+        if (divider) divider.style.display = "block";
       }
     }
 
     // Briefly shake the lock button to indicate actions are blocked
     function showLockedMessage() {
-      const lockBtn = document.getElementById('lock-panel-btn');
+      const lockBtn = document.getElementById("lock-panel-btn");
       if (!lockBtn) return;
-      lockBtn.classList.add('lock-shake');
-      lockBtn.addEventListener(
-        'animationend',
-        () => lockBtn.classList.remove('lock-shake'),
-        { once: true }
-      );
+      lockBtn.classList.add("lock-shake");
+      lockBtn.addEventListener("animationend", () => lockBtn.classList.remove("lock-shake"), {
+        once: true
+      });
     }
     window.showLabLockedMessage = showLockedMessage;
 
@@ -325,21 +370,25 @@
       loadPanelState();
 
       // Mouse down on panel (start drag)
-      panel.addEventListener('mousedown', function (e) {
+      panel.addEventListener("mousedown", function (e) {
         // Don't drag if locked or clicking on buttons
-        if (isLocked || e.target.tagName === 'BUTTON' || e.target.tagName === 'I') {
+        if (isLocked || e.target.tagName === "BUTTON" || e.target.tagName === "I") {
           return;
         }
 
         // Only start drag if clicking on panel background or drag handle
-        if (!e.target.classList.contains('drag-handle') && e.target !== panel && !panel.contains(e.target)) {
+        if (
+          !e.target.classList.contains("drag-handle") &&
+          e.target !== panel &&
+          !panel.contains(e.target)
+        ) {
           return;
         }
 
         isDragging = true;
-        panel.style.cursor = 'grabbing';
-        const dragHandle = panel.querySelector('.drag-handle');
-        if (dragHandle) dragHandle.style.cursor = 'grabbing';
+        panel.style.cursor = "grabbing";
+        const dragHandle = panel.querySelector(".drag-handle");
+        if (dragHandle) dragHandle.style.cursor = "grabbing";
 
         const rect = panel.getBoundingClientRect();
         startX = e.clientX;
@@ -351,7 +400,7 @@
       });
 
       // Mouse move (drag)
-      document.addEventListener('mousemove', function (e) {
+      document.addEventListener("mousemove", function (e) {
         if (!isDragging || isLocked) return;
 
         const deltaX = e.clientX - startX;
@@ -362,7 +411,7 @@
 
         // Keep panel within viewport bounds (respect navbar boundaries)
         const panelRect = panel.getBoundingClientRect();
-        const navbar = document.querySelector('.navbar');
+        const navbar = document.querySelector(".navbar");
         const navbarHeight = navbar ? navbar.offsetHeight : 72; // Default to 72px if not found
         const maxLeft = window.innerWidth - panelRect.width;
         const maxTop = window.innerHeight - panelRect.height;
@@ -371,15 +420,15 @@
         newLeft = Math.max(0, Math.min(newLeft, maxLeft));
         newTop = Math.max(minTop, Math.min(newTop, maxTop));
 
-        panel.style.left = newLeft + 'px';
-        panel.style.top = newTop + 'px';
-        panel.style.bottom = 'auto';
-        panel.style.right = 'auto';
+        panel.style.left = newLeft + "px";
+        panel.style.top = newTop + "px";
+        panel.style.bottom = "auto";
+        panel.style.right = "auto";
         updateDrawerDirection();
       });
 
       // Mouse up (end drag)
-      document.addEventListener('mouseup', function () {
+      document.addEventListener("mouseup", function () {
         if (isDragging) {
           isDragging = false;
           updateLockState(); // This will restore proper cursor
@@ -393,86 +442,111 @@
 
     // Get current viewer mode state
     function isViewerMode() {
-      return window.topoViewerMode === 'viewer' ||
-        (window.topoViewerState && window.topoViewerState.currentMode === 'viewer');
+      return (
+        window.topoViewerMode === "viewer" ||
+        (window.topoViewerState && window.topoViewerState.currentMode === "viewer")
+      );
     }
 
     // Update panel state based on current mode
     function updateUnifiedPanelState() {
-      const deployBtn = document.getElementById('deploy-destroy-btn');
-      const redeployBtn = document.getElementById('redeploy-btn');
-      const deployCleanupBtn = document.getElementById('deploy-cleanup-btn');
-      const destroyCleanupBtn = document.getElementById('destroy-cleanup-btn');
-      const redeployCleanupBtn = document.getElementById('redeploy-cleanup-btn');
-      const addNodeBtn = document.getElementById('add-node-btn');
-      const addNetworkBtn = document.getElementById('add-network-btn');
-      const addGroupBtn = document.getElementById('add-group-btn');
-      const addTextBtn = document.getElementById('add-text-btn');
+      const deployBtn = document.getElementById("deploy-destroy-btn");
+      const redeployBtn = document.getElementById("redeploy-btn");
+      const deployCleanupBtn = document.getElementById("deploy-cleanup-btn");
+      const destroyCleanupBtn = document.getElementById("destroy-cleanup-btn");
+      const redeployCleanupBtn = document.getElementById("redeploy-cleanup-btn");
+      const addNodeBtn = document.getElementById("add-node-btn");
+      const addNetworkBtn = document.getElementById("add-network-btn");
+      const addGroupBtn = document.getElementById("add-group-btn");
+      const addTextBtn = document.getElementById("add-text-btn");
 
       if (deployBtn && redeployBtn) {
         if (isViewerMode()) {
           // In viewer mode (lab is running), show destroy button and redeploy button
           deployBtn.innerHTML = '<i class="fas fa-stop text-[10px]"></i>';
-          deployBtn.setAttribute('data-tippy-content', 'Destroy Lab');
-          deployBtn.style.background = 'var(--vscode-button-background)';
-          deployBtn.style.color = 'var(--vscode-button-foreground)';
+          deployBtn.setAttribute("data-tippy-content", "Destroy Lab");
+          deployBtn.style.background = "var(--vscode-button-background)";
+          deployBtn.style.color = "var(--vscode-button-foreground)";
           deployBtn.onmouseover = function () {
-            this.style.background = 'var(--vscode-button-hoverBackground)';
-            this.style.transform = 'translateY(-1px)';
-            this.style.opacity = '1';
+            this.style.background = "var(--vscode-button-hoverBackground)";
+            this.style.transform = "translateY(-1px)";
+            this.style.opacity = "1";
           };
           deployBtn.onmouseout = function () {
-            this.style.background = 'var(--vscode-button-background)';
-            this.style.transform = 'translateY(0)';
-            this.style.opacity = '1';
+            this.style.background = "var(--vscode-button-background)";
+            this.style.transform = "translateY(0)";
+            this.style.opacity = "1";
           };
 
           // Show viewer-mode buttons
-          if (redeployBtn) { redeployBtn.classList.remove('hidden'); redeployBtn.classList.add('flex'); }
-          if (destroyCleanupBtn) { destroyCleanupBtn.classList.remove('hidden'); destroyCleanupBtn.classList.add('flex'); }
-          if (redeployCleanupBtn) { redeployCleanupBtn.classList.remove('hidden'); redeployCleanupBtn.classList.add('flex'); }
-          if (deployCleanupBtn) { deployCleanupBtn.classList.add('hidden'); deployCleanupBtn.classList.remove('flex'); }
+          if (redeployBtn) {
+            redeployBtn.classList.remove("hidden");
+            redeployBtn.classList.add("flex");
+          }
+          if (destroyCleanupBtn) {
+            destroyCleanupBtn.classList.remove("hidden");
+            destroyCleanupBtn.classList.add("flex");
+          }
+          if (redeployCleanupBtn) {
+            redeployCleanupBtn.classList.remove("hidden");
+            redeployCleanupBtn.classList.add("flex");
+          }
+          if (deployCleanupBtn) {
+            deployCleanupBtn.classList.add("hidden");
+            deployCleanupBtn.classList.remove("flex");
+          }
         } else {
-
           // In editor mode (lab is not running), show deploy button and hide redeploy button
           deployBtn.innerHTML = '<i class="fas fa-play text-[10px]"></i>';
-          deployBtn.setAttribute('data-tippy-content', 'Deploy Lab');
-          deployBtn.style.background = 'var(--vscode-button-background)';
-          deployBtn.style.color = 'var(--vscode-button-foreground)';
+          deployBtn.setAttribute("data-tippy-content", "Deploy Lab");
+          deployBtn.style.background = "var(--vscode-button-background)";
+          deployBtn.style.color = "var(--vscode-button-foreground)";
           deployBtn.onmouseover = function () {
-            this.style.background = 'var(--vscode-button-hoverBackground)';
-            this.style.transform = 'translateY(-1px)';
-            this.style.opacity = '1';
+            this.style.background = "var(--vscode-button-hoverBackground)";
+            this.style.transform = "translateY(-1px)";
+            this.style.opacity = "1";
           };
           deployBtn.onmouseout = function () {
-            this.style.background = 'var(--vscode-button-background)';
-            this.style.transform = 'translateY(0)';
-            this.style.opacity = '1';
+            this.style.background = "var(--vscode-button-background)";
+            this.style.transform = "translateY(0)";
+            this.style.opacity = "1";
           };
 
           // Editor-mode visibility
-          if (redeployBtn) { redeployBtn.classList.add('hidden'); redeployBtn.classList.remove('flex'); }
-          if (destroyCleanupBtn) { destroyCleanupBtn.classList.add('hidden'); destroyCleanupBtn.classList.remove('flex'); }
-          if (redeployCleanupBtn) { redeployCleanupBtn.classList.add('hidden'); redeployCleanupBtn.classList.remove('flex'); }
-          if (deployCleanupBtn) { deployCleanupBtn.classList.remove('hidden'); deployCleanupBtn.classList.add('flex'); }
+          if (redeployBtn) {
+            redeployBtn.classList.add("hidden");
+            redeployBtn.classList.remove("flex");
+          }
+          if (destroyCleanupBtn) {
+            destroyCleanupBtn.classList.add("hidden");
+            destroyCleanupBtn.classList.remove("flex");
+          }
+          if (redeployCleanupBtn) {
+            redeployCleanupBtn.classList.add("hidden");
+            redeployCleanupBtn.classList.remove("flex");
+          }
+          if (deployCleanupBtn) {
+            deployCleanupBtn.classList.remove("hidden");
+            deployCleanupBtn.classList.add("flex");
+          }
         }
       }
 
       // Editor-only tools (only visible in editor mode)
-      const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
+      const addBulkLinkBtn = document.getElementById("add-bulk-link-btn");
       const editorOnlyButtons = [addNodeBtn, addNetworkBtn, addBulkLinkBtn];
-      editorOnlyButtons.forEach(btn => {
+      editorOnlyButtons.forEach((btn) => {
         if (btn) {
-          btn.style.display = isViewerMode() ? 'none' : 'flex';
+          btn.style.display = isViewerMode() ? "none" : "flex";
         }
       });
-      
+
       // Add group and add text are available in both modes
       if (addGroupBtn) {
-        addGroupBtn.style.display = 'flex';
+        addGroupBtn.style.display = "flex";
       }
       if (addTextBtn) {
-        addTextBtn.style.display = 'flex';
+        addTextBtn.style.display = "flex";
       }
     }
 
@@ -480,17 +554,17 @@
     function initializePanel() {
       if (panel) {
         // Ensure consistent panel size with more specific constraints
-        panel.style.setProperty('width', '44px', 'important');
-        panel.style.setProperty('max-width', '44px', 'important');
-        panel.style.setProperty('min-width', '44px', 'important');
-        panel.style.setProperty('min-height', 'none', 'important');
-        panel.style.setProperty('max-height', 'auto', 'important');
-        panel.style.setProperty('box-sizing', 'border-box', 'important');
+        panel.style.setProperty("width", "44px", "important");
+        panel.style.setProperty("max-width", "44px", "important");
+        panel.style.setProperty("min-width", "44px", "important");
+        panel.style.setProperty("min-height", "none", "important");
+        panel.style.setProperty("max-height", "auto", "important");
+        panel.style.setProperty("box-sizing", "border-box", "important");
 
         // Ensure proper height constraints
-        panel.style.height = 'auto';
-        panel.style.maxHeight = 'none';
-        panel.style.minHeight = 'auto';
+        panel.style.height = "auto";
+        panel.style.maxHeight = "none";
+        panel.style.minHeight = "auto";
 
         // Force layout recalculation immediately
         panel.offsetWidth;
@@ -499,9 +573,9 @@
         // Double-check and reapply if needed
         setTimeout(() => {
           if (panel.offsetWidth !== 44) {
-            panel.style.setProperty('width', '44px', 'important');
-            panel.style.setProperty('max-width', '44px', 'important');
-            panel.style.setProperty('min-width', '44px', 'important');
+            panel.style.setProperty("width", "44px", "important");
+            panel.style.setProperty("max-width", "44px", "important");
+            panel.style.setProperty("min-width", "44px", "important");
           }
         }, 0);
       }
@@ -509,11 +583,11 @@
 
     // Setup deploy button group expansion
     function setupDeployButtonExpansion() {
-      const deployButtonGroup = document.getElementById('deploy-button-group');
-      const deployMainBtn = document.getElementById('deploy-destroy-btn');
-      const secondaryButtons = document.getElementById('deploy-secondary-buttons');
-      const redeployBtn = document.getElementById('redeploy-btn');
-      const cleanupBtn = document.getElementById('cleanup-action-btn');
+      const deployButtonGroup = document.getElementById("deploy-button-group");
+      const deployMainBtn = document.getElementById("deploy-destroy-btn");
+      const secondaryButtons = document.getElementById("deploy-secondary-buttons");
+      const redeployBtn = document.getElementById("redeploy-btn");
+      const cleanupBtn = document.getElementById("cleanup-action-btn");
 
       let hoverTimeout;
       let isExpanded = false;
@@ -524,20 +598,20 @@
         clearTimeout(hoverTimeout);
         isExpanded = true;
 
-        secondaryButtons.style.opacity = '1';
-        secondaryButtons.style.visibility = 'visible';
-        secondaryButtons.style.pointerEvents = 'auto';
+        secondaryButtons.style.opacity = "1";
+        secondaryButtons.style.visibility = "visible";
+        secondaryButtons.style.pointerEvents = "auto";
 
         // Show appropriate secondary buttons based on mode
         if (isViewerMode()) {
-          if (redeployBtn && redeployBtn.style.display !== 'none') {
-            redeployBtn.style.opacity = '1';
-            redeployBtn.style.transform = 'translateX(0)';
+          if (redeployBtn && redeployBtn.style.display !== "none") {
+            redeployBtn.style.opacity = "1";
+            redeployBtn.style.transform = "translateX(0)";
           }
         }
         if (cleanupBtn) {
-          cleanupBtn.style.opacity = '1';
-          cleanupBtn.style.transform = 'translateX(0)';
+          cleanupBtn.style.opacity = "1";
+          cleanupBtn.style.transform = "translateX(0)";
         }
       }
 
@@ -548,36 +622,36 @@
           if (!isExpanded) return;
 
           isExpanded = false;
-          secondaryButtons.style.opacity = '0';
-          secondaryButtons.style.visibility = 'hidden';
-          secondaryButtons.style.pointerEvents = 'none';
+          secondaryButtons.style.opacity = "0";
+          secondaryButtons.style.visibility = "hidden";
+          secondaryButtons.style.pointerEvents = "none";
 
           // Hide secondary buttons
           if (redeployBtn) {
-            redeployBtn.style.opacity = '0';
-            redeployBtn.style.transform = 'translateX(-10px)';
+            redeployBtn.style.opacity = "0";
+            redeployBtn.style.transform = "translateX(-10px)";
           }
           if (cleanupBtn) {
-            cleanupBtn.style.opacity = '0';
-            cleanupBtn.style.transform = 'translateX(-10px)';
+            cleanupBtn.style.opacity = "0";
+            cleanupBtn.style.transform = "translateX(-10px)";
           }
         }, 150);
       }
 
       // Add hover listeners to the button group
       if (deployButtonGroup) {
-        deployButtonGroup.addEventListener('mouseenter', showSecondaryButtons);
-        deployButtonGroup.addEventListener('mouseleave', hideSecondaryButtons);
+        deployButtonGroup.addEventListener("mouseenter", showSecondaryButtons);
+        deployButtonGroup.addEventListener("mouseleave", hideSecondaryButtons);
       }
     }
 
     // Add event listeners for control buttons
     function setupControlButtons() {
-      const lockBtn = document.getElementById('lock-panel-btn');
-      const collapseBtn = document.getElementById('collapse-panel-btn');
+      const lockBtn = document.getElementById("lock-panel-btn");
+      const collapseBtn = document.getElementById("collapse-panel-btn");
 
       if (lockBtn) {
-        lockBtn.addEventListener('click', function (e) {
+        lockBtn.addEventListener("click", function (e) {
           e.stopPropagation();
           isLocked = !isLocked;
           updateLockState();
@@ -587,28 +661,28 @@
         });
 
         // Add hover effects
-        lockBtn.addEventListener('mouseenter', function () {
+        lockBtn.addEventListener("mouseenter", function () {
           if (isLocked) {
-            this.style.background = 'var(--color-red-600)';
+            this.style.background = "var(--color-red-600)";
           } else {
-            this.style.background = 'var(--vscode-button-secondaryHoverBackground)';
+            this.style.background = "var(--vscode-button-secondaryHoverBackground)";
           }
-          this.style.transform = 'translateY(-1px)';
+          this.style.transform = "translateY(-1px)";
         });
 
-        lockBtn.addEventListener('mouseleave', function () {
+        lockBtn.addEventListener("mouseleave", function () {
           if (isLocked) {
-            this.style.opacity = '1';
-            this.style.background = 'var(--color-red-500)';
+            this.style.opacity = "1";
+            this.style.background = "var(--color-red-500)";
           } else {
-            this.style.background = 'var(--vscode-button-secondaryBackground)';
+            this.style.background = "var(--vscode-button-secondaryBackground)";
           }
-          this.style.transform = 'translateY(0)';
+          this.style.transform = "translateY(0)";
         });
       }
 
       if (collapseBtn) {
-        collapseBtn.addEventListener('click', function (e) {
+        collapseBtn.addEventListener("click", function (e) {
           e.stopPropagation();
           isCollapsed = !isCollapsed;
           updateCollapseState();
@@ -618,19 +692,21 @@
         });
 
         // Add hover effects
-        collapseBtn.addEventListener('mouseenter', function () {
-          this.style.background = 'var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))';
-          this.style.transform = 'translateY(-1px)';
+        collapseBtn.addEventListener("mouseenter", function () {
+          this.style.background =
+            "var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.51))";
+          this.style.transform = "translateY(-1px)";
         });
 
-        collapseBtn.addEventListener('mouseleave', function () {
-          this.style.background = 'var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))';
-          this.style.transform = 'translateY(0)';
+        collapseBtn.addEventListener("mouseleave", function () {
+          this.style.background =
+            "var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.31))";
+          this.style.transform = "translateY(0)";
         });
       }
 
       // Mouse leave window (stop drag to prevent jumping)
-      document.addEventListener('mouseleave', function () {
+      document.addEventListener("mouseleave", function () {
         if (isDragging) {
           isDragging = false;
           updateLockState();
@@ -640,7 +716,7 @@
       });
 
       // Visibility change (stop drag when tab becomes hidden)
-      document.addEventListener('visibilitychange', function () {
+      document.addEventListener("visibilitychange", function () {
         if (document.hidden && isDragging) {
           isDragging = false;
           updateLockState();
@@ -650,7 +726,7 @@
       });
 
       // Window blur (stop drag when window loses focus)
-      window.addEventListener('blur', function () {
+      window.addEventListener("blur", function () {
         if (isDragging) {
           isDragging = false;
           updateLockState();
@@ -671,19 +747,19 @@
     window.updateUnifiedPanelState = updateUnifiedPanelState;
 
     // Add event listeners for all buttons
-    const deployBtn = document.getElementById('deploy-destroy-btn');
-    const redeployBtn = document.getElementById('redeploy-btn');
-    const cleanupBtn = document.getElementById('cleanup-action-btn');
-    const addNodeBtn = document.getElementById('add-node-btn');
-    const addNetworkBtn = document.getElementById('add-network-btn');
-    const addGroupBtn = document.getElementById('add-group-btn');
-    const addTextBtn = document.getElementById('add-text-btn');
-    const addBulkLinkBtn = document.getElementById('add-bulk-link-btn');
+    const deployBtn = document.getElementById("deploy-destroy-btn");
+    const redeployBtn = document.getElementById("redeploy-btn");
+    const cleanupBtn = document.getElementById("cleanup-action-btn");
+    const addNodeBtn = document.getElementById("add-node-btn");
+    const addNetworkBtn = document.getElementById("add-network-btn");
+    const addGroupBtn = document.getElementById("add-group-btn");
+    const addTextBtn = document.getElementById("add-text-btn");
+    const addBulkLinkBtn = document.getElementById("add-bulk-link-btn");
 
     if (deployBtn) {
-      deployBtn.addEventListener('click', function (e) {
+      deployBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-deploy-destroy-click', {
+        const event = new CustomEvent("unified-deploy-destroy-click", {
           detail: { isViewerMode: isViewerMode() }
         });
         document.dispatchEvent(event);
@@ -691,9 +767,9 @@
     }
 
     if (redeployBtn) {
-      redeployBtn.addEventListener('click', function (e) {
+      redeployBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-redeploy-click', {
+        const event = new CustomEvent("unified-redeploy-click", {
           detail: { isViewerMode: isViewerMode() }
         });
         document.dispatchEvent(event);
@@ -701,9 +777,9 @@
     }
 
     if (cleanupBtn) {
-      cleanupBtn.addEventListener('click', function (e) {
+      cleanupBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-cleanup-click', {
+        const event = new CustomEvent("unified-cleanup-click", {
           detail: { isViewerMode: isViewerMode() }
         });
         document.dispatchEvent(event);
@@ -711,57 +787,57 @@
     }
 
     if (addNodeBtn) {
-      addNodeBtn.addEventListener('click', function (e) {
+      addNodeBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-add-node-click');
+        const event = new CustomEvent("unified-add-node-click");
         document.dispatchEvent(event);
       });
     }
 
     if (addNetworkBtn) {
-      addNetworkBtn.addEventListener('click', function (e) {
+      addNetworkBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-add-network-click');
+        const event = new CustomEvent("unified-add-network-click");
         document.dispatchEvent(event);
       });
     }
 
     if (addGroupBtn) {
-      addGroupBtn.addEventListener('click', function (e) {
+      addGroupBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-add-group-click');
+        const event = new CustomEvent("unified-add-group-click");
         document.dispatchEvent(event);
       });
     }
 
     if (addTextBtn) {
-      addTextBtn.addEventListener('click', function (e) {
+      addTextBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-add-text-click');
+        const event = new CustomEvent("unified-add-text-click");
         document.dispatchEvent(event);
       });
     }
 
     if (addBulkLinkBtn) {
-      addBulkLinkBtn.addEventListener('click', function (e) {
+      addBulkLinkBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const event = new CustomEvent('unified-add-bulk-link-click');
+        const event = new CustomEvent("unified-add-bulk-link-click");
         document.dispatchEvent(event);
       });
     }
 
     // Listen for mode changes
-    document.addEventListener('topo-mode-changed', updateUnifiedPanelState);
+    document.addEventListener("topo-mode-changed", updateUnifiedPanelState);
 
-      // Handle window resize to keep panel in bounds
-      window.addEventListener('resize', function () {
-        if (panel && window.keepPanelWithinBounds) {
-          const result = window.keepPanelWithinBounds(panel);
-          if (result.changed) {
-            savePanelState();
-          }
+    // Handle window resize to keep panel in bounds
+    window.addEventListener("resize", function () {
+      if (panel && window.keepPanelWithinBounds) {
+        const result = window.keepPanelWithinBounds(panel);
+        if (result.changed) {
+          savePanelState();
         }
-        updateDrawerDirection();
-      });
+      }
+      updateDrawerDirection();
+    });
   });
 </script>
