@@ -1,46 +1,61 @@
-<section class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel" id="panel-bulk-link" aria-labelledby="bulk-link-panel-heading" style="display: none;">
-    <p class="panel-heading text-base font-bold" id="bulk-link-panel-heading">
-      Bulk Link Devices
-    </p>
-    <div class="panel-block p-0">
-      <div class="pl-4 pb-2">
-        <div class="px-0">
-          <!-- Source Pattern -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Source Pattern</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" class="input-field text-base w-full" id="source-regex" placeholder="e.g. leaf, spine?# or ^core-.$">
-                </div>
+<section
+  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+  id="panel-bulk-link" aria-labelledby="bulk-link-panel-heading" style="display: none;">
+  <p class="panel-heading text-base font-bold" id="bulk-link-panel-heading">
+    Bulk Link Devices
+  </p>
+  <div class="panel-block p-0">
+    <div class="pl-4 pb-2">
+      <p class="pr-4 pb-2 text-sm leading-snug text-secondary">
+        Enter patterns to connect multiple devices at once. Source Pattern selects the starting
+        nodes and Target Pattern selects destinations for each source. You can use wildcards
+        (<code>*</code>, <code>?</code>, <code>#</code>) or regular expressions, and reuse capture
+        groups from the source in the target with placeholders like <code>$1</code> or
+        <code>$&lt;name&gt;</code>.
+      </p>
+      <p class="pr-4 pb-2 text-sm leading-snug text-secondary">
+        For example, matching <code>leaf*</code> to <code>spine*</code> links every leaf to all
+        spines, while <code>leaf?#</code> to <code>spine$1</code> connects each numbered leaf to
+        the spine with the same index.
+      </p>
+      <div class="px-0">
+        <!-- Source Pattern -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Source Pattern</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="text" class="input-field text-base w-full" id="source-regex"
+                  placeholder="e.g. leaf, spine?# or ^core-.$">
               </div>
             </div>
           </div>
-          <!-- Target Pattern -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1">
-                  <label class="label text-right text-base font-semibold">Target Pattern</label>
-                </div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <input type="text" class="input-field text-base w-full" id="target-regex" placeholder="e.g. spine, leaf?# or ^edge-.$">
-                </div>
+        </div>
+        <!-- Target Pattern -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1">
+                <label class="label text-right text-base font-semibold">Target Pattern</label>
+              </div>
+              <div class="w-3/5 pl-2 pr-2">
+                <input type="text" class="input-field text-base w-full" id="target-regex"
+                  placeholder="e.g. spine, leaf?# or ^edge-.$">
               </div>
             </div>
           </div>
-          <!-- Action Buttons -->
-          <div class="my-1">
-            <div class="p-0.5">
-              <div class="flex items-center">
-                <div class="w-2/5 pr-1"></div>
-                <div class="w-3/5 pl-2 pr-2">
-                  <div class="flex justify-end space-x-2">
-                    <button class="btn btn-secondary btn-small" id="bulk-link-cancel">Cancel</button>
-                    <button class="btn btn-primary btn-small" id="bulk-link-apply">Apply</button>
-                  </div>
+        </div>
+        <!-- Action Buttons -->
+        <div class="my-1">
+          <div class="p-0.5">
+            <div class="flex items-center">
+              <div class="w-2/5 pr-1"></div>
+              <div class="w-3/5 pl-2 pr-2">
+                <div class="flex justify-end space-x-2">
+                  <button class="btn btn-secondary btn-small" id="bulk-link-cancel">Cancel</button>
+                  <button class="btn btn-primary btn-small" id="bulk-link-apply">Apply</button>
                 </div>
               </div>
             </div>
@@ -48,8 +63,9 @@
         </div>
       </div>
     </div>
-  </section>
-  <script>
+  </div>
+</section>
+<script>
   // Event listeners remain the same
   document.getElementById('bulk-link-cancel').addEventListener('click', () => {
     document.getElementById('panel-bulk-link').style.display = 'none';
@@ -62,4 +78,4 @@
       document.getElementById('panel-bulk-link').style.display = 'none';
     }
   });
-  </script>
+</script>
