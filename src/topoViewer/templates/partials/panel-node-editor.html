@@ -464,26 +464,28 @@
           <template id="tpl-integrated-mda-entry">
             <div class="integrated-mda-entry">
               <div class="grid grid-cols-10 gap-x-4 gap-y-2 items-stretch">
-                <div class="col-span-3">
+                <div class="col-span-2">
                   <label class="block vscode-label mb-1 w-full h-full">Slot</label>
                 </div>
-                <div class="col-span-6">
+                <div class="col-span-7 pl-3">
                   <label class="block vscode-label mb-1 w-full h-full">Type</label>
                 </div>
                 <div class="col-span-1 w-full h-full"></div>
               </div>
 
               <div class="grid grid-cols-10 gap-x-4 gap-y-2 items-stretch">
-                <div class="col-span-3">
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    class="slot-number-input"
-                    data-role="integrated-mda-slot"
-                  />
+                <div class="col-span-2">
+                  <div class="slot-field-shell">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      class="slot-number-input"
+                      data-role="integrated-mda-slot"
+                    />
+                  </div>
                 </div>
-                <div class="col-span-6">
+                <div class="col-span-7 pl-3">
                   <input type="hidden" data-role="integrated-mda-type-value" />
                   <div data-role="integrated-mda-type-dropdown" class="w-full h-full"></div>
                 </div>
