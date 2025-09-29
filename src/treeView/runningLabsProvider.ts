@@ -8,8 +8,7 @@ import { execFileSync } from "child_process";
 import * as fs from "fs";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
-// Mode switching imports removed - now handled by command completion callbacks
-// import { getCurrentTopoViewer, setCurrentTopoViewer } from "../commands/graph";
+import { getCurrentTopoViewer } from "../commands/graph";
 
 /**
  * Interface corresponding to fields in the
@@ -155,10 +154,21 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * are only triggered by successful deploy/destroy command completion.
      */
     private async refreshTopoViewerIfOpen(): Promise<void> {
-        // DISABLED: Automatic mode switching based on deployment state
-        // Mode switching is now handled exclusively by command completion callbacks
-        // in deploy.ts, destroy.ts, and redeploy.ts
-        return;
+        const viewer = getCurrentTopoViewer();
+        if (!viewer || !viewer.currentPanel) {
+            return;
+        }
+
+        if (!viewer.isViewMode) {
+            return;
+        }
+
+        try {
+            await viewer.refreshLinkStatesFromInspect(this.labsCache.inspect?.data ?? undefined);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(`[RunningLabTreeDataProvider]:\tFailed to refresh TopoViewer link states: ${message}`);
+        }
     }
 
     hasChanges(): boolean {

@@ -1942,6 +1942,56 @@ topology:
 
 
 
+
+
+
+  public async refreshLinkStatesFromInspect(
+    labsData?: Record<string, ClabLabTreeNode>
+  ): Promise<void> {
+    if (!this.currentPanel || !this.isViewMode) {
+      return;
+    }
+
+    if (!this.currentLabName) {
+      return;
+    }
+
+    try {
+      const labs = labsData ?? (await runningLabsProvider?.discoverInspectLabs());
+      if (!labs) {
+        return;
+      }
+
+      const hasMatchingLab = Object.values(labs).some(
+        lab => lab.name === this.currentLabName
+      );
+      if (!hasMatchingLab) {
+        return;
+      }
+
+      const yamlContent = await this.getYamlContentViewMode();
+      const elements = await this.adaptor.clabYamlToCytoscapeElements(
+        yamlContent,
+        labs,
+        this.lastYamlFilePath
+      );
+
+      const edgeUpdates = elements.filter(el => el.group === 'edges');
+      if (!edgeUpdates.length) {
+        return;
+      }
+
+      this.currentPanel.webview.postMessage({
+        type: 'updateTopology',
+        data: edgeUpdates,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(`Failed to refresh link states from inspect data: ${message}`);
+    }
+  }
+
+
   /**
    * Check if a mode switch operation is currently in progress
    */
