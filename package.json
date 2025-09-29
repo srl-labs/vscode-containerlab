@@ -1332,6 +1332,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "When enabled, changing a node's kind updates connected link endpoints to match the new kind's interface pattern."
+        },
+        "containerlab.editor.lockLabByDefault": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Lock the lab canvas by default to prevent accidental modifications. Disable to start new sessions unlocked."
         }
       }
     }

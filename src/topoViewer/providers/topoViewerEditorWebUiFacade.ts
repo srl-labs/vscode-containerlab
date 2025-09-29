@@ -646,16 +646,20 @@ topology:
   }
 
   private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
     return {
       deploymentState: this.deploymentState,
       viewerMode: 'viewer',
       currentLabPath: this.lastYamlFilePath,
+      lockLabByDefault
     };
   }
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
     await refreshDockerImages(this.context);
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
     const legacyIfacePatternMapping = this.getLegacyInterfacePatternMapping(config);
     const updateLinkEndpointsOnKindChange = config.get<boolean>(
       'updateLinkEndpointsOnKindChange',
@@ -688,6 +692,7 @@ topology:
       topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
       topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
       topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
+      lockLabByDefault
     };
   }
 

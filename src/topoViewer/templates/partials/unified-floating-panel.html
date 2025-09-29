@@ -197,8 +197,12 @@
     const collapseBtn = document.getElementById("collapse-panel-btn");
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
-    let isLocked = true;
+    let isLocked = window.lockLabByDefault !== false;
     let isCollapsed = false;
+
+    if (typeof window.lockLabByDefault !== "boolean") {
+      window.lockLabByDefault = {{lockLabByDefault}};
+    }
 
     // Initialize panel dimensions immediately to prevent sizing issues
     if (panel) {
@@ -239,8 +243,8 @@
         panel.style.inset = `${state.top}px auto auto ${state.left}px`;
         isCollapsed = state.collapsed || false;
       }
-      // Always start locked regardless of saved state
-      isLocked = true;
+      // Apply configured default lock state regardless of saved state
+      isLocked = window.lockLabByDefault !== false;
       updateLockState();
       updateCollapseState();
       updateDrawerDirection();

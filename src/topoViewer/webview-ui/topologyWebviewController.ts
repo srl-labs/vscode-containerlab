@@ -1138,7 +1138,8 @@ class TopologyWebviewController {
   }
 
   private getInitialLockState(): boolean {
-    return true;
+    const configured = (window as any).lockLabByDefault;
+    return typeof configured === 'boolean' ? configured : true;
   }
 
   private showLockedMessage(): void {

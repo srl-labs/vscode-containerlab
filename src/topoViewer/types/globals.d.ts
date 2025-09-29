@@ -53,6 +53,7 @@ declare global {
     ifacePatternMapping?: Record<string, string>;
     imageMapping?: Record<string, string>;
     updateLinkEndpointsOnKindChange?: boolean;
+    lockLabByDefault?: boolean;
     defaultKind?: string;
     defaultType?: string;
     customNodes?: Array<{
