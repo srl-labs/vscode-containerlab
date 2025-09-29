@@ -98,6 +98,11 @@ class TopologyWebviewController {
   private edgeMenu: any;
   private groupMenu: any;
   private freeTextMenu: any;
+  private viewerNodeMenu: any;
+  private viewerEdgeMenu: any;
+  private viewerGroupMenu: any;
+  private activeGroupMenuTarget?: cytoscape.NodeSingular;
+  private suppressViewerCanvasClose = false;
   // eslint-disable-next-line no-unused-vars
   private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
     delete: (event) => {
@@ -615,12 +620,17 @@ class TopologyWebviewController {
       return;
     }
     if (mode === 'edit') {
+      this.freeTextMenu?.destroy();
+      this.nodeMenu?.destroy();
+      this.groupMenu?.destroy();
+      this.edgeMenu?.destroy();
       this.freeTextMenu = this.initializeFreeTextContextMenu();
       this.nodeMenu = this.initializeNodeContextMenu();
       this.groupMenu = this.initializeGroupContextMenu();
       this.edgeMenu = this.initializeEdgeContextMenu();
     } else {
-      this.initializeFreeTextContextMenu();
+      this.freeTextMenu?.destroy();
+      this.freeTextMenu = this.initializeFreeTextContextMenu();
       this.initializeViewerMenus();
     }
   }
@@ -764,35 +774,7 @@ class TopologyWebviewController {
   private initializeGroupContextMenu(): any {
     return this.cy.cxtmenu({
       selector: 'node:parent, node[topoViewerRole = "group"]',
-      commands: [
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Group</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            this.viewportPanels?.setNodeClicked(true);
-            if (ele.data("topoViewerRole") == "group") {
-              this.groupManager.showGroupEditor(ele.id());
-            }
-          },
-        },
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Group</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            let groupId: string;
-            if (ele.data("topoViewerRole") == "group" || ele.isParent()) {
-              groupId = ele.id();
-            } else {
-              return;
-            }
-            this.groupManager.directGroupRemoval(groupId);
-          },
-        },
-      ],
+      commands: (ele: cytoscape.Singular) => this.buildGroupContextMenuCommands(ele),
       menuRadius: 110,
       fillColor: TopologyWebviewController.UI_FILL_COLOR,
       activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
@@ -810,6 +792,62 @@ class TopologyWebviewController {
       atMouse: false,
       outsideMenuCancel: 10,
     });
+  }
+
+  private buildGroupContextMenuCommands(ele?: cytoscape.Singular): any[] {
+    const target = this.resolveGroupMenuTarget(ele);
+    if (!target) {
+      return [];
+    }
+
+    return [
+      {
+        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Group</span></div>`,
+        select: (ele?: cytoscape.Singular) => {
+          const node = this.resolveGroupMenuTarget(ele);
+          if (!node) {
+            return;
+          }
+          this.viewportPanels?.setNodeClicked(true);
+          if (node.data('topoViewerRole') === 'group') {
+            if (this.currentMode === 'view') {
+              this.suppressViewerCanvasClose = true;
+            }
+            this.groupManager.showGroupEditor(node);
+          }
+        },
+      },
+      {
+        content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Group</span></div>`,
+        select: (ele?: cytoscape.Singular) => {
+          const node = this.resolveGroupMenuTarget(ele);
+          if (!node) {
+            return;
+          }
+          const role = node.data('topoViewerRole');
+          if (role === 'group' || node.isParent()) {
+            this.groupManager.directGroupRemoval(node.id());
+          }
+        },
+      },
+    ];
+  }
+
+  private resolveGroupMenuTarget(ele?: cytoscape.Singular): cytoscape.NodeSingular | undefined {
+    if (ele && ele.isNode()) {
+      const node = ele as cytoscape.NodeSingular;
+      if (!node.removed() && (node.data('topoViewerRole') === 'group' || node.isParent())) {
+        this.activeGroupMenuTarget = node;
+        return node;
+      }
+    }
+
+    if (this.activeGroupMenuTarget && !this.activeGroupMenuTarget.removed()) {
+      return this.activeGroupMenuTarget;
+    }
+
+    this.activeGroupMenuTarget = undefined;
+    return undefined;
   }
 
   private initializeEdgeContextMenu(): any {
@@ -859,7 +897,11 @@ class TopologyWebviewController {
   }
 
   private initializeViewerMenus(): void {
-    this.cy.cxtmenu({
+    this.viewerNodeMenu?.destroy();
+    this.viewerEdgeMenu?.destroy();
+    this.viewerGroupMenu?.destroy();
+
+    this.viewerNodeMenu = this.cy.cxtmenu({
       selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"]',
       commands: (ele: cytoscape.Singular) => this.buildViewerNodeCommands(ele),
       menuRadius: 110,
@@ -880,7 +922,7 @@ class TopologyWebviewController {
       outsideMenuCancel: 10,
     });
 
-    this.cy.cxtmenu({
+    this.viewerEdgeMenu = this.cy.cxtmenu({
       selector: 'edge',
       commands: (ele: cytoscape.Singular) => this.buildViewerEdgeMenuCommands(ele),
       menuRadius: 110,
@@ -900,6 +942,12 @@ class TopologyWebviewController {
       atMouse: false,
       outsideMenuCancel: 10,
     });
+
+    if (!this.labLocked) {
+      this.viewerGroupMenu = this.initializeGroupContextMenu();
+    } else {
+      this.viewerGroupMenu = undefined;
+    }
   }
 
   private buildViewerNodeCommands(ele: cytoscape.Singular): any[] {
@@ -923,6 +971,9 @@ class TopologyWebviewController {
         setTimeout(() => this.showNodePropertiesPanel(node as unknown as cytoscape.Singular), 50);
       })
     ];
+    if (!this.labLocked && ele.isNode() && ele.parent().nonempty()) {
+      commands.push(this.createReleaseFromGroupCommand());
+    }
     return commands;
   }
 
@@ -1071,12 +1122,18 @@ class TopologyWebviewController {
         this.groupMenu?.destroy();
         this.freeTextMenu?.destroy();
         this.nodeMenu = this.edgeMenu = this.groupMenu = this.freeTextMenu = undefined;
+      } else {
+        this.viewerGroupMenu?.destroy();
+        this.viewerGroupMenu = undefined;
       }
     } else {
       this.cy.nodes().unlock();
       if (this.currentMode === 'edit') {
         void this.initializeContextMenu('edit');
       }
+    }
+    if (this.currentMode === 'view') {
+      void this.initializeContextMenu('view');
     }
   }
 
@@ -1136,6 +1193,10 @@ class TopologyWebviewController {
     registerCyEventHandlers({
       cy,
       onCanvasClick: () => {
+        if (this.suppressViewerCanvasClose) {
+          this.suppressViewerCanvasClose = false;
+          return;
+        }
         if (radialMenuOpen) {
           return;
         }
