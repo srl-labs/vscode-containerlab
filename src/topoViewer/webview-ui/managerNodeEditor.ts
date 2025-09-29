@@ -31,6 +31,7 @@ const CLASS_COMPONENT_SFM_ENTRY = 'component-sfm-entry' as const;
 const CLASS_COMPONENT_MDA_ENTRY = 'component-mda-entry' as const;
 const CLASS_COMPONENT_XIOM_ENTRY = 'component-xiom-entry' as const;
 const CLASS_COMPONENT_XIOM_MDA_ENTRY = 'component-xiom-mda-entry' as const;
+const CLASS_INTEGRATED_MDA_ENTRY = 'integrated-mda-entry' as const;
 const SELECTOR_COMPONENT_BODY = '[data-role="component-body"]' as const;
 const SELECTOR_COMPONENT_CARET = '[data-role="component-caret"]' as const;
 const SELECTOR_FORM_GROUP = '.form-group' as const;
@@ -54,6 +55,11 @@ const ID_NODE_COMPONENTS_CONTAINER = 'node-components-container' as const;
 const ID_NODE_COMPONENTS_CPM_CONTAINER = 'node-components-cpm-container' as const;
 const ID_NODE_COMPONENTS_CARD_CONTAINER = 'node-components-card-container' as const;
 const ID_NODE_COMPONENTS_SFM_CONTAINER = 'node-components-sfm-container' as const;
+const ID_NODE_COMPONENTS_ACTIONS_DISTRIBUTED = 'node-components-actions-distributed' as const;
+const ID_NODE_COMPONENTS_ACTIONS_INTEGRATED = 'node-components-actions-integrated' as const;
+const ID_NODE_COMPONENTS_INTEGRATED_SECTION = 'node-components-integrated-section' as const;
+const ID_NODE_INTEGRATED_MDA_CONTAINER = 'node-integrated-mda-container' as const;
+const ID_ADD_INTEGRATED_MDA_BUTTON = 'btn-add-integrated-mda' as const;
 const ID_ADD_CPM_BUTTON = 'btn-add-cpm' as const;
 const ID_ADD_CARD_BUTTON = 'btn-add-card' as const;
 const SFM_ENTRY_ID_PREFIX = 'sfm-entry-' as const;
@@ -383,6 +389,11 @@ export class ManagerNodeEditor {
   private srosCardTypes: string[] = [];
   private srosXiomMdaTypes: string[] = [];
   private srosMdaTypes: string[] = [];
+  private integratedSrosTypes: Set<string> = new Set(
+    ['sr-1', 'sr-1s', 'ixr-r6', 'ixr-ec', 'ixr-e2', 'ixr-e2c'].map(t => t.toLowerCase())
+  );
+  private integratedMode = false;
+  private integratedMdaCounter = 0;
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
@@ -498,10 +509,11 @@ export class ManagerNodeEditor {
 
     if (this.componentKinds.has(kind)) {
       this.showComponentsTab(btn, content);
-      this.loadComponentsFromNode();
+      this.updateComponentMode();
       return;
     }
     this.hideComponentsTab(btn, content);
+    this.updateComponentMode(false);
   }
 
   private showComponentsTab(btn: HTMLElement, content: HTMLElement): void {
@@ -531,6 +543,18 @@ export class ManagerNodeEditor {
   }
 
   private loadComponentsFromNode(expandedSlots?: Set<string>): void {
+    if (this.integratedMode) {
+      this.resetIntegratedMdaContainer();
+      if (!this.currentNode) {
+        this.updateIntegratedAddButtonState();
+        return;
+      }
+      const mdas = this.getIntegratedMdasForCurrentNode();
+      mdas.forEach(mda => this.addIntegratedMdaEntry(mda));
+      this.updateIntegratedAddButtonState();
+      return;
+    }
+
     if (!this.currentNode) return;
     const containers = this.getComponentContainers();
     if (!containers) return;
@@ -560,10 +584,137 @@ export class ManagerNodeEditor {
     this.xiomMdaCounters.clear();
   }
 
+  private resetIntegratedMdaContainer(): void {
+    const container = document.getElementById(ID_NODE_INTEGRATED_MDA_CONTAINER);
+    if (container) container.innerHTML = '';
+    this.integratedMdaCounter = 0;
+  }
+
   private getComponentsForCurrentNode(): any[] {
     if (!this.currentNode) return [];
     const extra = this.currentNode.data('extraData') || {};
     return Array.isArray(extra.components) ? extra.components : [];
+  }
+
+  private getIntegratedMdasForCurrentNode(): any[] {
+    const components = this.getComponentsForCurrentNode();
+    for (const comp of components) {
+      if (!comp || typeof comp !== 'object') continue;
+      if (Array.isArray(comp.mda) && (comp.slot == null || String(comp.slot).trim() === '')) {
+        return comp.mda;
+      }
+    }
+    return [];
+  }
+
+  private addIntegratedMdaEntry(prefill?: any): number {
+    const container = document.getElementById(ID_NODE_INTEGRATED_MDA_CONTAINER);
+    const tpl = document.getElementById('tpl-integrated-mda-entry') as HTMLTemplateElement | null;
+    if (!container || !tpl) return -1;
+
+    const next = this.integratedMdaCounter + 1;
+    const frag = tpl.content.cloneNode(true) as DocumentFragment;
+    const row = frag.querySelector(`.${CLASS_INTEGRATED_MDA_ENTRY}`) as HTMLElement | null;
+    if (!row) return -1;
+
+    this.integratedMdaCounter = next;
+
+    row.id = `integrated-mda-entry-${next}`;
+
+    const slot = row.querySelector('[data-role="integrated-mda-slot"]') as HTMLInputElement | null;
+    const hiddenType = row.querySelector('[data-role="integrated-mda-type-value"]') as HTMLInputElement | null;
+    const typeDropdown = row.querySelector('[data-role="integrated-mda-type-dropdown"]') as HTMLElement | null;
+    const delBtn = row.querySelector('[data-action="remove-integrated-mda"]') as HTMLButtonElement | null;
+
+    if (slot) {
+      slot.id = `integrated-mda-${next}-slot`;
+      slot.value = prefill?.slot != null ? String(prefill.slot) : String(next);
+    }
+
+    if (hiddenType) {
+      hiddenType.id = `integrated-mda-${next}-type`;
+      hiddenType.value = prefill?.type != null ? String(prefill.type) : '';
+    }
+
+    if (typeDropdown) {
+      typeDropdown.id = `integrated-mda-${next}-type-dropdown`;
+    }
+
+    if (delBtn) {
+      delBtn.onclick = () => this.removeIntegratedMdaEntry(next);
+    }
+
+    container.appendChild(frag);
+
+    this.initIntegratedMdaTypeDropdown(next);
+    this.updateIntegratedAddButtonState();
+    return next;
+  }
+
+  private removeIntegratedMdaEntry(mdaId: number): void {
+    const row = document.getElementById(`integrated-mda-entry-${mdaId}`);
+    row?.remove();
+    this.updateIntegratedAddButtonState();
+  }
+
+  private initIntegratedMdaTypeDropdown(mdaId: number): void {
+    const initial = this.getInputValue(`integrated-mda-${mdaId}-type`);
+    createFilterableDropdown(
+      `integrated-mda-${mdaId}-type-dropdown`,
+      this.srosMdaTypes,
+      initial,
+      (selected: string) => this.setInputValue(`integrated-mda-${mdaId}-type`, selected),
+      PH_SEARCH_TYPE,
+      true
+    );
+  }
+
+  private updateIntegratedAddButtonState(): void {
+    const addBtn = document.getElementById(ID_ADD_INTEGRATED_MDA_BUTTON) as HTMLButtonElement | null;
+    if (!addBtn) return;
+    addBtn.disabled = false;
+    addBtn.title = 'Add an MDA slot';
+  }
+
+  private collectIntegratedMdas(): any[] {
+    const container = document.getElementById(ID_NODE_INTEGRATED_MDA_CONTAINER);
+    if (!container) return [];
+    const rows = Array.from(container.querySelectorAll(`.${CLASS_INTEGRATED_MDA_ENTRY}`)) as HTMLElement[];
+    const list: any[] = [];
+    for (const row of rows) {
+      const mdaId = this.extractIndex(row.id, /integrated-mda-entry-(\d+)/);
+      if (mdaId === null) continue;
+      const slotRaw = this.getInputValue(`integrated-mda-${mdaId}-slot`).trim();
+      const typeVal = this.getInputValue(`integrated-mda-${mdaId}-type`).trim();
+      const mda: any = {};
+      if (/^\d+$/.test(slotRaw)) mda.slot = parseInt(slotRaw, 10);
+      if (typeVal) mda.type = typeVal;
+      if (mda.slot != null && mda.type) list.push(mda);
+    }
+    return list;
+  }
+
+  private commitIntegratedMdaDropdowns(): void {
+    const container = document.getElementById(ID_NODE_INTEGRATED_MDA_CONTAINER);
+    if (!container) return;
+    const rows = Array.from(container.querySelectorAll(`.${CLASS_INTEGRATED_MDA_ENTRY}`)) as HTMLElement[];
+    for (const row of rows) {
+      const mdaId = this.extractIndex(row.id, /integrated-mda-entry-(\d+)/);
+      if (mdaId === null) continue;
+      const filter = document.getElementById(`integrated-mda-${mdaId}-type-dropdown-filter-input`) as HTMLInputElement | null;
+      const hidden = document.getElementById(`integrated-mda-${mdaId}-type`) as HTMLInputElement | null;
+      if (filter && hidden) hidden.value = filter.value;
+    }
+  }
+
+  private refreshIntegratedMdaDropdowns(): void {
+    const container = document.getElementById(ID_NODE_INTEGRATED_MDA_CONTAINER);
+    if (!container) return;
+    const rows = Array.from(container.querySelectorAll(`.${CLASS_INTEGRATED_MDA_ENTRY}`)) as HTMLElement[];
+    rows.forEach(row => {
+      const mdaId = this.extractIndex(row.id, /integrated-mda-entry-(\d+)/);
+      if (mdaId !== null) this.initIntegratedMdaTypeDropdown(mdaId);
+    });
   }
 
   private ensureSfmEntry(components: any[]): void {
@@ -754,6 +905,10 @@ export class ManagerNodeEditor {
   }
 
   private updateComponentAddButtonStates(): void {
+    if (this.integratedMode) {
+      this.updateIntegratedAddButtonState();
+      return;
+    }
     const addCpmBtn = document.getElementById(ID_ADD_CPM_BUTTON) as HTMLButtonElement | null;
     const addCardBtn = document.getElementById(ID_ADD_CARD_BUTTON) as HTMLButtonElement | null;
     const used = this.collectUsedComponentSlots();
@@ -1423,10 +1578,18 @@ export class ManagerNodeEditor {
       ID_NODE_TYPE_DROPDOWN,
       typeOptionsWithEmpty,
       typeToSelect,
-      (selectedType: string) => log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`),
+      (selectedType: string) => {
+        log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`);
+        this.onTypeFieldChanged();
+      },
       PH_SEARCH_TYPE,
       true
     );
+
+    const filterInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement | null;
+    if (filterInput) {
+      filterInput.oninput = () => this.onTypeFieldChanged();
+    }
   }
 
   private toggleTypeInputForKind(
@@ -1442,10 +1605,79 @@ export class ManagerNodeEditor {
         typeDropdownContainer.style.display = 'none';
         typeInput.style.display = 'block';
       }
+      if (typeInput) {
+        typeInput.oninput = () => this.onTypeFieldChanged();
+      }
       return;
     }
     typeFormGroup.style.display = 'none';
     if (typeInput) typeInput.value = '';
+  }
+
+  private onTypeFieldChanged(): void {
+    this.updateComponentMode();
+  }
+
+  private getCurrentKindValue(): string {
+    const input = document.getElementById(ID_NODE_KIND_FILTER_INPUT) as HTMLInputElement | null;
+    return input?.value?.trim() ?? '';
+  }
+
+  private isIntegratedSrosType(kind: string | undefined, type: string | undefined): boolean {
+    if (!kind || kind !== 'nokia_srsim') return false;
+    const normalized = (type || '').trim().toLowerCase();
+    if (!normalized) return false;
+    return this.integratedSrosTypes.has(normalized);
+  }
+
+  private setElementVisibility(id: string, visible: boolean): void {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (visible) {
+      el.classList.remove(CLASS_HIDDEN);
+      el.setAttribute(ATTR_ARIA_HIDDEN, 'false');
+    } else {
+      el.classList.add(CLASS_HIDDEN);
+      el.setAttribute(ATTR_ARIA_HIDDEN, 'true');
+    }
+  }
+
+  private configureComponentSectionsForMode(showComponents: boolean, integrated: boolean): void {
+    const showDistributed = showComponents && !integrated;
+    const showIntegrated = showComponents && integrated;
+    this.setElementVisibility(ID_NODE_COMPONENTS_ACTIONS_DISTRIBUTED, showDistributed);
+    this.setElementVisibility(ID_NODE_COMPONENTS_CONTAINER, showDistributed);
+    this.setElementVisibility(ID_NODE_COMPONENTS_ACTIONS_INTEGRATED, showIntegrated);
+    this.setElementVisibility(ID_NODE_COMPONENTS_INTEGRATED_SECTION, showIntegrated);
+  }
+
+  private updateComponentMode(reload = true): void {
+    const kind = this.getCurrentKindValue();
+    const kindSupportsComponents = kind ? this.componentKinds.has(kind) : false;
+    const typeValue = this.getTypeFieldValue();
+    const integrated = this.isIntegratedSrosType(kind, typeValue);
+
+    if (!kindSupportsComponents) {
+      this.integratedMode = false;
+      this.configureComponentSectionsForMode(false, false);
+      if (reload) {
+        this.resetIntegratedMdaContainer();
+        const containers = this.getComponentContainers();
+        if (containers) this.resetComponentContainers(containers);
+      }
+      return;
+    }
+
+    this.integratedMode = integrated;
+    this.configureComponentSectionsForMode(true, integrated);
+
+    if (reload) {
+      this.loadComponentsFromNode();
+    } else if (integrated) {
+      this.updateIntegratedAddButtonState();
+    } else {
+      this.updateComponentAddButtonStates();
+    }
   }
 
   /**
@@ -1727,6 +1959,10 @@ export class ManagerNodeEditor {
   }
 
   private refreshComponentsDropdowns(): void {
+    if (this.integratedMode) {
+      this.refreshIntegratedMdaDropdowns();
+      return;
+    }
     const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
     if (!container) return;
     const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
@@ -1895,6 +2131,7 @@ export class ManagerNodeEditor {
     (window as any).addComponentEntry = () => { this.addComponentEntry(undefined, { slotType: 'card' }); };
     (window as any).addCpmComponentEntry = () => { this.addComponentEntry(undefined, { slotType: 'cpm' }); };
     (window as any).addCardComponentEntry = () => { this.addComponentEntry(undefined, { slotType: 'card' }); };
+    (window as any).addIntegratedMdaEntry = () => { this.addIntegratedMdaEntry(); };
   }
 
   /**
@@ -3074,6 +3311,10 @@ export class ManagerNodeEditor {
    * Without this, typing into the dropdown and clicking Save may not update hidden inputs.
    */
   private commitComponentDropdowns(): void {
+    if (this.integratedMode) {
+      this.commitIntegratedMdaDropdowns();
+      return;
+    }
     const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
     if (!container) return;
     const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];
@@ -3158,6 +3399,12 @@ export class ManagerNodeEditor {
   private collectComponentsProps(nodeProps: NodeProperties): void {
     const kind = nodeProps.kind || (this.currentNode?.data('extraData')?.kind as string | undefined);
     if (!kind || !this.componentKinds.has(kind)) return;
+    if (this.integratedMode) {
+      this.commitIntegratedMdaDropdowns();
+      const mdas = this.collectIntegratedMdas();
+      nodeProps.components = mdas.length > 0 ? [{ mda: mdas }] : [];
+      return;
+    }
     const container = document.getElementById(ID_NODE_COMPONENTS_CONTAINER);
     if (!container) return;
     const entries = Array.from(container.querySelectorAll(`.${CLASS_COMPONENT_ENTRY}`)) as HTMLElement[];

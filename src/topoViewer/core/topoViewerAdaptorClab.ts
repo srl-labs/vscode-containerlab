@@ -509,7 +509,7 @@ export class TopoViewerAdaptorClab {
     const nodePropKeys = new Set(Object.keys(nodeObj || {}));
     const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
     const parentId = this.buildParent(mergedNode, nodeAnn);
-    const containerData = this.getContainerData(opts, fullPrefix, nodeName, clabName);
+    const containerData = this.getContainerData(opts, fullPrefix, nodeName, clabName, mergedNode);
     const cleanedLabels = this.sanitizeLabels(mergedNode.labels);
     const position = nodeAnn?.position ? { x: nodeAnn.position.x, y: nodeAnn.position.y } : { x: 0, y: 0 };
     const { lat, lng } = this.getNodeLatLng(nodeAnn);
@@ -559,11 +559,29 @@ export class TopoViewerAdaptorClab {
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode> },
     fullPrefix: string,
     nodeName: string,
-    clabName: string
+    clabName: string,
+    resolvedNode: ClabNode
   ): ClabContainerTreeNode | null {
     if (!opts.includeContainerData) return null;
     const containerName = fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
-    return findContainerNode(opts.clabTreeData ?? {}, containerName, clabName) ?? null;
+    const direct = findContainerNode(opts.clabTreeData ?? {}, containerName, clabName);
+    if (direct) {
+      return direct;
+    }
+
+    if (!this.isDistributedSrosNode(resolvedNode)) {
+      return null;
+    }
+
+    const distributed = this.findDistributedSrosContainer({
+      baseNodeName: nodeName,
+      fullPrefix,
+      clabTreeData: opts.clabTreeData,
+      clabName,
+      components: (resolvedNode as any).components ?? [],
+    });
+
+    return distributed ?? null;
   }
 
   private sanitizeLabels(labels: Record<string, any> | undefined): Record<string, any> {
@@ -949,6 +967,112 @@ export class TopoViewerAdaptorClab {
       clabTreeData,
       clabName,
     });
+  }
+
+  private findDistributedSrosContainer(params: {
+    baseNodeName: string;
+    fullPrefix: string;
+    clabTreeData?: Record<string, ClabLabTreeNode>;
+    clabName: string;
+    components: any[];
+  }): ClabContainerTreeNode | undefined {
+    const { baseNodeName, fullPrefix, clabTreeData, clabName, components } = params;
+    if (!clabTreeData) {
+      return undefined;
+    }
+
+    const candidateNames = this.buildDistributedCandidateNames(baseNodeName, fullPrefix, components);
+    const candidateSet = new Set(candidateNames.map(name => name.toLowerCase()));
+
+    const labs = clabName
+      ? Object.values(clabTreeData).filter(l => l.name === clabName)
+      : Object.values(clabTreeData);
+
+    const candidateContainers = labs.flatMap(lab =>
+      this.collectDistributedSrosContainers(lab, candidateSet, baseNodeName, fullPrefix)
+    );
+
+    if (!candidateContainers.length) {
+      return undefined;
+    }
+
+    candidateContainers.sort((a, b) => {
+      const slotOrder = this.srosSlotPriority(a.slot) - this.srosSlotPriority(b.slot);
+      if (slotOrder !== 0) {
+        return slotOrder;
+      }
+      return a.slot.localeCompare(b.slot, undefined, { sensitivity: 'base' });
+    });
+
+    return candidateContainers[0].container;
+  }
+
+  private collectDistributedSrosContainers(
+    lab: ClabLabTreeNode,
+    candidateSet: Set<string>,
+    baseNodeName: string,
+    fullPrefix: string
+  ): { container: ClabContainerTreeNode; slot: string }[] {
+    const results: { container: ClabContainerTreeNode; slot: string }[] = [];
+    for (const container of lab.containers ?? []) {
+      if (container.kind !== 'nokia_srsim') {
+        continue;
+      }
+
+      const info = this.extractSrosComponentInfo(container);
+      if (!info) {
+        continue;
+      }
+
+      const normalizedBase = info.base.toLowerCase();
+      if (
+        !candidateSet.has(normalizedBase) &&
+        !this.containerBelongsToDistributedNode(container, baseNodeName, fullPrefix)
+      ) {
+        continue;
+      }
+
+      results.push({ container, slot: info.slot });
+    }
+    return results;
+  }
+
+  private extractSrosComponentInfo(
+    container: ClabContainerTreeNode
+  ): { base: string; slot: string } | undefined {
+    const candidateNames = [container.name_short, container.name].filter(Boolean) as string[];
+    for (const raw of candidateNames) {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      const lastDash = trimmed.lastIndexOf('-');
+      if (lastDash === -1) {
+        continue;
+      }
+
+      const base = trimmed.slice(0, lastDash);
+      const slot = trimmed.slice(lastDash + 1);
+      if (!base || !slot) {
+        continue;
+      }
+
+      return { base, slot };
+    }
+
+    return undefined;
+  }
+
+  private srosSlotPriority(slot: string): number {
+    const normalized = slot.toLowerCase();
+    if (normalized === 'a') {
+      return 0;
+    }
+    if (normalized === 'b') {
+      return 1;
+    }
+    return 2;
   }
 
   private buildDistributedCandidateNames(

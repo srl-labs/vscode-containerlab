@@ -172,7 +172,7 @@
       <div class="tab-content hidden" id="tab-components">
         <div class="space-y-3">
           <div class="space-y-4">
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2" id="node-components-actions-distributed">
               <button
                 type="button"
                 class="btn btn-small"
@@ -192,8 +192,28 @@
                 Add Card
               </button>
             </div>
-            <div id="node-components-container" class="space-y-4">
+            <div class="flex flex-wrap gap-2 hidden" id="node-components-actions-integrated">
+              <button
+                type="button"
+                class="btn btn-small"
+                id="btn-add-integrated-mda"
+                onclick="addIntegratedMdaEntry()"
+              >
+                <i class="fas fa-plus mr-1"></i>
+                Add MDA
+              </button>
+            </div>
+            <div id="node-components-integrated-section" class="space-y-3 hidden">
               <div>
+                <p class="vscode-label mb-1">MDA</p>
+                <p class="text-xs text-[var(--text-secondary)]">
+                  Configure MDAs for integrated chassis directly.
+                </p>
+                <div id="node-integrated-mda-container" class="mt-2 space-y-3"></div>
+              </div>
+            </div>
+            <div id="node-components-container" class="space-y-4">
+              <div id="node-components-section-cpm">
                 <p class="vscode-label mb-1">CPM</p>
                 <p class="text-xs text-[var(--text-secondary)]">
                   Slots A and B represent the chassis control processors.
@@ -202,7 +222,7 @@
                   <!-- CPM entries go here dynamically -->
                 </div>
               </div>
-              <div>
+              <div id="node-components-section-cards">
                 <p class="vscode-label mb-1">Line Cards</p>
                 <p class="text-xs text-[var(--text-secondary)]">
                   Define card slots and attach IOM/XCM, MDA, and XIOM components.
@@ -211,7 +231,7 @@
                   <!-- Line card entries go here dynamically -->
                 </div>
               </div>
-              <div>
+              <div id="node-components-section-sfm">
                 <p class="vscode-label mb-1">SFM</p>
                 <p class="text-xs text-[var(--text-secondary)]">
                   Overrides the default SFM when set.
@@ -433,6 +453,45 @@
                     type="button"
                     class="dynamic-delete-btn"
                     data-action="remove-mda"
+                    aria-label="Remove MDA"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template id="tpl-integrated-mda-entry">
+            <div class="integrated-mda-entry">
+              <div class="grid grid-cols-10 gap-x-4 gap-y-2 items-stretch">
+                <div class="col-span-3">
+                  <label class="block vscode-label mb-1 w-full h-full">Slot</label>
+                </div>
+                <div class="col-span-6">
+                  <label class="block vscode-label mb-1 w-full h-full">Type</label>
+                </div>
+                <div class="col-span-1 w-full h-full"></div>
+              </div>
+
+              <div class="grid grid-cols-10 gap-x-4 gap-y-2 items-stretch">
+                <div class="col-span-3">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    class="slot-number-input"
+                    data-role="integrated-mda-slot"
+                  />
+                </div>
+                <div class="col-span-6">
+                  <input type="hidden" data-role="integrated-mda-type-value" />
+                  <div data-role="integrated-mda-type-dropdown" class="w-full h-full"></div>
+                </div>
+                <div class="col-span-1 flex items-center justify-end">
+                  <button
+                    type="button"
+                    class="dynamic-delete-btn"
+                    data-action="remove-integrated-mda"
                     aria-label="Remove MDA"
                   >
                     <i class="fas fa-trash"></i>
