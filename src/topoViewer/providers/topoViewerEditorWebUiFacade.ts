@@ -127,15 +127,83 @@ topology:
     if (!labs) {
       return undefined;
     }
+
+    let distributedSrosFallback: ClabContainerTreeNode | undefined;
+
     for (const lab of Object.values(labs)) {
-      const container = lab.containers?.find(
+      const containers = lab.containers ?? [];
+      const directMatch = containers.find(
         (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
       );
-      if (container) {
-        return container;
+      if (directMatch) {
+        return directMatch;
+      }
+
+      if (!distributedSrosFallback) {
+        distributedSrosFallback = this.resolveDistributedSrosContainer(containers, nodeName);
       }
     }
-    return undefined;
+
+    return distributedSrosFallback;
+  }
+
+  private resolveDistributedSrosContainer(
+    containers: ClabContainerTreeNode[],
+    nodeName: string
+  ): ClabContainerTreeNode | undefined {
+    const normalizedTarget = nodeName.toLowerCase();
+    const candidates = containers
+      .filter((container) => container.kind === 'nokia_srsim')
+      .map((container) => ({ container, info: this.extractSrosComponentInfo(container) }))
+      .filter((entry): entry is { container: ClabContainerTreeNode; info: { base: string; slot: string } } => {
+        return !!entry.info && entry.info.base.toLowerCase() === normalizedTarget;
+      });
+
+    if (!candidates.length) {
+      return undefined;
+    }
+
+    candidates.sort((a, b) => {
+      const slotOrder = this.srosSlotPriority(a.info.slot) - this.srosSlotPriority(b.info.slot);
+      if (slotOrder !== 0) {
+        return slotOrder;
+      }
+      return a.info.slot.localeCompare(b.info.slot, undefined, { sensitivity: 'base' });
+    });
+    return candidates[0].container;
+  }
+
+  private extractSrosComponentInfo(
+    container: ClabContainerTreeNode
+  ): { base: string; slot: string } | undefined {
+    const rawLabel = (container.name_short || container.name || '').trim();
+    if (!rawLabel) {
+      return undefined;
+    }
+
+    const lastDash = rawLabel.lastIndexOf('-');
+    if (lastDash === -1) {
+      return undefined;
+    }
+
+    const base = rawLabel.slice(0, lastDash);
+    const slot = rawLabel.slice(lastDash + 1);
+    if (!base || !slot) {
+      return undefined;
+    }
+
+    return { base, slot };
+  }
+
+  private srosSlotPriority(slot: string): number {
+    const normalized = slot.toLowerCase();
+    if (normalized === 'a') {
+      return 0;
+    }
+    if (normalized === 'b') {
+      return 1;
+    }
+    return 2;
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
@@ -578,16 +646,20 @@ topology:
   }
 
   private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
     return {
       deploymentState: this.deploymentState,
       viewerMode: 'viewer',
       currentLabPath: this.lastYamlFilePath,
+      lockLabByDefault
     };
   }
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
     await refreshDockerImages(this.context);
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
     const legacyIfacePatternMapping = this.getLegacyInterfacePatternMapping(config);
     const updateLinkEndpointsOnKindChange = config.get<boolean>(
       'updateLinkEndpointsOnKindChange',
@@ -620,6 +692,7 @@ topology:
       topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
       topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
       topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
+      lockLabByDefault
     };
   }
 
@@ -1621,7 +1694,7 @@ topology:
       case 'clab-node-connect-ssh': {
         try {
           const nodeName = payloadObj as string;
-          const node = {
+          const containerNode = (await this.getContainerNode(nodeName)) ?? {
             label: nodeName,
             name: nodeName,
             name_short: nodeName,
@@ -1632,7 +1705,7 @@ topology:
             interfaces: [],
             labPath: { absolute: '', relative: '' }
           } as any;
-          await vscode.commands.executeCommand('containerlab.node.ssh', node);
+          await vscode.commands.executeCommand('containerlab.node.ssh', containerNode);
           result = `SSH connection executed for ${nodeName}`;
         } catch (innerError) {
           error = `Error executing SSH connection: ${innerError}`;
@@ -1872,6 +1945,56 @@ topology:
   }
 
 
+
+
+
+
+
+  public async refreshLinkStatesFromInspect(
+    labsData?: Record<string, ClabLabTreeNode>
+  ): Promise<void> {
+    if (!this.currentPanel || !this.isViewMode) {
+      return;
+    }
+
+    if (!this.currentLabName) {
+      return;
+    }
+
+    try {
+      const labs = labsData ?? (await runningLabsProvider?.discoverInspectLabs());
+      if (!labs) {
+        return;
+      }
+
+      const hasMatchingLab = Object.values(labs).some(
+        lab => lab.name === this.currentLabName
+      );
+      if (!hasMatchingLab) {
+        return;
+      }
+
+      const yamlContent = await this.getYamlContentViewMode();
+      const elements = await this.adaptor.clabYamlToCytoscapeElements(
+        yamlContent,
+        labs,
+        this.lastYamlFilePath
+      );
+
+      const edgeUpdates = elements.filter(el => el.group === 'edges');
+      if (!edgeUpdates.length) {
+        return;
+      }
+
+      this.currentPanel.webview.postMessage({
+        type: 'updateTopology',
+        data: edgeUpdates,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn(`Failed to refresh link states from inspect data: ${message}`);
+    }
+  }
 
 
   /**

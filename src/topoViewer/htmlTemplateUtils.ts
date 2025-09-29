@@ -21,6 +21,7 @@ export interface BaseTemplateParams {
   topologyName?: string;
   isDarkTheme?: boolean;
   currentLabPath?: string;
+  lockLabByDefault: boolean;
 }
 
 export interface ViewerTemplateParams extends BaseTemplateParams {
@@ -133,7 +134,7 @@ function buildCacheKey(
   mode: TemplateMode,
   params: ViewerTemplateParams | EditorTemplateParams
 ): string {
-  const baseKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}`;
+  const baseKey = `${mode}_${params.topologyName}_${params.isDarkTheme}_${params.currentLabPath}_${params.lockLabByDefault}`;
   if (mode === 'viewer') {
     return `${baseKey}_${(params as ViewerTemplateParams).deploymentState}`;
   }
@@ -247,7 +248,8 @@ export function generateHtmlTemplate(
     pageTitle: mode === 'viewer' ? 'TopoViewer' : 'TopoViewer Editor',
     cssBundle: 'topoViewerEditorStyles.css',
     topoViewerMode: mode,
-    currentLabPath: params.currentLabPath || ''
+    currentLabPath: params.currentLabPath || '',
+    lockLabByDefault: String(params.lockLabByDefault)
   };
 
   const replacements = buildReplacements(mode, params, baseReplacements);
@@ -315,6 +317,7 @@ export function generateWebviewHtml(
     allowedHostname: adaptor.allowedhostname as string,
     topologyName: adaptor.currentClabTopo?.name || 'Unknown Topology',
     isDarkTheme,
+    lockLabByDefault: true
   };
 
   const fullParams = { ...baseParams, ...extraParams };

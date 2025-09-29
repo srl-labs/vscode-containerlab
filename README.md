@@ -85,7 +85,7 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 |---------|------|---------|-------------|
 | `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
 | `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
-| `refreshInterval` | number | `10000` | Auto-refresh interval in milliseconds |
+| `refreshInterval` | number | `5000` | Auto-refresh interval in milliseconds |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
 
@@ -111,6 +111,7 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 |---------|------|---------|-------------|
 | `editor.customNodes` | array | See below* | Custom node templates for TopoViewer |
 | `editor.updateLinkEndpointsOnKindChange` | boolean | `true` | Auto-update link endpoints on kind change |
+| `editor.lockLabByDefault` | boolean | `true` | Lock the lab canvas by default to prevent accidental edits |
 | `drawioDefaultTheme` | string | `nokia_modern` | Draw.io theme (`nokia_modern`, `nokia`, `grafana`) |
 
 *Default custom nodes include SRLinux and Network Multitool templates. They ship with sensible interface naming patterns (for example `nokia_srlinux: "e1-{n}"`, `cisco_xrd: "Gi0-0-0-{n}"`). Patterns accept optional start indices (`{n:0}`), finite ranges (`{n:1-6}`), and comma-separated fallbacks (`1/1/c{n:1-6}/1, 2/1/c{n:1-12}/1`). Existing custom nodes without an Interface Pattern are automatically upgraded to use the defaults.
