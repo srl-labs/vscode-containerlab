@@ -1,5 +1,17 @@
 # Change Log
 
+## [0.19.0] - 2025-09-29
+- TopoViewer/editor:
+  - Improve custom nodes with interface patterns
+  - Hover menu for networks
+  - Custom nodes and Network can now be added mutliple times
+  - sr-sim ssh and links support for distributed nodes
+  - sr-sim mda fixes for integrated types
+  - Env files
+- General
+  - Running Labs treeview now refreshes more specific in 5 seconds
+  - Fixes
+
 ## [0.18.0] - 2025-09-25
 - TopoViewer/editor:
   - Add SR-SIM component support to TopoViewer
