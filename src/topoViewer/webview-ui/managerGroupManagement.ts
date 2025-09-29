@@ -103,6 +103,7 @@ export class ManagerGroupManagement {
 
     if (parent.isChildless()) {
       log.info('Removing empty parent node');
+      this.groupStyleManager.removeGroupStyle(parent.id());
       parent.remove();
     }
   }
