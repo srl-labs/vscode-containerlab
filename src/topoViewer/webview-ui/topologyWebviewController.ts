@@ -509,11 +509,14 @@ class TopologyWebviewController {
     try {
       const elements = data as any[];
       if (Array.isArray(elements)) {
+        let requiresStyleReload = false;
+
         elements.forEach((el) => {
           const id = el?.data?.id;
           if (!id) {
             return;
           }
+
           const existing = this.cy.getElementById(id);
           if (existing && existing.length > 0) {
             existing.data(el.data);
@@ -522,9 +525,13 @@ class TopologyWebviewController {
             }
           } else {
             this.cy.add(el);
+            requiresStyleReload = true;
           }
         });
-        loadCytoStyle(this.cy);
+
+        if (requiresStyleReload) {
+          loadCytoStyle(this.cy);
+        }
       }
     } catch (error) {
       log.error(`Error processing updateTopology message: ${error}`);
