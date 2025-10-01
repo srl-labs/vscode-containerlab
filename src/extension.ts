@@ -184,6 +184,8 @@ async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
   setCurrentTopoViewer(editor);
   editor.lastYamlFilePath = yamlUri.fsPath;
   await editor.createWebviewPanel(ctx, yamlUri, labName);
+  // Ensure the global TopoViewer state tracks the created panel so command callbacks can update it
+  setCurrentTopoViewer(editor);
   if (editor.currentPanel) {
     editor.currentPanel.onDidDispose(() => {
       setCurrentTopoViewer(undefined);
@@ -214,6 +216,8 @@ async function createTopoViewerTemplateFileCommand() {
   try {
     await editor.createTemplateFile(uri);
     await editor.createWebviewPanel(ctx, uri, labName);
+    // Update the global viewer reference now that the panel is available
+    setCurrentTopoViewer(editor);
     if (editor.currentPanel) {
       editor.currentPanel.onDidDispose(() => {
         setCurrentTopoViewer(undefined);
@@ -276,7 +280,8 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 
 function refreshTask() {
   ins.update().then(() => {
-    runningLabsProvider.softRefresh();
+    localLabsProvider?.refresh();
+    runningLabsProvider?.softRefresh();
   });
 }
 
