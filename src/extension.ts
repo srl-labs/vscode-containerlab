@@ -276,7 +276,8 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 
 function refreshTask() {
   ins.update().then(() => {
-    runningLabsProvider.softRefresh();
+    localLabsProvider?.refresh();
+    runningLabsProvider?.softRefresh();
   });
 }
 
