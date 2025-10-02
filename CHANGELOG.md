@@ -1,5 +1,5 @@
 # Change Log
-## [0.19.3] - 2025-09-29
+## [0.19.3] - 2025-10-2
 - refresh docker images when node editor panel is opened
 - fixes
 
