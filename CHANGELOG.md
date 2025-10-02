@@ -1,4 +1,7 @@
 # Change Log
+## [0.19.3] - 2025-09-29
+- refresh docker images when node editor panel is opened
+- fixes
 
 ## [0.19.0] - 2025-09-29
 - TopoViewer/editor:

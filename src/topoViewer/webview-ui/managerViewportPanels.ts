@@ -315,6 +315,34 @@ export class ManagerViewportPanels {
   }
 
   /**
+   * Refreshes docker images from the backend with a timeout
+   */
+  private async refreshDockerImages(): Promise<void> {
+    try {
+      const messageSender = this.saveManager.getMessageSender();
+
+      // Create a timeout promise that rejects after 2 seconds
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Docker image refresh timeout')), 2000);
+      });
+
+      // Race between the refresh and timeout
+      const response: any = await Promise.race([
+        messageSender.sendMessageToVscodeEndpointPost('refresh-docker-images', {}),
+        timeoutPromise
+      ]);
+
+      if (response && response.dockerImages) {
+        (window as any).dockerImages = response.dockerImages;
+        log.debug(`Docker images refreshed, found ${response.dockerImages.length} images`);
+      }
+    } catch (error: any) {
+      // Fail gracefully - just log and continue
+      log.debug(`Failed to refresh docker images (continuing): ${error.message}`);
+    }
+  }
+
+  /**
    * Creates an instance of ManagerViewportPanels.
    * @param saveManager - The ManagerSaveTopo instance.
    * @param cy - The Cytoscape instance.
@@ -390,6 +418,9 @@ export class ManagerViewportPanels {
     this.hidePanelOverlays();
     this.populateNodeEditorBasics(node);
     const panel = this.showNodeEditorPanel();
+
+    // Refresh docker images when opening node editor panel
+    await this.refreshDockerImages();
 
     const url = window.schemaUrl;
     if (!url) throw new Error('Schema URL is undefined.');

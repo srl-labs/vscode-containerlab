@@ -88,6 +88,7 @@ export class TopoViewerEditor {
     'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
     'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
     'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
+    'refresh-docker-images': this.handleRefreshDockerImagesEndpoint.bind(this),
     showError: this.handleShowErrorEndpoint.bind(this),
     'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
     copyElements: this.handleCopyElementsEndpoint.bind(this),
@@ -1683,6 +1684,23 @@ topology:
     const clipboard = this.context.globalState.get('topoClipboard') || [];
     panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
     return { result: 'Clipboard sent', error: null };
+  }
+
+  private async handleRefreshDockerImagesEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      await refreshDockerImages(this.context);
+      const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+      log.info(`Docker images refreshed, found ${dockerImages.length} images`);
+      return { result: { success: true, dockerImages }, error: null };
+    } catch (err) {
+      const error = `Error refreshing docker images: ${err}`;
+      log.error(`Error refreshing docker images: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
   }
 
   /* eslint-enable no-unused-vars */
