@@ -2221,6 +2221,32 @@ export class ManagerNodeEditor {
   }
 
   /**
+   * Refreshes docker images from the backend with a timeout
+   */
+  private async refreshDockerImages(): Promise<void> {
+    try {
+      // Create a timeout promise that rejects after 2 seconds
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Docker image refresh timeout')), 2000);
+      });
+
+      // Race between the refresh and timeout
+      const response: any = await Promise.race([
+        this.messageSender.sendMessageToVscodeEndpointPost('refresh-docker-images', {}),
+        timeoutPromise
+      ]);
+
+      if (response && response.dockerImages) {
+        (window as any).dockerImages = response.dockerImages;
+        log.debug(`Docker images refreshed, found ${response.dockerImages.length} images`);
+      }
+    } catch (error: any) {
+      // Fail gracefully - just log and continue
+      log.debug(`Failed to refresh docker images (continuing): ${error.message}`);
+    }
+  }
+
+  /**
    * Open the enhanced node editor for a specific node
    */
   public async open(node: cytoscape.NodeSingular): Promise<void> {
@@ -2229,6 +2255,10 @@ export class ManagerNodeEditor {
       log.error('Panel not initialized');
       return;
     }
+
+    // Refresh docker images before loading node data
+    await this.refreshDockerImages();
+
     await this.refreshNodeExtraData(node);
     this.clearAllDynamicEntries();
     this.switchToTab('basic');
