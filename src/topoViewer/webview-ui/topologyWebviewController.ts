@@ -482,6 +482,7 @@ class TopologyWebviewController {
     window.viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(this.layoutAlgoManager);
     window.viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(this.layoutAlgoManager);
     window.viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
+    window.updateGeoNodeSize = this.layoutAlgoManager.updateGeoNodeSize.bind(this.layoutAlgoManager);
     window.viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();

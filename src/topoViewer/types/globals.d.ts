@@ -21,6 +21,7 @@ declare global {
     viewportDrawerPreset?: (..._args: any[]) => void;
     viewportButtonsGeoMapPan?: (..._args: any[]) => void;
     viewportButtonsGeoMapEdit?: (..._args: any[]) => void;
+    updateGeoNodeSize?: (value: string | number) => void;
     viewportButtonsTopologyOverview?: (..._args: any[]) => void;
     viewportButtonsZoomToFit?: () => void;
     viewportSetLinkLabelMode?: (mode: string) => void;

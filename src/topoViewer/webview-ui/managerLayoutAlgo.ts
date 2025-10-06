@@ -63,7 +63,7 @@ export class ManagerLayoutAlgo {
   /** Base zoom level when Geo map is initialised */
   private geoScaleBaseZoom = 1;
   /** Default scale factor applied at the base zoom level */
-  private geoScaleFactor = 4;
+  public geoScaleFactor = 1.5;
   /** Last scale factor applied to elements */
   private lastGeoScale = this.geoScaleFactor;
   /** Extra multiplier to make labels scale slightly larger than nodes */
@@ -290,7 +290,9 @@ export class ManagerLayoutAlgo {
       sty
         .selector('node')
         .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseNodeTextOutlineWidth * labelFactor}px`)
-        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseNodeTextBgPadding * labelFactor}px`);
+        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseNodeTextBgPadding * labelFactor}px`)
+        .style('text-background-color', 'transparent')
+        .style('text-background-opacity', 0);
       sty
         .selector('edge')
         .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseEdgeTextOutlineWidth * labelFactor}px`)
@@ -309,7 +311,9 @@ export class ManagerLayoutAlgo {
       sty
         .selector('node')
         .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseNodeTextOutlineWidth}px`)
-        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseNodeTextBgPadding}px`);
+        .style(STYLE_TEXT_BACKGROUND_PADDING, `${this.baseNodeTextBgPadding}px`)
+        .style('text-background-color', '#000000')
+        .style('text-background-opacity', 0.7);
       sty
         .selector('edge')
         .style(STYLE_TEXT_OUTLINE_WIDTH, `${this.baseEdgeTextOutlineWidth}px`)
@@ -1047,5 +1051,21 @@ export class ManagerLayoutAlgo {
       }
 
     });
+  }
+
+  /**
+   * Update node size scale factor for geo positioning layout
+   */
+  public updateGeoNodeSize(value: string | number): void {
+    const newFactor = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(newFactor)) return;
+
+    this.geoScaleFactor = newFactor;
+
+    if (this.isGeoMapInitialized) {
+      const factor = this.calculateGeoScale();
+      this.applyGeoScale(true, factor);
+      log.info(`[GeoMap] Node size updated to ${newFactor}`);
+    }
   }
 }

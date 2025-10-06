@@ -182,7 +182,21 @@
 
   <!-- Geo Map Controls -->
   <div class="layout-algo p-2 hidden" id="viewport-drawer-geo-map-content-01">
-    <!-- Empty for now -->
+    <div class="space-y-2">
+      <div class="flex items-center">
+        <label class="vscode-label w-24 text-right pr-3">Node Size</label>
+        <input
+          id="geo-positioning-slider-node-size"
+          class="flex-1"
+          type="range"
+          step="0.1"
+          min="0.5"
+          max="5"
+          value="1.5"
+          oninput="updateGeoNodeSize(this.value)"
+        />
+      </div>
+    </div>
   </div>
 
   <div class="layout-algo p-2 hidden" id="viewport-drawer-geo-map">
