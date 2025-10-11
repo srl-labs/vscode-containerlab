@@ -15,23 +15,22 @@
         <code>?</code>
         ,
         <code>#</code>
-        ) or regular expressions, and reuse capture groups from the source in the target with
-        placeholders like
+        ) or regular expressions. Capture placeholders like
         <code>$1</code>
         or
         <code>$&lt;name&gt;</code>
-        .
+        are only filled when the source pattern is a regular expression with capturing groups.
       </p>
       <p class="pr-4 pb-2 text-sm leading-snug text-secondary">
         For example, matching
         <code>leaf*</code>
         to
         <code>spine*</code>
-        links every leaf to all spines, while
-        <code>leaf?#</code>
-        to
+        links every leaf to all spines. To pair numbered devices, use a regex source such as
+        <code>leaf?(\d+)</code>
+        with a target of
         <code>spine$1</code>
-        connects each numbered leaf to the spine with the same index.
+        to connect each leaf to the spine that shares its index.
       </p>
       <div class="px-0">
         <!-- Source Pattern -->
@@ -46,7 +45,7 @@
                   type="text"
                   class="input-field text-base w-full"
                   id="source-regex"
-                  placeholder="e.g. leaf, spine?# or ^core-.$"
+                  placeholder="e.g. leaf, srl?(\d+) or ^core-.$"
                 />
               </div>
             </div>
@@ -64,7 +63,7 @@
                   type="text"
                   class="input-field text-base w-full"
                   id="target-regex"
-                  placeholder="e.g. spine, leaf?# or ^edge-.$"
+                  placeholder="e.g. spine, client$1 or ^edge-.$"
                 />
               </div>
             </div>

@@ -1,4 +1,8 @@
 # Change Log
+## [0.19.4] - 2025-10-11
+- clab 0.71.0 support
+- fixes
+
 ## [0.19.3] - 2025-10-2
 - refresh docker images when node editor panel is opened
 - fixes
