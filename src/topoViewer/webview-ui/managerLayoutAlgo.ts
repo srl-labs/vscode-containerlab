@@ -363,7 +363,7 @@ export class ManagerLayoutAlgo {
     const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
     (cy as any).gridGuide(
       buildGridGuideOptions(theme, {
-        drawGrid: true,
+        drawGrid: false,
         snapToGridOnRelease: true,
         snapToAlignmentLocationOnRelease: true,
         snapToGridCenter: true,

@@ -575,6 +575,7 @@ export default async function loadCytoStyle(
     const selectedTheme = resolveThemeOverride(theme);
     const styles = getCytoscapeStyles(selectedTheme === 'light' ? 'light' : 'dark');
     cy.style().fromJson(styles).update();
+    (window as any).updateTopoGridTheme?.(selectedTheme === 'light' ? 'light' : 'dark');
     labelEndpointManagerSingleton.refreshAfterStyle();
     log.info('Cytoscape styles applied successfully.');
 
