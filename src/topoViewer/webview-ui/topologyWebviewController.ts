@@ -140,6 +140,7 @@ class TopologyWebviewController {
   private viewAutoSaveConfigured = false;
   private modeTransitionInProgress = false;
   private commonTapstartHandlerRegistered = false;
+  private initialGraphLoaded = false;
   private gridOverlayCanvas: HTMLCanvasElement | null = null;
   private gridOverlayCtx: CanvasRenderingContext2D | null = null;
   private gridOverlayNeedsRedraw = false;
@@ -202,9 +203,16 @@ class TopologyWebviewController {
     perfMeasure('cytoscape_style', 'cytoscape_style_start');
     perfMark('fetch_data_start');
     await fetchAndLoadData(this.cy, this.messageSender);
-    this.applyModeStyling(mode);
+    if (mode === 'edit') {
+      this.cy.edges().forEach(edge => {
+        edge.removeClass('link-up');
+        edge.removeClass('link-down');
+      });
+      window.writeTopoDebugLog?.('initAsync: cleared link state classes for edit mode');
+    }
     perfMeasure('fetch_data', 'fetch_data_start');
     perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
+    this.initialGraphLoaded = true;
 
     this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
       metrics: PerformanceMonitor.getMeasures()
@@ -382,6 +390,7 @@ class TopologyWebviewController {
    * @throws Will throw an error if the container element is not found.
    */
   constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
+    window.writeTopoDebugLog?.('TopologyWebviewController constructed');
     perfMark('topoViewer_init_start');
     this.currentMode = mode;
     (topoViewerState as any).currentMode = mode;
@@ -580,18 +589,6 @@ class TopologyWebviewController {
     ctx.restore();
   }
 
-  private applyModeStyling(mode: 'edit' | 'view'): void {
-    const editorFlag = mode === 'edit' ? 'true' : 'false';
-    this.cy.batch(() => {
-      this.cy.nodes().forEach(node => {
-        node.data('editor', editorFlag);
-      });
-      this.cy.edges().forEach(edge => {
-        edge.data('editor', editorFlag);
-      });
-    });
-  }
-
   private initializeManagers(mode: 'edit' | 'view'): void {
     this.setupManagers(mode);
     this.registerDoubleClickHandlers();
@@ -702,6 +699,12 @@ class TopologyWebviewController {
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
+    window.writeTopoDebugLog = (message: string) => {
+      void this.messageSender.sendMessageToVscodeEndpointPost('topo-debug-log', {
+        message,
+        timestamp: new Date().toISOString()
+      });
+    };
   }
 
   private registerMessageListener(): void {
@@ -722,7 +725,7 @@ class TopologyWebviewController {
         case 'yaml-saved':
           runHandler(msg.type, async () => {
             await fetchAndLoadData(this.cy, this.messageSender, { incremental: true });
-            this.applyModeStyling(this.currentMode);
+            window.writeTopoDebugLog?.('handled yaml-saved message');
           });
           break;
         case 'updateTopology':
@@ -749,6 +752,7 @@ class TopologyWebviewController {
       const elements = data as any[];
       if (Array.isArray(elements)) {
         let requiresStyleReload = false;
+        window.writeTopoDebugLog?.(`updateTopology received ${elements.length} elements`);
 
         elements.forEach((el) => {
           const id = el?.data?.id;
@@ -762,6 +766,11 @@ class TopologyWebviewController {
             if (typeof el.classes === 'string') {
               existing.classes(el.classes);
             }
+            if (this.currentMode === 'edit' && existing.isEdge()) {
+              existing.removeClass('link-up');
+              existing.removeClass('link-down');
+              window.writeTopoDebugLog?.(`updateTopology: stripped link state classes from ${id}`);
+            }
           } else {
             this.cy.add(el);
             requiresStyleReload = true;
@@ -770,11 +779,14 @@ class TopologyWebviewController {
 
         if (requiresStyleReload) {
           loadCytoStyle(this.cy);
+          window.writeTopoDebugLog?.('loadCytoStyle triggered via updateTopology');
+        } else {
+          window.writeTopoDebugLog?.('updateTopology applied without style reload');
         }
-        this.applyModeStyling(this.currentMode);
       }
     } catch (error) {
       log.error(`Error processing updateTopology message: ${error}`);
+      window.writeTopoDebugLog?.(`updateTopology error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -878,6 +890,8 @@ class TopologyWebviewController {
       return;
     }
 
+    window.writeTopoDebugLog?.(`mode switch requested -> ${payload.mode ?? 'unknown'}`);
+
     if (this.modeTransitionInProgress) {
       log.warn('Mode transition already in progress; ignoring new mode switch request');
       return;
@@ -893,8 +907,20 @@ class TopologyWebviewController {
 
       const resolvedLock = this.resolveLockPreference(payload);
 
-      this.applyModeStyling(target);
+      if (!this.initialGraphLoaded) {
+        window.writeTopoDebugLog?.('handleModeSwitchMessage: graph not yet loaded, fetching data');
+        await fetchAndLoadData(this.cy, this.messageSender);
+        this.initialGraphLoaded = true;
+      }
       await this.ensureModeResources(target);
+      window.writeTopoDebugLog?.('handleModeSwitchMessage: mode resources ensured');
+      if (target === 'edit') {
+        this.cy.edges().forEach(edge => {
+          edge.removeClass('link-up');
+          edge.removeClass('link-down');
+        });
+        window.writeTopoDebugLog?.('handleModeSwitchMessage: cleared link state classes for edit mode');
+      }
 
       if (typeof resolvedLock === 'boolean') {
         this.labLocked = resolvedLock;
@@ -902,6 +928,7 @@ class TopologyWebviewController {
       this.applyLockState(this.labLocked);
 
       this.finalizeModeChange(normalized);
+      window.writeTopoDebugLog?.(`handleModeSwitchMessage: finalized mode ${normalized}`);
       log.info(`Mode switched to ${target}`);
     } catch (error) {
       log.error(`Error handling mode switch: ${error instanceof Error ? error.message : String(error)}`);
@@ -1579,7 +1606,7 @@ class TopologyWebviewController {
     log.debug(`Node clicked: ${node.id()}`);
     const originalEvent = event.originalEvent as MouseEvent;
     const extraData = node.data('extraData');
-    const isNodeInEditMode = node.data('editor') === 'true';
+    const isNodeInEditMode = this.currentMode === 'edit';
 
     if (originalEvent.ctrlKey && node.isChild()) {
       log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
@@ -1920,7 +1947,7 @@ class TopologyWebviewController {
           this.groupManager?.directGroupRemoval(node.id());
         }
       } else {
-        const isNodeInEditMode = node.data('editor') === 'true';
+        const isNodeInEditMode = this.currentMode === 'edit';
         if (this.isViewportDrawerClabEditorChecked && isNodeInEditMode) {
           node.remove();
         }

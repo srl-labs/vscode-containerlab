@@ -196,6 +196,13 @@ export async function fetchAndLoadData(
   messageSender: VscodeMessageSender,
   options: FetchOptions = {}
 ): Promise<void> {
+  try {
+    (window as any).writeTopoDebugLog?.(
+      `fetchAndLoadData called (incremental=${options.incremental === true})`
+    );
+  } catch {
+    // ignore logging issues
+  }
   perfMark('fetchAndLoadData_start');
 
   try {
@@ -251,8 +258,6 @@ export async function fetchAndLoadData(
       if (overlap) {
         scheduleImprovedLayout(cy);
       }
-    } else {
-      loadFreeTextAnnotations();
     }
 
     perfMeasure('fetchAndLoadData_total', 'fetchAndLoadData_start');

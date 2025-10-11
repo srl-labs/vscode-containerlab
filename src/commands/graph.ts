@@ -232,18 +232,14 @@ export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: 'depl
 
   try {
     // Determine the new state based on the command
-    const newDeploymentState = (commandType === 'destroy') ? 'undeployed' : 'deployed';
-    const newViewMode = (commandType === 'destroy') ? false : true;
+    const newDeploymentState = commandType === 'destroy' ? 'undeployed' : 'deployed';
 
-    // Update the viewer's state
-    currentTopoViewer.deploymentState = newDeploymentState;
-    currentTopoViewer.isViewMode = newViewMode;
-
-    // Force refresh the panel to reflect the new mode, bypassing any checks
-    if (currentTopoViewer.forceUpdateAfterCommand) {
-      await currentTopoViewer.forceUpdateAfterCommand(currentTopoViewerPanel);
-    } else {
-      // Fallback to regular update if the new method doesn't exist
+    if (typeof (currentTopoViewer as any).refreshAfterExternalCommand === 'function') {
+      await (currentTopoViewer as any).refreshAfterExternalCommand(newDeploymentState);
+    } else if (currentTopoViewer.updatePanelHtml) {
+      // Fallback to legacy behaviour
+      currentTopoViewer.deploymentState = newDeploymentState;
+      currentTopoViewer.isViewMode = newDeploymentState === 'deployed';
       await currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
     }
   } catch (error) {

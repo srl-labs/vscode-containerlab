@@ -786,6 +786,7 @@ export class ManagerFreeText {
    * Load annotations from backend with debouncing to prevent duplicate requests
    */
   public async loadAnnotations(): Promise<void> {
+    (window as any).writeTopoDebugLog?.('freeText:loadAnnotations invoked');
     // If a load is already in progress, skip this request
     if (this.loadInProgress) {
       log.debug('Load already in progress, skipping duplicate request');
