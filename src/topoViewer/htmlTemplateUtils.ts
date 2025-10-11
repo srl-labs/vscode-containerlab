@@ -171,7 +171,7 @@ function buildReplacements(
       imageMapping: '{}',
       ifacePatternMapping: '{}',
       defaultKind: 'nokia_srlinux',
-      defaultType: 'ixrd1',
+      defaultType: 'ixr-d2l',
       updateLinkEndpointsOnKindChange: 'true',
       customNodes: '[]',
       defaultNode: '',

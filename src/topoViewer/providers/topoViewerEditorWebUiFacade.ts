@@ -108,12 +108,12 @@ topology:
   nodes:
     srl1:
       kind: nokia_srlinux
-      type: ixrd1
+      type: ixr-d2l
       image: ghcr.io/nokia/srlinux:latest
 
     srl2:
       kind: nokia_srlinux
-      type: ixrd1
+      type: ixr-d2l
       image: ghcr.io/nokia/srlinux:latest
 
   links:
@@ -1003,7 +1003,7 @@ topology:
       const baseName = path.basename(this.lastYamlFilePath);
       const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
       const defaultContent = `name: ${labNameFromFile}\n\n` +
-`topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixrd1\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
+`topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
       this.isInternalUpdate = true;
       await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
       await sleep(50);

@@ -131,7 +131,7 @@ export class ManagerAddContainerlabNode {
     if (template?.name) {
       return undefined;
     }
-    return window.defaultType || 'ixrd1';
+    return window.defaultType || 'ixr-d2l';
   }
 
   private extractExtraTemplate(
