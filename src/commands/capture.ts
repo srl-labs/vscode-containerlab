@@ -359,48 +359,144 @@ export async function captureEdgesharkVNC(
           font-size: 0.9em;
           margin-top: 10px;
         }
+        .retry-info {
+          color: #888;
+          font-size: 0.85em;
+          margin-top: 15px;
+        }
       </style>
       <body>
         <div class="loading" id="loading">
           Loading Wireshark...
           ${volumeMount ? '<div class="info">Tip: Save pcap files to /pcaps to persist them in the lab directory</div>' : ''}
+          <div class="retry-info" id="retry-info"></div>
         </div>
         <iframe id="vnc-frame" frameborder="0" width="100%" height="100%" style="display: none;"></iframe>
         <script>
           const iframe = document.getElementById('vnc-frame');
           const loading = document.getElementById('loading');
+          const retryInfo = document.getElementById('retry-info');
           const url = "${iframeUrl}";
+          let attemptCount = 0;
+          const maxAttempts = 60; // Try for up to 30 seconds (60 * 500ms)
+          let vncReady = false;
 
           // Try to load the iframe
           function loadVNC() {
+            if (vncReady) return;
+            vncReady = true;
+
             iframe.src = url;
             iframe.onload = function() {
               loading.style.display = 'none';
               iframe.style.display = 'block';
             };
             iframe.onerror = function() {
-              // Retry after a delay
-              setTimeout(loadVNC, 1000);
+              // If iframe fails to load, try reloading after a delay
+              vncReady = false;
+              retryInfo.textContent = 'Connection failed, retrying...';
+              setTimeout(() => {
+                iframe.src = '';
+                setTimeout(checkVNCReady, 1000);
+              }, 1000);
             };
           }
 
           // Poll the VNC server until it's reachable, then load it
           function checkVNCReady() {
-            fetch(url, { mode: 'no-cors' })
-              .then(() => loadVNC())
-              .catch(() => setTimeout(checkVNCReady, 500));
+            if (vncReady) return;
+
+            attemptCount++;
+            if (attemptCount > maxAttempts) {
+              retryInfo.textContent = 'Connection timeout - VNC server may not be ready. Attempting to load anyway...';
+              loadVNC();
+              return;
+            }
+
+            // Update retry info every 5 attempts
+            if (attemptCount % 5 === 0) {
+              retryInfo.textContent = \`Waiting for VNC server... (attempt \${attemptCount}/\${maxAttempts})\`;
+            }
+
+            // Try fetch first to detect HTTP errors (works in code-server proxy scenarios)
+            fetch(url + '/?check=' + Date.now(), {
+              method: 'HEAD',
+              cache: 'no-cache'
+            })
+              .then(response => {
+                // Check if we got a valid response (not 504, 502, 503, etc.)
+                if (response.ok || response.status === 200 || response.status === 304) {
+                  retryInfo.textContent = 'VNC server ready, loading...';
+                  setTimeout(loadVNC, 200);
+                } else if (response.status >= 500 && response.status < 600) {
+                  // Server error (504, 502, 503, etc.) - server not ready yet
+                  retryInfo.textContent = \`Server not ready (HTTP \${response.status}), retrying...\`;
+                  setTimeout(checkVNCReady, 500);
+                } else {
+                  // Other status codes - might be redirects or auth, try loading anyway
+                  retryInfo.textContent = 'Received response, loading...';
+                  setTimeout(loadVNC, 200);
+                }
+              })
+              .catch(error => {
+                // Fetch failed (CORS, network error, etc.) - fall back to iframe test
+                // This handles normal VSCode scenarios where fetch might be blocked
+                tryIframeCheck();
+              });
           }
 
+          // Fallback method: Try loading iframe briefly to test if server is ready
+          function tryIframeCheck() {
+            const testFrame = document.createElement('iframe');
+            testFrame.style.display = 'none';
+            testFrame.src = url;
+
+            const checkTimeout = setTimeout(() => {
+              document.body.removeChild(testFrame);
+              // Timeout means server might not be ready, retry
+              setTimeout(checkVNCReady, 500);
+            }, 1000);
+
+            testFrame.onload = function() {
+              clearTimeout(checkTimeout);
+              document.body.removeChild(testFrame);
+              // Successfully loaded, VNC server is ready
+              retryInfo.textContent = 'VNC server ready, loading...';
+              setTimeout(loadVNC, 200);
+            };
+
+            testFrame.onerror = function() {
+              clearTimeout(checkTimeout);
+              document.body.removeChild(testFrame);
+              // Error loading, retry
+              setTimeout(checkVNCReady, 500);
+            };
+
+            document.body.appendChild(testFrame);
+          }
+
+          // Start checking for VNC readiness
           checkVNCReady();
 
-          // Force a reload if the iframe doesn't load within 10 seconds
-          setTimeout(() => {
-            if (iframe.style.display === 'none') {
-              iframe.src = url;
-              loading.style.display = 'none';
-              iframe.style.display = 'block';
+          // Handle iframe connection errors after it's loaded
+          window.addEventListener('message', function(event) {
+            // Handle postMessage from iframe if needed
+          });
+
+          // Reload iframe if connection is lost
+          let reloadAttempts = 0;
+          const maxReloadAttempts = 5;
+          setInterval(() => {
+            if (iframe.style.display === 'block' && !iframe.contentWindow) {
+              if (reloadAttempts < maxReloadAttempts) {
+                reloadAttempts++;
+                console.log('Connection lost, reloading iframe...');
+                iframe.src = iframe.src;
+              }
+            } else {
+              reloadAttempts = 0;
             }
-          }, 10000);
+          }, 5000);
         </script>
       </body>
     </html>
