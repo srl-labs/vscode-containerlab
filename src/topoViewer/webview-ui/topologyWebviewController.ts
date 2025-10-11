@@ -46,6 +46,40 @@ import {
   parseInterfacePattern,
 } from './utilities/interfacePatternUtils';
 
+if (typeof window !== 'undefined') {
+  (window as any).topoViewerState = topoViewerState;
+}
+
+type ViewerParamsPayload = {
+  lockLabByDefault?: boolean;
+  currentLabPath?: string;
+  deploymentState?: string;
+  viewerMode?: string;
+};
+
+type EditorParamsPayload = {
+  lockLabByDefault?: boolean;
+  imageMapping?: Record<string, string>;
+  ifacePatternMapping?: Record<string, string>;
+  defaultKind?: string;
+  defaultType?: string;
+  updateLinkEndpointsOnKindChange?: boolean;
+  customNodes?: any[];
+  defaultNode?: string;
+  topologyDefaults?: Record<string, unknown>;
+  topologyKinds?: Record<string, unknown>;
+  topologyGroups?: Record<string, unknown>;
+  dockerImages?: string[];
+  currentLabPath?: string;
+};
+
+interface ModeSwitchPayload {
+  mode: 'viewer' | 'editor' | string;
+  deploymentState?: string;
+  viewerParams?: ViewerParamsPayload;
+  editorParams?: EditorParamsPayload;
+}
+
 // Grid guide options now come from shared builder in utilities/gridGuide
 
 
@@ -103,6 +137,12 @@ class TopologyWebviewController {
   private viewerGroupMenu: any;
   private activeGroupMenuTarget?: cytoscape.NodeSingular;
   private suppressViewerCanvasClose = false;
+  private editModeEventsRegistered = false;
+  private viewModeEventsRegistered = false;
+  private editAutoSaveConfigured = false;
+  private viewAutoSaveConfigured = false;
+  private modeTransitionInProgress = false;
+  private commonTapstartHandlerRegistered = false;
   // eslint-disable-next-line no-unused-vars
   private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
     delete: (event) => {
@@ -213,6 +253,10 @@ class TopologyWebviewController {
 
   // Add automatic save on change
   private setupAutoSave(): void {
+    if (this.editAutoSaveConfigured) {
+      return;
+    }
+    this.editAutoSaveConfigured = true;
     // Debounced save function
     const autoSave = debounce(async () => {
       if (this.isEdgeHandlerActive) {
@@ -260,6 +304,10 @@ class TopologyWebviewController {
 
   // Add automatic save for view mode (only saves annotations.json)
   private setupAutoSaveViewMode(): void {
+    if (this.viewAutoSaveConfigured) {
+      return;
+    }
+    this.viewAutoSaveConfigured = true;
     // Debounced save function for view mode
     const autoSaveViewMode = debounce(async () => {
       const suppressNotification = true;
@@ -497,15 +545,30 @@ class TopologyWebviewController {
       if (!msg?.type) {
         return;
       }
-      // eslint-disable-next-line no-unused-vars
-      const handlers: Record<string, (data: any) => void> = {
-        'yaml-saved': () => fetchAndLoadData(this.cy, this.messageSender),
-        'updateTopology': (data) => this.updateTopology(data),
-        'copiedElements': (data) => this.handleCopiedElements(data)
+      const runHandler = (type: string, fn: () => void | Promise<void>): void => {
+        Promise.resolve(fn()).catch((error) => {
+          log.error(`Error handling message "${type}": ${error instanceof Error ? error.message : String(error)}`);
+        });
       };
-      const handler = handlers[msg.type];
-      if (handler) {
-        handler(msg.data);
+      switch (msg.type) {
+        case 'yaml-saved':
+          runHandler(msg.type, () => fetchAndLoadData(this.cy, this.messageSender));
+          break;
+        case 'updateTopology':
+          runHandler(msg.type, () => {
+            this.updateTopology(msg.data);
+          });
+          break;
+        case 'copiedElements':
+          runHandler(msg.type, () => {
+            this.handleCopiedElements(msg.data);
+          });
+          break;
+        case 'topo-mode-changed':
+          runHandler(msg.type, () => this.handleModeSwitchMessage(msg.data as ModeSwitchPayload));
+          break;
+        default:
+          break;
       }
     });
   }
@@ -547,6 +610,140 @@ class TopologyWebviewController {
     const addedElements = this.copyPasteManager.performPaste(data);
     if (addedElements && addedElements.length > 0) {
       this.saveManager.saveTopo(this.cy, true);
+    }
+  }
+
+  private normalizeModeFromPayload(payload: ModeSwitchPayload): { normalized: 'viewer' | 'editor'; target: 'edit' | 'view' } {
+    const normalized = payload.mode === 'viewer' ? 'viewer' : 'editor';
+    const target: 'edit' | 'view' = normalized === 'viewer' ? 'view' : 'edit';
+    return { normalized, target };
+  }
+
+  private setGlobalModeState(normalized: 'viewer' | 'editor', target: 'edit' | 'view', deploymentState?: string): void {
+    (window as any).topoViewerMode = normalized;
+    (topoViewerState as any).currentMode = target;
+    this.currentMode = target;
+    this.isViewportDrawerClabEditorChecked = target === 'edit';
+    if (typeof deploymentState === 'string') {
+      topoViewerState.deploymentType = deploymentState;
+    }
+  }
+
+  private resolveLockPreference(payload: ModeSwitchPayload): boolean | undefined {
+    if (typeof payload.editorParams?.lockLabByDefault === 'boolean') {
+      return payload.editorParams.lockLabByDefault;
+    }
+    if (typeof payload.viewerParams?.lockLabByDefault === 'boolean') {
+      return payload.viewerParams.lockLabByDefault;
+    }
+    return undefined;
+  }
+
+  private applyViewerParameters(params?: ViewerParamsPayload): void {
+    if (!params) {
+      return;
+    }
+    this.assignWindowValue('lockLabByDefault', params.lockLabByDefault);
+    this.assignWindowValue('currentLabPath', params.currentLabPath);
+  }
+
+  private applyEditorParameters(params?: EditorParamsPayload): void {
+    if (!params) {
+      return;
+    }
+    this.assignWindowValue('lockLabByDefault', params.lockLabByDefault);
+    this.assignWindowValue('imageMapping', params.imageMapping, {});
+    this.assignWindowValue('ifacePatternMapping', params.ifacePatternMapping, {});
+    this.assignWindowValue('defaultKind', params.defaultKind, 'nokia_srlinux');
+    this.assignWindowValue('defaultType', params.defaultType, '');
+    this.assignWindowValue('updateLinkEndpointsOnKindChange', params.updateLinkEndpointsOnKindChange);
+    this.assignWindowValue('customNodes', params.customNodes, []);
+    this.assignWindowValue('defaultNode', params.defaultNode, '');
+    this.assignWindowValue('topologyDefaults', params.topologyDefaults, {});
+    this.assignWindowValue('topologyKinds', params.topologyKinds, {});
+    this.assignWindowValue('topologyGroups', params.topologyGroups, {});
+    this.assignWindowValue('dockerImages', params.dockerImages, []);
+    this.assignWindowValue('currentLabPath', params.currentLabPath);
+  }
+
+  private assignWindowValue<T>(key: string, value: T | undefined, fallback?: T): void {
+    if (value !== undefined) {
+      (window as any)[key] = value;
+      return;
+    }
+    if (fallback !== undefined && (window as any)[key] === undefined) {
+      (window as any)[key] = fallback;
+    }
+  }
+
+  private async refreshGraphForMode(options: { incremental?: boolean } = {}): Promise<void> {
+    await fetchAndLoadData(this.cy, this.messageSender, options);
+    await loadCytoStyle(
+      this.cy,
+      undefined,
+      options.incremental ? { preserveExisting: true } : undefined
+    );
+  }
+
+  private async ensureModeResources(mode: 'edit' | 'view'): Promise<void> {
+    await this.registerEvents(mode);
+    if (mode === 'edit') {
+      if (!this.viewportPanels) {
+        this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+        (window as any).viewportPanels = this.viewportPanels;
+      }
+      if (!this.nodeEditor) {
+        this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
+      }
+      this.setupAutoSave();
+    } else {
+      this.setupAutoSaveViewMode();
+    }
+    this.unifiedFloatingPanel?.setNodeEditor(this.nodeEditor ?? null);
+    this.toggleEdgehandles(mode === 'edit');
+    await this.initializeContextMenu(mode);
+  }
+
+  private finalizeModeChange(normalized: 'viewer' | 'editor'): void {
+    this.updateModeIndicator(normalized);
+    document.dispatchEvent(new CustomEvent('topo-mode-changed'));
+    this.unifiedFloatingPanel?.updateState();
+  }
+
+  private async handleModeSwitchMessage(payload: ModeSwitchPayload): Promise<void> {
+    if (!payload) {
+      return;
+    }
+
+    if (this.modeTransitionInProgress) {
+      log.warn('Mode transition already in progress; ignoring new mode switch request');
+      return;
+    }
+
+    this.modeTransitionInProgress = true;
+    try {
+      const { normalized, target } = this.normalizeModeFromPayload(payload);
+
+      this.setGlobalModeState(normalized, target, payload.deploymentState);
+      this.applyViewerParameters(payload.viewerParams);
+      this.applyEditorParameters(payload.editorParams);
+
+      const resolvedLock = this.resolveLockPreference(payload);
+
+      await this.refreshGraphForMode({ incremental: true });
+      await this.ensureModeResources(target);
+
+      if (typeof resolvedLock === 'boolean') {
+        this.labLocked = resolvedLock;
+      }
+      this.applyLockState(this.labLocked);
+
+      this.finalizeModeChange(normalized);
+      log.info(`Mode switched to ${target}`);
+    } catch (error) {
+      log.error(`Error handling mode switch: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      this.modeTransitionInProgress = false;
     }
   }
 
@@ -608,6 +805,21 @@ class TopologyWebviewController {
     this.eh = (this.cy as any).edgehandles(edgehandlesOptions);
     this.eh.enable();
     this.isEdgeHandlerActive = false;
+  }
+
+  private toggleEdgehandles(enable: boolean): void {
+    if (!this.eh) {
+      if (enable) {
+        void this.initializeEdgehandles();
+      }
+      return;
+    }
+    if (enable) {
+      this.eh.enable();
+    } else {
+      this.eh.disable();
+      this.isEdgeHandlerActive = false;
+    }
   }
 
 
@@ -1060,20 +1272,31 @@ class TopologyWebviewController {
    * @private
    */
   private async registerEvents(mode: 'edit' | 'view'): Promise<void> {
-    if (mode === 'edit') {
-      await this.registerEditModeEvents();
-    } else {
-      this.registerViewModeEvents();
+    if (!this.commonTapstartHandlerRegistered) {
+      this.cy.on('tapstart', 'node', (e) => {
+        if (this.labLocked) {
+          this.showLockedMessage();
+          e.preventDefault();
+        }
+      });
+      this.commonTapstartHandlerRegistered = true;
     }
-    this.cy.on('tapstart', 'node', (e) => {
-      if (this.labLocked) {
-        this.showLockedMessage();
-        e.preventDefault();
+
+    if (mode === 'edit') {
+      if (!this.editModeEventsRegistered) {
+        await this.registerEditModeEvents();
+        this.editModeEventsRegistered = true;
       }
-    });
+    } else if (!this.viewModeEventsRegistered) {
+      this.registerViewModeEvents();
+      this.viewModeEventsRegistered = true;
+    }
   }
 
   private handleCanvasClick(event: cytoscape.EventObject): void {
+    if (this.currentMode !== 'edit') {
+      return;
+    }
     if (this.labLocked) {
       return;
     }
@@ -1091,6 +1314,9 @@ class TopologyWebviewController {
   }
 
   private handleEditModeEdgeClick(event: cytoscape.EventObject): void {
+    if (this.currentMode !== 'edit') {
+      return;
+    }
     if (this.labLocked) {
       this.showLockedMessage();
       return;
@@ -1233,6 +1459,9 @@ class TopologyWebviewController {
 
 
   private async handleEditModeNodeClick(event: cytoscape.EventObject): Promise<void> {
+    if (this.currentMode !== 'edit') {
+      return;
+    }
     if (this.labLocked) {
       this.showLockedMessage();
       return;
@@ -1670,6 +1899,18 @@ class TopologyWebviewController {
     } else {
       log.warn(`'root' element not found; cannot apply theme: ${theme}`);
     }
+  }
+
+  private updateModeIndicator(mode: 'viewer' | 'editor'): void {
+    const indicator = document.getElementById('mode-indicator');
+    if (indicator) {
+      indicator.textContent = mode;
+      indicator.classList.remove('mode-viewer', 'mode-editor');
+      indicator.classList.add(`mode-${mode}`);
+    } else {
+      log.warn('Mode indicator element not found');
+    }
+    document.title = mode === 'editor' ? 'TopoViewer Editor' : 'TopoViewer';
   }
 
   /**

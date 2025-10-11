@@ -1135,6 +1135,10 @@ export class ManagerUnifiedFloatingPanel {
     }, 100);
   }
 
+  public setNodeEditor(nodeEditor: ManagerNodeEditor | null): void {
+    this.nodeEditor = nodeEditor;
+  }
+
   /**
    * Shows or hides the unified panel
    */

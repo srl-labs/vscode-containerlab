@@ -445,7 +445,8 @@ topology:
    */
   private async updatePanelHtmlCore(
     panel: vscode.WebviewPanel | undefined,
-    isInitialLoad: boolean = false
+    isInitialLoad: boolean = false,
+    options: { skipHtml?: boolean } = {}
   ): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
@@ -482,6 +483,11 @@ topology:
     );
     if (!writeOk) {
       return false;
+    }
+
+    if (options.skipHtml) {
+      log.debug('Skipping panel HTML refresh (data regeneration only)');
+      return true;
     }
 
     if (!panel) {
@@ -695,6 +701,28 @@ topology:
       topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
       lockLabByDefault
     };
+  }
+
+  private async notifyWebviewModeChanged(): Promise<void> {
+    const panel = this.currentPanel;
+    if (!panel) {
+      log.warn('No active panel to notify about mode change');
+      return;
+    }
+
+    const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
+    const viewerParams = this.getViewerTemplateParams();
+    const editorParams = mode === 'editor' ? await this.getEditorTemplateParams() : undefined;
+
+    await panel.webview.postMessage({
+      type: 'topo-mode-changed',
+      data: {
+        mode,
+        deploymentState: this.deploymentState,
+        viewerParams,
+        editorParams
+      }
+    });
   }
 
   private getDefaultCustomNode(customNodes: any[]): {
@@ -1446,14 +1474,20 @@ topology:
         this.isViewMode = false;
       }
       this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-      const success = await this.updatePanelHtmlInternal(this.currentPanel);
-      if (success) {
-        const result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
-        log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
-        return { result, error: null };
+      const dataRefreshSuccess = await this.updatePanelHtmlCore(
+        this.currentPanel,
+        false,
+        { skipHtml: true }
+      );
+      if (!dataRefreshSuccess) {
+        const error = 'Failed to refresh topology data during mode switch';
+        log.error(error);
+        return { result: null, error };
       }
-      const error = 'Failed to switch mode';
-      return { result: null, error };
+      await this.notifyWebviewModeChanged();
+      const result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
+      log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
+      return { result, error: null };
     } catch (err) {
       const error = `Error switching mode: ${err}`;
       log.error(`Error switching mode: ${JSON.stringify(err, null, 2)}`);

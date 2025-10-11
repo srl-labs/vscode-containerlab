@@ -46,7 +46,7 @@ declare global {
     cytoscapePopper?: any;
     // environment globals
     isVscodeDeployment?: boolean;
-    loadCytoStyle?: (cy: any, theme?: 'light' | 'dark') => void;
+    loadCytoStyle?: (cy: any, theme?: 'light' | 'dark', options?: { preserveExisting?: boolean }) => void;
     jsonFileUrlDataCytoMarshall?: string;
     jsonFileUrlDataEnvironment?: string;
     schemaUrl?: string;
