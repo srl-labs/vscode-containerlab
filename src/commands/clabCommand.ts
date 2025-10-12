@@ -16,7 +16,8 @@ export class ClabCommand extends cmd.Command {
         spinnerMsg?: cmd.SpinnerMsg,
         useTerminal?: boolean,
         terminalName?: string,
-        onSuccess?: () => Promise<void>
+        onSuccess?: () => Promise<void>,
+        onFailure?: cmd.CommandFailureHandler
     ) {
         let options: cmd.CmdOptions;
         if (useTerminal) {
@@ -45,6 +46,9 @@ export class ClabCommand extends cmd.Command {
         this.node = node instanceof ClabLabTreeNode ? node : undefined;
         if (onSuccess) {
             this.onSuccessCallback = onSuccess;
+        }
+        if (onFailure) {
+            this.onFailureCallback = onFailure;
         }
     }
 

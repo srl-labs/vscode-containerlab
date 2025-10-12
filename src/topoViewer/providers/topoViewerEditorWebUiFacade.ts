@@ -785,6 +785,29 @@ topology:
     });
   }
 
+  public async postLifecycleStatus(payload: {
+    commandType: 'deploy' | 'destroy' | 'redeploy';
+    status: 'success' | 'error';
+    errorMessage?: string;
+  }): Promise<void> {
+    const panel = this.currentPanel;
+    if (!panel) {
+      this.logDebug('postLifecycleStatus: aborted (no panel)');
+      return;
+    }
+
+    try {
+      await panel.webview.postMessage({
+        type: 'lab-lifecycle-status',
+        data: payload
+      });
+    } catch (error) {
+      log.error(
+        `postLifecycleStatus failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
   private getDefaultCustomNode(customNodes: any[]): {
     defaultNode: string;
     defaultKind: string;

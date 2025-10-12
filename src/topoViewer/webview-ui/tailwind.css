@@ -617,6 +617,137 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
+  .navbar-loading-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 180ms ease-in-out;
+    background-color: color-mix(in srgb, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1)) 70%, transparent);
+    border-bottom: 1px solid var(--vscode-tab-border, transparent);
+  }
+
+  .navbar-loading-indicator.is-active {
+    opacity: 1;
+  }
+
+  .navbar-loading-indicator__bar {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    opacity: 0;
+    background-size: 220% 100%;
+    transform-origin: left center;
+  }
+
+  .navbar-loading-indicator.is-active .navbar-loading-indicator__bar {
+    opacity: 0.9;
+  }
+
+  .navbar-loading-indicator.is-active.is-deploy .navbar-loading-indicator__bar {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
+      transparent 100%
+    );
+    animation: navbar-progress-sweep 1.15s linear infinite;
+  }
+
+  .navbar-loading-indicator.is-active.is-destroy .navbar-loading-indicator__bar {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
+      transparent 100%
+    );
+    animation: navbar-progress-sweep 1.15s linear infinite;
+  }
+
+  @keyframes navbar-progress-sweep {
+    0% {
+      background-position: -60% 0;
+    }
+
+    100% {
+      background-position: 120% 0;
+    }
+  }
+
+  button.processing {
+    position: relative;
+    cursor: wait;
+  }
+
+  button.processing i {
+    opacity: 0.35;
+  }
+
+  button.processing::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    opacity: 0;
+    animation: deploy-processing-spinner 0.9s linear infinite;
+  }
+
+  button.processing.processing--deploy {
+    color: var(--vscode-button-foreground);
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconPassed, #73c991) 40%,
+      var(--vscode-button-background, rgba(0, 0, 0, 0))
+    );
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
+      0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent);
+  }
+
+  button.processing.processing--deploy::after {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 80%, transparent);
+    border-top-color: transparent;
+    border-right-color: transparent;
+  }
+
+  button.processing.processing--destroy {
+    color: var(--vscode-button-foreground);
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconFailed, #f14c4c) 40%,
+      var(--vscode-button-background, rgba(0, 0, 0, 0))
+    );
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
+      0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 25%, transparent);
+  }
+
+  button.processing.processing--destroy::after {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 85%, transparent);
+    border-top-color: transparent;
+    border-right-color: transparent;
+  }
+
+  @keyframes deploy-processing-spinner {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
   .navbar-brand {
     display: flex;
     align-items: center;

@@ -80,6 +80,8 @@ let currentTopoViewer: TopoViewer | undefined;
 let currentTopoViewerPanel: vscode.WebviewPanel | undefined;
 const activeTopoViewers: Set<TopoViewer> = new Set();
 
+type LifecycleCommandType = 'deploy' | 'destroy' | 'redeploy';
+
 function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: boolean } | undefined {
   if (node && node.contextValue &&
       (node.contextValue === 'containerlabLabDeployed' ||
@@ -220,11 +222,34 @@ export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
   }
 }
 
+async function postLifecycleStatus(
+  commandType: LifecycleCommandType,
+  status: 'success' | 'error',
+  errorMessage?: string
+): Promise<void> {
+  if (!currentTopoViewer || !currentTopoViewerPanel) {
+    return;
+  }
+
+  try {
+    if (typeof (currentTopoViewer as any).postLifecycleStatus === 'function') {
+      await (currentTopoViewer as any).postLifecycleStatus({ commandType, status, errorMessage });
+    } else if (currentTopoViewerPanel.webview) {
+      await currentTopoViewerPanel.webview.postMessage({
+        type: 'lab-lifecycle-status',
+        data: { commandType, status, errorMessage }
+      });
+    }
+  } catch (err) {
+    console.error(`Failed to publish lifecycle status (${status}) for ${commandType}:`, err);
+  }
+}
+
 /**
  * Notifies the current active topoviewer about successful command completion
  * This should ONLY be called after a containerlab command has successfully completed
  */
-export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: 'deploy' | 'destroy' | 'redeploy') {
+export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: LifecycleCommandType) {
   // Only notify the current active TopoViewer
   if (!currentTopoViewer || !currentTopoViewerPanel) {
     return;
@@ -244,5 +269,15 @@ export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: 'depl
     }
   } catch (error) {
     console.error(`Failed to update topoviewer after ${commandType}:`, error);
+  } finally {
+    await postLifecycleStatus(commandType, 'success');
   }
+}
+
+export async function notifyCurrentTopoViewerOfCommandFailure(
+  commandType: LifecycleCommandType,
+  error: unknown
+): Promise<void> {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  await postLifecycleStatus(commandType, 'error', errorMessage);
 }
