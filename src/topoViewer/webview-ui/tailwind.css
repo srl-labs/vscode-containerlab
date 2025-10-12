@@ -674,11 +674,11 @@
 
   @keyframes navbar-progress-sweep {
     0% {
-      background-position: -60% 0;
+      background-position: 120% 0;
     }
 
     100% {
-      background-position: 120% 0;
+      background-position: -60% 0;
     }
   }
 
