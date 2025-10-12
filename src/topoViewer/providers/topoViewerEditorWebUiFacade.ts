@@ -1797,16 +1797,9 @@ topology:
       return { result: false, error: 'No message provided' };
     }
     const timestamp = typeof payloadObj?.timestamp === 'string' ? payloadObj.timestamp : new Date().toISOString();
-    const entry = `[${timestamp}] ${message}\n`;
-    const logPath = path.join('/tmp', 'topoviewer-mode-debug.log');
-    try {
-      await fsPromises.appendFile(logPath, entry, 'utf8');
-      return { result: true, error: null };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.warn(`Failed writing debug log to ${logPath}: ${errorMessage}`);
-      return { result: false, error: errorMessage };
-    }
+    const entry = `[${timestamp}] ${message}`;
+    log.debug(entry);
+    return { result: true, error: null };
   }
 
   private async handleRefreshDockerImagesEndpoint(
