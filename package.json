@@ -1360,7 +1360,7 @@
     "test:compile": "tsc -p test/tsconfig.json"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-free": "^7.0.1",
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/chai": "^5.2.2",
     "@types/cytoscape": "^3.21.9",
