@@ -34,6 +34,10 @@ export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
+let refreshInterval: number;
+let refreshTaskID: ReturnType<typeof setInterval> | undefined;
+
+
 function extractLabName(session: any, prefix: string): string | undefined {
   if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
     return session.network.slice(5);
@@ -285,6 +289,23 @@ function refreshTask() {
   });
 }
 
+// Function to start the refresh interval
+function startRefreshInterval() {
+  if (!refreshTaskID) {
+    console.debug("Starting refresh task")
+    refreshTaskID = setInterval(refreshTask, refreshInterval);
+  }
+}
+
+// Function to stop the refresh interval
+function stopRefreshInterval() {
+  if (refreshTaskID) {
+    console.debug("Stopping refresh task")
+    clearInterval(refreshTaskID);
+    refreshTaskID = undefined;
+  }
+}
+
 function registerCommands(context: vscode.ExtensionContext) {
   const commands: Array<[string, any]> = [
     ['containerlab.lab.openFile', cmd.openLabFile],
@@ -379,7 +400,7 @@ function registerCommands(context: vscode.ExtensionContext) {
  */
 export async function activate(context: vscode.ExtensionContext) {
   // Create and register the output channel
-  outputChannel = vscode.window.createOutputChannel('Containerlab', {log: true});
+  outputChannel = vscode.window.createOutputChannel('Containerlab', { log: true });
   context.subscriptions.push(outputChannel);
 
   outputChannel.info(process.platform);
@@ -479,10 +500,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Auto-refresh the TreeView based on user setting
   const config = vscode.workspace.getConfiguration('containerlab');
-  const refreshInterval = config.get<number>('refreshInterval', 5000);
+  refreshInterval = config.get<number>('refreshInterval', 5000);
 
-  const refreshTaskID = setInterval(refreshTask, refreshInterval);
-  context.subscriptions.push({ dispose: () => clearInterval(refreshTaskID) });
+  // Only refresh when window is focused to prevent queue buildup when tabbed out
+  context.subscriptions.push(
+    vscode.window.onDidChangeWindowState(e => {
+      if (e.focused) {
+        // Window gained focus - refresh immediately, then start interval
+        refreshTask();
+        startRefreshInterval();
+      } else {
+        // Window lost focus - stop the interval to prevent queue buildup
+        stopRefreshInterval();
+      }
+    })
+  );
+
+  // Start the interval if window is already focused
+  if (vscode.window.state.focused) {
+    startRefreshInterval();
+  }
+
+  context.subscriptions.push({ dispose: () => stopRefreshInterval() });
 }
 
 export function deactivate() {
