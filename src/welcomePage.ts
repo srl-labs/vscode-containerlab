@@ -240,7 +240,7 @@ topology:
     </style>
 </head>
 <body class="w-full h-screen flex items-center justify-center">
-    <div class="max-w-7xl max-h-[600px]">
+    <div class="mx-4 max-w-7xl max-h-[600px]">
         <div>
           <div class="flex items-center gap-x-5">
               <svg viewBox="240.742 -24.784 81.8 87.413" xmlns="http://www.w3.org/2000/svg" height="64px">
