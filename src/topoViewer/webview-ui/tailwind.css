@@ -695,7 +695,7 @@
     content: '';
     pointer-events: none;
     position: absolute;
-    inset: 6px;
+    inset: 4px;
     border-radius: 50%;
     border: 2px solid transparent;
     opacity: 0;
