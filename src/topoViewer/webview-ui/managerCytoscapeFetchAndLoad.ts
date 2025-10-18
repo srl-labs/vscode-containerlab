@@ -5,6 +5,10 @@ import { log } from '../logging/logger';
 import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { assignMissingLatLngToElements } from '../utilities/geoUtils';
 
+interface FetchOptions {
+  incremental?: boolean;
+}
+
 
 /**
  * Interface representing an item in the input data array.
@@ -131,6 +135,55 @@ function scheduleImprovedLayout(cy: cytoscape.Core): void {
   });
 }
 
+function normalizeClasses(classes: any): string | undefined {
+  if (!classes) {
+    return undefined;
+  }
+  if (typeof classes === 'string') {
+    return classes;
+  }
+  if (Array.isArray(classes)) {
+    return classes.filter((item) => typeof item === 'string' && item).join(' ');
+  }
+  return undefined;
+}
+
+function applyElementsIncrementally(cy: cytoscape.Core, elements: any[]): void {
+  const seenIds = new Set<string>();
+  cy.batch(() => {
+    elements.forEach((el) => {
+      const id = el?.data?.id;
+      if (!id) {
+        return;
+      }
+      seenIds.add(id);
+      const existing = cy.getElementById(id);
+      if (existing && existing.length > 0) {
+        if (el.data) {
+          existing.data(el.data);
+        }
+        if (el.position) {
+          existing.position(el.position);
+        }
+        const normalizedClasses = normalizeClasses(el.classes);
+        if (normalizedClasses !== undefined) {
+          existing.classes(normalizedClasses);
+        }
+        if (el.style) {
+          existing.style(el.style);
+        }
+      } else {
+        cy.add(el);
+      }
+    });
+
+    const toRemove = cy.elements().filter((ele) => !seenIds.has(ele.id()));
+    if (toRemove.length > 0) {
+      toRemove.remove();
+    }
+  });
+}
+
 
 /**
  * Fetches data from a JSON file, processes it using assignMissingLatLng(),
@@ -138,7 +191,18 @@ function scheduleImprovedLayout(cy: cytoscape.Core): void {
  *
  * @param cy - The Cytoscape instance to update.
  */
-export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: VscodeMessageSender): Promise<void> {
+export async function fetchAndLoadData(
+  cy: cytoscape.Core,
+  messageSender: VscodeMessageSender,
+  options: FetchOptions = {}
+): Promise<void> {
+  try {
+    (window as any).writeTopoDebugLog?.(
+      `fetchAndLoadData called (incremental=${options.incremental === true})`
+    );
+  } catch {
+    // ignore logging issues
+  }
   perfMark('fetchAndLoadData_start');
 
   try {
@@ -164,13 +228,16 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
     perfMeasure('process_elements', 'process_elements_start');
     log.debug(`Updated Elements: ${JSON.stringify(updatedElements)}`);
 
-    cy.json({ elements: [] });
-
     const elementsToAdd = Array.isArray(updatedElements)
       ? updatedElements
       : ((updatedElements as { elements?: any[] }).elements ?? updatedElements);
 
-    cy.add(elementsToAdd);
+    if (options.incremental) {
+      applyElementsIncrementally(cy, elementsToAdd);
+    } else {
+      cy.json({ elements: [] });
+      cy.add(elementsToAdd);
+    }
 
     cy.filter('node[name = "topoviewer"]').remove();
     cy.filter('node[name = "TopoViewer:1"]').remove();
@@ -179,16 +246,18 @@ export async function fetchAndLoadData(cy: cytoscape.Core, messageSender: Vscode
 
     cy.nodes().data('editor', 'true');
 
-    perfMark('layout_start');
-    const layout = chooseInitialLayout(cy, overlap);
-    layout.run();
-    perfMeasure('layout_initial', 'layout_start');
+    if (!options.incremental) {
+      perfMark('layout_start');
+      const layout = chooseInitialLayout(cy, overlap);
+      layout.run();
+      perfMeasure('layout_initial', 'layout_start');
 
-    fitViewportAfterLayout(cy);
-    loadFreeTextAnnotations();
+      fitViewportAfterLayout(cy);
+      loadFreeTextAnnotations();
 
-    if (overlap) {
-      scheduleImprovedLayout(cy);
+      if (overlap) {
+        scheduleImprovedLayout(cy);
+      }
     }
 
     perfMeasure('fetchAndLoadData_total', 'fetchAndLoadData_start');

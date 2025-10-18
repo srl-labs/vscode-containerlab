@@ -46,6 +46,40 @@ import {
   parseInterfacePattern,
 } from './utilities/interfacePatternUtils';
 
+if (typeof window !== 'undefined') {
+  (window as any).topoViewerState = topoViewerState;
+}
+
+type ViewerParamsPayload = {
+  lockLabByDefault?: boolean;
+  currentLabPath?: string;
+  deploymentState?: string;
+  viewerMode?: string;
+};
+
+type EditorParamsPayload = {
+  lockLabByDefault?: boolean;
+  imageMapping?: Record<string, string>;
+  ifacePatternMapping?: Record<string, string>;
+  defaultKind?: string;
+  defaultType?: string;
+  updateLinkEndpointsOnKindChange?: boolean;
+  customNodes?: any[];
+  defaultNode?: string;
+  topologyDefaults?: Record<string, unknown>;
+  topologyKinds?: Record<string, unknown>;
+  topologyGroups?: Record<string, unknown>;
+  dockerImages?: string[];
+  currentLabPath?: string;
+};
+
+interface ModeSwitchPayload {
+  mode: 'viewer' | 'editor' | string;
+  deploymentState?: string;
+  viewerParams?: ViewerParamsPayload;
+  editorParams?: EditorParamsPayload;
+}
+
 // Grid guide options now come from shared builder in utilities/gridGuide
 
 
@@ -98,11 +132,28 @@ class TopologyWebviewController {
   private edgeMenu: any;
   private groupMenu: any;
   private freeTextMenu: any;
-  private viewerNodeMenu: any;
-  private viewerEdgeMenu: any;
-  private viewerGroupMenu: any;
   private activeGroupMenuTarget?: cytoscape.NodeSingular;
   private suppressViewerCanvasClose = false;
+  private editModeEventsRegistered = false;
+  private viewModeEventsRegistered = false;
+  private editAutoSaveConfigured = false;
+  private viewAutoSaveConfigured = false;
+  private modeTransitionInProgress = false;
+  private commonTapstartHandlerRegistered = false;
+  private initialGraphLoaded = false;
+  private gridOverlayCanvas: HTMLCanvasElement | null = null;
+  private gridOverlayCtx: CanvasRenderingContext2D | null = null;
+  private gridOverlayNeedsRedraw = false;
+  private gridOverlayObserver?: MutationObserver;
+  private readonly gridSpacing = 14;
+  private readonly gridLineWidth = 0.5;
+  private gridColor = '#cccccc';
+  private readonly handleGridPanZoom = () => this.requestGridRedraw();
+  private readonly handleGridRender = () => this.requestGridRedraw();
+  private readonly handleGridResize = () => {
+    this.resizeGridOverlay();
+    this.requestGridRedraw();
+  };
   // eslint-disable-next-line no-unused-vars
   private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
     delete: (event) => {
@@ -152,8 +203,16 @@ class TopologyWebviewController {
     perfMeasure('cytoscape_style', 'cytoscape_style_start');
     perfMark('fetch_data_start');
     await fetchAndLoadData(this.cy, this.messageSender);
+    if (mode === 'edit') {
+      this.cy.edges().forEach(edge => {
+        edge.removeClass('link-up');
+        edge.removeClass('link-down');
+      });
+      window.writeTopoDebugLog?.('initAsync: cleared link state classes for edit mode');
+    }
     perfMeasure('fetch_data', 'fetch_data_start');
     perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
+    this.initialGraphLoaded = true;
 
     this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
       metrics: PerformanceMonitor.getMeasures()
@@ -200,7 +259,7 @@ class TopologyWebviewController {
     } else {
       this.setupAutoSaveViewMode();
     }
-    setTimeout(() => this.initializeContextMenu(mode), 100);
+    setTimeout(() => this.initializeContextMenu(), 100);
 
     try {
       await this.groupStyleManager.loadGroupStyles();
@@ -213,6 +272,10 @@ class TopologyWebviewController {
 
   // Add automatic save on change
   private setupAutoSave(): void {
+    if (this.editAutoSaveConfigured) {
+      return;
+    }
+    this.editAutoSaveConfigured = true;
     // Debounced save function
     const autoSave = debounce(async () => {
       if (this.isEdgeHandlerActive) {
@@ -260,6 +323,10 @@ class TopologyWebviewController {
 
   // Add automatic save for view mode (only saves annotations.json)
   private setupAutoSaveViewMode(): void {
+    if (this.viewAutoSaveConfigured) {
+      return;
+    }
+    this.viewAutoSaveConfigured = true;
     // Debounced save function for view mode
     const autoSaveViewMode = debounce(async () => {
       const suppressNotification = true;
@@ -323,6 +390,7 @@ class TopologyWebviewController {
    * @throws Will throw an error if the container element is not found.
    */
   constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
+    window.writeTopoDebugLog?.('TopologyWebviewController constructed');
     perfMark('topoViewer_init_start');
     this.currentMode = mode;
     (topoViewerState as any).currentMode = mode;
@@ -365,15 +433,160 @@ class TopologyWebviewController {
       log.debug(`Cytoscape event: ${event.type}`);
     });
     const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
+    this.setupPersistentGrid(theme as 'light' | 'dark');
     // Disable snapping until the topology data is fully loaded
     (this.cy as any).gridGuide(
       buildGridGuideOptions(theme as any, {
-        gridSpacing: 14,
+        gridSpacing: this.gridSpacing,
         gridColor,
+        drawGrid: false,
         snapToGridOnRelease: false,
         snapToAlignmentLocationOnRelease: false
       })
     );
+  }
+
+  private setupPersistentGrid(theme: 'light' | 'dark'): void {
+    if (this.gridOverlayCanvas) {
+      this.updateGridTheme(theme);
+      return;
+    }
+    const container = this.cy.container() as HTMLElement | null;
+    if (!container) {
+      return;
+    }
+    if (window.getComputedStyle(container).position === 'static') {
+      container.style.position = 'relative';
+    }
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('topoviewer-grid-overlay');
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.zIndex = '-1';
+    canvas.style.pointerEvents = 'none';
+    container.insertBefore(canvas, container.firstChild ?? null);
+    this.gridOverlayCanvas = canvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      log.warn('Unable to acquire grid overlay canvas context');
+      return;
+    }
+    this.gridOverlayCtx = ctx;
+    this.updateGridTheme(theme);
+    this.resizeGridOverlay();
+
+    this.cy.on('pan', this.handleGridPanZoom);
+    this.cy.on('zoom', this.handleGridPanZoom);
+    this.cy.on('render', this.handleGridRender);
+    this.cy.on('resize', this.handleGridResize);
+    window.addEventListener('resize', this.handleGridResize, { passive: true });
+
+    this.gridOverlayObserver = new MutationObserver(() => {
+      const hidden = container.classList.contains('leaflet-active');
+      if (this.gridOverlayCanvas) {
+        this.gridOverlayCanvas.style.display = hidden ? 'none' : 'block';
+        if (!hidden) {
+          this.requestGridRedraw();
+        }
+      }
+    });
+    this.gridOverlayObserver.observe(container, { attributes: true, attributeFilter: ['class'] });
+    this.requestGridRedraw();
+    (window as any).updateTopoGridTheme = (newTheme: 'light' | 'dark') => {
+      this.updateGridTheme(newTheme);
+    };
+  }
+
+  private resizeGridOverlay(): void {
+    if (!this.gridOverlayCanvas) {
+      return;
+    }
+    const container = this.cy.container() as HTMLElement | null;
+    if (!container) {
+      return;
+    }
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const ratio = window.devicePixelRatio || 1;
+    const targetWidth = Math.max(1, Math.round(width * ratio));
+    const targetHeight = Math.max(1, Math.round(height * ratio));
+    if (this.gridOverlayCanvas.width !== targetWidth) {
+      this.gridOverlayCanvas.width = targetWidth;
+    }
+    if (this.gridOverlayCanvas.height !== targetHeight) {
+      this.gridOverlayCanvas.height = targetHeight;
+    }
+    this.gridOverlayCanvas.style.width = `${width}px`;
+    this.gridOverlayCanvas.style.height = `${height}px`;
+  }
+
+  private updateGridTheme(theme: 'light' | 'dark'): void {
+    this.gridColor = theme === 'dark' ? '#666666' : '#cccccc';
+    this.requestGridRedraw();
+  }
+
+  private requestGridRedraw(): void {
+    if (!this.gridOverlayCanvas || !this.gridOverlayCtx) {
+      return;
+    }
+    if (this.gridOverlayCanvas.style.display === 'none') {
+      return;
+    }
+    if (this.gridOverlayNeedsRedraw) {
+      return;
+    }
+    this.gridOverlayNeedsRedraw = true;
+    window.requestAnimationFrame(() => {
+      this.gridOverlayNeedsRedraw = false;
+      this.drawGridOverlay();
+    });
+  }
+
+  private drawGridOverlay(): void {
+    const canvas = this.gridOverlayCanvas;
+    const ctx = this.gridOverlayCtx;
+    if (!canvas || !ctx) {
+      return;
+    }
+    if (canvas.style.display === 'none') {
+      return;
+    }
+    const container = this.cy.container() as HTMLElement | null;
+    if (!container) {
+      return;
+    }
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (width === 0 || height === 0) {
+      return;
+    }
+    this.resizeGridOverlay();
+    const ratio = window.devicePixelRatio || 1;
+    ctx.save();
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    const zoom = this.cy.zoom();
+    const spacingRaw = this.gridSpacing * zoom;
+    const spacing = spacingRaw > 0 ? spacingRaw : this.gridSpacing;
+    const pan = this.cy.pan();
+    const offsetX = ((pan.x % spacing) + spacing) % spacing;
+    const offsetY = ((pan.y % spacing) + spacing) % spacing;
+
+    ctx.beginPath();
+    for (let x = offsetX; x <= width + spacing; x += spacing) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+    }
+    for (let y = offsetY; y <= height + spacing; y += spacing) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+    }
+    ctx.strokeStyle = this.gridColor;
+    ctx.lineWidth = this.gridLineWidth;
+    ctx.stroke();
+    ctx.restore();
   }
 
   private initializeManagers(mode: 'edit' | 'view'): void {
@@ -486,6 +699,12 @@ class TopologyWebviewController {
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
+    window.writeTopoDebugLog = (message: string) => {
+      void this.messageSender.sendMessageToVscodeEndpointPost('topo-debug-log', {
+        message,
+        timestamp: new Date().toISOString()
+      });
+    };
   }
 
   private registerMessageListener(): void {
@@ -497,15 +716,33 @@ class TopologyWebviewController {
       if (!msg?.type) {
         return;
       }
-      // eslint-disable-next-line no-unused-vars
-      const handlers: Record<string, (data: any) => void> = {
-        'yaml-saved': () => fetchAndLoadData(this.cy, this.messageSender),
-        'updateTopology': (data) => this.updateTopology(data),
-        'copiedElements': (data) => this.handleCopiedElements(data)
+      const runHandler = (type: string, fn: () => void | Promise<void>): void => {
+        Promise.resolve(fn()).catch((error) => {
+          log.error(`Error handling message "${type}": ${error instanceof Error ? error.message : String(error)}`);
+        });
       };
-      const handler = handlers[msg.type];
-      if (handler) {
-        handler(msg.data);
+      switch (msg.type) {
+        case 'yaml-saved':
+          runHandler(msg.type, async () => {
+            await fetchAndLoadData(this.cy, this.messageSender, { incremental: true });
+            window.writeTopoDebugLog?.('handled yaml-saved message');
+          });
+          break;
+        case 'updateTopology':
+          runHandler(msg.type, () => {
+            this.updateTopology(msg.data);
+          });
+          break;
+        case 'copiedElements':
+          runHandler(msg.type, () => {
+            this.handleCopiedElements(msg.data);
+          });
+          break;
+        case 'topo-mode-changed':
+          runHandler(msg.type, () => this.handleModeSwitchMessage(msg.data as ModeSwitchPayload));
+          break;
+        default:
+          break;
       }
     });
   }
@@ -515,6 +752,7 @@ class TopologyWebviewController {
       const elements = data as any[];
       if (Array.isArray(elements)) {
         let requiresStyleReload = false;
+        window.writeTopoDebugLog?.(`updateTopology received ${elements.length} elements`);
 
         elements.forEach((el) => {
           const id = el?.data?.id;
@@ -528,6 +766,11 @@ class TopologyWebviewController {
             if (typeof el.classes === 'string') {
               existing.classes(el.classes);
             }
+            if (this.currentMode === 'edit' && existing.isEdge()) {
+              existing.removeClass('link-up');
+              existing.removeClass('link-down');
+              window.writeTopoDebugLog?.(`updateTopology: stripped link state classes from ${id}`);
+            }
           } else {
             this.cy.add(el);
             requiresStyleReload = true;
@@ -536,10 +779,14 @@ class TopologyWebviewController {
 
         if (requiresStyleReload) {
           loadCytoStyle(this.cy);
+          window.writeTopoDebugLog?.('loadCytoStyle triggered via updateTopology');
+        } else {
+          window.writeTopoDebugLog?.('updateTopology applied without style reload');
         }
       }
     } catch (error) {
       log.error(`Error processing updateTopology message: ${error}`);
+      window.writeTopoDebugLog?.(`updateTopology error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -547,6 +794,146 @@ class TopologyWebviewController {
     const addedElements = this.copyPasteManager.performPaste(data);
     if (addedElements && addedElements.length > 0) {
       this.saveManager.saveTopo(this.cy, true);
+    }
+  }
+
+  private normalizeModeFromPayload(payload: ModeSwitchPayload): { normalized: 'viewer' | 'editor'; target: 'edit' | 'view' } {
+    const normalized = payload.mode === 'viewer' ? 'viewer' : 'editor';
+    const target: 'edit' | 'view' = normalized === 'viewer' ? 'view' : 'edit';
+    return { normalized, target };
+  }
+
+  private setGlobalModeState(normalized: 'viewer' | 'editor', target: 'edit' | 'view', deploymentState?: string): void {
+    (window as any).topoViewerMode = normalized;
+    (topoViewerState as any).currentMode = target;
+    this.currentMode = target;
+    this.isViewportDrawerClabEditorChecked = target === 'edit';
+    if (typeof deploymentState === 'string') {
+      topoViewerState.deploymentType = deploymentState;
+    }
+  }
+
+  private resolveLockPreference(payload: ModeSwitchPayload): boolean | undefined {
+    if (typeof payload.editorParams?.lockLabByDefault === 'boolean') {
+      return payload.editorParams.lockLabByDefault;
+    }
+    if (typeof payload.viewerParams?.lockLabByDefault === 'boolean') {
+      return payload.viewerParams.lockLabByDefault;
+    }
+    return undefined;
+  }
+
+  private applyViewerParameters(params?: ViewerParamsPayload): void {
+    if (!params) {
+      return;
+    }
+    this.assignWindowValue('lockLabByDefault', params.lockLabByDefault);
+    this.assignWindowValue('currentLabPath', params.currentLabPath);
+  }
+
+  private applyEditorParameters(params?: EditorParamsPayload): void {
+    if (!params) {
+      return;
+    }
+    this.assignWindowValue('lockLabByDefault', params.lockLabByDefault);
+    this.assignWindowValue('imageMapping', params.imageMapping, {});
+    this.assignWindowValue('ifacePatternMapping', params.ifacePatternMapping, {});
+    this.assignWindowValue('defaultKind', params.defaultKind, 'nokia_srlinux');
+    this.assignWindowValue('defaultType', params.defaultType, '');
+    this.assignWindowValue('updateLinkEndpointsOnKindChange', params.updateLinkEndpointsOnKindChange);
+    this.assignWindowValue('customNodes', params.customNodes, []);
+    this.assignWindowValue('defaultNode', params.defaultNode, '');
+    this.assignWindowValue('topologyDefaults', params.topologyDefaults, {});
+    this.assignWindowValue('topologyKinds', params.topologyKinds, {});
+    this.assignWindowValue('topologyGroups', params.topologyGroups, {});
+    this.assignWindowValue('dockerImages', params.dockerImages, []);
+    this.assignWindowValue('currentLabPath', params.currentLabPath);
+  }
+
+  private assignWindowValue<T>(key: string, value: T | undefined, fallback?: T): void {
+    if (value !== undefined) {
+      (window as any)[key] = value;
+      return;
+    }
+    if (fallback !== undefined && (window as any)[key] === undefined) {
+      (window as any)[key] = fallback;
+    }
+  }
+
+  private async ensureModeResources(mode: 'edit' | 'view'): Promise<void> {
+    await this.registerEvents(mode);
+    if (mode === 'edit') {
+      if (!this.viewportPanels) {
+        this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+        (window as any).viewportPanels = this.viewportPanels;
+      }
+      if (!this.nodeEditor) {
+        this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
+      }
+      this.setupAutoSave();
+    } else {
+      this.setupAutoSaveViewMode();
+    }
+    this.unifiedFloatingPanel?.setNodeEditor(this.nodeEditor ?? null);
+    this.toggleEdgehandles(mode === 'edit');
+    await this.initializeContextMenu();
+  }
+
+  private finalizeModeChange(normalized: 'viewer' | 'editor'): void {
+    this.updateModeIndicator(normalized);
+    document.dispatchEvent(new CustomEvent('topo-mode-changed'));
+    this.unifiedFloatingPanel?.updateState();
+  }
+
+  private async handleModeSwitchMessage(payload: ModeSwitchPayload): Promise<void> {
+    if (!payload) {
+      return;
+    }
+
+    window.writeTopoDebugLog?.(`mode switch requested -> ${payload.mode ?? 'unknown'}`);
+
+    if (this.modeTransitionInProgress) {
+      log.warn('Mode transition already in progress; ignoring new mode switch request');
+      return;
+    }
+
+    this.modeTransitionInProgress = true;
+    try {
+      const { normalized, target } = this.normalizeModeFromPayload(payload);
+
+      this.setGlobalModeState(normalized, target, payload.deploymentState);
+      this.applyViewerParameters(payload.viewerParams);
+      this.applyEditorParameters(payload.editorParams);
+
+      const resolvedLock = this.resolveLockPreference(payload);
+
+      if (!this.initialGraphLoaded) {
+        window.writeTopoDebugLog?.('handleModeSwitchMessage: graph not yet loaded, fetching data');
+        await fetchAndLoadData(this.cy, this.messageSender);
+        this.initialGraphLoaded = true;
+      }
+      await this.ensureModeResources(target);
+      window.writeTopoDebugLog?.('handleModeSwitchMessage: mode resources ensured');
+      if (target === 'edit') {
+        this.cy.edges().forEach(edge => {
+          edge.removeClass('link-up');
+          edge.removeClass('link-down');
+        });
+        window.writeTopoDebugLog?.('handleModeSwitchMessage: cleared link state classes for edit mode');
+      }
+
+      if (typeof resolvedLock === 'boolean') {
+        this.labLocked = resolvedLock;
+      }
+      this.applyLockState(this.labLocked);
+
+      this.finalizeModeChange(normalized);
+      window.writeTopoDebugLog?.(`handleModeSwitchMessage: finalized mode ${normalized}`);
+      log.info(`Mode switched to ${target}`);
+    } catch (error) {
+      log.error(`Error handling mode switch: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      this.modeTransitionInProgress = false;
     }
   }
 
@@ -610,28 +997,38 @@ class TopologyWebviewController {
     this.isEdgeHandlerActive = false;
   }
 
+  private toggleEdgehandles(enable: boolean): void {
+    if (!this.eh) {
+      if (enable) {
+        void this.initializeEdgehandles();
+      }
+      return;
+    }
+    if (enable) {
+      this.eh.enable();
+    } else {
+      this.eh.disable();
+      this.isEdgeHandlerActive = false;
+    }
+  }
+
 
   /**
    * Initializes the circular context menus.
    */
-  private async initializeContextMenu(mode: 'edit' | 'view' = 'edit'): Promise<void> {
+  private async initializeContextMenu(): Promise<void> {
     await loadExtension('cxtmenu');
-    if (mode === 'edit' && this.labLocked) {
-      return;
+    if (!this.freeTextMenu) {
+      this.freeTextMenu = this.initializeFreeTextContextMenu();
     }
-    if (mode === 'edit') {
-      this.freeTextMenu?.destroy();
-      this.nodeMenu?.destroy();
-      this.groupMenu?.destroy();
-      this.edgeMenu?.destroy();
-      this.freeTextMenu = this.initializeFreeTextContextMenu();
+    if (!this.nodeMenu) {
       this.nodeMenu = this.initializeNodeContextMenu();
+    }
+    if (!this.groupMenu) {
       this.groupMenu = this.initializeGroupContextMenu();
+    }
+    if (!this.edgeMenu) {
       this.edgeMenu = this.initializeEdgeContextMenu();
-    } else {
-      this.freeTextMenu?.destroy();
-      this.freeTextMenu = this.initializeFreeTextContextMenu();
-      this.initializeViewerMenus();
     }
   }
 
@@ -645,6 +1042,10 @@ class TopologyWebviewController {
             if (!ele.isNode()) {
               return;
             }
+            if (this.labLocked) {
+              this.showLockedMessage();
+              return;
+            }
             this.freeTextManager?.editFreeText(ele.id());
           },
         },
@@ -652,6 +1053,10 @@ class TopologyWebviewController {
           content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Remove Text</span></div>`,
           select: (ele: cytoscape.Singular) => {
             if (!ele.isNode()) {
+              return;
+            }
+            if (this.labLocked) {
+              this.showLockedMessage();
               return;
             }
             this.freeTextManager?.removeFreeTextAnnotation(ele.id());
@@ -701,6 +1106,13 @@ class TopologyWebviewController {
   }
 
   private buildNodeMenuCommands(ele: cytoscape.Singular): any[] {
+    if (this.currentMode === 'view') {
+      return this.buildViewerNodeCommands(ele);
+    }
+    if (this.labLocked) {
+      return [];
+    }
+
     const isNetwork = this.isNetworkNode(ele.id());
     const commands = [
       this.createEditCommand(isNetwork),
@@ -795,6 +1207,10 @@ class TopologyWebviewController {
   }
 
   private buildGroupContextMenuCommands(ele?: cytoscape.Singular): any[] {
+    if (this.labLocked) {
+      return [];
+    }
+
     const target = this.resolveGroupMenuTarget(ele);
     if (!target) {
       return [];
@@ -853,7 +1269,15 @@ class TopologyWebviewController {
   private initializeEdgeContextMenu(): any {
     return this.cy.cxtmenu({
       selector: 'edge',
-      commands: () => this.buildEditEdgeMenuCommands(),
+      commands: (ele: cytoscape.Singular) => {
+        if (this.currentMode === 'view') {
+          return this.buildViewerEdgeMenuCommands(ele);
+        }
+        if (this.labLocked) {
+          return [];
+        }
+        return this.buildEditEdgeMenuCommands();
+      },
       menuRadius: 80,
       fillColor: TopologyWebviewController.UI_FILL_COLOR,
       activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
@@ -896,59 +1320,6 @@ class TopologyWebviewController {
     return commands;
   }
 
-  private initializeViewerMenus(): void {
-    this.viewerNodeMenu?.destroy();
-    this.viewerEdgeMenu?.destroy();
-    this.viewerGroupMenu?.destroy();
-
-    this.viewerNodeMenu = this.cy.cxtmenu({
-      selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"]',
-      commands: (ele: cytoscape.Singular) => this.buildViewerNodeCommands(ele),
-      menuRadius: 110,
-      fillColor: TopologyWebviewController.UI_FILL_COLOR,
-      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
-      activePadding: 5,
-      indicatorSize: 0,
-      separatorWidth: 3,
-      spotlightPadding: 20,
-      adaptativeNodeSpotlightRadius: true,
-      minSpotlightRadius: 24,
-      maxSpotlightRadius: 38,
-      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT,
-      itemColor: TopologyWebviewController.UI_ITEM_COLOR,
-      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
-      zIndex: 9999,
-      atMouse: false,
-      outsideMenuCancel: 10,
-    });
-
-    this.viewerEdgeMenu = this.cy.cxtmenu({
-      selector: 'edge',
-      commands: (ele: cytoscape.Singular) => this.buildViewerEdgeMenuCommands(ele),
-      menuRadius: 110,
-      fillColor: TopologyWebviewController.UI_FILL_COLOR,
-      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
-      activePadding: 5,
-      indicatorSize: 0,
-      separatorWidth: 3,
-      spotlightPadding: 0,
-      adaptativeNodeSpotlightRadius: true,
-      minSpotlightRadius: 0,
-      maxSpotlightRadius: 0,
-      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT,
-      itemColor: TopologyWebviewController.UI_ITEM_COLOR,
-      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
-      zIndex: 9999,
-      atMouse: false,
-      outsideMenuCancel: 10,
-    });
-
-    if (!this.labLocked) {
-      this.viewerGroupMenu = this.initializeGroupContextMenu();
-    } else {
-      this.viewerGroupMenu = undefined;
-    }
-  }
 
   private buildViewerNodeCommands(ele: cytoscape.Singular): any[] {
     if (this.isNetworkNode(ele.id())) {
@@ -990,14 +1361,6 @@ class TopologyWebviewController {
         },
       },
     ];
-    if (ele.data('editor') === 'true') {
-      commands.push({
-        content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Link</span></div>`,
-        select: (edge: cytoscape.Singular) => {
-          edge.remove();
-        },
-      });
-    }
     return commands;
   }
 
@@ -1060,20 +1423,31 @@ class TopologyWebviewController {
    * @private
    */
   private async registerEvents(mode: 'edit' | 'view'): Promise<void> {
-    if (mode === 'edit') {
-      await this.registerEditModeEvents();
-    } else {
-      this.registerViewModeEvents();
+    if (!this.commonTapstartHandlerRegistered) {
+      this.cy.on('tapstart', 'node', (e) => {
+        if (this.labLocked) {
+          this.showLockedMessage();
+          e.preventDefault();
+        }
+      });
+      this.commonTapstartHandlerRegistered = true;
     }
-    this.cy.on('tapstart', 'node', (e) => {
-      if (this.labLocked) {
-        this.showLockedMessage();
-        e.preventDefault();
+
+    if (mode === 'edit') {
+      if (!this.editModeEventsRegistered) {
+        await this.registerEditModeEvents();
+        this.editModeEventsRegistered = true;
       }
-    });
+    } else if (!this.viewModeEventsRegistered) {
+      this.registerViewModeEvents();
+      this.viewModeEventsRegistered = true;
+    }
   }
 
   private handleCanvasClick(event: cytoscape.EventObject): void {
+    if (this.currentMode !== 'edit') {
+      return;
+    }
     if (this.labLocked) {
       return;
     }
@@ -1091,6 +1465,9 @@ class TopologyWebviewController {
   }
 
   private handleEditModeEdgeClick(event: cytoscape.EventObject): void {
+    if (this.currentMode !== 'edit') {
+      return;
+    }
     if (this.labLocked) {
       this.showLockedMessage();
       return;
@@ -1116,25 +1493,10 @@ class TopologyWebviewController {
     this.labLocked = locked;
     if (locked) {
       this.cy.nodes().lock();
-      if (this.currentMode === 'edit') {
-        this.nodeMenu?.destroy();
-        this.edgeMenu?.destroy();
-        this.groupMenu?.destroy();
-        this.freeTextMenu?.destroy();
-        this.nodeMenu = this.edgeMenu = this.groupMenu = this.freeTextMenu = undefined;
-      } else {
-        this.viewerGroupMenu?.destroy();
-        this.viewerGroupMenu = undefined;
-      }
     } else {
       this.cy.nodes().unlock();
-      if (this.currentMode === 'edit') {
-        void this.initializeContextMenu('edit');
-      }
     }
-    if (this.currentMode === 'view') {
-      void this.initializeContextMenu('view');
-    }
+    void this.initializeContextMenu();
   }
 
   private getInitialLockState(): boolean {
@@ -1182,10 +1544,16 @@ class TopologyWebviewController {
     let radialMenuOpen = false;
 
     cy.on('cxtmenu:open', () => {
+      if (this.currentMode !== 'view') {
+        return;
+      }
       radialMenuOpen = true;
     });
 
     cy.on('cxtmenu:close', () => {
+      if (this.currentMode !== 'view') {
+        return;
+      }
       setTimeout(() => {
         radialMenuOpen = false;
       }, 200);
@@ -1194,6 +1562,9 @@ class TopologyWebviewController {
     registerCyEventHandlers({
       cy,
       onCanvasClick: () => {
+        if (this.currentMode !== 'view') {
+          return;
+        }
         if (this.suppressViewerCanvasClose) {
           this.suppressViewerCanvasClose = false;
           return;
@@ -1206,6 +1577,9 @@ class TopologyWebviewController {
     });
 
     document.addEventListener('keydown', (event) => {
+      if (this.currentMode !== 'view') {
+        return;
+      }
       if (!this.shouldHandleKeyboardEvent(event)) {
         return;
       }
@@ -1233,6 +1607,9 @@ class TopologyWebviewController {
 
 
   private async handleEditModeNodeClick(event: cytoscape.EventObject): Promise<void> {
+    if (this.currentMode !== 'edit') {
+      return;
+    }
     if (this.labLocked) {
       this.showLockedMessage();
       return;
@@ -1241,7 +1618,7 @@ class TopologyWebviewController {
     log.debug(`Node clicked: ${node.id()}`);
     const originalEvent = event.originalEvent as MouseEvent;
     const extraData = node.data('extraData');
-    const isNodeInEditMode = node.data('editor') === 'true';
+    const isNodeInEditMode = this.currentMode === 'edit';
 
     if (originalEvent.ctrlKey && node.isChild()) {
       log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
@@ -1345,7 +1722,8 @@ class TopologyWebviewController {
 
   private highlightLink(ele: cytoscape.Singular): void {
     this.cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
-    ele.style(TopologyWebviewController.STYLE_LINE_COLOR, ele.data('editor') === 'true' ? '#32CD32' : '#0043BF');
+    const highlightColor = this.currentMode === 'edit' ? '#32CD32' : '#0043BF';
+    ele.style(TopologyWebviewController.STYLE_LINE_COLOR, highlightColor);
   }
 
   private populateLinkPanel(ele: cytoscape.Singular): void {
@@ -1581,7 +1959,7 @@ class TopologyWebviewController {
           this.groupManager?.directGroupRemoval(node.id());
         }
       } else {
-        const isNodeInEditMode = node.data('editor') === 'true';
+        const isNodeInEditMode = this.currentMode === 'edit';
         if (this.isViewportDrawerClabEditorChecked && isNodeInEditMode) {
           node.remove();
         }
@@ -1670,6 +2048,18 @@ class TopologyWebviewController {
     } else {
       log.warn(`'root' element not found; cannot apply theme: ${theme}`);
     }
+  }
+
+  private updateModeIndicator(mode: 'viewer' | 'editor'): void {
+    const indicator = document.getElementById('mode-indicator');
+    if (indicator) {
+      indicator.textContent = mode;
+      indicator.classList.remove('mode-viewer', 'mode-editor');
+      indicator.classList.add(`mode-${mode}`);
+    } else {
+      log.warn('Mode indicator element not found');
+    }
+    document.title = mode === 'editor' ? 'TopoViewer Editor' : 'TopoViewer';
   }
 
   /**

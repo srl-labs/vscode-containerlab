@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 import { getSelectedLabNode } from "../helpers/utils";
-import { notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
+import { notifyCurrentTopoViewerOfCommandFailure, notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
 
 export async function runClabAction(action: "deploy" | "redeploy" | "destroy", node?: ClabLabTreeNode, cleanup = false): Promise<void> {
   node = await getSelectedLabNode(node);
@@ -11,9 +11,19 @@ export async function runClabAction(action: "deploy" | "redeploy" | "destroy", n
   }
 
   const execute = async () => {
-    const cmd = new ClabCommand(action, node as ClabLabTreeNode, undefined, undefined, undefined, async () => {
-      await notifyCurrentTopoViewerOfCommandSuccess(action);
-    });
+    const cmd = new ClabCommand(
+      action,
+      node as ClabLabTreeNode,
+      undefined,
+      undefined,
+      undefined,
+      async () => {
+        await notifyCurrentTopoViewerOfCommandSuccess(action);
+      },
+      async (error) => {
+        await notifyCurrentTopoViewerOfCommandFailure(action, error);
+      }
+    );
     if (cleanup) {
       await cmd.run(["-c"]);
     } else {

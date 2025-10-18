@@ -115,6 +115,9 @@ export type SpinnerMsg = {
 /**
  * A base command class which can be derived to build specific commmand classes (ie. Docker, Clab)
  */
+/* eslint-disable-next-line no-unused-vars */
+export type CommandFailureHandler = (error: unknown) => Promise<void>;
+
 export class Command {
     protected command: string;
     protected useSpinner: boolean;
@@ -122,6 +125,7 @@ export class Command {
     protected spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
     protected onSuccessCallback?: () => Promise<void>;
+    protected onFailureCallback?: CommandFailureHandler;
 
     constructor(options: CmdOptions) {
         this.command = options.command;
@@ -230,6 +234,9 @@ export class Command {
             const failMsg = this.spinnerMsg?.failMsg ? `${this.spinnerMsg.failMsg}. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
             if (viewOutputBtn === "View logs") { outputChannel.show(); }
+            if (this.onFailureCallback) {
+                await this.onFailureCallback(err);
+            }
         }
     }
 

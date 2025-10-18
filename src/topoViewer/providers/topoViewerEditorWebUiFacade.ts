@@ -92,12 +92,22 @@ export class TopoViewerEditor {
     showError: this.handleShowErrorEndpoint.bind(this),
     'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
     copyElements: this.handleCopyElementsEndpoint.bind(this),
-    getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this)
+    getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this),
+    'topo-debug-log': this.handleDebugLogEndpoint.bind(this)
   };
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+  }
+
+  private logDebug(message: string): void {
+    void this.handleDebugLogEndpoint(undefined, {
+      message,
+      timestamp: new Date().toISOString()
+    }).catch((err: unknown) => {
+      log.warn(`Failed to append debug log entry: ${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 
   private buildDefaultLabYaml(labName: string, savedPath?: string): string {
@@ -266,6 +276,7 @@ topology:
   }
 
   private async handleManualSave(): Promise<void> {
+    this.logDebug('handleManualSave: start');
     // Read the current file content
     try {
       const currentContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
@@ -274,10 +285,12 @@ topology:
       // If the content hasn't changed, don't do anything at all
       if (cachedContent === currentContent) {
         log.debug('Save listener: YAML content unchanged, ignoring completely');
+        this.logDebug('handleManualSave: YAML unchanged, aborting');
         return;
       }
     } catch (err) {
       log.error(`Error checking YAML content: ${err}`);
+      this.logDebug(`handleManualSave: error while checking content: ${err}`);
     }
 
     // Content has changed, proceed with normal update
@@ -285,33 +298,41 @@ topology:
   }
 
   private async triggerUpdate(sendSaveAck: boolean): Promise<void> {
+    this.logDebug(`triggerUpdate: invoked (sendSaveAck=${sendSaveAck})`);
     if (this.isUpdating) {
+      this.logDebug('triggerUpdate: update already in progress, queueing request');
       this.queuedUpdate = true;
       this.queuedSaveAck = this.queuedSaveAck || sendSaveAck;
       return;
     }
 
     if (this.isSwitchingMode) {
+      this.logDebug('triggerUpdate: mode switch in progress, skipping update');
       return;
     }
 
     try {
       const success = await this.updatePanelHtml(this.currentPanel);
+      this.logDebug(`triggerUpdate: updatePanelHtml returned ${success}`);
       if (success) {
         if ((sendSaveAck || this.queuedSaveAck) && this.currentPanel) {
+          this.logDebug('triggerUpdate: posting yaml-saved message to webview');
           this.currentPanel.webview.postMessage({ type: 'yaml-saved' });
         }
       } else {
         // updatePanelHtml returns false for various reasons, not just validation
         // The actual error message (if any) has already been shown
         log.debug('Panel update returned false - see previous logs for details');
+        this.logDebug('triggerUpdate: updatePanelHtml returned false');
       }
     } catch (err) {
       log.error(`Error updating topology: ${err}`);
       vscode.window.showErrorMessage(`Error updating topology: ${err}`);
+      this.logDebug(`triggerUpdate: caught error ${err}`);
     }
 
     if (this.queuedUpdate) {
+      this.logDebug('triggerUpdate: processing queued update');
       const nextSaveAck = this.queuedSaveAck;
       this.queuedUpdate = false;
       this.queuedSaveAck = false;
@@ -406,6 +427,32 @@ topology:
     return this.updatePanelHtmlCore(panel, true);
   }
 
+  public async refreshAfterExternalCommand(
+    deploymentState: 'deployed' | 'undeployed'
+  ): Promise<boolean> {
+    const panel = this.currentPanel;
+    if (!panel) {
+      this.logDebug('refreshAfterExternalCommand: aborted (no panel)');
+      return false;
+    }
+
+    this.deploymentState = deploymentState;
+    this.isViewMode = deploymentState === 'deployed';
+    this.logDebug(
+      `refreshAfterExternalCommand: start (state=${deploymentState}, mode=${this.isViewMode ? 'view' : 'edit'})`
+    );
+
+    const success = await this.updatePanelHtmlCore(panel, false, { skipHtml: true });
+    this.logDebug(`refreshAfterExternalCommand: updatePanelHtmlCore returned ${success}`);
+    if (!success) {
+      return false;
+    }
+
+    await this.notifyWebviewModeChanged();
+    this.logDebug('refreshAfterExternalCommand: notified webview');
+    return true;
+  }
+
   /**
    * Updates the webview panel's HTML with the latest topology data.
    *
@@ -414,7 +461,7 @@ topology:
    *
    * @param panel - The active WebviewPanel to update.
    * @returns A promise that resolves when the panel has been updated.
-   */
+  */
   public async updatePanelHtml(panel: vscode.WebviewPanel | undefined): Promise<boolean> {
     if (!this.currentLabName) {
       return false;
@@ -423,17 +470,20 @@ topology:
     // Skip update if mode switching is in progress
     if (this.isSwitchingMode) {
       log.debug('Skipping updatePanelHtml - mode switch in progress');
+      this.logDebug('updatePanelHtml: skipped (mode switch in progress)');
       return false;
     }
 
     // Use the same queuing mechanism as triggerUpdate to prevent concurrent updates
     if (this.isUpdating) {
       log.debug('Panel HTML update already in progress, skipping');
+      this.logDebug('updatePanelHtml: skipped (already updating)');
       return false;
     }
 
     this.isUpdating = true;
     try {
+      this.logDebug('updatePanelHtml: delegating to updatePanelHtmlCore');
       return await this.updatePanelHtmlCore(panel);
     } finally {
       this.isUpdating = false;
@@ -445,8 +495,10 @@ topology:
    */
   private async updatePanelHtmlCore(
     panel: vscode.WebviewPanel | undefined,
-    isInitialLoad: boolean = false
+    isInitialLoad: boolean = false,
+    options: { skipHtml?: boolean } = {}
   ): Promise<boolean> {
+    this.logDebug(`updatePanelHtmlCore: start (isInitialLoad=${isInitialLoad}, skipHtml=${options.skipHtml === true})`);
     if (!this.currentLabName) {
       return false;
     }
@@ -465,6 +517,7 @@ topology:
     }
 
     if (this.shouldSkipUpdate(yamlContent, isInitialLoad)) {
+      this.logDebug('updatePanelHtmlCore: skipping update (YAML unchanged and not view mode)');
       return true;
     }
 
@@ -480,8 +533,15 @@ topology:
       yamlContent,
       isInitialLoad
     );
+    this.logDebug(`updatePanelHtmlCore: writeTopologyFiles result=${writeOk}`);
     if (!writeOk) {
       return false;
+    }
+
+    if (options.skipHtml) {
+      log.debug('Skipping panel HTML refresh (data regeneration only)');
+      this.logDebug('updatePanelHtmlCore: returning without refreshing HTML');
+      return true;
     }
 
     if (!panel) {
@@ -490,6 +550,7 @@ topology:
     }
 
     await this.setPanelHtml(panel, folderName, isInitialLoad);
+    this.logDebug('updatePanelHtmlCore: HTML refreshed');
     return true;
   }
 
@@ -594,6 +655,7 @@ topology:
     yamlContent: string,
     isInitialLoad: boolean
   ): Promise<boolean> {
+    this.logDebug(`writeTopologyFiles: start (folder=${folderName}, initial=${isInitialLoad})`);
     try {
       const writePromise = this.adaptor.createFolderAndWriteJson(
         this.context,
@@ -609,12 +671,14 @@ topology:
         await writePromise;
       }
       await this.context.workspaceState.update(`cachedYaml_${folderName}`, yamlContent);
+      this.logDebug('writeTopologyFiles: completed successfully');
       return true;
     } catch (err) {
       log.error(`Failed to write topology files: ${String(err)}`);
       if (!isInitialLoad) {
         vscode.window.showErrorMessage(`Failed to write topology files: ${err}`);
       }
+      this.logDebug(`writeTopologyFiles: failed with error ${err}`);
       return false;
     }
   }
@@ -695,6 +759,53 @@ topology:
       topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
       lockLabByDefault
     };
+  }
+
+  private async notifyWebviewModeChanged(): Promise<void> {
+    const panel = this.currentPanel;
+    if (!panel) {
+      log.warn('No active panel to notify about mode change');
+      this.logDebug('notifyWebviewModeChanged: aborted (no panel)');
+      return;
+    }
+
+    const mode: TemplateMode = this.isViewMode ? 'viewer' : 'editor';
+    this.logDebug(`notifyWebviewModeChanged: posting mode=${mode}`);
+    const viewerParams = this.getViewerTemplateParams();
+    const editorParams = mode === 'editor' ? await this.getEditorTemplateParams() : undefined;
+
+    await panel.webview.postMessage({
+      type: 'topo-mode-changed',
+      data: {
+        mode,
+        deploymentState: this.deploymentState,
+        viewerParams,
+        editorParams
+      }
+    });
+  }
+
+  public async postLifecycleStatus(payload: {
+    commandType: 'deploy' | 'destroy' | 'redeploy';
+    status: 'success' | 'error';
+    errorMessage?: string;
+  }): Promise<void> {
+    const panel = this.currentPanel;
+    if (!panel) {
+      this.logDebug('postLifecycleStatus: aborted (no panel)');
+      return;
+    }
+
+    try {
+      await panel.webview.postMessage({
+        type: 'lab-lifecycle-status',
+        data: payload
+      });
+    } catch (error) {
+      log.error(
+        `postLifecycleStatus failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   private getDefaultCustomNode(customNodes: any[]): {
@@ -1433,9 +1544,11 @@ topology:
       if (this.isSwitchingMode) {
         const error = 'Mode switch already in progress';
         log.debug('Mode switch already in progress');
+        this.logDebug('handleSwitchModeEndpoint: rejected (already switching)');
         return { result: null, error };
       }
       log.debug(`Starting mode switch from ${this.isViewMode ? 'view' : 'edit'} mode`);
+      this.logDebug(`handleSwitchModeEndpoint: start (payload=${payload ?? 'none'})`);
       this.isSwitchingMode = true;
       const data = payload ? JSON.parse(payload as string) : { mode: 'toggle' };
       if (data.mode === 'toggle') {
@@ -1446,21 +1559,33 @@ topology:
         this.isViewMode = false;
       }
       this.deploymentState = await this.checkDeploymentState(this.currentLabName);
-      const success = await this.updatePanelHtmlInternal(this.currentPanel);
-      if (success) {
-        const result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
-        log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
-        return { result, error: null };
+      this.logDebug(`handleSwitchModeEndpoint: deployment state ${this.deploymentState}`);
+      const dataRefreshSuccess = await this.updatePanelHtmlCore(
+        this.currentPanel,
+        false,
+        { skipHtml: true }
+      );
+      this.logDebug(`handleSwitchModeEndpoint: updatePanelHtmlCore skipHtml result=${dataRefreshSuccess}`);
+      if (!dataRefreshSuccess) {
+        const error = 'Failed to refresh topology data during mode switch';
+        log.error(error);
+        this.logDebug(`handleSwitchModeEndpoint: aborting due to data refresh failure`);
+        return { result: null, error };
       }
-      const error = 'Failed to switch mode';
-      return { result: null, error };
+      await this.notifyWebviewModeChanged();
+      const result = { mode: this.isViewMode ? 'view' : 'edit', deploymentState: this.deploymentState };
+      log.info(`Switched to ${this.isViewMode ? 'view' : 'edit'} mode`);
+      this.logDebug(`handleSwitchModeEndpoint: success -> mode=${result.mode}`);
+      return { result, error: null };
     } catch (err) {
       const error = `Error switching mode: ${err}`;
       log.error(`Error switching mode: ${JSON.stringify(err, null, 2)}`);
+      this.logDebug(`handleSwitchModeEndpoint: error ${err}`);
       return { result: null, error };
     } finally {
       this.isSwitchingMode = false;
       log.debug(`Mode switch completed, flag cleared`);
+      this.logDebug('handleSwitchModeEndpoint: completed');
       await sleep(100);
     }
   }
@@ -1684,6 +1809,20 @@ topology:
     const clipboard = this.context.globalState.get('topoClipboard') || [];
     panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
     return { result: 'Clipboard sent', error: null };
+  }
+
+  private async handleDebugLogEndpoint(
+    _payload: string | undefined,
+    payloadObj: any
+  ): Promise<{ result: unknown; error: string | null }> {
+    const message = typeof payloadObj?.message === 'string' ? payloadObj.message : '';
+    if (!message) {
+      return { result: false, error: 'No message provided' };
+    }
+    const timestamp = typeof payloadObj?.timestamp === 'string' ? payloadObj.timestamp : new Date().toISOString();
+    const entry = `[${timestamp}] ${message}`;
+    log.debug(entry);
+    return { result: true, error: null };
   }
 
   private async handleRefreshDockerImagesEndpoint(
@@ -1999,15 +2138,17 @@ topology:
         this.lastYamlFilePath
       );
 
-      const edgeUpdates = elements.filter(el => el.group === 'edges');
-      if (!edgeUpdates.length) {
-        return;
-      }
+    const edgeUpdates = elements.filter(el => el.group === 'edges');
+    if (!edgeUpdates.length) {
+      this.logDebug('refreshLinkStates: no edge updates to send');
+      return;
+    }
 
-      this.currentPanel.webview.postMessage({
-        type: 'updateTopology',
-        data: edgeUpdates,
-      });
+    this.logDebug(`refreshLinkStates: posting ${edgeUpdates.length} edge updates to webview`);
+    this.currentPanel.webview.postMessage({
+      type: 'updateTopology',
+      data: edgeUpdates,
+    });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       log.warn(`Failed to refresh link states from inspect data: ${message}`);

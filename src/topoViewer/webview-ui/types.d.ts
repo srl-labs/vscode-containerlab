@@ -8,6 +8,10 @@ declare global {
   // eslint-disable-next-line no-unused-vars
   interface Window {
     topoViewerMode?: 'editor' | 'viewer' | string;
+    // eslint-disable-next-line no-unused-vars
+    updateTopoGridTheme?: (theme: 'light' | 'dark') => void;
+    // eslint-disable-next-line no-unused-vars
+    writeTopoDebugLog?: (message: string) => void;
   }
 }
 export {};

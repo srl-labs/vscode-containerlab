@@ -533,6 +533,26 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
   return styles;
 }
 
+function prefersDarkTheme(): boolean {
+  return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+function resolveThemeOverride(theme?: 'light' | 'dark'): 'light' | 'dark' {
+  const engine = topoViewerState.editorEngine;
+  const forced = engine?.layoutAlgoManager?.geoTheme;
+  if (theme) {
+    return theme;
+  }
+  if (forced) {
+    return forced;
+  }
+  const detected = engine?.detectColorScheme?.();
+  if (detected === 'dark' || detected === 'light') {
+    return detected;
+  }
+  return prefersDarkTheme() ? 'dark' : 'light';
+}
+
 /**
  * Loads and applies Cytoscape styles to the provided Cytoscape instance.
  *
@@ -542,23 +562,20 @@ export function getCytoscapeStyles(theme: 'light' | 'dark') {
  */
 export default async function loadCytoStyle(
   cy: cytoscape.Core,
-  theme?: 'light' | 'dark'
+  theme?: 'light' | 'dark',
+  options?: { preserveExisting?: boolean }
 ): Promise<void> {
   try {
-    cy.nodes().removeStyle();
-    cy.edges().removeStyle();
+    const preserveExisting = options?.preserveExisting === true;
+    if (!preserveExisting) {
+      cy.nodes().removeStyle();
+      cy.edges().removeStyle();
+    }
 
-    const engine = topoViewerState.editorEngine;
-    const forced = engine?.layoutAlgoManager?.geoTheme;
-    const detect = () => {
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark';
-      }
-      return 'light';
-    };
-    const selectedTheme = theme || forced || (engine?.detectColorScheme?.() || detect());
+    const selectedTheme = resolveThemeOverride(theme);
     const styles = getCytoscapeStyles(selectedTheme === 'light' ? 'light' : 'dark');
     cy.style().fromJson(styles).update();
+    (window as any).updateTopoGridTheme?.(selectedTheme === 'light' ? 'light' : 'dark');
     labelEndpointManagerSingleton.refreshAfterStyle();
     log.info('Cytoscape styles applied successfully.');
 
