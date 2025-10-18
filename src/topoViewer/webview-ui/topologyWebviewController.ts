@@ -1544,10 +1544,16 @@ class TopologyWebviewController {
     let radialMenuOpen = false;
 
     cy.on('cxtmenu:open', () => {
+      if (this.currentMode !== 'view') {
+        return;
+      }
       radialMenuOpen = true;
     });
 
     cy.on('cxtmenu:close', () => {
+      if (this.currentMode !== 'view') {
+        return;
+      }
       setTimeout(() => {
         radialMenuOpen = false;
       }, 200);
@@ -1556,6 +1562,9 @@ class TopologyWebviewController {
     registerCyEventHandlers({
       cy,
       onCanvasClick: () => {
+        if (this.currentMode !== 'view') {
+          return;
+        }
         if (this.suppressViewerCanvasClose) {
           this.suppressViewerCanvasClose = false;
           return;
@@ -1568,6 +1577,9 @@ class TopologyWebviewController {
     });
 
     document.addEventListener('keydown', (event) => {
+      if (this.currentMode !== 'view') {
+        return;
+      }
       if (!this.shouldHandleKeyboardEvent(event)) {
         return;
       }
