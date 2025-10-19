@@ -1,40 +1,29 @@
 import * as vscode from "vscode";
-import * as utils from "../helpers/utils";
 import * as c from "./common";
+import { ensureEventStream, getGroupedContainers, getInterfaceSnapshot, getInterfaceVersion as getInterfaceVersionImpl } from "../services/containerlabEvents";
+import type { ClabInterfaceSnapshot } from "../types/containerlab";
 
-import { promisify } from "util";
-import { exec } from "child_process";
+export let rawInspectData: Record<string, c.ClabDetailedJSON[]> | undefined;
 
-const execAsync = promisify(exec);
+export async function update(): Promise<void> {
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
 
-export let rawInspectData: any;
-export let transformedInspectData: c.ClabJSON;
+    console.log("[inspector]:\tUpdating inspect data via events stream");
+    const start = Date.now();
 
-const config = vscode.workspace.getConfiguration("containerlab");
-const runtime = config.get<string>("runtime", "docker");
+    await ensureEventStream(runtime);
+    rawInspectData = getGroupedContainers();
 
-export async function update() {
+    const duration = (Date.now() - start) / 1000;
+    const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
+    console.log(`[inspector]:\tUpdated inspect data for ${labsCount} labs in ${duration.toFixed(3)} seconds.`);
+}
 
-    console.log("[inspector]:\tUpdating inspect data");
-    const t_start = Date.now()
+export function getInterfacesSnapshot(containerShortId: string, containerName: string): ClabInterfaceSnapshot[] {
+    return getInterfaceSnapshot(containerShortId, containerName);
+}
 
-    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --details --format json 2>/dev/null`;
-
-    let clabStdout;
-    try {
-        const { stdout } = await execAsync(cmd);
-        clabStdout = stdout;
-    } catch (err) {
-        throw new Error(`Could not run ${cmd}.\n${err}`);
-    }
-
-    if (!clabStdout) {
-        return undefined;
-    }
-
-    rawInspectData = JSON.parse(clabStdout);
-
-    const duration = (Date.now() - t_start) / 1000;
-
-    console.log(`[inspector]:\tParsed inspect data. Took ${duration} seconds.`);
+export function getInterfaceVersion(containerShortId: string): number {
+    return getInterfaceVersionImpl(containerShortId);
 }

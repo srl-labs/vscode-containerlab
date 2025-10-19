@@ -4,30 +4,11 @@ import * as c from "./common";
 import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
-import { execFileSync } from "child_process";
-import * as fs from "fs";
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
 import { getCurrentTopoViewer } from "../commands/graph";
 
-/**
- * Interface corresponding to fields in the
- *  the JSON output of 'clab ins interfaces'
- */
-interface ClabInsIntfJSON {
-    name: string,
-    interfaces: [
-        {
-            name: string,
-            type: string,
-            state: string,
-            alias: string,
-            mac: string,
-            mtu: number,
-            ifindex: number,
-        }
-    ]
-}
+import type { ClabInterfaceSnapshot } from "../types/containerlab";
 
 type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
 
@@ -51,7 +32,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
 
     private containerInterfacesCache: Map<string, {
-        state: string,
+        version: number,
         timestamp: number,
         interfaces: c.ClabInterfaceTreeNode[]
     }> = new Map();
@@ -662,6 +643,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             if (!Array.isArray(detailedData[labName])) continue;
 
             result[labName] = detailedData[labName].map(container => {
+                const status = this.computeContainerStatus(container);
+
                 // Construct IPv4 and IPv6 addresses with prefix length
                 let ipv4Address = "N/A";
                 if (container.NetworkSettings.IPv4addr && container.NetworkSettings.IPv4pLen !== undefined) {
@@ -692,15 +675,88 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     name_short: container.Labels['clab-node-name'],
                     owner: container.Labels['clab-owner'],
                     state: container.State,
-                    status: container.Status,
+                    status: status,
                     node_type: container.Labels['clab-node-type'] || undefined,
                     node_group: container.Labels['clab-node-group'] || undefined,
-                    network_name: container.NetworkName || undefined
+                    network_name: container.NetworkName || undefined,
+                    startedAt: container.StartedAt
                 };
             });
         }
 
         return result;
+    }
+
+    private computeContainerStatus(container: c.ClabDetailedJSON): string {
+        const rawStatus = container.Status?.trim() ?? "";
+
+        if (container.State === "running") {
+            const suffix = this.extractStatusSuffix(rawStatus);
+            if (typeof container.StartedAt === "number") {
+                const uptime = this.formatUptime(container.StartedAt);
+                return suffix ? `${uptime} ${suffix}` : uptime;
+            }
+            return rawStatus || "Running";
+        }
+
+        return rawStatus || this.formatStateLabel(container.State);
+    }
+
+    private extractStatusSuffix(status: string): string | undefined {
+        if (!status) {
+            return undefined;
+        }
+        const trimmed = status.trim();
+        const openIdx = trimmed.lastIndexOf("(");
+        const closeIdx = trimmed.lastIndexOf(")");
+        if (openIdx === -1 || closeIdx === -1 || closeIdx <= openIdx) {
+            return undefined;
+        }
+        return trimmed.slice(openIdx, closeIdx + 1);
+    }
+
+    private formatStateLabel(state?: string): string {
+        if (!state) {
+            return "Unknown";
+        }
+        const normalized = state.replace(/[_-]+/g, " ");
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    }
+
+    private formatUptime(startedAt: number): string {
+        const elapsedMs = Math.max(0, Date.now() - startedAt);
+        if (elapsedMs < 60000) {
+            return "Up less than a minute";
+        }
+
+        const totalMinutes = Math.floor(elapsedMs / 60000);
+        if (totalMinutes < 60) {
+            return `Up ${this.formatQuantity(totalMinutes, "minute")}`;
+        }
+
+        const totalHours = Math.floor(totalMinutes / 60);
+        if (totalHours < 24) {
+            const remainingMinutes = totalMinutes % 60;
+            const hoursPart = this.formatQuantity(totalHours, "hour");
+            if (remainingMinutes > 0) {
+                return `Up ${hoursPart} ${this.formatQuantity(remainingMinutes, "minute")}`;
+            }
+            return `Up ${hoursPart}`;
+        }
+
+        const totalDays = Math.floor(totalHours / 24);
+        const remainingHours = totalHours % 24;
+        const daysPart = this.formatQuantity(totalDays, "day");
+        if (remainingHours > 0) {
+            return `Up ${daysPart} ${this.formatQuantity(remainingHours, "hour")}`;
+        }
+        return `Up ${daysPart}`;
+    }
+
+    private formatQuantity(value: number, unit: string): string {
+        const quantity = Math.max(1, Math.floor(value));
+        const suffix = quantity === 1 ? unit : `${unit}s`;
+        return `${quantity} ${suffix}`;
     }
 
     private createContainerHash(containers: c.ClabJSON[] | undefined): string {
@@ -718,7 +774,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             const kind = container.kind || '';
             const nodeType = container.node_type || '';
             const nodeGroup = container.node_group || '';
-            return `${normPath}|${name}|${state}|${status}|${owner}|${id}|${kind}|${nodeType}|${nodeGroup}`;
+            const startedAt = container.startedAt ?? 0;
+            return `${normPath}|${name}|${state}|${status}|${owner}|${id}|${kind}|${nodeType}|${nodeGroup}|${startedAt}`;
         });
 
         tokens.sort();
@@ -911,6 +968,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         const parsedData = ins.rawInspectData;
 
+        if (!parsedData) {
+            return parsedData;
+        }
+
         // Determine the format of the returned data
         // Check if it's an array (old flat format) or an object with lab keys (new grouped format)
         const isOldFlatFormat = Array.isArray(parsedData);
@@ -1035,8 +1096,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             const interfaces = this.discoverContainerInterfaces(
                 absLabPath,
                 container.name,
-                container.container_id,
-                container.state
+                container.container_id
             ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
             const collapsible = interfaces.length > 0
@@ -1080,53 +1140,30 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private discoverContainerInterfaces(
         absLabPath: string, // Use absolute lab path
         cName: string,
-        cID: string,
-        containerState: string
+        cID: string
     ): c.ClabInterfaceTreeNode[] {
         const cacheKey = `${absLabPath}::${cName}::${cID}`;
         const cached = this.containerInterfacesCache.get(cacheKey);
-        const cachedValid = cached && cached.state === containerState &&
+        const currentVersion = ins.getInterfaceVersion(cID);
+        const cachedValid = cached && cached.version === currentVersion &&
             (Date.now() - cached.timestamp < this.interfaceCacheTTL);
-        if (cachedValid) return cached!.interfaces;
-
-        let interfaces: c.ClabInterfaceTreeNode[] = [];
-        try {
-            const bin = this.findContainerlabBinary();
-            const clabInsJSON = this.getInterfacesJSON(bin, absLabPath, cName);
-            interfaces = this.buildInterfaceNodes(clabInsJSON, cName, cID);
-            this.containerInterfacesCache.set(cacheKey, {
-                state: containerState,
-                timestamp: Date.now(),
-                interfaces
-            });
-        } catch (err: any) {
-            if (err.killed || err.signal === 'SIGTERM') {
-                console.error(`[RunningLabTreeDataProvider]: Interface detection timed out for ${cName}. Cmd: ${err.cmd}`);
-            } else {
-                console.error(`[RunningLabTreeDataProvider]: Interface detection failed for ${cName}. ${err.message || String(err)}`);
-            }
-            this.containerInterfacesCache.delete(cacheKey);
+        if (cachedValid) {
+            return cached.interfaces;
         }
+
+        const snapshot = ins.getInterfacesSnapshot(cID, cName);
+        const interfaces = this.buildInterfaceNodes(snapshot, cName, cID);
+
+        this.containerInterfacesCache.set(cacheKey, {
+            version: currentVersion,
+            timestamp: Date.now(),
+            interfaces,
+        });
+
         return interfaces;
     }
 
-    private findContainerlabBinary(): string {
-        const candidateBins = ['/usr/bin/containerlab', '/bin/containerlab', '/usr/local/bin/containerlab'];
-        return candidateBins.find(p => {
-            try { return fs.existsSync(p); } catch { return false; }
-        }) || 'containerlab';
-    }
-
-    private getInterfacesJSON(bin: string, absLabPath: string, cName: string): ClabInsIntfJSON[] {
-        const clabStdout = execFileSync(
-            bin,
-            ['inspect', 'interfaces', '-t', absLabPath, '-f', 'json', '-n', cName],
-            { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 }
-        ).toString();
-        return JSON.parse(clabStdout);
-    }
-
-    private buildInterfaceNodes(clabInsJSON: ClabInsIntfJSON[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
+    private buildInterfaceNodes(clabInsJSON: ClabInterfaceSnapshot[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
         const interfaces: c.ClabInterfaceTreeNode[] = [];
 
         if (!(clabInsJSON && clabInsJSON.length > 0 && Array.isArray(clabInsJSON[0].interfaces))) {
