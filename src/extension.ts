@@ -14,6 +14,7 @@ import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
+import { onDataChanged } from "./services/containerlabEvents";
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -395,6 +396,19 @@ function registerCommands(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', clearLocalLabsFilterCommand));
 }
 
+function registerRealtimeUpdates(context: vscode.ExtensionContext) {
+  const disposeRealtime = onDataChanged(() => {
+    ins.refreshFromEventStream();
+    if (runningLabsProvider) {
+      void runningLabsProvider.softRefresh(undefined, { forceInterfaceRefresh: true }).catch(err => {
+        console.error("[containerlab extension]: realtime refresh failed", err);
+      });
+    }
+  });
+  context.subscriptions.push({ dispose: disposeRealtime });
+  ins.refreshFromEventStream();
+}
+
 /**
  * Called when VSCode activates your extension.
  */
@@ -478,6 +492,8 @@ export async function activate(context: vscode.ExtensionContext) {
     treeDataProvider: helpFeedbackProvider,
     canSelectMany: false
   });
+
+  registerRealtimeUpdates(context);
 
   // get the username
   username = utils.getUsername();

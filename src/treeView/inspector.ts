@@ -27,3 +27,7 @@ export function getInterfacesSnapshot(containerShortId: string, containerName: s
 export function getInterfaceVersion(containerShortId: string): number {
     return getInterfaceVersionImpl(containerShortId);
 }
+
+export function refreshFromEventStream(): void {
+    rawInspectData = getGroupedContainers();
+}

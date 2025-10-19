@@ -480,6 +480,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             changed = true;
         }
 
+        if (target.collapsibleState !== source.collapsibleState) {
+            target.collapsibleState = source.collapsibleState;
+            structureChanged = true;
+        }
+
         const interfacesResult = this.mergeInterfaceNodes(target, source);
         if (interfacesResult.changed) {
             changed = true;
@@ -620,6 +625,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         if (String(a.label) !== String(b.label)) return false;
         if (a.tooltip !== b.tooltip) return false;
+        if (a.collapsibleState !== b.collapsibleState) return false;
         if (!this.iconsEqual(a.iconPath, b.iconPath)) return false;
 
         const aLink = (a as any).link;

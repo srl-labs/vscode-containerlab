@@ -65,6 +65,29 @@ const labsByName = new Map<string, LabRecord>();
 const interfacesByContainer = new Map<string, Map<string, InterfaceRecord>>();
 const interfaceVersions = new Map<string, number>();
 const nodeSnapshots = new Map<string, NodeSnapshot>();
+type DataListener = () => void;
+const dataListeners = new Set<DataListener>();
+let dataChangedTimer: ReturnType<typeof setTimeout> | null = null;
+const DATA_NOTIFY_DELAY_MS = 50;
+
+function scheduleDataChanged(): void {
+    if (dataListeners.size === 0) {
+        return;
+    }
+    if (dataChangedTimer) {
+        return;
+    }
+    dataChangedTimer = setTimeout(() => {
+        dataChangedTimer = null;
+        for (const listener of Array.from(dataListeners)) {
+            try {
+                listener();
+            } catch (err) {
+                console.error(`[containerlabEvents]: Failed to notify listener: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        }
+    }, DATA_NOTIFY_DELAY_MS);
+}
 
 function findContainerlabBinary(): string {
     const candidateBins = [
@@ -664,6 +687,7 @@ function applyContainerEvent(event: ContainerlabEvent): void {
     updateLabMappings(existing, enrichedRecord);
 
     scheduleInitialResolution();
+    scheduleDataChanged();
 }
 
 function removeContainer(containerShortId: string): void {
@@ -684,6 +708,7 @@ function removeContainer(containerShortId: string): void {
     containersById.delete(containerShortId);
     interfacesByContainer.delete(containerShortId);
     interfaceVersions.delete(containerShortId);
+    scheduleDataChanged();
 }
 
 function applyInterfaceEvent(event: ContainerlabEvent): void {
@@ -702,6 +727,7 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
         if (removeInterfaceRecord(containerId, ifaceName)) {
             bumpInterfaceVersion(containerId);
             scheduleInitialResolution();
+            scheduleDataChanged();
         }
         return;
     }
@@ -730,6 +756,7 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
 
     bumpInterfaceVersion(containerId);
     scheduleInitialResolution();
+    scheduleDataChanged();
 }
 
 function removeInterfaceRecord(containerId: string, ifaceName: string): boolean {
@@ -904,4 +931,12 @@ export function resetForTests(): void {
     interfacesByContainer.clear();
     interfaceVersions.clear();
     nodeSnapshots.clear();
+    scheduleDataChanged();
+}
+
+export function onDataChanged(listener: DataListener): () => void {
+    dataListeners.add(listener);
+    return () => {
+        dataListeners.delete(listener);
+    };
 }
