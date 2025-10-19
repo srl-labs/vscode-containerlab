@@ -85,9 +85,10 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 |---------|------|---------|-------------|
 | `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
 | `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
-| `refreshInterval` | number | `5000` | Auto-refresh interval in milliseconds |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
+
+The Containerlab Explorer listens to the containerlab event stream, so running labs update live without manual refresh intervals.
 
 ### 🎯 Command Options
 
@@ -165,8 +166,8 @@ When deploying labs, you can monitor the detailed progress in the Output window:
 2. Select "Containerlab" from the dropdown menu
 3. Watch the deployment logs in real-time
 
-## Auto-refresh Behavior
-- The Containerlab Explorer automatically refreshes based on the `containerlab.refreshInterval` setting
+## Live Updates
+- The Containerlab Explorer streams containerlab events, so running labs refresh immediately without polling
 - Labs are consistently sorted:
   - Deployed labs appear before undeployed labs
   - Within each group (deployed/undeployed), labs are sorted by their absolute path

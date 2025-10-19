@@ -18,10 +18,6 @@ interface LabDiscoveryResult {
     containersToRefresh: Set<c.ClabContainerTreeNode>;
 }
 
-interface DiscoveryOptions {
-    forceInterfaceRefresh?: boolean;
-}
-
 export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabLabTreeNode | c.ClabContainerTreeNode> {
     private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | c.ClabContainerTreeNode | null | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -29,46 +25,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private treeItems: c.ClabLabTreeNode[] = [];
     private treeFilter: string = '';
     private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
-
-
-    private containerInterfacesCache: Map<string, {
-        version: number,
-        timestamp: number,
-        interfaces: c.ClabInterfaceTreeNode[]
-    }> = new Map();
-
-    // Cache for labs: both local and inspect (running) labs.
-    private labsCache: {
-        inspect: { data: Record<string, c.ClabLabTreeNode> | undefined, timestamp: number, rawDataHash?: string } | null,
-    } = { inspect: null };
-
-    private refreshInterval: number = 5000; // Default to ~5 seconds
-    private cacheTTL: number = 30000; // Default to 30 seconds, will be overridden
-    private interfaceCacheTTL: number = 5000; // Tracks how long interface data stays fresh
+    private labsSnapshot: Record<string, c.ClabLabTreeNode> | undefined;
 
     private context: vscode.ExtensionContext;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
-        // Get the refresh interval from configuration
-        const config = vscode.workspace.getConfiguration('containerlab');
-        this.refreshInterval = config.get<number>('refreshInterval', 5000);
-
-        const minCacheTtl = Math.max(this.refreshInterval * 3, 30000);
-        this.cacheTTL = minCacheTtl;
-        this.interfaceCacheTTL = Math.max(this.refreshInterval, 1000);
-
-        this.startCacheJanitor();
     }
 
     async refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
         if (!element) {
-            // Full refresh - update inspect data and clear interface cache
-            this.containerInterfacesCache.clear();
-            // Don't clear labs cache - let the hash comparison handle it
-
+            // Full refresh - update inspect data from the event stream
             await ins.update();
-            const discovery = await this.discoverLabs({ forceInterfaceRefresh: true });
+            const discovery = await this.discoverLabs();
             this.emitRefreshEvents(discovery);
 
             // Also refresh the topology viewer if it's open
@@ -84,12 +53,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     // a soft refresh will check for changes and only update if needed
     async softRefresh(
-        element?: c.ClabLabTreeNode | c.ClabContainerTreeNode,
-        options: DiscoveryOptions = {}
+        element?: c.ClabLabTreeNode | c.ClabContainerTreeNode
     ) {
         if (!element) {
             // Discover labs without clearing caches first
-            const discovery = await this.discoverLabs(options);
+            const discovery = await this.discoverLabs();
             this.emitRefreshEvents(discovery);
 
             // Always refresh the topology viewer to catch interface state changes
@@ -145,27 +113,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
 
         try {
-            await viewer.refreshLinkStatesFromInspect(this.labsCache.inspect?.data ?? undefined);
+            await viewer.refreshLinkStatesFromInspect(this.labsSnapshot);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error(`[RunningLabTreeDataProvider]:\tFailed to refresh TopoViewer link states: ${message}`);
         }
-    }
-
-    hasChanges(): boolean {
-        const now = Date.now();
-
-        // Check for expired caches
-        let anyInterfaceExpired = false;
-        for (const value of this.containerInterfacesCache.values()) {
-            if (now - value.timestamp > this.interfaceCacheTTL) {
-                anyInterfaceExpired = true;
-                break;
-            }
-        }
-
-        const labsExpired = !!(this.labsCache.inspect && (now - this.labsCache.inspect.timestamp >= this.cacheTTL));
-        return anyInterfaceExpired || labsExpired;
     }
 
     getTreeItem(element: RunningTreeNode): vscode.TreeItem {
@@ -237,14 +189,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return containerMatches ? interfaces : interfaces.filter(it => filter(String(it.label)));
     }
 
-    private async discoverLabs(options: DiscoveryOptions = {}): Promise<LabDiscoveryResult> {
+    private async discoverLabs(): Promise<LabDiscoveryResult> {
         console.log("[RunningLabTreeDataProvider]:\tDiscovering labs");
 
         const previousCache = this.labNodeCache;
         const labsToRefresh: Set<c.ClabLabTreeNode> = new Set();
         const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
 
-        const globalLabs = await this.discoverInspectLabs(options);  // Deployed labs from `clab inspect -a`
+        const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
 
         // --- Combine local and global labs ---
         // Initialize with global labs (deployed)
@@ -765,52 +717,24 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return `${quantity} ${suffix}`;
     }
 
-    private createContainerHash(containers: c.ClabJSON[] | undefined): string {
-        if (!containers || containers.length === 0) {
-            return 'empty';
-        }
-
-        const tokens = containers.map(container => {
-            const normPath = container.absLabPath || utils.normalizeLabPath(container.labPath);
-            const name = container.name || '';
-            const state = container.state || '';
-            const status = container.status || '';
-            const owner = container.owner || '';
-            const id = container.container_id || '';
-            const kind = container.kind || '';
-            const nodeType = container.node_type || '';
-            const nodeGroup = container.node_group || '';
-            const startedAt = container.startedAt ?? 0;
-            return `${normPath}|${name}|${state}|${status}|${owner}|${id}|${kind}|${nodeType}|${nodeGroup}|${startedAt}`;
-        });
-
-        tokens.sort();
-        return tokens.join('~');
-    }
-
-    public async discoverInspectLabs(options: DiscoveryOptions = {}): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
+    public async discoverInspectLabs(): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
         console.log("[RunningLabTreeDataProvider]:\tDiscovering labs via inspect...");
 
         const inspectData = await this.getInspectData(); // This now properly handles both formats
 
         // --- Normalize inspectData into a flat list of containers ---
         const allContainers = this.normalizeInspectData(inspectData);
-        const currentDataHash = this.createContainerHash(allContainers);
-
-        // Check if we have cached data and if the raw data hasn't changed
-        const cached = this.getCachedInspectIfFresh(currentDataHash, options.forceInterfaceRefresh === true);
-        if (cached) return cached;
 
         if (!inspectData || !allContainers) {
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
+            this.labsSnapshot = undefined;
             return undefined;
         }
 
         // If after normalization, we have no containers, return undefined
         if (allContainers.length === 0) {
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
+            this.labsSnapshot = undefined;
             return undefined;
         }
 
@@ -821,22 +745,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         this.updateBadge(Object.keys(labs).length);
 
-        this.labsCache.inspect = { data: labs, timestamp: Date.now(), rawDataHash: currentDataHash };
+        this.labsSnapshot = labs;
         return labs;
-    }
-
-    private getCachedInspectIfFresh(currentDataHash: string, forceInterfaceRefresh: boolean) {
-        if (forceInterfaceRefresh) {
-            return undefined;
-        }
-
-        if (this.labsCache.inspect &&
-            this.labsCache.inspect.rawDataHash === currentDataHash &&
-            (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
-            console.log("[RunningLabTreeDataProvider]:\tUsing cached labs (data unchanged)");
-            return this.labsCache.inspect.data;
-        }
-        return undefined;
     }
 
     private normalizeInspectData(inspectData: any): c.ClabJSON[] | undefined {
@@ -1100,7 +1010,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             const icon = this.getContainerIcon(container);
 
             const interfaces = this.discoverContainerInterfaces(
-                absLabPath,
                 container.name,
                 container.container_id
             ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
@@ -1144,29 +1053,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     private discoverContainerInterfaces(
-        absLabPath: string, // Use absolute lab path
         cName: string,
         cID: string
     ): c.ClabInterfaceTreeNode[] {
-        const cacheKey = `${absLabPath}::${cName}::${cID}`;
-        const cached = this.containerInterfacesCache.get(cacheKey);
-        const currentVersion = ins.getInterfaceVersion(cID);
-        const cachedValid = cached && cached.version === currentVersion &&
-            (Date.now() - cached.timestamp < this.interfaceCacheTTL);
-        if (cachedValid) {
-            return cached.interfaces;
-        }
-
         const snapshot = ins.getInterfacesSnapshot(cID, cName);
-        const interfaces = this.buildInterfaceNodes(snapshot, cName, cID);
-
-        this.containerInterfacesCache.set(cacheKey, {
-            version: currentVersion,
-            timestamp: Date.now(),
-            interfaces,
-        });
-
-        return interfaces;
+        return this.buildInterfaceNodes(snapshot, cName, cID);
     }
 
     private buildInterfaceNodes(clabInsJSON: ClabInterfaceSnapshot[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
@@ -1245,36 +1136,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     // getInterfaceContextValue remains unchanged
     private getInterfaceContextValue(state: string): string {
         return state === 'up' ? 'containerlabInterfaceUp' : 'containerlabInterfaceDown';
-    }
-
-    // startCacheJanitor clears expired caches and triggers soft refresh when needed
-    private startCacheJanitor() {
-        const janitorInterval = Math.max(1000, Math.min(this.refreshInterval, this.cacheTTL, this.interfaceCacheTTL));
-
-        setInterval(() => {
-            const now = Date.now();
-            let hasExpired = false;
-
-            // Check for expired container interfaces
-            this.containerInterfacesCache.forEach((value, key) => {
-                if (now - value.timestamp >= this.interfaceCacheTTL) {
-                    this.containerInterfacesCache.delete(key);
-                    hasExpired = true;
-                }
-            });
-
-            if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp >= this.cacheTTL) {
-                this.labsCache.inspect = null;
-                hasExpired = true;
-            }
-
-            if (hasExpired) {
-                const options: DiscoveryOptions = { forceInterfaceRefresh: true };
-                void this.softRefresh(undefined, options).catch(err => {
-                    console.error("[RunningLabTreeDataProvider]:\tCache janitor refresh failed", err);
-                });
-            }
-        }, janitorInterval);
     }
 
     // getResourceUri remains unchanged
