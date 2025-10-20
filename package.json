@@ -1368,7 +1368,7 @@
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/leaflet": "^1.9.20",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.6.2",
+    "@types/node": "^24.8.1",
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
