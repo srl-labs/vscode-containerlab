@@ -1363,7 +1363,7 @@
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/chai": "^5.2.2",
-    "@types/cytoscape": "^3.21.9",
+    "@types/cytoscape": "^3.31.0",
     "@types/cytoscape-cxtmenu": "^3.4.4",
     "@types/cytoscape-edgehandles": "^4.0.4",
     "@types/leaflet": "^1.9.20",
