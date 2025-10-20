@@ -1372,7 +1372,7 @@
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
-    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/parser": "^8.46.1",
     "@vscode/vsce": "^3.6.2",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
