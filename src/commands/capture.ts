@@ -321,189 +321,278 @@ export async function captureEdgesharkVNC(
     );
   }
 
-  // Wait a bit for the VNC server to be ready
-  setTimeout(() => {
-    panel.webview.html = `
+  panel.webview.html = buildWiresharkVncHtml(iframeUrl, Boolean(volumeMount));
+
+  const readinessMonitor = createVncReadinessMonitor(panel, localUri.toString(), iframeUrl);
+
+  panel.webview.onDidReceiveMessage(message => {
+    if (!message || typeof message !== 'object') {
+      return;
+    }
+
+    if ((message as { type?: string }).type === 'retry-check') {
+      readinessMonitor.start(true);
+    }
+  });
+
+  // Readiness checks are triggered by the webview via postMessage.
+}
+
+function buildWiresharkVncHtml(iframeUrl: string, showVolumeTip: boolean): string {
+  const volumeTip = showVolumeTip
+    ? '<div class="info">Tip: Save pcap files to /pcaps to persist them in the lab directory</div>'
+    : ''
+
+  return `
     <!DOCTYPE html>
-    <html>
-      <style>
-        html, body {
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-          height: 100%;
-          width: 100%;
-          background: #1e1e1e;
-        }
-        iframe {
-          border: none;
-          position: absolute;
-          top: 0;
-          left: 0;
-          bottom: 0;
-          right: 0;
-          width: 100%;
-          height: 100%;
-        }
-        .loading {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: #ccc;
-          font-family: sans-serif;
-          text-align: center;
-        }
-        .info {
-          color: #999;
-          font-size: 0.9em;
-          margin-top: 10px;
-        }
-        .retry-info {
-          color: #888;
-          font-size: 0.85em;
-          margin-top: 15px;
-        }
-      </style>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src https: http:; connect-src https: http:;" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wireshark Capture</title>
+        <style>
+          html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            background: #1e1e1e;
+          }
+          iframe {
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+          }
+          .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ccc;
+            font-family: sans-serif;
+            text-align: center;
+          }
+          .info {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 10px;
+          }
+          .retry-info {
+            color: #888;
+            font-size: 0.85em;
+            margin-top: 15px;
+          }
+        </style>
+      </head>
       <body>
         <div class="loading" id="loading">
           Loading Wireshark...
-          ${volumeMount ? '<div class="info">Tip: Save pcap files to /pcaps to persist them in the lab directory</div>' : ''}
+          ${volumeTip}
           <div class="retry-info" id="retry-info"></div>
         </div>
         <iframe id="vnc-frame" frameborder="0" width="100%" height="100%" style="display: none;"></iframe>
         <script>
-          const iframe = document.getElementById('vnc-frame');
-          const loading = document.getElementById('loading');
-          const retryInfo = document.getElementById('retry-info');
-          const url = "${iframeUrl}";
-          let attemptCount = 0;
-          const maxAttempts = 60; // Try for up to 30 seconds (60 * 500ms)
-          let vncReady = false;
+          (function() {
+            const vscode = acquireVsCodeApi();
+            const iframe = document.getElementById('vnc-frame');
+            const loading = document.getElementById('loading');
+            const retryInfo = document.getElementById('retry-info');
+            let pendingRetry = false;
+            const fallbackUrl = ${JSON.stringify(iframeUrl)};
+            let latestUrl = fallbackUrl;
 
-          // Try to load the iframe
-          function loadVNC() {
-            if (vncReady) return;
-            vncReady = true;
+            function appendCacheBuster(url) {
+              const separator = url.includes('?') ? '&' : '?';
+              return url + separator + 't=' + Date.now();
+            }
 
-            iframe.src = url;
+            function loadVNC(url, forceReload) {
+              const nextUrl = url || latestUrl || fallbackUrl;
+              if (!nextUrl) {
+                return;
+              }
+
+              latestUrl = nextUrl;
+              const targetUrl = forceReload ? appendCacheBuster(nextUrl) : nextUrl;
+              loading.style.display = 'block';
+              iframe.style.display = 'none';
+              iframe.src = targetUrl;
+            }
+
             iframe.onload = function() {
               loading.style.display = 'none';
               iframe.style.display = 'block';
+              retryInfo.textContent = '';
+              pendingRetry = false;
             };
+
             iframe.onerror = function() {
-              // If iframe fails to load, try reloading after a delay
-              vncReady = false;
-              retryInfo.textContent = 'Connection failed, retrying...';
-              setTimeout(() => {
-                iframe.src = '';
-                setTimeout(checkVNCReady, 1000);
-              }, 1000);
-            };
-          }
-
-          // Poll the VNC server until it's reachable, then load it
-          function checkVNCReady() {
-            if (vncReady) return;
-
-            attemptCount++;
-            if (attemptCount > maxAttempts) {
-              retryInfo.textContent = 'Connection timeout - VNC server may not be ready. Attempting to load anyway...';
-              loadVNC();
-              return;
-            }
-
-            // Update retry info every 5 attempts
-            if (attemptCount % 5 === 0) {
-              retryInfo.textContent = \`Waiting for VNC server... (attempt \${attemptCount}/\${maxAttempts})\`;
-            }
-
-            // Try fetch first to detect HTTP errors (works in code-server proxy scenarios)
-            fetch(url + '/?check=' + Date.now(), {
-              method: 'HEAD',
-              cache: 'no-cache'
-            })
-              .then(response => {
-                // Check if we got a valid response (not 504, 502, 503, etc.)
-                if (response.ok || response.status === 200 || response.status === 304) {
-                  retryInfo.textContent = 'VNC server ready, loading...';
-                  setTimeout(loadVNC, 200);
-                } else if (response.status >= 500 && response.status < 600) {
-                  // Server error (504, 502, 503, etc.) - server not ready yet
-                  retryInfo.textContent = \`Server not ready (HTTP \${response.status}), retrying...\`;
-                  setTimeout(checkVNCReady, 500);
-                } else {
-                  // Other status codes - might be redirects or auth, try loading anyway
-                  retryInfo.textContent = 'Received response, loading...';
-                  setTimeout(loadVNC, 200);
-                }
-              })
-              .catch(error => {
-                // Fetch failed (CORS, network error, etc.) - fall back to iframe test
-                // This handles normal VSCode scenarios where fetch might be blocked
-                tryIframeCheck();
-              });
-          }
-
-          // Fallback method: Try loading iframe briefly to test if server is ready
-          function tryIframeCheck() {
-            const testFrame = document.createElement('iframe');
-            testFrame.style.display = 'none';
-            testFrame.src = url;
-
-            const checkTimeout = setTimeout(() => {
-              document.body.removeChild(testFrame);
-              // Timeout means server might not be ready, retry
-              setTimeout(checkVNCReady, 500);
-            }, 1000);
-
-            testFrame.onload = function() {
-              clearTimeout(checkTimeout);
-              document.body.removeChild(testFrame);
-              // Successfully loaded, VNC server is ready
-              retryInfo.textContent = 'VNC server ready, loading...';
-              setTimeout(loadVNC, 200);
-            };
-
-            testFrame.onerror = function() {
-              clearTimeout(checkTimeout);
-              document.body.removeChild(testFrame);
-              // Error loading, retry
-              setTimeout(checkVNCReady, 500);
-            };
-
-            document.body.appendChild(testFrame);
-          }
-
-          // Start checking for VNC readiness
-          checkVNCReady();
-
-          // Handle iframe connection errors after it's loaded
-          window.addEventListener('message', function(event) {
-            // Handle postMessage from iframe if needed
-          });
-
-          // Reload iframe if connection is lost
-          let reloadAttempts = 0;
-          const maxReloadAttempts = 5;
-          setInterval(() => {
-            if (iframe.style.display === 'block' && !iframe.contentWindow) {
-              if (reloadAttempts < maxReloadAttempts) {
-                reloadAttempts++;
-                console.log('Connection lost, reloading iframe...');
-                iframe.src = iframe.src;
+              loading.style.display = 'block';
+              iframe.style.display = 'none';
+              retryInfo.textContent = 'Connection failed - retrying...';
+              if (!pendingRetry) {
+                pendingRetry = true;
+                vscode.postMessage({ type: 'retry-check' });
               }
-            } else {
-              reloadAttempts = 0;
-            }
-          }, 5000);
+            };
+
+            window.addEventListener('message', function(event) {
+              const message = event.data || {};
+              if (!message || !message.type) {
+                return;
+              }
+
+              switch (message.type) {
+                case 'vnc-progress': {
+                  pendingRetry = false;
+                  const attempt = typeof message.attempt === 'number' ? message.attempt : 0;
+                  const maxAttempts = typeof message.maxAttempts === 'number' ? message.maxAttempts : 0;
+                  if (attempt <= 1) {
+                    retryInfo.textContent = 'Waiting for VNC server...';
+                  } else if (maxAttempts > 0) {
+                    retryInfo.textContent = 'Waiting for VNC server... (attempt ' + attempt + '/' + maxAttempts + ')';
+                  } else {
+                    retryInfo.textContent = 'Waiting for VNC server... (attempt ' + attempt + ')';
+                  }
+                  break;
+                }
+                case 'vnc-ready': {
+                  pendingRetry = false;
+                  retryInfo.textContent = 'VNC server ready, loading...';
+                  loadVNC(message.url, false);
+                  break;
+                }
+                case 'vnc-timeout': {
+                  pendingRetry = false;
+                  retryInfo.textContent = 'Connection timeout - attempting to load anyway...';
+                  loadVNC(message.url, true);
+                  break;
+                }
+                default:
+                  break;
+              }
+            });
+
+            vscode.postMessage({ type: 'retry-check' });
+          })();
         </script>
       </body>
     </html>
-    `;
-  }, 1000);
-
+  `
 }
+
+type VncMonitorToken = { cancelled: boolean }
+
+function createVncReadinessMonitor(panel: vscode.WebviewPanel, localUrl: string, iframeUrl: string) {
+  let disposed = false
+  let currentToken: VncMonitorToken | undefined
+
+  panel.onDidDispose(() => {
+    disposed = true
+    if (currentToken) {
+      currentToken.cancelled = true
+    }
+  })
+
+  const start = (force = false) => {
+    if (disposed) {
+      return
+    }
+    if (currentToken && !force) {
+      return
+    }
+
+    if (currentToken) {
+      currentToken.cancelled = true
+    }
+
+    const token: VncMonitorToken = { cancelled: false }
+    currentToken = token
+
+    void runVncReadinessLoop(panel, localUrl, iframeUrl, token, () => disposed)
+      .finally(() => {
+        if (currentToken === token) {
+          currentToken = undefined
+        }
+      })
+  }
+
+  return { start }
+}
+
+async function runVncReadinessLoop(
+  panel: vscode.WebviewPanel,
+  localUrl: string,
+  iframeUrl: string,
+  token: VncMonitorToken,
+  isDisposed: () => boolean
+): Promise<void> {
+  const maxAttempts = 60
+  const delayMs = 1000
+
+  if (isDisposed() || token.cancelled) {
+    return
+  }
+
+  await tryPostMessage(panel, { type: 'vnc-progress', attempt: 0, maxAttempts })
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (isDisposed() || token.cancelled) {
+      return
+    }
+
+    const ready = await isHttpEndpointReady(localUrl)
+    if (isDisposed() || token.cancelled) {
+      return
+    }
+
+    if (ready) {
+      await tryPostMessage(panel, { type: 'vnc-ready', url: iframeUrl })
+      return
+    }
+
+    await tryPostMessage(panel, { type: 'vnc-progress', attempt, maxAttempts })
+    await delay(delayMs)
+  }
+
+  if (!isDisposed() && !token.cancelled) {
+    await tryPostMessage(panel, { type: 'vnc-timeout', url: iframeUrl })
+  }
+}
+
+async function tryPostMessage(panel: vscode.WebviewPanel, message: unknown): Promise<void> {
+  try {
+    await panel.webview.postMessage(message)
+  } catch {
+    // The panel might already be disposed; ignore errors
+  }
+}
+
+async function isHttpEndpointReady(url: string, timeoutMs = 4000): Promise<boolean> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, { method: 'GET', signal: controller.signal })
+    return response.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 
 export async function killAllWiresharkVNCCtrs() {
   const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
