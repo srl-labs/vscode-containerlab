@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as readline from "readline";
 import * as utils from "../helpers/utils";
 import type { ClabDetailedJSON } from "../treeView/common";
-import type { ClabInterfaceSnapshot } from "../types/containerlab";
+import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
 
 interface ContainerlabEvent {
     timestamp?: string;
@@ -29,6 +29,166 @@ interface InterfaceRecord {
     mac?: string;
     mtu?: number;
     ifindex?: number;
+    rxBps?: number;
+    rxPps?: number;
+    rxBytes?: number;
+    rxPackets?: number;
+    txBps?: number;
+    txPps?: number;
+    txBytes?: number;
+    txPackets?: number;
+    statsIntervalSeconds?: number;
+}
+
+const INTERFACE_KEYS: (keyof InterfaceRecord)[] = [
+    "ifname",
+    "type",
+    "state",
+    "alias",
+    "mac",
+    "mtu",
+    "ifindex",
+    "rxBps",
+    "rxPps",
+    "rxBytes",
+    "rxPackets",
+    "txBps",
+    "txPps",
+    "txBytes",
+    "txPackets",
+    "statsIntervalSeconds",
+];
+
+type MutableInterfaceRecord = InterfaceRecord & { [key: string]: unknown };
+type MutableSnapshotEntry = ClabInterfaceSnapshotEntry & { [key: string]: unknown };
+
+const STRING_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
+    ["type", "type"],
+    ["state", "state"],
+    ["alias", "alias"],
+    ["mac", "mac"],
+];
+
+const NUMERIC_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
+    ["mtu", "mtu"],
+    ["ifindex", "index"],
+    ["rxBps", "rx_bps"],
+    ["txBps", "tx_bps"],
+    ["rxPps", "rx_pps"],
+    ["txPps", "tx_pps"],
+    ["rxBytes", "rx_bytes"],
+    ["txBytes", "tx_bytes"],
+    ["rxPackets", "rx_packets"],
+    ["txPackets", "tx_packets"],
+    ["statsIntervalSeconds", "interval_seconds"],
+];
+
+const SNAPSHOT_FIELD_MAPPINGS: Array<[keyof ClabInterfaceSnapshotEntry, keyof InterfaceRecord]> = [
+    ["rxBps", "rxBps"],
+    ["rxPps", "rxPps"],
+    ["rxBytes", "rxBytes"],
+    ["rxPackets", "rxPackets"],
+    ["txBps", "txBps"],
+    ["txPps", "txPps"],
+    ["txBytes", "txBytes"],
+    ["txPackets", "txPackets"],
+    ["statsIntervalSeconds", "statsIntervalSeconds"],
+];
+
+function parseNumericAttribute(value: unknown): number | undefined {
+    if (value === undefined || value === null || value === "") {
+        return undefined;
+    }
+
+    const numeric = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function interfaceRecordsEqual(a: InterfaceRecord | undefined, b: InterfaceRecord): boolean {
+    if (!a) {
+        return false;
+    }
+
+    return INTERFACE_KEYS.every(key => a[key] === b[key]);
+}
+
+function assignStringAttributes(
+    record: MutableInterfaceRecord,
+    attributes: Record<string, unknown>,
+    mappings: Array<[keyof InterfaceRecord, string]>
+): void {
+    for (const [targetKey, attributeKey] of mappings) {
+        const value = attributes[attributeKey];
+        if (typeof value === "string") {
+            record[targetKey as string] = value;
+        }
+    }
+}
+
+function assignNumericAttributes(
+    record: MutableInterfaceRecord,
+    attributes: Record<string, unknown>,
+    mappings: Array<[keyof InterfaceRecord, string]>
+): void {
+    for (const [targetKey, attributeKey] of mappings) {
+        const parsed = parseNumericAttribute(attributes[attributeKey]);
+        if (parsed !== undefined) {
+            record[targetKey as string] = parsed;
+        }
+    }
+}
+
+function buildUpdatedInterfaceRecord(
+    ifaceName: string,
+    attributes: Record<string, unknown>,
+    existing: InterfaceRecord | undefined
+): InterfaceRecord {
+    const base: MutableInterfaceRecord = existing
+        ? { ...existing }
+        : {
+            ifname: ifaceName,
+            type: "",
+            state: "",
+        };
+
+    base.ifname = ifaceName;
+
+    assignStringAttributes(base, attributes, STRING_ATTRIBUTE_MAPPINGS);
+    assignNumericAttributes(base, attributes, NUMERIC_ATTRIBUTE_MAPPINGS);
+
+    if (typeof base.type !== "string" || !base.type) {
+        base.type = "";
+    }
+    if (typeof base.state !== "string" || !base.state) {
+        base.state = "";
+    }
+
+    return base as InterfaceRecord;
+}
+
+function assignSnapshotFields(entry: MutableSnapshotEntry, iface: InterfaceRecord): void {
+    for (const [entryKey, ifaceKey] of SNAPSHOT_FIELD_MAPPINGS) {
+        const value = iface[ifaceKey];
+        if (value !== undefined) {
+            entry[entryKey as string] = value as number;
+        }
+    }
+}
+
+function toInterfaceSnapshotEntry(iface: InterfaceRecord): ClabInterfaceSnapshotEntry {
+    const entry: MutableSnapshotEntry = {
+        name: iface.ifname,
+        type: iface.type || "",
+        state: iface.state || "",
+        alias: iface.alias || "",
+        mac: iface.mac || "",
+        mtu: iface.mtu ?? 0,
+        ifindex: iface.ifindex ?? 0,
+    };
+
+    assignSnapshotFields(entry, iface);
+
+    return entry as ClabInterfaceSnapshotEntry;
 }
 
 interface NodeSnapshot {
@@ -737,22 +897,20 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
         return;
     }
 
-    const iface: InterfaceRecord = {
-        ifname: ifaceName,
-        type: attributes.type,
-        state: attributes.state,
-        alias: attributes.alias,
-        mac: attributes.mac,
-        mtu: attributes.mtu !== undefined ? Number(attributes.mtu) : undefined,
-        ifindex: attributes.index !== undefined ? Number(attributes.index) : undefined,
-    };
-
     let ifaceMap = interfacesByContainer.get(containerId);
     if (!ifaceMap) {
         ifaceMap = new Map();
         interfacesByContainer.set(containerId, ifaceMap);
     }
-    ifaceMap.set(iface.ifname, iface);
+    const existing = ifaceMap.get(ifaceName);
+    const updated = buildUpdatedInterfaceRecord(ifaceName, attributes, existing);
+
+    const changed = !interfaceRecordsEqual(existing, updated);
+    if (!changed) {
+        return;
+    }
+
+    ifaceMap.set(ifaceName, updated);
 
     bumpInterfaceVersion(containerId);
     scheduleInitialResolution();
@@ -900,15 +1058,7 @@ export function getInterfaceSnapshot(containerShortId: string, containerName: st
         return [];
     }
 
-    const interfaces = Array.from(ifaceMap.values()).map(iface => ({
-        name: iface.ifname,
-        type: iface.type || "",
-        state: iface.state || "",
-        alias: iface.alias || "",
-        mac: iface.mac || "",
-        mtu: iface.mtu ?? 0,
-        ifindex: iface.ifindex ?? 0,
-    }));
+    const interfaces = Array.from(ifaceMap.values()).map(toInterfaceSnapshotEntry);
 
     interfaces.sort((a, b) => a.name.localeCompare(b.name));
 

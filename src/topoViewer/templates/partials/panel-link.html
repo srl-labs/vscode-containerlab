@@ -76,6 +76,11 @@
         fields.appendChild(createField("MAC address", `${prefix}-mac-address`));
         fields.appendChild(createField("MTU", `${prefix}-mtu`));
         fields.appendChild(createField("Type", `${prefix}-type`));
+        fields.appendChild(createField("RX Throughput", `${prefix}-rx-rate`));
+        fields.appendChild(createField("TX Throughput", `${prefix}-tx-rate`));
+        fields.appendChild(createField("RX Totals", `${prefix}-rx-total`));
+        fields.appendChild(createField("TX Totals", `${prefix}-tx-total`));
+        fields.appendChild(createField("Stats Interval", `${prefix}-stats-interval`));
       }
       container.appendChild(fragment);
     });

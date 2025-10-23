@@ -8,7 +8,7 @@ import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
 import { getCurrentTopoViewer } from "../commands/graph";
 
-import type { ClabInterfaceSnapshot } from "../types/containerlab";
+import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry, ClabInterfaceStats } from "../types/containerlab";
 
 type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
 
@@ -1107,6 +1107,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     break;
             }
 
+            const stats = this.extractInterfaceStats(intf);
+
             const node = new c.ClabInterfaceTreeNode(
                 label,
                 vscode.TreeItemCollapsibleState.None,
@@ -1119,8 +1121,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 intf.mtu,
                 intf.ifindex,
                 intf.state,
-                contextValue
+                contextValue,
+                stats
             );
+
+            this.appendInterfaceStats(tooltipParts, intf);
 
             node.tooltip = tooltipParts.join("\n");
             node.description = description;
@@ -1136,6 +1141,96 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     // getInterfaceContextValue remains unchanged
     private getInterfaceContextValue(state: string): string {
         return state === 'up' ? 'containerlabInterfaceUp' : 'containerlabInterfaceDown';
+    }
+
+    private extractInterfaceStats(intf: ClabInterfaceSnapshotEntry): ClabInterfaceStats | undefined {
+        const stats: ClabInterfaceStats = {};
+        const assign = (key: keyof ClabInterfaceStats, value: number | undefined) => {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                stats[key] = value;
+            }
+        };
+
+        assign('rxBps', intf.rxBps);
+        assign('rxPps', intf.rxPps);
+        assign('rxBytes', intf.rxBytes);
+        assign('rxPackets', intf.rxPackets);
+        assign('txBps', intf.txBps);
+        assign('txPps', intf.txPps);
+        assign('txBytes', intf.txBytes);
+        assign('txPackets', intf.txPackets);
+        assign('statsIntervalSeconds', intf.statsIntervalSeconds);
+
+        return Object.keys(stats).length > 0 ? stats : undefined;
+    }
+
+    private appendInterfaceStats(tooltipParts: string[], intf: ClabInterfaceSnapshotEntry): void {
+        const rxRateLine = this.buildRateLine("RX", intf.rxBps, intf.rxPps);
+        if (rxRateLine) {
+            tooltipParts.push(rxRateLine);
+        }
+
+        const txRateLine = this.buildRateLine("TX", intf.txBps, intf.txPps);
+        if (txRateLine) {
+            tooltipParts.push(txRateLine);
+        }
+
+        const rxCounterLine = this.buildCounterLine("RX", intf.rxBytes, intf.rxPackets);
+        if (rxCounterLine) {
+            tooltipParts.push(rxCounterLine);
+        }
+
+        const txCounterLine = this.buildCounterLine("TX", intf.txBytes, intf.txPackets);
+        if (txCounterLine) {
+            tooltipParts.push(txCounterLine);
+        }
+
+        if (typeof intf.statsIntervalSeconds === 'number' && Number.isFinite(intf.statsIntervalSeconds)) {
+            tooltipParts.push(`Stats Interval: ${this.formatWithPrecision(intf.statsIntervalSeconds, 3)} s`);
+        }
+    }
+
+    private buildRateLine(direction: string, bps?: number, pps?: number): string | undefined {
+        if (typeof bps !== 'number' || !Number.isFinite(bps)) {
+            if (typeof pps !== 'number' || !Number.isFinite(pps)) {
+                return undefined;
+            }
+            return `${direction}: PPS ${this.formatWithPrecision(pps, 2)}`;
+        }
+
+        const rateParts = [
+            `${this.formatWithPrecision(bps, 0)} bps`,
+            `${this.formatWithPrecision(bps / 1_000, 2)} Kbps`,
+            `${this.formatWithPrecision(bps / 1_000_000, 2)} Mbps`,
+            `${this.formatWithPrecision(bps / 1_000_000_000, 2)} Gbps`,
+        ];
+
+        let line = `${direction}: ${rateParts.join(' / ')}`;
+        if (typeof pps === 'number' && Number.isFinite(pps)) {
+            line += ` | PPS: ${this.formatWithPrecision(pps, 2)}`;
+        }
+        return line;
+    }
+
+    private buildCounterLine(direction: string, bytes?: number, packets?: number): string | undefined {
+        const segments: string[] = [];
+        if (typeof bytes === 'number' && Number.isFinite(bytes)) {
+            segments.push(`${this.formatWithPrecision(bytes, 0)} bytes`);
+        }
+        if (typeof packets === 'number' && Number.isFinite(packets)) {
+            segments.push(`${this.formatWithPrecision(packets, 0)} packets`);
+        }
+        if (segments.length === 0) {
+            return undefined;
+        }
+        return `${direction} Total: ${segments.join(' / ')}`;
+    }
+
+    private formatWithPrecision(value: number, fractionDigits: number): string {
+        return value.toLocaleString(undefined, {
+            minimumFractionDigits: fractionDigits,
+            maximumFractionDigits: fractionDigits,
+        });
     }
 
     // getResourceUri remains unchanged
