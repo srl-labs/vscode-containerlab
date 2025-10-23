@@ -14,6 +14,7 @@ import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
+import { onDataChanged } from "./services/containerlabEvents";
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -33,9 +34,6 @@ export let gottySessions: Map<string, string> = new Map();
 export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
-
-let refreshInterval: number;
-let refreshTaskID: ReturnType<typeof setInterval> | undefined;
 
 
 function extractLabName(session: any, prefix: string): string | undefined {
@@ -282,30 +280,6 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
   }
 }
 
-function refreshTask() {
-  ins.update().then(() => {
-    localLabsProvider?.refresh();
-    runningLabsProvider?.softRefresh();
-  });
-}
-
-// Function to start the refresh interval
-function startRefreshInterval() {
-  if (!refreshTaskID) {
-    console.debug("Starting refresh task")
-    refreshTaskID = setInterval(refreshTask, refreshInterval);
-  }
-}
-
-// Function to stop the refresh interval
-function stopRefreshInterval() {
-  if (refreshTaskID) {
-    console.debug("Stopping refresh task")
-    clearInterval(refreshTaskID);
-    refreshTaskID = undefined;
-  }
-}
-
 function registerCommands(context: vscode.ExtensionContext) {
   const commands: Array<[string, any]> = [
     ['containerlab.lab.openFile', cmd.openLabFile],
@@ -395,6 +369,19 @@ function registerCommands(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', clearLocalLabsFilterCommand));
 }
 
+function registerRealtimeUpdates(context: vscode.ExtensionContext) {
+  const disposeRealtime = onDataChanged(() => {
+    ins.refreshFromEventStream();
+    if (runningLabsProvider) {
+      void runningLabsProvider.softRefresh().catch(err => {
+        console.error("[containerlab extension]: realtime refresh failed", err);
+      });
+    }
+  });
+  context.subscriptions.push({ dispose: disposeRealtime });
+  ins.refreshFromEventStream();
+}
+
 /**
  * Called when VSCode activates your extension.
  */
@@ -479,6 +466,8 @@ export async function activate(context: vscode.ExtensionContext) {
     canSelectMany: false
   });
 
+  registerRealtimeUpdates(context);
+
   // get the username
   username = utils.getUsername();
 
@@ -497,31 +486,6 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register commands
   registerCommands(context);
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onDidChangeConfiguration));
-
-  // Auto-refresh the TreeView based on user setting
-  const config = vscode.workspace.getConfiguration('containerlab');
-  refreshInterval = config.get<number>('refreshInterval', 5000);
-
-  // Only refresh when window is focused to prevent queue buildup when tabbed out
-  context.subscriptions.push(
-    vscode.window.onDidChangeWindowState(e => {
-      if (e.focused) {
-        // Window gained focus - refresh immediately, then start interval
-        refreshTask();
-        startRefreshInterval();
-      } else {
-        // Window lost focus - stop the interval to prevent queue buildup
-        stopRefreshInterval();
-      }
-    })
-  );
-
-  // Start the interval if window is already focused
-  if (vscode.window.state.focused) {
-    startRefreshInterval();
-  }
-
-  context.subscriptions.push({ dispose: () => stopRefreshInterval() });
 }
 
 export function deactivate() {

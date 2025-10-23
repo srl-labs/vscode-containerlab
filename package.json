@@ -1134,11 +1134,6 @@
           "default": false,
           "description": "Whether to prepend 'sudo' to all containerlab commands by default."
         },
-        "containerlab.refreshInterval": {
-          "type": "number",
-          "default": 5000,
-          "description": "Refresh interval (in milliseconds) for the Containerlab Explorer."
-        },
         "containerlab.node.execCommandMapping": {
           "type": "object",
           "additionalProperties": {
