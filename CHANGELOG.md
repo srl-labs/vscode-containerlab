@@ -1,4 +1,8 @@
 # Change Log
+## [0.19.5] - 2025-10-23
+- fluent transition between deploy/destroy on TV
+- fixes
+
 ## [0.19.4] - 2025-10-11
 - clab 0.71.0 support
 - fixes
