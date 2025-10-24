@@ -1,4 +1,7 @@
 # Change Log
+## [0.19.6] - 2025-10-24
+- fix link creation
+
 ## [0.19.5] - 2025-10-23
 - fluent transition between deploy/destroy on TV
 - fixes

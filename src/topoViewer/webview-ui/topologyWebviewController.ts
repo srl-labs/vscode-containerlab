@@ -1164,10 +1164,29 @@ class TopologyWebviewController {
     });
   }
 
+  private async ensureEdgehandlesReady(): Promise<void> {
+    if (!this.eh) {
+      await this.initializeEdgehandles();
+      return;
+    }
+    if (typeof this.eh.enable === 'function') {
+      this.eh.enable();
+    }
+  }
+
+  private async startEdgeCreationFromNode(node: cytoscape.NodeSingular): Promise<void> {
+    await this.ensureEdgehandlesReady();
+    if (!this.eh) {
+      log.error('Edgehandles is not available; unable to start edge creation.');
+      return;
+    }
+    this.isEdgeHandlerActive = true;
+    this.eh.start(node);
+  }
+
   private createAddLinkCommand(): any {
-    return this.createNodeMenuItem('fas fa-link', 'Add Link', (node) => {
-      this.isEdgeHandlerActive = true;
-      this.eh.start(node);
+    return this.createNodeMenuItem('fas fa-link', 'Add Link', async (node) => {
+      await this.startEdgeCreationFromNode(node);
     });
   }
 
@@ -1628,8 +1647,7 @@ class TopologyWebviewController {
 
     if (originalEvent.shiftKey && node.data('topoViewerRole') !== 'freeText') {
       log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
-      this.isEdgeHandlerActive = true;
-      this.eh.start(node);
+      await this.startEdgeCreationFromNode(node);
       return;
     }
 
