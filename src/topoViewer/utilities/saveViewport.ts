@@ -297,19 +297,28 @@ function updateYamlNodes(
   yamlNodes: YAML.YAMLMap,
   topoObj: ClabTopology | undefined,
   updatedKeys: Map<string, string>,
+  idOverride: Map<string, string>,
 ): void {
   payloadParsed.filter(isWritableNode).forEach(el =>
-    updateNodeYaml(el, doc, yamlNodes, topoObj, updatedKeys),
+    updateNodeYaml(el, doc, yamlNodes, topoObj, updatedKeys, idOverride),
   );
 
-  const payloadNodeIds = new Set(
+  // Build the set of YAML node keys that should exist after this update.
+  // Prefer explicit YAML key overrides (extYamlNodeId), else fall back to node "name", then id.
+  const payloadNodeYamlKeys = new Set(
     payloadParsed
-      .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id))
-      .map(el => el.data.id),
+      .filter(isWritableNode)
+      .map(el => {
+        const extra = (el.data?.extraData) || {};
+        const overrideKey = typeof extra.extYamlNodeId === 'string' && extra.extYamlNodeId.trim() ? extra.extYamlNodeId.trim() : '';
+        if (overrideKey) return overrideKey;
+        const preferred = (el.data?.name && String(el.data.name)) || String(el.data?.id || '');
+        return preferred;
+      }),
   );
   for (const item of [...yamlNodes.items]) {
     const keyStr = String(item.key);
-    if (!payloadNodeIds.has(keyStr) && ![...updatedKeys.values()].includes(keyStr)) {
+    if (!payloadNodeYamlKeys.has(keyStr)) {
       yamlNodes.delete(item.key);
     }
   }
@@ -340,9 +349,11 @@ function updateNodeYaml(
   yamlNodes: YAML.YAMLMap,
   topoObj: ClabTopology | undefined,
   updatedKeys: Map<string, string>,
+  idOverride: Map<string, string>,
 ): void {
   const nodeId: string = element.data.id;
-  const nodeMap = getOrCreateNodeMap(nodeId, yamlNodes);
+  const initialKey = idOverride.get(nodeId) || nodeId;
+  const nodeMap = getOrCreateNodeMap(initialKey, yamlNodes);
   const extraData = element.data.extraData || {};
 
   const originalKind = (nodeMap.get('kind', true) as any)?.value;
@@ -372,11 +383,12 @@ function updateNodeYaml(
   );
   applyExtraProps(doc, nodeMap, extraData, inherit);
 
-  const newKey = element.data.name;
-  if (nodeId !== newKey) {
-    yamlNodes.set(newKey, nodeMap);
-    yamlNodes.delete(nodeId);
-    updatedKeys.set(nodeId, newKey);
+  // Prefer explicit YAML node name override if provided
+  const desiredYamlKey = (typeof extraData.extYamlNodeId === 'string' && extraData.extYamlNodeId.trim()) ? extraData.extYamlNodeId.trim() : element.data.name;
+  if (initialKey !== desiredYamlKey) {
+    yamlNodes.set(desiredYamlKey, nodeMap);
+    yamlNodes.delete(initialKey);
+    updatedKeys.set(initialKey, desiredYamlKey);
   }
 }
 
@@ -541,10 +553,34 @@ function getPayloadEdges(payloadParsed: any[]): any[] {
   return payloadParsed.filter(el => el.group === 'edges');
 }
 
-function buildPayloadEdgeKeys(edges: any[]): Set<string> {
+function buildNodeIdOverrideMap(payloadParsed: any[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'nodes') continue;
+    const data = el.data || {};
+    const extra = data.extraData || {};
+    // Only consider explicit YAML node mappings
+    if (typeof extra.extYamlNodeId === 'string' && extra.extYamlNodeId.trim()) {
+      map.set(data.id, extra.extYamlNodeId.trim());
+    }
+  }
+  return map;
+}
+
+function applyIdOverrideToEdgeData(data: any, idOverride: Map<string, string>): any {
+  if (!data) return data;
+  const src = data.source;
+  const tgt = data.target;
+  const newSrc = idOverride.get(src) || src;
+  const newTgt = idOverride.get(tgt) || tgt;
+  if (newSrc === src && newTgt === tgt) return data;
+  return { ...data, source: newSrc, target: newTgt };
+}
+
+function buildPayloadEdgeKeys(edges: any[], idOverride: Map<string, string>): Set<string> {
   return new Set(
     edges
-      .map(el => canonicalFromPayloadEdge(el.data))
+      .map(el => canonicalFromPayloadEdge(applyIdOverrideToEdgeData(el.data, idOverride)))
       .filter((k): k is CanonicalLinkKey => Boolean(k))
       .map(k => canonicalKeyToString(k)),
   );
@@ -633,8 +669,9 @@ function updateExistingLinks(
 function updateYamlLinks(payloadParsed: any[], doc: YAML.Document.Parsed, updatedKeys: Map<string, string>): void {
   const linksNode = ensureLinksNode(doc);
   const edges = getPayloadEdges(payloadParsed);
-  edges.forEach(element => processEdge(element, linksNode, doc));
-  const payloadEdgeKeys = buildPayloadEdgeKeys(edges);
+  const idOverride = buildNodeIdOverrideMap(payloadParsed);
+  edges.forEach(element => processEdge(element, linksNode, doc, idOverride));
+  const payloadEdgeKeys = buildPayloadEdgeKeys(edges, idOverride);
   filterObsoleteLinks(linksNode, payloadEdgeKeys);
   updateExistingLinks(linksNode, doc, updatedKeys);
 }
@@ -946,8 +983,8 @@ function createNewLink(
   linksNode.add(newLink);
 }
 
-function processEdge(element: any, linksNode: YAML.YAMLSeq, doc: YAML.Document.Parsed): void {
-  const data = element.data;
+function processEdge(element: any, linksNode: YAML.YAMLSeq, doc: YAML.Document.Parsed, idOverride: Map<string, string>): void {
+  const data = applyIdOverrideToEdgeData(element.data, idOverride);
   const payloadKey = canonicalFromPayloadEdge(data);
   if (!payloadKey) return;
   const payloadKeyStr = canonicalKeyToString(payloadKey);
@@ -1008,7 +1045,8 @@ export async function saveViewport({
 
   const updatedKeys = new Map<string, string>();
   const topoObj = doc.toJS() as ClabTopology;
-  updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys);
+  const idOverride = buildNodeIdOverrideMap(payloadParsed);
+  updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys, idOverride);
   updateYamlLinks(payloadParsed, doc, updatedKeys);
 
   await saveAnnotationsFromPayload(payloadParsed, yamlFilePath);
