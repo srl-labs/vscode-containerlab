@@ -196,4 +196,12 @@ export interface TopologyAnnotations {
   groupStyleAnnotations?: GroupStyleAnnotation[];
   cloudNodeAnnotations?: CloudNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
+  // Mapping from YAML node + interface to a visual alias node id
+  aliasEndpointAnnotations?: AliasEndpointAnnotation[];
+}
+
+export interface AliasEndpointAnnotation {
+  yamlNodeId: string;
+  interface: string;
+  aliasNodeId: string;
 }

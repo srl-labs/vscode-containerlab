@@ -1738,8 +1738,42 @@ export class TopoViewerAdaptorClab {
     // Add alias nodes (e.g., multiple visual bridge nodes mapped to same YAML node)
     this.addAliasNodesFromAnnotations(parsed, opts.annotations, elements);
 
+    // Rewire edges to alias nodes based on saved alias endpoint mappings
+    this.applyAliasMappingsToEdges(opts.annotations, elements);
+
     log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
     return elements;
+  }
+
+  private applyAliasMappingsToEdges(annotations: any | undefined, elements: CyElement[]): void {
+    const aliasList = this.normalizeAliasList(annotations);
+    if (aliasList.length === 0) return;
+    const mapping = this.buildAliasMap(aliasList);
+    this.rewireEdges(elements, mapping);
+  }
+
+  private normalizeAliasList(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
+    if (!annotations || !Array.isArray(annotations.aliasEndpointAnnotations)) return [];
+    return annotations.aliasEndpointAnnotations.filter((a: any) => a && a.yamlNodeId && a.interface && a.aliasNodeId);
+  }
+
+  private buildAliasMap(list: Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }>): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const a of list) map.set(`${a.yamlNodeId}|${a.interface}`, a.aliasNodeId);
+    return map;
+  }
+
+  private rewireEdges(elements: CyElement[], mapping: Map<string, string>): void {
+    for (const el of elements) {
+      if (el.group !== 'edges') continue;
+      const data: any = (el as any).data || {};
+      const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint || ''}`);
+      const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint || ''}`);
+      if (!srcAlias && !tgtAlias) continue;
+      if (srcAlias) data.source = srcAlias;
+      if (tgtAlias) data.target = tgtAlias;
+      (el as any).data = data;
+    }
   }
 
 
