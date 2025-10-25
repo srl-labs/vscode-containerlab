@@ -1741,6 +1741,9 @@ export class TopoViewerAdaptorClab {
     // Rewire edges to alias nodes based on saved alias endpoint mappings
     this.applyAliasMappingsToEdges(opts.annotations, elements);
 
+    // Hide base YAML bridge nodes that have at least one alias defined
+    this.hideBaseBridgeNodesWithAliases(opts.annotations, elements);
+
     log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
     return elements;
   }
@@ -1773,6 +1776,24 @@ export class TopoViewerAdaptorClab {
       if (srcAlias) data.source = srcAlias;
       if (tgtAlias) data.target = tgtAlias;
       (el as any).data = data;
+    }
+  }
+
+  private hideBaseBridgeNodesWithAliases(annotations: any | undefined, elements: CyElement[]): void {
+    const aliasList = this.normalizeAliasList(annotations);
+    if (aliasList.length === 0) return;
+    const yamlIds = new Set(aliasList.map(a => a.yamlNodeId));
+    if (yamlIds.size === 0) return;
+    // Filter out base nodes (group:'nodes') whose id equals an aliased YAML id and kind is bridge/ovs-bridge
+    for (let i = elements.length - 1; i >= 0; i--) {
+      const el = elements[i] as any;
+      if (el.group !== 'nodes') continue;
+      const data = el.data || {};
+      if (!yamlIds.has(data.id)) continue;
+      const kind = data?.extraData?.kind as string | undefined;
+      if (this.isBridgeKind(kind)) {
+        elements.splice(i, 1);
+      }
     }
   }
 
