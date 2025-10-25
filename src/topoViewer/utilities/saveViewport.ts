@@ -264,6 +264,18 @@ function createNodeAnnotation(
 ): NodeAnnotation {
   const nodeIdForAnn = node.data.name || node.data.id;
   const nodeAnnotation: NodeAnnotation = { id: nodeIdForAnn, icon: node.data.topoViewerRole };
+  // Persist alias mapping (for cases like multiple bridge visuals referring to one YAML node)
+  try {
+    const yamlRef = node?.data?.extraData?.extYamlNodeId;
+    if (typeof yamlRef === 'string' && yamlRef.trim()) {
+      // Only store mapping if the visual id differs from the YAML node id.
+      if (yamlRef.trim() !== nodeIdForAnn) {
+        (nodeAnnotation as any).yamlNodeId = yamlRef.trim();
+      }
+    }
+  } catch {
+    // best-effort
+  }
   setNodePosition(nodeAnnotation, node, prevNodeById.get(nodeIdForAnn));
   addGeo(nodeAnnotation, node);
   if (node.data.groupLabelPos) nodeAnnotation.groupLabelPos = node.data.groupLabelPos;

@@ -182,6 +182,10 @@ export interface NodeAnnotation {
     lng: number;
   };
   icon?: string;
+  // If this annotation represents a visual alias of a YAML node,
+  // this field holds the target YAML node id (e.g., "br1").
+  // Used to recreate alias nodes like multiple bridge icons referring to one YAML node.
+  yamlNodeId?: string;
   groupLabelPos?: string;
   group?: string;
   level?: string;

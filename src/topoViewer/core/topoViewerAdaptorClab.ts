@@ -854,6 +854,110 @@ export class TopoViewerAdaptorClab {
     }
   }
 
+  /**
+   * Adds visual alias nodes from annotations (e.g., multiple bridge icons referring to one YAML node).
+   * Alias entries are expected in annotations.nodeAnnotations with `yamlNodeId` set
+   * and a different `id` than the YAML node id.
+   */
+  private addAliasNodesFromAnnotations(
+    parsed: ClabTopology,
+    annotations: any | undefined,
+    elements: CyElement[]
+  ): void {
+    const topo = parsed.topology;
+    const nodeMap = topo?.nodes || {};
+    const nodeAnns: any[] = Array.isArray(annotations?.nodeAnnotations) ? annotations!.nodeAnnotations : [];
+    for (const ann of nodeAnns) {
+      const aliasId = this.getAliasId(ann);
+      const yamlRefId = this.getYamlRefId(ann);
+      if (!aliasId || !yamlRefId || aliasId === yamlRefId) continue;
+      const refNode = nodeMap[yamlRefId];
+      if (!refNode || !this.isBridgeKind(refNode?.kind)) continue;
+
+      const position = this.toPosition(ann);
+      const parent = this.toParent(ann);
+      const element = this.buildBridgeAliasElement(aliasId, refNode.kind, parent, position, yamlRefId);
+      elements.push(element);
+    }
+
+    // Note: we intentionally do NOT remove the original YAML node (e.g., "br1")
+    // even if aliases exist, because edges in the YAML reference it. Removing it
+    // would orphan or drop links. The alias nodes are purely additional visuals.
+  }
+
+  private isBridgeKind(kind: string | undefined): boolean {
+    return kind === NODE_KIND_BRIDGE || kind === NODE_KIND_OVS_BRIDGE;
+  }
+
+  private getAliasId(ann: any): string | undefined { return typeof ann?.id === 'string' ? ann.id : undefined; }
+  private getYamlRefId(ann: any): string | undefined { return typeof ann?.yamlNodeId === 'string' ? ann.yamlNodeId : undefined; }
+
+  private toPosition(ann: any): { x: number; y: number } {
+    if (ann?.position && typeof ann.position.x === 'number' && typeof ann.position.y === 'number') {
+      return { x: ann.position.x, y: ann.position.y };
+    }
+    return { x: 0, y: 0 };
+  }
+
+  private toParent(ann: any): string | undefined {
+    return (ann?.group && ann?.level) ? `${ann.group}:${ann.level}` : undefined;
+  }
+
+  private buildBridgeAliasElement(
+    aliasId: string,
+    kind: string,
+    parent: string | undefined,
+    position: { x: number; y: number },
+    yamlRefId: string,
+  ): CyElement {
+    return {
+      group: 'nodes',
+      data: {
+        id: aliasId,
+        weight: '30',
+        name: aliasId,
+        parent,
+        topoViewerRole: 'bridge',
+        lat: '',
+        lng: '',
+        extraData: {
+          clabServerUsername: '',
+          fqdn: '',
+          group: '',
+          id: aliasId,
+          image: '',
+          index: '999',
+          kind,
+          type: kind,
+          labdir: '',
+          labels: {},
+          longname: aliasId,
+          macAddress: '',
+          mgmtIntf: '',
+          mgmtIpv4AddressLength: 0,
+          mgmtIpv4Address: '',
+          mgmtIpv6Address: '',
+          mgmtIpv6AddressLength: 0,
+          mgmtNet: '',
+          name: aliasId,
+          shortname: aliasId,
+          state: '',
+          weight: '3',
+          // Crucial mapping back to the YAML node id
+          extYamlNodeId: yamlRefId,
+        },
+      },
+      position,
+      removed: false,
+      selected: false,
+      selectable: true,
+      locked: false,
+      grabbed: false,
+      grabbable: true,
+      classes: '',
+    };
+  }
+
   private resolveActualNode(node: string, iface: string): string {
     if (node === 'host') return `host:${iface}`;
     if (node === 'mgmt-net') return `mgmt-net:${iface}`;
@@ -1231,8 +1335,8 @@ export class TopoViewerAdaptorClab {
 
   private isSpecialNode(nodeData: ClabNode | undefined, nodeName: string): boolean {
     return (
-      nodeData?.kind === 'bridge' ||
-      nodeData?.kind === 'ovs-bridge' ||
+      nodeData?.kind === NODE_KIND_BRIDGE ||
+      nodeData?.kind === NODE_KIND_OVS_BRIDGE ||
       nodeName === 'host' ||
       nodeName === 'mgmt-net' ||
       nodeName.startsWith('macvlan:') ||
@@ -1630,6 +1734,9 @@ export class TopoViewerAdaptorClab {
     const { specialNodes, specialNodeProps } = this.collectSpecialNodes(parsed, ctx);
     this.addCloudNodes(specialNodes, specialNodeProps, opts, elements);
     this.addEdgeElements(parsed, opts, fullPrefix, clabName, specialNodes, ctx, elements);
+
+    // Add alias nodes (e.g., multiple visual bridge nodes mapped to same YAML node)
+    this.addAliasNodesFromAnnotations(parsed, opts.annotations, elements);
 
     log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
     return elements;
