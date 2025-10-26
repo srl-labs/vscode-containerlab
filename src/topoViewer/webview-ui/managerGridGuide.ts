@@ -10,6 +10,7 @@
 
 import type cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
+import { VscodeMessageSender } from './managerVscodeWebview';
 
 export type Theme = 'light' | 'dark';
 
@@ -29,6 +30,9 @@ export class ManagerGridGuide {
   private lineWidth = 0.5; // default grid line width; adjustable via UI
   private color: string = LIGHT_GRID_RGBA; // updated by theme
 
+  // Persistence helpers (annotations-backed viewerSettings)
+  private messageSender: VscodeMessageSender | undefined;
+
   // Bound handlers for add/remove
   private readonly onPanZoom = () => this.requestRedraw();
   private readonly onRender = () => this.requestRedraw();
@@ -41,6 +45,8 @@ export class ManagerGridGuide {
   public initialize(theme: Theme): void {
     this.updateTheme(theme);
     this.createOverlay();
+    // Restore persisted grid line width (if any) and sync UI control
+    this.restoreLineWidthAndSyncUI();
     this.applyPluginOptions(theme, { drawGrid: false, snapToGridOnRelease: false, snapToAlignmentLocationOnRelease: false });
   }
 
@@ -59,7 +65,7 @@ export class ManagerGridGuide {
   }
 
   // Allow runtime configuration of grid line width via UI controls
-  public setLineWidth(width: number): void {
+  public setLineWidth(width: number, options?: { persist?: boolean; syncUi?: boolean }): void {
     const w = Number(width);
     if (!Number.isFinite(w)) return;
     // Clamp to a sensible range for visibility
@@ -67,6 +73,10 @@ export class ManagerGridGuide {
     this.lineWidth = clamped;
     this.requestRedraw();
     this.applyPluginOptions(this.getCurrentTheme(), {});
+    const persist = options?.persist !== false;
+    const syncUi = options?.syncUi !== false;
+    if (persist) this.persistLineWidthState(clamped);
+    if (syncUi) this.syncSliderToLineWidth();
   }
 
   public enableSnapping(enabled: boolean): void {
@@ -265,5 +275,64 @@ export class ManagerGridGuide {
     } catch (e) {
       log.warn(`GridManager plugin apply failed: ${e instanceof Error ? e.message : String(e)}`);
     }
+  }
+
+  // --- Persistence and UI sync ---
+  private getMessageSender(): VscodeMessageSender | undefined {
+    if (this.messageSender) return this.messageSender;
+    try {
+      this.messageSender = new VscodeMessageSender();
+    } catch {
+      // no VS Code API (e.g., tests) -> undefined
+    }
+    return this.messageSender;
+  }
+
+  private persistLineWidthState(width: number): void {
+    const sender = this.getMessageSender();
+    if (!sender) return; // If VS Code API absent (tests), skip persistence
+    sender
+      .sendMessageToVscodeEndpointPost('topo-editor-save-viewer-settings', {
+        viewerSettings: { gridLineWidth: width },
+      })
+      .catch(() => {
+        // Ignore persistence errors silently
+      });
+  }
+
+  private restoreLineWidthAndSyncUI(): void {
+    // Load from annotations: viewerSettings.gridLineWidth
+    const sender = this.getMessageSender();
+    if (!sender) {
+      this.syncSliderToLineWidth();
+      return;
+    }
+    sender
+      .sendMessageToVscodeEndpointPost('topo-editor-load-viewer-settings', {})
+      .then((resp: any) => {
+        const w = resp?.viewerSettings?.gridLineWidth;
+        if (typeof w === 'number' && Number.isFinite(w)) {
+          this.setLineWidth(w, { persist: false, syncUi: true });
+        } else {
+          this.syncSliderToLineWidth();
+        }
+      })
+      .catch(() => {
+        this.syncSliderToLineWidth();
+      });
+  }
+
+  private syncSliderToLineWidth(): void {
+    const apply = () => {
+      const el = document.getElementById('viewport-drawer-grid-line-width') as HTMLInputElement | null;
+      if (el) {
+        // round to 2 decimals for stable UI; step is 0.05
+        const rounded = Math.round(this.lineWidth * 20) / 20; // increments of 0.05
+        el.value = String(rounded.toFixed(2));
+      }
+    };
+    // Try now and again on the next frame in case the panel rendered late
+    try { apply(); } catch { /* ignore */ }
+    try { window.requestAnimationFrame(() => apply()); } catch { /* ignore */ }
   }
 }

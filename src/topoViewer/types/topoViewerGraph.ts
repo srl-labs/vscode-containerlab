@@ -198,6 +198,10 @@ export interface TopologyAnnotations {
   nodeAnnotations?: NodeAnnotation[];
   // Mapping from YAML node + interface to a visual alias node id
   aliasEndpointAnnotations?: AliasEndpointAnnotation[];
+  // Optional viewer-level settings persisted alongside annotations
+  viewerSettings?: {
+    gridLineWidth?: number;
+  };
 }
 
 export interface AliasEndpointAnnotation {

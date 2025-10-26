@@ -108,7 +108,8 @@ export class AnnotationsManager {
     const hasCloudNodes = !!(annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0);
     const hasNodeAnnotations = !!(annotations.nodeAnnotations && annotations.nodeAnnotations.length > 0);
     const hasAliasMappings = !!((annotations as any).aliasEndpointAnnotations && (annotations as any).aliasEndpointAnnotations.length > 0);
-    return hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations || hasAliasMappings;
+    const hasViewerSettings = !!(annotations as any).viewerSettings && Object.keys((annotations as any).viewerSettings || {}).length > 0;
+    return hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations || hasAliasMappings || hasViewerSettings;
   }
 
   /**
