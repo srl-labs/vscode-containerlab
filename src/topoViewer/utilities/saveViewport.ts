@@ -29,6 +29,10 @@ const TYPE_VXLAN_STITCH = 'vxlan-stitch' as const;
 const TYPE_VXLAN = 'vxlan' as const;
 const TYPE_UNKNOWN = 'unknown' as const;
 
+// Common node kinds
+const KIND_BRIDGE = 'bridge' as const;
+const KIND_OVS_BRIDGE = 'ovs-bridge' as const;
+
 // Commonly duplicated YAML keys
 const KEY_HOST_INTERFACE = 'host-interface';
 const KEY_MODE = 'mode';
@@ -593,7 +597,7 @@ function isBridgeAliasNode(node: any): boolean {
   const role = node.data?.topoViewerRole;
   const kind = node.data?.extraData?.kind;
   const yaml = node.data?.extraData?.extYamlNodeId;
-  return role === 'bridge' && typeof yaml === 'string' && yaml.trim() && (kind === 'bridge' || kind === 'ovs-bridge');
+  return role === 'bridge' && typeof yaml === 'string' && yaml.trim() && (kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE);
 }
 
 function recordAlias(out: Map<string, AliasEndpointAnnotation>, yamlId: string, iface: string, aliasId: string): void {
@@ -625,6 +629,7 @@ function autoFixDuplicateBridgeInterfaces(payloadParsed: any[]): void {
 
 function collectBridgeYamlIds(payloadParsed: any[]): Set<string> {
   const set = new Set<string>();
+  const aliasContrib = new Set<string>();
   for (const el of payloadParsed) {
     if (el.group !== 'nodes') continue;
     const data = el.data || {};
@@ -632,8 +637,22 @@ function collectBridgeYamlIds(payloadParsed: any[]): Set<string> {
     const kind = String(extra.kind || '');
     const yamlRef = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
     const isAlias = yamlRef && yamlRef !== data.id;
-    if (isAlias) continue;
-    if (kind === 'bridge' || kind === 'ovs-bridge') set.add(String(data.id));
+    const isBridgeKind = kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE;
+    if (!isBridgeKind) continue;
+
+    if (isAlias && yamlRef) {
+      // Alias node contributes its referenced YAML id
+      set.add(yamlRef);
+      aliasContrib.add(yamlRef);
+    } else {
+      // Base bridge node contributes its own id
+      set.add(String(data.id));
+    }
+  }
+  if (aliasContrib.size > 0) {
+    log.info(
+      `Auto-fix duplicate bridge interfaces: included alias-mapped YAML ids: ${Array.from(aliasContrib).join(', ')}`,
+    );
   }
   return set;
 }
