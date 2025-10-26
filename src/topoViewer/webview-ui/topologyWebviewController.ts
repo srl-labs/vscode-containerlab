@@ -2017,21 +2017,12 @@ class TopologyWebviewController {
     const pattern = this.resolveInterfacePattern(node, ifaceMap);
     const parsedPattern = this.getParsedInterfacePattern(pattern);
 
-    const edges = this.cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
+    // If this is a bridge/ovs-bridge alias, compute used indices across the entire alias group
+    // that share the same YAML base (extYamlNodeId), so UI numbering aligns with YAML.
     const usedIndices = new Set<number>();
-    edges.forEach(edge => {
-      ['sourceEndpoint', 'targetEndpoint'].forEach(key => {
-        const endpoint = edge.data(key);
-        const isNodeEndpoint =
-          (edge.data('source') === nodeId && key === 'sourceEndpoint') ||
-          (edge.data('target') === nodeId && key === 'targetEndpoint');
-        if (!endpoint || !isNodeEndpoint) return;
-        const matchIndex = getInterfaceIndex(parsedPattern, endpoint);
-        if (matchIndex !== null) {
-          usedIndices.add(matchIndex);
-        }
-      });
-    });
+    const isBridgeNode = this.isBridgeNode(node);
+    const memberIds = isBridgeNode ? this.getBridgeGroupMemberIds(nodeId) : [nodeId];
+    this.collectUsedIndices(memberIds, parsedPattern, usedIndices);
 
     let nextIndex = 0;
     while (usedIndices.has(nextIndex)) {
@@ -2039,6 +2030,63 @@ class TopologyWebviewController {
     }
 
     return generateInterfaceName(parsedPattern, nextIndex);
+  }
+
+  /**
+   * Returns the set of node IDs that belong to the same bridge alias group
+   * (i.e., share the same YAML base ID via extraData.extYamlNodeId).
+   * Includes the base node ID if present in the graph.
+   */
+  private getBridgeGroupMemberIds(nodeId: string): string[] {
+    const node = this.cy.getElementById(nodeId);
+    if (!node || (node as any).empty?.()) return [nodeId];
+    if (!this.isBridgeNode(node)) return [nodeId];
+
+    const baseYamlId = this.getBaseYamlIdForNode(node) || nodeId;
+    const members = this.listBridgeMembersForYaml(baseYamlId);
+    return members.length > 0 ? members : [nodeId];
+  }
+
+  private isBridgeNode(node: cytoscape.NodeSingular): boolean {
+    const kind = node.data('extraData')?.kind as string | undefined;
+    return kind === TopologyWebviewController.KIND_BRIDGE || kind === TopologyWebviewController.KIND_OVS_BRIDGE;
+  }
+
+  private getBaseYamlIdForNode(node: cytoscape.NodeSingular): string | null {
+    const extra = node.data('extraData') || {};
+    const ref = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
+    return ref || node.id() || null;
+  }
+
+  private listBridgeMembersForYaml(baseYamlId: string): string[] {
+    const out: string[] = [];
+    this.cy.nodes().forEach(n => {
+      if (!this.isBridgeNode(n)) return;
+      const id = n.id();
+      const ref = typeof n.data('extraData')?.extYamlNodeId === 'string' ? n.data('extraData').extYamlNodeId.trim() : '';
+      if (id === baseYamlId || (ref && ref === baseYamlId)) out.push(id);
+    });
+    return out;
+  }
+
+  private collectUsedIndices(memberIds: string[], parsedPattern: ReturnType<typeof parseInterfacePattern>, sink: Set<number>): void {
+    memberIds.forEach(memberId => {
+      const edges = this.cy.edges(`[source = "${memberId}"], [target = "${memberId}"]`);
+      edges.forEach(edge => {
+        const src = edge.data('source');
+        const tgt = edge.data('target');
+        const epSrc = edge.data('sourceEndpoint');
+        const epTgt = edge.data('targetEndpoint');
+        if (src === memberId && epSrc) {
+          const idx = getInterfaceIndex(parsedPattern, epSrc);
+          if (idx !== null) sink.add(idx);
+        }
+        if (tgt === memberId && epTgt) {
+          const idx = getInterfaceIndex(parsedPattern, epTgt);
+          if (idx !== null) sink.add(idx);
+        }
+      });
+    });
   }
 
   /**
