@@ -34,7 +34,7 @@ import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { registerCyEventHandlers } from './cyEventHandlers';
 import { PerformanceMonitor } from '../utilities/performanceMonitor';
 import { debounce } from '../utilities/asyncUtils';
-import { buildGridGuideOptions } from '../utilities/gridGuide';
+import { ManagerGridGuide } from './managerGridGuide';
 import topoViewerState from '../state';
 import type { EdgeData } from '../types/topoViewerGraph';
 import { FilterUtils } from '../../helpers/filterUtils';
@@ -143,19 +143,7 @@ class TopologyWebviewController {
   private modeTransitionInProgress = false;
   private commonTapstartHandlerRegistered = false;
   private initialGraphLoaded = false;
-  private gridOverlayCanvas: HTMLCanvasElement | null = null;
-  private gridOverlayCtx: CanvasRenderingContext2D | null = null;
-  private gridOverlayNeedsRedraw = false;
-  private gridOverlayObserver?: MutationObserver;
-  private readonly gridSpacing = 14;
-  private readonly gridLineWidth = 0.5;
-  private gridColor = '#cccccc';
-  private readonly handleGridPanZoom = () => this.requestGridRedraw();
-  private readonly handleGridRender = () => this.requestGridRedraw();
-  private readonly handleGridResize = () => {
-    this.resizeGridOverlay();
-    this.requestGridRedraw();
-  };
+  public gridManager!: ManagerGridGuide;
   // eslint-disable-next-line no-unused-vars
   private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
     delete: (event) => {
@@ -232,10 +220,7 @@ class TopologyWebviewController {
     }
 
     // Enable grid snapping after elements are in place to avoid initial shifts
-    (this.cy as any).gridGuide({
-      snapToGridOnRelease: true,
-      snapToAlignmentLocationOnRelease: true
-    });
+    this.gridManager.enableSnapping(true);
 
     void (async () => {
       try {
@@ -434,161 +419,13 @@ class TopologyWebviewController {
     this.cy.on('tap', (event) => {
       log.debug(`Cytoscape event: ${event.type}`);
     });
-    const gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    this.setupPersistentGrid(theme as 'light' | 'dark');
-    // Disable snapping until the topology data is fully loaded
-    (this.cy as any).gridGuide(
-      buildGridGuideOptions(theme as any, {
-        gridSpacing: this.gridSpacing,
-        gridColor,
-        drawGrid: false,
-        snapToGridOnRelease: false,
-        snapToAlignmentLocationOnRelease: false
-      })
-    );
-  }
-
-  private setupPersistentGrid(theme: 'light' | 'dark'): void {
-    if (this.gridOverlayCanvas) {
-      this.updateGridTheme(theme);
-      return;
-    }
-    const container = this.cy.container() as HTMLElement | null;
-    if (!container) {
-      return;
-    }
-    if (window.getComputedStyle(container).position === 'static') {
-      container.style.position = 'relative';
-    }
-    const canvas = document.createElement('canvas');
-    canvas.classList.add('topoviewer-grid-overlay');
-    canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.zIndex = '-1';
-    canvas.style.pointerEvents = 'none';
-    container.insertBefore(canvas, container.firstChild ?? null);
-    this.gridOverlayCanvas = canvas;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      log.warn('Unable to acquire grid overlay canvas context');
-      return;
-    }
-    this.gridOverlayCtx = ctx;
-    this.updateGridTheme(theme);
-    this.resizeGridOverlay();
-
-    this.cy.on('pan', this.handleGridPanZoom);
-    this.cy.on('zoom', this.handleGridPanZoom);
-    this.cy.on('render', this.handleGridRender);
-    this.cy.on('resize', this.handleGridResize);
-    window.addEventListener('resize', this.handleGridResize, { passive: true });
-
-    this.gridOverlayObserver = new MutationObserver(() => {
-      const hidden = container.classList.contains('leaflet-active');
-      if (this.gridOverlayCanvas) {
-        this.gridOverlayCanvas.style.display = hidden ? 'none' : 'block';
-        if (!hidden) {
-          this.requestGridRedraw();
-        }
-      }
-    });
-    this.gridOverlayObserver.observe(container, { attributes: true, attributeFilter: ['class'] });
-    this.requestGridRedraw();
+    // Initialize unified GridManager (overlay + plugin config)
+    this.gridManager = new ManagerGridGuide(this.cy);
+    this.gridManager.initialize(theme as 'light' | 'dark');
+    // Provide a global hook for theme updates from outside
     (window as any).updateTopoGridTheme = (newTheme: 'light' | 'dark') => {
-      this.updateGridTheme(newTheme);
+      this.gridManager.updateTheme(newTheme);
     };
-  }
-
-  private resizeGridOverlay(): void {
-    if (!this.gridOverlayCanvas) {
-      return;
-    }
-    const container = this.cy.container() as HTMLElement | null;
-    if (!container) {
-      return;
-    }
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const ratio = window.devicePixelRatio || 1;
-    const targetWidth = Math.max(1, Math.round(width * ratio));
-    const targetHeight = Math.max(1, Math.round(height * ratio));
-    if (this.gridOverlayCanvas.width !== targetWidth) {
-      this.gridOverlayCanvas.width = targetWidth;
-    }
-    if (this.gridOverlayCanvas.height !== targetHeight) {
-      this.gridOverlayCanvas.height = targetHeight;
-    }
-    this.gridOverlayCanvas.style.width = `${width}px`;
-    this.gridOverlayCanvas.style.height = `${height}px`;
-  }
-
-  private updateGridTheme(theme: 'light' | 'dark'): void {
-    this.gridColor = theme === 'dark' ? '#666666' : '#cccccc';
-    this.requestGridRedraw();
-  }
-
-  private requestGridRedraw(): void {
-    if (!this.gridOverlayCanvas || !this.gridOverlayCtx) {
-      return;
-    }
-    if (this.gridOverlayCanvas.style.display === 'none') {
-      return;
-    }
-    if (this.gridOverlayNeedsRedraw) {
-      return;
-    }
-    this.gridOverlayNeedsRedraw = true;
-    window.requestAnimationFrame(() => {
-      this.gridOverlayNeedsRedraw = false;
-      this.drawGridOverlay();
-    });
-  }
-
-  private drawGridOverlay(): void {
-    const canvas = this.gridOverlayCanvas;
-    const ctx = this.gridOverlayCtx;
-    if (!canvas || !ctx) {
-      return;
-    }
-    if (canvas.style.display === 'none') {
-      return;
-    }
-    const container = this.cy.container() as HTMLElement | null;
-    if (!container) {
-      return;
-    }
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    if (width === 0 || height === 0) {
-      return;
-    }
-    this.resizeGridOverlay();
-    const ratio = window.devicePixelRatio || 1;
-    ctx.save();
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, width, height);
-
-    const zoom = this.cy.zoom();
-    const spacingRaw = this.gridSpacing * zoom;
-    const spacing = spacingRaw > 0 ? spacingRaw : this.gridSpacing;
-    const pan = this.cy.pan();
-    const offsetX = ((pan.x % spacing) + spacing) % spacing;
-    const offsetY = ((pan.y % spacing) + spacing) % spacing;
-
-    ctx.beginPath();
-    for (let x = offsetX; x <= width + spacing; x += spacing) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-    }
-    for (let y = offsetY; y <= height + spacing; y += spacing) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-    }
-    ctx.strokeStyle = this.gridColor;
-    ctx.lineWidth = this.gridLineWidth;
-    ctx.stroke();
-    ctx.restore();
   }
 
   private initializeManagers(mode: 'edit' | 'view'): void {
