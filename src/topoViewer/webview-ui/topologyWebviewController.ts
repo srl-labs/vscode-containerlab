@@ -138,6 +138,8 @@ class TopologyWebviewController {
   private viewModeEventsRegistered = false;
   private editAutoSaveConfigured = false;
   private viewAutoSaveConfigured = false;
+  // Tracks which bridge alias groups (by base YAML id) were already logged
+  private loggedBridgeAliasGroups: Set<string> = new Set();
   private modeTransitionInProgress = false;
   private commonTapstartHandlerRegistered = false;
   private initialGraphLoaded = false;
@@ -2044,6 +2046,15 @@ class TopologyWebviewController {
 
     const baseYamlId = this.getBaseYamlIdForNode(node) || nodeId;
     const members = this.listBridgeMembersForYaml(baseYamlId);
+    // Log once per group to inform users that alias-aware endpoint allocation is active
+    if (members.length > 1 && !this.loggedBridgeAliasGroups.has(baseYamlId)) {
+      this.loggedBridgeAliasGroups.add(baseYamlId);
+      try {
+        log.info(`Bridge alias group detected for YAML node '${baseYamlId}': members [${members.join(', ')}]`);
+      } catch {
+        // no-op if logger throws unexpectedly in webview
+      }
+    }
     return members.length > 0 ? members : [nodeId];
   }
 
