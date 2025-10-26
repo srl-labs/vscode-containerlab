@@ -876,7 +876,7 @@ export class TopoViewerAdaptorClab {
 
       const position = this.toPosition(ann);
       const parent = this.toParent(ann);
-      const element = this.buildBridgeAliasElement(aliasId, refNode.kind, parent, position, yamlRefId);
+      const element = this.buildBridgeAliasElement(aliasId, (refNode.kind || NODE_KIND_BRIDGE) as string, parent, position, yamlRefId);
       elements.push(element);
     }
 

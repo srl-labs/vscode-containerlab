@@ -597,7 +597,7 @@ function isBridgeAliasNode(node: any): boolean {
   const role = node.data?.topoViewerRole;
   const kind = node.data?.extraData?.kind;
   const yaml = node.data?.extraData?.extYamlNodeId;
-  return role === 'bridge' && typeof yaml === 'string' && yaml.trim() && (kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE);
+  return role === 'bridge' && typeof yaml === 'string' && yaml.trim().length > 0 && (kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE);
 }
 
 function recordAlias(out: Map<string, AliasEndpointAnnotation>, yamlId: string, iface: string, aliasId: string): void {

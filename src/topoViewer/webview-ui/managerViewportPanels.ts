@@ -589,7 +589,7 @@ export class ManagerViewportPanels {
   /**
    * Configure the interface field based on the selected network type.
    */
-  private configureInterfaceField(networkType: string, nodeId: string, interfaceName: string): void {
+  private configureInterfaceField(networkType: string, interfaceName: string): void {
     if (networkType === ManagerViewportPanels.TYPE_DUMMY) return; // Dummy nodes don't have interfaces
 
     const interfaceInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_INTERFACE) as HTMLInputElement | null;
@@ -779,7 +779,7 @@ export class ManagerViewportPanels {
     if (idLabel) idLabel.textContent = nodeId;
 
     this.initializeNetworkTypeDropdown(networkType);
-    this.configureInterfaceField(networkType, nodeId, interfaceName);
+    this.configureInterfaceField(networkType, interfaceName);
     this.populateNetworkExtendedProperties(node);
     this.updateNetworkEditorFields(networkType);
     this.setNetworkLabelInput(nodeData, nodeId);
