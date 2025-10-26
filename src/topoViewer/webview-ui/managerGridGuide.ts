@@ -26,7 +26,7 @@ export class ManagerGridGuide {
 
   // Unified configuration
   private spacing = 14; // unified grid spacing (px)
-  private lineWidth = 0.35; // thinner grid lines for muted look
+  private lineWidth = 0.5; // default grid line width; adjustable via UI
   private color: string = LIGHT_GRID_RGBA; // updated by theme
 
   // Bound handlers for add/remove
@@ -55,19 +55,34 @@ export class ManagerGridGuide {
     if (spacing > 0) this.spacing = spacing;
     this.requestRedraw();
     // Keep plugin spacing consistent
-    const theme = (document.body?.classList.contains('vscode-dark') || document.body?.classList.contains('vscode-high-contrast')) ? 'dark' : 'light';
-    this.applyPluginOptions(theme as Theme, {});
+    this.applyPluginOptions(this.getCurrentTheme(), {});
+  }
+
+  // Allow runtime configuration of grid line width via UI controls
+  public setLineWidth(width: number): void {
+    const w = Number(width);
+    if (!Number.isFinite(w)) return;
+    // Clamp to a sensible range for visibility
+    const clamped = Math.max(0.1, Math.min(w, 2));
+    this.lineWidth = clamped;
+    this.requestRedraw();
+    this.applyPluginOptions(this.getCurrentTheme(), {});
   }
 
   public enableSnapping(enabled: boolean): void {
-    const theme = (document.body?.classList.contains('vscode-dark') || document.body?.classList.contains('vscode-high-contrast')) ? 'dark' : 'light';
-    this.applyPluginOptions(theme as Theme, {
+    this.applyPluginOptions(this.getCurrentTheme(), {
       snapToGridOnRelease: enabled,
       snapToAlignmentLocationOnRelease: enabled,
       snapToGridCenter: enabled,
       zoomDash: true,
       panGrid: true,
     });
+  }
+
+  private getCurrentTheme(): Theme {
+    const cls = document.body?.classList;
+    const isDark = !!(cls && (cls.contains('vscode-dark') || cls.contains('vscode-high-contrast')));
+    return isDark ? 'dark' as Theme : 'light' as Theme;
   }
 
   public requestRedraw(): void {

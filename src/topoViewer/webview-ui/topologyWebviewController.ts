@@ -544,6 +544,13 @@ class TopologyWebviewController {
         timestamp: new Date().toISOString()
       });
     };
+    // Grid controls: allow UI to adjust grid line width at runtime
+    (window as any).viewportDrawerGridLineWidthChange = (value: string | number) => {
+      const n = typeof value === 'number' ? value : parseFloat(String(value));
+      if (!Number.isNaN(n)) {
+        this.gridManager?.setLineWidth(n);
+      }
+    };
   }
 
   private registerMessageListener(): void {
