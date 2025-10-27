@@ -68,7 +68,7 @@ export class ManagerViewportPanels {
   private static readonly ID_NETWORK_SAVE_BUTTON = 'panel-network-editor-save-button' as const;
   private static readonly HTML_ICON_TRASH = '<i class="fas fa-trash"></i>' as const;
   private static readonly ATTR_DATA_FIELD = 'data-field' as const;
-  private static readonly ID_NETWORK_LABEL = 'panel-network-label' as const;
+  // Removed Network Label input; display name now derives from identifiers
 
   private static readonly PH_SEARCH_NETWORK_TYPE = 'Search for network type...' as const;
 
@@ -782,7 +782,7 @@ export class ManagerViewportPanels {
     this.configureInterfaceField(networkType, interfaceName);
     this.populateNetworkExtendedProperties(node);
     this.updateNetworkEditorFields(networkType);
-    this.setNetworkLabelInput(nodeData, nodeId);
+    // Network Label field removed; display name derives from identifiers
 
     const panel = document.getElementById('panel-network-editor');
     if (panel) panel.style.display = 'block';
@@ -812,12 +812,7 @@ export class ManagerViewportPanels {
     return parts[1] || 'eth1';
   }
 
-  private setNetworkLabelInput(nodeData: any, fallbackId: string): void {
-    const labelInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null;
-    if (!labelInput) return;
-    const currentName = (nodeData && typeof nodeData.name === 'string' && nodeData.name) || fallbackId;
-    labelInput.value = currentName;
-  }
+  // Network Label input removed; no setter needed
 
 
   /**
@@ -1245,7 +1240,6 @@ export class ManagerViewportPanels {
       currentData,
       inputs.networkType,
       inputs.interfaceName,
-      inputs.label,
       inputs.remote,
       inputs.vni,
       inputs.udpPort
@@ -1319,7 +1313,6 @@ export class ManagerViewportPanels {
     return {
       networkType,
       interfaceName,
-      label: (document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null)?.value,
       mac: (document.getElementById('panel-network-mac') as HTMLInputElement | null)?.value,
       mtu: (document.getElementById('panel-network-mtu') as HTMLInputElement | null)?.value,
       mode: (document.getElementById('panel-network-mode') as HTMLSelectElement | null)?.value,
@@ -1333,7 +1326,6 @@ export class ManagerViewportPanels {
     currentData: any,
     networkType: string,
     interfaceName: string,
-    label?: string,
     remote?: string,
     vni?: string,
     udpPort?: string
@@ -1343,10 +1335,10 @@ export class ManagerViewportPanels {
     const isBridgeType = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
     const isDummyType = networkType === ManagerViewportPanels.TYPE_DUMMY;
     let newId = '';
-    if (label && label.trim()) {
-      newId = label.trim();
-    } else if (isBridgeType) {
-      newId = interfaceName;
+    if (isBridgeType) {
+      // Preserve existing ID for bridge nodes to support alias visuals;
+      // Interface field maps to YAML id via extYamlNodeId and becomes display name.
+      newId = oldId;
     } else if (isDummyType) {
       newId = oldId.startsWith(ManagerViewportPanels.TYPE_DUMMY) ? oldId : this.generateUniqueDummyId();
     } else if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(networkType)) {
@@ -1355,8 +1347,8 @@ export class ManagerViewportPanels {
       newId = `${networkType}:${interfaceName}`;
     }
     let displayName: string;
-    if (label && label.trim()) {
-      displayName = label.trim();
+    if (isBridgeType) {
+      displayName = interfaceName || oldName || newId;
     } else if (isDummyType) {
       displayName = ManagerViewportPanels.TYPE_DUMMY;
     } else {
