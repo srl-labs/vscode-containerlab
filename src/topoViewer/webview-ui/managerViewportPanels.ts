@@ -68,7 +68,7 @@ export class ManagerViewportPanels {
   private static readonly ID_NETWORK_SAVE_BUTTON = 'panel-network-editor-save-button' as const;
   private static readonly HTML_ICON_TRASH = '<i class="fas fa-trash"></i>' as const;
   private static readonly ATTR_DATA_FIELD = 'data-field' as const;
-  // Removed Network Label input; display name now derives from identifiers
+  private static readonly ID_NETWORK_LABEL = 'panel-network-label' as const;
 
   private static readonly PH_SEARCH_NETWORK_TYPE = 'Search for network type...' as const;
 
@@ -524,6 +524,7 @@ export class ManagerViewportPanels {
     if (interfaceInput) interfaceInput.placeholder = cfg.placeholder;
 
     this.toggleExtendedSections(networkType);
+    this.toggleBridgeAliasLabelSection(networkType);
   }
 
   private getInterfaceFieldConfig(networkType: string): { label: string; placeholder: string; showInterface: boolean } {
@@ -556,6 +557,15 @@ export class ManagerViewportPanels {
       vxlanSection.style.display = ManagerViewportPanels.VX_TYPES.includes(networkType as any)
         ? ManagerViewportPanels.DISPLAY_BLOCK
         : ManagerViewportPanels.DISPLAY_NONE;
+  }
+
+  private toggleBridgeAliasLabelSection(networkType: string): void {
+    const labelInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null;
+    const labelGroup = labelInput?.closest('.form-group') as HTMLElement | null;
+    if (labelGroup) {
+      const show = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
+      labelGroup.style.display = show ? ManagerViewportPanels.DISPLAY_BLOCK : ManagerViewportPanels.DISPLAY_NONE;
+    }
   }
 
   /**
@@ -782,7 +792,7 @@ export class ManagerViewportPanels {
     this.configureInterfaceField(networkType, interfaceName);
     this.populateNetworkExtendedProperties(node);
     this.updateNetworkEditorFields(networkType);
-    // Network Label field removed; display name derives from identifiers
+    this.setBridgeAliasLabelInput(nodeData, networkType);
 
     const panel = document.getElementById('panel-network-editor');
     if (panel) panel.style.display = 'block';
@@ -811,8 +821,16 @@ export class ManagerViewportPanels {
     const parts = nodeId.split(':');
     return parts[1] || 'eth1';
   }
-
-  // Network Label input removed; no setter needed
+  private setBridgeAliasLabelInput(nodeData: any, networkType: string): void {
+    const input = document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null;
+    if (!input) return;
+    if (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) {
+      const currentName = (nodeData && typeof nodeData.name === 'string' && nodeData.name) || '';
+      input.value = currentName;
+    } else {
+      input.value = '';
+    }
+  }
 
 
   /**
@@ -1240,6 +1258,7 @@ export class ManagerViewportPanels {
       currentData,
       inputs.networkType,
       inputs.interfaceName,
+      inputs.label,
       inputs.remote,
       inputs.vni,
       inputs.udpPort
@@ -1313,6 +1332,7 @@ export class ManagerViewportPanels {
     return {
       networkType,
       interfaceName,
+      label: (document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null)?.value,
       mac: (document.getElementById('panel-network-mac') as HTMLInputElement | null)?.value,
       mtu: (document.getElementById('panel-network-mtu') as HTMLInputElement | null)?.value,
       mode: (document.getElementById('panel-network-mode') as HTMLSelectElement | null)?.value,
@@ -1326,6 +1346,7 @@ export class ManagerViewportPanels {
     currentData: any,
     networkType: string,
     interfaceName: string,
+    label?: string,
     remote?: string,
     vni?: string,
     udpPort?: string
@@ -1348,7 +1369,8 @@ export class ManagerViewportPanels {
     }
     let displayName: string;
     if (isBridgeType) {
-      displayName = interfaceName || oldName || newId;
+      const trimmedLabel = (label && label.trim()) || '';
+      displayName = trimmedLabel || interfaceName || oldName || newId;
     } else if (isDummyType) {
       displayName = ManagerViewportPanels.TYPE_DUMMY;
     } else {
