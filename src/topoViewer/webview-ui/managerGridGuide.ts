@@ -69,7 +69,7 @@ export class ManagerGridGuide {
     const w = Number(width);
     if (!Number.isFinite(w)) return;
     // Clamp to a sensible range for visibility
-    const clamped = Math.max(0.1, Math.min(w, 2));
+    const clamped = Math.max(0.00001, Math.min(w, 2));
     this.lineWidth = clamped;
     this.requestRedraw();
     this.applyPluginOptions(this.getCurrentTheme(), {});
