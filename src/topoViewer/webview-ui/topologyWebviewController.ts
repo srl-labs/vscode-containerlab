@@ -551,6 +551,12 @@ class TopologyWebviewController {
         this.gridManager?.setLineWidth(n);
       }
     };
+    (window as any).viewportDrawerGridLineWidthReset = () => {
+      const def = 0.5;
+      const el = document.getElementById('viewport-drawer-grid-line-width') as HTMLInputElement | null;
+      if (el) el.value = String(def);
+      this.gridManager?.setLineWidth(def);
+    };
   }
 
   private registerMessageListener(): void {
