@@ -73,6 +73,8 @@ export class TopoViewerAdaptorClab {
   public currentClabName: string | undefined;
   public currentClabPrefix: string | undefined;
   public allowedhostname: string | undefined;
+  // Tracks which base YAML bridge ids we already logged as having unmapped links
+  private loggedUnmappedBaseBridges: Set<string> = new Set();
 
 
   /**
@@ -1741,7 +1743,9 @@ export class TopoViewerAdaptorClab {
     // Rewire edges to alias nodes based on saved alias endpoint mappings
     this.applyAliasMappingsToEdges(opts.annotations, elements);
 
-    // Hide base YAML bridge nodes that have at least one alias defined
+    // Do not auto-fallback. Base nodes remain visible until all edges are mapped.
+
+    // Hide base YAML bridge nodes that have at least one alias defined (keep in graph via class)
     this.hideBaseBridgeNodesWithAliases(opts.annotations, elements);
 
     log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
@@ -1753,6 +1757,37 @@ export class TopoViewerAdaptorClab {
     if (aliasList.length === 0) return;
     const mapping = this.buildAliasMap(aliasList);
     this.rewireEdges(elements, mapping);
+  }
+
+  private collectAliasGroups(elements: CyElement[]): Map<string, string[]> {
+    const groups = new Map<string, string[]>();
+    for (const el of elements) {
+      if (el.group !== 'nodes') continue;
+      const data: any = (el as any).data || {};
+      const extra = (data.extraData || {}) as any;
+      const yamlRef = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
+      const kind = String(extra.kind || '');
+      // Only alias nodes (id != yamlRef) and of bridge kind
+      if (!yamlRef || yamlRef === data.id) continue;
+      if (!this.isBridgeKind(kind)) continue;
+      const list = groups.get(yamlRef) || [];
+      list.push(String(data.id));
+      groups.set(yamlRef, list);
+    }
+    return groups;
+  }
+
+  private collectStillReferencedBaseBridges(elements: CyElement[], aliasGroups: Map<string, string[]>): Set<string> {
+    const stillReferenced = new Set<string>();
+    for (const el of elements) {
+      if ((el as any).group !== 'edges') continue;
+      const d: any = (el as any).data || {};
+      const s = String(d.source || '');
+      const t = String(d.target || '');
+      if (aliasGroups.has(s)) stillReferenced.add(s);
+      if (aliasGroups.has(t)) stillReferenced.add(t);
+    }
+    return stillReferenced;
   }
 
   private normalizeAliasList(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
@@ -1780,21 +1815,43 @@ export class TopoViewerAdaptorClab {
   }
 
   private hideBaseBridgeNodesWithAliases(annotations: any | undefined, elements: CyElement[]): void {
-    const aliasList = this.normalizeAliasList(annotations);
-    if (aliasList.length === 0) return;
-    const yamlIds = new Set(aliasList.map(a => a.yamlNodeId));
-    if (yamlIds.size === 0) return;
-    // Filter out base nodes (group:'nodes') whose id equals an aliased YAML id and kind is bridge/ovs-bridge
-    for (let i = elements.length - 1; i >= 0; i--) {
-      const el = elements[i] as any;
-      if (el.group !== 'nodes') continue;
-      const data = el.data || {};
-      if (!yamlIds.has(data.id)) continue;
-      const kind = data?.extraData?.kind as string | undefined;
-      if (this.isBridgeKind(kind)) {
-        elements.splice(i, 1);
+    const aliasGroups = this.collectAliasGroups(elements);
+    if (aliasGroups.size === 0) return;
+    const stillReferenced = this.collectStillReferencedBaseBridges(elements, aliasGroups);
+
+    for (const el of elements) {
+      const n = el as any;
+      if (n.group !== 'nodes') continue;
+      const data = n.data || {};
+      const id = String(data.id || '');
+      if (!aliasGroups.has(id)) continue;
+      if (stillReferenced.has(id)) {
+        this.logUnmappedOnce(id);
+        continue;
       }
+      const kind = data?.extraData?.kind as string | undefined;
+      if (!this.isBridgeKind(kind)) continue;
+      this.addClass(n, TopoViewerAdaptorClab.CLASS_ALIASED_BASE_BRIDGE);
     }
+  }
+
+  private static readonly CLASS_ALIASED_BASE_BRIDGE = 'aliased-base-bridge' as const;
+
+  private addClass(nodeEl: any, className: string): void {
+    const existing = nodeEl.classes;
+    if (!existing) {
+      nodeEl.classes = className;
+    } else if (Array.isArray(existing)) {
+      if (!existing.includes(className)) nodeEl.classes = [...existing, className];
+    } else if (typeof existing === 'string' && !existing.includes(className)) {
+      nodeEl.classes = `${existing} ${className}`;
+    }
+  }
+
+  private logUnmappedOnce(yamlId: string): void {
+    if (this.loggedUnmappedBaseBridges.has(yamlId)) return;
+    log.info(`Base bridge '${yamlId}' has unmapped links; keeping node visible until mapped.`);
+    this.loggedUnmappedBaseBridges.add(yamlId);
   }
 
 
