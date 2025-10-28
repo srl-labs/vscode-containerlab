@@ -858,41 +858,88 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Adds visual alias nodes from annotations (e.g., multiple bridge icons referring to one YAML node).
-   * Alias entries are expected in annotations.nodeAnnotations with `yamlNodeId` set
-   * and a different `id` than the YAML node id.
+   *
+   * Source of truth (new): annotations.nodeAnnotations entries that include yamlNodeId and yamlInterface,
+   * where id (aliasNodeId) != yamlNodeId. Legacy fallback: annotations.aliasEndpointAnnotations.
+   * - aliasNodeId becomes the Cytoscape node id
+   * - yamlNodeId refers to the underlying YAML node (of kind bridge/ovs-bridge)
+   *
+   * Position/group and display label come from the nodeAnnotations entry for the alias id when available.
+   * If not available, we fall back to the base YAML node annotation (same group/position) or (0,0).
    */
   private addAliasNodesFromAnnotations(
     parsed: ClabTopology,
     annotations: any | undefined,
     elements: CyElement[]
   ): void {
-    const topo = parsed.topology;
-    const nodeMap = topo?.nodes || {};
-    const nodeAnns: any[] = Array.isArray(annotations?.nodeAnnotations) ? annotations!.nodeAnnotations : [];
-    for (const ann of nodeAnns) {
-      const aliasId = this.getAliasId(ann);
-      const yamlRefId = this.getYamlRefId(ann);
-      if (!aliasId || !yamlRefId || aliasId === yamlRefId) continue;
-      const refNode = nodeMap[yamlRefId];
-      if (!refNode || !this.isBridgeKind(refNode?.kind)) continue;
+    const nodeMap = parsed.topology?.nodes || {};
+    const nodeAnnById = this.buildNodeAnnotationIndex(annotations);
+    // Prefer nodeAnnotations-based alias definitions; fallback to legacy aliasEndpointAnnotations
+    const aliasList = this.listAliasEntriesFromNodeAnnotations(annotations);
+    if (aliasList.length === 0) return;
 
-      const position = this.toPosition(ann);
-      const parent = this.toParent(ann);
-      const element = this.buildBridgeAliasElement(aliasId, (refNode.kind || NODE_KIND_BRIDGE) as string, parent, position, yamlRefId);
+    const created = new Set<string>();
+    for (const a of aliasList) {
+      const aliasId = String(a.aliasNodeId);
+      const yamlRefId = String(a.yamlNodeId);
+      if (created.has(aliasId)) continue; // ensure 1 element per alias id
+      if (aliasId === yamlRefId) continue; // ignore non-alias entries
+      const element = this.createAliasElement(nodeMap, aliasId, yamlRefId, nodeAnnById);
+      if (!element) continue;
       elements.push(element);
+      created.add(aliasId);
     }
 
-    // Note: we intentionally do NOT remove the original YAML node (e.g., "br1")
-    // even if aliases exist, because edges in the YAML reference it. Removing it
-    // would orphan or drop links. The alias nodes are purely additional visuals.
+    // The base YAML node remains in the graph to keep YAML links intact.
   }
 
   private isBridgeKind(kind: string | undefined): boolean {
     return kind === NODE_KIND_BRIDGE || kind === NODE_KIND_OVS_BRIDGE;
   }
 
-  private getAliasId(ann: any): string | undefined { return typeof ann?.id === 'string' ? ann.id : undefined; }
-  private getYamlRefId(ann: any): string | undefined { return typeof ann?.yamlNodeId === 'string' ? ann.yamlNodeId : undefined; }
+  private buildNodeAnnotationIndex(annotations: any | undefined): Map<string, any> {
+    const m = new Map<string, any>();
+    const nodeAnns: any[] = Array.isArray(annotations?.nodeAnnotations) ? annotations!.nodeAnnotations : [];
+    for (const na of nodeAnns) {
+      if (na && typeof na.id === 'string') m.set(na.id, na);
+    }
+    return m;
+  }
+
+  private listAliasEndpointEntries(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
+    if (!annotations || !Array.isArray(annotations.aliasEndpointAnnotations)) return [];
+    return annotations.aliasEndpointAnnotations.filter((a: any) => a && a.yamlNodeId && a.interface && a.aliasNodeId);
+  }
+
+  private createAliasElement(
+    nodeMap: Record<string, any>,
+    aliasId: string,
+    yamlRefId: string,
+    nodeAnnById: Map<string, any>,
+  ): CyElement | null {
+    const refNode = nodeMap[yamlRefId];
+    if (!refNode || !this.isBridgeKind(refNode?.kind)) return null;
+    const aliasAnn = nodeAnnById.get(aliasId);
+    const baseAnn = nodeAnnById.get(yamlRefId);
+    const { position, parent } = this.deriveAliasPlacement(aliasAnn, baseAnn);
+    const aliasDisplayName = (aliasAnn && typeof aliasAnn.label === 'string' && aliasAnn.label.trim())
+      ? aliasAnn.label.trim()
+      : aliasId;
+    return this.buildBridgeAliasElement(
+      aliasId,
+      (refNode.kind || NODE_KIND_BRIDGE) as string,
+      parent,
+      position,
+      yamlRefId,
+      aliasDisplayName,
+    );
+  }
+
+  private deriveAliasPlacement(aliasAnn: any | undefined, baseAnn: any | undefined): { position: { x: number; y: number }; parent?: string } {
+    if (aliasAnn) return { position: this.toPosition(aliasAnn), parent: this.toParent(aliasAnn) };
+    if (baseAnn) return { position: this.toPosition(baseAnn), parent: this.toParent(baseAnn) };
+    return { position: { x: 0, y: 0 } };
+  }
 
   private toPosition(ann: any): { x: number; y: number } {
     if (ann?.position && typeof ann.position.x === 'number' && typeof ann.position.y === 'number') {
@@ -911,13 +958,14 @@ export class TopoViewerAdaptorClab {
     parent: string | undefined,
     position: { x: number; y: number },
     yamlRefId: string,
+    displayName: string,
   ): CyElement {
     return {
       group: 'nodes',
       data: {
         id: aliasId,
         weight: '30',
-        name: aliasId,
+        name: displayName,
         parent,
         topoViewerRole: 'bridge',
         lat: '',
@@ -933,7 +981,7 @@ export class TopoViewerAdaptorClab {
           type: kind,
           labdir: '',
           labels: {},
-          longname: aliasId,
+          longname: displayName,
           macAddress: '',
           mgmtIntf: '',
           mgmtIpv4AddressLength: 0,
@@ -941,8 +989,8 @@ export class TopoViewerAdaptorClab {
           mgmtIpv6Address: '',
           mgmtIpv6AddressLength: 0,
           mgmtNet: '',
-          name: aliasId,
-          shortname: aliasId,
+          name: displayName,
+          shortname: displayName,
           state: '',
           weight: '3',
           // Crucial mapping back to the YAML node id
@@ -1790,9 +1838,47 @@ export class TopoViewerAdaptorClab {
     return stillReferenced;
   }
 
-  private normalizeAliasList(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
+  private listAliasEntriesFromNodeAnnotations(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
+    const fromNew = this.collectAliasEntriesNew(annotations);
+    if (fromNew.length > 0) return fromNew;
+    return this.collectAliasEntriesLegacy(annotations);
+  }
+
+  private collectAliasEntriesNew(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
+    if (!annotations || !Array.isArray(annotations.nodeAnnotations)) return [];
+    const out: Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> = [];
+    for (const na of annotations.nodeAnnotations) {
+      if (!na) continue;
+      const aliasId = this.asTrimmedString(na.id);
+      const yamlId = this.asTrimmedString((na as any).yamlNodeId);
+      const iface = this.asTrimmedString((na as any).yamlInterface);
+      if (!aliasId || !yamlId || !iface) continue;
+      if (aliasId === yamlId) continue;
+      out.push({ yamlNodeId: yamlId, interface: iface, aliasNodeId: aliasId });
+    }
+    return out;
+  }
+
+  private collectAliasEntriesLegacy(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
     if (!annotations || !Array.isArray(annotations.aliasEndpointAnnotations)) return [];
-    return annotations.aliasEndpointAnnotations.filter((a: any) => a && a.yamlNodeId && a.interface && a.aliasNodeId);
+    const out: Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> = [];
+    for (const a of annotations.aliasEndpointAnnotations) {
+      if (!a) continue;
+      const yamlId = this.asTrimmedString((a as any).yamlNodeId);
+      const iface = this.asTrimmedString((a as any).interface);
+      const aliasId = this.asTrimmedString((a as any).aliasNodeId);
+      if (!aliasId || !yamlId || !iface) continue;
+      out.push({ yamlNodeId: yamlId, interface: iface, aliasNodeId: aliasId });
+    }
+    return out;
+  }
+
+  private asTrimmedString(val: any): string {
+    return typeof val === 'string' ? val.trim() : '';
+  }
+
+  private normalizeAliasList(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
+    return this.listAliasEntriesFromNodeAnnotations(annotations);
   }
 
   private buildAliasMap(list: Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }>): Map<string, string> {
@@ -1814,7 +1900,7 @@ export class TopoViewerAdaptorClab {
     }
   }
 
-  private hideBaseBridgeNodesWithAliases(annotations: any | undefined, elements: CyElement[]): void {
+  private hideBaseBridgeNodesWithAliases(_annotations: any | undefined, elements: CyElement[]): void {
     const aliasGroups = this.collectAliasGroups(elements);
     if (aliasGroups.size === 0) return;
     const stillReferenced = this.collectStillReferencedBaseBridges(elements, aliasGroups);

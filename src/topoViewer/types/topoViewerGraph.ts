@@ -173,6 +173,12 @@ export interface CloudNodeAnnotation {
 
 export interface NodeAnnotation {
   id: string;
+  // Display label for the node (used by alias visuals)
+  label?: string;
+  // If this is a visual alias node, yamlNodeId links back to the underlying YAML node id (e.g., 'bridge1').
+  yamlNodeId?: string;
+  // If this is a visual alias node, yamlInterface is the interface on the YAML node (e.g., 'eth1').
+  yamlInterface?: string;
   position?: {
     x: number;
     y: number;
@@ -182,10 +188,6 @@ export interface NodeAnnotation {
     lng: number;
   };
   icon?: string;
-  // If this annotation represents a visual alias of a YAML node,
-  // this field holds the target YAML node id (e.g., "br1").
-  // Used to recreate alias nodes like multiple bridge icons referring to one YAML node.
-  yamlNodeId?: string;
   groupLabelPos?: string;
   group?: string;
   level?: string;
