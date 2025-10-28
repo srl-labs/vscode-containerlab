@@ -217,6 +217,9 @@ export class CopyPasteManager {
       label: nodeLabel
     };
 
+    // Record provenance for copy/paste
+    this.addCopyFromProvenance(newData, el);
+
     if (el.data.topoViewerRole === 'group' && newData.extraData) {
       const [group, level] = newId.split(':');
       newData.extraData.topoViewerGroup = group;
@@ -238,6 +241,16 @@ export class CopyPasteManager {
    */
   private getUniqueId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
     return getUniqueId(baseName, usedIds, isGroup);
+  }
+
+  /**
+   * Adds copy/paste provenance to the new node's extraData.
+   * Stores the source Cytoscape node id at copy time as copyFrom.
+   */
+  private addCopyFromProvenance(newData: any, sourceEl: any): void {
+    const sourceId = String(sourceEl?.data?.id || '');
+    if (!sourceId) return;
+    newData.extraData = { ...(newData.extraData || {}), copyFrom: sourceId };
   }
 
 

@@ -218,7 +218,7 @@ async function saveAnnotationsFromPayload(payloadParsed: any[], yamlFilePath: st
   const regularNodes = payloadParsed
     .filter(isRegularNode)
     .filter(n => shouldIncludeNodeAnnotation(n, aliasBaseSet))
-    .map(node => createNodeAnnotation(node, prevNodeById, aliasIfaceByAlias));
+    .map(node => createNodeAnnotation(node, prevNodeById, aliasIfaceByAlias, nodeById));
   const cloudNodes = payloadParsed
     .filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud')
     .map(createCloudNodeAnnotation);
@@ -283,12 +283,18 @@ function createNodeAnnotation(
   node: any,
   prevNodeById: Map<string, NodeAnnotation>,
   aliasIfaceByAlias: Map<string, Set<string>>,
+  nodeById: Map<string, any>,
 ): NodeAnnotation {
   const rawId = String(node?.data?.id || '');
   let annId = rawId;
   const nodeAnnotation: NodeAnnotation = { id: annId, icon: node.data.topoViewerRole };
   if (isBridgeAliasNode(node)) {
     annId = decorateAliasAnnotation(nodeAnnotation, node, aliasIfaceByAlias) || annId;
+  }
+  // Persist copyFrom provenance if present on the node's extraData
+  const rawCopyFrom = String(node?.data?.extraData?.copyFrom || '').trim();
+  if (rawCopyFrom) {
+    (nodeAnnotation as any).copyFrom = computeStableAnnotationId(rawCopyFrom, nodeById, aliasIfaceByAlias);
   }
   setNodePosition(nodeAnnotation, node, prevNodeById.get(annId));
   addGeo(nodeAnnotation, node);
@@ -339,6 +345,19 @@ function firstInterface(set: Set<string> | undefined): string | '' {
   const arr = Array.from(set);
   arr.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   return arr[0];
+}
+
+function computeStableAnnotationId(
+  nodeId: string,
+  nodeById: Map<string, any>,
+  aliasIfaceByAlias: Map<string, Set<string>>,
+): string {
+  const n = nodeById.get(nodeId);
+  if (!n) return nodeId;
+  if (!isBridgeAliasNode(n)) return nodeId;
+  const yamlRef = String(n?.data?.extraData?.extYamlNodeId || '').trim();
+  const iface = firstInterface(aliasIfaceByAlias.get(nodeId));
+  return yamlRef && iface ? `${yamlRef}:${iface}` : nodeId;
 }
 
 function createCloudNodeAnnotation(cloudNode: any): CloudNodeAnnotation {

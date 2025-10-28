@@ -175,6 +175,9 @@ export interface NodeAnnotation {
   id: string;
   // Display label for the node (used by alias visuals)
   label?: string;
+  // Provenance for copy/paste: the source node/annotation id this node was copied from (one-hop)
+  // Does not affect wiring or edge rewrites
+  copyFrom?: string;
   // If this is a visual alias node, yamlNodeId links back to the underlying YAML node id (e.g., 'bridge1').
   yamlNodeId?: string;
   // If this is a visual alias node, yamlInterface is the interface on the YAML node (e.g., 'eth1').
