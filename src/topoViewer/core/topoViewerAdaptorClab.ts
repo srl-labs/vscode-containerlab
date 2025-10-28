@@ -859,8 +859,8 @@ export class TopoViewerAdaptorClab {
   /**
    * Adds visual alias nodes from annotations (e.g., multiple bridge icons referring to one YAML node).
    *
-   * Source of truth (new): annotations.nodeAnnotations entries that include yamlNodeId and yamlInterface,
-   * where id (aliasNodeId) != yamlNodeId. Legacy fallback: annotations.aliasEndpointAnnotations.
+   * Source of truth: annotations.nodeAnnotations entries that include yamlNodeId and yamlInterface,
+   * where id (aliasNodeId) != yamlNodeId.
    * - aliasNodeId becomes the Cytoscape node id
    * - yamlNodeId refers to the underlying YAML node (of kind bridge/ovs-bridge)
    *
@@ -874,7 +874,6 @@ export class TopoViewerAdaptorClab {
   ): void {
     const nodeMap = parsed.topology?.nodes || {};
     const nodeAnnById = this.buildNodeAnnotationIndex(annotations);
-    // Prefer nodeAnnotations-based alias definitions; fallback to legacy aliasEndpointAnnotations
     const aliasList = this.listAliasEntriesFromNodeAnnotations(annotations);
     if (aliasList.length === 0) return;
 
@@ -906,10 +905,7 @@ export class TopoViewerAdaptorClab {
     return m;
   }
 
-  private listAliasEndpointEntries(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
-    if (!annotations || !Array.isArray(annotations.aliasEndpointAnnotations)) return [];
-    return annotations.aliasEndpointAnnotations.filter((a: any) => a && a.yamlNodeId && a.interface && a.aliasNodeId);
-  }
+  // Removed legacy aliasEndpointAnnotations support; alias entries are read from nodeAnnotations
 
   private createAliasElement(
     nodeMap: Record<string, any>,
@@ -1839,9 +1835,7 @@ export class TopoViewerAdaptorClab {
   }
 
   private listAliasEntriesFromNodeAnnotations(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
-    const fromNew = this.collectAliasEntriesNew(annotations);
-    if (fromNew.length > 0) return fromNew;
-    return this.collectAliasEntriesLegacy(annotations);
+    return this.collectAliasEntriesNew(annotations);
   }
 
   private collectAliasEntriesNew(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
@@ -1859,19 +1853,7 @@ export class TopoViewerAdaptorClab {
     return out;
   }
 
-  private collectAliasEntriesLegacy(annotations: any | undefined): Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> {
-    if (!annotations || !Array.isArray(annotations.aliasEndpointAnnotations)) return [];
-    const out: Array<{ yamlNodeId: string; interface: string; aliasNodeId: string }> = [];
-    for (const a of annotations.aliasEndpointAnnotations) {
-      if (!a) continue;
-      const yamlId = this.asTrimmedString((a as any).yamlNodeId);
-      const iface = this.asTrimmedString((a as any).interface);
-      const aliasId = this.asTrimmedString((a as any).aliasNodeId);
-      if (!aliasId || !yamlId || !iface) continue;
-      out.push({ yamlNodeId: yamlId, interface: iface, aliasNodeId: aliasId });
-    }
-    return out;
-  }
+  // Legacy aliasEndpointAnnotations support removed
 
   private asTrimmedString(val: any): string {
     return typeof val === 'string' ? val.trim() : '';
