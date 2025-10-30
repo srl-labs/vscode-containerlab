@@ -1659,7 +1659,7 @@ export class ManagerViewportPanels {
    */
   private panelNodeEditorGetTypeEnumsByKindPattern(jsonData: any, pattern: string): string[] {
     const kind = this.extractKindFromPattern(pattern);
-    if (!this.isNokiaKind(kind)) return [];
+    if (!this.hasTypeChild(kind)) return [];
     const nodeConfig = jsonData?.definitions?.['node-config'];
     if (!nodeConfig?.allOf) return [];
 
@@ -1680,8 +1680,8 @@ export class ManagerViewportPanels {
     return pattern.slice(start + 1, end);
   }
 
-  private isNokiaKind(kind: string): boolean {
-    return ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'].includes(kind);
+  private hasTypeChild(kind: string): boolean {
+    return ['nokia_srlinux', 'nokia_srsim', 'nokia_sros', 'cisco_iol'].includes(kind);
   }
 
   private matchesKindPattern(condition: any, pattern: string): boolean {
