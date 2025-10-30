@@ -394,7 +394,7 @@ function applyBasicProps(
   updateScalarProp(doc, nodeMap, 'kind', desiredKind, baseInherit.kind);
   updateScalarProp(doc, nodeMap, 'image', desiredImage, inherit.image);
 
-  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros', 'cisco_iol'];
   const currentType = nodeMap.get('type', true) as any;
   if (nokiaKinds.includes(desiredKind)) {
     if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
