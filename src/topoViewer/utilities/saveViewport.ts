@@ -394,18 +394,24 @@ function applyBasicProps(
   updateScalarProp(doc, nodeMap, 'kind', desiredKind, baseInherit.kind);
   updateScalarProp(doc, nodeMap, 'image', desiredImage, inherit.image);
 
-  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros', 'cisco_iol'];
-  const currentType = nodeMap.get('type', true) as any;
-  if (nokiaKinds.includes(desiredKind)) {
-    if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
-      if (!currentType || currentType.value !== desiredType) {
-        nodeMap.set('type', doc.createNode(desiredType));
-      }
-    } else if (currentType) {
+  const currentTypeNode = nodeMap.get('type', true) as any;
+  let currentTypeValue: string | undefined;
+  if (currentTypeNode && typeof currentTypeNode === 'object' && 'value' in currentTypeNode) {
+    currentTypeValue = currentTypeNode.value;
+  } else if (typeof currentTypeNode === 'string') {
+    currentTypeValue = currentTypeNode;
+  }
+  const desiredTypeValue =
+    typeof desiredType === 'string' && desiredType.trim().length > 0 ? desiredType.trim() : undefined;
+  const effectiveType = desiredTypeValue ?? currentTypeValue;
+  const inheritedType = inherit?.type;
+
+  if (!effectiveType || (inheritedType !== undefined && effectiveType === inheritedType)) {
+    if (currentTypeNode !== undefined) {
       nodeMap.delete('type');
     }
-  } else if (currentType) {
-    nodeMap.delete('type');
+  } else if (!currentTypeNode || currentTypeValue !== effectiveType) {
+    nodeMap.set('type', doc.createNode(effectiveType));
   }
 }
 

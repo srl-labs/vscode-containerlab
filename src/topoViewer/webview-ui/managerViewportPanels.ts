@@ -1658,8 +1658,6 @@ export class ManagerViewportPanels {
    * @returns An array of type enum strings.
    */
   private panelNodeEditorGetTypeEnumsByKindPattern(jsonData: any, pattern: string): string[] {
-    const kind = this.extractKindFromPattern(pattern);
-    if (!this.hasTypeChild(kind)) return [];
     const nodeConfig = jsonData?.definitions?.['node-config'];
     if (!nodeConfig?.allOf) return [];
 
@@ -1670,18 +1668,6 @@ export class ManagerViewportPanels {
       if (enums.length) return enums;
     }
     return [];
-  }
-
-  private extractKindFromPattern(pattern: string): string {
-    const start = pattern.indexOf('(');
-    if (start < 0) return '';
-    const end = pattern.indexOf(')', start + 1);
-    if (end <= start) return '';
-    return pattern.slice(start + 1, end);
-  }
-
-  private hasTypeChild(kind: string): boolean {
-    return ['nokia_srlinux', 'nokia_srsim', 'nokia_sros', 'cisco_iol'].includes(kind);
   }
 
   private matchesKindPattern(condition: any, pattern: string): boolean {

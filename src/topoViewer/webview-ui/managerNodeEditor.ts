@@ -375,6 +375,7 @@ export class ManagerNodeEditor {
   private imageVersionMap: Map<string, string[]> = new Map();
   private messageSender: VscodeMessageSender;
   private nodeTypeOptions: Map<string, string[]> = new Map();
+  private schemaSupportsType = false;
   // can add other kind which use components later...
   private componentKinds: Set<string> = new Set(['nokia_srsim']);
   private componentEntryCounter: number = 0;
@@ -1593,13 +1594,16 @@ export class ManagerNodeEditor {
   }
 
   private toggleTypeInputForKind(
-    selectedKind: string,
+    _selectedKind: string,
     typeFormGroup: HTMLElement,
     typeDropdownContainer: HTMLElement | null,
     typeInput: HTMLInputElement | null,
   ) {
-    const isNokiaKind = ['nokia_srlinux', 'nokia_sros', 'nokia_srsim'].includes(selectedKind);
-    if (isNokiaKind) {
+    const existingValue = (typeInput?.value ?? '').trim();
+    const shouldShowFreeformType =
+      this.schemaSupportsType || existingValue.length > 0 || this.currentNodeHasTypeValue();
+
+    if (shouldShowFreeformType) {
       typeFormGroup.style.display = 'block';
       if (typeDropdownContainer && typeInput) {
         typeDropdownContainer.style.display = 'none';
@@ -1610,8 +1614,14 @@ export class ManagerNodeEditor {
       }
       return;
     }
+
     typeFormGroup.style.display = 'none';
     if (typeInput) typeInput.value = '';
+  }
+
+  private currentNodeHasTypeValue(): boolean {
+    const currentType = this.currentNode?.data()?.extraData?.type;
+    return typeof currentType === 'string' && currentType.trim().length > 0;
   }
 
   private onTypeFieldChanged(): void {
@@ -2001,6 +2011,7 @@ export class ManagerNodeEditor {
    * Extract type options from schema for each kind
    */
   private extractTypeOptionsFromSchema(schema: any): void {
+    this.schemaSupportsType = Boolean(schema?.definitions?.['node-config']?.properties?.type);
     this.nodeTypeOptions.clear();
     const allOf = schema?.definitions?.['node-config']?.allOf;
     if (!allOf) return;
@@ -2013,6 +2024,24 @@ export class ManagerNodeEditor {
       if (typeOptions.length === 0) continue;
       this.nodeTypeOptions.set(kind, typeOptions);
       log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
+    }
+    this.refreshTypeFieldVisibility();
+  }
+
+  private refreshTypeFieldVisibility(): void {
+    const typeFormGroup = document.getElementById(ID_NODE_TYPE)?.closest(SELECTOR_FORM_GROUP) as HTMLElement | null;
+    if (!typeFormGroup) return;
+    const typeDropdownContainer = document.getElementById(ID_NODE_TYPE_DROPDOWN);
+    const typeInput = document.getElementById(ID_NODE_TYPE) as HTMLInputElement | null;
+    if (!typeDropdownContainer || !typeInput) return;
+    const currentKind = this.getCurrentKindValue();
+    if (!currentKind) return;
+
+    const typeOptions = this.getTypeOptionsForKind(currentKind);
+    if (typeOptions.length > 0) {
+      this.showTypeDropdown(typeFormGroup, typeDropdownContainer, typeInput, typeOptions, currentKind);
+    } else {
+      this.toggleTypeInputForKind(currentKind, typeFormGroup, typeDropdownContainer, typeInput);
     }
   }
 
