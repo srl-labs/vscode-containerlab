@@ -75,6 +75,7 @@ const ID_NODE_KIND_FILTER_INPUT = 'node-kind-dropdown-container-filter-input' as
 const ID_NODE_TYPE = 'node-type' as const;
 const ID_NODE_TYPE_DROPDOWN = 'panel-node-type-dropdown-container' as const;
 const ID_NODE_TYPE_FILTER_INPUT = 'panel-node-type-dropdown-container-filter-input' as const;
+const ID_NODE_TYPE_WARNING = 'node-type-warning' as const;
 const ID_NODE_VERSION_DROPDOWN = 'node-version-dropdown-container' as const;
 const ID_NODE_VERSION_FILTER_INPUT = 'node-version-dropdown-container-filter-input' as const;
 const ID_NODE_RP_DROPDOWN = 'node-restart-policy-dropdown-container' as const;
@@ -115,6 +116,7 @@ const PH_SEARCH_IMAGE = 'Search for image...' as const;
 const PH_SELECT_VERSION = 'Select version...' as const;
 const PH_IMAGE_EXAMPLE = 'e.g., ghcr.io/nokia/srlinux' as const;
 const PH_VERSION_EXAMPLE = 'e.g., latest' as const;
+const TYPE_UNSUPPORTED_WARNING_TEXT = 'Type is set in YAML, but the schema for this kind does not support it.' as const;
 // Healthcheck IDs and prop
 const ID_HC_TEST = 'node-healthcheck-test' as const;
 const ID_HC_START = 'node-healthcheck-start-period' as const;
@@ -375,7 +377,8 @@ export class ManagerNodeEditor {
   private imageVersionMap: Map<string, string[]> = new Map();
   private messageSender: VscodeMessageSender;
   private nodeTypeOptions: Map<string, string[]> = new Map();
-  private schemaSupportsType = false;
+  private typeSchemaLoaded = false;
+  private kindsWithTypeSupport: Set<string> = new Set();
   // can add other kind which use components later...
   private componentKinds: Set<string> = new Set(['nokia_srsim']);
   private componentEntryCounter: number = 0;
@@ -1574,6 +1577,7 @@ export class ManagerNodeEditor {
     const typeOptionsWithEmpty = ['', ...typeOptions];
     const currentType = typeInput.value || '';
     const typeToSelect = typeOptionsWithEmpty.includes(currentType) ? currentType : '';
+    this.setTypeWarningVisibility(false);
 
     createFilterableDropdown(
       ID_NODE_TYPE_DROPDOWN,
@@ -1594,14 +1598,14 @@ export class ManagerNodeEditor {
   }
 
   private toggleTypeInputForKind(
-    _selectedKind: string,
+    selectedKind: string,
     typeFormGroup: HTMLElement,
     typeDropdownContainer: HTMLElement | null,
     typeInput: HTMLInputElement | null,
   ) {
-    const existingValue = (typeInput?.value ?? '').trim();
-    const shouldShowFreeformType =
-      this.schemaSupportsType || existingValue.length > 0 || this.currentNodeHasTypeValue();
+    const hasTypeSupport = this.kindSupportsType(selectedKind);
+    const hasTypeValue = this.hasTypeFieldValue();
+    const shouldShowFreeformType = hasTypeSupport || hasTypeValue;
 
     if (shouldShowFreeformType) {
       typeFormGroup.style.display = 'block';
@@ -1612,16 +1616,15 @@ export class ManagerNodeEditor {
       if (typeInput) {
         typeInput.oninput = () => this.onTypeFieldChanged();
       }
+      this.setTypeWarningVisibility(hasTypeValue && !hasTypeSupport);
       return;
     }
 
     typeFormGroup.style.display = 'none';
-    if (typeInput) typeInput.value = '';
-  }
-
-  private currentNodeHasTypeValue(): boolean {
-    const currentType = this.currentNode?.data()?.extraData?.type;
-    return typeof currentType === 'string' && currentType.trim().length > 0;
+    this.setTypeWarningVisibility(false);
+    if (typeInput) typeInput.style.display = 'none';
+    if (typeDropdownContainer) typeDropdownContainer.style.display = 'none';
+    if (typeInput && !hasTypeValue) typeInput.value = '';
   }
 
   private onTypeFieldChanged(): void {
@@ -1649,6 +1652,15 @@ export class ManagerNodeEditor {
     } else {
       el.classList.add(CLASS_HIDDEN);
       el.setAttribute(ATTR_ARIA_HIDDEN, 'true');
+    }
+  }
+
+  private setTypeWarningVisibility(visible: boolean): void {
+    const warning = document.getElementById(ID_NODE_TYPE_WARNING);
+    if (!warning) return;
+    warning.style.display = visible ? 'block' : 'none';
+    if (visible) {
+      warning.textContent = TYPE_UNSUPPORTED_WARNING_TEXT;
     }
   }
 
@@ -2011,20 +2023,29 @@ export class ManagerNodeEditor {
    * Extract type options from schema for each kind
    */
   private extractTypeOptionsFromSchema(schema: any): void {
-    this.schemaSupportsType = Boolean(schema?.definitions?.['node-config']?.properties?.type);
+    this.typeSchemaLoaded = false;
     this.nodeTypeOptions.clear();
+    this.kindsWithTypeSupport.clear();
     const allOf = schema?.definitions?.['node-config']?.allOf;
-    if (!allOf) return;
+    if (!allOf) {
+      this.typeSchemaLoaded = true;
+      this.refreshTypeFieldVisibility();
+      return;
+    }
 
     for (const condition of allOf) {
       const kind = this.getKindFromCondition(condition);
       if (!kind) continue;
       const typeProp = condition?.then?.properties?.type;
+      if (!typeProp) continue;
+      this.kindsWithTypeSupport.add(kind);
       const typeOptions = this.extractTypeOptions(typeProp);
-      if (typeOptions.length === 0) continue;
-      this.nodeTypeOptions.set(kind, typeOptions);
-      log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
+      if (typeOptions.length > 0) {
+        this.nodeTypeOptions.set(kind, typeOptions);
+        log.debug(`Extracted ${typeOptions.length} type options for kind ${kind}`);
+      }
     }
+    this.typeSchemaLoaded = true;
     this.refreshTypeFieldVisibility();
   }
 
@@ -2060,6 +2081,10 @@ export class ManagerNodeEditor {
       return typeProp.anyOf.flatMap((sub: any) => (sub.enum ? sub.enum : []));
     }
     return [];
+  }
+
+  private kindSupportsType(kind: string): boolean {
+    return this.typeSchemaLoaded && this.kindsWithTypeSupport.has(kind);
   }
 
   /**
@@ -2948,6 +2973,19 @@ export class ManagerNodeEditor {
     return this.getInputValue(ID_NODE_TYPE);
   }
 
+  private hasTypeFieldValue(): boolean {
+    return this.getTypeFieldValue().trim().length > 0;
+  }
+
+  private getExistingNodeTypeValue(): string | undefined {
+    const currentType = this.currentNode?.data('extraData')?.type;
+    if (typeof currentType === 'string') {
+      const trimmed = currentType.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+    return undefined;
+  }
+
   /**
    * Mark a form field as inherited or remove the indication
    */
@@ -3435,8 +3473,8 @@ export class ManagerNodeEditor {
     const nodeProps: NodeProperties = {
       name: this.getInputValue(ID_NODE_NAME),
       kind: (document.getElementById(ID_NODE_KIND_FILTER_INPUT) as HTMLInputElement | null)?.value || undefined,
-      type: this.getTypeFieldValue() || undefined,
     };
+    this.applyTypeFieldValue(nodeProps);
 
     const interfacePatternValue = this.getInputValue(ID_NODE_INTERFACE_PATTERN).trim();
     if (interfacePatternValue) {
@@ -3453,6 +3491,19 @@ export class ManagerNodeEditor {
     this.collectComponentsProps(nodeProps);
 
     return nodeProps;
+  }
+
+  private applyTypeFieldValue(nodeProps: NodeProperties): void {
+    const rawTypeValue = this.getTypeFieldValue();
+    const trimmedTypeValue = rawTypeValue.trim();
+    if (trimmedTypeValue.length > 0) {
+      nodeProps.type = trimmedTypeValue;
+      return;
+    }
+    const existingType = this.getExistingNodeTypeValue();
+    if (existingType) {
+      nodeProps.type = '';
+    }
   }
 
   private collectComponentsProps(nodeProps: NodeProperties): void {
