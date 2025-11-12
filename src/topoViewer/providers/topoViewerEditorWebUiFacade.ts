@@ -710,6 +710,15 @@ topology:
     }
   }
 
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
@@ -947,7 +956,6 @@ topology:
     this.currentLabName = labName;
     this.isViewMode = viewMode;
 
-    this.deploymentState = await this.checkDeploymentState(labName);
     fileUri = this.normalizeFileUri(fileUri);
 
     const column = vscode.window.activeTextEditor?.viewColumn;
@@ -955,9 +963,20 @@ topology:
 
     const panel = this.initPanel(labName, column);
     this.currentPanel = panel;
+    this.setInitialLoadingContent(panel, labName);
+
+    const topoFilePathForState = fileUri?.fsPath || this.lastYamlFilePath;
+    const deploymentStateTask = (async () => {
+      try {
+        this.deploymentState = await this.checkDeploymentState(labName, topoFilePathForState);
+      } catch (err) {
+        log.warn(`Failed to check deployment state: ${err}`);
+        this.deploymentState = 'unknown';
+      }
+    })();
 
     try {
-      await this.initializePanelData(fileUri, labName);
+      await Promise.all([this.initializePanelData(fileUri, labName), deploymentStateTask]);
     } catch {
       return;
     }
@@ -1006,12 +1025,86 @@ topology:
     return panel;
   }
 
+  private setInitialLoadingContent(panel: vscode.WebviewPanel, labName: string): void {
+    panel.webview.html = this.buildInitialLoadingHtml(labName);
+  }
+
+  private buildInitialLoadingHtml(labName: string): string {
+    const safeLabName = this.escapeHtml(labName || 'Topology');
+    return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${safeLabName} – Loading TopoViewer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--vscode-editor-background, #1e1e1e);
+        color: var(--vscode-editor-foreground, #cccccc);
+        font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+      }
+      .container {
+        text-align: center;
+        max-width: 420px;
+        padding: 2rem;
+      }
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(128, 128, 128, 0.25);
+        border-top-color: var(--vscode-progressBar-background, #007acc);
+        border-radius: 50%;
+        margin: 0 auto 1.5rem;
+        animation: spin 0.8s linear infinite;
+      }
+      h1 {
+        font-size: 1.2rem;
+        margin: 0 0 0.75rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: var(--vscode-descriptionForeground, inherit);
+      }
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="spinner" role="presentation" aria-hidden="true"></div>
+      <h1>Loading TopoViewer…</h1>
+      <p>Preparing topology data for <strong>${safeLabName}</strong>. This may take a moment on busy systems.</p>
+    </div>
+  </body>
+</html>`;
+  }
+
   private async initializePanelData(fileUri: vscode.Uri, labName: string): Promise<void> {
     try {
-      await this.loadInitialYaml(fileUri, labName);
+      const tasks: Promise<unknown>[] = [this.loadInitialYaml(fileUri, labName)];
       if (this.isViewMode) {
-        await this.loadRunningLabData();
+        tasks.push(this.loadRunningLabData());
       }
+      await Promise.all(tasks);
     } catch (e) {
       this.handleInitialLoadError(e);
       throw e;
@@ -1558,7 +1651,10 @@ topology:
       } else if (data.mode === 'edit') {
         this.isViewMode = false;
       }
-      this.deploymentState = await this.checkDeploymentState(this.currentLabName);
+      this.deploymentState = await this.checkDeploymentState(
+        this.currentLabName,
+        this.lastYamlFilePath
+      );
       this.logDebug(`handleSwitchModeEndpoint: deployment state ${this.deploymentState}`);
       const dataRefreshSuccess = await this.updatePanelHtmlCore(
         this.currentPanel,
@@ -2166,12 +2262,15 @@ topology:
   /**
    * Check if a lab is deployed by querying containerlab
    */
-  public async checkDeploymentState(labName: string): Promise<'deployed' | 'undeployed' | 'unknown'> {
+  public async checkDeploymentState(
+    labName: string,
+    topoFilePath: string | undefined = this.lastYamlFilePath
+  ): Promise<'deployed' | 'undeployed' | 'unknown'> {
     try {
       await inspector.update();
       if (!inspector.rawInspectData) return 'unknown';
       if (this.labExistsByName(labName)) return 'deployed';
-      if (this.lastYamlFilePath && this.updateLabNameFromTopoFileMatch()) return 'deployed';
+      if (topoFilePath && this.updateLabNameFromTopoFileMatch(topoFilePath)) return 'deployed';
       return 'undeployed';
     } catch (err) {
       log.warn(`Failed to check deployment state: ${err}`);
@@ -2183,8 +2282,8 @@ topology:
     return labName in (inspector.rawInspectData as any);
   }
 
-  private updateLabNameFromTopoFileMatch(): boolean {
-    const normalizedYamlPath = this.lastYamlFilePath!.replace(/\\/g, '/');
+  private updateLabNameFromTopoFileMatch(topoFilePath: string): boolean {
+    const normalizedYamlPath = topoFilePath.replace(/\\/g, '/');
     for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData as any)) {
       const topo = (labData as any)['topo-file'];
       if (!topo) continue;
