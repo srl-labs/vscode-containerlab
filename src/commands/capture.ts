@@ -10,7 +10,10 @@ let sessionHostname: string = "";
 /**
  * Begin packet capture on an interface.
  */
-export async function captureInterface(node: ClabInterfaceTreeNode) {
+export async function captureInterface(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]
+) {
   if (!node) {
     return vscode.window.showErrorMessage("No interface to capture found.");
   }
@@ -22,17 +25,40 @@ export async function captureInterface(node: ClabInterfaceTreeNode) {
   const preferredCaptureMethod = vscode.workspace.getConfiguration("containerlab").get<string>("capture.preferredAction");
   switch (preferredCaptureMethod) {
     case "Edgeshark":
-      return captureInterfaceWithPacketflix(node);
+      return captureInterfaceWithPacketflix(node, allSelectedNodes);
     case "Wireshark VNC":
-      return captureEdgesharkVNC(node);
+      return captureEdgesharkVNC(node, allSelectedNodes);
   }
 
   // Default to VNC capture
-  return captureEdgesharkVNC(node);
+  return captureEdgesharkVNC(node, allSelectedNodes);
 }
 
 
 // Build the packetflix:ws: URI
+async function handleMultiSelection(
+  selected: ClabInterfaceTreeNode[],
+  forVNC?: boolean
+): Promise<[string, string] | undefined> {
+  // Check if they are from the same container
+  const uniqueContainers = new Set(selected.map(i => i.parentName));
+  if (uniqueContainers.size > 1) {
+    // from different containers => spawn multiple capture sessions individually
+    outputChannel.debug("Edgeshark multi selection => multiple containers => launching individually");
+    for (const nd of selected) {
+      if (forVNC) {
+        await captureEdgesharkVNC(nd); // re-call for single in VNC mode
+      } else {
+        await captureInterfaceWithPacketflix(nd); // re-call for single in external mode
+      }
+    }
+    return undefined;
+  }
+
+  // All from same container => build multi-interface edgeshark link
+  return await captureMultipleEdgeshark(selected);
+}
+
 async function genPacketflixURI(node: ClabInterfaceTreeNode,
   allSelectedNodes?: ClabInterfaceTreeNode[],  // [CHANGED]
   forVNC?: boolean
@@ -55,19 +81,7 @@ async function genPacketflixURI(node: ClabInterfaceTreeNode,
 
   // If multiple selected
   if (selected.length > 1) {
-    // Check if they are from the same container
-    const uniqueContainers = new Set(selected.map(i => i.parentName));
-    if (uniqueContainers.size > 1) {
-      // from different containers => spawn multiple edgeshark sessions
-      outputChannel.debug("Edgeshark multi selection => multiple containers => launching individually");
-      for (const nd of selected) {
-        await captureInterfaceWithPacketflix(nd); // re-call for single
-      }
-      return;
-    }
-
-    // All from same container => build multi-interface edgeshark link
-    return await captureMultipleEdgeshark(selected);
+    return await handleMultiSelection(selected, forVNC);
   }
 
   // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
@@ -141,7 +155,7 @@ async function ensureEdgesharkAvailable(): Promise<boolean> {
 }
 
 // Capture multiple interfaces with Edgeshark
-async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]) {
+async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]): Promise<[string, string]> {
   const base = nodes[0];
   const ifNames = nodes.map(n => n.name);
   outputChannel.debug(`multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
