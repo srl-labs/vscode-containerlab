@@ -292,7 +292,7 @@ export class ManagerAddContainerlabNode {
 
     return {
       nodeId,
-      nodeName: nodeId,
+      nodeName: 'dummy',
       topoViewerRole: 'cloud',
       extraData
     };
