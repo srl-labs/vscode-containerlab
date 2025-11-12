@@ -85,6 +85,8 @@ export class TopoViewerEditor {
     'open-external': this.handleOpenExternalEndpoint.bind(this),
     'topo-editor-load-annotations': this.handleLoadAnnotationsEndpoint.bind(this),
     'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
+    'topo-editor-load-viewer-settings': this.handleLoadViewerSettingsEndpoint.bind(this),
+    'topo-editor-save-viewer-settings': this.handleSaveViewerSettingsEndpoint.bind(this),
     'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
     'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
     'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
@@ -1737,7 +1739,9 @@ topology:
         freeTextAnnotations: data.annotations,
         groupStyleAnnotations: data.groupStyles,
         cloudNodeAnnotations: existing.cloudNodeAnnotations,
-        nodeAnnotations: existing.nodeAnnotations
+        nodeAnnotations: existing.nodeAnnotations,
+        // Preserve viewer settings to avoid accidental loss when other managers save
+        viewerSettings: (existing as any).viewerSettings
       });
       log.info(
         `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
@@ -1746,6 +1750,46 @@ topology:
     } catch (err) {
       const error = `Error saving annotations: ${err}`;
       log.error(`Error saving annotations: ${JSON.stringify(err, null, 2)}`);
+      return { result: null, error };
+    }
+  }
+
+  private async handleLoadViewerSettingsEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const viewerSettings = (annotations as any).viewerSettings || {};
+      return { result: { viewerSettings }, error: null };
+    } catch (err) {
+      log.error(`Error loading viewer settings: ${JSON.stringify(err, null, 2)}`);
+      return { result: { viewerSettings: {} }, error: null };
+    }
+  }
+
+  private async handleSaveViewerSettingsEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const data = payloadObj;
+      const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const merged = {
+        ...existing,
+        viewerSettings: {
+          ...(existing as any).viewerSettings,
+          ...(data?.viewerSettings || {})
+        }
+      } as any;
+      await annotationsManager.saveAnnotations(this.lastYamlFilePath, merged);
+      log.info('Saved viewer settings');
+      return { result: { success: true }, error: null };
+    } catch (err) {
+      const error = `Error saving viewer settings: ${err}`;
+      log.error(`Error saving viewer settings: ${JSON.stringify(err, null, 2)}`);
       return { result: null, error };
     }
   }

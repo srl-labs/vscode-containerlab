@@ -47,7 +47,7 @@ export class AnnotationsManager {
       log.warn(`Failed to load annotations from ${annotationsPath}: ${error}`);
     }
 
-    const emptyAnnotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [] };
+    const emptyAnnotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [], aliasEndpointAnnotations: [] } as any;
     // Cache empty result too
     this.cache.set(annotationsPath, { data: emptyAnnotations, timestamp: Date.now() });
     return emptyAnnotations;
@@ -67,11 +67,8 @@ export class AnnotationsManager {
 
     try {
       // Only save if there are annotations, otherwise delete the file
-      const hasFreeText = annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0;
-      const hasGroupStyles = annotations.groupStyleAnnotations && annotations.groupStyleAnnotations.length > 0;
-      const hasCloudNodes = annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0;
-      const hasNodeAnnotations = annotations.nodeAnnotations && annotations.nodeAnnotations.length > 0;
-      if (hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations) {
+      const shouldSave = this.shouldSaveAnnotations(annotations);
+      if (shouldSave) {
         const content = JSON.stringify(annotations, null, 2);
 
         // Only write if content has changed to avoid touching the file unnecessarily
@@ -103,6 +100,16 @@ export class AnnotationsManager {
       log.error(`Failed to save annotations to ${annotationsPath}: ${error}`);
       throw error;
     }
+  }
+
+  private shouldSaveAnnotations(annotations: TopologyAnnotations): boolean {
+    const hasFreeText = !!(annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0);
+    const hasGroupStyles = !!(annotations.groupStyleAnnotations && annotations.groupStyleAnnotations.length > 0);
+    const hasCloudNodes = !!(annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0);
+    const hasNodeAnnotations = !!(annotations.nodeAnnotations && annotations.nodeAnnotations.length > 0);
+    const hasAliasMappings = !!((annotations as any).aliasEndpointAnnotations && (annotations as any).aliasEndpointAnnotations.length > 0);
+    const hasViewerSettings = !!(annotations as any).viewerSettings && Object.keys((annotations as any).viewerSettings || {}).length > 0;
+    return hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations || hasAliasMappings || hasViewerSettings;
   }
 
   /**

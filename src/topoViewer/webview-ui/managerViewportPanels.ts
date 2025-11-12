@@ -68,6 +68,7 @@ export class ManagerViewportPanels {
   private static readonly ID_NETWORK_SAVE_BUTTON = 'panel-network-editor-save-button' as const;
   private static readonly HTML_ICON_TRASH = '<i class="fas fa-trash"></i>' as const;
   private static readonly ATTR_DATA_FIELD = 'data-field' as const;
+  private static readonly ID_NETWORK_LABEL = 'panel-network-label' as const;
 
   private static readonly PH_SEARCH_NETWORK_TYPE = 'Search for network type...' as const;
 
@@ -523,6 +524,7 @@ export class ManagerViewportPanels {
     if (interfaceInput) interfaceInput.placeholder = cfg.placeholder;
 
     this.toggleExtendedSections(networkType);
+    this.toggleBridgeAliasLabelSection(networkType);
   }
 
   private getInterfaceFieldConfig(networkType: string): { label: string; placeholder: string; showInterface: boolean } {
@@ -557,6 +559,15 @@ export class ManagerViewportPanels {
         : ManagerViewportPanels.DISPLAY_NONE;
   }
 
+  private toggleBridgeAliasLabelSection(networkType: string): void {
+    const labelInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null;
+    const labelGroup = labelInput?.closest('.form-group') as HTMLElement | null;
+    if (labelGroup) {
+      const show = ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any);
+      labelGroup.style.display = show ? ManagerViewportPanels.DISPLAY_BLOCK : ManagerViewportPanels.DISPLAY_NONE;
+    }
+  }
+
   /**
    * Initialize the network type dropdown and handle re-validation when the selection changes.
    */
@@ -588,7 +599,7 @@ export class ManagerViewportPanels {
   /**
    * Configure the interface field based on the selected network type.
    */
-  private configureInterfaceField(networkType: string, nodeId: string, interfaceName: string): void {
+  private configureInterfaceField(networkType: string, interfaceName: string): void {
     if (networkType === ManagerViewportPanels.TYPE_DUMMY) return; // Dummy nodes don't have interfaces
 
     const interfaceInput = document.getElementById(ManagerViewportPanels.ID_NETWORK_INTERFACE) as HTMLInputElement | null;
@@ -602,7 +613,7 @@ export class ManagerViewportPanels {
     let labelText: string = ManagerViewportPanels.LABEL_INTERFACE;
     if (isBridge) labelText = ManagerViewportPanels.LABEL_BRIDGE_NAME;
     else if (isHostLike) labelText = ManagerViewportPanels.LABEL_HOST_INTERFACE;
-    const inputValue = isBridge ? nodeId : interfaceName;
+    const inputValue = interfaceName;
 
     if (interfaceLabel) interfaceLabel.textContent = labelText;
     if (interfaceInput) interfaceInput.value = inputValue;
@@ -766,48 +777,59 @@ export class ManagerViewportPanels {
    */
   public async panelNetworkEditor(node: cytoscape.NodeSingular): Promise<void> {
     this.nodeClicked = true;
-
-    const panelOverlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
-    Array.from(panelOverlays).forEach(panel => {
-      (panel as HTMLElement).style.display = 'none';
-    });
+    this.hideOverlayPanels();
 
     const nodeId = node.data('id') as string;
     const nodeData = node.data();
     const parts = nodeId.split(':');
     const networkType = nodeData.extraData?.kind || parts[0] || ManagerViewportPanels.TYPE_HOST;
-    let interfaceName: string;
-    if (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) {
-      interfaceName = nodeId;
-    } else if (networkType === ManagerViewportPanels.TYPE_DUMMY) {
-      interfaceName = '';
-    } else {
-      interfaceName = parts[1] || 'eth1';
-    }
+    const interfaceName = this.getInterfaceNameForEditor(networkType, nodeId, nodeData);
 
     const idLabel = document.getElementById('panel-network-editor-id');
-    if (idLabel) {
-      idLabel.textContent = nodeId;
-    }
+    if (idLabel) idLabel.textContent = nodeId;
 
     this.initializeNetworkTypeDropdown(networkType);
-    this.configureInterfaceField(networkType, nodeId, interfaceName);
+    this.configureInterfaceField(networkType, interfaceName);
     this.populateNetworkExtendedProperties(node);
     this.updateNetworkEditorFields(networkType);
+    this.setBridgeAliasLabelInput(nodeData, networkType);
 
     const panel = document.getElementById('panel-network-editor');
-    if (panel) {
-      panel.style.display = 'block';
-    }
+    if (panel) panel.style.display = 'block';
 
     const closeBtn = document.getElementById('panel-network-editor-close-button');
     if (closeBtn && panel) {
-      closeBtn.addEventListener('click', () => {
-        panel.style.display = 'none';
-      });
+      closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
     }
 
     this.setupNetworkValidation(networkType, node);
+  }
+
+  private hideOverlayPanels(): void {
+    const panelOverlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
+    Array.from(panelOverlays).forEach(panel => { (panel as HTMLElement).style.display = 'none'; });
+  }
+
+  private getInterfaceNameForEditor(networkType: string, nodeId: string, nodeData: any): string {
+    if (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) {
+      const yamlId = nodeData?.extraData && typeof nodeData.extraData.extYamlNodeId === 'string' ? nodeData.extraData.extYamlNodeId : '';
+      return yamlId || nodeId;
+    }
+    if (networkType === ManagerViewportPanels.TYPE_DUMMY) {
+      return '';
+    }
+    const parts = nodeId.split(':');
+    return parts[1] || 'eth1';
+  }
+  private setBridgeAliasLabelInput(nodeData: any, networkType: string): void {
+    const input = document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null;
+    if (!input) return;
+    if (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) {
+      const currentName = (nodeData && typeof nodeData.name === 'string' && nodeData.name) || '';
+      input.value = currentName;
+    } else {
+      input.value = '';
+    }
   }
 
 
@@ -1236,6 +1258,7 @@ export class ManagerViewportPanels {
       currentData,
       inputs.networkType,
       inputs.interfaceName,
+      inputs.label,
       inputs.remote,
       inputs.vni,
       inputs.udpPort
@@ -1243,7 +1266,7 @@ export class ManagerViewportPanels {
     const extendedData = this.buildNetworkExtendedData(inputs, currentData.extraData || {});
 
     if (idInfo.oldId === idInfo.newId) {
-      this.applyNetworkDataSameId(targetNode, currentData, idInfo.newName, inputs.networkType, extendedData);
+      this.applyNetworkDataSameId(targetNode, currentData, idInfo.displayName, inputs.networkType, extendedData);
     } else {
       this.recreateNetworkNode(targetNode, currentData, idInfo, inputs.networkType, extendedData);
     }
@@ -1309,6 +1332,7 @@ export class ManagerViewportPanels {
     return {
       networkType,
       interfaceName,
+      label: (document.getElementById(ManagerViewportPanels.ID_NETWORK_LABEL) as HTMLInputElement | null)?.value,
       mac: (document.getElementById('panel-network-mac') as HTMLInputElement | null)?.value,
       mtu: (document.getElementById('panel-network-mtu') as HTMLInputElement | null)?.value,
       mode: (document.getElementById('panel-network-mode') as HTMLSelectElement | null)?.value,
@@ -1322,6 +1346,7 @@ export class ManagerViewportPanels {
     currentData: any,
     networkType: string,
     interfaceName: string,
+    label?: string,
     remote?: string,
     vni?: string,
     udpPort?: string
@@ -1332,7 +1357,9 @@ export class ManagerViewportPanels {
     const isDummyType = networkType === ManagerViewportPanels.TYPE_DUMMY;
     let newId = '';
     if (isBridgeType) {
-      newId = interfaceName;
+      // Preserve existing ID for bridge nodes to support alias visuals;
+      // Interface field maps to YAML id via extYamlNodeId and becomes display name.
+      newId = oldId;
     } else if (isDummyType) {
       newId = oldId.startsWith(ManagerViewportPanels.TYPE_DUMMY) ? oldId : this.generateUniqueDummyId();
     } else if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(networkType)) {
@@ -1340,28 +1367,59 @@ export class ManagerViewportPanels {
     } else {
       newId = `${networkType}:${interfaceName}`;
     }
-    const newName = isDummyType ? ManagerViewportPanels.TYPE_DUMMY : newId;
-    return { oldId, oldName, newId, newName };
+    let displayName: string;
+    if (isBridgeType) {
+      const trimmedLabel = (label && label.trim()) || '';
+      displayName = trimmedLabel || interfaceName || oldName || newId;
+    } else if (isDummyType) {
+      displayName = ManagerViewportPanels.TYPE_DUMMY;
+    } else {
+      displayName = newId;
+    }
+    return { oldId, oldName, newId, displayName };
   }
 
   private buildNetworkExtendedData(inputs: any, currentExtra: any): any {
     const extendedData: any = { ...currentExtra, kind: inputs.networkType };
-    if (inputs.mac) extendedData.extMac = inputs.mac;
-    if (inputs.mtu) extendedData.extMtu = Number(inputs.mtu);
-    const vars = this.collectDynamicEntries('network-vars');
-    if (Object.keys(vars).length) extendedData.extVars = vars;
-    const labels = this.collectDynamicEntries('network-labels');
-    if (Object.keys(labels).length) extendedData.extLabels = labels;
-    if (inputs.networkType === 'macvlan' && inputs.mode) extendedData.extMode = inputs.mode;
-    if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(inputs.networkType)) {
-      if (inputs.remote) extendedData.extRemote = inputs.remote;
-      if (inputs.vni) extendedData.extVni = Number(inputs.vni);
-      if (inputs.udpPort) extendedData.extUdpPort = Number(inputs.udpPort);
-    }
-    if ((ManagerViewportPanels.HOSTY_TYPES as readonly string[]).includes(inputs.networkType) && inputs.interfaceName) {
-      extendedData.extHostInterface = inputs.interfaceName;
-    }
+    this.assignCommonNetworkExt(extendedData, inputs);
+    this.assignMacvlanPropsNetwork(extendedData, inputs);
+    this.assignVxlanPropsNetwork(extendedData, inputs);
+    this.assignHostInterfaceProp(extendedData, inputs);
+    this.assignYamlNodeMappingIfBridge(extendedData, inputs);
     return extendedData;
+  }
+
+  private assignCommonNetworkExt(target: any, inputs: any): void {
+    if (inputs.mac) target.extMac = inputs.mac;
+    if (inputs.mtu) target.extMtu = Number(inputs.mtu);
+    const vars = this.collectDynamicEntries('network-vars');
+    if (Object.keys(vars).length) target.extVars = vars;
+    const labels = this.collectDynamicEntries('network-labels');
+    if (Object.keys(labels).length) target.extLabels = labels;
+  }
+
+  private assignMacvlanPropsNetwork(target: any, inputs: any): void {
+    if (inputs.networkType === 'macvlan' && inputs.mode) target.extMode = inputs.mode;
+  }
+
+  private assignVxlanPropsNetwork(target: any, inputs: any): void {
+    if ((ManagerViewportPanels.VX_TYPES as readonly string[]).includes(inputs.networkType)) {
+      if (inputs.remote) target.extRemote = inputs.remote;
+      if (inputs.vni) target.extVni = Number(inputs.vni);
+      if (inputs.udpPort) target.extUdpPort = Number(inputs.udpPort);
+    }
+  }
+
+  private assignHostInterfaceProp(target: any, inputs: any): void {
+    if ((ManagerViewportPanels.HOSTY_TYPES as readonly string[]).includes(inputs.networkType) && inputs.interfaceName) {
+      target.extHostInterface = inputs.interfaceName;
+    }
+  }
+
+  private assignYamlNodeMappingIfBridge(target: any, inputs: any): void {
+    if (ManagerViewportPanels.BRIDGE_TYPES.includes(inputs.networkType as any) && inputs.interfaceName) {
+      target.extYamlNodeId = String(inputs.interfaceName).trim();
+    }
   }
 
   private applyNetworkDataSameId(targetNode: cytoscape.NodeSingular, currentData: any, newName: string, networkType: string, extendedData: any): void {
@@ -1392,7 +1450,7 @@ export class ManagerViewportPanels {
     const newNodeData = {
       ...currentData,
       id: ids.newId,
-      name: ids.newName,
+      name: ids.displayName,
       topoViewerRole: (ManagerViewportPanels.BRIDGE_TYPES.includes(networkType as any)) ? 'bridge' : 'cloud',
       extraData: { ...extendedData, kind: networkType }
     };
@@ -1401,8 +1459,8 @@ export class ManagerViewportPanels {
       const newEdgeData = { ...edgeInfo.data };
       if (newEdgeData.source === ids.oldId) newEdgeData.source = ids.newId;
       if (newEdgeData.target === ids.oldId) newEdgeData.target = ids.newId;
-      if (newEdgeData.sourceName === ids.oldName) newEdgeData.sourceName = ids.newName;
-      if (newEdgeData.targetName === ids.oldName) newEdgeData.targetName = ids.newName;
+      if (newEdgeData.sourceName === ids.oldName) newEdgeData.sourceName = ids.displayName;
+      if (newEdgeData.targetName === ids.oldName) newEdgeData.targetName = ids.displayName;
       newEdgeData.extraData = { ...(newEdgeData.extraData || {}), ...this.getNetworkExtendedPropertiesForEdge(networkType, extendedData) };
       let edgeClasses = edgeInfo.classes || [];
       const isStubLink = isSpecialNodeOrBridge(newEdgeData.source, this.cy) || isSpecialNodeOrBridge(newEdgeData.target, this.cy);

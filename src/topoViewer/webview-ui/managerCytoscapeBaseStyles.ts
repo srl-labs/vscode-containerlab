@@ -37,6 +37,13 @@ const cytoscapeStylesBase: any[] = [
       'selection-box-opacity': '0.5'
     }
   },
+  // Hidden class for base YAML bridge nodes when aliases exist
+  {
+    selector: 'node.aliased-base-bridge',
+    style: {
+      display: 'none'
+    }
+  },
   {
     selector: 'node.empty-group',
     style: {

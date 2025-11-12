@@ -2,7 +2,7 @@ import cytoscape from 'cytoscape';
 import topoViewerState from '../state';
 import { log } from '../logging/logger';
 import { loadExtension } from '../cytoscapeInstanceFactory';
-import { buildGridGuideOptions } from '../utilities/gridGuide';
+// Use centralized grid manager via editorEngine
 
 // Common Cytoscape style keys reused in this module
 const STYLE_TEXT_OUTLINE_WIDTH = 'text-outline-width' as const;
@@ -343,34 +343,14 @@ export class ManagerLayoutAlgo {
   private disableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
-    const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    (cy as any).gridGuide(
-      buildGridGuideOptions(theme, {
-        drawGrid: false,
-        snapToGridOnRelease: false,
-        snapToAlignmentLocationOnRelease: false,
-        snapToGridCenter: false,
-        zoomDash: false,
-        panGrid: false,
-      })
-    );
+    topoViewerState.editorEngine?.gridManager?.enableSnapping(false);
   }
 
   /** Re-enable grid guide overlay and snapping */
   private enableGridGuide(): void {
     const cy = this.getCy();
     if (!cy || typeof (cy as any).gridGuide !== 'function') return;
-    const theme = (topoViewerState.editorEngine?.detectColorScheme?.() === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
-    (cy as any).gridGuide(
-      buildGridGuideOptions(theme, {
-        drawGrid: false,
-        snapToGridOnRelease: true,
-        snapToAlignmentLocationOnRelease: true,
-        snapToGridCenter: true,
-        zoomDash: true,
-        panGrid: true,
-      })
-    );
+    topoViewerState.editorEngine?.gridManager?.enableSnapping(true);
   }
 
   /**

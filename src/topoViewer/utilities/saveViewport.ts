@@ -29,6 +29,10 @@ const TYPE_VXLAN_STITCH = 'vxlan-stitch' as const;
 const TYPE_VXLAN = 'vxlan' as const;
 const TYPE_UNKNOWN = 'unknown' as const;
 
+// Common node kinds
+const KIND_BRIDGE = 'bridge' as const;
+const KIND_OVS_BRIDGE = 'ovs-bridge' as const;
+
 // Commonly duplicated YAML keys
 const KEY_HOST_INTERFACE = 'host-interface';
 const KEY_MODE = 'mode';
@@ -204,15 +208,32 @@ async function saveAnnotationsFromPayload(payloadParsed: any[], yamlFilePath: st
     if (na && typeof na.id === 'string') prevNodeById.set(na.id, na);
   }
 
-  const regularNodes = payloadParsed.filter(isRegularNode).map(node =>
-    createNodeAnnotation(node, prevNodeById),
-  );
+  // Build alias interface mapping per alias node id from edges
+  const aliasIfaceByAlias = collectAliasInterfacesByAliasId(payloadParsed);
+  const nodeById = buildNodeIndex(payloadParsed);
+
+  // Build set of YAML base bridge ids that have at least one alias visual node
+  const aliasBaseSet = collectAliasBaseSet(payloadParsed);
+
+  const regularNodes = payloadParsed
+    .filter(isRegularNode)
+    .filter(n => shouldIncludeNodeAnnotation(n, aliasBaseSet))
+    .map(node => createNodeAnnotation(node, prevNodeById, aliasIfaceByAlias, nodeById));
   const cloudNodes = payloadParsed
     .filter(el => el.group === 'nodes' && el.data.topoViewerRole === 'cloud')
     .map(createCloudNodeAnnotation);
 
-  annotations.nodeAnnotations = regularNodes;
+  // Also synthesize alias annotations from edges to ensure one entry per YAML interface
+  const aliasFromEdges = collectAliasAnnotationsFromEdges(payloadParsed, nodeById, prevNodeById);
+  annotations.nodeAnnotations = mergeNodeAnnotationLists(regularNodes, aliasFromEdges);
   annotations.cloudNodeAnnotations = cloudNodes;
+
+  // New model: encode alias mapping via nodeAnnotations (id + yamlNodeId)
+  // Do not persist aliasEndpointAnnotations anymore; keep for backward compat only if already present
+  if (Array.isArray((annotations as any).aliasEndpointAnnotations) && (annotations as any).aliasEndpointAnnotations.length > 0) {
+    // Drop stale aliasEndpointAnnotations to avoid conflicts with the new model
+    delete (annotations as any).aliasEndpointAnnotations;
+  }
 
   await annotationsManager.saveAnnotations(yamlFilePath, annotations);
 }
@@ -261,14 +282,82 @@ function addGroupInfo(nodeAnn: NodeAnnotation, parent: any): void {
 function createNodeAnnotation(
   node: any,
   prevNodeById: Map<string, NodeAnnotation>,
+  aliasIfaceByAlias: Map<string, Set<string>>,
+  nodeById: Map<string, any>,
 ): NodeAnnotation {
-  const nodeIdForAnn = node.data.name || node.data.id;
-  const nodeAnnotation: NodeAnnotation = { id: nodeIdForAnn, icon: node.data.topoViewerRole };
-  setNodePosition(nodeAnnotation, node, prevNodeById.get(nodeIdForAnn));
+  const rawId = String(node?.data?.id || '');
+  let annId = rawId;
+  const nodeAnnotation: NodeAnnotation = { id: annId, icon: node.data.topoViewerRole };
+  if (isBridgeAliasNode(node)) {
+    annId = decorateAliasAnnotation(nodeAnnotation, node, aliasIfaceByAlias) || annId;
+  }
+  // Persist copyFrom provenance if present on the node's extraData
+  const rawCopyFrom = String(node?.data?.extraData?.copyFrom || '').trim();
+  if (rawCopyFrom) {
+    (nodeAnnotation as any).copyFrom = computeStableAnnotationId(rawCopyFrom, nodeById, aliasIfaceByAlias);
+  }
+  setNodePosition(nodeAnnotation, node, prevNodeById.get(annId));
   addGeo(nodeAnnotation, node);
   if (node.data.groupLabelPos) nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
   addGroupInfo(nodeAnnotation, node.parent);
   return nodeAnnotation;
+}
+
+function decorateAliasAnnotation(nodeAnnotation: NodeAnnotation, node: any, aliasIfaceByAlias: Map<string, Set<string>>): string | undefined {
+  const rawId = String(node?.data?.id || '');
+  const yamlRef = String(node?.data?.extraData?.extYamlNodeId || '').trim();
+  if (!yamlRef) return undefined;
+  const iface = firstInterface(aliasIfaceByAlias.get(rawId));
+  (nodeAnnotation as any).yamlNodeId = yamlRef;
+  if (iface) (nodeAnnotation as any).yamlInterface = iface;
+  const displayName = (node?.data?.name ?? '').toString().trim();
+  if (displayName) (nodeAnnotation as any).label = displayName;
+  if (!iface) return undefined;
+  const annId = `${yamlRef}:${iface}`;
+  (nodeAnnotation as any).id = annId;
+  return annId;
+}
+
+function collectAliasInterfacesByAliasId(payloadParsed: any[]): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'edges') continue;
+    const d = el.data || {};
+    const s = String(d.source || '');
+    const t = String(d.target || '');
+    const se = String(d.sourceEndpoint || '');
+    const te = String(d.targetEndpoint || '');
+    if (s && se) addVal(map, s, se);
+    if (t && te) addVal(map, t, te);
+  }
+  return map;
+}
+
+function addVal(map: Map<string, Set<string>>, key: string, val: string): void {
+  let set = map.get(key);
+  if (!set) { set = new Set(); map.set(key, set); }
+  set.add(val);
+}
+
+function firstInterface(set: Set<string> | undefined): string | '' {
+  if (!set || set.size === 0) return '';
+  // Prefer ethN order; sort deterministically
+  const arr = Array.from(set);
+  arr.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  return arr[0];
+}
+
+function computeStableAnnotationId(
+  nodeId: string,
+  nodeById: Map<string, any>,
+  aliasIfaceByAlias: Map<string, Set<string>>,
+): string {
+  const n = nodeById.get(nodeId);
+  if (!n) return nodeId;
+  if (!isBridgeAliasNode(n)) return nodeId;
+  const yamlRef = String(n?.data?.extraData?.extYamlNodeId || '').trim();
+  const iface = firstInterface(aliasIfaceByAlias.get(nodeId));
+  return yamlRef && iface ? `${yamlRef}:${iface}` : nodeId;
 }
 
 function createCloudNodeAnnotation(cloudNode: any): CloudNodeAnnotation {
@@ -297,19 +386,28 @@ function updateYamlNodes(
   yamlNodes: YAML.YAMLMap,
   topoObj: ClabTopology | undefined,
   updatedKeys: Map<string, string>,
+  idOverride: Map<string, string>,
 ): void {
   payloadParsed.filter(isWritableNode).forEach(el =>
-    updateNodeYaml(el, doc, yamlNodes, topoObj, updatedKeys),
+    updateNodeYaml(el, doc, yamlNodes, topoObj, updatedKeys, idOverride),
   );
 
-  const payloadNodeIds = new Set(
+  // Build the set of YAML node keys that should exist after this update.
+  // Prefer explicit YAML key overrides (extYamlNodeId), else fall back to node "name", then id.
+  const payloadNodeYamlKeys = new Set(
     payloadParsed
-      .filter(el => el.group === 'nodes' && el.data.topoViewerRole !== 'freeText' && !isSpecialEndpoint(el.data.id))
-      .map(el => el.data.id),
+      .filter(isWritableNode)
+      .map(el => {
+        const extra = (el.data?.extraData) || {};
+        const overrideKey = typeof extra.extYamlNodeId === 'string' && extra.extYamlNodeId.trim() ? extra.extYamlNodeId.trim() : '';
+        if (overrideKey) return overrideKey;
+        const preferred = (el.data?.name && String(el.data.name)) || String(el.data?.id || '');
+        return preferred;
+      }),
   );
   for (const item of [...yamlNodes.items]) {
     const keyStr = String(item.key);
-    if (!payloadNodeIds.has(keyStr) && ![...updatedKeys.values()].includes(keyStr)) {
+    if (!payloadNodeYamlKeys.has(keyStr)) {
       yamlNodes.delete(item.key);
     }
   }
@@ -340,9 +438,11 @@ function updateNodeYaml(
   yamlNodes: YAML.YAMLMap,
   topoObj: ClabTopology | undefined,
   updatedKeys: Map<string, string>,
+  idOverride: Map<string, string>,
 ): void {
   const nodeId: string = element.data.id;
-  const nodeMap = getOrCreateNodeMap(nodeId, yamlNodes);
+  const initialKey = idOverride.get(nodeId) || nodeId;
+  const nodeMap = getOrCreateNodeMap(initialKey, yamlNodes);
   const extraData = element.data.extraData || {};
 
   const originalKind = (nodeMap.get('kind', true) as any)?.value;
@@ -372,11 +472,12 @@ function updateNodeYaml(
   );
   applyExtraProps(doc, nodeMap, extraData, inherit);
 
-  const newKey = element.data.name;
-  if (nodeId !== newKey) {
-    yamlNodes.set(newKey, nodeMap);
-    yamlNodes.delete(nodeId);
-    updatedKeys.set(nodeId, newKey);
+  // Prefer explicit YAML node name override if provided
+  const desiredYamlKey = (typeof extraData.extYamlNodeId === 'string' && extraData.extYamlNodeId.trim()) ? extraData.extYamlNodeId.trim() : element.data.name;
+  if (initialKey !== desiredYamlKey) {
+    yamlNodes.set(desiredYamlKey, nodeMap);
+    yamlNodes.delete(initialKey);
+    updatedKeys.set(initialKey, desiredYamlKey);
   }
 }
 
@@ -541,10 +642,189 @@ function getPayloadEdges(payloadParsed: any[]): any[] {
   return payloadParsed.filter(el => el.group === 'edges');
 }
 
-function buildPayloadEdgeKeys(edges: any[]): Set<string> {
+// aliasEndpointAnnotations are deprecated; alias mappings are encoded via nodeAnnotations
+
+// buildNodeIndex removed (was used only by deprecated alias mapping logic)
+
+function isBridgeAliasNode(node: any): boolean {
+  if (!node) return false;
+  const role = node.data?.topoViewerRole;
+  const kind = node.data?.extraData?.kind;
+  const yaml = node.data?.extraData?.extYamlNodeId;
+  const id = node.data?.id;
+  const yamlRef = typeof yaml === 'string' ? yaml.trim() : '';
+  // Only treat as alias when extYamlNodeId points to a different node id
+  return role === 'bridge' && yamlRef.length > 0 && yamlRef !== id && (kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE);
+}
+
+function isBridgeKindNode(node: any): boolean {
+  const kind = node?.data?.extraData?.kind;
+  return kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE;
+}
+
+function collectAliasBaseSet(payloadParsed: any[]): Set<string> {
+  const set = new Set<string>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'nodes') continue;
+    if (!isBridgeAliasNode(el)) continue;
+    const yamlRef = String(el.data?.extraData?.extYamlNodeId || '').trim();
+    if (yamlRef) set.add(yamlRef);
+  }
+  return set;
+}
+
+function shouldIncludeNodeAnnotation(nodeEl: any, aliasBaseSet: Set<string>): boolean {
+  // Always skip special endpoints (already filtered by isRegularNode)
+  // Include alias visuals so their positions persist under their alias ids
+  if (isBridgeAliasNode(nodeEl)) return true;
+  // For base bridge nodes: skip if they have any alias mapped, to avoid duplicate entries
+  if (isBridgeKindNode(nodeEl)) {
+    const id = String(nodeEl?.data?.id || '');
+    if (aliasBaseSet.has(id)) return false;
+  }
+  return true;
+}
+
+// Legacy mapping utilities removed; migration now uses nodeAnnotations directly
+
+// --- Duplicate bridge interface auto-fix ---
+
+function autoFixDuplicateBridgeInterfaces(payloadParsed: any[]): void {
+  const idOverride = buildNodeIdOverrideMap(payloadParsed);
+  const bridgeYamlIds = collectBridgeYamlIds(payloadParsed);
+  if (bridgeYamlIds.size === 0) return;
+
+  const usage = collectBridgeInterfaceUsage(payloadParsed, idOverride, bridgeYamlIds);
+  rewriteDuplicateInterfaces(usage);
+}
+
+function collectBridgeYamlIds(payloadParsed: any[]): Set<string> {
+  const set = new Set<string>();
+  const aliasContrib = new Set<string>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'nodes') continue;
+    const data = el.data || {};
+    const extra = data.extraData || {};
+    const kind = String(extra.kind || '');
+    const yamlRef = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
+    const isAlias = yamlRef && yamlRef !== data.id;
+    const isBridgeKind = kind === KIND_BRIDGE || kind === KIND_OVS_BRIDGE;
+    if (!isBridgeKind) continue;
+
+    if (isAlias && yamlRef) {
+      // Alias node contributes its referenced YAML id
+      set.add(yamlRef);
+      aliasContrib.add(yamlRef);
+    } else {
+      // Base bridge node contributes its own id
+      set.add(String(data.id));
+    }
+  }
+  if (aliasContrib.size > 0) {
+    log.info(
+      `Auto-fix duplicate bridge interfaces: included alias-mapped YAML ids: ${Array.from(aliasContrib).join(', ')}`,
+    );
+  }
+  return set;
+}
+
+type EdgeRef = { edge: any; side: 'source' | 'target' };
+type UsageMap = Map<string, Map<string, EdgeRef[]>>; // yamlId -> iface -> refs
+
+function collectBridgeInterfaceUsage(
+  payloadParsed: any[],
+  idOverride: Map<string, string>,
+  bridgeYamlIds: Set<string>,
+): UsageMap {
+  const usage: UsageMap = new Map();
+  for (const el of payloadParsed) {
+    if (el.group !== 'edges') continue;
+    const d = el.data || {};
+    const src = idOverride.get(d.source) || d.source;
+    const tgt = idOverride.get(d.target) || d.target;
+    const srcEp = d.sourceEndpoint || '';
+    const tgtEp = d.targetEndpoint || '';
+    if (bridgeYamlIds.has(src) && srcEp) addUsage(usage, src, srcEp, { edge: el, side: 'source' });
+    if (bridgeYamlIds.has(tgt) && tgtEp) addUsage(usage, tgt, tgtEp, { edge: el, side: 'target' });
+  }
+  return usage;
+}
+
+function addUsage(usage: UsageMap, yamlId: string, iface: string, ref: EdgeRef): void {
+  let byIface = usage.get(yamlId);
+  if (!byIface) { byIface = new Map(); usage.set(yamlId, byIface); }
+  let arr = byIface.get(iface);
+  if (!arr) { arr = []; byIface.set(iface, arr); }
+  arr.push(ref);
+}
+
+function rewriteDuplicateInterfaces(usage: UsageMap): void {
+  for (const [yamlId, byIface] of usage) {
+    const used = new Set<string>(Array.from(byIface.keys()));
+    for (const [iface, refs] of byIface) {
+      if (!refs || refs.length <= 1) continue;
+      const reassign: string[] = [];
+      // Keep first as-is; reassign the rest
+      for (let i = 1; i < refs.length; i++) {
+        const newName = nextFreeEth(used);
+        applyNewIface(refs[i], newName);
+        used.add(newName);
+        reassign.push(newName);
+      }
+      if (reassign.length > 0) {
+        log.warn(`Duplicate bridge interfaces detected on ${yamlId}:${iface} -> reassigned to ${reassign.join(', ')}`);
+      }
+    }
+  }
+}
+
+function nextFreeEth(used: Set<string>): string {
+  // Find the next ethN not in used
+  let n = 1;
+  // Try to start from the current max if available
+  const max = Array.from(used)
+    .map(v => (v.startsWith('eth') ? parseInt(v.slice(3), 10) : NaN))
+    .filter(v => Number.isFinite(v)) as number[];
+  if (max.length > 0) n = Math.max(...max) + 1;
+  while (used.has(`eth${n}`)) n++;
+  return `eth${n}`;
+}
+
+function applyNewIface(ref: EdgeRef, newIface: string): void {
+  const d = ref.edge?.data || {};
+  if (ref.side === 'source') d.sourceEndpoint = newIface;
+  else d.targetEndpoint = newIface;
+  ref.edge.data = d;
+}
+
+function buildNodeIdOverrideMap(payloadParsed: any[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'nodes') continue;
+    const data = el.data || {};
+    const extra = data.extraData || {};
+    // Only consider explicit YAML node mappings
+    if (typeof extra.extYamlNodeId === 'string' && extra.extYamlNodeId.trim()) {
+      map.set(data.id, extra.extYamlNodeId.trim());
+    }
+  }
+  return map;
+}
+
+function applyIdOverrideToEdgeData(data: any, idOverride: Map<string, string>): any {
+  if (!data) return data;
+  const src = data.source;
+  const tgt = data.target;
+  const newSrc = idOverride.get(src) || src;
+  const newTgt = idOverride.get(tgt) || tgt;
+  if (newSrc === src && newTgt === tgt) return data;
+  return { ...data, source: newSrc, target: newTgt };
+}
+
+function buildPayloadEdgeKeys(edges: any[], idOverride: Map<string, string>): Set<string> {
   return new Set(
     edges
-      .map(el => canonicalFromPayloadEdge(el.data))
+      .map(el => canonicalFromPayloadEdge(applyIdOverrideToEdgeData(el.data, idOverride)))
       .filter((k): k is CanonicalLinkKey => Boolean(k))
       .map(k => canonicalKeyToString(k)),
   );
@@ -633,8 +913,9 @@ function updateExistingLinks(
 function updateYamlLinks(payloadParsed: any[], doc: YAML.Document.Parsed, updatedKeys: Map<string, string>): void {
   const linksNode = ensureLinksNode(doc);
   const edges = getPayloadEdges(payloadParsed);
-  edges.forEach(element => processEdge(element, linksNode, doc));
-  const payloadEdgeKeys = buildPayloadEdgeKeys(edges);
+  const idOverride = buildNodeIdOverrideMap(payloadParsed);
+  edges.forEach(element => processEdge(element, linksNode, doc, idOverride));
+  const payloadEdgeKeys = buildPayloadEdgeKeys(edges, idOverride);
   filterObsoleteLinks(linksNode, payloadEdgeKeys);
   updateExistingLinks(linksNode, doc, updatedKeys);
 }
@@ -946,8 +1227,8 @@ function createNewLink(
   linksNode.add(newLink);
 }
 
-function processEdge(element: any, linksNode: YAML.YAMLSeq, doc: YAML.Document.Parsed): void {
-  const data = element.data;
+function processEdge(element: any, linksNode: YAML.YAMLSeq, doc: YAML.Document.Parsed, idOverride: Map<string, string>): void {
+  const data = applyIdOverrideToEdgeData(element.data, idOverride);
   const payloadKey = canonicalFromPayloadEdge(data);
   if (!payloadKey) return;
   const payloadKeyStr = canonicalKeyToString(payloadKey);
@@ -1006,11 +1287,122 @@ export async function saveViewport({
   const yamlNodes: YAML.YAMLMap = nodesMaybe;
   yamlNodes.flow = false;
 
+  // Auto-fix duplicate bridge interfaces (so aliases can persist per-interface)
+  try {
+    autoFixDuplicateBridgeInterfaces(payloadParsed);
+  } catch (e) {
+    log.warn(`autoFixDuplicateBridgeInterfaces failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   const updatedKeys = new Map<string, string>();
   const topoObj = doc.toJS() as ClabTopology;
-  updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys);
+  const idOverride = buildNodeIdOverrideMap(payloadParsed);
+  updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys, idOverride);
   updateYamlLinks(payloadParsed, doc, updatedKeys);
 
   await saveAnnotationsFromPayload(payloadParsed, yamlFilePath);
   await writeYamlFile(doc, yamlFilePath, setInternalUpdate);
+}
+function buildNodeIndex(payloadParsed: any[]): Map<string, any> {
+  const m = new Map<string, any>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'nodes') continue;
+    const id = String(el?.data?.id || '');
+    if (id) m.set(id, el);
+  }
+  return m;
+}
+
+function collectAliasAnnotationsFromEdges(
+  payloadParsed: any[],
+  nodeById: Map<string, any>,
+  prevNodeById: Map<string, NodeAnnotation>,
+): NodeAnnotation[] {
+  const out = new Map<string, NodeAnnotation>();
+  for (const el of payloadParsed) {
+    if (el.group !== 'edges') continue;
+    const d = el.data || {};
+    maybeRecordAliasAnn(nodeById, prevNodeById, out, d.source, d.sourceEndpoint, d.sourceName);
+    maybeRecordAliasAnn(nodeById, prevNodeById, out, d.target, d.targetEndpoint, d.targetName);
+  }
+  return Array.from(out.values());
+}
+
+function maybeRecordAliasAnn(
+  nodeById: Map<string, any>,
+  prevNodeById: Map<string, NodeAnnotation>,
+  out: Map<string, NodeAnnotation>,
+  nodeId: string,
+  iface: string | undefined,
+  sideName: string | undefined,
+): void {
+  const n = resolveBridgeNode(nodeById, nodeId);
+  const ep = normalizeIface(iface);
+  if (!n || !ep) return;
+  const yamlId = resolveYamlBaseId(n);
+  const annId = `${yamlId}:${ep}`;
+  const ann = buildAliasAnnotationSkeleton(annId, yamlId, ep, pickAliasLabel(n, sideName));
+  applyPreferredPosition(ann, prevNodeById.get(annId), n);
+  out.set(annId, ann);
+}
+
+function resolveBridgeNode(nodeById: Map<string, any>, nodeId: string): any | undefined {
+  const n = nodeById.get(String(nodeId));
+  if (!n) return undefined;
+  return isBridgeKindNode(n) ? n : undefined;
+}
+
+function normalizeIface(iface: string | undefined): string {
+  return (iface || '').toString().trim();
+}
+
+function resolveYamlBaseId(n: any): string {
+  const yamlRef = String(n?.data?.extraData?.extYamlNodeId || '').trim();
+  const nodeId = String(n?.data?.id || '');
+  return yamlRef && yamlRef !== nodeId ? yamlRef : nodeId;
+}
+
+function buildAliasAnnotationSkeleton(annId: string, yamlId: string, ep: string, label?: string): NodeAnnotation {
+  const ann: NodeAnnotation = { id: annId, icon: 'bridge', yamlNodeId: yamlId, yamlInterface: ep } as any;
+  if (label) (ann as any).label = label;
+  return ann;
+}
+
+function applyPreferredPosition(ann: NodeAnnotation, prev: NodeAnnotation | undefined, n: any): void {
+  if (prev?.position) {
+    ann.position = { x: prev.position.x, y: prev.position.y };
+    return;
+  }
+  if (n?.position && typeof n.position.x === 'number' && typeof n.position.y === 'number') {
+    ann.position = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+  }
+}
+
+function pickAliasLabel(nodeEl: any, sideName?: string): string {
+  const nameFromNode = ((nodeEl?.data?.name ?? '') as string).trim();
+  const candidate = ((sideName ?? '') as string).trim();
+  return candidate || nameFromNode;
+}
+
+function mergeNodeAnnotationLists(primary: NodeAnnotation[], secondary: NodeAnnotation[]): NodeAnnotation[] {
+  const byId = new Map<string, NodeAnnotation>();
+  primary.forEach(a => byId.set(a.id, a));
+  secondary.forEach(b => upsertAnnotation(byId, b));
+  return Array.from(byId.values());
+}
+
+function upsertAnnotation(byId: Map<string, NodeAnnotation>, incoming: NodeAnnotation): void {
+  const existing = byId.get(incoming.id);
+  if (!existing) {
+    byId.set(incoming.id, incoming);
+    return;
+  }
+  mergeAnnotation(existing, incoming);
+}
+
+function mergeAnnotation(target: NodeAnnotation, source: NodeAnnotation): void {
+  if (!('label' in (target as any)) && (source as any).label) (target as any).label = (source as any).label;
+  if (!target.position && source.position) target.position = source.position;
+  if (!(target as any).yamlNodeId && (source as any).yamlNodeId) (target as any).yamlNodeId = (source as any).yamlNodeId;
+  if (!(target as any).yamlInterface && (source as any).yamlInterface) (target as any).yamlInterface = (source as any).yamlInterface;
 }
