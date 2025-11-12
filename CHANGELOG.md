@@ -1,4 +1,16 @@
 # Change Log
+## [0.19.8] - 2025-11-12
+- TopoViewer/editor:
+  - Unified the grid manager, added configurable/persisted grid line width
+  - Improved bridge alias workflows
+  - Panel network editor and viewport saver stay aligned with annotations so alias metadata survives saves without forcing manual reloads.
+  - Added a native loading/saver screen so TopoViewer hydrates saved state and fetches deployment info in parallel before the UI appears.
+- Fixes:
+  - More resilient deployment-state detection when switching between view/edit modes.
+
+## [0.19.7] - 2025-10-30
+- Allow `cisco_iol` node kinds to expose and persist the `type` field the same way Nokia kinds do.
+
 ## [0.19.6] - 2025-10-24
 - fix link creation
 
