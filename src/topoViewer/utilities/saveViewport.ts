@@ -494,20 +494,7 @@ function applyBasicProps(
   updateScalarProp(doc, nodeMap, 'group', groupName);
   updateScalarProp(doc, nodeMap, 'kind', desiredKind, baseInherit.kind);
   updateScalarProp(doc, nodeMap, 'image', desiredImage, inherit.image);
-
-  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros', 'cisco_iol'];
-  const currentType = nodeMap.get('type', true) as any;
-  if (nokiaKinds.includes(desiredKind)) {
-    if (desiredType && desiredType !== '' && desiredType !== inherit.type) {
-      if (!currentType || currentType.value !== desiredType) {
-        nodeMap.set('type', doc.createNode(desiredType));
-      }
-    } else if (currentType) {
-      nodeMap.delete('type');
-    }
-  } else if (currentType) {
-    nodeMap.delete('type');
-  }
+  applyTypeProp(doc, nodeMap, desiredType, inherit?.type);
 }
 
 function updateScalarProp(
@@ -525,6 +512,49 @@ function updateScalarProp(
   } else if (current) {
     nodeMap.delete(key);
   }
+}
+
+function applyTypeProp(
+  doc: YAML.Document.Parsed,
+  nodeMap: YAML.YAMLMap,
+  desiredType: any,
+  inheritedTypeNode: any,
+): void {
+  const currentTypeNode = nodeMap.get('type', true) as any;
+  const currentTypeValue = getScalarValue(currentTypeNode);
+  const desiredTypeRaw = typeof desiredType === 'string' ? desiredType : undefined;
+  const desiredTypeProvided = desiredTypeRaw !== undefined;
+  const desiredTypeValue = desiredTypeRaw?.trim();
+  const inheritedType = getScalarValue(inheritedTypeNode);
+
+  if (desiredTypeProvided) {
+    if (!desiredTypeValue || (inheritedType !== undefined && desiredTypeValue === inheritedType)) {
+      if (currentTypeNode !== undefined) {
+        nodeMap.delete('type');
+      }
+      return;
+    }
+    if (!currentTypeNode || currentTypeValue !== desiredTypeValue) {
+      nodeMap.set('type', doc.createNode(desiredTypeValue));
+    }
+    return;
+  }
+
+  if (!currentTypeValue || (inheritedType !== undefined && currentTypeValue === inheritedType)) {
+    if (currentTypeNode !== undefined) {
+      nodeMap.delete('type');
+    }
+  }
+}
+
+function getScalarValue(value: any): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value && typeof value === 'object' && 'value' in value && typeof value.value === 'string') {
+    return value.value;
+  }
+  return undefined;
 }
 
 function normalizeObject(obj: any): any {
