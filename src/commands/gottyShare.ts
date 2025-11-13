@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel, gottySessions, runningLabsProvider, refreshGottySessions } from "../extension";
+import { outputChannel, gottySessions, runningLabsProvider, refreshGottySessions, containerlabBinaryPath } from "../extension";
 import { getHostname } from "./capture";
 import { runWithSudo } from "../helpers/utils";
 
@@ -56,7 +56,7 @@ async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode) 
   }
   try {
     const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
-    const out = await runWithSudo(`containerlab tools gotty ${action} -l ${node.name} --port ${port}`, `GoTTY ${action}`, outputChannel, 'containerlab', true, true) as string;
+    const out = await runWithSudo(`${containerlabBinaryPath} tools gotty ${action} -l ${node.name} --port ${port}`, `GoTTY ${action}`, outputChannel, 'containerlab', true, true) as string;
     const link = await parseGottyLink(out || '');
     if (link) {
       gottySessions.set(node.name, link);
@@ -90,7 +90,7 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     return;
   }
   try {
-    await runWithSudo(`containerlab tools gotty detach -l ${node.name}`, 'GoTTY detach', outputChannel, 'containerlab');
+    await runWithSudo(`${containerlabBinaryPath} tools gotty detach -l ${node.name}`, 'GoTTY detach', outputChannel, 'containerlab');
     gottySessions.delete(node.name);
     vscode.window.showInformationMessage('GoTTY session detached');
   } catch (err: any) {

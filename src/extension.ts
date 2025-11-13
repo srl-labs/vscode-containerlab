@@ -392,6 +392,7 @@ function setClabBinPath(): boolean {
   // if empty fall back to resolving from PATH
   if (!configPath || configPath.trim() === '') {
     try {
+      // eslint-disable-next-line sonarjs/no-os-command-from-path
       const stdout = execSync('which containerlab', { encoding: 'utf-8' });
       const resolvedPath = stdout.trim();
       if (resolvedPath) {
@@ -400,7 +401,7 @@ function setClabBinPath(): boolean {
         return true;
       }
     } catch (err) {
-      outputChannel.warn('Could not resolve containerlab bin path from sys PATH');
+      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${err}`);
     }
     containerlabBinaryPath = 'containerlab';
     return true;
@@ -414,7 +415,7 @@ function setClabBinPath(): boolean {
     return true;
   } catch (err) {
     // Path is invalid or not executable - try to resolve from PATH as fallback
-    outputChannel.error(`Invalid containerlab.binaryPath setting: "${configPath}" is not a valid executable.`);
+    outputChannel.error(`Invalid containerlab.binaryPath "${configPath}": ${err}`);
     vscode.window.showErrorMessage(
       `Configured containerlab binary path "${configPath}" is invalid or not executable.`
     );

@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import * as utils from "../helpers/utils";
 import { ClabInterfaceTreeNode } from "../treeView/common";
 import { execCommandInOutput } from "./command";
+import { containerlabBinaryPath } from "../extension";
 
 // Common validation messages and patterns
 const ERR_EMPTY = 'Input should not be empty';
@@ -23,7 +24,7 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
   }
   const impairmentFlag = impairment ? `--${impairment}` : undefined;
   if (impairment && !value) { return; }
-  const cmd = `${utils.getSudo()}containerlab tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`;
+  const cmd = `${utils.getSudo()}${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`;
   const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`;
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
   execCommandInOutput(cmd, false,

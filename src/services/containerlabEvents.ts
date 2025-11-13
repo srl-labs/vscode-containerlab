@@ -1,9 +1,9 @@
 import { spawn, ChildProcess } from "child_process";
-import * as fs from "fs";
 import * as readline from "readline";
 import * as utils from "../helpers/utils";
 import type { ClabDetailedJSON } from "../treeView/common";
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
+import { containerlabBinaryPath } from "../extension";
 
 interface ContainerlabEvent {
     timestamp?: string;
@@ -247,25 +247,6 @@ function scheduleDataChanged(): void {
             }
         }
     }, DATA_NOTIFY_DELAY_MS);
-}
-
-function findContainerlabBinary(): string {
-    const candidateBins = [
-        "/usr/bin/containerlab",
-        "/usr/local/bin/containerlab",
-        "/bin/containerlab",
-    ];
-
-    for (const candidate of candidateBins) {
-        try {
-            if (fs.existsSync(candidate)) {
-                return candidate;
-            }
-        } catch {
-            // ignore filesystem errors and continue searching
-        }
-    }
-    return "containerlab";
 }
 
 function scheduleInitialResolution(): void {
@@ -963,7 +944,7 @@ function startProcess(runtime: string): void {
     });
 
     const sudo = utils.getSudo().trim();
-    const containerlabBinary = findContainerlabBinary();
+    const containerlabBinary = containerlabBinaryPath
     const baseArgs = ["events", "--format", "json", "--initial-state"];
     if (runtime) {
         baseArgs.splice(1, 0, "-r", runtime);

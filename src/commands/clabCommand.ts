@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as cmd from './command';
 import { ClabLabTreeNode } from "../treeView/common";
+import { containerlabBinaryPath } from "../extension";
 /**
  * A helper class to build a 'containerlab' command (with optional sudo, etc.)
  * and run it either in the Output channel or in a Terminal.
@@ -22,13 +23,13 @@ export class ClabCommand extends cmd.Command {
         let options: cmd.CmdOptions;
         if (useTerminal) {
             options = {
-                command: "containerlab",
+                command: containerlabBinaryPath,
                 useSpinner: false,
                 terminalName: terminalName || "Containerlab",
             };
         } else {
             options = {
-                command: "containerlab",
+                command: containerlabBinaryPath,
                 useSpinner: true,
                 spinnerMsg: spinnerMsg || {
                     progressMsg: `Running ${action}...`,
