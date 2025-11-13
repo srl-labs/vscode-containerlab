@@ -4,6 +4,8 @@ import * as utils from './helpers/utils';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
 import * as path from 'path';
+import * as fs from 'fs';
+import { execSync } from 'child_process';
 
 import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
 import { setCurrentTopoViewer } from './commands/graph';
@@ -35,6 +37,8 @@ export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
+export let containerlabBinaryPath: string = 'containerlab';
+
 
 function extractLabName(session: any, prefix: string): string | undefined {
   if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
@@ -56,7 +60,7 @@ function extractLabName(session: any, prefix: string): string | undefined {
 export async function refreshSshxSessions() {
   try {
     const out = await utils.runWithSudo(
-      'containerlab tools sshx list -f json',
+      `${containerlabBinaryPath} tools sshx list -f json`,
       'List SSHX sessions',
       outputChannel,
       'containerlab',
@@ -83,7 +87,7 @@ export async function refreshSshxSessions() {
 export async function refreshGottySessions() {
   try {
     const out = await utils.runWithSudo(
-      'containerlab tools gotty list -f json',
+      `${containerlabBinaryPath} tools gotty list -f json`,
       'List GoTTY sessions',
       outputChannel,
       'containerlab',
@@ -382,6 +386,42 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   ins.refreshFromEventStream();
 }
 
+function setClabBinPath(): boolean {
+  const configPath = vscode.workspace.getConfiguration('containerlab').get<string>('binaryPath', '');
+
+  // if empty fall back to resolving from PATH
+  if (!configPath || configPath.trim() === '') {
+    try {
+      const stdout = execSync('which containerlab', { encoding: 'utf-8' });
+      const resolvedPath = stdout.trim();
+      if (resolvedPath) {
+        containerlabBinaryPath = resolvedPath;
+        outputChannel.info(`Resolved containerlab binary from sys PATH as: ${resolvedPath}`);
+        return true;
+      }
+    } catch (err) {
+      outputChannel.warn('Could not resolve containerlab bin path from sys PATH');
+    }
+    containerlabBinaryPath = 'containerlab';
+    return true;
+  }
+
+  try {
+    // Check if file exists and is executable
+    fs.accessSync(configPath, fs.constants.X_OK);
+    containerlabBinaryPath = configPath;
+    outputChannel.info(`Using user configured containerlab binary: ${configPath}`);
+    return true;
+  } catch (err) {
+    // Path is invalid or not executable - try to resolve from PATH as fallback
+    outputChannel.error(`Invalid containerlab.binaryPath setting: "${configPath}" is not a valid executable.`);
+    vscode.window.showErrorMessage(
+      `Configured containerlab binary path "${configPath}" is invalid or not executable.`
+    );
+  }
+  return false;
+}
+
 /**
  * Called when VSCode activates your extension.
  */
@@ -391,6 +431,12 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(outputChannel);
 
   outputChannel.info(process.platform);
+
+  if (!setClabBinPath()) {
+    // dont activate
+    return;
+  }
+
 
   // Allow activation only on Linux or when connected via WSL.
   // Provide a more helpful message for macOS users with a workaround link.

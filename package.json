@@ -1332,6 +1332,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Lock the lab canvas by default to prevent accidental modifications. Disable to start new sessions unlocked."
+        },
+        "containerlab.binaryPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The absolute file path to the Containerlab binary."
         }
       }
     }
