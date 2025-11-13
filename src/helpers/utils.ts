@@ -6,6 +6,7 @@ import { exec } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
 import { ClabLabTreeNode } from "../treeView/common";
+import { containerlabBinaryPath } from "../extension";
 
 const execAsync = promisify(exec);
 
@@ -207,7 +208,7 @@ async function tryRunAsGroupMember(
 async function hasPasswordlessSudo(checkType: 'generic' | 'containerlab' | 'docker'): Promise<boolean> {
   let checkCommand: string;
   if (checkType === 'containerlab') {
-    checkCommand = "sudo -n containerlab version >/dev/null 2>&1 && echo true || echo false";
+    checkCommand = `sudo -n ${containerlabBinaryPath} version >/dev/null 2>&1 && echo true || echo false`;
   } else if (checkType === 'docker') {
     checkCommand = "sudo -n docker ps >/dev/null 2>&1 && echo true || echo false";
   } else {
@@ -410,10 +411,10 @@ export async function checkAndUpdateClabIfNeeded(
   context: vscode.ExtensionContext
 ): Promise<void> {
   try {
-    log('Running "containerlab version check".', outputChannel);
+    log(`Running "${containerlabBinaryPath} version check".`, outputChannel);
     // Run the version check via runWithSudo and capture output.
     const versionOutputRaw = await runWithSudo(
-      'containerlab version check',
+      `${containerlabBinaryPath} version check`,
       'containerlab version check',
       outputChannel,
       'containerlab',
@@ -436,7 +437,7 @@ export async function checkAndUpdateClabIfNeeded(
       context.subscriptions.push(
         vscode.commands.registerCommand(updateCommandId, async () => {
           try {
-            await runWithSudo('containerlab version upgrade', 'Upgrading containerlab', outputChannel, 'generic');
+            await runWithSudo(`${containerlabBinaryPath} version upgrade`, 'Upgrading containerlab', outputChannel, 'generic');
             vscode.window.showInformationMessage('Containerlab updated successfully!');
             log('Containerlab updated successfully.', outputChannel);
           } catch (err: any) {

@@ -1134,11 +1134,6 @@
           "default": false,
           "description": "Whether to prepend 'sudo' to all containerlab commands by default."
         },
-        "containerlab.refreshInterval": {
-          "type": "number",
-          "default": 5000,
-          "description": "Refresh interval (in milliseconds) for the Containerlab Explorer."
-        },
         "containerlab.node.execCommandMapping": {
           "type": "object",
           "additionalProperties": {
@@ -1337,6 +1332,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Lock the lab canvas by default to prevent accidental modifications. Disable to start new sessions unlocked."
+        },
+        "containerlab.binaryPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The absolute file path to the Containerlab binary."
         }
       }
     }

@@ -73,6 +73,18 @@ type EditorParamsPayload = {
   currentLabPath?: string;
 };
 
+type InterfaceStatsPayload = {
+  rxBps?: number;
+  rxPps?: number;
+  rxBytes?: number;
+  rxPackets?: number;
+  txBps?: number;
+  txPps?: number;
+  txBytes?: number;
+  txPackets?: number;
+  statsIntervalSeconds?: number;
+};
+
 interface ModeSwitchPayload {
   mode: 'viewer' | 'editor' | string;
   deploymentState?: string;
@@ -622,6 +634,9 @@ class TopologyWebviewController {
               existing.removeClass('link-up');
               existing.removeClass('link-down');
               window.writeTopoDebugLog?.(`updateTopology: stripped link state classes from ${id}`);
+            }
+            if (existing.isEdge()) {
+              this.refreshLinkPanelIfSelected(existing);
             }
           } else {
             this.cy.add(el);
@@ -1602,6 +1617,21 @@ class TopologyWebviewController {
     this.updateLinkEndpointInfo(ele, extraData);
   }
 
+  private refreshLinkPanelIfSelected(edge: cytoscape.Singular): void {
+    if (!edge.isEdge()) {
+      return;
+    }
+    const selectedId = topoViewerState.selectedEdge;
+    if (!selectedId || edge.id() !== selectedId) {
+      return;
+    }
+    const panelLink = document.getElementById('panel-link') as HTMLElement | null;
+    if (!panelLink || panelLink.style.display === 'none') {
+      return;
+    }
+    this.populateLinkPanel(edge);
+  }
+
   private updateLinkName(ele: cytoscape.Singular): void {
     const linkNameEl = document.getElementById('panel-link-name');
     if (linkNameEl) {
@@ -1610,21 +1640,125 @@ class TopologyWebviewController {
   }
 
   private updateLinkEndpointInfo(ele: cytoscape.Singular, extraData: any): void {
-    const entries: Array<[string, string | undefined]> = [
-      ['panel-link-endpoint-a-name', `${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}`],
-      ['panel-link-endpoint-a-mac-address', extraData.clabSourceMacAddress || 'N/A'],
-      ['panel-link-endpoint-a-mtu', extraData.clabSourceMtu || 'N/A'],
-      ['panel-link-endpoint-a-type', extraData.clabSourceType || 'N/A'],
-      ['panel-link-endpoint-b-name', `${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`],
-      ['panel-link-endpoint-b-mac-address', extraData.clabTargetMacAddress || 'N/A'],
-      ['panel-link-endpoint-b-mtu', extraData.clabTargetMtu || 'N/A'],
-      ['panel-link-endpoint-b-type', extraData.clabTargetType || 'N/A']
-    ];
-    entries.forEach(([id, value]) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.textContent = value || '';
+    this.setEndpointFields('a', {
+      name: `${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}`,
+      mac: extraData?.clabSourceMacAddress,
+      mtu: extraData?.clabSourceMtu,
+      type: extraData?.clabSourceType,
+      stats: extraData?.clabSourceStats as InterfaceStatsPayload | undefined,
+    });
+    this.setEndpointFields('b', {
+      name: `${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`,
+      mac: extraData?.clabTargetMacAddress,
+      mtu: extraData?.clabTargetMtu,
+      type: extraData?.clabTargetType,
+      stats: extraData?.clabTargetStats as InterfaceStatsPayload | undefined,
+    });
+  }
+
+  private setEndpointFields(
+    letter: 'a' | 'b',
+    data: { name: string; mac?: string; mtu?: string | number; type?: string; stats?: InterfaceStatsPayload }
+  ): void {
+    const prefix = `panel-link-endpoint-${letter}`;
+    this.setLabelText(`${prefix}-name`, data.name, 'N/A');
+    this.setLabelText(`${prefix}-mac-address`, data.mac, 'N/A');
+    this.setLabelText(`${prefix}-mtu`, data.mtu, 'N/A');
+    this.setLabelText(`${prefix}-type`, data.type, 'N/A');
+    this.setLabelText(`${prefix}-rx-rate`, this.buildRateLine(data.stats, 'rx'), 'N/A');
+    this.setLabelText(`${prefix}-tx-rate`, this.buildRateLine(data.stats, 'tx'), 'N/A');
+    this.setLabelText(`${prefix}-rx-total`, this.buildCounterLine(data.stats, 'rx'), 'N/A');
+    this.setLabelText(`${prefix}-tx-total`, this.buildCounterLine(data.stats, 'tx'), 'N/A');
+    this.setLabelText(`${prefix}-stats-interval`, this.buildIntervalLine(data.stats), 'N/A');
+  }
+
+  private setLabelText(id: string, value: string | number | undefined, fallback: string): void {
+    const el = document.getElementById(id);
+    if (!el) {
+      return;
+    }
+    let text: string;
+    if (value === undefined) {
+      text = fallback;
+    } else if (typeof value === 'number') {
+      text = value.toLocaleString();
+    } else if (value.trim() === '') {
+      text = fallback;
+    } else {
+      text = value;
+    }
+    el.textContent = text;
+  }
+
+  private buildRateLine(stats: InterfaceStatsPayload | undefined, direction: 'rx' | 'tx'): string | undefined {
+    if (!stats) {
+      return undefined;
+    }
+    const bpsKey = direction === 'rx' ? 'rxBps' : 'txBps';
+    const ppsKey = direction === 'rx' ? 'rxPps' : 'txPps';
+    const bps = stats[bpsKey];
+    const pps = stats[ppsKey];
+
+    if (typeof bps !== 'number' || !Number.isFinite(bps)) {
+      if (typeof pps !== 'number' || !Number.isFinite(pps)) {
+        return undefined;
       }
+      return `PPS ${this.formatWithPrecision(pps, 2)}`;
+    }
+
+    const rateParts = [
+      `${this.formatWithPrecision(bps, 0)} bps`,
+      `${this.formatWithPrecision(bps / 1_000, 2)} Kbps`,
+      `${this.formatWithPrecision(bps / 1_000_000, 2)} Mbps`,
+      `${this.formatWithPrecision(bps / 1_000_000_000, 2)} Gbps`,
+    ];
+
+    let line = rateParts.join(' / ');
+    if (typeof pps === 'number' && Number.isFinite(pps)) {
+      line += ` | PPS: ${this.formatWithPrecision(pps, 2)}`;
+    }
+    return line;
+  }
+
+  private buildCounterLine(stats: InterfaceStatsPayload | undefined, direction: 'rx' | 'tx'): string | undefined {
+    if (!stats) {
+      return undefined;
+    }
+    const bytesKey = direction === 'rx' ? 'rxBytes' : 'txBytes';
+    const packetsKey = direction === 'rx' ? 'rxPackets' : 'txPackets';
+    const bytes = stats[bytesKey];
+    const packets = stats[packetsKey];
+    const segments: string[] = [];
+
+    if (typeof bytes === 'number' && Number.isFinite(bytes)) {
+      segments.push(`${this.formatWithPrecision(bytes, 0)} bytes`);
+    }
+    if (typeof packets === 'number' && Number.isFinite(packets)) {
+      segments.push(`${this.formatWithPrecision(packets, 0)} packets`);
+    }
+
+    if (segments.length === 0) {
+      return undefined;
+    }
+
+    return segments.join(' / ');
+  }
+
+  private buildIntervalLine(stats: InterfaceStatsPayload | undefined): string | undefined {
+    if (!stats) {
+      return undefined;
+    }
+    const interval = stats.statsIntervalSeconds;
+    if (typeof interval !== 'number' || !Number.isFinite(interval)) {
+      return undefined;
+    }
+    return `${this.formatWithPrecision(interval, 3)} s`;
+  }
+
+  private formatWithPrecision(value: number, fractionDigits: number): string {
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
     });
   }
 
