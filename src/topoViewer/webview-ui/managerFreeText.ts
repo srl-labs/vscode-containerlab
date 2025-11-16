@@ -919,9 +919,14 @@ export class ManagerFreeText {
     const zoom = this.cy.zoom() || 1;
     wrapper.style.left = `${renderedPosition.x}px`;
     wrapper.style.top = `${renderedPosition.y}px`;
-    const box = this.applyOverlayBoxSizing(wrapper, zoom);
-    this.syncNodeHitboxWithOverlay(node, box, zoom);
-    this.positionOverlayHandle(handle, renderedPosition, box.width, box.height);
+    const baseBox = this.applyOverlayBoxSizing(wrapper);
+    wrapper.style.transform = `translate(-50%, -50%) scale(${zoom})`;
+    const scaledBox = {
+      width: baseBox.width * zoom,
+      height: baseBox.height * zoom
+    };
+    this.syncNodeHitboxWithOverlay(node, scaledBox, zoom);
+    this.positionOverlayHandle(handle, renderedPosition, scaledBox.width, scaledBox.height);
   }
 
   private syncNodeHitboxWithOverlay(
@@ -947,32 +952,31 @@ export class ManagerFreeText {
     return `${baseWidth}px`;
   }
 
-  private applyOverlayBoxSizing(wrapper: HTMLDivElement, zoom: number): { width: number; height: number } {
-    wrapper.style.fontSize = `${Math.max(6, Number(wrapper.dataset.baseFontSize ?? '12') * zoom)}px`;
+  private applyOverlayBoxSizing(wrapper: HTMLDivElement): { width: number; height: number } {
+    wrapper.style.fontSize = `${Math.max(4, Number(wrapper.dataset.baseFontSize ?? '12'))}px`;
 
     const basePaddingY = Number(wrapper.dataset.basePaddingY ?? '0');
     const basePaddingX = Number(wrapper.dataset.basePaddingX ?? '0');
     if (basePaddingX === 0 && basePaddingY === 0) {
       wrapper.style.padding = '0';
     } else {
-      wrapper.style.padding = `${Math.max(0, basePaddingY * zoom)}px ${Math.max(0, basePaddingX * zoom)}px`;
+      wrapper.style.padding = `${Math.max(0, basePaddingY)}px ${Math.max(0, basePaddingX)}px`;
     }
     const baseRadius = Number(wrapper.dataset.baseBorderRadius ?? '0');
-    wrapper.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius * zoom)}px` : '0';
+    wrapper.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius)}px` : '0';
     const baseWidthRaw = wrapper.dataset.baseMaxWidth;
     let width: number;
     if (baseWidthRaw && baseWidthRaw !== 'auto') {
       const numericWidth = Math.max(MIN_FREE_TEXT_WIDTH, Number(baseWidthRaw));
-      const appliedWidth = numericWidth * zoom;
-      wrapper.style.width = `${appliedWidth}px`;
-      wrapper.style.maxWidth = `${appliedWidth}px`;
-      width = appliedWidth;
+      wrapper.style.width = `${numericWidth}px`;
+      wrapper.style.maxWidth = `${numericWidth}px`;
+      width = numericWidth;
     } else {
       wrapper.style.width = 'auto';
       wrapper.style.maxWidth = 'none';
-      width = wrapper.offsetWidth || wrapper.scrollWidth || DEFAULT_FREE_TEXT_WIDTH * zoom;
+      width = wrapper.offsetWidth || wrapper.scrollWidth || DEFAULT_FREE_TEXT_WIDTH;
     }
-    const fallbackHeight = Math.max(24, Number(wrapper.dataset.baseFontSize ?? '12') * zoom);
+    const fallbackHeight = Math.max(24, Number(wrapper.dataset.baseFontSize ?? '12'));
     const height = wrapper.offsetHeight || wrapper.scrollHeight || fallbackHeight;
     return { width, height };
   }
@@ -1064,9 +1068,8 @@ export class ManagerFreeText {
       return;
     }
 
-    const zoom = this.cy.zoom() || 1;
     const datasetWidth = Number(entry.wrapper.dataset.baseMaxWidth ?? DEFAULT_FREE_TEXT_WIDTH);
-    const measuredWidth = entry.wrapper.offsetWidth / zoom;
+    const measuredWidth = entry.wrapper.offsetWidth;
     const numericAnnotationWidth = typeof annotation.width === 'number' && Number.isFinite(annotation.width)
       ? annotation.width as number
       : undefined;
