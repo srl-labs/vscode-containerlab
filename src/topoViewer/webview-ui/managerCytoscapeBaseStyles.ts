@@ -368,7 +368,7 @@ const commonRoleStyle: cytoscape.Css.Node = {
   'background-fit': 'cover'
 };
 
-const roleSvgMap: Record<string, NodeType> = {
+export const ROLE_SVG_MAP: Record<string, NodeType> = {
   router: 'pe',
   default: 'pe',
   pe: 'pe',
@@ -393,7 +393,15 @@ const roleStyleOverrides: Record<string, cytoscape.Css.Node> = {
   default: { 'background-clip': 'none' }
 };
 
-const roleStyles: any[] = Object.entries(roleSvgMap).map(([role, svgId]) => ({
+export function getIconDataUriForRole(role: string, fillColor: string = '#005aff'): string | null {
+  const nodeType = ROLE_SVG_MAP[role] ?? ROLE_SVG_MAP.default;
+  if (!nodeType) {
+    return null;
+  }
+  return generateEncodedSVG(nodeType, fillColor);
+}
+
+const roleStyles: any[] = Object.entries(ROLE_SVG_MAP).map(([role, svgId]) => ({
   selector: `node[topoViewerRole="${role}"]`,
   style: {
     ...commonRoleStyle,

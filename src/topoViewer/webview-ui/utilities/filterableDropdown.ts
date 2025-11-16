@@ -4,11 +4,24 @@ interface DropdownState {
   lastSelected: string;
 }
 
+type OptionRenderer = (option: string) => HTMLElement | string; // eslint-disable-line no-unused-vars
+
+export interface FilterableDropdownConfig {
+  menuClassName?: string;
+  renderOption?: OptionRenderer;
+  dropdownWidth?: number;
+}
+
 const CLASS_HIGHLIGHT = 'bg-highlight';
 const COLOR_ACTIVE_BG = 'var(--vscode-list-activeSelectionBackground)';
 const COLOR_TRANSPARENT = 'transparent';
 
-function buildDropdownHtml(containerId: string, placeholder: string, currentValue: string): string {
+function buildDropdownHtml(
+  containerId: string,
+  placeholder: string,
+  currentValue: string,
+  menuClassName: string,
+): string {
   return `
     <div class="filterable-dropdown relative w-full">
       <div class="filterable-dropdown-input-container relative">
@@ -22,7 +35,7 @@ function buildDropdownHtml(containerId: string, placeholder: string, currentValu
         <i class="fas fa-angle-down absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer"
            id="${containerId}-dropdown-arrow"></i>
       </div>
-      <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full max-h-40 overflow-y-auto z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg"
+      <div class="filterable-dropdown-menu hidden absolute top-full left-0 mt-1 w-full ${menuClassName} overflow-y-auto z-[60] bg-[var(--vscode-dropdown-background)] border border-[var(--vscode-dropdown-border)] rounded shadow-lg"
            id="${containerId}-dropdown-menu">
       </div>
     </div>
@@ -76,6 +89,7 @@ function populateOptions(
   filteredOptions: string[],
   state: DropdownState,
   onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
+  renderOption?: OptionRenderer,
 ): void {
   dropdownMenu.innerHTML = '';
 
@@ -86,7 +100,16 @@ function populateOptions(
     optionElement.style.backgroundColor = 'transparent';
     optionElement.style.fontSize = 'var(--vscode-font-size)';
     optionElement.style.fontFamily = 'var(--vscode-font-family)';
-    optionElement.textContent = option;
+    if (renderOption) {
+      const rendered = renderOption(option);
+      if (typeof rendered === 'string') {
+        optionElement.innerHTML = rendered;
+      } else {
+        optionElement.appendChild(rendered);
+      }
+    } else {
+      optionElement.textContent = option;
+    }
     optionElement.href = '#';
 
     optionElement.addEventListener('mouseenter', () => {
@@ -114,6 +137,7 @@ function showDropdown(
   filterInput: HTMLInputElement,
   dropdownMenu: HTMLElement,
   originalParent: HTMLElement,
+  forcedWidth?: number,
 ): void {
   const rect = (filterInput.getBoundingClientRect?.() || {
     left: 0,
@@ -127,7 +151,8 @@ function showDropdown(
   dropdownMenu.style.position = 'fixed';
   dropdownMenu.style.left = `${rect.left}px`;
   dropdownMenu.style.top = `${rect.bottom}px`;
-  dropdownMenu.style.width = `${rect.width || originalParent.clientWidth}px`;
+  const width = forcedWidth ?? rect.width ?? originalParent.clientWidth;
+  dropdownMenu.style.width = `${width}px`;
   dropdownMenu.classList.remove('hidden');
 }
 
@@ -149,13 +174,14 @@ function createFilterInputHandler(
   state: DropdownState,
   onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
   show: () => void,
+  renderOption?: OptionRenderer,
 ): () => void {
   return () => {
     const filterValue = filterInput.value.toLowerCase();
     const filteredOptions = options.filter(option =>
       option.toLowerCase().includes(filterValue),
     );
-    populateOptions(dropdownMenu, filterInput, filteredOptions, state, onSelect);
+    populateOptions(dropdownMenu, filterInput, filteredOptions, state, onSelect, renderOption);
     if (!dropdownMenu.classList.contains('hidden')) {
       show();
     }
@@ -319,6 +345,7 @@ export function createFilterableDropdown(
   onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
   placeholder: string = 'Type to filter...',
   allowFreeText: boolean = false,
+  config: FilterableDropdownConfig = {},
 ): void {
   const container = document.getElementById(containerId);
   if (!container) {
@@ -326,7 +353,8 @@ export function createFilterableDropdown(
     return;
   }
 
-  container.innerHTML = buildDropdownHtml(containerId, placeholder, currentValue);
+  const menuClassName = config.menuClassName ?? 'max-h-40';
+  container.innerHTML = buildDropdownHtml(containerId, placeholder, currentValue, menuClassName);
 
   const filterInput = document.getElementById(`${containerId}-filter-input`) as HTMLInputElement;
   const dropdownMenu = document.getElementById(`${containerId}-dropdown-menu`) as HTMLElement;
@@ -338,14 +366,17 @@ export function createFilterableDropdown(
   }
 
   const state: DropdownState = { lastSelected: currentValue ?? '' };
-  populateOptions(dropdownMenu, filterInput, options, state, onSelect);
+  populateOptions(dropdownMenu, filterInput, options, state, onSelect, config.renderOption);
 
   const originalParent = dropdownMenu.parentElement as HTMLElement;
   const commit = () => commitInput(filterInput, options, allowFreeText, state, onSelect);
-  const show = () => showDropdown(filterInput, dropdownMenu, originalParent);
+  const show = () => showDropdown(filterInput, dropdownMenu, originalParent, config.dropdownWidth);
   const hide = () => hideDropdown(dropdownMenu, originalParent);
 
-  filterInput.addEventListener('input', createFilterInputHandler(filterInput, dropdownMenu, options, state, onSelect, show));
+  filterInput.addEventListener(
+    'input',
+    createFilterInputHandler(filterInput, dropdownMenu, options, state, onSelect, show, config.renderOption),
+  );
   filterInput.addEventListener('focus', show);
   filterInput.addEventListener('blur', createBlurHandler(commit));
   if (dropdownArrow) {

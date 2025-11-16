@@ -6,6 +6,7 @@ import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { extractNodeIcons } from './managerCytoscapeBaseStyles';
+import { createNodeIconOptionElement } from './utilities/iconDropdownRenderer';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import type { ClabTopology } from '../types/topoViewerType';
 import { DEFAULT_INTERFACE_PATTERN } from './utilities/interfacePatternUtils';
@@ -2522,7 +2523,19 @@ export class ManagerNodeEditor {
     } else if (nodeData.extraData?.icon && typeof nodeData.extraData.icon === 'string') {
       iconInitial = nodeData.extraData.icon;
     }
-    createFilterableDropdown(ID_PANEL_NODE_TOPOROLE_CONTAINER, nodeIcons, iconInitial, () => {}, 'Search for icon...');
+    createFilterableDropdown(
+      ID_PANEL_NODE_TOPOROLE_CONTAINER,
+      nodeIcons,
+      iconInitial,
+      () => {},
+      'Search for icon...',
+      false,
+      {
+        menuClassName: 'max-h-96',
+        dropdownWidth: 320,
+        renderOption: createNodeIconOptionElement,
+      }
+    );
   }
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {

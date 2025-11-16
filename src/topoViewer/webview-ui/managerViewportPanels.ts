@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { extractNodeIcons } from './managerCytoscapeBaseStyles';
+import { createNodeIconOptionElement } from './utilities/iconDropdownRenderer';
 import { log } from '../logging/logger';
 import { isSpecialNodeOrBridge } from '../utilities/specialNodes';
 import {
@@ -1673,7 +1674,13 @@ export class ManagerViewportPanels {
         this.panelNodeEditorTopoViewerRole = selectedValue;
         log.debug(`${this.panelNodeEditorTopoViewerRole} selected`);
       },
-      'Search for role...'
+      'Search for role...',
+      false,
+      {
+        menuClassName: 'max-h-96',
+        dropdownWidth: 320,
+        renderOption: createNodeIconOptionElement,
+      }
     );
   }
 
