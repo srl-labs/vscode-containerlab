@@ -119,12 +119,12 @@ export class ManagerAddContainerlabNode {
     kind: string,
     template?: { type?: string; name?: string }
   ): string | undefined {
+    if (template?.type) {
+      return template.type;
+    }
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
     if (!nokiaKinds.includes(kind)) {
       return undefined;
-    }
-    if (template?.type) {
-      return template.type;
     }
     // If this template represents a custom node (has a name) but no explicit type,
     // avoid assigning a default type.
