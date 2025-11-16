@@ -9,6 +9,16 @@ import topoViewerState from '../state';
 // Common style literals reused several times
 const DATA_NAME = 'data(name)';
 const SELECTOR_GROUP = 'node[topoViewerRole="group"]';
+const STYLE_BACKGROUND_IMAGE = 'background-image' as const;
+const STYLE_BACKGROUND_FIT = 'background-fit' as const;
+const STYLE_BACKGROUND_POS_X = 'background-position-x' as const;
+const STYLE_BACKGROUND_POS_Y = 'background-position-y' as const;
+const STYLE_BACKGROUND_REPEAT = 'background-repeat' as const;
+const BACKGROUND_CENTER = '50%' as const;
+const BACKGROUND_NO_REPEAT = 'no-repeat' as const;
+const BACKGROUND_FIT_COVER = 'cover' as const;
+const BACKGROUND_FIT_CONTAIN = 'contain' as const;
+
 const GROUP_NODE_STYLE = {
   shape: 'rectangle',
   'border-width': '0.5px',
@@ -47,12 +57,13 @@ const cytoscapeStylesBase: any[] = [
   {
     selector: 'node.empty-group',
     style: {
-      'background-image': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjODg4IiAvPjwvc3ZnPg==',
+      [STYLE_BACKGROUND_IMAGE]:
+        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjODg4IiAvPjwvc3ZnPg==',
       'background-width': '25px',
       'background-height': '25px',
-      'background-position-x': '50%',
-      'background-position-y': '50%',
-      'background-repeat': 'no-repeat'
+      [STYLE_BACKGROUND_POS_X]: BACKGROUND_CENTER,
+      [STYLE_BACKGROUND_POS_Y]: BACKGROUND_CENTER,
+      [STYLE_BACKGROUND_REPEAT]: BACKGROUND_NO_REPEAT
     }
   },
   {
@@ -92,7 +103,7 @@ const cytoscapeStylesBase: any[] = [
   },
   {
     selector: 'node[?query]',
-    style: { 'background-clip': 'none', 'background-fit': 'contain' }
+    style: { 'background-clip': 'none', [STYLE_BACKGROUND_FIT]: BACKGROUND_FIT_CONTAIN }
   },
     { selector: 'node:parent', style: GROUP_NODE_STYLE },
   { selector: SELECTOR_GROUP, style: {} },
@@ -365,8 +376,20 @@ const cytoscapeStylesBase: any[] = [
 const commonRoleStyle: cytoscape.Css.Node = {
   width: '14',
   height: '14',
-  'background-fit': 'cover'
+  [STYLE_BACKGROUND_FIT]: BACKGROUND_FIT_COVER,
+  [STYLE_BACKGROUND_POS_X]: BACKGROUND_CENTER,
+  [STYLE_BACKGROUND_POS_Y]: BACKGROUND_CENTER,
+  [STYLE_BACKGROUND_REPEAT]: BACKGROUND_NO_REPEAT
 };
+
+const COMMON_ROLE_STYLE_KEYS: (keyof cytoscape.Css.Node)[] = [
+  'width',
+  'height',
+  STYLE_BACKGROUND_FIT,
+  STYLE_BACKGROUND_POS_X,
+  STYLE_BACKGROUND_POS_Y,
+  STYLE_BACKGROUND_REPEAT
+];
 
 export const ROLE_SVG_MAP: Record<string, NodeType> = {
   router: 'pe',
@@ -393,7 +416,67 @@ const roleStyleOverrides: Record<string, cytoscape.Css.Node> = {
   default: { 'background-clip': 'none' }
 };
 
+function getCustomIconForRole(role?: string | null): string | null {
+  const normalizedRole = typeof role === 'string' ? role : '';
+  const customIcon = getCustomIconMap()[normalizedRole];
+  if (typeof customIcon === 'string' && customIcon.length > 0) {
+    return customIcon;
+  }
+  return null;
+}
+
+function applyCommonRoleStyle(node: cytoscape.NodeSingular, role?: string): void {
+  COMMON_ROLE_STYLE_KEYS.forEach(key => {
+    const value = commonRoleStyle[key];
+    if (typeof value === 'string' || typeof value === 'number') {
+      node.style(key as any, value as any);
+    }
+  });
+  const override = role ? roleStyleOverrides[role] : undefined;
+  if (override) {
+    Object.entries(override).forEach(([key, value]) => {
+      node.style(key as any, value as any);
+    });
+  }
+}
+
+function applyCustomIconLayout(node: cytoscape.NodeSingular): void {
+  node.style(STYLE_BACKGROUND_FIT as any, BACKGROUND_FIT_CONTAIN);
+  node.style(STYLE_BACKGROUND_POS_X as any, BACKGROUND_CENTER);
+  node.style(STYLE_BACKGROUND_POS_Y as any, BACKGROUND_CENTER);
+  node.style(STYLE_BACKGROUND_REPEAT as any, BACKGROUND_NO_REPEAT);
+}
+
+function resetCustomIconLayout(node: cytoscape.NodeSingular): void {
+  node.removeStyle(STYLE_BACKGROUND_FIT as any);
+  node.removeStyle(STYLE_BACKGROUND_POS_X as any);
+  node.removeStyle(STYLE_BACKGROUND_POS_Y as any);
+  node.removeStyle(STYLE_BACKGROUND_REPEAT as any);
+}
+
+function applyCustomIconBackground(node: cytoscape.NodeSingular): void {
+  node.style('background-color', 'rgba(0, 0, 0, 0)');
+  node.style('background-opacity', 0);
+}
+
+function resetCustomIconBackground(node: cytoscape.NodeSingular): void {
+  node.removeStyle('background-color');
+  node.removeStyle('background-opacity');
+}
+
+function getCustomIconMap(): Record<string, string> {
+  const customIcons = (window as any)?.customIcons;
+  if (customIcons && typeof customIcons === 'object') {
+    return customIcons as Record<string, string>;
+  }
+  return {};
+}
+
 export function getIconDataUriForRole(role: string, fillColor: string = '#005aff'): string | null {
+  const customIcon = getCustomIconForRole(role);
+  if (customIcon) {
+    return customIcon;
+  }
   const nodeType = ROLE_SVG_MAP[role] ?? ROLE_SVG_MAP.default;
   if (!nodeType) {
     return null;
@@ -412,17 +495,31 @@ export function applyIconColorToNode(
   preserveDefaultBackground: boolean = false
 ): void {
   const role = (node.data('topoViewerRole') as string) || 'pe';
+  const customIcon = getCustomIconForRole(role);
+  if (customIcon) {
+    node.removeData('iconColor');
+    applyCommonRoleStyle(node, role);
+    applyCustomIconLayout(node);
+    applyCustomIconBackground(node);
+    node.style(STYLE_BACKGROUND_IMAGE, customIcon);
+    if (options && Object.prototype.hasOwnProperty.call(options, 'cornerRadius')) {
+      applyCornerRadiusStyle(node, options.cornerRadius);
+    }
+    return;
+  }
+  resetCustomIconLayout(node);
+  resetCustomIconBackground(node);
   const nodeType = ROLE_SVG_MAP[role] ?? ROLE_SVG_MAP.default;
   if (!nodeType) return;
 
   const normalizedColor = normalizeIconColorValue(color);
   if (normalizedColor) {
-    node.style('background-image', generateEncodedSVG(nodeType, normalizedColor));
+    node.style(STYLE_BACKGROUND_IMAGE, generateEncodedSVG(nodeType, normalizedColor));
     node.data('iconColor', normalizedColor);
   } else {
     node.removeData('iconColor');
     if (!preserveDefaultBackground) {
-      node.removeStyle('background-image');
+      node.removeStyle(STYLE_BACKGROUND_IMAGE);
     }
   }
 
@@ -432,16 +529,19 @@ export function applyIconColorToNode(
 }
 
 export function applyCustomIconColors(cy: cytoscape.Core): void {
-  cy.nodes().forEach(node => {
-    const color = node.data('iconColor');
-    const radius = node.data('iconCornerRadius');
-    const hasColor = typeof color === 'string' && color.trim();
-    const hasRadius = typeof radius === 'number' && Number.isFinite(radius) && radius > 0;
-    if (hasColor || hasRadius) {
-      const options: IconStyleOptions | undefined = hasRadius ? { cornerRadius: radius } : undefined;
-      applyIconColorToNode(node, hasColor ? color : undefined, options, !hasColor);
-    }
-  });
+  cy
+    .nodes('node[topoViewerRole != "group"][topoViewerRole != "freeText"]')
+    .forEach(node => {
+      const color = node.data('iconColor');
+      const radius = node.data('iconCornerRadius');
+      const hasColor = typeof color === 'string' && color.trim();
+      const hasRadius = typeof radius === 'number' && Number.isFinite(radius) && radius > 0;
+      const hasCustomIcon = !!getCustomIconForRole(node.data('topoViewerRole'));
+      if (hasColor || hasRadius || hasCustomIcon) {
+        const options: IconStyleOptions | undefined = hasRadius ? { cornerRadius: radius } : undefined;
+        applyIconColorToNode(node, hasColor ? color : undefined, options, !hasColor);
+      }
+    });
 }
 
 function normalizeIconColorValue(color?: string | null): string | null {
@@ -690,9 +790,12 @@ export function extractNodeIcons(): string[] {
   }
 
   // Filter out any non-string values that might have snuck in
-  return Array.from(nodeTypesSet)
+  const baseIcons = Array.from(nodeTypesSet)
     .filter(item => typeof item === 'string' && item !== '[object Object]')
     .sort();
+  const customIcons = Object.keys(getCustomIconMap());
+  const merged = new Set<string>([...baseIcons, ...customIcons]);
+  return Array.from(merged).sort();
 }
 
 // Expose globally for external consumers

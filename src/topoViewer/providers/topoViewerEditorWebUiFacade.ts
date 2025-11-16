@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'os';
 
 import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
@@ -23,6 +24,7 @@ import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
 
 // Common configuration section key used throughout this module
 const CONFIG_SECTION = 'containerlab.editor';
+const SUPPORTED_ICON_EXTENSIONS = new Set(['.svg', '.png']);
 
 interface WebviewMessage {
   type?: string;
@@ -91,6 +93,7 @@ export class TopoViewerEditor {
     'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
     'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
     'refresh-docker-images': this.handleRefreshDockerImagesEndpoint.bind(this),
+    'topo-editor-upload-icon': this.handleUploadIconEndpoint.bind(this),
     showError: this.handleShowErrorEndpoint.bind(this),
     'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
     copyElements: this.handleCopyElementsEndpoint.bind(this),
@@ -755,6 +758,7 @@ topology:
     const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
     const imageMapping = this.buildImageMapping(customNodes);
     const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+    const customIcons = await this.loadCustomIcons();
     return {
       imageMapping,
       ifacePatternMapping,
@@ -768,7 +772,8 @@ topology:
       topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
       topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
       topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
-      lockLabByDefault
+      lockLabByDefault,
+      customIcons
     };
   }
 
@@ -1979,6 +1984,135 @@ topology:
       const error = `Error refreshing docker images: ${err}`;
       log.error(`Error refreshing docker images: ${JSON.stringify(err, null, 2)}`);
       return { result: null, error };
+    }
+  }
+
+  private async handleUploadIconEndpoint(
+    _payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const selection = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        title: 'Select a Containerlab icon',
+        openLabel: 'Import Icon',
+        filters: { Images: ['svg', 'png'], SVG: ['svg'] }
+      });
+      if (!selection || selection.length === 0) {
+        return { result: { cancelled: true }, error: null };
+      }
+
+      const { name } = await this.importCustomIcon(selection[0]);
+      const customIcons = await this.loadCustomIcons();
+      void vscode.window.showInformationMessage(`Added custom icon "${name}".`);
+      return { result: { success: true, customIcons, lastAddedIcon: name }, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error(`Failed to import custom icon: ${message}`);
+      void vscode.window.showErrorMessage(`Failed to add custom icon: ${message}`);
+      return { result: null, error: message };
+    }
+  }
+
+  private getCustomIconDirectory(): string {
+    return path.join(os.homedir(), '.clab', 'icons');
+  }
+
+  private sanitizeIconBaseName(name: string): string {
+    const normalized = name.toLowerCase().replace(/[^a-z0-9-_]+/g, '-');
+    let start = 0;
+    while (start < normalized.length && normalized[start] === '-') {
+      start += 1;
+    }
+    let end = normalized.length;
+    while (end > start && normalized[end - 1] === '-') {
+      end -= 1;
+    }
+    const trimmed = normalized.slice(start, end);
+    return trimmed || 'custom-icon';
+  }
+
+  private async ensureCustomIconDirectory(): Promise<string> {
+    const dir = this.getCustomIconDirectory();
+    await fsPromises.mkdir(dir, { recursive: true });
+    return dir;
+  }
+
+  private async pathExists(target: string): Promise<boolean> {
+    try {
+      await fsPromises.access(target);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async generateUniqueIconFileName(dir: string, base: string, ext: string): Promise<string> {
+    let candidate = `${base}${ext}`;
+    let counter = 1;
+    while (await this.pathExists(path.join(dir, candidate))) {
+      candidate = `${base}-${counter}${ext}`;
+      counter += 1;
+    }
+    return candidate;
+  }
+
+  private async importCustomIcon(uri: vscode.Uri): Promise<{ name: string; filePath: string }> {
+    const ext = path.extname(uri.fsPath).toLowerCase();
+    if (!SUPPORTED_ICON_EXTENSIONS.has(ext)) {
+      throw new Error('Only .svg and .png icons are supported.');
+    }
+    const dir = await this.ensureCustomIconDirectory();
+    const baseName = this.sanitizeIconBaseName(path.basename(uri.fsPath, ext));
+    const fileName = await this.generateUniqueIconFileName(dir, baseName, ext);
+    const destination = path.join(dir, fileName);
+    await fsPromises.copyFile(uri.fsPath, destination);
+    return { name: path.basename(fileName, ext), filePath: destination };
+  }
+
+  private async loadCustomIcons(): Promise<Record<string, string>> {
+    const dir = this.getCustomIconDirectory();
+    try {
+      const entries = await fsPromises.readdir(dir, { withFileTypes: true });
+      const result: Record<string, string> = {};
+      for (const entry of entries) {
+        const iconRecord = await this.readCustomIconEntry(dir, entry);
+        if (iconRecord) {
+          result[iconRecord.name] = iconRecord.data;
+        }
+      }
+      return result;
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') {
+        return {};
+      }
+      log.error(`Failed to read custom icon directory: ${error instanceof Error ? error.message : String(error)}`);
+      return {};
+    }
+  }
+
+  private async readCustomIconEntry(
+    dir: string,
+    entry: fs.Dirent
+  ): Promise<{ name: string; data: string } | null> {
+    if (!entry.isFile()) {
+      return null;
+    }
+    const ext = path.extname(entry.name).toLowerCase();
+    if (!SUPPORTED_ICON_EXTENSIONS.has(ext)) {
+      return null;
+    }
+    try {
+      const buffer = await fsPromises.readFile(path.join(dir, entry.name));
+      const mime = ext === '.svg' ? 'image/svg+xml' : 'image/png';
+      const base64 = buffer.toString('base64');
+      return { name: path.basename(entry.name, ext), data: `data:${mime};base64,${base64}` };
+    } catch (error) {
+      log.warn(
+        `Failed to load custom icon ${entry.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return null;
     }
   }
 

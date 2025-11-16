@@ -85,6 +85,7 @@ const ID_NODE_VERSION_DROPDOWN = 'node-version-dropdown-container' as const;
 const ID_NODE_VERSION_FILTER_INPUT = 'node-version-dropdown-container-filter-input' as const;
 const ID_NODE_ICON_COLOR = 'node-icon-color' as const;
 const ID_NODE_ICON_EDIT_BUTTON = 'node-icon-edit-button' as const;
+const ID_NODE_ICON_ADD_BUTTON = 'node-icon-add-button' as const;
 const ID_ICON_EDITOR_BACKDROP = 'node-icon-editor-backdrop' as const;
 const ID_ICON_EDITOR_MODAL = 'node-icon-editor-modal' as const;
 const ID_ICON_EDITOR_COLOR = 'node-icon-editor-color' as const;
@@ -405,6 +406,7 @@ export class ManagerNodeEditor {
   private xiomMdaCounters: Map<string, number> = new Map();
   private pendingExpandedComponentSlots: Set<string> | undefined;
   private cachedNodeIcons: string[] = [];
+  private cachedCustomIconSignature: string = '';
   private currentIconColor: string | null = null;
   private currentIconCornerRadius: number = DEFAULT_ICON_CORNER_RADIUS;
   private iconEditorInitialized = false;
@@ -2206,12 +2208,16 @@ export class ManagerNodeEditor {
   private setupIconEditorControls(): void {
     if (this.iconEditorInitialized) return;
     const editButton = document.getElementById(ID_NODE_ICON_EDIT_BUTTON) as HTMLButtonElement | null;
+    const addButton = document.getElementById(ID_NODE_ICON_ADD_BUTTON) as HTMLButtonElement | null;
     const modal = document.getElementById(ID_ICON_EDITOR_MODAL);
     const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP);
     if (!editButton || !modal || !backdrop) return;
     this.iconEditorInitialized = true;
 
     editButton.addEventListener('click', () => this.openIconEditor());
+    addButton?.addEventListener('click', () => {
+      void this.handleIconUpload();
+    });
     this.registerIconEditorDismissHandlers();
     this.registerIconEditorActionHandlers();
     this.registerIconEditorInputHandlers();
@@ -2715,10 +2721,23 @@ export class ManagerNodeEditor {
   }
 
   private getNodeIconOptions(): string[] {
-    if (!this.cachedNodeIcons.length) {
+    const signature = this.computeCustomIconSignature();
+    if (!this.cachedNodeIcons.length || this.cachedCustomIconSignature !== signature) {
       this.cachedNodeIcons = extractNodeIcons();
+      this.cachedCustomIconSignature = signature;
     }
     return this.cachedNodeIcons;
+  }
+
+  private computeCustomIconSignature(): string {
+    const customIcons = (window as any)?.customIcons;
+    if (!customIcons || typeof customIcons !== 'object') {
+      return '';
+    }
+    return Object.keys(customIcons)
+      .sort()
+      .map(key => `${key}-${(customIcons[key] as string)?.length ?? 0}`)
+      .join('|');
   }
 
   private setupKindAndTypeFields(extraData: Record<string, any>, actualInherited: string[]): void {
@@ -2832,6 +2851,55 @@ export class ManagerNodeEditor {
   private getCurrentIconValue(): string {
     const input = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
     return input?.value?.trim() || 'pe';
+  }
+
+  private async handleIconUpload(): Promise<void> {
+    if (!this.messageSender) {
+      return;
+    }
+    try {
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-upload-icon', {});
+      if (!response || response.cancelled || response.success !== true) {
+        return;
+      }
+      if (response.customIcons && typeof response.customIcons === 'object') {
+        (window as any).customIcons = response.customIcons;
+        this.cachedNodeIcons = [];
+        this.cachedCustomIconSignature = '';
+        this.refreshIconDropdownAfterUpload(response.lastAddedIcon);
+      }
+    } catch (error) {
+      log.error(`Failed to upload custom icon: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private refreshIconDropdownAfterUpload(newIconName?: string): void {
+    const selectedIcon = newIconName || this.getCurrentIconValue();
+    createFilterableDropdown(
+      ID_PANEL_NODE_TOPOROLE_CONTAINER,
+      this.getNodeIconOptions(),
+      selectedIcon,
+      () => {},
+      'Search for icon...',
+      false,
+      {
+        menuClassName: 'max-h-96',
+        dropdownWidth: 320,
+        renderOption: createNodeIconOptionElement,
+      }
+    );
+    const filterInput = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
+    if (filterInput) {
+      filterInput.value = selectedIcon;
+    }
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    if (shapeSelect) {
+      this.populateIconShapeOptions(shapeSelect);
+      if (newIconName) {
+        shapeSelect.value = newIconName;
+      }
+    }
+    this.updateIconPreviewElement();
   }
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {

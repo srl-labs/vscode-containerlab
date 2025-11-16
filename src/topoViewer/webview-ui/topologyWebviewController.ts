@@ -71,6 +71,7 @@ type EditorParamsPayload = {
   topologyGroups?: Record<string, unknown>;
   dockerImages?: string[];
   currentLabPath?: string;
+  customIcons?: Record<string, string>;
 };
 
 interface ModeSwitchPayload {
@@ -700,6 +701,7 @@ class TopologyWebviewController {
     this.assignWindowValue('topologyGroups', params.topologyGroups, {});
     this.assignWindowValue('dockerImages', params.dockerImages, []);
     this.assignWindowValue('currentLabPath', params.currentLabPath);
+    this.assignWindowValue('customIcons', params.customIcons, {});
   }
 
   private assignWindowValue<T>(key: string, value: T | undefined, fallback?: T): void {
