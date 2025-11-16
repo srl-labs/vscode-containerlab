@@ -80,6 +80,8 @@ interface OverlayEntry {
   wrapper: HTMLDivElement;
   content: HTMLDivElement;
   handle: HTMLButtonElement;
+  size?: { width: number; height: number };
+  resizeObserver?: ResizeObserver | null;
 }
 
 interface OverlayResizeState {
@@ -103,7 +105,6 @@ export class ManagerFreeText {
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
   private overlayContainer: HTMLDivElement | null = null;
   private overlayElements: Map<string, OverlayEntry> = new Map();
-  private overlaySyncHandler?: () => void;
   private overlayResizeState: OverlayResizeState | null = null;
   private activeResizeHandle: HTMLButtonElement | null = null;
   private overlayHoverLocks: Set<string> = new Set();
@@ -310,10 +311,16 @@ export class ManagerFreeText {
       this.updateFreeTextPosition(node.id(), node.position());
     });
 
-    // Also handle position changes during drag for real-time updates
-    this.cy.on('position', 'node[topoViewerRole="freeText"]', (event) => {
+    // Also handle position changes to keep overlays in sync (and persist user drags)
+    this.cy.on('position', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
-      if (!node.grabbed()) return; // Only update when being dragged
+      if (!node) {
+        return;
+      }
+      this.positionOverlayById(node.id());
+      if (!node.grabbed()) {
+        return;
+      }
       const annotation = this.annotations.get(node.id());
       if (annotation) {
         annotation.position = {
@@ -798,11 +805,60 @@ export class ManagerFreeText {
     const handler = () => {
       this.positionAllOverlays();
     };
-    this.overlaySyncHandler = handler;
-    this.cy.on('render', handler);
     this.cy.on('pan', handler);
     this.cy.on('zoom', handler);
     this.cy.on('resize', handler);
+  }
+
+  private normalizeOverlayDimension(value: number | undefined, fallback: number): number {
+    const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    return Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(numeric));
+  }
+
+  private canUseResizeObserver(entry: OverlayEntry): boolean {
+    return !entry.resizeObserver && typeof window !== 'undefined' && typeof window.ResizeObserver !== 'undefined';
+  }
+
+  private observeOverlayDom(entry: OverlayEntry, observer: ResizeObserver): void {
+    try {
+      observer.observe(entry.wrapper, { box: 'border-box' });
+    } catch {
+      observer.observe(entry.wrapper);
+    }
+  }
+
+  private handleOverlayResizeEntries(annotationId: string, entry: OverlayEntry, entries: ResizeObserverEntry[]): void {
+    if (!entries || entries.length === 0) {
+      return;
+    }
+    const resizeEntry = entries[0];
+    const wrapper = resizeEntry.target as HTMLDivElement;
+    const fallbackHeight = Math.max(24, Number(wrapper.dataset.baseFontSize ?? '12'));
+    const borderBoxArray = resizeEntry.borderBoxSize;
+    const borderBox = borderBoxArray && borderBoxArray.length > 0 ? borderBoxArray[0] : undefined;
+    const widthMeasurement = borderBox?.inlineSize ?? resizeEntry.contentRect.width;
+    const heightMeasurement = borderBox?.blockSize ?? resizeEntry.contentRect.height;
+    const width = this.normalizeOverlayDimension(widthMeasurement, DEFAULT_FREE_TEXT_WIDTH);
+    const height = this.normalizeOverlayDimension(heightMeasurement, fallbackHeight);
+    const prev = entry.size;
+    if (prev && prev.width === width && prev.height === height) {
+      return;
+    }
+    entry.size = { width, height };
+    this.positionOverlayById(annotationId);
+  }
+
+  private installOverlayResizeObserver(annotationId: string, entry: OverlayEntry): void {
+    if (!this.canUseResizeObserver(entry)) {
+      return;
+    }
+
+    const observer = new window.ResizeObserver(entries => {
+      this.handleOverlayResizeEntries(annotationId, entry, entries);
+    });
+
+    this.observeOverlayDom(entry, observer);
+    entry.resizeObserver = observer;
   }
 
   private getOrCreateOverlayEntry(annotation: FreeTextAnnotation): OverlayEntry | null {
@@ -850,8 +906,9 @@ export class ManagerFreeText {
     };
     this.overlayContainer.appendChild(wrapper);
     parent.appendChild(handle);
-    entry = { wrapper, content, handle };
+    entry = { wrapper, content, handle, resizeObserver: null };
     this.overlayElements.set(annotation.id, entry);
+    this.installOverlayResizeObserver(annotation.id, entry);
     return entry;
   }
 
@@ -907,6 +964,7 @@ export class ManagerFreeText {
     const trimmedText = annotation.text?.trim();
     content.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
 
+    entry.size = this.applyOverlayBoxSizing(wrapper);
     this.positionAnnotationOverlay(node, entry);
   }
 
@@ -919,7 +977,12 @@ export class ManagerFreeText {
     const zoom = this.cy.zoom() || 1;
     wrapper.style.left = `${renderedPosition.x}px`;
     wrapper.style.top = `${renderedPosition.y}px`;
-    const baseBox = this.applyOverlayBoxSizing(wrapper);
+    const shouldCacheSize = Boolean(entry.resizeObserver);
+    let baseBox = entry.size;
+    if (!baseBox || !shouldCacheSize) {
+      baseBox = this.applyOverlayBoxSizing(wrapper);
+      entry.size = baseBox;
+    }
     wrapper.style.transform = `translate(-50%, -50%) scale(${zoom})`;
     const scaledBox = {
       width: baseBox.width * zoom,
@@ -1049,34 +1112,51 @@ export class ManagerFreeText {
     this.overlayHoverHideTimers.set(id, timeoutId);
   }
 
-  private startOverlayResize(annotationId: string, event: PointerEvent): void {
+  private canInitiateOverlayResize(event: PointerEvent): boolean {
     if (event.button !== 0) {
-      return;
+      return false;
     }
     event.preventDefault();
     event.stopPropagation();
     if (typeof window === 'undefined') {
-      return;
+      return false;
     }
     if (this.isLabLocked()) {
       (window as any).showLabLockedMessage?.();
-      return;
+      return false;
     }
+    return true;
+  }
+
+  private resolveResizeTargets(annotationId: string): { annotation: FreeTextAnnotation; entry: OverlayEntry } | null {
     const annotation = this.annotations.get(annotationId);
     const entry = this.overlayElements.get(annotationId);
     if (!annotation || !entry) {
-      return;
+      return null;
     }
+    return { annotation, entry };
+  }
 
+  private calculateOverlayStartWidth(annotation: FreeTextAnnotation, entry: OverlayEntry): number {
     const datasetWidth = Number(entry.wrapper.dataset.baseMaxWidth ?? DEFAULT_FREE_TEXT_WIDTH);
-    const measuredWidth = entry.wrapper.offsetWidth;
+    const measuredWidth = entry.size?.width ?? entry.wrapper.offsetWidth;
     const numericAnnotationWidth = typeof annotation.width === 'number' && Number.isFinite(annotation.width)
       ? annotation.width as number
       : undefined;
-    const startWidth = Math.max(
-      MIN_FREE_TEXT_WIDTH,
-      numericAnnotationWidth ?? Math.round(datasetWidth || measuredWidth || DEFAULT_FREE_TEXT_WIDTH)
-    );
+    const fallbackWidth = Math.round(datasetWidth || measuredWidth || DEFAULT_FREE_TEXT_WIDTH);
+    return Math.max(MIN_FREE_TEXT_WIDTH, numericAnnotationWidth ?? fallbackWidth);
+  }
+
+  private startOverlayResize(annotationId: string, event: PointerEvent): void {
+    if (!this.canInitiateOverlayResize(event)) {
+      return;
+    }
+    const targets = this.resolveResizeTargets(annotationId);
+    if (!targets) {
+      return;
+    }
+    const { annotation, entry } = targets;
+    const startWidth = this.calculateOverlayStartWidth(annotation, entry);
 
     this.overlayResizeState = {
       annotationId,
@@ -1096,11 +1176,20 @@ export class ManagerFreeText {
     this.setOverlayHoverState(annotationId, true);
   }
 
+  private disposeOverlayEntry(entry: OverlayEntry): void {
+    if (entry.resizeObserver) {
+      entry.resizeObserver.disconnect();
+      entry.resizeObserver = null;
+    }
+    entry.wrapper.remove();
+    entry.handle.remove();
+    entry.size = undefined;
+  }
+
   private removeAnnotationOverlay(id: string): void {
     const entry = this.overlayElements.get(id);
     if (entry) {
-      entry.wrapper.remove();
-      entry.handle.remove();
+      this.disposeOverlayEntry(entry);
       this.overlayElements.delete(id);
       this.overlayHoverLocks.delete(id);
       const pending = this.overlayHoverHideTimers.get(id);
@@ -1113,8 +1202,7 @@ export class ManagerFreeText {
 
   private clearAnnotationOverlays(): void {
     this.overlayElements.forEach(entry => {
-      entry.wrapper.remove();
-      entry.handle.remove();
+      this.disposeOverlayEntry(entry);
     });
     this.overlayElements.clear();
     this.overlayResizeState = null;
