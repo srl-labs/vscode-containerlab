@@ -422,6 +422,12 @@ export class ManagerNodeEditor {
   );
   private integratedMode = false;
   private integratedMdaCounter = 0;
+  private readonly renderIconOption = (role: string): HTMLElement =>
+    createNodeIconOptionElement(role, {
+      onDelete: iconName => {
+        void this.handleIconDelete(iconName);
+      }
+    });
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
@@ -2269,6 +2275,23 @@ export class ManagerNodeEditor {
     this.updateIconPreviewElement();
   }
 
+  private resolveIconSelectionAfterChange(
+    preferredIcon: string | undefined,
+    previousSelection: string,
+    availableIcons: string[]
+  ): string {
+    const candidates = [preferredIcon, previousSelection, 'pe'];
+    for (const candidate of candidates) {
+      if (candidate && availableIcons.includes(candidate)) {
+        return candidate;
+      }
+    }
+    if (availableIcons.length > 0) {
+      return availableIcons[0];
+    }
+    return 'pe';
+  }
+
   private handleIconEditorHexInput(hexInput: HTMLInputElement, colorInput: HTMLInputElement | null): void {
     const normalized = this.normalizeIconColor(hexInput.value, null);
     if (normalized && colorInput) {
@@ -2785,7 +2808,7 @@ export class ManagerNodeEditor {
       {
         menuClassName: 'max-h-96',
         dropdownWidth: 320,
-        renderOption: createNodeIconOptionElement,
+        renderOption: this.renderIconOption,
       }
     );
     this.initializeIconColorState(nodeData);
@@ -2866,18 +2889,54 @@ export class ManagerNodeEditor {
         (window as any).customIcons = response.customIcons;
         this.cachedNodeIcons = [];
         this.cachedCustomIconSignature = '';
-        this.refreshIconDropdownAfterUpload(response.lastAddedIcon);
+        this.refreshIconDropdownAfterIconChange(response.lastAddedIcon);
       }
     } catch (error) {
       log.error(`Failed to upload custom icon: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  private refreshIconDropdownAfterUpload(newIconName?: string): void {
-    const selectedIcon = newIconName || this.getCurrentIconValue();
+  private shouldUseBrowserConfirm(): boolean {
+    if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+      return false;
+    }
+    // VS Code webviews expose acquireVsCodeApi/vscode but do not support blocking dialogs
+    const hasVscodeApi =
+      typeof (window as any).acquireVsCodeApi === 'function' || Boolean((window as any).vscode);
+    return !hasVscodeApi;
+  }
+
+  private async handleIconDelete(iconName: string): Promise<void> {
+    if (!this.messageSender || !iconName) {
+      return;
+    }
+    const confirmationMessage = `Delete custom icon "${iconName}"? This action cannot be undone.`;
+    if (this.shouldUseBrowserConfirm() && window.confirm(confirmationMessage) === false) {
+      return;
+    }
+    try {
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-delete-icon', { iconName });
+      if (!response || response.success !== true) {
+        return;
+      }
+      if (response.customIcons && typeof response.customIcons === 'object') {
+        (window as any).customIcons = response.customIcons;
+      }
+      this.cachedNodeIcons = [];
+      this.cachedCustomIconSignature = '';
+      this.refreshIconDropdownAfterIconChange();
+    } catch (error) {
+      log.error(`Failed to delete custom icon "${iconName}": ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private refreshIconDropdownAfterIconChange(preferredIcon?: string): void {
+    const previousSelection = this.getCurrentIconValue();
+    const availableIcons = this.getNodeIconOptions();
+    const selectedIcon = this.resolveIconSelectionAfterChange(preferredIcon, previousSelection, availableIcons);
     createFilterableDropdown(
       ID_PANEL_NODE_TOPOROLE_CONTAINER,
-      this.getNodeIconOptions(),
+      availableIcons,
       selectedIcon,
       () => {},
       'Search for icon...',
@@ -2885,7 +2944,7 @@ export class ManagerNodeEditor {
       {
         menuClassName: 'max-h-96',
         dropdownWidth: 320,
-        renderOption: createNodeIconOptionElement,
+        renderOption: this.renderIconOption,
       }
     );
     const filterInput = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
@@ -2895,9 +2954,8 @@ export class ManagerNodeEditor {
     const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
     if (shapeSelect) {
       this.populateIconShapeOptions(shapeSelect);
-      if (newIconName) {
-        shapeSelect.value = newIconName;
-      }
+      const targetIcon = preferredIcon && availableIcons.includes(preferredIcon) ? preferredIcon : selectedIcon;
+      shapeSelect.value = targetIcon;
     }
     this.updateIconPreviewElement();
   }

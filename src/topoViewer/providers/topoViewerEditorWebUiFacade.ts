@@ -94,6 +94,7 @@ export class TopoViewerEditor {
     'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
     'refresh-docker-images': this.handleRefreshDockerImagesEndpoint.bind(this),
     'topo-editor-upload-icon': this.handleUploadIconEndpoint.bind(this),
+    'topo-editor-delete-icon': this.handleDeleteIconEndpoint.bind(this),
     showError: this.handleShowErrorEndpoint.bind(this),
     'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
     copyElements: this.handleCopyElementsEndpoint.bind(this),
@@ -2015,6 +2016,31 @@ topology:
     }
   }
 
+  private async handleDeleteIconEndpoint(
+    _payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const iconName = typeof payloadObj?.iconName === 'string' ? payloadObj.iconName.trim() : '';
+      if (!iconName) {
+        throw new Error('Icon name is required.');
+      }
+      const removed = await this.deleteCustomIcon(iconName);
+      if (!removed) {
+        throw new Error(`Custom icon "${iconName}" was not found.`);
+      }
+      const customIcons = await this.loadCustomIcons();
+      void vscode.window.showInformationMessage(`Deleted custom icon "${iconName}".`);
+      return { result: { success: true, customIcons, deletedIcon: iconName }, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error(`Failed to delete custom icon: ${message}`);
+      void vscode.window.showErrorMessage(`Failed to delete custom icon: ${message}`);
+      return { result: null, error: message };
+    }
+  }
+
   private getCustomIconDirectory(): string {
     return path.join(os.homedir(), '.clab', 'icons');
   }
@@ -2069,6 +2095,22 @@ topology:
     const destination = path.join(dir, fileName);
     await fsPromises.copyFile(uri.fsPath, destination);
     return { name: path.basename(fileName, ext), filePath: destination };
+  }
+
+  private async deleteCustomIcon(iconName: string): Promise<boolean> {
+    const dir = this.getCustomIconDirectory();
+    if (!(await this.pathExists(dir))) {
+      return false;
+    }
+    let deleted = false;
+    for (const ext of SUPPORTED_ICON_EXTENSIONS) {
+      const candidate = path.join(dir, `${iconName}${ext}`);
+      if (await this.pathExists(candidate)) {
+        await fsPromises.unlink(candidate);
+        deleted = true;
+      }
+    }
+    return deleted;
   }
 
   private async loadCustomIcons(): Promise<Record<string, string>> {
