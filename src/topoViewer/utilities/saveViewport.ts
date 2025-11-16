@@ -288,6 +288,7 @@ function createNodeAnnotation(
   const rawId = String(node?.data?.id || '');
   let annId = rawId;
   const nodeAnnotation: NodeAnnotation = { id: annId, icon: node.data.topoViewerRole };
+  applyNodeIconColor(nodeAnnotation, node);
   if (isBridgeAliasNode(node)) {
     annId = decorateAliasAnnotation(nodeAnnotation, node, aliasIfaceByAlias) || annId;
   }
@@ -301,6 +302,13 @@ function createNodeAnnotation(
   if (node.data.groupLabelPos) nodeAnnotation.groupLabelPos = node.data.groupLabelPos;
   addGroupInfo(nodeAnnotation, node.parent);
   return nodeAnnotation;
+}
+
+function applyNodeIconColor(nodeAnnotation: NodeAnnotation, node: any): void {
+  const color = typeof node?.data?.iconColor === 'string' ? node.data.iconColor.trim() : '';
+  if (color) {
+    nodeAnnotation.iconColor = color;
+  }
 }
 
 function decorateAliasAnnotation(nodeAnnotation: NodeAnnotation, node: any, aliasIfaceByAlias: Map<string, Set<string>>): string | undefined {

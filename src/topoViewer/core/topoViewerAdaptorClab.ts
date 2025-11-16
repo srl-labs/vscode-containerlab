@@ -540,6 +540,7 @@ export class TopoViewerAdaptorClab {
         name: nodeName,
         parent: parentId || undefined,
         topoViewerRole,
+        iconColor: typeof nodeAnn?.iconColor === 'string' ? nodeAnn.iconColor : undefined,
         lat,
         lng,
         extraData,

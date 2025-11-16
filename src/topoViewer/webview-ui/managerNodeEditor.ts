@@ -5,7 +5,7 @@ import { log } from '../logging/logger';
 import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { VscodeMessageSender } from './managerVscodeWebview';
-import { extractNodeIcons } from './managerCytoscapeBaseStyles';
+import { applyIconColorToNode, extractNodeIcons, getIconDataUriForRole } from './managerCytoscapeBaseStyles';
 import { createNodeIconOptionElement } from './utilities/iconDropdownRenderer';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import type { ClabTopology } from '../types/topoViewerType';
@@ -41,6 +41,7 @@ const ICON_CHEVRON_DOWN = 'fa-chevron-down' as const;
 const ATTR_ARIA_HIDDEN = 'aria-hidden' as const;
 const SELECTOR_SFM_VALUE = '[data-role="sfm-value"]' as const;
 const SELECTOR_SFM_DROPDOWN = '[data-role="sfm-dropdown"]' as const;
+const DEFAULT_ICON_COLOR = '#005aff' as const;
 
 const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
@@ -79,6 +80,17 @@ const ID_NODE_TYPE_FILTER_INPUT = 'panel-node-type-dropdown-container-filter-inp
 const ID_NODE_TYPE_WARNING = 'node-type-warning' as const;
 const ID_NODE_VERSION_DROPDOWN = 'node-version-dropdown-container' as const;
 const ID_NODE_VERSION_FILTER_INPUT = 'node-version-dropdown-container-filter-input' as const;
+const ID_NODE_ICON_COLOR = 'node-icon-color' as const;
+const ID_NODE_ICON_EDIT_BUTTON = 'node-icon-edit-button' as const;
+const ID_ICON_EDITOR_BACKDROP = 'node-icon-editor-backdrop' as const;
+const ID_ICON_EDITOR_MODAL = 'node-icon-editor-modal' as const;
+const ID_ICON_EDITOR_COLOR = 'node-icon-editor-color' as const;
+const ID_ICON_EDITOR_HEX = 'node-icon-editor-hex' as const;
+const ID_ICON_EDITOR_SHAPE = 'node-icon-editor-shape' as const;
+const ID_ICON_EDITOR_PREVIEW = 'node-icon-editor-preview' as const;
+const ID_ICON_EDITOR_SAVE = 'node-icon-editor-save' as const;
+const ID_ICON_EDITOR_CANCEL = 'node-icon-editor-cancel' as const;
+const ID_ICON_EDITOR_CLOSE = 'node-icon-editor-close' as const;
 const ID_NODE_RP_DROPDOWN = 'node-restart-policy-dropdown-container' as const;
 const ID_NODE_RP_FILTER_INPUT = 'node-restart-policy-dropdown-container-filter-input' as const;
 const ID_NODE_NM_DROPDOWN = 'node-network-mode-dropdown-container' as const;
@@ -387,6 +399,9 @@ export class ManagerNodeEditor {
   private componentXiomCounters: Map<number, number> = new Map();
   private xiomMdaCounters: Map<string, number> = new Map();
   private pendingExpandedComponentSlots: Set<string> | undefined;
+  private cachedNodeIcons: string[] = [];
+  private currentIconColor: string | null = null;
+  private iconEditorInitialized = false;
   // enums to be filled from schema
   private srosSfmTypes: string[] = [];
   private srosXiomTypes: string[] = [];
@@ -1792,6 +1807,7 @@ export class ManagerNodeEditor {
 
     // Initialize event handlers
     this.setupEventHandlers();
+    this.setupIconEditorControls();
 
     // Setup dynamic entry handlers
     this.setupDynamicEntryHandlers();
@@ -2181,6 +2197,147 @@ export class ManagerNodeEditor {
     });
   }
 
+  private setupIconEditorControls(): void {
+    if (this.iconEditorInitialized) return;
+    const editButton = document.getElementById(ID_NODE_ICON_EDIT_BUTTON) as HTMLButtonElement | null;
+    const modal = document.getElementById(ID_ICON_EDITOR_MODAL);
+    const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP);
+    if (!editButton || !modal || !backdrop) return;
+    this.iconEditorInitialized = true;
+
+    editButton.addEventListener('click', () => this.openIconEditor());
+    this.registerIconEditorDismissHandlers();
+    this.registerIconEditorActionHandlers();
+    this.registerIconEditorInputHandlers();
+  }
+
+  private registerIconEditorDismissHandlers(): void {
+    const cancelBtn = document.getElementById(ID_ICON_EDITOR_CANCEL) as HTMLButtonElement | null;
+    cancelBtn?.addEventListener('click', () => this.closeIconEditor());
+
+    const closeBtn = document.getElementById(ID_ICON_EDITOR_CLOSE) as HTMLButtonElement | null;
+    closeBtn?.addEventListener('click', () => this.closeIconEditor());
+
+    const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP) as HTMLDivElement | null;
+    backdrop?.addEventListener('click', () => this.closeIconEditor());
+  }
+
+  private registerIconEditorActionHandlers(): void {
+    const saveBtn = document.getElementById(ID_ICON_EDITOR_SAVE) as HTMLButtonElement | null;
+    saveBtn?.addEventListener('click', () => this.applyIconEditorSelection());
+  }
+
+  private registerIconEditorInputHandlers(): void {
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
+    if (colorInput) {
+      colorInput.addEventListener('input', () => this.handleIconEditorColorInput(colorInput, hexInput));
+    }
+    if (hexInput) {
+      hexInput.addEventListener('input', () => this.handleIconEditorHexInput(hexInput, colorInput));
+    }
+
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    if (shapeSelect) {
+      this.populateIconShapeOptions(shapeSelect);
+      shapeSelect.addEventListener('change', () => this.updateIconPreviewElement());
+    }
+  }
+
+  private handleIconEditorColorInput(colorInput: HTMLInputElement, hexInput: HTMLInputElement | null): void {
+    const normalized = this.normalizeIconColor(colorInput.value, DEFAULT_ICON_COLOR);
+    if (hexInput && normalized) {
+      hexInput.value = normalized;
+    }
+    this.updateIconPreviewElement();
+  }
+
+  private handleIconEditorHexInput(hexInput: HTMLInputElement, colorInput: HTMLInputElement | null): void {
+    const normalized = this.normalizeIconColor(hexInput.value, null);
+    if (normalized && colorInput) {
+      colorInput.value = normalized;
+      hexInput.value = normalized;
+      this.updateIconPreviewElement();
+    }
+  }
+
+  private populateIconShapeOptions(select: HTMLSelectElement): void {
+    select.innerHTML = '';
+    for (const role of this.getNodeIconOptions()) {
+      const option = document.createElement('option');
+      option.value = role;
+      option.textContent = role;
+      select.appendChild(option);
+    }
+  }
+
+  private openIconEditor(): void {
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const currentShape = this.getCurrentIconValue();
+    if (shapeSelect) {
+      if (!Array.from(shapeSelect.options).some(opt => opt.value === currentShape)) {
+        this.populateIconShapeOptions(shapeSelect);
+      }
+      shapeSelect.value = currentShape;
+    }
+    const colorValue = this.currentIconColor ?? DEFAULT_ICON_COLOR;
+    if (colorInput) colorInput.value = colorValue;
+    if (hexInput) hexInput.value = this.currentIconColor ?? '';
+    this.toggleIconEditor(true);
+    this.updateIconPreviewElement();
+  }
+
+  private closeIconEditor(): void {
+    this.toggleIconEditor(false);
+  }
+
+  private toggleIconEditor(show: boolean): void {
+    const modal = document.getElementById(ID_ICON_EDITOR_MODAL) as HTMLDivElement | null;
+    const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP) as HTMLDivElement | null;
+    if (!modal || !backdrop) return;
+    modal.style.display = show ? 'block' : 'none';
+    backdrop.style.display = show ? 'block' : 'none';
+  }
+
+  private updateIconPreviewElement(): void {
+    const preview = document.getElementById(ID_ICON_EDITOR_PREVIEW) as HTMLImageElement | null;
+    if (!preview) return;
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const color = this.normalizeIconColor(colorInput?.value || this.currentIconColor || DEFAULT_ICON_COLOR, DEFAULT_ICON_COLOR) ?? DEFAULT_ICON_COLOR;
+    const shape = shapeSelect?.value || this.getCurrentIconValue();
+    const dataUri = getIconDataUriForRole(shape, color);
+    if (dataUri) {
+      preview.src = dataUri;
+    }
+  }
+
+  private applyIconEditorSelection(): void {
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const rawColor = colorInput?.value || '';
+    const normalized = this.normalizeIconColor(rawColor, null);
+    const effectiveColor =
+      normalized && normalized.toLowerCase() !== DEFAULT_ICON_COLOR ? normalized : null;
+    this.setIconColor(effectiveColor);
+    const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
+    if (hexInput) {
+      hexInput.value = effectiveColor ?? '';
+    }
+    const shape = shapeSelect?.value || this.getCurrentIconValue();
+    this.setIconShapeValue(shape);
+    this.closeIconEditor();
+  }
+
+  private setIconShapeValue(shape: string): void {
+    const input = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
+    if (!input) return;
+    input.value = shape;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   /**
    * Setup handlers for dynamic entry management (binds, env vars, etc.)
    */
@@ -2515,6 +2672,13 @@ export class ManagerNodeEditor {
     this.setupCustomNodeFields(node);
   }
 
+  private getNodeIconOptions(): string[] {
+    if (!this.cachedNodeIcons.length) {
+      this.cachedNodeIcons = extractNodeIcons();
+    }
+    return this.cachedNodeIcons;
+  }
+
   private setupKindAndTypeFields(extraData: Record<string, any>, actualInherited: string[]): void {
     const desiredKind = extraData.kind || ((window as any).defaultKind || 'nokia_srlinux');
     const kindInitial =
@@ -2543,7 +2707,7 @@ export class ManagerNodeEditor {
   }
 
   private setupIconField(nodeData: Record<string, any>): void {
-    const nodeIcons = extractNodeIcons();
+    const nodeIcons = this.getNodeIconOptions();
     let iconInitial = 'pe';
     if (nodeData.topoViewerRole && typeof nodeData.topoViewerRole === 'string') {
       iconInitial = nodeData.topoViewerRole;
@@ -2563,6 +2727,46 @@ export class ManagerNodeEditor {
         renderOption: createNodeIconOptionElement,
       }
     );
+    this.initializeIconColorState(nodeData);
+  }
+
+  private initializeIconColorState(nodeData: Record<string, any>): void {
+    const fromNode = typeof nodeData.iconColor === 'string' ? nodeData.iconColor : '';
+    const fromExtra =
+      typeof nodeData.extraData?.iconColor === 'string' ? (nodeData.extraData.iconColor as string) : '';
+    const normalized = this.normalizeIconColor(fromNode || fromExtra, null);
+    this.setIconColor(normalized);
+  }
+
+  private setIconColor(color: string | null): void {
+    this.currentIconColor = color;
+    const hidden = document.getElementById(ID_NODE_ICON_COLOR) as HTMLInputElement | null;
+    if (hidden) {
+      hidden.value = color ?? '';
+    }
+  }
+
+  private normalizeIconColor(color: string | undefined, fallback: string | null = DEFAULT_ICON_COLOR): string | null {
+    if (!color) {
+      return fallback;
+    }
+    let candidate = color.trim();
+    if (!candidate) {
+      return fallback;
+    }
+    if (!candidate.startsWith('#')) {
+      candidate = `#${candidate}`;
+    }
+    const hexRegex = /^#([0-9a-fA-F]{6})$/;
+    if (!hexRegex.test(candidate)) {
+      return fallback;
+    }
+    return `#${candidate.slice(1).toLowerCase()}`;
+  }
+
+  private getCurrentIconValue(): string {
+    const input = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
+    return input?.value?.trim() || 'pe';
   }
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {
@@ -3357,6 +3561,41 @@ export class ManagerNodeEditor {
     return true;
   }
 
+  private buildCustomNodePayload(params: {
+    name: string;
+    nodeProps: NodeProperties;
+    setDefault: boolean;
+    iconValue: string;
+    baseName: string;
+    interfacePattern: string;
+    iconColor: string | null;
+    oldName?: string;
+  }): any {
+    const { name, nodeProps, setDefault, iconValue, baseName, interfacePattern, iconColor, oldName } = params;
+    const payload: any = {
+      name,
+      kind: nodeProps.kind || '',
+      type: nodeProps.type,
+      image: nodeProps.image,
+      icon: iconValue,
+      baseName,
+      setDefault,
+      ...(oldName && { oldName })
+    };
+    if (iconColor) {
+      payload.iconColor = iconColor;
+    }
+    if (interfacePattern) {
+      payload.interfacePattern = interfacePattern;
+    }
+    Object.keys(nodeProps).forEach(key => {
+      if (!['name', 'kind', 'type', 'image'].includes(key)) {
+        payload[key] = nodeProps[key as keyof NodeProperties];
+      }
+    });
+    return payload;
+  }
+
   private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
     try {
       // Get the icon/role value
@@ -3366,27 +3605,17 @@ export class ManagerNodeEditor {
       const baseName = this.getInputValue('node-base-name') || '';
       const interfacePattern = this.getInputValue(ID_NODE_INTERFACE_PATTERN).trim();
 
-      const payload: any = {
+      const iconColor = this.currentIconColor;
+
+      const payload = this.buildCustomNodePayload({
         name,
-        kind: nodeProps.kind || '',
-        type: nodeProps.type,
-        image: nodeProps.image,
-        icon: iconValue,  // Add icon to the saved template
-        baseName,  // Add base name for canvas nodes
+        nodeProps,
         setDefault,
-        // Include the old name if we're editing an existing template
-        ...(oldName && { oldName })
-      };
-
-      if (interfacePattern) {
-        payload.interfacePattern = interfacePattern;
-      }
-
-      // Always save all properties from nodeProps (excluding basic ones that are already set)
-      Object.keys(nodeProps).forEach(key => {
-        if (key !== 'name' && key !== 'kind' && key !== 'type' && key !== 'image') {
-          payload[key] = nodeProps[key as keyof NodeProperties];
-        }
+        iconValue,
+        baseName,
+        interfacePattern,
+        iconColor,
+        oldName
       });
 
       const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
@@ -3846,7 +4075,13 @@ export class ManagerNodeEditor {
       (document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null)?.value ||
       'pe';
     const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
+    if (this.currentIconColor) {
+      updatedData.iconColor = this.currentIconColor;
+    } else {
+      delete updatedData.iconColor;
+    }
     this.currentNode!.data(updatedData);
+    applyIconColorToNode(this.currentNode!, this.currentIconColor || undefined);
     await this.saveManager.saveTopo(this.cy, false);
     await this.refreshNodeData(expandedSlots);
     this.updateInheritedBadges(inheritedProps);

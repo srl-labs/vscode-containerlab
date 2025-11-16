@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import type { NodeData, NodeExtraData } from '../types/topoViewerGraph';
 import topoViewerState from '../state';
 import { getUniqueId } from './utilities/idUtils';
+import { applyIconColorToNode } from './managerCytoscapeBaseStyles';
 
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.
@@ -20,6 +21,7 @@ export class ManagerAddContainerlabNode {
       image?: string;
       name?: string;
       icon?: string;
+      iconColor?: string;
       baseName?: string;
       interfacePattern?: string;
     }
@@ -31,7 +33,11 @@ export class ManagerAddContainerlabNode {
     const newNodeData = this.createNodeData(newNodeId, nodeName, template, kind);
     const position = this.determinePosition(cy, event);
 
-    cy.add({ group: 'nodes', data: newNodeData, position });
+    const collection = cy.add({ group: 'nodes', data: newNodeData, position });
+    const createdNode = collection[0];
+    if (createdNode && template?.iconColor) {
+      applyIconColorToNode(createdNode, template.iconColor);
+    }
     this.applyGeoCoordinates(cy, newNodeId, position);
   }
 
@@ -75,6 +81,7 @@ export class ManagerAddContainerlabNode {
           image?: string;
           name?: string;
           icon?: string;
+          iconColor?: string;
           baseName?: string;
           interfacePattern?: string;
         }
@@ -108,6 +115,7 @@ export class ManagerAddContainerlabNode {
       name: nodeName,
       parent: '',
       topoViewerRole: template?.icon || 'pe',
+      iconColor: template?.iconColor,
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },

@@ -168,7 +168,19 @@
           <!-- Icon -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Icon</label>
-            <div id="panel-node-topoviewerrole-dropdown-container"></div>
+            <div class="flex gap-2 items-start">
+              <div class="flex-1" id="panel-node-topoviewerrole-dropdown-container"></div>
+              <button
+                type="button"
+                class="btn btn-small whitespace-nowrap"
+                id="node-icon-edit-button"
+                title="Edit icon color and shape"
+              >
+                <i class="fas fa-pen mr-1"></i>
+                Edit
+              </button>
+            </div>
+            <input type="hidden" id="node-icon-color" value="" />
           </div>
         </div>
       </div>
@@ -987,4 +999,67 @@
       }
     });
   </script>
+</div>
+
+<div id="node-icon-editor-backdrop" class="modal-backdrop" style="display: none"></div>
+<div id="node-icon-editor-modal" class="modal-content max-w-md" style="display: none">
+  <div class="panel-block p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)]">Edit Icon</h3>
+      <button
+        type="button"
+        class="btn-icon-hover-clean text-[var(--text-secondary)]"
+        id="node-icon-editor-close"
+        aria-label="Close icon editor"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div class="form-group">
+        <label class="block vscode-label mb-1">Color</label>
+        <div class="flex items-center gap-2">
+          <input
+            type="color"
+            class="input-field h-10 w-14 cursor-pointer border border-gray-500"
+            id="node-icon-editor-color"
+            value="#005aff"
+          />
+          <input
+            type="text"
+            class="input-field flex-1"
+            id="node-icon-editor-hex"
+            placeholder="#005aff"
+            maxlength="7"
+          />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="block vscode-label mb-1">Shape</label>
+        <select class="input-field w-full" id="node-icon-editor-shape"></select>
+      </div>
+      <div class="form-group">
+        <label class="block vscode-label mb-1">Preview</label>
+        <div class="flex items-center gap-4">
+          <img
+            id="node-icon-editor-preview"
+            class="w-16 h-16 rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] object-contain"
+            src=""
+            alt="Icon preview"
+          />
+          <span class="text-sm text-[var(--text-secondary)]">
+            Updates as you change color or shape
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 pt-2">
+      <button type="button" class="btn btn-secondary btn-small" id="node-icon-editor-cancel">
+        Cancel
+      </button>
+      <button type="button" class="btn btn-primary btn-small" id="node-icon-editor-save">
+        Apply
+      </button>
+    </div>
+  </div>
 </div>

@@ -401,6 +401,28 @@ export function getIconDataUriForRole(role: string, fillColor: string = '#005aff
   return generateEncodedSVG(nodeType, fillColor);
 }
 
+export function applyIconColorToNode(node: cytoscape.NodeSingular, color?: string | null): void {
+  const role = (node.data('topoViewerRole') as string) || 'pe';
+  const nodeType = ROLE_SVG_MAP[role] ?? ROLE_SVG_MAP.default;
+  if (!nodeType) return;
+  if (typeof color === 'string' && color.trim()) {
+    node.style('background-image', generateEncodedSVG(nodeType, color.trim()));
+    node.data('iconColor', color.trim());
+  } else {
+    node.removeStyle('background-image');
+    node.removeData('iconColor');
+  }
+}
+
+export function applyCustomIconColors(cy: cytoscape.Core): void {
+  cy.nodes().forEach(node => {
+    const color = node.data('iconColor');
+    if (typeof color === 'string' && color.trim()) {
+      applyIconColorToNode(node, color);
+    }
+  });
+}
+
 const roleStyles: any[] = Object.entries(ROLE_SVG_MAP).map(([role, svgId]) => ({
   selector: `node[topoViewerRole="${role}"]`,
   style: {
@@ -590,6 +612,7 @@ export default async function loadCytoStyle(
     const selectedTheme = resolveThemeOverride(theme);
     const styles = getCytoscapeStyles(selectedTheme === 'light' ? 'light' : 'dark');
     cy.style().fromJson(styles).update();
+    applyCustomIconColors(cy);
     (window as any).updateTopoGridTheme?.(selectedTheme === 'light' ? 'light' : 'dark');
     labelEndpointManagerSingleton.refreshAfterStyle();
     log.info('Cytoscape styles applied successfully.');
