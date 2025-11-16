@@ -1,6 +1,5 @@
 import cytoscape from 'cytoscape';
-import { marked } from 'marked';
-import { markedHighlight } from 'marked-highlight';
+import MarkdownIt from 'markdown-it';
 import hljs from 'highlight.js';
 import DOMPurify from 'dompurify';
 import { VscodeMessageSender } from './managerVscodeWebview';
@@ -16,6 +15,7 @@ const PREVIEW_FONT_SCALE = 2;
 const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
 const DEFAULT_FREE_TEXT_WIDTH = 420;
 const MIN_FREE_TEXT_WIDTH = 5;
+const MIN_FREE_TEXT_NODE_SIZE = 6;
 const BUTTON_BASE_CLASS = 'btn btn-small';
 const BUTTON_PRIMARY_CLASS = 'btn-primary';
 const BUTTON_OUTLINED_CLASS = 'btn-outlined';
@@ -24,20 +24,24 @@ const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
 const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
 type TextAlignment = 'left' | 'center' | 'right';
 
-marked.setOptions({
-  gfm: true,
-  breaks: true
-});
-
-marked.use(markedHighlight({
+const markdownRenderer = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+  breaks: true,
   langPrefix: 'hljs language-',
-  highlight(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
+  highlight(code: string, lang: string) {
+    try {
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
+      }
+      return hljs.highlightAuto(code).value;
+    } catch (error) {
+      log('warn', 'freeText:highlightFailed', { error });
+      return hljs.escapeHTML(code);
     }
-    return hljs.highlightAuto(code).value;
   }
-}));
+});
 
 interface FreeTextModalElements {
   backdrop: HTMLDivElement;
@@ -767,7 +771,7 @@ export class ManagerFreeText {
     if (!text) {
       return '';
     }
-    const rendered = marked.parse(text, { async: false }) as string;
+    const rendered = markdownRenderer.render(text);
     return DOMPurify.sanitize(rendered);
   }
 
@@ -916,7 +920,31 @@ export class ManagerFreeText {
     wrapper.style.left = `${renderedPosition.x}px`;
     wrapper.style.top = `${renderedPosition.y}px`;
     const box = this.applyOverlayBoxSizing(wrapper, zoom);
+    this.syncNodeHitboxWithOverlay(node, box, zoom);
     this.positionOverlayHandle(handle, renderedPosition, box.width, box.height);
+  }
+
+  private syncNodeHitboxWithOverlay(
+    node: cytoscape.NodeSingular,
+    box: { width: number; height: number },
+    zoom: number
+  ): void {
+    const normalizedZoom = zoom || 1;
+    const baseWidth = Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(box.width / normalizedZoom));
+    const baseHeight = Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(box.height / normalizedZoom));
+    node.style('width', baseWidth);
+    node.style('height', baseHeight);
+  }
+
+  private getNodeTextMaxWidth(annotation: FreeTextAnnotation, useOverlay: boolean): string {
+    if (useOverlay) {
+      return `${Math.max(1, MIN_FREE_TEXT_NODE_SIZE)}px`;
+    }
+    const hasExplicitWidth = Number.isFinite(annotation.width) && (annotation.width as number) > 0;
+    const baseWidth = hasExplicitWidth
+      ? Math.max(MIN_FREE_TEXT_WIDTH, annotation.width as number)
+      : DEFAULT_FREE_TEXT_WIDTH;
+    return `${baseWidth}px`;
   }
 
   private applyOverlayBoxSizing(wrapper: HTMLDivElement, zoom: number): { width: number; height: number } {
@@ -1266,6 +1294,9 @@ export class ManagerFreeText {
     styles['text-halign'] = textAlign;
     styles['text-valign'] = 'center';
     styles['text-opacity'] = useOverlay ? 0 : 1;
+    styles['text-events'] = useOverlay ? 'no' : 'yes';
+    styles['text-wrap'] = useOverlay ? 'none' : 'wrap';
+    styles['text-max-width'] = this.getNodeTextMaxWidth(annotation, useOverlay);
 
     // Cytoscape doesn't support the CSS `font` shorthand property,
     // so we rely on the individual font-* properties above.

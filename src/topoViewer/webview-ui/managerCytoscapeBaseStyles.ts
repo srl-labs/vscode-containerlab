@@ -601,7 +601,7 @@ const freeTextStyles = [
       'z-index': 10,
       width: 'label',
       height: 'label',
-      'padding': 2,
+      'padding': 0,
       'events': 'yes',
       'text-events': 'yes'
     }
@@ -616,7 +616,7 @@ const freeTextStyles = [
       'background-opacity': 0.1,
       width: 'label',
       height: 'label',
-      'padding': 2
+      'padding': 0
     }
   },
   {
