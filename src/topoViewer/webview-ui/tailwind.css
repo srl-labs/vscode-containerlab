@@ -1239,9 +1239,18 @@
   }
 
   .free-text-overlay {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
     pointer-events: none;
     color: var(--text-primary);
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  }
+
+  .free-text-overlay-content {
+    pointer-events: none;
+    white-space: normal;
+    word-break: break-word;
   }
 
   .free-text-overlay p {
@@ -1262,6 +1271,39 @@
   .free-text-overlay a {
     color: var(--vscode-textLink-foreground);
     text-decoration: underline;
+  }
+
+  .free-text-overlay-resize {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: se-resize;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-text-overlay-resize::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(255, 255, 255, 0.9);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.9);
+    transform: rotate(45deg);
+    display: block;
+  }
+
+  .free-text-overlay-resize-visible {
+    opacity: 0.9;
+    pointer-events: auto;
   }
 
   .text-secondary {

@@ -14,10 +14,14 @@ const MIN_FREE_TEXT_FONT_SIZE = 1;
 const DEFAULT_FREE_TEXT_FONT_SIZE = 8;
 const PREVIEW_FONT_SCALE = 2;
 const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
+const DEFAULT_FREE_TEXT_WIDTH = 420;
+const MIN_FREE_TEXT_WIDTH = 5;
 const BUTTON_BASE_CLASS = 'btn btn-small';
 const BUTTON_PRIMARY_CLASS = 'btn-primary';
 const BUTTON_OUTLINED_CLASS = 'btn-outlined';
 const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
+const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
+const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
 type TextAlignment = 'left' | 'center' | 'right';
 
 marked.setOptions({
@@ -68,6 +72,19 @@ interface FormattingState {
   alignment: TextAlignment;
 }
 
+interface OverlayEntry {
+  wrapper: HTMLDivElement;
+  content: HTMLDivElement;
+  handle: HTMLButtonElement;
+}
+
+interface OverlayResizeState {
+  annotationId: string;
+  pointerId: number;
+  startX: number;
+  startWidth: number;
+}
+
 // eslint-disable-next-line no-unused-vars
 type FreeTextResolve = (value: FreeTextAnnotation | null) => void;
 
@@ -81,8 +98,55 @@ export class ManagerFreeText {
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
   private overlayContainer: HTMLDivElement | null = null;
-  private overlayElements: Map<string, HTMLDivElement> = new Map();
+  private overlayElements: Map<string, OverlayEntry> = new Map();
   private overlaySyncHandler?: () => void;
+  private overlayResizeState: OverlayResizeState | null = null;
+  private activeResizeHandle: HTMLButtonElement | null = null;
+  private overlayHoverLocks: Set<string> = new Set();
+  private overlayHoverHideTimers: Map<string, number> = new Map();
+  private isLabLocked(): boolean {
+    return Boolean((window as any)?.topologyLocked);
+  }
+  private onOverlayResizeMove = (event: PointerEvent): void => {
+    if (!this.overlayResizeState) {
+      return;
+    }
+    const { annotationId, startX, startWidth } = this.overlayResizeState;
+    const annotation = this.annotations.get(annotationId);
+    const node = this.annotationNodes.get(annotationId);
+    if (!annotation || !node) {
+      return;
+    }
+    const zoom = this.cy.zoom() || 1;
+    const deltaX = (event.clientX - startX) / zoom;
+    const nextWidth = Math.max(MIN_FREE_TEXT_WIDTH, Math.round(startWidth + deltaX));
+    if (annotation.width === nextWidth) {
+      this.positionOverlayById(annotationId);
+      return;
+    }
+    annotation.width = nextWidth;
+    this.updateAnnotationOverlay(node, annotation);
+  };
+
+  private onOverlayResizeEnd = (): void => {
+    if (!this.overlayResizeState) {
+      return;
+    }
+    const { annotationId, pointerId } = this.overlayResizeState;
+    if (this.activeResizeHandle && typeof this.activeResizeHandle.releasePointerCapture === 'function') {
+      this.activeResizeHandle.releasePointerCapture(pointerId);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', this.onOverlayResizeMove);
+      window.removeEventListener('pointerup', this.onOverlayResizeEnd);
+      window.removeEventListener('pointercancel', this.onOverlayResizeEnd);
+    }
+    this.overlayHoverLocks.delete(annotationId);
+    this.setOverlayHoverState(annotationId, false);
+    this.overlayResizeState = null;
+    this.activeResizeHandle = null;
+    this.debouncedSave();
+  };
   private styleReapplyInProgress = false;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
   private loadInProgress = false;
@@ -211,6 +275,16 @@ export class ManagerFreeText {
       }
       const node = event.target;
       this.editFreeText(node.id());
+    });
+
+    this.cy.on('mouseover', SELECTOR_FREE_TEXT, (event) => {
+      const node = event.target;
+      this.setOverlayHoverState(node.id(), true);
+    });
+
+    this.cy.on('mouseout', SELECTOR_FREE_TEXT, (event) => {
+      const node = event.target;
+      this.setOverlayHoverState(node.id(), false);
     });
 
     // Handle deletion of free text nodes
@@ -727,26 +801,54 @@ export class ManagerFreeText {
     this.cy.on('resize', handler);
   }
 
-  private getOrCreateOverlayElement(annotation: FreeTextAnnotation): HTMLDivElement | null {
-    if (!this.overlayContainer) {
+  private getOrCreateOverlayEntry(annotation: FreeTextAnnotation): OverlayEntry | null {
+    const parent = this.cy.container();
+    if (!this.overlayContainer || !parent) {
       return null;
     }
-    let overlay = this.overlayElements.get(annotation.id);
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.className = 'free-text-overlay';
-      overlay.dataset.annotationId = annotation.id;
-      overlay.style.position = 'absolute';
-      overlay.style.pointerEvents = 'none';
-      overlay.style.transform = 'translate(-50%, -50%)';
-      overlay.style.transformOrigin = 'center center';
-      overlay.style.lineHeight = '1.35';
-      overlay.style.whiteSpace = 'normal';
-      overlay.style.wordBreak = 'break-word';
-      this.overlayContainer.appendChild(overlay);
-      this.overlayElements.set(annotation.id, overlay);
+
+    let entry = this.overlayElements.get(annotation.id);
+    if (entry) {
+      return entry;
     }
-    return overlay;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'free-text-overlay';
+    wrapper.dataset.annotationId = annotation.id;
+    wrapper.style.position = 'absolute';
+    wrapper.style.pointerEvents = 'none';
+    wrapper.style.transform = 'translate(-50%, -50%)';
+    wrapper.style.transformOrigin = 'center center';
+    wrapper.style.lineHeight = '1.35';
+    wrapper.style.whiteSpace = 'normal';
+    wrapper.style.wordBreak = 'break-word';
+
+    const content = document.createElement('div');
+    content.className = 'free-text-overlay-content';
+    wrapper.appendChild(content);
+
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'free-text-overlay-resize';
+    handle.setAttribute('aria-label', 'Resize text block');
+    handle.style.pointerEvents = 'auto';
+    handle.style.touchAction = 'none';
+    handle.onpointerdown = (event: PointerEvent) => this.startOverlayResize(annotation.id, event);
+    handle.onpointerenter = () => {
+      this.overlayHoverLocks.add(annotation.id);
+      this.setOverlayHoverState(annotation.id, true);
+    };
+    handle.onpointerleave = () => {
+      if (!this.overlayResizeState || this.overlayResizeState.annotationId !== annotation.id) {
+        this.overlayHoverLocks.delete(annotation.id);
+        this.setOverlayHoverState(annotation.id, false);
+      }
+    };
+    this.overlayContainer.appendChild(wrapper);
+    parent.appendChild(handle);
+    entry = { wrapper, content, handle };
+    this.overlayElements.set(annotation.id, entry);
+    return entry;
   }
 
   private computeOverlaySizing(annotation: FreeTextAnnotation): {
@@ -754,100 +856,241 @@ export class ManagerFreeText {
     basePaddingX: number;
     basePaddingY: number;
     baseRadius: number;
-    baseMaxWidth: number;
+    baseWidth?: number;
   } {
     const baseFontSize = this.normalizeFontSize(annotation.fontSize);
     const hasBackground = annotation.backgroundColor !== 'transparent';
     const basePaddingY = hasBackground ? Math.max(3, Math.round(baseFontSize * 0.35)) : 0;
     const basePaddingX = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.65)) : 0;
     const baseRadius = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.4)) : 0;
+    const hasExplicitWidth = Number.isFinite(annotation.width) && (annotation.width as number) > 0;
+    const baseWidth = hasExplicitWidth ? Math.max(MIN_FREE_TEXT_WIDTH, annotation.width as number) : undefined;
     return {
       baseFontSize,
       basePaddingX,
       basePaddingY,
       baseRadius,
-      baseMaxWidth: annotation.width ?? 420
+      baseWidth
     };
   }
 
   private updateAnnotationOverlay(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
-    const overlay = this.getOrCreateOverlayElement(annotation);
-    if (!overlay) {
+    const entry = this.getOrCreateOverlayEntry(annotation);
+    if (!entry) {
       return;
     }
 
+    const { wrapper, content } = entry;
     const sizing = this.computeOverlaySizing(annotation);
-    overlay.dataset.baseFontSize = String(sizing.baseFontSize);
-    overlay.dataset.basePaddingY = String(sizing.basePaddingY);
-    overlay.dataset.basePaddingX = String(sizing.basePaddingX);
-    overlay.dataset.baseBorderRadius = String(sizing.baseRadius);
-    overlay.dataset.baseMaxWidth = String(sizing.baseMaxWidth);
+    wrapper.dataset.baseFontSize = String(sizing.baseFontSize);
+    wrapper.dataset.basePaddingY = String(sizing.basePaddingY);
+    wrapper.dataset.basePaddingX = String(sizing.basePaddingX);
+    wrapper.dataset.baseBorderRadius = String(sizing.baseRadius);
+    wrapper.dataset.baseMaxWidth = sizing.baseWidth ? String(sizing.baseWidth) : 'auto';
 
-    overlay.style.color = annotation.fontColor ?? '#FFFFFF';
-    overlay.style.fontFamily = annotation.fontFamily ?? 'monospace';
-    overlay.style.fontWeight = annotation.fontWeight ?? 'normal';
-    overlay.style.fontStyle = annotation.fontStyle ?? 'normal';
-    overlay.style.textDecoration = annotation.textDecoration ?? 'none';
-    overlay.style.textAlign = annotation.textAlign ?? 'left';
-    overlay.style.background = annotation.backgroundColor === 'transparent'
+    wrapper.style.color = annotation.fontColor ?? '#FFFFFF';
+    wrapper.style.fontFamily = annotation.fontFamily ?? 'monospace';
+    wrapper.style.fontWeight = annotation.fontWeight ?? 'normal';
+    wrapper.style.fontStyle = annotation.fontStyle ?? 'normal';
+    wrapper.style.textDecoration = annotation.textDecoration ?? 'none';
+    wrapper.style.textAlign = annotation.textAlign ?? 'left';
+    wrapper.style.background = annotation.backgroundColor === 'transparent'
       ? 'transparent'
       : this.resolveBackgroundColor(annotation.backgroundColor, false);
-    overlay.style.opacity = '1';
-    overlay.style.boxShadow = annotation.backgroundColor === 'transparent' ? 'none' : '0 8px 24px rgba(0, 0, 0, 0.45)';
-    const trimmedText = annotation.text?.trim();
-    overlay.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
+    wrapper.style.opacity = '1';
+    wrapper.style.boxShadow = annotation.backgroundColor === 'transparent' ? 'none' : '0 8px 24px rgba(0, 0, 0, 0.45)';
 
-    this.positionAnnotationOverlay(node, overlay);
+    const trimmedText = annotation.text?.trim();
+    content.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
+
+    this.positionAnnotationOverlay(node, entry);
   }
 
-  private positionAnnotationOverlay(node: cytoscape.NodeSingular, overlay: HTMLDivElement): void {
+  private positionAnnotationOverlay(node: cytoscape.NodeSingular, entry: OverlayEntry): void {
     const renderedPosition = node.renderedPosition();
     if (!renderedPosition) {
       return;
     }
-    const zoom = this.cy.zoom();
-    overlay.style.left = `${renderedPosition.x}px`;
-    overlay.style.top = `${renderedPosition.y}px`;
-    overlay.style.fontSize = `${Math.max(6, Number(overlay.dataset.baseFontSize ?? '12') * zoom)}px`;
+    const { wrapper, handle } = entry;
+    const zoom = this.cy.zoom() || 1;
+    wrapper.style.left = `${renderedPosition.x}px`;
+    wrapper.style.top = `${renderedPosition.y}px`;
+    const box = this.applyOverlayBoxSizing(wrapper, zoom);
+    this.positionOverlayHandle(handle, renderedPosition, box.width, box.height);
+  }
 
-    const basePaddingY = Number(overlay.dataset.basePaddingY ?? '0');
-    const basePaddingX = Number(overlay.dataset.basePaddingX ?? '0');
+  private applyOverlayBoxSizing(wrapper: HTMLDivElement, zoom: number): { width: number; height: number } {
+    wrapper.style.fontSize = `${Math.max(6, Number(wrapper.dataset.baseFontSize ?? '12') * zoom)}px`;
+
+    const basePaddingY = Number(wrapper.dataset.basePaddingY ?? '0');
+    const basePaddingX = Number(wrapper.dataset.basePaddingX ?? '0');
     if (basePaddingX === 0 && basePaddingY === 0) {
-      overlay.style.padding = '0';
+      wrapper.style.padding = '0';
     } else {
-      overlay.style.padding = `${Math.max(0, basePaddingY * zoom)}px ${Math.max(0, basePaddingX * zoom)}px`;
+      wrapper.style.padding = `${Math.max(0, basePaddingY * zoom)}px ${Math.max(0, basePaddingX * zoom)}px`;
     }
-    const baseRadius = Number(overlay.dataset.baseBorderRadius ?? '0');
-    overlay.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius * zoom)}px` : '0';
-    const baseMaxWidth = Number(overlay.dataset.baseMaxWidth ?? '420');
-    overlay.style.maxWidth = `${Math.max(80, baseMaxWidth * zoom)}px`;
+    const baseRadius = Number(wrapper.dataset.baseBorderRadius ?? '0');
+    wrapper.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius * zoom)}px` : '0';
+    const baseWidthRaw = wrapper.dataset.baseMaxWidth;
+    let width: number;
+    if (baseWidthRaw && baseWidthRaw !== 'auto') {
+      const numericWidth = Math.max(MIN_FREE_TEXT_WIDTH, Number(baseWidthRaw));
+      const appliedWidth = numericWidth * zoom;
+      wrapper.style.width = `${appliedWidth}px`;
+      wrapper.style.maxWidth = `${appliedWidth}px`;
+      width = appliedWidth;
+    } else {
+      wrapper.style.width = 'auto';
+      wrapper.style.maxWidth = 'none';
+      width = wrapper.offsetWidth || wrapper.scrollWidth || DEFAULT_FREE_TEXT_WIDTH * zoom;
+    }
+    const fallbackHeight = Math.max(24, Number(wrapper.dataset.baseFontSize ?? '12') * zoom);
+    const height = wrapper.offsetHeight || wrapper.scrollHeight || fallbackHeight;
+    return { width, height };
+  }
+
+  private positionOverlayHandle(
+    handle: HTMLButtonElement,
+    position: { x: number; y: number },
+    width: number,
+    height: number
+  ): void {
+    const handleWidth = handle.offsetWidth || 18;
+    const handleHeight = handle.offsetHeight || 18;
+    const handleInset = 6;
+    handle.style.left = `${position.x + width / 2 - handleWidth + handleInset}px`;
+    handle.style.top = `${position.y + height / 2 - handleHeight + handleInset}px`;
   }
 
   private positionOverlayById(id: string): void {
-    const overlay = this.overlayElements.get(id);
+    const entry = this.overlayElements.get(id);
     const node = this.annotationNodes.get(id);
-    if (overlay && node) {
-      this.positionAnnotationOverlay(node, overlay);
+    if (entry && node) {
+      this.positionAnnotationOverlay(node, entry);
     }
   }
 
   private positionAllOverlays(): void {
-    this.overlayElements.forEach((_overlay, id) => {
+    this.overlayElements.forEach((_entry, id) => {
       this.positionOverlayById(id);
     });
   }
 
+  private setOverlayHoverState(id: string, isHover: boolean): void {
+    const entry = this.overlayElements.get(id);
+    if (!entry) {
+      return;
+    }
+    if (this.isLabLocked()) {
+      entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
+      entry.handle.classList.remove(HANDLE_VISIBLE_CLASS);
+      this.overlayHoverLocks.delete(id);
+      const pending = this.overlayHoverHideTimers.get(id);
+      if (pending) {
+        window.clearTimeout(pending);
+        this.overlayHoverHideTimers.delete(id);
+      }
+      return;
+    }
+    if (isHover || this.overlayHoverLocks.has(id)) {
+      const pending = this.overlayHoverHideTimers.get(id);
+      if (pending) {
+        window.clearTimeout(pending);
+        this.overlayHoverHideTimers.delete(id);
+      }
+      entry.wrapper.classList.add(OVERLAY_HOVER_CLASS);
+      entry.handle.classList.add(HANDLE_VISIBLE_CLASS);
+      return;
+    }
+
+    if (this.overlayHoverHideTimers.has(id)) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      this.overlayHoverHideTimers.delete(id);
+      if (this.overlayHoverLocks.has(id)) {
+        return;
+      }
+      entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
+      entry.handle.classList.remove(HANDLE_VISIBLE_CLASS);
+    }, 120);
+    this.overlayHoverHideTimers.set(id, timeoutId);
+  }
+
+  private startOverlayResize(annotationId: string, event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.isLabLocked()) {
+      (window as any).showLabLockedMessage?.();
+      return;
+    }
+    const annotation = this.annotations.get(annotationId);
+    const entry = this.overlayElements.get(annotationId);
+    if (!annotation || !entry) {
+      return;
+    }
+
+    const zoom = this.cy.zoom() || 1;
+    const datasetWidth = Number(entry.wrapper.dataset.baseMaxWidth ?? DEFAULT_FREE_TEXT_WIDTH);
+    const measuredWidth = entry.wrapper.offsetWidth / zoom;
+    const numericAnnotationWidth = typeof annotation.width === 'number' && Number.isFinite(annotation.width)
+      ? annotation.width as number
+      : undefined;
+    const startWidth = Math.max(
+      MIN_FREE_TEXT_WIDTH,
+      numericAnnotationWidth ?? Math.round(datasetWidth || measuredWidth || DEFAULT_FREE_TEXT_WIDTH)
+    );
+
+    this.overlayResizeState = {
+      annotationId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth
+    };
+    this.activeResizeHandle = entry.handle;
+    if (typeof entry.handle.setPointerCapture === 'function') {
+      entry.handle.setPointerCapture(event.pointerId);
+    }
+
+    window.addEventListener('pointermove', this.onOverlayResizeMove);
+    window.addEventListener('pointerup', this.onOverlayResizeEnd);
+    window.addEventListener('pointercancel', this.onOverlayResizeEnd);
+    this.overlayHoverLocks.add(annotationId);
+    this.setOverlayHoverState(annotationId, true);
+  }
+
   private removeAnnotationOverlay(id: string): void {
-    const overlay = this.overlayElements.get(id);
-    if (overlay) {
-      overlay.remove();
+    const entry = this.overlayElements.get(id);
+    if (entry) {
+      entry.wrapper.remove();
+      entry.handle.remove();
       this.overlayElements.delete(id);
+      this.overlayHoverLocks.delete(id);
+      const pending = this.overlayHoverHideTimers.get(id);
+      if (pending) {
+        window.clearTimeout(pending);
+        this.overlayHoverHideTimers.delete(id);
+      }
     }
   }
 
   private clearAnnotationOverlays(): void {
-    this.overlayElements.forEach(element => element.remove());
+    this.overlayElements.forEach(entry => {
+      entry.wrapper.remove();
+      entry.handle.remove();
+    });
     this.overlayElements.clear();
+    this.overlayResizeState = null;
+    this.activeResizeHandle = null;
+    this.overlayHoverLocks.clear();
+    this.overlayHoverHideTimers.forEach(timer => window.clearTimeout(timer));
+    this.overlayHoverHideTimers.clear();
   }
 
   private setupDragHandlers(dialog: HTMLDivElement, dragHandle: HTMLDivElement): () => void {
