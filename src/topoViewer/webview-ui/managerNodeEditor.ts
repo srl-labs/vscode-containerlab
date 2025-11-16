@@ -2914,6 +2914,7 @@ export class ManagerNodeEditor {
     if (this.shouldUseBrowserConfirm() && window.confirm(confirmationMessage) === false) {
       return;
     }
+    this.teardownIconDropdownMenu();
     try {
       const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-delete-icon', { iconName });
       if (!response || response.success !== true) {
@@ -2930,10 +2931,18 @@ export class ManagerNodeEditor {
     }
   }
 
+  private teardownIconDropdownMenu(): void {
+    const dropdownMenu = document.getElementById(`${ID_PANEL_NODE_TOPOROLE_CONTAINER}-dropdown-menu`) as HTMLElement | null;
+    if (dropdownMenu) {
+      dropdownMenu.remove();
+    }
+  }
+
   private refreshIconDropdownAfterIconChange(preferredIcon?: string): void {
     const previousSelection = this.getCurrentIconValue();
     const availableIcons = this.getNodeIconOptions();
     const selectedIcon = this.resolveIconSelectionAfterChange(preferredIcon, previousSelection, availableIcons);
+    this.teardownIconDropdownMenu();
     createFilterableDropdown(
       ID_PANEL_NODE_TOPOROLE_CONTAINER,
       availableIcons,
