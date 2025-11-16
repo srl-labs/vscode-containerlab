@@ -1035,8 +1035,22 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="block vscode-label mb-1">Shape</label>
+        <label class="block vscode-label mb-1">Icon</label>
         <select class="input-field w-full" id="node-icon-editor-shape"></select>
+      </div>
+      <div class="form-group">
+        <label class="block vscode-label mb-1">Corner Radius</label>
+        <div class="flex items-center gap-2">
+          <input
+            type="range"
+            min="0"
+            max="40"
+            value="0"
+            id="node-icon-editor-corner"
+            class="flex-1"
+          />
+          <span class="text-sm w-14 text-right" id="node-icon-editor-corner-value">0px</span>
+        </div>
       </div>
       <div class="form-group">
         <label class="block vscode-label mb-1">Preview</label>

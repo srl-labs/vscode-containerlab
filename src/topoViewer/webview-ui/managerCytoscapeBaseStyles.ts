@@ -401,26 +401,69 @@ export function getIconDataUriForRole(role: string, fillColor: string = '#005aff
   return generateEncodedSVG(nodeType, fillColor);
 }
 
-export function applyIconColorToNode(node: cytoscape.NodeSingular, color?: string | null): void {
+interface IconStyleOptions {
+  cornerRadius?: number | null;
+}
+
+export function applyIconColorToNode(
+  node: cytoscape.NodeSingular,
+  color?: string | null,
+  options?: IconStyleOptions,
+  preserveDefaultBackground: boolean = false
+): void {
   const role = (node.data('topoViewerRole') as string) || 'pe';
   const nodeType = ROLE_SVG_MAP[role] ?? ROLE_SVG_MAP.default;
   if (!nodeType) return;
-  if (typeof color === 'string' && color.trim()) {
-    node.style('background-image', generateEncodedSVG(nodeType, color.trim()));
-    node.data('iconColor', color.trim());
+
+  const normalizedColor = normalizeIconColorValue(color);
+  if (normalizedColor) {
+    node.style('background-image', generateEncodedSVG(nodeType, normalizedColor));
+    node.data('iconColor', normalizedColor);
   } else {
-    node.removeStyle('background-image');
     node.removeData('iconColor');
+    if (!preserveDefaultBackground) {
+      node.removeStyle('background-image');
+    }
+  }
+
+  if (options && Object.prototype.hasOwnProperty.call(options, 'cornerRadius')) {
+    applyCornerRadiusStyle(node, options.cornerRadius);
   }
 }
 
 export function applyCustomIconColors(cy: cytoscape.Core): void {
   cy.nodes().forEach(node => {
     const color = node.data('iconColor');
-    if (typeof color === 'string' && color.trim()) {
-      applyIconColorToNode(node, color);
+    const radius = node.data('iconCornerRadius');
+    const hasColor = typeof color === 'string' && color.trim();
+    const hasRadius = typeof radius === 'number' && Number.isFinite(radius) && radius > 0;
+    if (hasColor || hasRadius) {
+      const options: IconStyleOptions | undefined = hasRadius ? { cornerRadius: radius } : undefined;
+      applyIconColorToNode(node, hasColor ? color : undefined, options, !hasColor);
     }
   });
+}
+
+function normalizeIconColorValue(color?: string | null): string | null {
+  if (typeof color !== 'string') return null;
+  const trimmed = color.trim();
+  return trimmed ? trimmed : null;
+}
+
+function applyCornerRadiusStyle(node: cytoscape.NodeSingular, radiusValue?: number | null): void {
+  const radius =
+    typeof radiusValue === 'number' && Number.isFinite(radiusValue) ? Math.max(0, radiusValue) : null;
+  if (radius !== null && radius > 0) {
+    node.style('shape', 'round-rectangle');
+    node.style('corner-radius', `${radius}px`);
+    node.style('background-clip', 'node');
+    node.data('iconCornerRadius', radius);
+  } else {
+    node.removeStyle('corner-radius');
+    node.removeStyle('shape');
+    node.removeStyle('background-clip');
+    node.removeData('iconCornerRadius');
+  }
 }
 
 const roleStyles: any[] = Object.entries(ROLE_SVG_MAP).map(([role, svgId]) => ({

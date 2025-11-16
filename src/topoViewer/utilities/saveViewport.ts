@@ -305,11 +305,33 @@ function createNodeAnnotation(
 }
 
 function applyNodeIconColor(nodeAnnotation: NodeAnnotation, node: any): void {
+  assignAnnotationColor(nodeAnnotation, node);
+  assignAnnotationCornerRadius(nodeAnnotation, node);
+}
+
+function assignAnnotationColor(nodeAnnotation: NodeAnnotation, node: any): void {
   const color = typeof node?.data?.iconColor === 'string' ? node.data.iconColor.trim() : '';
   if (color) {
     nodeAnnotation.iconColor = color;
+    return;
+  }
+  if ('iconColor' in nodeAnnotation) {
+    delete (nodeAnnotation as any).iconColor;
   }
 }
+
+function assignAnnotationCornerRadius(nodeAnnotation: NodeAnnotation, node: any): void {
+  const radius = typeof node?.data?.iconCornerRadius === 'number' ? node.data.iconCornerRadius : undefined;
+  const validRadius = typeof radius === 'number' && Number.isFinite(radius) && radius > 0 ? radius : null;
+  if (validRadius) {
+    nodeAnnotation.iconCornerRadius = validRadius;
+    return;
+  }
+  if ('iconCornerRadius' in nodeAnnotation) {
+    delete (nodeAnnotation as any).iconCornerRadius;
+  }
+}
+
 
 function decorateAliasAnnotation(nodeAnnotation: NodeAnnotation, node: any, aliasIfaceByAlias: Map<string, Set<string>>): string | undefined {
   const rawId = String(node?.data?.id || '');
@@ -1444,4 +1466,5 @@ function mergeAnnotation(target: NodeAnnotation, source: NodeAnnotation): void {
   if (!(target as any).yamlNodeId && (source as any).yamlNodeId) (target as any).yamlNodeId = (source as any).yamlNodeId;
   if (!(target as any).yamlInterface && (source as any).yamlInterface) (target as any).yamlInterface = (source as any).yamlInterface;
   if (!target.iconColor && source.iconColor) target.iconColor = source.iconColor;
+  if (target.iconCornerRadius === undefined && source.iconCornerRadius !== undefined) target.iconCornerRadius = source.iconCornerRadius;
 }

@@ -910,6 +910,7 @@ export class ManagerUnifiedFloatingPanel {
         name: TEMP_CUSTOM_ID,
         topoViewerRole: window.defaultKind === DEFAULT_KIND_SR ? 'router' : DEFAULT_ROLE_PE,  // Set router for SR Linux, pe for others
         iconColor: undefined,
+        iconCornerRadius: undefined,
         extraData: {
           kind: window.defaultKind || DEFAULT_KIND_SR,
           type: window.defaultType || '',
@@ -949,16 +950,18 @@ export class ManagerUnifiedFloatingPanel {
       name: EDIT_CUSTOM_ID,
       topoViewerRole: customNode.icon || DEFAULT_ROLE_PE,  // Add icon to the node data
       iconColor: customNode.iconColor,
+      iconCornerRadius: customNode.iconCornerRadius,
       extraData: {
         kind: customNode.kind,
         type: customNode.type,
         image: customNode.image,
         icon: customNode.icon || DEFAULT_ROLE_PE,  // Also include icon in extraData for the editor
         iconColor: customNode.iconColor,
+        iconCornerRadius: customNode.iconCornerRadius,
         // Include any other properties from the custom node
         ...Object.fromEntries(
           Object.entries(customNode).filter(([key]) =>
-            !['name', 'kind', 'type', 'image', 'setDefault', 'icon', 'iconColor'].includes(key)
+            !['name', 'kind', 'type', 'image', 'setDefault', 'icon', 'iconColor', 'iconCornerRadius'].includes(key)
           )
         ),
         // Mark this as editing an existing custom node

@@ -532,6 +532,7 @@ export class TopoViewerAdaptorClab {
       mergedNode.labels?.['topoViewer-role'] ||
       (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE ? NODE_KIND_BRIDGE : 'router');
 
+    const iconVisuals = this.extractIconVisuals(nodeAnn);
     const element: CyElement = {
       group: 'nodes',
       data: {
@@ -540,7 +541,7 @@ export class TopoViewerAdaptorClab {
         name: nodeName,
         parent: parentId || undefined,
         topoViewerRole,
-        iconColor: typeof nodeAnn?.iconColor === 'string' ? nodeAnn.iconColor : undefined,
+        ...iconVisuals,
         lat,
         lng,
         extraData,
@@ -556,6 +557,17 @@ export class TopoViewerAdaptorClab {
     };
 
     return { element, parentId };
+  }
+
+  private extractIconVisuals(nodeAnn: any): Record<string, unknown> {
+    const visuals: Record<string, unknown> = {};
+    if (typeof nodeAnn?.iconColor === 'string') {
+      visuals.iconColor = nodeAnn.iconColor;
+    }
+    if (typeof nodeAnn?.iconCornerRadius === 'number') {
+      visuals.iconCornerRadius = nodeAnn.iconCornerRadius;
+    }
+    return visuals;
   }
 
   private getContainerData(

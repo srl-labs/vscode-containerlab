@@ -6,6 +6,18 @@ import topoViewerState from '../state';
 import { getUniqueId } from './utilities/idUtils';
 import { applyIconColorToNode } from './managerCytoscapeBaseStyles';
 
+type CustomNodeTemplate = {
+  kind: string;
+  type?: string;
+  image?: string;
+  name?: string;
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  baseName?: string;
+  interfacePattern?: string;
+};
+
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.
  */
@@ -15,31 +27,17 @@ export class ManagerAddContainerlabNode {
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject,
-    template?: {
-      kind: string;
-      type?: string;
-      image?: string;
-      name?: string;
-      icon?: string;
-      iconColor?: string;
-      baseName?: string;
-      interfacePattern?: string;
-    }
+    template?: CustomNodeTemplate
   ): void {
     this.initializeNodeCounter(cy);
-    const newNodeId = this.generateNodeId();
-    const nodeName = this.generateNodeName(cy, newNodeId, template);
-    const finalNodeId = nodeName || newNodeId;
+    const identifiers = this.resolveNodeIdentifiers(cy, template);
     const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
-    const newNodeData = this.createNodeData(finalNodeId, nodeName, template, kind);
+    const newNodeData = this.createNodeData(identifiers.nodeId, identifiers.nodeName, template, kind);
     const position = this.determinePosition(cy, event);
 
-    const collection = cy.add({ group: 'nodes', data: newNodeData, position });
-    const createdNode = collection[0];
-    if (createdNode && template?.iconColor) {
-      applyIconColorToNode(createdNode, template.iconColor);
-    }
-    this.applyGeoCoordinates(cy, finalNodeId, position);
+    const createdNode = this.addNodeToCanvas(cy, newNodeData, position);
+    this.applyTemplateIconStyles(createdNode, template);
+    this.applyGeoCoordinates(cy, identifiers.nodeId, position);
   }
 
   private initializeNodeCounter(cy: cytoscape.Core): void {
@@ -75,18 +73,7 @@ export class ManagerAddContainerlabNode {
   private createNodeData(
     newNodeId: string,
     nodeName: string,
-    template:
-      | {
-          kind: string;
-          type?: string;
-          image?: string;
-          name?: string;
-          icon?: string;
-          iconColor?: string;
-          baseName?: string;
-          interfacePattern?: string;
-        }
-      | undefined,
+    template: CustomNodeTemplate | undefined,
     kind: string
   ): NodeData {
     const extraData: NodeExtraData = {
@@ -117,6 +104,7 @@ export class ManagerAddContainerlabNode {
       parent: '',
       topoViewerRole: template?.icon || 'pe',
       iconColor: template?.iconColor,
+      iconCornerRadius: template?.iconCornerRadius,
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
@@ -149,10 +137,39 @@ export class ManagerAddContainerlabNode {
     if (!template) {
       return {};
     }
-    const excluded = ['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'];
+    const excluded = ['name', 'kind', 'type', 'image', 'icon', 'iconColor', 'iconCornerRadius', 'setDefault', 'baseName'];
     return Object.fromEntries(
       Object.entries(template).filter(([key]) => !excluded.includes(key))
     );
+  }
+
+  private resolveNodeIdentifiers(
+    cy: cytoscape.Core,
+    template?: { baseName?: string }
+  ): { nodeId: string; nodeName: string } {
+    const generatedId = this.generateNodeId();
+    const nodeName = this.generateNodeName(cy, generatedId, template);
+    const nodeId = nodeName || generatedId;
+    return { nodeId, nodeName };
+  }
+
+  private addNodeToCanvas(
+    cy: cytoscape.Core,
+    data: NodeData,
+    position: { x: number; y: number }
+  ): cytoscape.NodeSingular | undefined {
+    const collection = cy.add({ group: 'nodes', data, position });
+    return collection[0];
+  }
+
+  private applyTemplateIconStyles(node: cytoscape.NodeSingular | undefined, template?: CustomNodeTemplate): void {
+    if (!node || !template) return;
+    const hasColor = typeof template.iconColor === 'string' && template.iconColor.trim() !== '';
+    const hasRadius = typeof template.iconCornerRadius === 'number';
+    if (!hasColor && !hasRadius) return;
+
+    const options = hasRadius ? { cornerRadius: template.iconCornerRadius } : undefined;
+    applyIconColorToNode(node, hasColor ? template.iconColor : undefined, options, !hasColor);
   }
 
   private determinePosition(

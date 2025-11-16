@@ -42,6 +42,9 @@ const ATTR_ARIA_HIDDEN = 'aria-hidden' as const;
 const SELECTOR_SFM_VALUE = '[data-role="sfm-value"]' as const;
 const SELECTOR_SFM_DROPDOWN = '[data-role="sfm-dropdown"]' as const;
 const DEFAULT_ICON_COLOR = '#005aff' as const;
+const DEFAULT_ICON_CORNER_RADIUS = 0;
+const NODE_ICON_BASE_SIZE = 14;
+const ICON_PREVIEW_DEFAULT_SIZE = 64;
 
 const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
@@ -91,6 +94,8 @@ const ID_ICON_EDITOR_PREVIEW = 'node-icon-editor-preview' as const;
 const ID_ICON_EDITOR_SAVE = 'node-icon-editor-save' as const;
 const ID_ICON_EDITOR_CANCEL = 'node-icon-editor-cancel' as const;
 const ID_ICON_EDITOR_CLOSE = 'node-icon-editor-close' as const;
+const ID_ICON_EDITOR_CORNER = 'node-icon-editor-corner' as const;
+const ID_ICON_EDITOR_CORNER_VALUE = 'node-icon-editor-corner-value' as const;
 const ID_NODE_RP_DROPDOWN = 'node-restart-policy-dropdown-container' as const;
 const ID_NODE_RP_FILTER_INPUT = 'node-restart-policy-dropdown-container-filter-input' as const;
 const ID_NODE_NM_DROPDOWN = 'node-network-mode-dropdown-container' as const;
@@ -401,6 +406,7 @@ export class ManagerNodeEditor {
   private pendingExpandedComponentSlots: Set<string> | undefined;
   private cachedNodeIcons: string[] = [];
   private currentIconColor: string | null = null;
+  private currentIconCornerRadius: number = DEFAULT_ICON_CORNER_RADIUS;
   private iconEditorInitialized = false;
   // enums to be filled from schema
   private srosSfmTypes: string[] = [];
@@ -2242,6 +2248,11 @@ export class ManagerNodeEditor {
       this.populateIconShapeOptions(shapeSelect);
       shapeSelect.addEventListener('change', () => this.updateIconPreviewElement());
     }
+
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
+    if (cornerInput) {
+      cornerInput.addEventListener('input', () => this.handleIconEditorCornerInput(cornerInput));
+    }
   }
 
   private handleIconEditorColorInput(colorInput: HTMLInputElement, hexInput: HTMLInputElement | null): void {
@@ -2261,6 +2272,26 @@ export class ManagerNodeEditor {
     }
   }
 
+  private updateCornerRadiusLabel(value: number): void {
+    const radiusLabel = document.getElementById(ID_ICON_EDITOR_CORNER_VALUE);
+    if (radiusLabel) {
+      const normalized = Math.max(0, Math.round(value));
+      radiusLabel.textContent = `${normalized}px`;
+    }
+  }
+
+  private handleIconEditorCornerInput(cornerInput: HTMLInputElement): void {
+    this.updateCornerRadiusLabel(Number(cornerInput.value));
+    this.updateIconPreviewElement();
+  }
+
+  private scaleRadiusForPreview(value: number, preview: HTMLImageElement): number {
+    const previewSize = preview?.clientWidth || ICON_PREVIEW_DEFAULT_SIZE;
+    const normalizedRadius = Math.max(0, Number.isFinite(value) ? value : 0);
+    const scaled = (normalizedRadius / NODE_ICON_BASE_SIZE) * previewSize;
+    return Math.min(scaled, previewSize / 2);
+  }
+
   private populateIconShapeOptions(select: HTMLSelectElement): void {
     select.innerHTML = '';
     for (const role of this.getNodeIconOptions()) {
@@ -2275,6 +2306,7 @@ export class ManagerNodeEditor {
     const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
     const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
     const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
     const currentShape = this.getCurrentIconValue();
     if (shapeSelect) {
       if (!Array.from(shapeSelect.options).some(opt => opt.value === currentShape)) {
@@ -2285,6 +2317,10 @@ export class ManagerNodeEditor {
     const colorValue = this.currentIconColor ?? DEFAULT_ICON_COLOR;
     if (colorInput) colorInput.value = colorValue;
     if (hexInput) hexInput.value = this.currentIconColor ?? '';
+    if (cornerInput) {
+      cornerInput.value = `${this.currentIconCornerRadius}`;
+      this.updateCornerRadiusLabel(this.currentIconCornerRadius);
+    }
     this.toggleIconEditor(true);
     this.updateIconPreviewElement();
   }
@@ -2312,11 +2348,15 @@ export class ManagerNodeEditor {
     if (dataUri) {
       preview.src = dataUri;
     }
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
+    const radius = cornerInput ? Number(cornerInput.value) : this.currentIconCornerRadius;
+    preview.style.borderRadius = `${this.scaleRadiusForPreview(radius, preview)}px`;
   }
 
   private applyIconEditorSelection(): void {
     const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
     const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
     const rawColor = colorInput?.value || '';
     const normalized = this.normalizeIconColor(rawColor, null);
     const effectiveColor =
@@ -2328,6 +2368,8 @@ export class ManagerNodeEditor {
     }
     const shape = shapeSelect?.value || this.getCurrentIconValue();
     this.setIconShapeValue(shape);
+    const cornerRadius = cornerInput ? Number(cornerInput.value) : DEFAULT_ICON_CORNER_RADIUS;
+    this.setIconCornerRadius(Number.isFinite(cornerRadius) ? cornerRadius : DEFAULT_ICON_CORNER_RADIUS);
     this.closeIconEditor();
   }
 
@@ -2736,6 +2778,11 @@ export class ManagerNodeEditor {
       typeof nodeData.extraData?.iconColor === 'string' ? (nodeData.extraData.iconColor as string) : '';
     const normalized = this.normalizeIconColor(fromNode || fromExtra, null);
     this.setIconColor(normalized);
+    const radiusSource = this.resolveNumericIconValue(
+      nodeData.iconCornerRadius,
+      nodeData.extraData?.iconCornerRadius
+    );
+    this.setIconCornerRadius(radiusSource);
   }
 
   private setIconColor(color: string | null): void {
@@ -2744,6 +2791,24 @@ export class ManagerNodeEditor {
     if (hidden) {
       hidden.value = color ?? '';
     }
+  }
+
+  private setIconCornerRadius(radius: number | null): void {
+    if (typeof radius === 'number' && Number.isFinite(radius)) {
+      this.currentIconCornerRadius = Math.max(0, Math.min(40, radius));
+      return;
+    }
+    this.currentIconCornerRadius = DEFAULT_ICON_CORNER_RADIUS;
+  }
+
+  private resolveNumericIconValue(primary: unknown, fallback: unknown): number | null {
+    if (typeof primary === 'number' && Number.isFinite(primary)) {
+      return primary;
+    }
+    if (typeof fallback === 'number' && Number.isFinite(fallback)) {
+      return fallback;
+    }
+    return null;
   }
 
   private normalizeIconColor(color: string | undefined, fallback: string | null = DEFAULT_ICON_COLOR): string | null {
@@ -3582,6 +3647,9 @@ export class ManagerNodeEditor {
       setDefault,
       ...(oldName && { oldName })
     };
+    if (this.currentIconCornerRadius > 0) {
+      payload.iconCornerRadius = this.currentIconCornerRadius;
+    }
     if (iconColor) {
       payload.iconColor = iconColor;
     }
@@ -4080,8 +4148,20 @@ export class ManagerNodeEditor {
     } else {
       delete updatedData.iconColor;
     }
+    if (this.currentIconCornerRadius > 0) {
+      updatedData.iconCornerRadius = this.currentIconCornerRadius;
+    } else {
+      delete updatedData.iconCornerRadius;
+    }
     this.currentNode!.data(updatedData);
-    applyIconColorToNode(this.currentNode!, this.currentIconColor || undefined);
+    const hadColorBefore = typeof currentData.iconColor === 'string' && currentData.iconColor.trim() !== '';
+    const preserveBackground = !hadColorBefore && !this.currentIconColor;
+    applyIconColorToNode(
+      this.currentNode!,
+      this.currentIconColor || undefined,
+      { cornerRadius: this.currentIconCornerRadius },
+      preserveBackground
+    );
     await this.saveManager.saveTopo(this.cy, false);
     await this.refreshNodeData(expandedSlots);
     this.updateInheritedBadges(inheritedProps);

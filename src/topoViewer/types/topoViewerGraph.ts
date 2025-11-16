@@ -98,6 +98,7 @@ export interface NodeData {
   parent?: string;
   topoViewerRole?: string;
   iconColor?: string;
+  iconCornerRadius?: number;
   sourceEndpoint?: string;
   targetEndpoint?: string;
   containerDockerExtraAttribute?: ContainerDockerExtraAttribute;
@@ -193,6 +194,7 @@ export interface NodeAnnotation {
   };
   icon?: string;
   iconColor?: string;
+  iconCornerRadius?: number;
   groupLabelPos?: string;
   group?: string;
   level?: string;
