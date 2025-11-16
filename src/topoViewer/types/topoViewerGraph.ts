@@ -143,6 +143,7 @@ export interface FreeTextAnnotation {
   fontWeight?: 'normal' | 'bold';
   fontStyle?: 'normal' | 'italic';
   textDecoration?: 'none' | 'underline';
+  textAlign?: 'left' | 'center' | 'right';
   fontFamily?: string;
   width?: number;
   height?: number;

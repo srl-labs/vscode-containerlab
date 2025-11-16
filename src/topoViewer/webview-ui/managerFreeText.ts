@@ -1,4 +1,8 @@
 import cytoscape from 'cytoscape';
+import { marked } from 'marked';
+import { markedHighlight } from 'marked-highlight';
+import hljs from 'highlight.js';
+import DOMPurify from 'dompurify';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { FreeTextAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/logger';
@@ -9,6 +13,27 @@ import type { ManagerGroupStyle } from './managerGroupStyle';
 const MIN_FREE_TEXT_FONT_SIZE = 1;
 const DEFAULT_FREE_TEXT_FONT_SIZE = 8;
 const PREVIEW_FONT_SCALE = 2;
+const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
+const BUTTON_BASE_CLASS = 'btn btn-small';
+const BUTTON_PRIMARY_CLASS = 'btn-primary';
+const BUTTON_OUTLINED_CLASS = 'btn-outlined';
+const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
+type TextAlignment = 'left' | 'center' | 'right';
+
+marked.setOptions({
+  gfm: true,
+  breaks: true
+});
+
+marked.use(markedHighlight({
+  langPrefix: 'hljs language-',
+  highlight(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  }
+}));
 
 interface FreeTextModalElements {
   backdrop: HTMLDivElement;
@@ -16,6 +41,10 @@ interface FreeTextModalElements {
   dragHandle: HTMLDivElement;
   titleEl: HTMLHeadingElement;
   textInput: HTMLTextAreaElement;
+  previewContainer: HTMLDivElement;
+  previewContent: HTMLDivElement;
+  tabWriteBtn: HTMLButtonElement;
+  tabPreviewBtn: HTMLButtonElement;
   fontSizeInput: HTMLInputElement;
   fontFamilySelect: HTMLSelectElement;
   fontColorInput: HTMLInputElement;
@@ -23,6 +52,9 @@ interface FreeTextModalElements {
   boldBtn: HTMLButtonElement;
   italicBtn: HTMLButtonElement;
   underlineBtn: HTMLButtonElement;
+  alignLeftBtn: HTMLButtonElement;
+  alignCenterBtn: HTMLButtonElement;
+  alignRightBtn: HTMLButtonElement;
   transparentBtn: HTMLButtonElement;
   cancelBtn: HTMLButtonElement;
   okBtn: HTMLButtonElement;
@@ -33,6 +65,7 @@ interface FormattingState {
   isItalic: boolean;
   isUnderline: boolean;
   isTransparentBg: boolean;
+  alignment: TextAlignment;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -47,6 +80,9 @@ export class ManagerFreeText {
   private groupStyleManager?: ManagerGroupStyle;
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
+  private overlayContainer: HTMLDivElement | null = null;
+  private overlayElements: Map<string, HTMLDivElement> = new Map();
+  private overlaySyncHandler?: () => void;
   private styleReapplyInProgress = false;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
   private loadInProgress = false;
@@ -61,6 +97,7 @@ export class ManagerFreeText {
     this.groupStyleManager = groupStyleManager;
     this.setupEventHandlers();
     this.setupStylePreservation();
+    this.initializeOverlayLayer();
 
     this.reapplyStylesBound = () => {
       this.annotationNodes.forEach((node, id) => {
@@ -84,6 +121,7 @@ export class ManagerFreeText {
           this.annotations.clear();
           this.annotationNodes.forEach(node => { if (node && node.inside()) node.remove(); });
           this.annotationNodes.clear();
+          this.clearAnnotationOverlays();
 
           const annotations = response.annotations as FreeTextAnnotation[];
           annotations.forEach(annotation => this.addFreeTextAnnotation(annotation));
@@ -183,6 +221,7 @@ export class ManagerFreeText {
       if (this.annotations.has(id)) {
         this.annotations.delete(id);
         this.annotationNodes.delete(id);
+        this.removeAnnotationOverlay(id);
         // Don't call saveAnnotations here as it might cause recursion
       }
     });
@@ -270,6 +309,16 @@ export class ManagerFreeText {
 
   private buildDefaultAnnotation(id: string, position: cytoscape.Position): FreeTextAnnotation {
     const lastAnnotation = Array.from(this.annotations.values()).slice(-1)[0];
+    const {
+      fontSize = DEFAULT_FREE_TEXT_FONT_SIZE,
+      fontColor = '#FFFFFF',
+      backgroundColor = 'transparent',
+      fontWeight = 'normal',
+      fontStyle = 'normal',
+      textDecoration = 'none',
+      fontFamily = 'monospace',
+      textAlign = 'left'
+    } = lastAnnotation ?? {};
     return {
       id,
       text: '',
@@ -277,13 +326,14 @@ export class ManagerFreeText {
         x: Math.round(position.x),
         y: Math.round(position.y)
       },
-      fontSize: this.normalizeFontSize(lastAnnotation?.fontSize),
-      fontColor: lastAnnotation?.fontColor ?? '#FFFFFF',
-      backgroundColor: lastAnnotation?.backgroundColor ?? 'transparent',
-      fontWeight: lastAnnotation?.fontWeight ?? 'normal',
-      fontStyle: lastAnnotation?.fontStyle ?? 'normal',
-      textDecoration: lastAnnotation?.textDecoration ?? 'none',
-      fontFamily: lastAnnotation?.fontFamily ?? 'monospace'
+      fontSize: this.normalizeFontSize(fontSize),
+      fontColor,
+      backgroundColor,
+      fontWeight,
+      fontStyle,
+      textDecoration,
+      fontFamily,
+      textAlign
     };
   }
 
@@ -325,6 +375,7 @@ export class ManagerFreeText {
 
     this.initializeModal(title, annotation, elements);
     const state = this.setupFormattingControls(annotation, elements, cleanupTasks);
+    this.initializeMarkdownPreview(elements, cleanupTasks);
     cleanupTasks.push(this.setupDragHandlers(elements.dialog, elements.dragHandle));
     this.setupSubmitHandlers(annotation, elements, state, resolve, cleanup, cleanupTasks);
     cleanupTasks.push(() => {
@@ -347,6 +398,10 @@ export class ManagerFreeText {
       dragHandle: document.getElementById('free-text-drag-handle') as HTMLDivElement | null,
       titleEl: document.getElementById('free-text-modal-title') as HTMLHeadingElement | null,
       textInput: document.getElementById('free-text-modal-text') as HTMLTextAreaElement | null,
+      previewContainer: document.getElementById('free-text-preview-container') as HTMLDivElement | null,
+      previewContent: document.getElementById('free-text-preview') as HTMLDivElement | null,
+      tabWriteBtn: document.getElementById('free-text-tab-write') as HTMLButtonElement | null,
+      tabPreviewBtn: document.getElementById('free-text-tab-preview') as HTMLButtonElement | null,
       fontSizeInput: document.getElementById('free-text-font-size') as HTMLInputElement | null,
       fontFamilySelect: document.getElementById('free-text-font-family') as HTMLSelectElement | null,
       fontColorInput: document.getElementById('free-text-font-color') as HTMLInputElement | null,
@@ -354,6 +409,9 @@ export class ManagerFreeText {
       boldBtn: document.getElementById('free-text-bold-btn') as HTMLButtonElement | null,
       italicBtn: document.getElementById('free-text-italic-btn') as HTMLButtonElement | null,
       underlineBtn: document.getElementById('free-text-underline-btn') as HTMLButtonElement | null,
+      alignLeftBtn: document.getElementById('free-text-align-left-btn') as HTMLButtonElement | null,
+      alignCenterBtn: document.getElementById('free-text-align-center-btn') as HTMLButtonElement | null,
+      alignRightBtn: document.getElementById('free-text-align-right-btn') as HTMLButtonElement | null,
       transparentBtn: document.getElementById('free-text-transparent-btn') as HTMLButtonElement | null,
       cancelBtn: document.getElementById('free-text-cancel-btn') as HTMLButtonElement | null,
       okBtn: document.getElementById('free-text-ok-btn') as HTMLButtonElement | null,
@@ -386,6 +444,7 @@ export class ManagerFreeText {
     textInput.style.fontWeight = annotation.fontWeight ?? 'normal';
     textInput.style.fontStyle = annotation.fontStyle ?? 'normal';
     textInput.style.textDecoration = annotation.textDecoration ?? 'none';
+    textInput.style.textAlign = annotation.textAlign ?? 'left';
     textInput.style.color = annotation.fontColor ?? '#FFFFFF';
     textInput.style.background = this.resolveBackgroundColor(annotation.backgroundColor, false);
   }
@@ -434,20 +493,25 @@ export class ManagerFreeText {
   }
 
   private configureFontInputs(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
-    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, textInput } = els;
+    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, textInput, previewContent } = els;
     this.bindHandler(fontSizeInput, 'oninput', () => {
       const size = Number.parseInt(fontSizeInput.value, 10);
-      this.applyPreviewFontSize(textInput, this.normalizeFontSize(size));
+      const normalized = this.normalizeFontSize(size);
+      this.applyPreviewFontSize(textInput, normalized);
+      previewContent.style.fontSize = `${normalized}px`;
     }, cleanupTasks);
     this.bindHandler(fontFamilySelect, 'onchange', () => {
       textInput.style.fontFamily = fontFamilySelect.value;
+      previewContent.style.fontFamily = fontFamilySelect.value;
     }, cleanupTasks);
     this.bindHandler(fontColorInput, 'oninput', () => {
       textInput.style.color = fontColorInput.value;
+      previewContent.style.color = fontColorInput.value;
     }, cleanupTasks);
     this.bindHandler(bgColorInput, 'oninput', () => {
       if (!bgColorInput.disabled) {
         textInput.style.background = bgColorInput.value;
+        previewContent.style.background = bgColorInput.value;
       }
     }, cleanupTasks);
   }
@@ -457,16 +521,12 @@ export class ManagerFreeText {
     state: FormattingState,
     cleanupTasks: Array<() => void>
   ): () => void {
-    const { boldBtn, italicBtn, underlineBtn, transparentBtn, bgColorInput, textInput } = els;
-    const BTN_BASE = 'btn btn-small';
-    const BTN_BASE_RIGHT = 'btn btn-small ml-auto';
-    const BTN_PRIMARY = 'btn-primary';
-    const BTN_OUTLINED = 'btn-outlined';
+    const { boldBtn, italicBtn, underlineBtn, transparentBtn, bgColorInput, textInput, previewContent } = els;
     const updateButtonClasses = () => {
-      boldBtn.className = `${BTN_BASE} ${state.isBold ? BTN_PRIMARY : BTN_OUTLINED}`;
-      italicBtn.className = `${BTN_BASE} ${state.isItalic ? BTN_PRIMARY : BTN_OUTLINED}`;
-      underlineBtn.className = `${BTN_BASE} ${state.isUnderline ? BTN_PRIMARY : BTN_OUTLINED}`;
-      transparentBtn.className = `${BTN_BASE_RIGHT} ${state.isTransparentBg ? BTN_PRIMARY : BTN_OUTLINED}`;
+      boldBtn.className = `${BUTTON_BASE_CLASS} ${state.isBold ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      italicBtn.className = `${BUTTON_BASE_CLASS} ${state.isItalic ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      underlineBtn.className = `${BUTTON_BASE_CLASS} ${state.isUnderline ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      transparentBtn.className = `${BUTTON_BASE_RIGHT_CLASS} ${state.isTransparentBg ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
     };
 
     const toggles = [
@@ -479,6 +539,7 @@ export class ManagerFreeText {
       this.bindHandler(btn, 'onclick', () => {
         state[key] = !state[key];
         (textInput.style as any)[style[0]] = state[key] ? style[1] : style[2];
+        (previewContent.style as any)[style[0]] = state[key] ? style[1] : style[2];
         updateButtonClasses();
       }, cleanupTasks);
     });
@@ -487,32 +548,306 @@ export class ManagerFreeText {
       state.isTransparentBg = !state.isTransparentBg;
       bgColorInput.disabled = state.isTransparentBg;
       textInput.style.background = state.isTransparentBg ? 'transparent' : bgColorInput.value;
+      previewContent.style.background = state.isTransparentBg ? 'transparent' : bgColorInput.value;
       updateButtonClasses();
     }, cleanupTasks);
 
     return updateButtonClasses;
   }
 
+  private configureAlignmentButtons(
+    els: FreeTextModalElements,
+    state: FormattingState,
+    cleanupTasks: Array<() => void>
+  ): void {
+    const { alignLeftBtn, alignCenterBtn, alignRightBtn, textInput, previewContent } = els;
+
+    const setAlignmentClasses = () => {
+      const { alignment } = state;
+      alignLeftBtn.className = `${BUTTON_BASE_CLASS} ${alignment === 'left' ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      alignCenterBtn.className = `${BUTTON_BASE_CLASS} ${alignment === 'center' ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      alignRightBtn.className = `${BUTTON_BASE_CLASS} ${alignment === 'right' ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+    };
+
+    const buttons: Array<{ btn: HTMLButtonElement; value: TextAlignment }> = [
+      { btn: alignLeftBtn, value: 'left' },
+      { btn: alignCenterBtn, value: 'center' },
+      { btn: alignRightBtn, value: 'right' }
+    ];
+
+    buttons.forEach(({ btn, value }) => {
+      this.bindHandler(btn, 'onclick', () => {
+        state.alignment = value;
+        textInput.style.textAlign = value;
+        previewContent.style.textAlign = value;
+        setAlignmentClasses();
+      }, cleanupTasks);
+    });
+
+    setAlignmentClasses();
+  }
+
   private setupFormattingControls(annotation: FreeTextAnnotation, els: FreeTextModalElements, cleanupTasks: Array<() => void>): FormattingState {
-    const { bgColorInput, textInput } = els;
+    const { bgColorInput, textInput, previewContent } = els;
 
     const state: FormattingState = {
       isBold: annotation.fontWeight === 'bold',
       isItalic: annotation.fontStyle === 'italic',
       isUnderline: annotation.textDecoration === 'underline',
       isTransparentBg: annotation.backgroundColor === 'transparent',
+      alignment: annotation.textAlign ?? 'left',
     };
 
     this.configureFontInputs(els, cleanupTasks);
     const updateButtonClasses = this.configureStyleButtons(els, state, cleanupTasks);
+    this.configureAlignmentButtons(els, state, cleanupTasks);
 
     if (state.isTransparentBg) {
       bgColorInput.disabled = true;
       textInput.style.background = 'transparent';
+      previewContent.style.background = 'transparent';
     }
+
+    previewContent.style.textAlign = state.alignment;
+    previewContent.style.fontWeight = textInput.style.fontWeight;
+    previewContent.style.fontStyle = textInput.style.fontStyle;
+    previewContent.style.textDecoration = textInput.style.textDecoration;
+    previewContent.style.fontFamily = textInput.style.fontFamily;
+    previewContent.style.color = textInput.style.color;
+    previewContent.style.background = textInput.style.background;
+    previewContent.style.fontSize = `${this.normalizeFontSize(annotation.fontSize)}px`;
 
     updateButtonClasses();
     return state;
+  }
+
+  private initializeMarkdownPreview(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
+    const { textInput, previewContainer, previewContent, tabWriteBtn, tabPreviewBtn } = els;
+    previewContent.style.textAlign = textInput.style.textAlign || 'left';
+
+    const setButtonState = (btn: HTMLButtonElement, isActive: boolean) => {
+      btn.classList.toggle('btn-primary', isActive);
+      btn.classList.toggle('btn-outlined', !isActive);
+    };
+
+    const setTabState = (mode: 'write' | 'preview') => {
+      const isWrite = mode === 'write';
+      textInput.classList.toggle('hidden', !isWrite);
+      previewContainer.classList.toggle('hidden', isWrite);
+      setButtonState(tabWriteBtn, isWrite);
+      setButtonState(tabPreviewBtn, !isWrite);
+      if (isWrite) {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(() => {
+            textInput.focus();
+          });
+        } else {
+          textInput.focus();
+        }
+      }
+    };
+
+    const updatePreview = () => {
+      this.updateMarkdownPreview(previewContent, textInput.value);
+    };
+
+    updatePreview();
+    setTabState('write');
+
+    this.bindHandler(textInput, 'oninput', () => {
+      updatePreview();
+    }, cleanupTasks);
+
+    this.bindHandler(tabWriteBtn, 'onclick', () => {
+      setTabState('write');
+    }, cleanupTasks);
+
+    this.bindHandler(tabPreviewBtn, 'onclick', () => {
+      updatePreview();
+      setTabState('preview');
+    }, cleanupTasks);
+
+    cleanupTasks.push(() => {
+      setTabState('write');
+    });
+  }
+
+  private updateMarkdownPreview(previewContent: HTMLDivElement, text: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      previewContent.textContent = MARKDOWN_EMPTY_STATE_MESSAGE;
+      previewContent.style.opacity = '0.75';
+      previewContent.style.fontStyle = 'italic';
+      previewContent.style.color = 'var(--text-secondary)';
+      return;
+    }
+
+    previewContent.style.opacity = '';
+    previewContent.style.fontStyle = '';
+    previewContent.style.color = '';
+
+    previewContent.innerHTML = this.renderMarkdown(text);
+  }
+
+  private renderMarkdown(text: string): string {
+    if (!text) {
+      return '';
+    }
+    const rendered = marked.parse(text, { async: false }) as string;
+    return DOMPurify.sanitize(rendered);
+  }
+
+  private initializeOverlayLayer(): void {
+    const container = this.cy.container();
+    if (!container || typeof document === 'undefined') {
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      const computed = window.getComputedStyle(container);
+      if (!computed || computed.position === 'static') {
+        container.style.position = 'relative';
+      }
+    } else if (!container.style.position) {
+      container.style.position = 'relative';
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'free-text-overlay-layer';
+    container.appendChild(overlay);
+    this.overlayContainer = overlay;
+
+    const handler = () => {
+      this.positionAllOverlays();
+    };
+    this.overlaySyncHandler = handler;
+    this.cy.on('render', handler);
+    this.cy.on('pan', handler);
+    this.cy.on('zoom', handler);
+    this.cy.on('resize', handler);
+  }
+
+  private getOrCreateOverlayElement(annotation: FreeTextAnnotation): HTMLDivElement | null {
+    if (!this.overlayContainer) {
+      return null;
+    }
+    let overlay = this.overlayElements.get(annotation.id);
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'free-text-overlay';
+      overlay.dataset.annotationId = annotation.id;
+      overlay.style.position = 'absolute';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.transform = 'translate(-50%, -50%)';
+      overlay.style.transformOrigin = 'center center';
+      overlay.style.lineHeight = '1.35';
+      overlay.style.whiteSpace = 'normal';
+      overlay.style.wordBreak = 'break-word';
+      this.overlayContainer.appendChild(overlay);
+      this.overlayElements.set(annotation.id, overlay);
+    }
+    return overlay;
+  }
+
+  private computeOverlaySizing(annotation: FreeTextAnnotation): {
+    baseFontSize: number;
+    basePaddingX: number;
+    basePaddingY: number;
+    baseRadius: number;
+    baseMaxWidth: number;
+  } {
+    const baseFontSize = this.normalizeFontSize(annotation.fontSize);
+    const hasBackground = annotation.backgroundColor !== 'transparent';
+    const basePaddingY = hasBackground ? Math.max(3, Math.round(baseFontSize * 0.35)) : 0;
+    const basePaddingX = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.65)) : 0;
+    const baseRadius = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.4)) : 0;
+    return {
+      baseFontSize,
+      basePaddingX,
+      basePaddingY,
+      baseRadius,
+      baseMaxWidth: annotation.width ?? 420
+    };
+  }
+
+  private updateAnnotationOverlay(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
+    const overlay = this.getOrCreateOverlayElement(annotation);
+    if (!overlay) {
+      return;
+    }
+
+    const sizing = this.computeOverlaySizing(annotation);
+    overlay.dataset.baseFontSize = String(sizing.baseFontSize);
+    overlay.dataset.basePaddingY = String(sizing.basePaddingY);
+    overlay.dataset.basePaddingX = String(sizing.basePaddingX);
+    overlay.dataset.baseBorderRadius = String(sizing.baseRadius);
+    overlay.dataset.baseMaxWidth = String(sizing.baseMaxWidth);
+
+    overlay.style.color = annotation.fontColor ?? '#FFFFFF';
+    overlay.style.fontFamily = annotation.fontFamily ?? 'monospace';
+    overlay.style.fontWeight = annotation.fontWeight ?? 'normal';
+    overlay.style.fontStyle = annotation.fontStyle ?? 'normal';
+    overlay.style.textDecoration = annotation.textDecoration ?? 'none';
+    overlay.style.textAlign = annotation.textAlign ?? 'left';
+    overlay.style.background = annotation.backgroundColor === 'transparent'
+      ? 'transparent'
+      : this.resolveBackgroundColor(annotation.backgroundColor, false);
+    overlay.style.opacity = '1';
+    overlay.style.boxShadow = annotation.backgroundColor === 'transparent' ? 'none' : '0 8px 24px rgba(0, 0, 0, 0.45)';
+    const trimmedText = annotation.text?.trim();
+    overlay.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
+
+    this.positionAnnotationOverlay(node, overlay);
+  }
+
+  private positionAnnotationOverlay(node: cytoscape.NodeSingular, overlay: HTMLDivElement): void {
+    const renderedPosition = node.renderedPosition();
+    if (!renderedPosition) {
+      return;
+    }
+    const zoom = this.cy.zoom();
+    overlay.style.left = `${renderedPosition.x}px`;
+    overlay.style.top = `${renderedPosition.y}px`;
+    overlay.style.fontSize = `${Math.max(6, Number(overlay.dataset.baseFontSize ?? '12') * zoom)}px`;
+
+    const basePaddingY = Number(overlay.dataset.basePaddingY ?? '0');
+    const basePaddingX = Number(overlay.dataset.basePaddingX ?? '0');
+    if (basePaddingX === 0 && basePaddingY === 0) {
+      overlay.style.padding = '0';
+    } else {
+      overlay.style.padding = `${Math.max(0, basePaddingY * zoom)}px ${Math.max(0, basePaddingX * zoom)}px`;
+    }
+    const baseRadius = Number(overlay.dataset.baseBorderRadius ?? '0');
+    overlay.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius * zoom)}px` : '0';
+    const baseMaxWidth = Number(overlay.dataset.baseMaxWidth ?? '420');
+    overlay.style.maxWidth = `${Math.max(80, baseMaxWidth * zoom)}px`;
+  }
+
+  private positionOverlayById(id: string): void {
+    const overlay = this.overlayElements.get(id);
+    const node = this.annotationNodes.get(id);
+    if (overlay && node) {
+      this.positionAnnotationOverlay(node, overlay);
+    }
+  }
+
+  private positionAllOverlays(): void {
+    this.overlayElements.forEach((_overlay, id) => {
+      this.positionOverlayById(id);
+    });
+  }
+
+  private removeAnnotationOverlay(id: string): void {
+    const overlay = this.overlayElements.get(id);
+    if (overlay) {
+      overlay.remove();
+      this.overlayElements.delete(id);
+    }
+  }
+
+  private clearAnnotationOverlays(): void {
+    this.overlayElements.forEach(element => element.remove());
+    this.overlayElements.clear();
   }
 
   private setupDragHandlers(dialog: HTMLDivElement, dragHandle: HTMLDivElement): () => void {
@@ -576,6 +911,7 @@ export class ManagerFreeText {
       fontStyle: state.isItalic ? 'italic' : 'normal',
       textDecoration: state.isUnderline ? 'underline' : 'none',
       fontFamily: fontFamilySelect.value,
+      textAlign: state.alignment
     };
   }
 
@@ -665,6 +1001,8 @@ export class ManagerFreeText {
 
     // Create a comprehensive style object with all necessary properties
     const styles: any = {};
+    const textAlign = annotation.textAlign ?? 'left';
+    const useOverlay = Boolean(this.overlayContainer);
 
     // Font size
     const fontSize = this.normalizeFontSize(annotation.fontSize);
@@ -682,35 +1020,15 @@ export class ManagerFreeText {
     // Font family - ensure italic is in the font string if needed
     const fontFamily = annotation.fontFamily || 'monospace';
     styles['font-family'] = fontFamily;
+    styles['text-halign'] = textAlign;
+    styles['text-valign'] = 'center';
+    styles['text-opacity'] = useOverlay ? 0 : 1;
 
     // Cytoscape doesn't support the CSS `font` shorthand property,
     // so we rely on the individual font-* properties above.
 
-    // Text outline for visibility (and underline effect)
-    if (annotation.textDecoration === 'underline') {
-      // Use a thicker outline to simulate underline
-      styles['text-outline-width'] = 2;
-      styles['text-outline-color'] = annotation.fontColor || '#FFFFFF';
-      styles['text-outline-opacity'] = 0.5;
-    } else {
-      // Standard outline for text visibility
-      styles['text-outline-width'] = 1;
-      styles['text-outline-color'] = '#000000';
-      styles['text-outline-opacity'] = 0.8;
-    }
-
-    // Background handling - be very explicit
-    if (annotation.backgroundColor === 'transparent') {
-      // For transparent background, set opacity to 0
-      styles['text-background-opacity'] = 0;
-      // Don't set background color or shape when transparent
-    } else {
-      // For colored background
-      styles['text-background-color'] = annotation.backgroundColor || '#000000';
-      styles['text-background-opacity'] = 0.9;
-      styles['text-background-shape'] = 'roundrectangle';
-      styles['text-background-padding'] = 3;
-    }
+    Object.assign(styles, this.getOutlineStyles(annotation, useOverlay));
+    Object.assign(styles, this.getBackgroundStyles(annotation, useOverlay));
 
     // Apply all styles at once
     // Note: The flag is already managed by reapplyAllFreeTextStyles if called from there
@@ -728,6 +1046,34 @@ export class ManagerFreeText {
 
     // Force a render update to ensure styles are applied
     node.cy().forceRender();
+    this.updateAnnotationOverlay(node, annotation);
+  }
+
+  private getOutlineStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
+    if (annotation.textDecoration === 'underline') {
+      return {
+        'text-outline-width': 2,
+        'text-outline-color': annotation.fontColor || '#FFFFFF',
+        'text-outline-opacity': useOverlay ? 0 : 0.5
+      };
+    }
+    return {
+      'text-outline-width': 1,
+      'text-outline-color': '#000000',
+      'text-outline-opacity': useOverlay ? 0 : 0.8
+    };
+  }
+
+  private getBackgroundStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
+    if (useOverlay || annotation.backgroundColor === 'transparent') {
+      return { 'text-background-opacity': 0 };
+    }
+    return {
+      'text-background-color': annotation.backgroundColor || '#000000',
+      'text-background-opacity': 0.9,
+      'text-background-shape': 'roundrectangle',
+      'text-background-padding': 3
+    };
   }
 
   /**
@@ -754,6 +1100,7 @@ export class ManagerFreeText {
         y: Math.round(position.y)
       };
       // Save annotations after position update (debounced)
+      this.positionOverlayById(id);
       this.debouncedSave();
     }
   }
@@ -768,6 +1115,7 @@ export class ManagerFreeText {
       node.remove();
     }
     this.annotationNodes.delete(id);
+    this.removeAnnotationOverlay(id);
     // Save annotations after removal (debounced)
     this.debouncedSave();
   }
@@ -858,6 +1206,7 @@ export class ManagerFreeText {
     });
     this.annotations.clear();
     this.annotationNodes.clear();
+    this.clearAnnotationOverlays();
     if (save) {
       this.saveAnnotations();
     }
