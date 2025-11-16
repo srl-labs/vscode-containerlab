@@ -953,7 +953,7 @@ export class ManagerFreeText {
   }
 
   private applyOverlayBoxSizing(wrapper: HTMLDivElement): { width: number; height: number } {
-    wrapper.style.fontSize = `${Math.max(4, Number(wrapper.dataset.baseFontSize ?? '12'))}px`;
+    wrapper.style.fontSize = `${Math.max(MIN_FREE_TEXT_FONT_SIZE, Number(wrapper.dataset.baseFontSize ?? '12'))}px`;
 
     const basePaddingY = Number(wrapper.dataset.basePaddingY ?? '0');
     const basePaddingX = Number(wrapper.dataset.basePaddingX ?? '0');
