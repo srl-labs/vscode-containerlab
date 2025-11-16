@@ -1585,6 +1585,7 @@ export class ManagerNodeEditor {
       typeOptionsWithEmpty,
       typeToSelect,
       (selectedType: string) => {
+        if (typeInput) typeInput.value = selectedType;
         log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`);
         this.onTypeFieldChanged();
       },
@@ -1594,7 +1595,12 @@ export class ManagerNodeEditor {
 
     const filterInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement | null;
     if (filterInput) {
-      filterInput.oninput = () => this.onTypeFieldChanged();
+      const syncTypeValue = () => {
+        if (typeInput) typeInput.value = filterInput.value;
+        this.onTypeFieldChanged();
+      };
+      filterInput.oninput = syncTypeValue;
+      if (typeInput) typeInput.value = filterInput.value;
     }
   }
 
@@ -1604,28 +1610,49 @@ export class ManagerNodeEditor {
     typeDropdownContainer: HTMLElement | null,
     typeInput: HTMLInputElement | null,
   ) {
-    const hasTypeSupport = this.kindSupportsType(selectedKind);
+    const schemaReady = this.typeSchemaLoaded;
+    const hasTypeSupport = schemaReady ? this.kindSupportsType(selectedKind) : false;
     const hasTypeValue = this.hasTypeFieldValue();
-    const shouldShowFreeformType = hasTypeSupport || hasTypeValue;
+    const shouldShowFreeformType = !schemaReady || hasTypeSupport || hasTypeValue;
 
     if (shouldShowFreeformType) {
-      typeFormGroup.style.display = 'block';
-      if (typeDropdownContainer && typeInput) {
-        typeDropdownContainer.style.display = 'none';
-        typeInput.style.display = 'block';
-      }
-      if (typeInput) {
-        typeInput.oninput = () => this.onTypeFieldChanged();
-      }
-      this.setTypeWarningVisibility(hasTypeValue && !hasTypeSupport);
+      this.displayFreeformTypeField(typeFormGroup, typeDropdownContainer, typeInput);
+      const shouldWarn = schemaReady && hasTypeValue && !hasTypeSupport;
+      this.setTypeWarningVisibility(shouldWarn);
       return;
     }
 
+    this.hideTypeField(typeFormGroup, typeDropdownContainer, typeInput, hasTypeValue);
+  }
+
+  private displayFreeformTypeField(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+  ): void {
+    typeFormGroup.style.display = 'block';
+    if (typeDropdownContainer && typeInput) {
+      typeDropdownContainer.style.display = 'none';
+      typeInput.style.display = 'block';
+    }
+    if (typeInput) {
+      typeInput.oninput = () => this.onTypeFieldChanged();
+    }
+  }
+
+  private hideTypeField(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+    hasTypeValue: boolean,
+  ): void {
     typeFormGroup.style.display = 'none';
     this.setTypeWarningVisibility(false);
-    if (typeInput) typeInput.style.display = 'none';
+    if (typeInput) {
+      typeInput.style.display = 'none';
+      if (!hasTypeValue) typeInput.value = '';
+    }
     if (typeDropdownContainer) typeDropdownContainer.style.display = 'none';
-    if (typeInput && !hasTypeValue) typeInput.value = '';
   }
 
   private onTypeFieldChanged(): void {
@@ -2085,7 +2112,7 @@ export class ManagerNodeEditor {
   }
 
   private kindSupportsType(kind: string): boolean {
-    return this.typeSchemaLoaded && this.kindsWithTypeSupport.has(kind);
+    return this.kindsWithTypeSupport.has(kind);
   }
 
   /**
@@ -2973,16 +3000,6 @@ export class ManagerNodeEditor {
    * Get type field value from dropdown or input
    */
   private getTypeFieldValue(): string {
-    // First check if dropdown is visible
-    const dropdownContainer = document.getElementById(ID_NODE_TYPE_DROPDOWN);
-    if (dropdownContainer && dropdownContainer.style.display !== 'none') {
-      // Get value from dropdown filter input
-      const dropdownInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement;
-      if (dropdownInput) {
-        return dropdownInput.value;
-      }
-    }
-    // Otherwise get from regular input
     return this.getInputValue(ID_NODE_TYPE);
   }
 
