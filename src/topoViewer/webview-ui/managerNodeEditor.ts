@@ -1603,28 +1603,49 @@ export class ManagerNodeEditor {
     typeDropdownContainer: HTMLElement | null,
     typeInput: HTMLInputElement | null,
   ) {
-    const hasTypeSupport = this.kindSupportsType(selectedKind);
+    const schemaReady = this.typeSchemaLoaded;
+    const hasTypeSupport = schemaReady ? this.kindSupportsType(selectedKind) : false;
     const hasTypeValue = this.hasTypeFieldValue();
-    const shouldShowFreeformType = hasTypeSupport || hasTypeValue;
+    const shouldShowFreeformType = !schemaReady || hasTypeSupport || hasTypeValue;
 
     if (shouldShowFreeformType) {
-      typeFormGroup.style.display = 'block';
-      if (typeDropdownContainer && typeInput) {
-        typeDropdownContainer.style.display = 'none';
-        typeInput.style.display = 'block';
-      }
-      if (typeInput) {
-        typeInput.oninput = () => this.onTypeFieldChanged();
-      }
-      this.setTypeWarningVisibility(hasTypeValue && !hasTypeSupport);
+      this.displayFreeformTypeField(typeFormGroup, typeDropdownContainer, typeInput);
+      const shouldWarn = schemaReady && hasTypeValue && !hasTypeSupport;
+      this.setTypeWarningVisibility(shouldWarn);
       return;
     }
 
+    this.hideTypeField(typeFormGroup, typeDropdownContainer, typeInput, hasTypeValue);
+  }
+
+  private displayFreeformTypeField(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+  ): void {
+    typeFormGroup.style.display = 'block';
+    if (typeDropdownContainer && typeInput) {
+      typeDropdownContainer.style.display = 'none';
+      typeInput.style.display = 'block';
+    }
+    if (typeInput) {
+      typeInput.oninput = () => this.onTypeFieldChanged();
+    }
+  }
+
+  private hideTypeField(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+    hasTypeValue: boolean,
+  ): void {
     typeFormGroup.style.display = 'none';
     this.setTypeWarningVisibility(false);
-    if (typeInput) typeInput.style.display = 'none';
+    if (typeInput) {
+      typeInput.style.display = 'none';
+      if (!hasTypeValue) typeInput.value = '';
+    }
     if (typeDropdownContainer) typeDropdownContainer.style.display = 'none';
-    if (typeInput && !hasTypeValue) typeInput.value = '';
   }
 
   private onTypeFieldChanged(): void {
@@ -2084,7 +2105,7 @@ export class ManagerNodeEditor {
   }
 
   private kindSupportsType(kind: string): boolean {
-    return this.typeSchemaLoaded && this.kindsWithTypeSupport.has(kind);
+    return this.kindsWithTypeSupport.has(kind);
   }
 
   /**
