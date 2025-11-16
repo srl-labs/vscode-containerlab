@@ -935,7 +935,7 @@ export class ManagerUnifiedFloatingPanel {
     }
   }
 
-  private handleEditCustomNode(customNode: any): void {
+  private async handleEditCustomNode(customNode: any): Promise<void> {
     // Open the node editor panel to edit an existing custom node template
     if (!this.nodeEditor) {
       log.error('NodeEditor not available for custom node editing');
@@ -970,10 +970,12 @@ export class ManagerUnifiedFloatingPanel {
       parent: () => ({ nonempty: () => false })
     };
 
-    void this.nodeEditor.open(mockNode as any);
-
-    // Pre-fill the custom node fields
-    setTimeout(() => this.populateCustomNodeEditorFields(customNode), 150);
+    try {
+      await this.nodeEditor.open(mockNode as any);
+      this.populateCustomNodeEditorFields(customNode);
+    } catch (err) {
+      log.error(`Failed to open custom node editor: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   private populateCustomNodeEditorFields(customNode: any): void {
