@@ -29,8 +29,9 @@ export class ManagerAddContainerlabNode {
     this.initializeNodeCounter(cy);
     const newNodeId = this.generateNodeId();
     const nodeName = this.generateNodeName(cy, newNodeId, template);
+    const finalNodeId = nodeName || newNodeId;
     const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
-    const newNodeData = this.createNodeData(newNodeId, nodeName, template, kind);
+    const newNodeData = this.createNodeData(finalNodeId, nodeName, template, kind);
     const position = this.determinePosition(cy, event);
 
     const collection = cy.add({ group: 'nodes', data: newNodeData, position });
@@ -38,7 +39,7 @@ export class ManagerAddContainerlabNode {
     if (createdNode && template?.iconColor) {
       applyIconColorToNode(createdNode, template.iconColor);
     }
-    this.applyGeoCoordinates(cy, newNodeId, position);
+    this.applyGeoCoordinates(cy, finalNodeId, position);
   }
 
   private initializeNodeCounter(cy: cytoscape.Core): void {

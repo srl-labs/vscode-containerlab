@@ -1443,4 +1443,5 @@ function mergeAnnotation(target: NodeAnnotation, source: NodeAnnotation): void {
   if (!target.position && source.position) target.position = source.position;
   if (!(target as any).yamlNodeId && (source as any).yamlNodeId) (target as any).yamlNodeId = (source as any).yamlNodeId;
   if (!(target as any).yamlInterface && (source as any).yamlInterface) (target as any).yamlInterface = (source as any).yamlInterface;
+  if (!target.iconColor && source.iconColor) target.iconColor = source.iconColor;
 }
