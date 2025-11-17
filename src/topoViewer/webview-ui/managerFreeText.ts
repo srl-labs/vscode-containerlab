@@ -1,5 +1,6 @@
 import cytoscape from 'cytoscape';
 import MarkdownIt from 'markdown-it';
+import { full as markdownItEmoji } from 'markdown-it-emoji';
 import hljs from 'highlight.js';
 import DOMPurify from 'dompurify';
 import { VscodeMessageSender } from './managerVscodeWebview';
@@ -49,7 +50,7 @@ const markdownRenderer = new MarkdownIt({
       return escapeHtml(code);
     }
   }
-});
+}).use(markdownItEmoji);
 
 interface FreeTextModalElements {
   backdrop: HTMLDivElement;
