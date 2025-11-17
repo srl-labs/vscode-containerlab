@@ -166,10 +166,24 @@ export class ManagerAddContainerlabNode {
     if (!node || !template) return;
     const hasColor = typeof template.iconColor === 'string' && template.iconColor.trim() !== '';
     const hasRadius = typeof template.iconCornerRadius === 'number';
-    if (!hasColor && !hasRadius) return;
+    const hasCustomIcon = this.hasCustomIcon(template.icon);
+    if (!hasColor && !hasRadius && !hasCustomIcon) return;
 
     const options = hasRadius ? { cornerRadius: template.iconCornerRadius } : undefined;
-    applyIconColorToNode(node, hasColor ? template.iconColor : undefined, options, !hasColor);
+    const preserveDefaultBackground = !hasColor && !hasCustomIcon;
+    applyIconColorToNode(node, hasColor ? template.iconColor : undefined, options, preserveDefaultBackground);
+  }
+
+  private hasCustomIcon(iconName?: string | null): boolean {
+    if (!iconName) {
+      return false;
+    }
+    const customIcons = (window as any)?.customIcons;
+    if (!customIcons || typeof customIcons !== 'object') {
+      return false;
+    }
+    const iconData = customIcons[iconName];
+    return typeof iconData === 'string' && iconData.length > 0;
   }
 
   private determinePosition(
