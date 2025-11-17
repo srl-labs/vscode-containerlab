@@ -1153,6 +1153,8 @@ export class ManagerFreeText {
     if (!hasOverflow) {
       scrollbar.classList.remove('free-text-overlay-scrollbar-visible');
       scrollbar.style.opacity = '0';
+      scrollbar.style.transform = '';
+      scrollbar.style.height = '';
       return;
     }
     const visibleHeight = clientHeight || 1;
