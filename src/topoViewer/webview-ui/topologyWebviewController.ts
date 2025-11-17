@@ -144,6 +144,7 @@ class TopologyWebviewController {
   private loggedBridgeAliasGroups: Set<string> = new Set();
   private modeTransitionInProgress = false;
   private commonTapstartHandlerRegistered = false;
+  private freeTextContextGuardRegistered = false;
   private initialGraphLoaded = false;
   public gridManager!: ManagerGridGuide;
   // eslint-disable-next-line no-unused-vars
@@ -890,34 +891,31 @@ class TopologyWebviewController {
   private initializeFreeTextContextMenu(): any {
     return this.cy.cxtmenu({
       selector: 'node[topoViewerRole = "freeText"]',
-      commands: [
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Text</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            if (this.labLocked) {
-              this.showLockedMessage();
-              return;
-            }
-            this.freeTextManager?.editFreeText(ele.id());
+      commands: () => {
+        if (this.labLocked) {
+          return [];
+        }
+        return [
+          {
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-pen-to-square" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Text</span></div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              this.freeTextManager?.editFreeText(ele.id());
+            },
           },
-        },
-        {
-          content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Remove Text</span></div>`,
-          select: (ele: cytoscape.Singular) => {
-            if (!ele.isNode()) {
-              return;
-            }
-            if (this.labLocked) {
-              this.showLockedMessage();
-              return;
-            }
-            this.freeTextManager?.removeFreeTextAnnotation(ele.id());
+          {
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Remove Text</span></div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              this.freeTextManager?.removeFreeTextAnnotation(ele.id());
+            },
           },
-        },
-      ],
+        ];
+      },
       menuRadius: 60,
       fillColor: TopologyWebviewController.UI_FILL_COLOR,
       activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
@@ -1299,12 +1297,24 @@ class TopologyWebviewController {
   private async registerEvents(mode: 'edit' | 'view'): Promise<void> {
     if (!this.commonTapstartHandlerRegistered) {
       this.cy.on('tapstart', 'node', (e) => {
-        if (this.labLocked) {
+        if (this.labLocked && this.currentMode === 'edit') {
           this.showLockedMessage();
           e.preventDefault();
         }
       });
       this.commonTapstartHandlerRegistered = true;
+    }
+
+    if (!this.freeTextContextGuardRegistered) {
+      this.cy.on('cxttapstart', 'node[topoViewerRole = "freeText"]', (e) => {
+        if (!this.labLocked) {
+          return;
+        }
+        this.showLockedMessage();
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      this.freeTextContextGuardRegistered = true;
     }
 
     if (mode === 'edit') {
