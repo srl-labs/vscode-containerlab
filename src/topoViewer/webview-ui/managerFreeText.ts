@@ -93,6 +93,7 @@ interface OverlayEntry {
   content: HTMLDivElement;
   handle: HTMLButtonElement;
   scrollbar: HTMLDivElement;
+  frame?: { centerX: number; centerY: number; width: number; height: number };
   size?: { width: number; height: number };
   resizeObserver?: ResizeObserver | null;
 }
@@ -1111,6 +1112,12 @@ export class ManagerFreeText {
       width: baseBox.width * zoom,
       height: baseBox.height * zoom
     };
+    entry.frame = {
+      centerX: renderedPosition.x,
+      centerY: renderedPosition.y,
+      width: scaledBox.width,
+      height: scaledBox.height
+    };
     this.syncNodeHitboxWithOverlay(node, scaledBox, zoom);
     this.positionOverlayHandle(handle, renderedPosition, scaledBox.width, scaledBox.height);
   }
@@ -1218,9 +1225,25 @@ export class ManagerFreeText {
   }
 
   private findOverlayEntryAtPoint(clientX: number, clientY: number): OverlayEntry | null {
+    if (!this.overlayContainer) {
+      return null;
+    }
+    const containerRect = this.overlayContainer.getBoundingClientRect();
+    const relativeX = clientX - containerRect.left;
+    const relativeY = clientY - containerRect.top;
     for (const entry of this.overlayElements.values()) {
-      const rect = entry.wrapper.getBoundingClientRect();
-      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+      const frame = entry.frame;
+      if (!frame) {
+        continue;
+      }
+      const left = frame.centerX - frame.width / 2;
+      const top = frame.centerY - frame.height / 2;
+      if (
+        relativeX >= left &&
+        relativeX <= left + frame.width &&
+        relativeY >= top &&
+        relativeY <= top + frame.height
+      ) {
         return entry;
       }
     }
