@@ -893,7 +893,7 @@ export class ManagerFreeText {
     wrapper.style.wordBreak = 'break-word';
 
     const content = document.createElement('div');
-    content.className = 'free-text-overlay-content';
+    content.className = 'free-text-overlay-content free-text-markdown';
     wrapper.appendChild(content);
 
     const handle = document.createElement('button');

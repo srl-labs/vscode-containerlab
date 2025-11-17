@@ -1259,57 +1259,65 @@
     word-break: break-word;
   }
 
-  .free-text-overlay p {
+  .free-text-markdown p {
     margin: 0.35rem 0;
   }
 
-  .free-text-overlay pre {
+  .free-text-markdown pre {
     margin: 0.5rem 0;
     border-radius: 0.5rem;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.45);
   }
 
-  .free-text-overlay code {
+  .free-text-markdown code {
     font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   }
 
-  .free-text-overlay a {
+  .free-text-markdown a {
     color: var(--vscode-textLink-foreground);
     text-decoration: underline;
   }
 
-  .free-text-overlay hr {
+  .free-text-markdown hr {
     border: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.4);
     margin: 0.85rem 0;
   }
 
-  .free-text-overlay ul,
-  .free-text-overlay ol {
+  .free-text-markdown ul,
+  .free-text-markdown ol {
     margin: 0.35rem 0;
     padding-left: 1.25rem;
   }
 
-  .free-text-overlay li {
+  .free-text-markdown ul {
+    list-style-type: disc;
+  }
+
+  .free-text-markdown ol {
+    list-style-type: decimal;
+  }
+
+  .free-text-markdown li {
     margin: 0.15rem 0;
   }
 
-  .free-text-overlay blockquote {
+  .free-text-markdown blockquote {
     border-left: 3px solid rgba(255, 255, 255, 0.35);
     margin: 0.75rem 0;
     padding-left: 0.75rem;
     color: var(--text-secondary);
   }
 
-  .free-text-overlay table {
+  .free-text-markdown table {
     width: 100%;
     border-collapse: collapse;
     margin: 0.5rem 0;
   }
 
-  .free-text-overlay th,
-  .free-text-overlay td {
+  .free-text-markdown th,
+  .free-text-markdown td {
     border: 1px solid rgba(255, 255, 255, 0.25);
     padding: 0.35rem 0.5rem;
     text-align: left;
