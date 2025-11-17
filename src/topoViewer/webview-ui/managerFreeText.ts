@@ -23,6 +23,14 @@ const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
 const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
 const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
 type TextAlignment = 'left' | 'center' | 'right';
+const htmlEscapeMap: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+};
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, match => htmlEscapeMap[match]);
 
 const markdownRenderer = new MarkdownIt({
   html: false,
@@ -37,8 +45,8 @@ const markdownRenderer = new MarkdownIt({
       }
       return hljs.highlightAuto(code).value;
     } catch (error) {
-      log('warn', 'freeText:highlightFailed', { error });
-      return hljs.escapeHTML(code);
+      log.warn({ message: 'freeText:highlightFailed', error });
+      return escapeHtml(code);
     }
   }
 });
