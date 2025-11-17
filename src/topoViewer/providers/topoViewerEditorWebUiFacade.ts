@@ -2019,12 +2019,14 @@ topology:
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
     try {
-      const selection = await vscode.window.showOpenDialog({
-        canSelectMany: false,
-        title: 'Select a Containerlab icon',
-        openLabel: 'Import Icon',
-        filters: { Images: ['svg', 'png'], SVG: ['svg'] }
-      });
+      const uploadSource = await this.promptIconUploadSource();
+      if (!uploadSource) {
+        return { result: { cancelled: true }, error: null };
+      }
+
+      const selection = await vscode.window.showOpenDialog(
+        this.getIconPickerOptions(uploadSource)
+      );
       if (!selection || selection.length === 0) {
         return { result: { cancelled: true }, error: null };
       }
@@ -2038,6 +2040,66 @@ topology:
       log.error(`Failed to import custom icon: ${message}`);
       void vscode.window.showErrorMessage(`Failed to add custom icon: ${message}`);
       return { result: null, error: message };
+    }
+  }
+
+  private async promptIconUploadSource(): Promise<'remote' | 'local' | null> {
+    if (!vscode.env.remoteName) {
+      return 'remote';
+    }
+
+    const pick = await vscode.window.showQuickPick<{
+      label: string;
+      description: string;
+      value: 'remote' | 'local';
+    }>(
+      [
+        {
+          label: 'Upload from remote environment',
+          description: 'Use a file accessible from the current VS Code session',
+          value: 'remote'
+        },
+        {
+          label: 'Upload from local machine',
+          description: 'Choose a file on your local computer (SSH/WSL)',
+          value: 'local'
+        }
+      ],
+      {
+        title: 'Select icon source',
+        placeHolder: 'Where should the custom icon be uploaded from?'
+      }
+    );
+
+    return pick?.value ?? null;
+  }
+
+  private getIconPickerOptions(source: 'remote' | 'local'): vscode.OpenDialogOptions {
+    const baseOptions: vscode.OpenDialogOptions = {
+      canSelectMany: false,
+      title: 'Select a Containerlab icon',
+      openLabel: 'Import Icon',
+      filters: { Images: ['svg', 'png'], SVG: ['svg'] }
+    };
+
+    if (source === 'local') {
+      const defaultUri = this.getLocalFilePickerBaseUri();
+      if (defaultUri) {
+        baseOptions.defaultUri = defaultUri;
+      }
+    }
+
+    return baseOptions;
+  }
+
+  private getLocalFilePickerBaseUri(): vscode.Uri | undefined {
+    try {
+      return vscode.Uri.parse('vscode-userdata:/');
+    } catch (err) {
+      log.warn(
+        `Failed to build local file picker URI: ${err instanceof Error ? err.message : String(err)}`
+      );
+      return undefined;
     }
   }
 
@@ -2110,15 +2172,16 @@ topology:
   }
 
   private async importCustomIcon(uri: vscode.Uri): Promise<{ name: string; filePath: string }> {
-    const ext = path.extname(uri.fsPath).toLowerCase();
+    const ext = path.extname(uri.path).toLowerCase();
     if (!SUPPORTED_ICON_EXTENSIONS.has(ext)) {
       throw new Error('Only .svg and .png icons are supported.');
     }
     const dir = await this.ensureCustomIconDirectory();
-    const baseName = this.sanitizeIconBaseName(path.basename(uri.fsPath, ext));
+    const baseName = this.sanitizeIconBaseName(path.basename(uri.path, ext));
     const fileName = await this.generateUniqueIconFileName(dir, baseName, ext);
     const destination = path.join(dir, fileName);
-    await fsPromises.copyFile(uri.fsPath, destination);
+    const content = await vscode.workspace.fs.readFile(uri);
+    await fsPromises.writeFile(destination, Buffer.from(content));
     return { name: path.basename(fileName, ext), filePath: destination };
   }
 
