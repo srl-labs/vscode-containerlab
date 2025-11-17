@@ -1,4 +1,12 @@
 # Change Log
+## [0.20.0] - 2025-11-17
+- TopoViewer/editor:
+  - Custom Icon Support
+  - Markdown support for freetext
+- Fixes:
+  - Fix interface capture (vnc) with multiple selected interfaces
+  - Fix type deletion
+
 ## [0.19.8] - 2025-11-12
 - TopoViewer/editor:
   - Unified the grid manager, added configurable/persisted grid line width
