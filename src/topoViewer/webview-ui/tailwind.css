@@ -554,7 +554,7 @@
   .navbar-menu-option[data-selected="true"] .navbar-menu-option-check {
     opacity: 1;
   }
-  
+
   /* Label styles */
   .label {
     color: var(--text-primary);
@@ -649,26 +649,22 @@
   }
 
   .navbar-loading-indicator.is-active.is-deploy .navbar-loading-indicator__bar {
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
-      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
-      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
-      transparent 100%
-    );
+    background-image: linear-gradient(90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
+        transparent 100%);
     animation: navbar-progress-sweep 1.15s linear infinite;
   }
 
   .navbar-loading-indicator.is-active.is-destroy .navbar-loading-indicator__bar {
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
-      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
-      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
-      transparent 100%
-    );
+    background-image: linear-gradient(90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
+        transparent 100%);
     animation: navbar-progress-sweep 1.15s linear infinite;
   }
 
@@ -704,11 +700,9 @@
 
   button.processing.processing--deploy {
     color: var(--vscode-button-foreground);
-    background-color: color-mix(
-      in srgb,
-      var(--vscode-testing-iconPassed, #73c991) 40%,
-      var(--vscode-button-background, rgba(0, 0, 0, 0))
-    );
+    background-color: color-mix(in srgb,
+        var(--vscode-testing-iconPassed, #73c991) 40%,
+        var(--vscode-button-background, rgba(0, 0, 0, 0)));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
       0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent);
   }
@@ -722,11 +716,9 @@
 
   button.processing.processing--destroy {
     color: var(--vscode-button-foreground);
-    background-color: color-mix(
-      in srgb,
-      var(--vscode-testing-iconFailed, #f14c4c) 40%,
-      var(--vscode-button-background, rgba(0, 0, 0, 0))
-    );
+    background-color: color-mix(in srgb,
+        var(--vscode-testing-iconFailed, #f14c4c) 40%,
+        var(--vscode-button-background, rgba(0, 0, 0, 0)));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
       0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 25%, transparent);
   }
@@ -1248,6 +1240,42 @@
     box-sizing: border-box;
   }
 
+  .free-text-overlay-scrollable {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .free-text-overlay-scrollable::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .free-text-overlay-scrollbar {
+    position: absolute;
+    right: 2px;
+    top: 6px;
+    width: 5px;
+    border-radius: 999px;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--text-secondary) 95%, transparent) 0%,
+      color-mix(in srgb, var(--text-secondary) 70%, transparent) 50%,
+      color-mix(in srgb, var(--text-secondary) 95%, transparent) 100%
+    );
+    opacity: 0.3;
+    pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease, background-image 120ms ease;
+  }
+
+  .free-text-overlay-scrollbar-visible {
+    opacity: 0.65;
+  }
+
+  .free-text-overlay-hover .free-text-overlay-scrollbar-visible {
+    opacity: 1;
+  }
+
   .free-text-overlay-hover {
     outline: 1px dashed rgba(255, 255, 255, 0.7);
     outline-offset: 2px;
@@ -1265,13 +1293,14 @@
 
   .free-text-markdown pre {
     margin: 0.5rem 0;
-    border-radius: 0.5rem;
+    border-radius: 0;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.45);
   }
 
   .free-text-markdown code {
     font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    border-radius: 0;
   }
 
   .free-text-markdown a {

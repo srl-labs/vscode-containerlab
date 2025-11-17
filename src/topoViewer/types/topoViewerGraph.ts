@@ -148,6 +148,7 @@ export interface FreeTextAnnotation {
   width?: number;
   height?: number;
   zIndex?: number;
+  roundedBackground?: boolean;
 }
 
 export interface GroupStyleAnnotation {

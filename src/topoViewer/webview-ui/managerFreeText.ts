@@ -16,6 +16,7 @@ const PREVIEW_FONT_SCALE = 2;
 const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
 const DEFAULT_FREE_TEXT_WIDTH = 420;
 const MIN_FREE_TEXT_WIDTH = 5;
+const MIN_FREE_TEXT_HEIGHT = 5;
 const MIN_FREE_TEXT_NODE_SIZE = 6;
 const BUTTON_BASE_CLASS = 'btn btn-small';
 const BUTTON_PRIMARY_CLASS = 'btn-primary';
@@ -73,6 +74,7 @@ interface FreeTextModalElements {
   alignCenterBtn: HTMLButtonElement;
   alignRightBtn: HTMLButtonElement;
   transparentBtn: HTMLButtonElement;
+  roundedBtn: HTMLButtonElement;
   cancelBtn: HTMLButtonElement;
   okBtn: HTMLButtonElement;
 }
@@ -82,6 +84,7 @@ interface FormattingState {
   isItalic: boolean;
   isUnderline: boolean;
   isTransparentBg: boolean;
+  hasRoundedBg: boolean;
   alignment: TextAlignment;
 }
 
@@ -89,6 +92,7 @@ interface OverlayEntry {
   wrapper: HTMLDivElement;
   content: HTMLDivElement;
   handle: HTMLButtonElement;
+  scrollbar: HTMLDivElement;
   size?: { width: number; height: number };
   resizeObserver?: ResizeObserver | null;
 }
@@ -97,7 +101,9 @@ interface OverlayResizeState {
   annotationId: string;
   pointerId: number;
   startX: number;
+  startY: number;
   startWidth: number;
+  startHeight: number;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -118,6 +124,7 @@ export class ManagerFreeText {
   private activeResizeHandle: HTMLButtonElement | null = null;
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, number> = new Map();
+  private overlayWheelTarget: HTMLElement | null = null;
   private isLabLocked(): boolean {
     return Boolean((window as any)?.topologyLocked);
   }
@@ -125,7 +132,7 @@ export class ManagerFreeText {
     if (!this.overlayResizeState) {
       return;
     }
-    const { annotationId, startX, startWidth } = this.overlayResizeState;
+    const { annotationId, startX, startY, startWidth, startHeight } = this.overlayResizeState;
     const annotation = this.annotations.get(annotationId);
     const node = this.annotationNodes.get(annotationId);
     if (!annotation || !node) {
@@ -133,12 +140,21 @@ export class ManagerFreeText {
     }
     const zoom = this.cy.zoom() || 1;
     const deltaX = (event.clientX - startX) / zoom;
+    const deltaY = (event.clientY - startY) / zoom;
     const nextWidth = Math.max(MIN_FREE_TEXT_WIDTH, Math.round(startWidth + deltaX));
-    if (annotation.width === nextWidth) {
+    const nextHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Math.round(startHeight + deltaY));
+    const widthChanged = annotation.width !== nextWidth;
+    const heightChanged = annotation.height !== nextHeight;
+    if (!widthChanged && !heightChanged) {
       this.positionOverlayById(annotationId);
       return;
     }
-    annotation.width = nextWidth;
+    if (widthChanged) {
+      annotation.width = nextWidth;
+    }
+    if (heightChanged) {
+      annotation.height = nextHeight;
+    }
     this.updateAnnotationOverlay(node, annotation);
   };
 
@@ -411,7 +427,8 @@ export class ManagerFreeText {
       fontStyle = 'normal',
       textDecoration = 'none',
       fontFamily = 'monospace',
-      textAlign = 'left'
+      textAlign = 'left',
+      roundedBackground = true
     } = lastAnnotation ?? {};
     return {
       id,
@@ -427,7 +444,8 @@ export class ManagerFreeText {
       fontStyle,
       textDecoration,
       fontFamily,
-      textAlign
+      textAlign,
+      roundedBackground
     };
   }
 
@@ -507,6 +525,7 @@ export class ManagerFreeText {
       alignCenterBtn: document.getElementById('free-text-align-center-btn') as HTMLButtonElement | null,
       alignRightBtn: document.getElementById('free-text-align-right-btn') as HTMLButtonElement | null,
       transparentBtn: document.getElementById('free-text-transparent-btn') as HTMLButtonElement | null,
+      roundedBtn: document.getElementById('free-text-rounded-btn') as HTMLButtonElement | null,
       cancelBtn: document.getElementById('free-text-cancel-btn') as HTMLButtonElement | null,
       okBtn: document.getElementById('free-text-ok-btn') as HTMLButtonElement | null,
     };
@@ -541,6 +560,7 @@ export class ManagerFreeText {
     textInput.style.textAlign = annotation.textAlign ?? 'left';
     textInput.style.color = annotation.fontColor ?? '#FFFFFF';
     textInput.style.background = this.resolveBackgroundColor(annotation.backgroundColor, false);
+    textInput.style.borderRadius = annotation.roundedBackground === false ? '0' : '';
   }
 
   private normalizeFontSize(fontSize?: number): number {
@@ -615,12 +635,22 @@ export class ManagerFreeText {
     state: FormattingState,
     cleanupTasks: Array<() => void>
   ): () => void {
-    const { boldBtn, italicBtn, underlineBtn, transparentBtn, bgColorInput, textInput, previewContent } = els;
+    const {
+      boldBtn,
+      italicBtn,
+      underlineBtn,
+      transparentBtn,
+      roundedBtn,
+      bgColorInput,
+      textInput,
+      previewContent
+    } = els;
     const updateButtonClasses = () => {
       boldBtn.className = `${BUTTON_BASE_CLASS} ${state.isBold ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
       italicBtn.className = `${BUTTON_BASE_CLASS} ${state.isItalic ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
       underlineBtn.className = `${BUTTON_BASE_CLASS} ${state.isUnderline ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
       transparentBtn.className = `${BUTTON_BASE_RIGHT_CLASS} ${state.isTransparentBg ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      roundedBtn.className = `${BUTTON_BASE_CLASS} ${state.hasRoundedBg ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
     };
 
     const toggles = [
@@ -646,7 +676,26 @@ export class ManagerFreeText {
       updateButtonClasses();
     }, cleanupTasks);
 
+    this.configureRoundedButton(roundedBtn, state, textInput, previewContent, updateButtonClasses, cleanupTasks);
+
     return updateButtonClasses;
+  }
+
+  private configureRoundedButton(
+    roundedBtn: HTMLButtonElement,
+    state: FormattingState,
+    textInput: HTMLTextAreaElement,
+    previewContent: HTMLDivElement,
+    onChange: () => void,
+    cleanupTasks: Array<() => void>
+  ): void {
+    this.bindHandler(roundedBtn, 'onclick', () => {
+      state.hasRoundedBg = !state.hasRoundedBg;
+      const radius = state.hasRoundedBg ? '' : '0';
+      textInput.style.borderRadius = radius;
+      previewContent.style.borderRadius = radius;
+      onChange();
+    }, cleanupTasks);
   }
 
   private configureAlignmentButtons(
@@ -689,7 +738,8 @@ export class ManagerFreeText {
       isItalic: annotation.fontStyle === 'italic',
       isUnderline: annotation.textDecoration === 'underline',
       isTransparentBg: annotation.backgroundColor === 'transparent',
-      alignment: annotation.textAlign ?? 'left',
+      hasRoundedBg: annotation.roundedBackground !== false,
+      alignment: annotation.textAlign ?? 'left'
     };
 
     this.configureFontInputs(els, cleanupTasks);
@@ -709,6 +759,7 @@ export class ManagerFreeText {
     previewContent.style.fontFamily = textInput.style.fontFamily;
     previewContent.style.color = textInput.style.color;
     previewContent.style.background = textInput.style.background;
+    previewContent.style.borderRadius = state.hasRoundedBg ? '' : '0';
     previewContent.style.fontSize = `${this.normalizeFontSize(annotation.fontSize)}px`;
 
     updateButtonClasses();
@@ -810,6 +861,10 @@ export class ManagerFreeText {
     overlay.className = 'free-text-overlay-layer';
     container.appendChild(overlay);
     this.overlayContainer = overlay;
+    if (!this.overlayWheelTarget) {
+      container.addEventListener('wheel', this.onOverlayWheel, { passive: false, capture: true });
+      this.overlayWheelTarget = container;
+    }
 
     const handler = () => {
       this.positionAllOverlays();
@@ -882,7 +937,7 @@ export class ManagerFreeText {
     }
 
     const wrapper = document.createElement('div');
-    wrapper.className = 'free-text-overlay';
+    wrapper.className = 'free-text-overlay free-text-overlay-scrollable';
     wrapper.dataset.annotationId = annotation.id;
     wrapper.style.position = 'absolute';
     wrapper.style.pointerEvents = 'none';
@@ -895,6 +950,10 @@ export class ManagerFreeText {
     const content = document.createElement('div');
     content.className = 'free-text-overlay-content free-text-markdown';
     wrapper.appendChild(content);
+
+    const scrollbar = document.createElement('div');
+    scrollbar.className = 'free-text-overlay-scrollbar';
+    wrapper.appendChild(scrollbar);
 
     const handle = document.createElement('button');
     handle.type = 'button';
@@ -915,7 +974,7 @@ export class ManagerFreeText {
     };
     this.overlayContainer.appendChild(wrapper);
     parent.appendChild(handle);
-    entry = { wrapper, content, handle, resizeObserver: null };
+    entry = { wrapper, content, handle, scrollbar, resizeObserver: null };
     this.overlayElements.set(annotation.id, entry);
     this.installOverlayResizeObserver(annotation.id, entry);
     return entry;
@@ -927,20 +986,26 @@ export class ManagerFreeText {
     basePaddingY: number;
     baseRadius: number;
     baseWidth?: number;
+    baseHeight?: number;
   } {
     const baseFontSize = this.normalizeFontSize(annotation.fontSize);
     const hasBackground = annotation.backgroundColor !== 'transparent';
     const basePaddingY = hasBackground ? Math.max(3, Math.round(baseFontSize * 0.35)) : 0;
     const basePaddingX = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.65)) : 0;
-    const baseRadius = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.4)) : 0;
+    const baseRadius = hasBackground && (annotation.roundedBackground !== false)
+      ? Math.max(4, Math.round(baseFontSize * 0.4))
+      : 0;
     const hasExplicitWidth = Number.isFinite(annotation.width) && (annotation.width as number) > 0;
+    const hasExplicitHeight = Number.isFinite(annotation.height) && (annotation.height as number) > 0;
     const baseWidth = hasExplicitWidth ? Math.max(MIN_FREE_TEXT_WIDTH, annotation.width as number) : undefined;
+    const baseHeight = hasExplicitHeight ? Math.max(MIN_FREE_TEXT_HEIGHT, annotation.height as number) : undefined;
     return {
       baseFontSize,
       basePaddingX,
       basePaddingY,
       baseRadius,
-      baseWidth
+      baseWidth,
+      baseHeight
     };
   }
 
@@ -957,6 +1022,7 @@ export class ManagerFreeText {
     wrapper.dataset.basePaddingX = String(sizing.basePaddingX);
     wrapper.dataset.baseBorderRadius = String(sizing.baseRadius);
     wrapper.dataset.baseMaxWidth = sizing.baseWidth ? String(sizing.baseWidth) : 'auto';
+    wrapper.dataset.baseMaxHeight = sizing.baseHeight ? String(sizing.baseHeight) : 'auto';
 
     wrapper.style.color = annotation.fontColor ?? '#FFFFFF';
     wrapper.style.fontFamily = annotation.fontFamily ?? 'monospace';
@@ -974,6 +1040,7 @@ export class ManagerFreeText {
     content.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
 
     entry.size = this.applyOverlayBoxSizing(wrapper);
+    this.updateOverlayScrollbar(entry);
     this.positionAnnotationOverlay(node, entry);
   }
 
@@ -991,6 +1058,7 @@ export class ManagerFreeText {
     if (!baseBox || !shouldCacheSize) {
       baseBox = this.applyOverlayBoxSizing(wrapper);
       entry.size = baseBox;
+      this.updateOverlayScrollbar(entry);
     }
     wrapper.style.transform = `translate(-50%, -50%) scale(${zoom})`;
     const scaledBox = {
@@ -1036,22 +1104,118 @@ export class ManagerFreeText {
     }
     const baseRadius = Number(wrapper.dataset.baseBorderRadius ?? '0');
     wrapper.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius)}px` : '0';
+    const width = this.applyOverlayWidthSizing(wrapper);
+    const height = this.applyOverlayHeightSizing(wrapper);
+    return { width, height };
+  }
+
+  private applyOverlayWidthSizing(wrapper: HTMLDivElement): number {
     const baseWidthRaw = wrapper.dataset.baseMaxWidth;
-    let width: number;
     if (baseWidthRaw && baseWidthRaw !== 'auto') {
       const numericWidth = Math.max(MIN_FREE_TEXT_WIDTH, Number(baseWidthRaw));
       wrapper.style.width = `${numericWidth}px`;
       wrapper.style.maxWidth = `${numericWidth}px`;
-      width = numericWidth;
-    } else {
-      wrapper.style.width = 'auto';
-      wrapper.style.maxWidth = 'none';
-      width = wrapper.offsetWidth || wrapper.scrollWidth || DEFAULT_FREE_TEXT_WIDTH;
+      return numericWidth;
     }
-    const fallbackHeight = Math.max(24, Number(wrapper.dataset.baseFontSize ?? '12'));
-    const height = wrapper.offsetHeight || wrapper.scrollHeight || fallbackHeight;
-    return { width, height };
+    wrapper.style.width = 'auto';
+    wrapper.style.maxWidth = 'none';
+    return wrapper.offsetWidth || wrapper.scrollWidth || DEFAULT_FREE_TEXT_WIDTH;
   }
+
+  private applyOverlayHeightSizing(wrapper: HTMLDivElement): number {
+    const baseHeightRaw = wrapper.dataset.baseMaxHeight;
+    if (baseHeightRaw && baseHeightRaw !== 'auto') {
+      const numericHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Number(baseHeightRaw));
+      wrapper.style.height = `${numericHeight}px`;
+      wrapper.style.maxHeight = `${numericHeight}px`;
+      wrapper.style.overflowY = 'auto';
+      wrapper.style.scrollbarWidth = 'none';
+      wrapper.style.setProperty('-ms-overflow-style', 'none');
+      return numericHeight;
+    }
+    wrapper.style.height = 'auto';
+    wrapper.style.maxHeight = 'none';
+    wrapper.style.overflowY = '';
+    wrapper.style.scrollbarWidth = '';
+    wrapper.style.removeProperty('-ms-overflow-style');
+    const fallbackHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Number(wrapper.dataset.baseFontSize ?? '12'));
+    return wrapper.offsetHeight || wrapper.scrollHeight || fallbackHeight;
+  }
+
+  private updateOverlayScrollbar(entry: OverlayEntry): void {
+    const { wrapper, scrollbar } = entry;
+    if (!scrollbar) {
+      return;
+    }
+    const scrollHeight = wrapper.scrollHeight;
+    const clientHeight = wrapper.clientHeight;
+    const hasOverflow = scrollHeight - clientHeight > 1;
+    if (!hasOverflow) {
+      scrollbar.classList.remove('free-text-overlay-scrollbar-visible');
+      scrollbar.style.opacity = '0';
+      return;
+    }
+    const visibleHeight = clientHeight || 1;
+    const thumbRatio = Math.min(1, visibleHeight / (scrollHeight || visibleHeight));
+    const thumbHeight = Math.max(12, Math.round(visibleHeight * thumbRatio));
+    const maxScrollTop = scrollHeight - visibleHeight;
+    const maxOffset = Math.max(0, visibleHeight - thumbHeight);
+    const scrollTop = Math.min(maxScrollTop, Math.max(0, wrapper.scrollTop));
+    const translateY = maxScrollTop > 0 ? (scrollTop / maxScrollTop) * maxOffset : 0;
+
+    scrollbar.style.height = `${thumbHeight}px`;
+    scrollbar.style.transform = `translateY(${translateY}px)`;
+    scrollbar.style.opacity = '';
+    scrollbar.classList.add('free-text-overlay-scrollbar-visible');
+  }
+
+  private findOverlayEntryAtPoint(clientX: number, clientY: number): OverlayEntry | null {
+    for (const entry of this.overlayElements.values()) {
+      const rect = entry.wrapper.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  private onOverlayWheel = (event: WheelEvent): void => {
+    if (!this.overlayContainer || this.overlayElements.size === 0) {
+      return;
+    }
+    const entry = this.findOverlayEntryAtPoint(event.clientX, event.clientY);
+    if (!entry) {
+      return;
+    }
+    const { wrapper } = entry;
+    const canScrollY = wrapper.scrollHeight - wrapper.clientHeight > 1;
+    const canScrollX = wrapper.scrollWidth - wrapper.clientWidth > 1;
+    if (!canScrollY && !canScrollX) {
+      return;
+    }
+    let consumed = false;
+    if (canScrollY && event.deltaY !== 0) {
+      const maxScrollTop = Math.max(0, wrapper.scrollHeight - wrapper.clientHeight);
+      const nextTop = Math.min(maxScrollTop, Math.max(0, wrapper.scrollTop + event.deltaY));
+      if (nextTop !== wrapper.scrollTop) {
+        wrapper.scrollTop = nextTop;
+      }
+      consumed = true;
+    }
+    if (canScrollX && event.deltaX !== 0) {
+      const maxScrollLeft = Math.max(0, wrapper.scrollWidth - wrapper.clientWidth);
+      const nextLeft = Math.min(maxScrollLeft, Math.max(0, wrapper.scrollLeft + event.deltaX));
+      if (nextLeft !== wrapper.scrollLeft) {
+        wrapper.scrollLeft = nextLeft;
+      }
+      consumed = true;
+    }
+    if (consumed) {
+      this.updateOverlayScrollbar(entry);
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
 
   private positionOverlayHandle(
     handle: HTMLButtonElement,
@@ -1156,6 +1320,19 @@ export class ManagerFreeText {
     return Math.max(MIN_FREE_TEXT_WIDTH, numericAnnotationWidth ?? fallbackWidth);
   }
 
+  private calculateOverlayStartHeight(annotation: FreeTextAnnotation, entry: OverlayEntry): number {
+    const datasetHeight = entry.wrapper.dataset.baseMaxHeight;
+    const measuredHeight = entry.size?.height ?? entry.wrapper.offsetHeight;
+    const numericAnnotationHeight = typeof annotation.height === 'number' && Number.isFinite(annotation.height)
+      ? annotation.height as number
+      : undefined;
+    const fallbackHeightSource = datasetHeight && datasetHeight !== 'auto'
+      ? Number(datasetHeight)
+      : measuredHeight || DEFAULT_FREE_TEXT_WIDTH;
+    const fallbackHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Math.round(fallbackHeightSource));
+    return numericAnnotationHeight ?? fallbackHeight;
+  }
+
   private startOverlayResize(annotationId: string, event: PointerEvent): void {
     if (!this.canInitiateOverlayResize(event)) {
       return;
@@ -1166,12 +1343,15 @@ export class ManagerFreeText {
     }
     const { annotation, entry } = targets;
     const startWidth = this.calculateOverlayStartWidth(annotation, entry);
+    const startHeight = this.calculateOverlayStartHeight(annotation, entry);
 
     this.overlayResizeState = {
       annotationId,
       pointerId: event.pointerId,
       startX: event.clientX,
-      startWidth
+      startY: event.clientY,
+      startWidth,
+      startHeight
     };
     this.activeResizeHandle = entry.handle;
     if (typeof entry.handle.setPointerCapture === 'function') {
@@ -1282,7 +1462,8 @@ export class ManagerFreeText {
       fontStyle: state.isItalic ? 'italic' : 'normal',
       textDecoration: state.isUnderline ? 'underline' : 'none',
       fontFamily: fontFamilySelect.value,
-      textAlign: state.alignment
+      textAlign: state.alignment,
+      roundedBackground: state.hasRoundedBg
     };
   }
 
@@ -1445,7 +1626,7 @@ export class ManagerFreeText {
     return {
       'text-background-color': annotation.backgroundColor || '#000000',
       'text-background-opacity': 0.9,
-      'text-background-shape': 'roundrectangle',
+      'text-background-shape': annotation.roundedBackground === false ? 'rectangle' : 'roundrectangle',
       'text-background-padding': 3
     };
   }
