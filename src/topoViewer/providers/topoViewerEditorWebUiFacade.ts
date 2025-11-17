@@ -99,7 +99,8 @@ export class TopoViewerEditor {
     'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
     copyElements: this.handleCopyElementsEndpoint.bind(this),
     getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this),
-    'topo-debug-log': this.handleDebugLogEndpoint.bind(this)
+    'topo-debug-log': this.handleDebugLogEndpoint.bind(this),
+    'topo-editor-open-link': this.handleOpenExternalLinkEndpoint.bind(this)
   };
 
   constructor(context: vscode.ExtensionContext) {
@@ -1708,6 +1709,30 @@ topology:
     } catch (err) {
       const result = 'Error executing endpoint "open-external".';
       log.error(`Error executing endpoint "open-external": ${JSON.stringify(err, null, 2)}`);
+      return { result, error: null };
+    }
+  }
+
+  private async handleOpenExternalLinkEndpoint(
+    payload: string | undefined,
+    _payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const parsed = payload ? JSON.parse(payload) : {};
+      const url = typeof parsed?.url === 'string' ? parsed.url : '';
+      if (!url) {
+        const warning = 'topo-editor-open-link called without a URL';
+        log.warn(warning);
+        return { result: warning, error: warning };
+      }
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+      const result = `Opened free text link: ${url}`;
+      log.debug(result);
+      return { result, error: null };
+    } catch (err) {
+      const result = 'Error executing endpoint "topo-editor-open-link".';
+      log.error(`Error executing endpoint "topo-editor-open-link": ${JSON.stringify(err, null, 2)}`);
       return { result, error: null };
     }
   }

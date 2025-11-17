@@ -125,6 +125,10 @@ export class ManagerFreeText {
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, number> = new Map();
   private overlayWheelTarget: HTMLElement | null = null;
+  private onInteractiveAnchorPointerDown = (event: PointerEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
   private isLabLocked(): boolean {
     return Boolean((window as any)?.topologyLocked);
   }
@@ -832,6 +836,7 @@ export class ManagerFreeText {
     previewContent.style.color = '';
 
     previewContent.innerHTML = this.renderMarkdown(text);
+    this.decorateMarkdownLinks(previewContent);
   }
 
   private renderMarkdown(text: string): string {
@@ -840,6 +845,44 @@ export class ManagerFreeText {
     }
     const rendered = markdownRenderer.render(text);
     return DOMPurify.sanitize(rendered);
+  }
+
+  private decorateMarkdownLinks(container: HTMLElement): void {
+    const anchors = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href]'));
+    anchors.forEach(anchor => {
+      if (anchor.dataset.freeTextLinkDecorated === 'true') {
+        return;
+      }
+      anchor.dataset.freeTextLinkDecorated = 'true';
+      anchor.setAttribute('target', '_blank');
+      anchor.setAttribute('rel', 'noopener noreferrer');
+      anchor.style.pointerEvents = 'auto';
+      const openLink = async (event: MouseEvent | KeyboardEvent): Promise<void> => {
+        event.preventDefault();
+        event.stopPropagation();
+        const href = anchor.getAttribute('href');
+        if (!href) {
+          return;
+        }
+        try {
+          await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-open-link', { url: href });
+        } catch (error) {
+          log.error(`freeText:openLinkFailed - ${String(error)}`);
+        }
+      };
+      anchor.addEventListener('pointerdown', this.onInteractiveAnchorPointerDown);
+      anchor.addEventListener('click', openLink);
+      anchor.addEventListener('auxclick', event => {
+        if (event.button === 1) {
+          void openLink(event);
+        }
+      });
+      anchor.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          void openLink(event);
+        }
+      });
+    });
   }
 
   private initializeOverlayLayer(): void {
@@ -1038,6 +1081,9 @@ export class ManagerFreeText {
 
     const trimmedText = annotation.text?.trim();
     content.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
+    if (trimmedText) {
+      this.decorateMarkdownLinks(content);
+    }
 
     entry.size = this.applyOverlayBoxSizing(wrapper);
     this.updateOverlayScrollbar(entry);

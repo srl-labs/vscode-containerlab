@@ -1287,6 +1287,11 @@
     word-break: break-word;
   }
 
+  .free-text-overlay-content a {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
   .free-text-markdown p {
     margin: 0.35rem 0;
   }
