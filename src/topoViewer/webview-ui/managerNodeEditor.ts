@@ -1641,17 +1641,25 @@ export class ManagerNodeEditor {
   ) {
     const schemaReady = this.typeSchemaLoaded;
     const hasTypeSupport = schemaReady ? this.kindSupportsType(selectedKind) : false;
+    const existingTypeValue = this.getExistingNodeTypeValue();
+    const hasExistingTypeValue = typeof existingTypeValue === 'string' && existingTypeValue.trim().length > 0;
+    if (!hasExistingTypeValue) {
+      this.setInputValue(ID_NODE_TYPE, '');
+      const filterInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement | null;
+      if (filterInput) filterInput.value = '';
+    }
+
     const hasTypeValue = this.hasTypeFieldValue();
-    const shouldShowFreeformType = !schemaReady || hasTypeSupport || hasTypeValue;
+    const shouldShowFreeformType = !schemaReady || hasTypeSupport || hasTypeValue || hasExistingTypeValue;
 
     if (shouldShowFreeformType) {
       this.displayFreeformTypeField(typeFormGroup, typeDropdownContainer, typeInput);
-      const shouldWarn = schemaReady && hasTypeValue && !hasTypeSupport;
+      const shouldWarn = schemaReady && (hasTypeValue || hasExistingTypeValue) && !hasTypeSupport;
       this.setTypeWarningVisibility(shouldWarn);
       return;
     }
 
-    this.hideTypeField(typeFormGroup, typeDropdownContainer, typeInput, hasTypeValue);
+    this.hideTypeField(typeFormGroup, typeDropdownContainer, typeInput, hasTypeValue || hasExistingTypeValue);
   }
 
   private displayFreeformTypeField(
