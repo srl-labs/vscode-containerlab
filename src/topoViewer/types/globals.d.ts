@@ -70,6 +70,7 @@ declare global {
     topologyDefaults?: Record<string, any>;
     topologyKinds?: Record<string, any>;
     topologyGroups?: Record<string, any>;
+    customIcons?: Record<string, string>;
     vscode?: { postMessage(data: unknown): void };
     topologyWebviewController?: TopologyWebviewController;
   }

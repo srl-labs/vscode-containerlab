@@ -4,6 +4,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { assignMissingLatLngToElements } from '../utilities/geoUtils';
+import { applyCustomIconColors } from './managerCytoscapeBaseStyles';
 
 interface FetchOptions {
   incremental?: boolean;
@@ -238,6 +239,7 @@ export async function fetchAndLoadData(
       cy.json({ elements: [] });
       cy.add(elementsToAdd);
     }
+    applyCustomIconColors(cy);
 
     cy.filter('node[name = "topoviewer"]').remove();
     cy.filter('node[name = "TopoViewer:1"]').remove();

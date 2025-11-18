@@ -909,6 +909,8 @@ export class ManagerUnifiedFloatingPanel {
         id: TEMP_CUSTOM_ID,
         name: TEMP_CUSTOM_ID,
         topoViewerRole: window.defaultKind === DEFAULT_KIND_SR ? 'router' : DEFAULT_ROLE_PE,  // Set router for SR Linux, pe for others
+        iconColor: undefined,
+        iconCornerRadius: undefined,
         extraData: {
           kind: window.defaultKind || DEFAULT_KIND_SR,
           type: window.defaultType || '',
@@ -917,11 +919,7 @@ export class ManagerUnifiedFloatingPanel {
       };
 
       // Create a mock node object for the editor
-      const mockNode = {
-        id: () => TEMP_CUSTOM_ID,
-        data: () => tempNodeData,
-        parent: () => ({ nonempty: () => false })
-      };
+      const mockNode = this.createMockNodeForEditor(tempNodeData);
 
       void this.nodeEditor.open(mockNode as any);
 
@@ -947,15 +945,19 @@ export class ManagerUnifiedFloatingPanel {
       id: EDIT_CUSTOM_ID,
       name: EDIT_CUSTOM_ID,
       topoViewerRole: customNode.icon || DEFAULT_ROLE_PE,  // Add icon to the node data
+      iconColor: customNode.iconColor,
+      iconCornerRadius: customNode.iconCornerRadius,
       extraData: {
         kind: customNode.kind,
         type: customNode.type,
         image: customNode.image,
         icon: customNode.icon || DEFAULT_ROLE_PE,  // Also include icon in extraData for the editor
+        iconColor: customNode.iconColor,
+        iconCornerRadius: customNode.iconCornerRadius,
         // Include any other properties from the custom node
         ...Object.fromEntries(
           Object.entries(customNode).filter(([key]) =>
-            !['name', 'kind', 'type', 'image', 'setDefault', 'icon'].includes(key)
+            !['name', 'kind', 'type', 'image', 'setDefault', 'icon', 'iconColor', 'iconCornerRadius'].includes(key)
           )
         ),
         // Mark this as editing an existing custom node
@@ -964,11 +966,7 @@ export class ManagerUnifiedFloatingPanel {
     };
 
     // Create a mock node object for the editor
-    const mockNode = {
-      id: () => 'edit-custom-node',
-      data: () => tempNodeData,
-      parent: () => ({ nonempty: () => false })
-    };
+    const mockNode = this.createMockNodeForEditor(tempNodeData);
 
     try {
       await this.nodeEditor.open(mockNode as any);
@@ -1284,5 +1282,38 @@ export class ManagerUnifiedFloatingPanel {
     if (panel) {
       panel.style.display = visible ? 'block' : 'none';
     }
+  }
+
+  private createMockNodeForEditor(initialData: any): cytoscape.NodeSingular {
+    const store = initialData;
+    const resolveId = (): string => {
+      if (typeof store.id === 'string' && store.id) return store.id;
+      if (typeof store.name === 'string' && store.name) return store.name;
+      return '';
+    };
+    const emptyCollection = { nonempty: () => false } as unknown as cytoscape.NodeCollection;
+
+    const mock: Partial<cytoscape.NodeSingular> = {
+      id: () => resolveId(),
+      data: (field?: any, value?: any) => {
+        if (typeof field === 'undefined') {
+          return store;
+        }
+        if (typeof field === 'string') {
+          if (typeof value === 'undefined') {
+            return store[field];
+          }
+          store[field] = value;
+          return value;
+        }
+        if (field && typeof field === 'object') {
+          Object.assign(store, field);
+          return store;
+        }
+        return store;
+      },
+      parent: () => emptyCollection
+    };
+    return mock as cytoscape.NodeSingular;
   }
 }

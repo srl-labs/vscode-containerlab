@@ -1,4 +1,8 @@
 import cytoscape from 'cytoscape';
+import MarkdownIt from 'markdown-it';
+import { full as markdownItEmoji } from 'markdown-it-emoji';
+import hljs from 'highlight.js';
+import DOMPurify from 'dompurify';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { FreeTextAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/logger';
@@ -9,6 +13,45 @@ import type { ManagerGroupStyle } from './managerGroupStyle';
 const MIN_FREE_TEXT_FONT_SIZE = 1;
 const DEFAULT_FREE_TEXT_FONT_SIZE = 8;
 const PREVIEW_FONT_SCALE = 2;
+const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
+const DEFAULT_FREE_TEXT_WIDTH = 420;
+const MIN_FREE_TEXT_WIDTH = 5;
+const MIN_FREE_TEXT_HEIGHT = 5;
+const MIN_FREE_TEXT_NODE_SIZE = 6;
+const BUTTON_BASE_CLASS = 'btn btn-small';
+const BUTTON_PRIMARY_CLASS = 'btn-primary';
+const BUTTON_OUTLINED_CLASS = 'btn-outlined';
+const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
+const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
+const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
+type TextAlignment = 'left' | 'center' | 'right';
+const htmlEscapeMap: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+};
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, match => htmlEscapeMap[match]);
+
+const markdownRenderer = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+  langPrefix: 'hljs language-',
+  highlight(code: string, lang: string) {
+    try {
+      if (lang && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
+      }
+      return hljs.highlightAuto(code).value;
+    } catch (error) {
+      log.warn({ message: 'freeText:highlightFailed', error });
+      return escapeHtml(code);
+    }
+  }
+}).use(markdownItEmoji);
 
 interface FreeTextModalElements {
   backdrop: HTMLDivElement;
@@ -16,6 +59,10 @@ interface FreeTextModalElements {
   dragHandle: HTMLDivElement;
   titleEl: HTMLHeadingElement;
   textInput: HTMLTextAreaElement;
+  previewContainer: HTMLDivElement;
+  previewContent: HTMLDivElement;
+  tabWriteBtn: HTMLButtonElement;
+  tabPreviewBtn: HTMLButtonElement;
   fontSizeInput: HTMLInputElement;
   fontFamilySelect: HTMLSelectElement;
   fontColorInput: HTMLInputElement;
@@ -23,7 +70,11 @@ interface FreeTextModalElements {
   boldBtn: HTMLButtonElement;
   italicBtn: HTMLButtonElement;
   underlineBtn: HTMLButtonElement;
+  alignLeftBtn: HTMLButtonElement;
+  alignCenterBtn: HTMLButtonElement;
+  alignRightBtn: HTMLButtonElement;
   transparentBtn: HTMLButtonElement;
+  roundedBtn: HTMLButtonElement;
   cancelBtn: HTMLButtonElement;
   okBtn: HTMLButtonElement;
 }
@@ -33,6 +84,27 @@ interface FormattingState {
   isItalic: boolean;
   isUnderline: boolean;
   isTransparentBg: boolean;
+  hasRoundedBg: boolean;
+  alignment: TextAlignment;
+}
+
+interface OverlayEntry {
+  wrapper: HTMLDivElement;
+  content: HTMLDivElement;
+  handle: HTMLButtonElement;
+  scrollbar: HTMLDivElement;
+  frame?: { centerX: number; centerY: number; width: number; height: number };
+  size?: { width: number; height: number };
+  resizeObserver?: ResizeObserver | null;
+}
+
+interface OverlayResizeState {
+  annotationId: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -47,6 +119,69 @@ export class ManagerFreeText {
   private groupStyleManager?: ManagerGroupStyle;
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
+  private overlayContainer: HTMLDivElement | null = null;
+  private overlayElements: Map<string, OverlayEntry> = new Map();
+  private overlayResizeState: OverlayResizeState | null = null;
+  private activeResizeHandle: HTMLButtonElement | null = null;
+  private overlayHoverLocks: Set<string> = new Set();
+  private overlayHoverHideTimers: Map<string, number> = new Map();
+  private overlayWheelTarget: HTMLElement | null = null;
+  private onInteractiveAnchorPointerDown = (event: PointerEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  private isLabLocked(): boolean {
+    return Boolean((window as any)?.topologyLocked);
+  }
+  private onOverlayResizeMove = (event: PointerEvent): void => {
+    if (!this.overlayResizeState) {
+      return;
+    }
+    const { annotationId, startX, startY, startWidth, startHeight } = this.overlayResizeState;
+    const annotation = this.annotations.get(annotationId);
+    const node = this.annotationNodes.get(annotationId);
+    if (!annotation || !node) {
+      return;
+    }
+    const zoom = this.cy.zoom() || 1;
+    const deltaX = (event.clientX - startX) / zoom;
+    const deltaY = (event.clientY - startY) / zoom;
+    const nextWidth = Math.max(MIN_FREE_TEXT_WIDTH, Math.round(startWidth + deltaX));
+    const nextHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Math.round(startHeight + deltaY));
+    const widthChanged = annotation.width !== nextWidth;
+    const heightChanged = annotation.height !== nextHeight;
+    if (!widthChanged && !heightChanged) {
+      this.positionOverlayById(annotationId);
+      return;
+    }
+    if (widthChanged) {
+      annotation.width = nextWidth;
+    }
+    if (heightChanged) {
+      annotation.height = nextHeight;
+    }
+    this.updateAnnotationOverlay(node, annotation);
+  };
+
+  private onOverlayResizeEnd = (): void => {
+    if (!this.overlayResizeState) {
+      return;
+    }
+    const { annotationId, pointerId } = this.overlayResizeState;
+    if (this.activeResizeHandle && typeof this.activeResizeHandle.releasePointerCapture === 'function') {
+      this.activeResizeHandle.releasePointerCapture(pointerId);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', this.onOverlayResizeMove);
+      window.removeEventListener('pointerup', this.onOverlayResizeEnd);
+      window.removeEventListener('pointercancel', this.onOverlayResizeEnd);
+    }
+    this.overlayHoverLocks.delete(annotationId);
+    this.setOverlayHoverState(annotationId, false);
+    this.overlayResizeState = null;
+    this.activeResizeHandle = null;
+    this.debouncedSave();
+  };
   private styleReapplyInProgress = false;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
   private loadInProgress = false;
@@ -61,6 +196,7 @@ export class ManagerFreeText {
     this.groupStyleManager = groupStyleManager;
     this.setupEventHandlers();
     this.setupStylePreservation();
+    this.initializeOverlayLayer();
 
     this.reapplyStylesBound = () => {
       this.annotationNodes.forEach((node, id) => {
@@ -84,6 +220,7 @@ export class ManagerFreeText {
           this.annotations.clear();
           this.annotationNodes.forEach(node => { if (node && node.inside()) node.remove(); });
           this.annotationNodes.clear();
+          this.clearAnnotationOverlays();
 
           const annotations = response.annotations as FreeTextAnnotation[];
           annotations.forEach(annotation => this.addFreeTextAnnotation(annotation));
@@ -175,6 +312,16 @@ export class ManagerFreeText {
       this.editFreeText(node.id());
     });
 
+    this.cy.on('mouseover', SELECTOR_FREE_TEXT, (event) => {
+      const node = event.target;
+      this.setOverlayHoverState(node.id(), true);
+    });
+
+    this.cy.on('mouseout', SELECTOR_FREE_TEXT, (event) => {
+      const node = event.target;
+      this.setOverlayHoverState(node.id(), false);
+    });
+
     // Handle deletion of free text nodes
     this.cy.on('remove', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
@@ -183,6 +330,7 @@ export class ManagerFreeText {
       if (this.annotations.has(id)) {
         this.annotations.delete(id);
         this.annotationNodes.delete(id);
+        this.removeAnnotationOverlay(id);
         // Don't call saveAnnotations here as it might cause recursion
       }
     });
@@ -193,10 +341,16 @@ export class ManagerFreeText {
       this.updateFreeTextPosition(node.id(), node.position());
     });
 
-    // Also handle position changes during drag for real-time updates
-    this.cy.on('position', 'node[topoViewerRole="freeText"]', (event) => {
+    // Also handle position changes to keep overlays in sync (and persist user drags)
+    this.cy.on('position', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
-      if (!node.grabbed()) return; // Only update when being dragged
+      if (!node) {
+        return;
+      }
+      this.positionOverlayById(node.id());
+      if (!node.grabbed()) {
+        return;
+      }
       const annotation = this.annotations.get(node.id());
       if (annotation) {
         annotation.position = {
@@ -270,6 +424,17 @@ export class ManagerFreeText {
 
   private buildDefaultAnnotation(id: string, position: cytoscape.Position): FreeTextAnnotation {
     const lastAnnotation = Array.from(this.annotations.values()).slice(-1)[0];
+    const {
+      fontSize = DEFAULT_FREE_TEXT_FONT_SIZE,
+      fontColor = '#FFFFFF',
+      backgroundColor = 'transparent',
+      fontWeight = 'normal',
+      fontStyle = 'normal',
+      textDecoration = 'none',
+      fontFamily = 'monospace',
+      textAlign = 'left',
+      roundedBackground = true
+    } = lastAnnotation ?? {};
     return {
       id,
       text: '',
@@ -277,13 +442,15 @@ export class ManagerFreeText {
         x: Math.round(position.x),
         y: Math.round(position.y)
       },
-      fontSize: this.normalizeFontSize(lastAnnotation?.fontSize),
-      fontColor: lastAnnotation?.fontColor ?? '#FFFFFF',
-      backgroundColor: lastAnnotation?.backgroundColor ?? 'transparent',
-      fontWeight: lastAnnotation?.fontWeight ?? 'normal',
-      fontStyle: lastAnnotation?.fontStyle ?? 'normal',
-      textDecoration: lastAnnotation?.textDecoration ?? 'none',
-      fontFamily: lastAnnotation?.fontFamily ?? 'monospace'
+      fontSize: this.normalizeFontSize(fontSize),
+      fontColor,
+      backgroundColor,
+      fontWeight,
+      fontStyle,
+      textDecoration,
+      fontFamily,
+      textAlign,
+      roundedBackground
     };
   }
 
@@ -325,6 +492,7 @@ export class ManagerFreeText {
 
     this.initializeModal(title, annotation, elements);
     const state = this.setupFormattingControls(annotation, elements, cleanupTasks);
+    this.initializeMarkdownPreview(elements, cleanupTasks);
     cleanupTasks.push(this.setupDragHandlers(elements.dialog, elements.dragHandle));
     this.setupSubmitHandlers(annotation, elements, state, resolve, cleanup, cleanupTasks);
     cleanupTasks.push(() => {
@@ -347,6 +515,10 @@ export class ManagerFreeText {
       dragHandle: document.getElementById('free-text-drag-handle') as HTMLDivElement | null,
       titleEl: document.getElementById('free-text-modal-title') as HTMLHeadingElement | null,
       textInput: document.getElementById('free-text-modal-text') as HTMLTextAreaElement | null,
+      previewContainer: document.getElementById('free-text-preview-container') as HTMLDivElement | null,
+      previewContent: document.getElementById('free-text-preview') as HTMLDivElement | null,
+      tabWriteBtn: document.getElementById('free-text-tab-write') as HTMLButtonElement | null,
+      tabPreviewBtn: document.getElementById('free-text-tab-preview') as HTMLButtonElement | null,
       fontSizeInput: document.getElementById('free-text-font-size') as HTMLInputElement | null,
       fontFamilySelect: document.getElementById('free-text-font-family') as HTMLSelectElement | null,
       fontColorInput: document.getElementById('free-text-font-color') as HTMLInputElement | null,
@@ -354,7 +526,11 @@ export class ManagerFreeText {
       boldBtn: document.getElementById('free-text-bold-btn') as HTMLButtonElement | null,
       italicBtn: document.getElementById('free-text-italic-btn') as HTMLButtonElement | null,
       underlineBtn: document.getElementById('free-text-underline-btn') as HTMLButtonElement | null,
+      alignLeftBtn: document.getElementById('free-text-align-left-btn') as HTMLButtonElement | null,
+      alignCenterBtn: document.getElementById('free-text-align-center-btn') as HTMLButtonElement | null,
+      alignRightBtn: document.getElementById('free-text-align-right-btn') as HTMLButtonElement | null,
       transparentBtn: document.getElementById('free-text-transparent-btn') as HTMLButtonElement | null,
+      roundedBtn: document.getElementById('free-text-rounded-btn') as HTMLButtonElement | null,
       cancelBtn: document.getElementById('free-text-cancel-btn') as HTMLButtonElement | null,
       okBtn: document.getElementById('free-text-ok-btn') as HTMLButtonElement | null,
     };
@@ -386,8 +562,10 @@ export class ManagerFreeText {
     textInput.style.fontWeight = annotation.fontWeight ?? 'normal';
     textInput.style.fontStyle = annotation.fontStyle ?? 'normal';
     textInput.style.textDecoration = annotation.textDecoration ?? 'none';
+    textInput.style.textAlign = annotation.textAlign ?? 'left';
     textInput.style.color = annotation.fontColor ?? '#FFFFFF';
     textInput.style.background = this.resolveBackgroundColor(annotation.backgroundColor, false);
+    textInput.style.borderRadius = annotation.roundedBackground === false ? '0' : '';
   }
 
   private normalizeFontSize(fontSize?: number): number {
@@ -434,20 +612,25 @@ export class ManagerFreeText {
   }
 
   private configureFontInputs(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
-    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, textInput } = els;
+    const { fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, textInput, previewContent } = els;
     this.bindHandler(fontSizeInput, 'oninput', () => {
       const size = Number.parseInt(fontSizeInput.value, 10);
-      this.applyPreviewFontSize(textInput, this.normalizeFontSize(size));
+      const normalized = this.normalizeFontSize(size);
+      this.applyPreviewFontSize(textInput, normalized);
+      previewContent.style.fontSize = `${normalized}px`;
     }, cleanupTasks);
     this.bindHandler(fontFamilySelect, 'onchange', () => {
       textInput.style.fontFamily = fontFamilySelect.value;
+      previewContent.style.fontFamily = fontFamilySelect.value;
     }, cleanupTasks);
     this.bindHandler(fontColorInput, 'oninput', () => {
       textInput.style.color = fontColorInput.value;
+      previewContent.style.color = fontColorInput.value;
     }, cleanupTasks);
     this.bindHandler(bgColorInput, 'oninput', () => {
       if (!bgColorInput.disabled) {
         textInput.style.background = bgColorInput.value;
+        previewContent.style.background = bgColorInput.value;
       }
     }, cleanupTasks);
   }
@@ -457,16 +640,22 @@ export class ManagerFreeText {
     state: FormattingState,
     cleanupTasks: Array<() => void>
   ): () => void {
-    const { boldBtn, italicBtn, underlineBtn, transparentBtn, bgColorInput, textInput } = els;
-    const BTN_BASE = 'btn btn-small';
-    const BTN_BASE_RIGHT = 'btn btn-small ml-auto';
-    const BTN_PRIMARY = 'btn-primary';
-    const BTN_OUTLINED = 'btn-outlined';
+    const {
+      boldBtn,
+      italicBtn,
+      underlineBtn,
+      transparentBtn,
+      roundedBtn,
+      bgColorInput,
+      textInput,
+      previewContent
+    } = els;
     const updateButtonClasses = () => {
-      boldBtn.className = `${BTN_BASE} ${state.isBold ? BTN_PRIMARY : BTN_OUTLINED}`;
-      italicBtn.className = `${BTN_BASE} ${state.isItalic ? BTN_PRIMARY : BTN_OUTLINED}`;
-      underlineBtn.className = `${BTN_BASE} ${state.isUnderline ? BTN_PRIMARY : BTN_OUTLINED}`;
-      transparentBtn.className = `${BTN_BASE_RIGHT} ${state.isTransparentBg ? BTN_PRIMARY : BTN_OUTLINED}`;
+      boldBtn.className = `${BUTTON_BASE_CLASS} ${state.isBold ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      italicBtn.className = `${BUTTON_BASE_CLASS} ${state.isItalic ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      underlineBtn.className = `${BUTTON_BASE_CLASS} ${state.isUnderline ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      transparentBtn.className = `${BUTTON_BASE_RIGHT_CLASS} ${state.isTransparentBg ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      roundedBtn.className = `${BUTTON_BASE_CLASS} ${state.hasRoundedBg ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
     };
 
     const toggles = [
@@ -479,6 +668,7 @@ export class ManagerFreeText {
       this.bindHandler(btn, 'onclick', () => {
         state[key] = !state[key];
         (textInput.style as any)[style[0]] = state[key] ? style[1] : style[2];
+        (previewContent.style as any)[style[0]] = state[key] ? style[1] : style[2];
         updateButtonClasses();
       }, cleanupTasks);
     });
@@ -487,32 +677,798 @@ export class ManagerFreeText {
       state.isTransparentBg = !state.isTransparentBg;
       bgColorInput.disabled = state.isTransparentBg;
       textInput.style.background = state.isTransparentBg ? 'transparent' : bgColorInput.value;
+      previewContent.style.background = state.isTransparentBg ? 'transparent' : bgColorInput.value;
       updateButtonClasses();
     }, cleanupTasks);
+
+    this.configureRoundedButton(roundedBtn, state, textInput, previewContent, updateButtonClasses, cleanupTasks);
 
     return updateButtonClasses;
   }
 
+  private configureRoundedButton(
+    roundedBtn: HTMLButtonElement,
+    state: FormattingState,
+    textInput: HTMLTextAreaElement,
+    previewContent: HTMLDivElement,
+    onChange: () => void,
+    cleanupTasks: Array<() => void>
+  ): void {
+    this.bindHandler(roundedBtn, 'onclick', () => {
+      state.hasRoundedBg = !state.hasRoundedBg;
+      const radius = state.hasRoundedBg ? '' : '0';
+      textInput.style.borderRadius = radius;
+      previewContent.style.borderRadius = radius;
+      onChange();
+    }, cleanupTasks);
+  }
+
+  private configureAlignmentButtons(
+    els: FreeTextModalElements,
+    state: FormattingState,
+    cleanupTasks: Array<() => void>
+  ): void {
+    const { alignLeftBtn, alignCenterBtn, alignRightBtn, textInput, previewContent } = els;
+
+    const setAlignmentClasses = () => {
+      const { alignment } = state;
+      alignLeftBtn.className = `${BUTTON_BASE_CLASS} ${alignment === 'left' ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      alignCenterBtn.className = `${BUTTON_BASE_CLASS} ${alignment === 'center' ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+      alignRightBtn.className = `${BUTTON_BASE_CLASS} ${alignment === 'right' ? BUTTON_PRIMARY_CLASS : BUTTON_OUTLINED_CLASS}`;
+    };
+
+    const buttons: Array<{ btn: HTMLButtonElement; value: TextAlignment }> = [
+      { btn: alignLeftBtn, value: 'left' },
+      { btn: alignCenterBtn, value: 'center' },
+      { btn: alignRightBtn, value: 'right' }
+    ];
+
+    buttons.forEach(({ btn, value }) => {
+      this.bindHandler(btn, 'onclick', () => {
+        state.alignment = value;
+        textInput.style.textAlign = value;
+        previewContent.style.textAlign = value;
+        setAlignmentClasses();
+      }, cleanupTasks);
+    });
+
+    setAlignmentClasses();
+  }
+
   private setupFormattingControls(annotation: FreeTextAnnotation, els: FreeTextModalElements, cleanupTasks: Array<() => void>): FormattingState {
-    const { bgColorInput, textInput } = els;
+    const { bgColorInput, textInput, previewContent } = els;
 
     const state: FormattingState = {
       isBold: annotation.fontWeight === 'bold',
       isItalic: annotation.fontStyle === 'italic',
       isUnderline: annotation.textDecoration === 'underline',
       isTransparentBg: annotation.backgroundColor === 'transparent',
+      hasRoundedBg: annotation.roundedBackground !== false,
+      alignment: annotation.textAlign ?? 'left'
     };
 
     this.configureFontInputs(els, cleanupTasks);
     const updateButtonClasses = this.configureStyleButtons(els, state, cleanupTasks);
+    this.configureAlignmentButtons(els, state, cleanupTasks);
 
     if (state.isTransparentBg) {
       bgColorInput.disabled = true;
       textInput.style.background = 'transparent';
+      previewContent.style.background = 'transparent';
     }
+
+    previewContent.style.textAlign = state.alignment;
+    previewContent.style.fontWeight = textInput.style.fontWeight;
+    previewContent.style.fontStyle = textInput.style.fontStyle;
+    previewContent.style.textDecoration = textInput.style.textDecoration;
+    previewContent.style.fontFamily = textInput.style.fontFamily;
+    previewContent.style.color = textInput.style.color;
+    previewContent.style.background = textInput.style.background;
+    previewContent.style.borderRadius = state.hasRoundedBg ? '' : '0';
+    previewContent.style.fontSize = `${this.normalizeFontSize(annotation.fontSize)}px`;
 
     updateButtonClasses();
     return state;
+  }
+
+  private initializeMarkdownPreview(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
+    const { textInput, previewContainer, previewContent, tabWriteBtn, tabPreviewBtn } = els;
+    previewContent.style.textAlign = textInput.style.textAlign || 'left';
+
+    const setButtonState = (btn: HTMLButtonElement, isActive: boolean) => {
+      btn.classList.toggle('btn-primary', isActive);
+      btn.classList.toggle('btn-outlined', !isActive);
+    };
+
+    const setTabState = (mode: 'write' | 'preview') => {
+      const isWrite = mode === 'write';
+      textInput.classList.toggle('hidden', !isWrite);
+      previewContainer.classList.toggle('hidden', isWrite);
+      setButtonState(tabWriteBtn, isWrite);
+      setButtonState(tabPreviewBtn, !isWrite);
+      if (isWrite) {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(() => {
+            textInput.focus();
+          });
+        } else {
+          textInput.focus();
+        }
+      }
+    };
+
+    const updatePreview = () => {
+      this.updateMarkdownPreview(previewContent, textInput.value);
+    };
+
+    updatePreview();
+    setTabState('write');
+
+    this.bindHandler(textInput, 'oninput', () => {
+      updatePreview();
+    }, cleanupTasks);
+
+    this.bindHandler(tabWriteBtn, 'onclick', () => {
+      setTabState('write');
+    }, cleanupTasks);
+
+    this.bindHandler(tabPreviewBtn, 'onclick', () => {
+      updatePreview();
+      setTabState('preview');
+    }, cleanupTasks);
+
+    cleanupTasks.push(() => {
+      setTabState('write');
+    });
+  }
+
+  private updateMarkdownPreview(previewContent: HTMLDivElement, text: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      previewContent.textContent = MARKDOWN_EMPTY_STATE_MESSAGE;
+      previewContent.style.opacity = '0.75';
+      previewContent.style.fontStyle = 'italic';
+      previewContent.style.color = 'var(--text-secondary)';
+      return;
+    }
+
+    previewContent.style.opacity = '';
+    previewContent.style.fontStyle = '';
+    previewContent.style.color = '';
+
+    previewContent.innerHTML = this.renderMarkdown(text);
+    this.decorateMarkdownLinks(previewContent);
+  }
+
+  private renderMarkdown(text: string): string {
+    if (!text) {
+      return '';
+    }
+    const rendered = markdownRenderer.render(text);
+    return DOMPurify.sanitize(rendered);
+  }
+
+  private decorateMarkdownLinks(container: HTMLElement): void {
+    const anchors = Array.from(container.querySelectorAll<HTMLAnchorElement>('a[href]'));
+    anchors.forEach(anchor => {
+      if (anchor.dataset.freeTextLinkDecorated === 'true') {
+        return;
+      }
+      anchor.dataset.freeTextLinkDecorated = 'true';
+      anchor.setAttribute('target', '_blank');
+      anchor.setAttribute('rel', 'noopener noreferrer');
+      anchor.style.pointerEvents = 'auto';
+      const openLink = async (event: MouseEvent | KeyboardEvent): Promise<void> => {
+        event.preventDefault();
+        event.stopPropagation();
+        const href = anchor.getAttribute('href');
+        if (!href) {
+          return;
+        }
+        try {
+          await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-open-link', { url: href });
+        } catch (error) {
+          log.error(`freeText:openLinkFailed - ${String(error)}`);
+        }
+      };
+      anchor.addEventListener('pointerdown', this.onInteractiveAnchorPointerDown);
+      anchor.addEventListener('click', openLink);
+      anchor.addEventListener('auxclick', event => {
+        if (event.button === 1) {
+          void openLink(event);
+        }
+      });
+      anchor.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          void openLink(event);
+        }
+      });
+    });
+  }
+
+  private initializeOverlayLayer(): void {
+    const container = this.cy.container();
+    if (!container || typeof document === 'undefined') {
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      const computed = window.getComputedStyle(container);
+      if (!computed || computed.position === 'static') {
+        container.style.position = 'relative';
+      }
+    } else if (!container.style.position) {
+      container.style.position = 'relative';
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'free-text-overlay-layer';
+    container.appendChild(overlay);
+    this.overlayContainer = overlay;
+    if (!this.overlayWheelTarget) {
+      container.addEventListener('wheel', this.onOverlayWheel, { passive: false, capture: true });
+      this.overlayWheelTarget = container;
+    }
+
+    const handler = () => {
+      this.positionAllOverlays();
+    };
+    this.cy.on('pan', handler);
+    this.cy.on('zoom', handler);
+    this.cy.on('resize', handler);
+  }
+
+  private normalizeOverlayDimension(value: number | undefined, fallback: number): number {
+    const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    return Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(numeric));
+  }
+
+  private canUseResizeObserver(entry: OverlayEntry): boolean {
+    return !entry.resizeObserver && typeof window !== 'undefined' && typeof window.ResizeObserver !== 'undefined';
+  }
+
+  private observeOverlayDom(entry: OverlayEntry, observer: ResizeObserver): void {
+    try {
+      observer.observe(entry.wrapper, { box: 'border-box' });
+    } catch {
+      observer.observe(entry.wrapper);
+    }
+  }
+
+  private handleOverlayResizeEntries(annotationId: string, entry: OverlayEntry, entries: ResizeObserverEntry[]): void {
+    if (!entries || entries.length === 0) {
+      return;
+    }
+    const resizeEntry = entries[0];
+    const wrapper = resizeEntry.target as HTMLDivElement;
+    const fallbackHeight = Math.max(24, Number(wrapper.dataset.baseFontSize ?? '12'));
+    const borderBoxArray = resizeEntry.borderBoxSize;
+    const borderBox = borderBoxArray && borderBoxArray.length > 0 ? borderBoxArray[0] : undefined;
+    const widthMeasurement = borderBox?.inlineSize ?? resizeEntry.contentRect.width;
+    const heightMeasurement = borderBox?.blockSize ?? resizeEntry.contentRect.height;
+    const width = this.normalizeOverlayDimension(widthMeasurement, DEFAULT_FREE_TEXT_WIDTH);
+    const height = this.normalizeOverlayDimension(heightMeasurement, fallbackHeight);
+    const prev = entry.size;
+    if (prev && prev.width === width && prev.height === height) {
+      return;
+    }
+    entry.size = { width, height };
+    this.positionOverlayById(annotationId);
+  }
+
+  private installOverlayResizeObserver(annotationId: string, entry: OverlayEntry): void {
+    if (!this.canUseResizeObserver(entry)) {
+      return;
+    }
+
+    const observer = new window.ResizeObserver(entries => {
+      this.handleOverlayResizeEntries(annotationId, entry, entries);
+    });
+
+    this.observeOverlayDom(entry, observer);
+    entry.resizeObserver = observer;
+  }
+
+  private getOrCreateOverlayEntry(annotation: FreeTextAnnotation): OverlayEntry | null {
+    const parent = this.cy.container();
+    if (!this.overlayContainer || !parent) {
+      return null;
+    }
+
+    let entry = this.overlayElements.get(annotation.id);
+    if (entry) {
+      return entry;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'free-text-overlay free-text-overlay-scrollable';
+    wrapper.dataset.annotationId = annotation.id;
+    wrapper.style.position = 'absolute';
+    wrapper.style.pointerEvents = 'none';
+    wrapper.style.transform = 'translate(-50%, -50%)';
+    wrapper.style.transformOrigin = 'center center';
+    wrapper.style.lineHeight = '1.35';
+    wrapper.style.whiteSpace = 'normal';
+    wrapper.style.wordBreak = 'break-word';
+
+    const content = document.createElement('div');
+    content.className = 'free-text-overlay-content free-text-markdown';
+    wrapper.appendChild(content);
+
+    const scrollbar = document.createElement('div');
+    scrollbar.className = 'free-text-overlay-scrollbar';
+    wrapper.appendChild(scrollbar);
+
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'free-text-overlay-resize';
+    handle.setAttribute('aria-label', 'Resize text block');
+    handle.style.pointerEvents = 'auto';
+    handle.style.touchAction = 'none';
+    handle.onpointerdown = (event: PointerEvent) => this.startOverlayResize(annotation.id, event);
+    handle.onpointerenter = () => {
+      this.overlayHoverLocks.add(annotation.id);
+      this.setOverlayHoverState(annotation.id, true);
+    };
+    handle.onpointerleave = () => {
+      if (!this.overlayResizeState || this.overlayResizeState.annotationId !== annotation.id) {
+        this.overlayHoverLocks.delete(annotation.id);
+        this.setOverlayHoverState(annotation.id, false);
+      }
+    };
+    this.overlayContainer.appendChild(wrapper);
+    parent.appendChild(handle);
+    entry = { wrapper, content, handle, scrollbar, resizeObserver: null };
+    this.overlayElements.set(annotation.id, entry);
+    this.installOverlayResizeObserver(annotation.id, entry);
+    return entry;
+  }
+
+  private computeOverlaySizing(annotation: FreeTextAnnotation): {
+    baseFontSize: number;
+    basePaddingX: number;
+    basePaddingY: number;
+    baseRadius: number;
+    baseWidth?: number;
+    baseHeight?: number;
+  } {
+    const baseFontSize = this.normalizeFontSize(annotation.fontSize);
+    const hasBackground = annotation.backgroundColor !== 'transparent';
+    const basePaddingY = hasBackground ? Math.max(3, Math.round(baseFontSize * 0.35)) : 0;
+    const basePaddingX = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.65)) : 0;
+    const baseRadius = hasBackground && (annotation.roundedBackground !== false)
+      ? Math.max(4, Math.round(baseFontSize * 0.4))
+      : 0;
+    const hasExplicitWidth = Number.isFinite(annotation.width) && (annotation.width as number) > 0;
+    const hasExplicitHeight = Number.isFinite(annotation.height) && (annotation.height as number) > 0;
+    const baseWidth = hasExplicitWidth ? Math.max(MIN_FREE_TEXT_WIDTH, annotation.width as number) : undefined;
+    const baseHeight = hasExplicitHeight ? Math.max(MIN_FREE_TEXT_HEIGHT, annotation.height as number) : undefined;
+    return {
+      baseFontSize,
+      basePaddingX,
+      basePaddingY,
+      baseRadius,
+      baseWidth,
+      baseHeight
+    };
+  }
+
+  private updateAnnotationOverlay(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
+    const entry = this.getOrCreateOverlayEntry(annotation);
+    if (!entry) {
+      return;
+    }
+
+    const { wrapper, content } = entry;
+    const sizing = this.computeOverlaySizing(annotation);
+    wrapper.dataset.baseFontSize = String(sizing.baseFontSize);
+    wrapper.dataset.basePaddingY = String(sizing.basePaddingY);
+    wrapper.dataset.basePaddingX = String(sizing.basePaddingX);
+    wrapper.dataset.baseBorderRadius = String(sizing.baseRadius);
+    wrapper.dataset.baseMaxWidth = sizing.baseWidth ? String(sizing.baseWidth) : 'auto';
+    wrapper.dataset.baseMaxHeight = sizing.baseHeight ? String(sizing.baseHeight) : 'auto';
+
+    wrapper.style.color = annotation.fontColor ?? '#FFFFFF';
+    wrapper.style.fontFamily = annotation.fontFamily ?? 'monospace';
+    wrapper.style.fontWeight = annotation.fontWeight ?? 'normal';
+    wrapper.style.fontStyle = annotation.fontStyle ?? 'normal';
+    wrapper.style.textDecoration = annotation.textDecoration ?? 'none';
+    wrapper.style.textAlign = annotation.textAlign ?? 'left';
+    // Keep overlay wrapper transparent so Cytoscape can render the background behind it.
+    wrapper.style.background = 'transparent';
+    wrapper.style.opacity = '1';
+    wrapper.style.boxShadow = 'none';
+
+    const trimmedText = annotation.text?.trim();
+    content.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';
+    if (trimmedText) {
+      this.decorateMarkdownLinks(content);
+    }
+
+    entry.size = this.applyOverlayBoxSizing(wrapper);
+    this.updateOverlayScrollbar(entry);
+    this.positionAnnotationOverlay(node, entry);
+  }
+
+  private positionAnnotationOverlay(node: cytoscape.NodeSingular, entry: OverlayEntry): void {
+    const renderedPosition = node.renderedPosition();
+    if (!renderedPosition) {
+      return;
+    }
+    const { wrapper, handle } = entry;
+    const zoom = this.cy.zoom() || 1;
+    wrapper.style.left = `${renderedPosition.x}px`;
+    wrapper.style.top = `${renderedPosition.y}px`;
+    const shouldCacheSize = Boolean(entry.resizeObserver);
+    let baseBox = entry.size;
+    if (!baseBox || !shouldCacheSize) {
+      baseBox = this.applyOverlayBoxSizing(wrapper);
+      entry.size = baseBox;
+      this.updateOverlayScrollbar(entry);
+    }
+    wrapper.style.transform = `translate(-50%, -50%) scale(${zoom})`;
+    const scaledBox = {
+      width: baseBox.width * zoom,
+      height: baseBox.height * zoom
+    };
+    entry.frame = {
+      centerX: renderedPosition.x,
+      centerY: renderedPosition.y,
+      width: scaledBox.width,
+      height: scaledBox.height
+    };
+    this.syncNodeHitboxWithOverlay(node, scaledBox, zoom);
+    this.positionOverlayHandle(handle, renderedPosition, scaledBox.width, scaledBox.height);
+  }
+
+  private syncNodeHitboxWithOverlay(
+    node: cytoscape.NodeSingular,
+    box: { width: number; height: number },
+    zoom: number
+  ): void {
+    const normalizedZoom = zoom || 1;
+    const baseWidth = Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(box.width / normalizedZoom));
+    const baseHeight = Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(box.height / normalizedZoom));
+    node.style('width', baseWidth);
+    node.style('height', baseHeight);
+  }
+
+  private getNodeTextMaxWidth(annotation: FreeTextAnnotation, useOverlay: boolean): string {
+    if (useOverlay) {
+      return `${Math.max(1, MIN_FREE_TEXT_NODE_SIZE)}px`;
+    }
+    const hasExplicitWidth = Number.isFinite(annotation.width) && (annotation.width as number) > 0;
+    const baseWidth = hasExplicitWidth
+      ? Math.max(MIN_FREE_TEXT_WIDTH, annotation.width as number)
+      : DEFAULT_FREE_TEXT_WIDTH;
+    return `${baseWidth}px`;
+  }
+
+  private applyOverlayBoxSizing(wrapper: HTMLDivElement): { width: number; height: number } {
+    wrapper.style.fontSize = `${Math.max(MIN_FREE_TEXT_FONT_SIZE, Number(wrapper.dataset.baseFontSize ?? '12'))}px`;
+
+    const basePaddingY = Number(wrapper.dataset.basePaddingY ?? '0');
+    const basePaddingX = Number(wrapper.dataset.basePaddingX ?? '0');
+    if (basePaddingX === 0 && basePaddingY === 0) {
+      wrapper.style.padding = '0';
+    } else {
+      wrapper.style.padding = `${Math.max(0, basePaddingY)}px ${Math.max(0, basePaddingX)}px`;
+    }
+    const baseRadius = Number(wrapper.dataset.baseBorderRadius ?? '0');
+    wrapper.style.borderRadius = baseRadius ? `${Math.max(0, baseRadius)}px` : '0';
+    const width = this.applyOverlayWidthSizing(wrapper);
+    const height = this.applyOverlayHeightSizing(wrapper);
+    return { width, height };
+  }
+
+  private applyOverlayWidthSizing(wrapper: HTMLDivElement): number {
+    const baseWidthRaw = wrapper.dataset.baseMaxWidth;
+    if (baseWidthRaw && baseWidthRaw !== 'auto') {
+      const numericWidth = Math.max(MIN_FREE_TEXT_WIDTH, Number(baseWidthRaw));
+      wrapper.style.width = `${numericWidth}px`;
+      wrapper.style.maxWidth = `${numericWidth}px`;
+      return numericWidth;
+    }
+    wrapper.style.width = 'auto';
+    wrapper.style.maxWidth = 'none';
+    return wrapper.offsetWidth || wrapper.scrollWidth || DEFAULT_FREE_TEXT_WIDTH;
+  }
+
+  private applyOverlayHeightSizing(wrapper: HTMLDivElement): number {
+    const baseHeightRaw = wrapper.dataset.baseMaxHeight;
+    if (baseHeightRaw && baseHeightRaw !== 'auto') {
+      const numericHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Number(baseHeightRaw));
+      wrapper.style.height = `${numericHeight}px`;
+      wrapper.style.maxHeight = `${numericHeight}px`;
+      wrapper.style.overflowY = 'auto';
+      wrapper.style.scrollbarWidth = 'none';
+      wrapper.style.setProperty('-ms-overflow-style', 'none');
+      return numericHeight;
+    }
+    wrapper.style.height = 'auto';
+    wrapper.style.maxHeight = 'none';
+    wrapper.style.overflowY = '';
+    wrapper.style.scrollbarWidth = '';
+    wrapper.style.removeProperty('-ms-overflow-style');
+    const fallbackHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Number(wrapper.dataset.baseFontSize ?? '12'));
+    return wrapper.offsetHeight || wrapper.scrollHeight || fallbackHeight;
+  }
+
+  private updateOverlayScrollbar(entry: OverlayEntry): void {
+    const { wrapper, scrollbar } = entry;
+    if (!scrollbar) {
+      return;
+    }
+    const scrollHeight = wrapper.scrollHeight;
+    const clientHeight = wrapper.clientHeight;
+    const hasOverflow = scrollHeight - clientHeight > 1;
+    if (!hasOverflow) {
+      scrollbar.classList.remove('free-text-overlay-scrollbar-visible');
+      scrollbar.style.opacity = '0';
+      scrollbar.style.transform = '';
+      scrollbar.style.height = '';
+      return;
+    }
+    const visibleHeight = clientHeight || 1;
+    const thumbRatio = Math.min(1, visibleHeight / (scrollHeight || visibleHeight));
+    const thumbHeight = Math.max(12, Math.round(visibleHeight * thumbRatio));
+    const maxScrollTop = scrollHeight - visibleHeight;
+    const maxOffset = Math.max(0, visibleHeight - thumbHeight);
+    const scrollTop = Math.min(maxScrollTop, Math.max(0, wrapper.scrollTop));
+    const translateY = maxScrollTop > 0 ? (scrollTop / maxScrollTop) * maxOffset : 0;
+
+    scrollbar.style.height = `${thumbHeight}px`;
+    scrollbar.style.transform = `translateY(${translateY}px)`;
+    scrollbar.style.opacity = '';
+    scrollbar.classList.add('free-text-overlay-scrollbar-visible');
+  }
+
+  private findOverlayEntryAtPoint(clientX: number, clientY: number): OverlayEntry | null {
+    if (!this.overlayContainer) {
+      return null;
+    }
+    const containerRect = this.overlayContainer.getBoundingClientRect();
+    const relativeX = clientX - containerRect.left;
+    const relativeY = clientY - containerRect.top;
+    for (const entry of this.overlayElements.values()) {
+      const frame = entry.frame;
+      if (!frame) {
+        continue;
+      }
+      const left = frame.centerX - frame.width / 2;
+      const top = frame.centerY - frame.height / 2;
+      if (
+        relativeX >= left &&
+        relativeX <= left + frame.width &&
+        relativeY >= top &&
+        relativeY <= top + frame.height
+      ) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  private onOverlayWheel = (event: WheelEvent): void => {
+    if (!this.overlayContainer || this.overlayElements.size === 0) {
+      return;
+    }
+    const entry = this.findOverlayEntryAtPoint(event.clientX, event.clientY);
+    if (!entry) {
+      return;
+    }
+    const { wrapper } = entry;
+    const canScrollY = wrapper.scrollHeight - wrapper.clientHeight > 1;
+    const canScrollX = wrapper.scrollWidth - wrapper.clientWidth > 1;
+    if (!canScrollY && !canScrollX) {
+      return;
+    }
+    let consumed = false;
+    if (canScrollY && event.deltaY !== 0) {
+      const maxScrollTop = Math.max(0, wrapper.scrollHeight - wrapper.clientHeight);
+      const nextTop = Math.min(maxScrollTop, Math.max(0, wrapper.scrollTop + event.deltaY));
+      if (nextTop !== wrapper.scrollTop) {
+        wrapper.scrollTop = nextTop;
+      }
+      consumed = true;
+    }
+    if (canScrollX && event.deltaX !== 0) {
+      const maxScrollLeft = Math.max(0, wrapper.scrollWidth - wrapper.clientWidth);
+      const nextLeft = Math.min(maxScrollLeft, Math.max(0, wrapper.scrollLeft + event.deltaX));
+      if (nextLeft !== wrapper.scrollLeft) {
+        wrapper.scrollLeft = nextLeft;
+      }
+      consumed = true;
+    }
+    if (consumed) {
+      this.updateOverlayScrollbar(entry);
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  private positionOverlayHandle(
+    handle: HTMLButtonElement,
+    position: { x: number; y: number },
+    width: number,
+    height: number
+  ): void {
+    const handleWidth = handle.offsetWidth || 18;
+    const handleHeight = handle.offsetHeight || 18;
+    const handleInset = 6;
+    handle.style.left = `${position.x + width / 2 - handleWidth + handleInset}px`;
+    handle.style.top = `${position.y + height / 2 - handleHeight + handleInset}px`;
+  }
+
+  private positionOverlayById(id: string): void {
+    const entry = this.overlayElements.get(id);
+    const node = this.annotationNodes.get(id);
+    if (entry && node) {
+      this.positionAnnotationOverlay(node, entry);
+    }
+  }
+
+  private positionAllOverlays(): void {
+    this.overlayElements.forEach((_entry, id) => {
+      this.positionOverlayById(id);
+    });
+  }
+
+  private setOverlayHoverState(id: string, isHover: boolean): void {
+    const entry = this.overlayElements.get(id);
+    if (!entry) {
+      return;
+    }
+    if (this.isLabLocked()) {
+      entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
+      entry.handle.classList.remove(HANDLE_VISIBLE_CLASS);
+      this.overlayHoverLocks.delete(id);
+      const pending = this.overlayHoverHideTimers.get(id);
+      if (pending) {
+        window.clearTimeout(pending);
+        this.overlayHoverHideTimers.delete(id);
+      }
+      return;
+    }
+    if (isHover || this.overlayHoverLocks.has(id)) {
+      const pending = this.overlayHoverHideTimers.get(id);
+      if (pending) {
+        window.clearTimeout(pending);
+        this.overlayHoverHideTimers.delete(id);
+      }
+      entry.wrapper.classList.add(OVERLAY_HOVER_CLASS);
+      entry.handle.classList.add(HANDLE_VISIBLE_CLASS);
+      return;
+    }
+
+    if (this.overlayHoverHideTimers.has(id)) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      this.overlayHoverHideTimers.delete(id);
+      if (this.overlayHoverLocks.has(id)) {
+        return;
+      }
+      entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
+      entry.handle.classList.remove(HANDLE_VISIBLE_CLASS);
+    }, 120);
+    this.overlayHoverHideTimers.set(id, timeoutId);
+  }
+
+  private canInitiateOverlayResize(event: PointerEvent): boolean {
+    if (event.button !== 0) {
+      return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    if (this.isLabLocked()) {
+      (window as any).showLabLockedMessage?.();
+      return false;
+    }
+    return true;
+  }
+
+  private resolveResizeTargets(annotationId: string): { annotation: FreeTextAnnotation; entry: OverlayEntry } | null {
+    const annotation = this.annotations.get(annotationId);
+    const entry = this.overlayElements.get(annotationId);
+    if (!annotation || !entry) {
+      return null;
+    }
+    return { annotation, entry };
+  }
+
+  private calculateOverlayStartWidth(annotation: FreeTextAnnotation, entry: OverlayEntry): number {
+    const datasetWidth = Number(entry.wrapper.dataset.baseMaxWidth ?? DEFAULT_FREE_TEXT_WIDTH);
+    const measuredWidth = entry.size?.width ?? entry.wrapper.offsetWidth;
+    const numericAnnotationWidth = typeof annotation.width === 'number' && Number.isFinite(annotation.width)
+      ? annotation.width as number
+      : undefined;
+    const fallbackWidth = Math.round(datasetWidth || measuredWidth || DEFAULT_FREE_TEXT_WIDTH);
+    return Math.max(MIN_FREE_TEXT_WIDTH, numericAnnotationWidth ?? fallbackWidth);
+  }
+
+  private calculateOverlayStartHeight(annotation: FreeTextAnnotation, entry: OverlayEntry): number {
+    const datasetHeight = entry.wrapper.dataset.baseMaxHeight;
+    const measuredHeight = entry.size?.height ?? entry.wrapper.offsetHeight;
+    const numericAnnotationHeight = typeof annotation.height === 'number' && Number.isFinite(annotation.height)
+      ? annotation.height as number
+      : undefined;
+    const fallbackHeightSource = datasetHeight && datasetHeight !== 'auto'
+      ? Number(datasetHeight)
+      : measuredHeight || DEFAULT_FREE_TEXT_WIDTH;
+    const fallbackHeight = Math.max(MIN_FREE_TEXT_HEIGHT, Math.round(fallbackHeightSource));
+    return numericAnnotationHeight ?? fallbackHeight;
+  }
+
+  private startOverlayResize(annotationId: string, event: PointerEvent): void {
+    if (!this.canInitiateOverlayResize(event)) {
+      return;
+    }
+    const targets = this.resolveResizeTargets(annotationId);
+    if (!targets) {
+      return;
+    }
+    const { annotation, entry } = targets;
+    const startWidth = this.calculateOverlayStartWidth(annotation, entry);
+    const startHeight = this.calculateOverlayStartHeight(annotation, entry);
+
+    this.overlayResizeState = {
+      annotationId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth,
+      startHeight
+    };
+    this.activeResizeHandle = entry.handle;
+    if (typeof entry.handle.setPointerCapture === 'function') {
+      entry.handle.setPointerCapture(event.pointerId);
+    }
+
+    window.addEventListener('pointermove', this.onOverlayResizeMove);
+    window.addEventListener('pointerup', this.onOverlayResizeEnd);
+    window.addEventListener('pointercancel', this.onOverlayResizeEnd);
+    this.overlayHoverLocks.add(annotationId);
+    this.setOverlayHoverState(annotationId, true);
+  }
+
+  private disposeOverlayEntry(entry: OverlayEntry): void {
+    if (entry.resizeObserver) {
+      entry.resizeObserver.disconnect();
+      entry.resizeObserver = null;
+    }
+    entry.wrapper.remove();
+    entry.handle.remove();
+    entry.size = undefined;
+  }
+
+  private removeAnnotationOverlay(id: string): void {
+    const entry = this.overlayElements.get(id);
+    if (entry) {
+      this.disposeOverlayEntry(entry);
+      this.overlayElements.delete(id);
+      this.overlayHoverLocks.delete(id);
+      const pending = this.overlayHoverHideTimers.get(id);
+      if (pending) {
+        window.clearTimeout(pending);
+        this.overlayHoverHideTimers.delete(id);
+      }
+    }
+  }
+
+  private clearAnnotationOverlays(): void {
+    this.overlayElements.forEach(entry => {
+      this.disposeOverlayEntry(entry);
+    });
+    this.overlayElements.clear();
+    this.overlayResizeState = null;
+    this.activeResizeHandle = null;
+    this.overlayHoverLocks.clear();
+    this.overlayHoverHideTimers.forEach(timer => window.clearTimeout(timer));
+    this.overlayHoverHideTimers.clear();
   }
 
   private setupDragHandlers(dialog: HTMLDivElement, dragHandle: HTMLDivElement): () => void {
@@ -576,6 +1532,8 @@ export class ManagerFreeText {
       fontStyle: state.isItalic ? 'italic' : 'normal',
       textDecoration: state.isUnderline ? 'underline' : 'none',
       fontFamily: fontFamilySelect.value,
+      textAlign: state.alignment,
+      roundedBackground: state.hasRoundedBg
     };
   }
 
@@ -665,6 +1623,8 @@ export class ManagerFreeText {
 
     // Create a comprehensive style object with all necessary properties
     const styles: any = {};
+    const textAlign = annotation.textAlign ?? 'left';
+    const useOverlay = Boolean(this.overlayContainer);
 
     // Font size
     const fontSize = this.normalizeFontSize(annotation.fontSize);
@@ -682,35 +1642,18 @@ export class ManagerFreeText {
     // Font family - ensure italic is in the font string if needed
     const fontFamily = annotation.fontFamily || 'monospace';
     styles['font-family'] = fontFamily;
+    styles['text-halign'] = textAlign;
+    styles['text-valign'] = 'center';
+    styles['text-opacity'] = useOverlay ? 0 : 1;
+    styles['text-events'] = useOverlay ? 'no' : 'yes';
+    styles['text-wrap'] = useOverlay ? 'none' : 'wrap';
+    styles['text-max-width'] = this.getNodeTextMaxWidth(annotation, useOverlay);
 
     // Cytoscape doesn't support the CSS `font` shorthand property,
     // so we rely on the individual font-* properties above.
 
-    // Text outline for visibility (and underline effect)
-    if (annotation.textDecoration === 'underline') {
-      // Use a thicker outline to simulate underline
-      styles['text-outline-width'] = 2;
-      styles['text-outline-color'] = annotation.fontColor || '#FFFFFF';
-      styles['text-outline-opacity'] = 0.5;
-    } else {
-      // Standard outline for text visibility
-      styles['text-outline-width'] = 1;
-      styles['text-outline-color'] = '#000000';
-      styles['text-outline-opacity'] = 0.8;
-    }
-
-    // Background handling - be very explicit
-    if (annotation.backgroundColor === 'transparent') {
-      // For transparent background, set opacity to 0
-      styles['text-background-opacity'] = 0;
-      // Don't set background color or shape when transparent
-    } else {
-      // For colored background
-      styles['text-background-color'] = annotation.backgroundColor || '#000000';
-      styles['text-background-opacity'] = 0.9;
-      styles['text-background-shape'] = 'roundrectangle';
-      styles['text-background-padding'] = 3;
-    }
+    Object.assign(styles, this.getOutlineStyles(annotation, useOverlay));
+    Object.assign(styles, this.getBackgroundStyles(annotation, useOverlay));
 
     // Apply all styles at once
     // Note: The flag is already managed by reapplyAllFreeTextStyles if called from there
@@ -728,6 +1671,60 @@ export class ManagerFreeText {
 
     // Force a render update to ensure styles are applied
     node.cy().forceRender();
+    this.updateAnnotationOverlay(node, annotation);
+  }
+
+  private getOutlineStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
+    if (annotation.textDecoration === 'underline') {
+      return {
+        'text-outline-width': 2,
+        'text-outline-color': annotation.fontColor || '#FFFFFF',
+        'text-outline-opacity': useOverlay ? 0 : 0.5
+      };
+    }
+    return {
+      'text-outline-width': 1,
+      'text-outline-color': '#000000',
+      'text-outline-opacity': useOverlay ? 0 : 0.8
+    };
+  }
+
+  private getBackgroundStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
+    const hasSolidBackground = annotation.backgroundColor !== 'transparent';
+    if (useOverlay) {
+      if (!hasSolidBackground) {
+        return {
+          'text-background-opacity': 0,
+          'background-opacity': 0,
+          'background-color': 'transparent',
+          shape: 'rectangle',
+          'corner-radius': '0px'
+        };
+      }
+      const sizing = this.computeOverlaySizing(annotation);
+      const rounded = annotation.roundedBackground !== false;
+      const radius = rounded ? sizing.baseRadius : 0;
+      const backgroundColor = this.resolveBackgroundColor(annotation.backgroundColor, false);
+      return {
+        'text-background-opacity': 0,
+        'background-color': backgroundColor,
+        'background-opacity': 0.9,
+        shape: rounded ? 'round-rectangle' : 'rectangle',
+        'corner-radius': radius > 0 ? `${radius}px` : '0px'
+      };
+    }
+
+    if (!hasSolidBackground) {
+      return { 'text-background-opacity': 0 };
+    }
+
+    const backgroundColor = this.resolveBackgroundColor(annotation.backgroundColor, false);
+    return {
+      'text-background-color': backgroundColor,
+      'text-background-opacity': 0.9,
+      'text-background-shape': annotation.roundedBackground === false ? 'rectangle' : 'roundrectangle',
+      'text-background-padding': 3
+    };
   }
 
   /**
@@ -754,6 +1751,7 @@ export class ManagerFreeText {
         y: Math.round(position.y)
       };
       // Save annotations after position update (debounced)
+      this.positionOverlayById(id);
       this.debouncedSave();
     }
   }
@@ -768,6 +1766,7 @@ export class ManagerFreeText {
       node.remove();
     }
     this.annotationNodes.delete(id);
+    this.removeAnnotationOverlay(id);
     // Save annotations after removal (debounced)
     this.debouncedSave();
   }
@@ -858,6 +1857,7 @@ export class ManagerFreeText {
     });
     this.annotations.clear();
     this.annotationNodes.clear();
+    this.clearAnnotationOverlays();
     if (save) {
       this.saveAnnotations();
     }

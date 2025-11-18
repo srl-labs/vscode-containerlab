@@ -8,7 +8,24 @@
   <div class="p-6 pt-0">
     <h3 id="free-text-modal-title" class="text-lg font-semibold mb-4"></h3>
     <label for="free-text-modal-text" class="label mb-1">Text:</label>
-    <textarea id="free-text-modal-text" class="input-field w-full h-20 mb-4 resize-y"></textarea>
+    <div class="flex items-center gap-2 mb-2">
+      <div class="flex items-center gap-2">
+        <button id="free-text-tab-write" class="btn btn-small btn-primary">Write</button>
+        <button id="free-text-tab-preview" class="btn btn-small btn-outlined">Preview</button>
+      </div>
+      <span class="text-xs text-[var(--text-secondary)] italic ml-auto">
+        Markdown and fenced code blocks supported
+      </span>
+    </div>
+    <div class="w-full mb-4">
+      <textarea id="free-text-modal-text" class="input-field w-full h-36 mb-2 resize-y"></textarea>
+      <div id="free-text-preview-container" class="input-field w-full h-36 overflow-auto hidden">
+        <div
+          id="free-text-preview"
+          class="text-sm leading-relaxed whitespace-pre-wrap break-words free-text-markdown"
+        ></div>
+      </div>
+    </div>
     <div class="grid grid-cols-2 gap-4 mb-4">
       <div>
         <label for="free-text-font-size" class="label mb-1">Font Size:</label>
@@ -27,13 +44,40 @@
         <input id="free-text-bg-color" type="color" class="input-field w-full h-8 p-1" />
       </div>
     </div>
-    <div class="flex items-center gap-2 mb-4">
+    <div class="flex flex-wrap items-center gap-2 mb-2">
       <button id="free-text-bold-btn" class="btn btn-small btn-outlined"><strong>B</strong></button>
       <button id="free-text-italic-btn" class="btn btn-small btn-outlined"><em>I</em></button>
       <button id="free-text-underline-btn" class="btn btn-small btn-outlined"><u>U</u></button>
       <button id="free-text-transparent-btn" class="btn btn-small btn-outlined ml-auto">
         Transparent BG
       </button>
+      <button id="free-text-rounded-btn" class="btn btn-small btn-outlined">Rounded Corners</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 justify-end mb-4">
+      <span class="text-xs uppercase tracking-wide text-[var(--text-secondary)]">Align</span>
+      <div class="flex items-center gap-1">
+        <button
+          id="free-text-align-left-btn"
+          class="btn btn-small btn-outlined"
+          aria-label="Align text left"
+        >
+          <i class="fas fa-align-left text-sm" aria-hidden="true"></i>
+        </button>
+        <button
+          id="free-text-align-center-btn"
+          class="btn btn-small btn-outlined"
+          aria-label="Align text center"
+        >
+          <i class="fas fa-align-center text-sm" aria-hidden="true"></i>
+        </button>
+        <button
+          id="free-text-align-right-btn"
+          class="btn btn-small btn-outlined"
+          aria-label="Align text right"
+        >
+          <i class="fas fa-align-right text-sm" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
     <div class="flex justify-end gap-2 mt-4">
       <button id="free-text-cancel-btn" class="btn btn-outlined btn-small">Cancel</button>

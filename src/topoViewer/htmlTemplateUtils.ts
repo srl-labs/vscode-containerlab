@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { createHash } from 'crypto';
 import { log } from './logging/logger';
 declare const __dirname: string;
 
@@ -50,6 +51,7 @@ export interface EditorTemplateParams extends BaseTemplateParams {
   topologyDefaults?: Record<string, any>;
   topologyKinds?: Record<string, any>;
   topologyGroups?: Record<string, any>;
+  customIcons?: Record<string, string>;
 }
 
 export type TemplateMode = 'viewer' | 'editor';
@@ -142,7 +144,16 @@ function buildCacheKey(
   const customNodesKey = editorParams.customNodes
     .map(n => `${n.name}-${n.kind}-${n.type}-${n.image}-${n.setDefault}`)
     .join('|');
-  return `${baseKey}_${customNodesKey}_${editorParams.defaultNode}`;
+  const customIconsEntries = Object.entries(editorParams.customIcons || {});
+  const customIconsKey = customIconsEntries
+    .map(([name, data]) => {
+      const hash = createHash('sha256');
+      hash.update(name);
+      hash.update(data || '');
+      return hash.digest('hex');
+    })
+    .join('|');
+  return `${baseKey}_${customNodesKey}_${editorParams.defaultNode}_${customIconsKey}`;
 }
 
 function ensurePartials(partials: Record<string, string>, mode: TemplateMode): void {
@@ -177,7 +188,8 @@ function buildReplacements(
       defaultNode: '',
       topologyDefaults: '{}',
       topologyKinds: '{}',
-      topologyGroups: '{}'
+      topologyGroups: '{}',
+      customIcons: '{}'
     };
   }
 
@@ -193,7 +205,8 @@ function buildReplacements(
     defaultNode: editorParams.defaultNode,
     topologyDefaults: JSON.stringify(editorParams.topologyDefaults || {}),
     topologyKinds: JSON.stringify(editorParams.topologyKinds || {}),
-    topologyGroups: JSON.stringify(editorParams.topologyGroups || {})
+    topologyGroups: JSON.stringify(editorParams.topologyGroups || {}),
+    customIcons: JSON.stringify(editorParams.customIcons || {})
   };
   (repl as any).dockerImages = JSON.stringify(editorParams.dockerImages || []);
   return repl;
