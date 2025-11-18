@@ -2605,6 +2605,12 @@ export class ManagerNodeEditor {
 
   private async refreshNodeExtraData(node: cytoscape.NodeSingular): Promise<void> {
     try {
+      // Skip fetching YAML-backed data when editing/creating a custom node template
+      if (node.id() === ID_TEMP_CUSTOM_NODE || node.id() === ID_EDIT_CUSTOM_NODE) {
+        log.debug(`Skipping YAML refresh for custom node template node: ${node.id()}`);
+        return;
+      }
+
       const sender = this.saveManager.getMessageSender();
       const nodeName = node.data('name') || node.id();
       const freshData = await sender.sendMessageToVscodeEndpointPost('topo-editor-get-node-config', { node: nodeName });
@@ -4395,6 +4401,13 @@ export class ManagerNodeEditor {
   }
 
   private async refreshNodeData(expandedSlots?: Set<string>): Promise<void> {
+    if (!this.currentNode) {
+      return;
+    }
+    if (this.isCustomTemplateNode()) {
+      log.debug('Skipping YAML refresh after save for custom node template');
+      return;
+    }
     try {
       const sender = this.saveManager.getMessageSender();
       const nodeName = this.currentNode!.data('name') || this.currentNode!.id();

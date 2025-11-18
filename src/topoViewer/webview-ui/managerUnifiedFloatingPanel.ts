@@ -919,11 +919,7 @@ export class ManagerUnifiedFloatingPanel {
       };
 
       // Create a mock node object for the editor
-      const mockNode = {
-        id: () => TEMP_CUSTOM_ID,
-        data: () => tempNodeData,
-        parent: () => ({ nonempty: () => false })
-      };
+      const mockNode = this.createMockNodeForEditor(tempNodeData);
 
       void this.nodeEditor.open(mockNode as any);
 
@@ -970,11 +966,7 @@ export class ManagerUnifiedFloatingPanel {
     };
 
     // Create a mock node object for the editor
-    const mockNode = {
-      id: () => 'edit-custom-node',
-      data: () => tempNodeData,
-      parent: () => ({ nonempty: () => false })
-    };
+    const mockNode = this.createMockNodeForEditor(tempNodeData);
 
     try {
       await this.nodeEditor.open(mockNode as any);
@@ -1290,5 +1282,36 @@ export class ManagerUnifiedFloatingPanel {
     if (panel) {
       panel.style.display = visible ? 'block' : 'none';
     }
+  }
+
+  private createMockNodeForEditor(initialData: any): cytoscape.NodeSingular {
+    const store = initialData;
+    const resolveId = (): string => {
+      if (typeof store.id === 'string' && store.id) return store.id;
+      if (typeof store.name === 'string' && store.name) return store.name;
+      return '';
+    };
+    const mock: Partial<cytoscape.NodeSingular> = {
+      id: () => resolveId(),
+      data: (field?: any, value?: any) => {
+        if (typeof field === 'undefined') {
+          return store;
+        }
+        if (typeof field === 'string') {
+          if (typeof value === 'undefined') {
+            return store[field];
+          }
+          store[field] = value;
+          return value;
+        }
+        if (field && typeof field === 'object') {
+          Object.assign(store, field);
+          return store;
+        }
+        return store;
+      },
+      parent: () => ({ nonempty: () => false })
+    };
+    return mock as cytoscape.NodeSingular;
   }
 }
