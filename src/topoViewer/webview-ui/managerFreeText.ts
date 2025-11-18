@@ -1074,9 +1074,8 @@ export class ManagerFreeText {
     wrapper.style.fontStyle = annotation.fontStyle ?? 'normal';
     wrapper.style.textDecoration = annotation.textDecoration ?? 'none';
     wrapper.style.textAlign = annotation.textAlign ?? 'left';
-    wrapper.style.background = annotation.backgroundColor === 'transparent'
-      ? 'transparent'
-      : this.resolveBackgroundColor(annotation.backgroundColor, false);
+    // Keep overlay wrapper transparent so Cytoscape can render the background behind it.
+    wrapper.style.background = 'transparent';
     wrapper.style.opacity = '1';
     wrapper.style.boxShadow = 'none';
 
@@ -1691,11 +1690,37 @@ export class ManagerFreeText {
   }
 
   private getBackgroundStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
-    if (useOverlay || annotation.backgroundColor === 'transparent') {
+    const hasSolidBackground = annotation.backgroundColor !== 'transparent';
+    if (useOverlay) {
+      if (!hasSolidBackground) {
+        return {
+          'text-background-opacity': 0,
+          'background-opacity': 0,
+          'background-color': 'transparent',
+          shape: 'rectangle',
+          'corner-radius': '0px'
+        };
+      }
+      const sizing = this.computeOverlaySizing(annotation);
+      const rounded = annotation.roundedBackground !== false;
+      const radius = rounded ? sizing.baseRadius : 0;
+      const backgroundColor = this.resolveBackgroundColor(annotation.backgroundColor, false);
+      return {
+        'text-background-opacity': 0,
+        'background-color': backgroundColor,
+        'background-opacity': 0.9,
+        shape: rounded ? 'round-rectangle' : 'rectangle',
+        'corner-radius': radius > 0 ? `${radius}px` : '0px'
+      };
+    }
+
+    if (!hasSolidBackground) {
       return { 'text-background-opacity': 0 };
     }
+
+    const backgroundColor = this.resolveBackgroundColor(annotation.backgroundColor, false);
     return {
-      'text-background-color': annotation.backgroundColor || '#000000',
+      'text-background-color': backgroundColor,
       'text-background-opacity': 0.9,
       'text-background-shape': annotation.roundedBackground === false ? 'rectangle' : 'roundrectangle',
       'text-background-padding': 3
