@@ -466,14 +466,9 @@ function isExecAction(action: string | undefined): boolean {
 }
 
 function shouldRemoveContainer(action: string): boolean {
-    switch (action) {
-        case "kill":
-        case "die":
-        case "destroy":
-            return true;
-        default:
-            return false;
-    }
+    // Keep containers in the tree when they stop or exit so users can still
+    // interact with them until they are actually removed.
+    return action === "destroy";
 }
 
 function mergeContainerRecord(
@@ -564,6 +559,9 @@ function shouldResetLifecycleStatus(action: string): boolean {
         case "start":
         case "running":
         case "restart":
+        case "stop":
+        case "kill":
+        case "die":
             return true;
         default:
             return false;
@@ -827,6 +825,14 @@ function applyContainerEvent(event: ContainerlabEvent): void {
     containersById.set(enrichedRecord.data.ShortID, enrichedRecord);
     updateLabMappings(existing, enrichedRecord);
 
+    if (enrichedRecord.data.State !== "running") {
+        if (markInterfacesDown(enrichedRecord.data.ShortID)) {
+            scheduleInitialResolution();
+            scheduleDataChanged();
+            return;
+        }
+    }
+
     scheduleInitialResolution();
     scheduleDataChanged();
 }
@@ -914,6 +920,30 @@ function removeInterfaceRecord(containerId: string, ifaceName: string): boolean 
 function bumpInterfaceVersion(containerId: string): void {
     const next = (interfaceVersions.get(containerId) ?? 0) + 1;
     interfaceVersions.set(containerId, next);
+}
+
+function markInterfacesDown(containerId: string): boolean {
+    const ifaceMap = interfacesByContainer.get(containerId);
+    if (!ifaceMap || ifaceMap.size === 0) {
+        return false;
+    }
+
+    let changed = false;
+
+    for (const [name, iface] of ifaceMap.entries()) {
+        if ((iface.state || "").toLowerCase() === "down") {
+            continue;
+        }
+
+        ifaceMap.set(name, { ...iface, state: "down" });
+        changed = true;
+    }
+
+    if (changed) {
+        bumpInterfaceVersion(containerId);
+    }
+
+    return changed;
 }
 
 function handleEventLine(line: string): void {
