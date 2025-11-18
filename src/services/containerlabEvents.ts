@@ -446,6 +446,10 @@ function deriveStateFromAction(action: string): string {
         case "destroy":
         case "stop":
             return "exited";
+        case "pause":
+            return "paused";
+        case "unpause":
+            return "running";
         case "start":
         case "restart":
         case "running":
@@ -559,6 +563,8 @@ function shouldResetLifecycleStatus(action: string): boolean {
         case "start":
         case "running":
         case "restart":
+        case "pause":
+        case "unpause":
         case "stop":
         case "kill":
         case "die":
@@ -799,6 +805,15 @@ function formatStateLabel(state: string | undefined): string {
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+function shouldMarkInterfacesDown(state: string | undefined): boolean {
+    if (!state) {
+        return true;
+    }
+
+    const normalized = state.toLowerCase();
+    return normalized !== "running" && normalized !== "paused";
+}
+
 function applyContainerEvent(event: ContainerlabEvent): void {
     const action = event.action || "";
 
@@ -825,7 +840,7 @@ function applyContainerEvent(event: ContainerlabEvent): void {
     containersById.set(enrichedRecord.data.ShortID, enrichedRecord);
     updateLabMappings(existing, enrichedRecord);
 
-    if (enrichedRecord.data.State !== "running") {
+    if (shouldMarkInterfacesDown(enrichedRecord.data.State)) {
         if (markInterfacesDown(enrichedRecord.data.ShortID)) {
             scheduleInitialResolution();
             scheduleDataChanged();
