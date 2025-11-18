@@ -1078,7 +1078,7 @@ export class ManagerFreeText {
       ? 'transparent'
       : this.resolveBackgroundColor(annotation.backgroundColor, false);
     wrapper.style.opacity = '1';
-    wrapper.style.boxShadow = annotation.backgroundColor === 'transparent' ? 'none' : '0 8px 24px rgba(0, 0, 0, 0.45)';
+    wrapper.style.boxShadow = 'none';
 
     const trimmedText = annotation.text?.trim();
     content.innerHTML = trimmedText ? this.renderMarkdown(annotation.text) : '';

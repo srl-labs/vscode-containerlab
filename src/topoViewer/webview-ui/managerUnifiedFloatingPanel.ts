@@ -1291,6 +1291,8 @@ export class ManagerUnifiedFloatingPanel {
       if (typeof store.name === 'string' && store.name) return store.name;
       return '';
     };
+    const emptyCollection = { nonempty: () => false } as unknown as cytoscape.NodeCollection;
+
     const mock: Partial<cytoscape.NodeSingular> = {
       id: () => resolveId(),
       data: (field?: any, value?: any) => {
@@ -1310,7 +1312,7 @@ export class ManagerUnifiedFloatingPanel {
         }
         return store;
       },
-      parent: () => ({ nonempty: () => false })
+      parent: () => emptyCollection
     };
     return mock as cytoscape.NodeSingular;
   }
