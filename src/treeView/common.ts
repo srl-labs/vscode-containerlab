@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import type { ClabInterfaceStats } from "../types/containerlab";
 
 // LabPath interface
 export interface LabPath {
@@ -166,6 +167,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     public readonly mtu: number;
     public readonly ifIndex: number;
     public state: string;      // Added state tracking
+    public readonly stats?: ClabInterfaceStats;
 
     constructor(
         label: string,
@@ -180,6 +182,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         ifIndex: number,
         state: string,
         contextValue?: string,
+        stats?: ClabInterfaceStats,
     ) {
         super(label, collapsibleState);
         this.parentName = parentName;
@@ -192,6 +195,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         this.ifIndex = ifIndex;
         this.state = state;
         this.contextValue = contextValue;
+        this.stats = stats;
     }
 }
 
@@ -248,6 +252,7 @@ export interface ClabDetailedJSON {
     Image: string;
     State: string;
     Status: string;
+    StartedAt?: number;
     Labels: {
         'clab-node-kind': string;
         'clab-node-lab-dir': string;
@@ -298,4 +303,5 @@ export interface ClabJSON {
     node_type?: string;   // Node type (e.g. ixrd3, srlinux, etc.)
     node_group?: string;  // Node group
     network_name?: string; // Management network name
+    startedAt?: number;
 }

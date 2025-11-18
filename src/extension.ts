@@ -4,6 +4,8 @@ import * as utils from './helpers/utils';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
 import * as path from 'path';
+import * as fs from 'fs';
+import { execSync } from 'child_process';
 
 import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
 import { setCurrentTopoViewer } from './commands/graph';
@@ -14,6 +16,7 @@ import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
+import { onDataChanged } from "./services/containerlabEvents";
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -34,8 +37,7 @@ export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
-let refreshInterval: number;
-let refreshTaskID: ReturnType<typeof setInterval> | undefined;
+export let containerlabBinaryPath: string = 'containerlab';
 
 
 function extractLabName(session: any, prefix: string): string | undefined {
@@ -58,7 +60,7 @@ function extractLabName(session: any, prefix: string): string | undefined {
 export async function refreshSshxSessions() {
   try {
     const out = await utils.runWithSudo(
-      'containerlab tools sshx list -f json',
+      `${containerlabBinaryPath} tools sshx list -f json`,
       'List SSHX sessions',
       outputChannel,
       'containerlab',
@@ -85,7 +87,7 @@ export async function refreshSshxSessions() {
 export async function refreshGottySessions() {
   try {
     const out = await utils.runWithSudo(
-      'containerlab tools gotty list -f json',
+      `${containerlabBinaryPath} tools gotty list -f json`,
       'List GoTTY sessions',
       outputChannel,
       'containerlab',
@@ -282,30 +284,6 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
   }
 }
 
-function refreshTask() {
-  ins.update().then(() => {
-    localLabsProvider?.refresh();
-    runningLabsProvider?.softRefresh();
-  });
-}
-
-// Function to start the refresh interval
-function startRefreshInterval() {
-  if (!refreshTaskID) {
-    console.debug("Starting refresh task")
-    refreshTaskID = setInterval(refreshTask, refreshInterval);
-  }
-}
-
-// Function to stop the refresh interval
-function stopRefreshInterval() {
-  if (refreshTaskID) {
-    console.debug("Stopping refresh task")
-    clearInterval(refreshTaskID);
-    refreshTaskID = undefined;
-  }
-}
-
 function registerCommands(context: vscode.ExtensionContext) {
   const commands: Array<[string, any]> = [
     ['containerlab.lab.openFile', cmd.openLabFile],
@@ -395,6 +373,56 @@ function registerCommands(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', clearLocalLabsFilterCommand));
 }
 
+function registerRealtimeUpdates(context: vscode.ExtensionContext) {
+  const disposeRealtime = onDataChanged(() => {
+    ins.refreshFromEventStream();
+    if (runningLabsProvider) {
+      void runningLabsProvider.softRefresh().catch(err => {
+        console.error("[containerlab extension]: realtime refresh failed", err);
+      });
+    }
+  });
+  context.subscriptions.push({ dispose: disposeRealtime });
+  ins.refreshFromEventStream();
+}
+
+function setClabBinPath(): boolean {
+  const configPath = vscode.workspace.getConfiguration('containerlab').get<string>('binaryPath', '');
+
+  // if empty fall back to resolving from PATH
+  if (!configPath || configPath.trim() === '') {
+    try {
+      // eslint-disable-next-line sonarjs/no-os-command-from-path
+      const stdout = execSync('which containerlab', { encoding: 'utf-8' });
+      const resolvedPath = stdout.trim();
+      if (resolvedPath) {
+        containerlabBinaryPath = resolvedPath;
+        outputChannel.info(`Resolved containerlab binary from sys PATH as: ${resolvedPath}`);
+        return true;
+      }
+    } catch (err) {
+      outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${err}`);
+    }
+    containerlabBinaryPath = 'containerlab';
+    return true;
+  }
+
+  try {
+    // Check if file exists and is executable
+    fs.accessSync(configPath, fs.constants.X_OK);
+    containerlabBinaryPath = configPath;
+    outputChannel.info(`Using user configured containerlab binary: ${configPath}`);
+    return true;
+  } catch (err) {
+    // Path is invalid or not executable - try to resolve from PATH as fallback
+    outputChannel.error(`Invalid containerlab.binaryPath "${configPath}": ${err}`);
+    vscode.window.showErrorMessage(
+      `Configured containerlab binary path "${configPath}" is invalid or not executable.`
+    );
+  }
+  return false;
+}
+
 /**
  * Called when VSCode activates your extension.
  */
@@ -404,6 +432,12 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(outputChannel);
 
   outputChannel.info(process.platform);
+
+  if (!setClabBinPath()) {
+    // dont activate
+    return;
+  }
+
 
   // Allow activation only on Linux or when connected via WSL.
   // Provide a more helpful message for macOS users with a workaround link.
@@ -479,6 +513,8 @@ export async function activate(context: vscode.ExtensionContext) {
     canSelectMany: false
   });
 
+  registerRealtimeUpdates(context);
+
   // get the username
   username = utils.getUsername();
 
@@ -497,31 +533,6 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register commands
   registerCommands(context);
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onDidChangeConfiguration));
-
-  // Auto-refresh the TreeView based on user setting
-  const config = vscode.workspace.getConfiguration('containerlab');
-  refreshInterval = config.get<number>('refreshInterval', 5000);
-
-  // Only refresh when window is focused to prevent queue buildup when tabbed out
-  context.subscriptions.push(
-    vscode.window.onDidChangeWindowState(e => {
-      if (e.focused) {
-        // Window gained focus - refresh immediately, then start interval
-        refreshTask();
-        startRefreshInterval();
-      } else {
-        // Window lost focus - stop the interval to prevent queue buildup
-        stopRefreshInterval();
-      }
-    })
-  );
-
-  // Start the interval if window is already focused
-  if (vscode.window.state.focused) {
-    startRefreshInterval();
-  }
-
-  context.subscriptions.push({ dispose: () => stopRefreshInterval() });
 }
 
 export function deactivate() {
