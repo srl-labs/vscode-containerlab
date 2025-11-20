@@ -95,6 +95,24 @@ function loadFreeTextAnnotations(): void {
   }
 }
 
+function loadElementsIntoCytoscape(cy: cytoscape.Core, elementsToAdd: any[], incremental: boolean): void {
+  if (incremental) {
+    applyElementsIncrementally(cy, elementsToAdd);
+    return;
+  }
+  cy.json({ elements: [] });
+
+  // Separate parents and children
+  const parents = elementsToAdd.filter((el: any) => el.group === 'nodes' && el.data?.topoViewerRole === 'group');
+  const children = elementsToAdd.filter((el: any) => el.group === 'nodes' && el.data?.parent);
+  const others = elementsToAdd.filter((el: any) => !parents.includes(el) && !children.includes(el));
+
+  // Add parents first, then children, then others
+  cy.add(parents);
+  cy.add(children);
+  cy.add(others);
+}
+
 function scheduleImprovedLayout(cy: cytoscape.Core): void {
   const scheduleLayout = (callback: () => void) => {
     if ('requestIdleCallback' in window) {
@@ -233,12 +251,7 @@ export async function fetchAndLoadData(
       ? updatedElements
       : ((updatedElements as { elements?: any[] }).elements ?? updatedElements);
 
-    if (options.incremental) {
-      applyElementsIncrementally(cy, elementsToAdd);
-    } else {
-      cy.json({ elements: [] });
-      cy.add(elementsToAdd);
-    }
+    loadElementsIntoCytoscape(cy, elementsToAdd, options.incremental === true);
     applyCustomIconColors(cy);
 
     cy.filter('node[name = "topoviewer"]').remove();

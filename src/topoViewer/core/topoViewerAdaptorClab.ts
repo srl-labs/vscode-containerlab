@@ -659,6 +659,7 @@ export class TopoViewerAdaptorClab {
   }
 
   private addGroupNodes(parentMap: Map<string, string | undefined>, elements: CyElement[]): void {
+    // Create group nodes without positions - Cytoscape will auto-calculate based on children
     for (const [parentId, groupLabelPos] of parentMap) {
       const [groupName, groupLevel] = parentId.split(':');
       const groupNodeEl: CyElement = {
@@ -679,7 +680,7 @@ export class TopoViewerAdaptorClab {
             topoViewerGroupLevel: groupLevel ?? '',
           },
         },
-        position: { x: 0, y: 0 },
+        // Don't set position - let Cytoscape auto-calculate from children's absolute positions
         removed: false,
         selected: false,
         selectable: true,
