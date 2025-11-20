@@ -65,6 +65,7 @@ export class TopoViewerEditor {
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
   private isSplitViewOpen: boolean = false; // Track if YAML split view is open
   /* eslint-disable no-unused-vars */
+
   private readonly generalEndpointHandlers: Record<
     string,
     (

@@ -1,7 +1,7 @@
 import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
-import type { GroupStyleAnnotation } from '../types/topoViewerGraph';
+import type { GroupStyleAnnotation, FreeTextAnnotation } from '../types/topoViewerGraph';
 import type { ManagerFreeText } from './managerFreeText';
 import { debounce } from '../utilities/asyncUtils';
 
@@ -156,6 +156,7 @@ export class ManagerGroupStyle {
               this.applyStyleToNode(s.id);
             });
             log.info(`Loaded ${response.groupStyles.length} group style annotations`);
+            this.freeTextManager?.syncSavedStateBaseline();
           }
           resolve();
         } catch (error) {
@@ -168,15 +169,23 @@ export class ManagerGroupStyle {
     });
   }
 
-  private async saveAnnotations(): Promise<void> {
+  private saveAnnotations(): void {
+    if (this.freeTextManager) {
+      this.freeTextManager.queueSaveAnnotations();
+      return;
+    }
+    void this.saveGroupStylesStandalone();
+  }
+
+  private async saveGroupStylesStandalone(): Promise<void> {
     try {
-      const annotations = this.freeTextManager ? this.freeTextManager.getAnnotations() : [];
+      const annotations: FreeTextAnnotation[] = [];
       const groupStyles = this.getGroupStyles();
       await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-save-annotations', {
         annotations,
         groupStyles
       });
-      log.debug(`Saved ${groupStyles.length} group style annotations`);
+      log.debug(`Saved ${groupStyles.length} group style annotations (no free text manager available)`);
     } catch (error) {
       log.error(`Failed to save group style annotations: ${error}`);
     }

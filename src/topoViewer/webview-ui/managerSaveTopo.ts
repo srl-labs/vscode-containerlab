@@ -61,9 +61,12 @@ export class ManagerSaveTopo {
   }
 
   private collectNodes(cy: cytoscape.Core, layoutMgr?: any): any[] {
-    return cy.nodes().map((node: cytoscape.NodeSingular) =>
-      this.prepareNodeJson(node, layoutMgr)
-    );
+    return cy
+      .nodes()
+      // Free text annotations have their own persistence path and should never be
+      // included in the topology payload sent back to the extension.
+      .filter((node: cytoscape.NodeSingular) => node.data('topoViewerRole') !== 'freeText')
+      .map((node: cytoscape.NodeSingular) => this.prepareNodeJson(node, layoutMgr));
   }
 
   private prepareNodeJson(node: cytoscape.NodeSingular, layoutMgr?: any): any {
