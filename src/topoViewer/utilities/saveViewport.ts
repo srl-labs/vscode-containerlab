@@ -443,6 +443,88 @@ function updateYamlNodes(
   }
 }
 
+interface MissingNodeSpec {
+  nodeId: string;
+  extraData: any;
+}
+
+function synthesizeMissingNodes(
+  payloadParsed: any[],
+  doc: YAML.Document.Parsed,
+  yamlNodes: YAML.YAMLMap,
+): void {
+  const existingKeys = collectExistingNodeKeys(yamlNodes);
+  const missingSpecs = collectMissingNodeSpecs(payloadParsed, existingKeys);
+
+  missingSpecs.forEach(spec => {
+    const nodeYaml = createYamlNodeFromSpec(doc, spec.extraData);
+    yamlNodes.set(spec.nodeId, nodeYaml);
+  });
+
+  if (missingSpecs.length > 0) {
+    log.warn(`saveViewport: synthesized ${missingSpecs.length} missing node entries from viewport payload`);
+  }
+}
+
+function collectExistingNodeKeys(yamlNodes: YAML.YAMLMap): Set<string> {
+  const existingKeys = new Set<string>();
+  yamlNodes.items.forEach(item => {
+    const key = String(item.key);
+    if (key) {
+      existingKeys.add(key);
+    }
+  });
+  return existingKeys;
+}
+
+function collectMissingNodeSpecs(payloadParsed: any[], existingKeys: Set<string>): MissingNodeSpec[] {
+  const specs: MissingNodeSpec[] = [];
+  payloadParsed.filter(isWritableNode).forEach(el => {
+    const extraData = el?.data?.extraData || {};
+    const nodeId = String(el?.data?.id || '');
+    const overrideKey = typeof extraData.extYamlNodeId === 'string' ? extraData.extYamlNodeId.trim() : '';
+
+    addSpecIfMissing(nodeId, extraData, specs, existingKeys);
+    addSpecIfMissing(overrideKey, extraData, specs, existingKeys);
+  });
+
+  return specs;
+}
+
+function addSpecIfMissing(
+  candidateId: string,
+  extraData: any,
+  specs: MissingNodeSpec[],
+  existingKeys: Set<string>
+): void {
+  if (!candidateId || existingKeys.has(candidateId)) {
+    return;
+  }
+  existingKeys.add(candidateId);
+  specs.push({ nodeId: candidateId, extraData });
+}
+
+function createYamlNodeFromSpec(doc: YAML.Document.Parsed, extraData: any): YAML.YAMLMap {
+  const nodeYaml = new YAML.YAMLMap();
+  nodeYaml.flow = false;
+
+  const kind =
+    typeof extraData.kind === 'string' && extraData.kind.trim() ? extraData.kind.trim() : 'nokia_srlinux';
+  nodeYaml.set('kind', doc.createNode(kind));
+  if (typeof extraData.type === 'string' && extraData.type.trim()) {
+    nodeYaml.set('type', doc.createNode(extraData.type.trim()));
+  }
+  if (typeof extraData.image === 'string' && extraData.image.trim()) {
+    nodeYaml.set('image', doc.createNode(extraData.image.trim()));
+  }
+  if (typeof extraData['mgmt-ipv4'] === 'string' && extraData['mgmt-ipv4'].trim()) {
+    nodeYaml.set('mgmt-ipv4', doc.createNode(extraData['mgmt-ipv4'].trim()));
+  }
+
+  return nodeYaml;
+}
+
+
 function isWritableNode(el: any): boolean {
   return (
     el.group === 'nodes' &&
@@ -1358,6 +1440,7 @@ export async function saveViewport({
   const topoObj = doc.toJS() as ClabTopology;
   const idOverride = buildNodeIdOverrideMap(payloadParsed);
   updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys, idOverride);
+  synthesizeMissingNodes(payloadParsed, doc, yamlNodes);
   updateYamlLinks(payloadParsed, doc, updatedKeys);
 
   await saveAnnotationsFromPayload(payloadParsed, yamlFilePath);

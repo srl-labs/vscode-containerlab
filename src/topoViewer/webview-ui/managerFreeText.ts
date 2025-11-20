@@ -4,7 +4,7 @@ import { full as markdownItEmoji } from 'markdown-it-emoji';
 import hljs from 'highlight.js';
 import DOMPurify from 'dompurify';
 import { VscodeMessageSender } from './managerVscodeWebview';
-import { FreeTextAnnotation } from '../types/topoViewerGraph';
+import { FreeTextAnnotation, GroupStyleAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/logger';
 import type { ManagerGroupStyle } from './managerGroupStyle';
 
@@ -126,6 +126,9 @@ export class ManagerFreeText {
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, number> = new Map();
   private overlayWheelTarget: HTMLElement | null = null;
+  private saveInProgress = false;
+  private pendingSaveWhileBusy = false;
+  private lastSavedStateKey: string | null = null;
   private onInteractiveAnchorPointerDown = (event: PointerEvent): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -183,7 +186,10 @@ export class ManagerFreeText {
     this.debouncedSave();
   };
   private styleReapplyInProgress = false;
+  private static readonly SAVE_DEBOUNCE_MS = 300;
+  private static readonly SAVE_MAX_WAIT_MS = 1200;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private saveBurstStart: number | null = null;
   private loadInProgress = false;
   private loadTimeout: ReturnType<typeof setTimeout> | null = null;
   private idCounter = 0;
@@ -211,6 +217,7 @@ export class ManagerFreeText {
     this.onLoadTimeout = async () => {
       this.loadInProgress = true;
       try {
+        log.info('freeText:loadAnnotations:request');
         const response = await this.messageSender.sendMessageToVscodeEndpointPost(
           'topo-editor-load-annotations',
           {}
@@ -223,8 +230,10 @@ export class ManagerFreeText {
           this.clearAnnotationOverlays();
 
           const annotations = response.annotations as FreeTextAnnotation[];
-          annotations.forEach(annotation => this.addFreeTextAnnotation(annotation));
-          log.info(`Loaded ${annotations.length} free text annotations`);
+          annotations.forEach(annotation => this.addFreeTextAnnotation(annotation, { skipSave: true }));
+          const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];
+          this.lastSavedStateKey = this.buildSaveStateKey(annotations, groupStyles);
+          log.info(`freeText:loadAnnotations:applied (annotations=${annotations.length})`);
 
           setTimeout(this.reapplyStylesBound, 200);
         }
@@ -257,17 +266,9 @@ export class ManagerFreeText {
       };
     }
 
-    // Also listen for style changes on the cy instance
-    this.cy.on('style', () => {
-      if (this.styleReapplyInProgress) return;
-      // Reapply styles after any style change with a small delay
-      setTimeout(() => {
-        this.reapplyAllFreeTextStyles();
-      }, 50);
-    });
   }
 
-  private reapplyAllFreeTextStyles(): void {
+  public reapplyAllFreeTextStyles(): void {
     // Set flag before reapplying to prevent recursive calls
     if (this.styleReapplyInProgress) return;
     this.styleReapplyInProgress = true;
@@ -1577,7 +1578,7 @@ export class ManagerFreeText {
   /**
    * Add a free text annotation to the graph
    */
-  public addFreeTextAnnotation(annotation: FreeTextAnnotation): void {
+  public addFreeTextAnnotation(annotation: FreeTextAnnotation, options?: { skipSave?: boolean }): void {
     this.annotations.set(annotation.id, annotation);
 
     // Create a Cytoscape node for the text
@@ -1610,8 +1611,9 @@ export class ManagerFreeText {
     }, 100);
 
     this.annotationNodes.set(annotation.id, node);
-    // Save annotations after adding new text (debounced)
-    this.debouncedSave();
+    if (!options?.skipSave) {
+      this.debouncedSave();
+    }
   }
 
   /**
@@ -1806,30 +1808,72 @@ export class ManagerFreeText {
    * Debounced save - prevents rapid-fire saves when multiple annotations change
    */
   private debouncedSave(): void {
+    const now = Date.now();
+    if (this.saveBurstStart === null) {
+      this.saveBurstStart = now;
+    }
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
     }
+    const elapsed = now - this.saveBurstStart;
+    const delay = elapsed >= ManagerFreeText.SAVE_MAX_WAIT_MS ? 0 : ManagerFreeText.SAVE_DEBOUNCE_MS;
     this.saveTimeout = setTimeout(() => {
+      this.saveTimeout = null;
+      this.saveBurstStart = null;
       this.saveAnnotations();
-    }, 300); // Wait 300ms after last change before saving
+    }, delay);
+  }
+
+  /**
+   * Allow external managers (e.g., group styles) to queue a combined annotations save without
+   * duplicating persistence logic.
+   */
+  public queueSaveAnnotations(): void {
+    this.debouncedSave();
   }
 
   /**
    * Save annotations to backend
    */
   public async saveAnnotations(): Promise<void> {
+    if (this.saveInProgress) {
+      this.pendingSaveWhileBusy = true;
+      log.info('freeText:saveAnnotations:queued (busy)');
+      return;
+    }
+
+    const annotations = Array.from(this.annotations.values());
+    const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];
+    const stateKey = this.buildSaveStateKey(annotations, groupStyles);
+
+    if (stateKey === this.lastSavedStateKey) {
+      log.info(
+        `freeText:saveAnnotations:skipped (unchanged, annotations=${annotations.length}, groupStyles=${groupStyles.length})`
+      );
+      return;
+    }
+
+    this.saveInProgress = true;
+    log.info(
+      `freeText:saveAnnotations:start (annotations=${annotations.length}, groupStyles=${groupStyles.length})`
+    );
     try {
-      const annotations = Array.from(this.annotations.values());
-      const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];
       await this.messageSender.sendMessageToVscodeEndpointPost(
         'topo-editor-save-annotations',
         { annotations, groupStyles }
       );
-      log.debug(
-        `Saved ${annotations.length} annotations and ${groupStyles.length} group styles successfully`
+      this.lastSavedStateKey = stateKey;
+      log.info(
+        `freeText:saveAnnotations:success (annotations=${annotations.length}, groupStyles=${groupStyles.length})`
       );
     } catch (error) {
       log.error(`Failed to save annotations: ${error}`);
+    } finally {
+      this.saveInProgress = false;
+      if (this.pendingSaveWhileBusy) {
+        this.pendingSaveWhileBusy = false;
+        this.debouncedSave();
+      }
     }
   }
 
@@ -1849,6 +1893,7 @@ export class ManagerFreeText {
       clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
     }
+    this.saveBurstStart = null;
 
     this.annotationNodes.forEach(node => {
       if (node && node.inside()) {
@@ -1858,8 +1903,33 @@ export class ManagerFreeText {
     this.annotations.clear();
     this.annotationNodes.clear();
     this.clearAnnotationOverlays();
+    this.lastSavedStateKey = null;
     if (save) {
       this.saveAnnotations();
     }
   }
+
+  /**
+   * Synchronize the cached "last saved" signature with the current annotation + group style state.
+   * Useful when an external component (like the group style manager) finishes an async load.
+   */
+  public syncSavedStateBaseline(): void {
+    const annotations = Array.from(this.annotations.values());
+    const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];
+    this.lastSavedStateKey = this.buildSaveStateKey(annotations, groupStyles);
+    log.debug(
+      `freeText:syncSavedStateBaseline (annotations=${annotations.length}, groupStyles=${groupStyles.length})`
+    );
+  }
+
+  private buildSaveStateKey(
+    annotations: FreeTextAnnotation[],
+    groupStyles: GroupStyleAnnotation[]
+  ): string {
+    return JSON.stringify({
+      annotations,
+      groupStyles
+    });
+  }
+
 }

@@ -12,6 +12,9 @@ import type cytoscape from 'cytoscape';
 import { log } from '../logging/logger';
 import { VscodeMessageSender } from './managerVscodeWebview';
 
+// Keep grid spacing centralized so other modules (e.g., initial layout) stay aligned.
+export const DEFAULT_GRID_SPACING = 14;
+
 export type Theme = 'light' | 'dark';
 
 const LIGHT_GRID_RGBA = 'rgba(204,204,204,0.58)';
@@ -26,7 +29,7 @@ export class ManagerGridGuide {
   private overlayObserver?: MutationObserver;
 
   // Unified configuration
-  private spacing = 14; // unified grid spacing (px)
+  private spacing = DEFAULT_GRID_SPACING; // unified grid spacing (px)
   private lineWidth = 0.5; // default grid line width; adjustable via UI
   private color: string = LIGHT_GRID_RGBA; // updated by theme
 

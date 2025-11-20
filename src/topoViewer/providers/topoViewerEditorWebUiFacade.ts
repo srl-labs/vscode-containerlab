@@ -65,6 +65,7 @@ export class TopoViewerEditor {
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
   private isSplitViewOpen: boolean = false; // Track if YAML split view is open
   /* eslint-disable no-unused-vars */
+
   private readonly generalEndpointHandlers: Record<
     string,
     (
@@ -109,12 +110,7 @@ export class TopoViewerEditor {
   }
 
   private logDebug(message: string): void {
-    void this.handleDebugLogEndpoint(undefined, {
-      message,
-      timestamp: new Date().toISOString()
-    }).catch((err: unknown) => {
-      log.warn(`Failed to append debug log entry: ${err instanceof Error ? err.message : String(err)}`);
-    });
+    log.debug(message);
   }
 
   private buildDefaultLabYaml(labName: string, savedPath?: string): string {
@@ -1990,9 +1986,7 @@ topology:
     if (!message) {
       return { result: false, error: 'No message provided' };
     }
-    const timestamp = typeof payloadObj?.timestamp === 'string' ? payloadObj.timestamp : new Date().toISOString();
-    const entry = `[${timestamp}] ${message}`;
-    log.debug(entry);
+    log.debug(message);
     return { result: true, error: null };
   }
 

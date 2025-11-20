@@ -140,6 +140,7 @@ class TopologyWebviewController {
   private viewModeEventsRegistered = false;
   private editAutoSaveConfigured = false;
   private viewAutoSaveConfigured = false;
+  private autoSaveSuspendCount = 0;
   // Tracks which bridge alias groups (by base YAML id) were already logged
   private loggedBridgeAliasGroups: Set<string> = new Set();
   private modeTransitionInProgress = false;
@@ -191,6 +192,16 @@ class TopologyWebviewController {
     }
   };
   public async initAsync(mode: 'edit' | 'view'): Promise<void> {
+    await this.loadInitialGraph(mode);
+    this.scheduleInitialFit();
+    this.gridManager.enableSnapping(true);
+    this.fetchEnvironmentMetadata();
+    this.initializeLockState();
+    await this.configureModeHandlers(mode);
+    await this.loadGroupStylesSafe();
+  }
+
+  private async loadInitialGraph(mode: 'edit' | 'view'): Promise<void> {
     perfMark('cytoscape_style_start');
     await loadCytoStyle(this.cy);
     perfMeasure('cytoscape_style', 'cytoscape_style_start');
@@ -201,48 +212,58 @@ class TopologyWebviewController {
         edge.removeClass('link-up');
         edge.removeClass('link-down');
       });
-      window.writeTopoDebugLog?.('initAsync: cleared link state classes for edit mode');
+      log.debug('initAsync: cleared link state classes for edit mode');
     }
     perfMeasure('fetch_data', 'fetch_data_start');
     perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
     this.initialGraphLoaded = true;
-
     this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
       metrics: PerformanceMonitor.getMeasures()
     });
+  }
 
-    if (this.cy.elements().length > 0 && typeof requestAnimationFrame !== 'undefined') {
-      // eslint-disable-next-line no-undef
-      requestAnimationFrame(() => {
-        this.cy.animate({
-          fit: { eles: this.cy.elements(), padding: 50 },
-          duration: 150,
-          easing: 'ease-out'
-        });
-      });
+  private scheduleInitialFit(): void {
+    if (this.cy.elements().length === 0) {
+      return;
     }
+    if (typeof requestAnimationFrame === 'undefined') {
+      this.cy.fit(this.cy.elements(), 50);
+      log.debug('Viewport fitted immediately (no RAF available)');
+      return;
+    }
+    // eslint-disable-next-line no-undef
+    requestAnimationFrame(() => {
+      this.cy.animate({
+        fit: { eles: this.cy.elements(), padding: 50 },
+        duration: 150,
+        easing: 'ease-out'
+      });
+    });
+  }
 
-    // Enable grid snapping after elements are in place to avoid initial shifts
-    this.gridManager.enableSnapping(true);
-
+  private fetchEnvironmentMetadata(): void {
     void (async () => {
       try {
-        const result = await fetchAndLoadDataEnvironment(["clab-name", "clab-prefix"]);
-        const labName = result["clab-name"] || "Unknown";
+        const result = await fetchAndLoadDataEnvironment(['clab-name', 'clab-prefix']);
+        const labName = result['clab-name'] || 'Unknown';
         this.updateSubtitle(labName);
         topoViewerState.labName = labName;
-        if (typeof result["clab-prefix"] === 'string') {
-          topoViewerState.prefixName = result["clab-prefix"] as string;
+        if (typeof result['clab-prefix'] === 'string') {
+          topoViewerState.prefixName = result['clab-prefix'] as string;
         }
       } catch (error) {
         log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
       }
     })();
+  }
 
+  private initializeLockState(): void {
     this.labLocked = this.getInitialLockState();
     this.applyLockState(this.labLocked);
+  }
 
-    this.registerEvents(mode);
+  private async configureModeHandlers(mode: 'edit' | 'view'): Promise<void> {
+    await this.registerEvents(mode);
     if (mode === 'edit') {
       this.setupAutoSave();
       setTimeout(() => this.initializeEdgehandles(), 50);
@@ -250,9 +271,11 @@ class TopologyWebviewController {
       this.setupAutoSaveViewMode();
     }
     setTimeout(() => this.initializeContextMenu(), 100);
+  }
 
+  private async loadGroupStylesSafe(): Promise<void> {
     try {
-      await this.groupStyleManager.loadGroupStyles();
+      await this.withAutoSaveSuspended(() => this.groupStyleManager.loadGroupStyles());
     } catch (error) {
       log.error(`Failed to load group style annotations: ${error}`);
     }
@@ -266,49 +289,10 @@ class TopologyWebviewController {
       return;
     }
     this.editAutoSaveConfigured = true;
-    // Debounced save function
-    const autoSave = debounce(async () => {
-      if (this.isEdgeHandlerActive) {
-        return;
-      }
-      const suppressNotification = true;
-      await this.saveManager.saveTopo(this.cy, suppressNotification);
-    }, 500); // Wait 500ms after last change before saving
-
-    // Listen for topology changes - but skip free text nodes as they handle their own saves
-    this.cy.on('add remove data', (event) => {
-      const target = event.target;
-      // Skip autosave for free text nodes - they save themselves
-      if (target.isNode() && target.data('topoViewerRole') === 'freeText') {
-        return;
-      }
-      autoSave();
-    });
-
-    this.cy.on('position', (event) => {
-      const target = event.target;
-      // Only process node position changes, not edges
-      if (!target.isNode()) {
-        return;
-      }
-      // Skip position events for free text nodes - they handle their own saves
-      if (target.data('topoViewerRole') === 'freeText') {
-        return;
-      }
-      // Avoid autosave while a node is actively being dragged
-      if (!target.grabbed()) {
-        autoSave();
-      }
-    });
-
-    this.cy.on('dragfree', 'node', (event) => {
-      const node = event.target;
-      // Skip dragfree for free text nodes - they handle their own saves
-      if (node.data('topoViewerRole') === 'freeText') {
-        return;
-      }
-      autoSave();
-    });
+    const autoSave = this.createDebouncedAutoSave();
+    this.cy.on('add remove data', (event) => this.handleNodeEvent(event, autoSave));
+    this.cy.on('position', (event) => this.handleNodePositionEvent(event, autoSave));
+    this.cy.on('dragfree', 'node', (event) => this.handleNodeEvent(event, autoSave));
   }
 
   // Add automatic save for view mode (only saves annotations.json)
@@ -317,37 +301,88 @@ class TopologyWebviewController {
       return;
     }
     this.viewAutoSaveConfigured = true;
-    // Debounced save function for view mode
-    const autoSaveViewMode = debounce(async () => {
-      const suppressNotification = true;
-      await this.saveManager.saveTopo(this.cy, suppressNotification);
-    }, 500); // Wait 500ms after last change before saving
+    const autoSaveViewMode = this.createDebouncedViewAutoSave();
+    this.cy.on('position', (event) => this.handleNodePositionEvent(event, autoSaveViewMode));
+    this.cy.on('dragfree', 'node', (event) => this.handleNodeEvent(event, autoSaveViewMode));
+  }
 
-    // Listen for position changes only - view mode doesn't add/remove nodes
-    this.cy.on('position', (event) => {
-      const target = event.target;
-      // Only process node position changes, not edges
-      if (!target.isNode()) {
+  private createDebouncedAutoSave(): () => void {
+    return debounce(async () => {
+      if (!this.canAutoSaveNow()) {
         return;
       }
-      // Skip position events for free text nodes - they handle their own saves
-      if (target.data('topoViewerRole') === 'freeText') {
-        return;
-      }
-      // Avoid autosave while a node is actively being dragged
-      if (!target.grabbed()) {
-        autoSaveViewMode();
-      }
-    });
+      await this.saveTopoSilently();
+    }, 500);
+  }
 
-    this.cy.on('dragfree', 'node', (event) => {
-      const node = event.target;
-      // Skip dragfree for free text nodes - they handle their own saves
-      if (node.data('topoViewerRole') === 'freeText') {
+  private createDebouncedViewAutoSave(): () => void {
+    return debounce(async () => {
+      if (this.isAutoSaveSuspended()) {
         return;
       }
-      autoSaveViewMode();
-    });
+      await this.saveTopoSilently();
+    }, 500);
+  }
+
+  private async saveTopoSilently(): Promise<void> {
+    const suppressNotification = true;
+    await this.saveManager.saveTopo(this.cy, suppressNotification);
+  }
+
+  private canAutoSaveNow(): boolean {
+    if (this.isAutoSaveSuspended()) {
+      return false;
+    }
+    if (this.isEdgeHandlerActive) {
+      return false;
+    }
+    return true;
+  }
+
+  private handleNodePositionEvent(event: cytoscape.EventObject, callback: () => void): void {
+    if (this.shouldSkipAutoSaveForTarget(event.target)) {
+      return;
+    }
+    if (!event.target.grabbed()) {
+      callback();
+    }
+  }
+
+  private handleNodeEvent(event: cytoscape.EventObject, callback: () => void): void {
+    if (this.shouldSkipAutoSaveForTarget(event.target)) {
+      return;
+    }
+    callback();
+  }
+
+  private shouldSkipAutoSaveForTarget(target: cytoscape.Singular | undefined): boolean {
+    if (!target || !target.isNode()) {
+      return true;
+    }
+    return target.data('topoViewerRole') === 'freeText';
+  }
+
+  private suspendAutoSave(): void {
+    this.autoSaveSuspendCount += 1;
+  }
+
+  private resumeAutoSave(): void {
+    if (this.autoSaveSuspendCount > 0) {
+      this.autoSaveSuspendCount -= 1;
+    }
+  }
+
+  private isAutoSaveSuspended(): boolean {
+    return this.autoSaveSuspendCount > 0;
+  }
+
+  private async withAutoSaveSuspended<T>(operation: () => Promise<T>): Promise<T> {
+    this.suspendAutoSave();
+    try {
+      return await operation();
+    } finally {
+      this.resumeAutoSave();
+    }
   }
 
   private registerCustomZoom(): void {
@@ -380,7 +415,6 @@ class TopologyWebviewController {
    * @throws Will throw an error if the container element is not found.
    */
   constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
-    window.writeTopoDebugLog?.('TopologyWebviewController constructed');
     perfMark('topoViewer_init_start');
     this.currentMode = mode;
     (topoViewerState as any).currentMode = mode;
@@ -541,12 +575,6 @@ class TopologyWebviewController {
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
-    window.writeTopoDebugLog = (message: string) => {
-      void this.messageSender.sendMessageToVscodeEndpointPost('topo-debug-log', {
-        message,
-        timestamp: new Date().toISOString()
-      });
-    };
     // Grid controls: allow UI to adjust grid line width at runtime
     (window as any).viewportDrawerGridLineWidthChange = (value: string | number) => {
       const n = typeof value === 'number' ? value : parseFloat(String(value));
@@ -580,7 +608,6 @@ class TopologyWebviewController {
         case 'yaml-saved':
           runHandler(msg.type, async () => {
             await fetchAndLoadData(this.cy, this.messageSender, { incremental: true });
-            window.writeTopoDebugLog?.('handled yaml-saved message');
           });
           break;
         case 'updateTopology':
@@ -607,8 +634,6 @@ class TopologyWebviewController {
       const elements = data as any[];
       if (Array.isArray(elements)) {
         let requiresStyleReload = false;
-        window.writeTopoDebugLog?.(`updateTopology received ${elements.length} elements`);
-
         elements.forEach((el) => {
           const id = el?.data?.id;
           if (!id) {
@@ -624,7 +649,6 @@ class TopologyWebviewController {
             if (this.currentMode === 'edit' && existing.isEdge()) {
               existing.removeClass('link-up');
               existing.removeClass('link-down');
-              window.writeTopoDebugLog?.(`updateTopology: stripped link state classes from ${id}`);
             }
           } else {
             this.cy.add(el);
@@ -634,14 +658,10 @@ class TopologyWebviewController {
 
         if (requiresStyleReload) {
           loadCytoStyle(this.cy);
-          window.writeTopoDebugLog?.('loadCytoStyle triggered via updateTopology');
-        } else {
-          window.writeTopoDebugLog?.('updateTopology applied without style reload');
         }
       }
     } catch (error) {
       log.error(`Error processing updateTopology message: ${error}`);
-      window.writeTopoDebugLog?.(`updateTopology error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -746,8 +766,6 @@ class TopologyWebviewController {
       return;
     }
 
-    window.writeTopoDebugLog?.(`mode switch requested -> ${payload.mode ?? 'unknown'}`);
-
     if (this.modeTransitionInProgress) {
       log.warn('Mode transition already in progress; ignoring new mode switch request');
       return;
@@ -764,12 +782,10 @@ class TopologyWebviewController {
       const resolvedLock = this.resolveLockPreference(payload);
 
       if (!this.initialGraphLoaded) {
-        window.writeTopoDebugLog?.('handleModeSwitchMessage: graph not yet loaded, fetching data');
         await fetchAndLoadData(this.cy, this.messageSender);
         this.initialGraphLoaded = true;
       }
       await this.ensureModeResources(target);
-      window.writeTopoDebugLog?.('handleModeSwitchMessage: mode resources ensured');
       if (target === 'edit') {
         this.cy.edges().forEach(edge => {
           edge.removeClass('link-up');
@@ -784,7 +800,6 @@ class TopologyWebviewController {
       this.applyLockState(this.labLocked);
 
       this.finalizeModeChange(normalized);
-      window.writeTopoDebugLog?.(`handleModeSwitchMessage: finalized mode ${normalized}`);
       log.info(`Mode switched to ${target}`);
     } catch (error) {
       log.error(`Error handling mode switch: ${error instanceof Error ? error.message : String(error)}`);
