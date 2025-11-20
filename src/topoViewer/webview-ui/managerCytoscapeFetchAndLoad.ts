@@ -23,6 +23,9 @@ export interface DataItem {
   };
 }
 
+const INITIAL_POSITION_START = { x: 105, y: 105 };
+const INITIAL_POSITION_SPACING = { x: 98, y: 98 };
+
 
 function allNodesOverlap(cy: cytoscape.Core): boolean {
   const nodes = cy.nodes();
@@ -42,17 +45,24 @@ function allNodesOverlap(cy: cytoscape.Core): boolean {
   });
 }
 
+function getInitialPosition(index: number, cols: number): { x: number; y: number } {
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  return {
+    x: INITIAL_POSITION_START.x + col * INITIAL_POSITION_SPACING.x,
+    y: INITIAL_POSITION_START.y + row * INITIAL_POSITION_SPACING.y
+  };
+}
+
 function chooseInitialLayout(cy: cytoscape.Core, overlap: boolean): cytoscape.Layouts {
   if (overlap) {
     const nodeCount = cy.nodes().length;
-    const cols = Math.ceil(Math.sqrt(nodeCount));
-    const spacing = 120;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(nodeCount)));
     let index = 0;
 
     cy.nodes().forEach((node) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      node.position({ x: col * spacing + 100, y: row * spacing + 100 });
+      const pos = getInitialPosition(index, cols);
+      node.position(pos);
       index++;
     });
 
