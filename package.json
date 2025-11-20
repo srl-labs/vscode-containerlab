@@ -1205,6 +1205,11 @@
           "default": true,
           "description": "Show the welcome page when the extension activates."
         },
+        "containerlab.skipInstallationCheck": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Skip checking for the containerlab binary during activation to silence the install prompt. When enabled, the extension will not activate on systems without containerlab on PATH."
+        },
         "containerlab.node.telnetPort": {
           "type": "number",
           "default": 5000,

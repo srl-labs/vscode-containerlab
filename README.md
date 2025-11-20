@@ -87,6 +87,7 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 | `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
 | `refreshInterval` | number | `5000` | Auto-refresh interval in milliseconds |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
+| `skipInstallationCheck` | boolean | `false` | Skip containerlab install check/prompt; extension stays inactive if containerlab is missing |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
 
 ### 🎯 Command Options
