@@ -268,7 +268,7 @@ export class ManagerFreeText {
 
   }
 
-  private reapplyAllFreeTextStyles(): void {
+  public reapplyAllFreeTextStyles(): void {
     // Set flag before reapplying to prevent recursive calls
     if (this.styleReapplyInProgress) return;
     this.styleReapplyInProgress = true;
