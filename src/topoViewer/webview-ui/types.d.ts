@@ -9,6 +9,8 @@ declare global {
     topoViewerMode?: 'editor' | 'viewer' | string;
     // eslint-disable-next-line no-unused-vars
     updateTopoGridTheme?: (theme: 'light' | 'dark') => void;
+    // Optional debug logger injected by the webview host
+    writeTopoDebugLog?: (message: string) => void;
   }
 }
 export {};
