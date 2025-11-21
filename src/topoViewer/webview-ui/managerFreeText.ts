@@ -126,6 +126,10 @@ export class ManagerFreeText {
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, number> = new Map();
   private overlayWheelTarget: HTMLElement | null = null;
+  // Track intended (unsnapped) positions for free text during drag
+  private intendedPositions: Map<string, { x: number; y: number }> = new Map();
+  // Guard to prevent recursive position corrections
+  private positionCorrectionInProgress: Set<string> = new Set();
   private saveInProgress = false;
   private pendingSaveWhileBusy = false;
   private lastSavedStateKey: string | null = null;
@@ -235,7 +239,7 @@ export class ManagerFreeText {
           this.lastSavedStateKey = this.buildSaveStateKey(annotations, groupStyles);
           log.info(`freeText:loadAnnotations:applied (annotations=${annotations.length})`);
 
-          setTimeout(this.reapplyStylesBound, 200);
+          this.schedulePositionRestores();
         }
       } catch (error) {
         log.error(`Failed to load annotations: ${error}`);
@@ -337,29 +341,75 @@ export class ManagerFreeText {
     });
 
     // Handle position changes for free text nodes
+    // After drag release, restore the intended (unsnapped) position to bypass grid snapping
     this.cy.on('dragfree', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
-      this.updateFreeTextPosition(node.id(), node.position());
+      const nodeId = node.id();
+      const intendedPos = this.intendedPositions.get(nodeId);
+      if (intendedPos) {
+        // Restore the unsnapped position - grid snap has already modified node.position()
+        node.position(intendedPos);
+        this.updateFreeTextPosition(nodeId, intendedPos);
+        this.intendedPositions.delete(nodeId);
+      } else {
+        this.updateFreeTextPosition(nodeId, node.position());
+      }
     });
 
-    // Also handle position changes to keep overlays in sync (and persist user drags)
-    this.cy.on('position', SELECTOR_FREE_TEXT, (event) => {
-      const node = event.target;
-      if (!node) {
-        return;
-      }
-      this.positionOverlayById(node.id());
-      if (!node.grabbed()) {
-        return;
-      }
-      const annotation = this.annotations.get(node.id());
-      if (annotation) {
-        annotation.position = {
-          x: Math.round(node.position().x),
-          y: Math.round(node.position().y)
-        };
-      }
-    });
+    // Also handle position changes to keep overlays in sync and enforce annotation positions
+    this.cy.on('position', SELECTOR_FREE_TEXT, (event) => this.handleFreeTextPositionChange(event));
+  }
+
+  /**
+   * Handle position changes for free text nodes.
+   * If user is dragging, track the position. Otherwise, enforce annotation position.
+   */
+  private handleFreeTextPositionChange(event: cytoscape.EventObject): void {
+    const node = event.target;
+    if (!node) {
+      return;
+    }
+    this.positionOverlayById(node.id());
+
+    const annotation = this.annotations.get(node.id());
+    if (!annotation) {
+      return;
+    }
+
+    if (node.grabbed()) {
+      // Track the intended (unsnapped) position during drag
+      const pos = node.position();
+      this.intendedPositions.set(node.id(), {
+        x: Math.round(pos.x),
+        y: Math.round(pos.y)
+      });
+      annotation.position = {
+        x: Math.round(pos.x),
+        y: Math.round(pos.y)
+      };
+    } else {
+      // Node is NOT being dragged - enforce annotation position
+      this.enforceAnnotationPosition(node, annotation);
+    }
+  }
+
+  /**
+   * Force free text node position to match annotation data.
+   * This prevents external changes (layout, grid snap) from moving free text.
+   */
+  private enforceAnnotationPosition(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
+    const nodeId = node.id();
+    if (this.positionCorrectionInProgress.has(nodeId)) {
+      return; // Prevent infinite recursion
+    }
+    const pos = node.position();
+    const annotationX = annotation.position.x;
+    const annotationY = annotation.position.y;
+    if (Math.round(pos.x) !== annotationX || Math.round(pos.y) !== annotationY) {
+      this.positionCorrectionInProgress.add(nodeId);
+      node.position({ x: annotationX, y: annotationY });
+      this.positionCorrectionInProgress.delete(nodeId);
+    }
   }
 
   /**
@@ -1606,8 +1656,15 @@ export class ManagerFreeText {
     // Apply custom styles based on annotation properties with a slight delay to ensure node is rendered
     this.applyTextNodeStyles(node, annotation);
     // Apply styles again after a short delay to ensure they stick
+    // Also restore position to bypass any grid snapping
     setTimeout(() => {
       this.applyTextNodeStyles(node, annotation);
+      // Restore position from annotation data (bypass grid snap)
+      node.position({
+        x: annotation.position.x,
+        y: annotation.position.y
+      });
+      this.positionOverlayById(annotation.id);
     }, 100);
 
     this.annotationNodes.set(annotation.id, node);
@@ -1759,6 +1816,56 @@ export class ManagerFreeText {
   }
 
   /**
+   * Sync all free text annotation positions with their current Cytoscape node positions.
+   * Call this before saving to ensure coordinates persist correctly.
+   */
+  public syncAnnotationPositions(): void {
+    this.annotationNodes.forEach((node, id) => {
+      const annotation = this.annotations.get(id);
+      if (annotation && node && node.inside()) {
+        const pos = node.position();
+        annotation.position = {
+          x: Math.round(pos.x),
+          y: Math.round(pos.y)
+        };
+      }
+    });
+  }
+
+  /**
+   * Restore all free text node positions from their annotation data.
+   * Call this after loading to ensure nodes match saved positions (bypassing any grid snap).
+   */
+  public restoreAnnotationPositions(): void {
+    this.annotations.forEach((annotation, id) => {
+      const node = this.annotationNodes.get(id);
+      if (node && node.inside()) {
+        node.position({
+          x: annotation.position.x,
+          y: annotation.position.y
+        });
+        this.positionOverlayById(id);
+      }
+    });
+  }
+
+  /**
+   * Schedule multiple position restores after loading to ensure free text positions
+   * persist despite any grid snapping or layout operations.
+   */
+  private schedulePositionRestores(): void {
+    // Restore positions after delays to ensure nodes are rendered and
+    // bypass any grid snapping that may occur during initialization
+    setTimeout(() => {
+      this.reapplyStylesBound();
+      this.restoreAnnotationPositions();
+    }, 200);
+    // Additional restores at longer delays to catch any late layout operations
+    setTimeout(() => this.restoreAnnotationPositions(), 500);
+    setTimeout(() => this.restoreAnnotationPositions(), 1000);
+  }
+
+  /**
    * Remove a free text annotation
    */
   public removeFreeTextAnnotation(id: string): void {
@@ -1841,6 +1948,9 @@ export class ManagerFreeText {
       log.info('freeText:saveAnnotations:queued (busy)');
       return;
     }
+
+    // Sync positions from Cytoscape nodes to annotation data before saving
+    this.syncAnnotationPositions();
 
     const annotations = Array.from(this.annotations.values());
     const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];
