@@ -12,6 +12,7 @@ import type { ManagerGroupStyle } from './managerGroupStyle';
 // the appearance on the Cytoscape canvas where text renders larger than the modal.
 const MIN_FREE_TEXT_FONT_SIZE = 1;
 const DEFAULT_FREE_TEXT_FONT_SIZE = 8;
+const DEFAULT_FREE_TEXT_PADDING = 3;
 const PREVIEW_FONT_SCALE = 2;
 const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
 const DEFAULT_FREE_TEXT_WIDTH = 420;
@@ -1193,8 +1194,8 @@ export class ManagerFreeText {
   } {
     const baseFontSize = this.normalizeFontSize(annotation.fontSize);
     const hasBackground = annotation.backgroundColor !== 'transparent';
-    const basePaddingY = hasBackground ? Math.max(3, Math.round(baseFontSize * 0.35)) : 0;
-    const basePaddingX = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.65)) : 0;
+    const basePaddingY = hasBackground ? DEFAULT_FREE_TEXT_PADDING : 0;
+    const basePaddingX = hasBackground ? DEFAULT_FREE_TEXT_PADDING : 0;
     const baseRadius = hasBackground && (annotation.roundedBackground !== false)
       ? Math.max(4, Math.round(baseFontSize * 0.4))
       : 0;
@@ -1282,7 +1283,7 @@ export class ManagerFreeText {
     };
     this.syncNodeHitboxWithOverlay(node, scaledBox, zoom);
     this.positionOverlayResizeHandle(resizeHandle, renderedPosition, scaledBox.width, scaledBox.height);
-    this.positionOverlayRotateHandle(rotateHandle, renderedPosition, scaledBox.width, scaledBox.height);
+    this.positionOverlayRotateHandle(rotateHandle, renderedPosition, scaledBox.height);
   }
 
   private getRotatedFrame(
@@ -1489,7 +1490,6 @@ export class ManagerFreeText {
   private positionOverlayRotateHandle(
     handle: HTMLButtonElement,
     position: { x: number; y: number },
-    width: number,
     height: number
   ): void {
     const handleWidth = handle.offsetWidth || 18;
