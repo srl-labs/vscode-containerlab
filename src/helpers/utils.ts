@@ -357,47 +357,59 @@ export async function installContainerlab(outputChannel: vscode.LogOutputChannel
 }
 
 /**
+ * Returns true if containerlab is already present on PATH.
+ */
+export async function isClabInstalled(outputChannel: vscode.LogOutputChannel): Promise<boolean> {
+  log(`Checking "which containerlab" to verify installation...`, outputChannel);
+  try {
+    const { stdout } = await execAsync('which containerlab');
+    const installed = Boolean(stdout && stdout.trim().length > 0);
+    if (!installed) {
+      log('containerlab not found on PATH.', outputChannel);
+    }
+    return installed;
+  } catch (err: any) {
+    log(`Error while checking for containerlab: ${err?.message ?? err}`, outputChannel);
+    return false;
+  }
+}
+
+/**
  * Ensures containerlab is installed by running "which containerlab".
  * If not found, offers to install it.
  */
 export async function ensureClabInstalled(outputChannel: vscode.LogOutputChannel): Promise<boolean> {
+  const clabInstalled = await isClabInstalled(outputChannel);
+  if (clabInstalled) {
+    log(`containerlab is already installed.`, outputChannel);
+    return true;
+  }
+
+  log(`containerlab is not installed. Prompting user for installation.`, outputChannel);
+  const installAction = 'Install containerlab';
+  const cancelAction = 'No';
+  const chosen = await vscode.window.showWarningMessage(
+    'Containerlab is not installed. Would you like to install it now?',
+    installAction,
+    cancelAction
+  );
+  if (chosen !== installAction) {
+    log('User declined containerlab installation.', outputChannel);
+    return false;
+  }
   try {
-    log(`Checking "which containerlab" to verify installation...`, outputChannel);
-    const { stdout } = await execAsync('which containerlab');
-    if (stdout && stdout.trim().length > 0) {
-      log(`containerlab is already installed.`, outputChannel);
+    await installContainerlab(outputChannel);
+    // Verify the installation once more.
+    if (await isClabInstalled(outputChannel)) {
+      vscode.window.showInformationMessage('Containerlab installed successfully!');
+      log(`containerlab installed successfully.`, outputChannel);
       return true;
     }
-    throw new Error('containerlab not found.');
-  } catch {
-    log(`containerlab is not installed. Prompting user for installation.`, outputChannel);
-    const installAction = 'Install containerlab';
-    const cancelAction = 'No';
-    const chosen = await vscode.window.showWarningMessage(
-      'Containerlab is not installed. Would you like to install it now?',
-      installAction,
-      cancelAction
-    );
-    if (chosen !== installAction) {
-      log('User declined containerlab installation.', outputChannel);
-      return false;
-    }
-    try {
-      await installContainerlab(outputChannel);
-      // Verify the installation once more.
-      const { stdout } = await execAsync('which containerlab');
-      if (stdout && stdout.trim().length > 0) {
-        vscode.window.showInformationMessage('Containerlab installed successfully!');
-        log(`containerlab installed successfully.`, outputChannel);
-        return true;
-      } else {
-        throw new Error('containerlab installation failed; command not found after installation.');
-      }
-    } catch (installErr: any) {
-      vscode.window.showErrorMessage(`Failed to install containerlab:\n${installErr.message}`);
-      log(`Failed to install containerlab: ${installErr}`, outputChannel);
-      return false;
-    }
+    throw new Error('containerlab installation failed; command not found after installation.');
+  } catch (installErr: any) {
+    vscode.window.showErrorMessage(`Failed to install containerlab:\n${installErr.message}`);
+    log(`Failed to install containerlab: ${installErr}`, outputChannel);
+    return false;
   }
 }
 
@@ -536,4 +548,3 @@ export function sanitize(
   if (!out) out = "container";
   return lower ? out.toLowerCase() : out;
 }
-
