@@ -1076,6 +1076,7 @@ export class ManagerFreeText {
       return;
     }
     entry.size = { width, height };
+    this.updateOverlayScrollbar(entry);
     this.positionOverlayById(annotationId);
   }
 
@@ -1388,8 +1389,12 @@ export class ManagerFreeText {
     }
     const scrollHeight = wrapper.scrollHeight;
     const clientHeight = wrapper.clientHeight;
-    const hasOverflow = scrollHeight - clientHeight > 1;
+    const overflowGap = scrollHeight - clientHeight;
+    const defaultVerticalMargin = Number(wrapper.dataset.basePaddingY ?? '0') * 2;
+    const overflowThreshold = Math.max(0.5, defaultVerticalMargin);
+    const hasOverflow = overflowGap > overflowThreshold;
     if (!hasOverflow) {
+      wrapper.scrollTop = 0;
       scrollbar.classList.remove('free-text-overlay-scrollbar-visible');
       scrollbar.style.opacity = '0';
       scrollbar.style.transform = '';
