@@ -7,8 +7,8 @@ const DEFAULT_SHAPE_WIDTH = 100;
 const DEFAULT_SHAPE_HEIGHT = 100;
 const DEFAULT_LINE_LENGTH = 150;
 const DEFAULT_FILL_COLOR = '#3498db';
-const DEFAULT_FILL_OPACITY = 0.5;
-const DEFAULT_BORDER_COLOR = '#2980b9';
+const DEFAULT_FILL_OPACITY = 0;
+const DEFAULT_BORDER_COLOR = '#646464';
 const DEFAULT_BORDER_WIDTH = 2;
 const DEFAULT_BORDER_STYLE = 'solid';
 const DEFAULT_ARROW_SIZE = 10;
@@ -139,7 +139,9 @@ export class ManagerFreeShapes {
       if (this.annotations.has(id)) {
         this.annotations.delete(id);
         this.annotationNodes.delete(id);
+        this.managedNodes.delete(id);
         this.removeShapeOverlay(id);
+        this.debouncedSave();
       }
     });
 
