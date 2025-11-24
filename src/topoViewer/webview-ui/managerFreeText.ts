@@ -69,6 +69,7 @@ interface FreeTextModalElements {
   fontFamilySelect: HTMLSelectElement;
   fontColorInput: HTMLInputElement;
   bgColorInput: HTMLInputElement;
+  rotationInput: HTMLInputElement;
   boldBtn: HTMLButtonElement;
   italicBtn: HTMLButtonElement;
   underlineBtn: HTMLButtonElement;
@@ -143,6 +144,12 @@ export class ManagerFreeText {
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, number> = new Map();
   private overlayWheelTarget: HTMLElement | null = null;
+  private onLockStateChanged = (): void => {
+    this.updateOverlayHandleInteractivity();
+    if (this.isLabLocked()) {
+      this.overlayElements.forEach((_entry, id) => this.setOverlayHoverState(id, false));
+    }
+  };
   // Track intended (unsnapped) positions for free text during drag
   private intendedPositions: Map<string, { x: number; y: number }> = new Map();
   // Guard to prevent recursive position corrections
@@ -265,6 +272,7 @@ export class ManagerFreeText {
     this.setupEventHandlers();
     this.setupStylePreservation();
     this.initializeOverlayLayer();
+    this.registerLockStateListener();
 
     this.reapplyStylesBound = () => {
       this.annotationNodes.forEach((node, id) => {
@@ -634,6 +642,7 @@ export class ManagerFreeText {
       fontFamilySelect: document.getElementById('free-text-font-family') as HTMLSelectElement | null,
       fontColorInput: document.getElementById('free-text-font-color') as HTMLInputElement | null,
       bgColorInput: document.getElementById('free-text-bg-color') as HTMLInputElement | null,
+      rotationInput: document.getElementById('free-text-rotation') as HTMLInputElement | null,
       boldBtn: document.getElementById('free-text-bold-btn') as HTMLButtonElement | null,
       italicBtn: document.getElementById('free-text-italic-btn') as HTMLButtonElement | null,
       underlineBtn: document.getElementById('free-text-underline-btn') as HTMLButtonElement | null,
@@ -655,7 +664,15 @@ export class ManagerFreeText {
   }
 
   private initializeModal(title: string, annotation: FreeTextAnnotation, els: FreeTextModalElements): void {
-    const { titleEl, textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput } = els;
+    const {
+      titleEl,
+      textInput,
+      fontSizeInput,
+      fontFamilySelect,
+      fontColorInput,
+      bgColorInput,
+      rotationInput
+    } = els;
 
     titleEl.textContent = title;
     this.applyTextInputStyles(textInput, annotation);
@@ -664,6 +681,10 @@ export class ManagerFreeText {
     this.populateFontFamilySelect(fontFamilySelect, annotation.fontFamily);
     fontColorInput.value = annotation.fontColor ?? '#FFFFFF';
     bgColorInput.value = this.resolveBackgroundColor(annotation.backgroundColor, true);
+    rotationInput.min = '-360';
+    rotationInput.max = '360';
+    rotationInput.step = '1';
+    rotationInput.value = String(this.normalizeRotation(annotation.rotation));
   }
 
   private applyTextInputStyles(textInput: HTMLTextAreaElement, annotation: FreeTextAnnotation): void {
@@ -698,6 +719,19 @@ export class ManagerFreeText {
     return degrees * (Math.PI / 180);
   }
 
+  private rotateOffset(x: number, y: number, rotationDeg: number): { x: number; y: number } {
+    if (!rotationDeg) {
+      return { x, y };
+    }
+    const angle = this.degToRad(rotationDeg);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return {
+      x: x * cos - y * sin,
+      y: x * sin + y * cos
+    };
+  }
+
   private applyPreviewFontSize(textInput: HTMLTextAreaElement, fontSize?: number): void {
     const baseSize = this.normalizeFontSize(fontSize);
     const previewSize = Math.max(baseSize, Math.round(baseSize * PREVIEW_FONT_SCALE));
@@ -722,6 +756,44 @@ export class ManagerFreeText {
       return forInput ? '#000000' : 'transparent';
     }
     return color ?? '#000000';
+  }
+
+  private applyAlphaToColor(color: string, alpha: number): string {
+    if (!color || color === 'transparent') {
+      return 'transparent';
+    }
+    const normalizedAlpha = Math.min(1, Math.max(0, alpha));
+    const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color);
+    if (hexMatch) {
+      const hex = hexMatch[1];
+      const expandHex = (value: string): number => {
+        if (value.length === 1) {
+          return Number.parseInt(`${value}${value}`, 16);
+        }
+        return Number.parseInt(value, 16);
+      };
+      if (hex.length === 3) {
+        const r = expandHex(hex[0]);
+        const g = expandHex(hex[1]);
+        const b = expandHex(hex[2]);
+        return `rgba(${r}, ${g}, ${b}, ${normalizedAlpha})`;
+      }
+      if (hex.length === 6 || hex.length === 8) {
+        const r = expandHex(hex.slice(0, 2));
+        const g = expandHex(hex.slice(2, 4));
+        const b = expandHex(hex.slice(4, 6));
+        const baseAlpha = hex.length === 8 ? expandHex(hex.slice(6, 8)) / 255 : 1;
+        return `rgba(${r}, ${g}, ${b}, ${baseAlpha * normalizedAlpha})`;
+      }
+    }
+    const rgbMatch = /^rgba?\(([^)]+)\)$/i.exec(color);
+    if (rgbMatch) {
+      const [r, g, b, existingAlpha = '1'] = rgbMatch[1].split(',').map(part => part.trim());
+      const currentAlpha = Number.parseFloat(existingAlpha);
+      const combinedAlpha = Number.isFinite(currentAlpha) ? currentAlpha * normalizedAlpha : normalizedAlpha;
+      return `rgba(${r}, ${g}, ${b}, ${combinedAlpha})`;
+    }
+    return color;
   }
 
   private bindHandler(
@@ -1046,6 +1118,14 @@ export class ManagerFreeText {
     return Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(numeric));
   }
 
+  private registerLockStateListener(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.addEventListener('topology-lock-change', this.onLockStateChanged);
+    this.updateOverlayHandleInteractivity();
+  }
+
   private canUseResizeObserver(entry: OverlayEntry): boolean {
     return !entry.resizeObserver && typeof window !== 'undefined' && typeof window.ResizeObserver !== 'undefined';
   }
@@ -1181,6 +1261,7 @@ export class ManagerFreeText {
     parent.appendChild(rotateHandle);
     entry = { wrapper, content, resizeHandle, rotateHandle, scrollbar, resizeObserver: null };
     this.overlayElements.set(annotation.id, entry);
+    this.updateOverlayHandleInteractivity(entry);
     this.installOverlayResizeObserver(annotation.id, entry);
     return entry;
   }
@@ -1237,8 +1318,11 @@ export class ManagerFreeText {
     wrapper.style.fontStyle = annotation.fontStyle ?? 'normal';
     wrapper.style.textDecoration = annotation.textDecoration ?? 'none';
     wrapper.style.textAlign = annotation.textAlign ?? 'left';
-    // Keep overlay wrapper transparent so Cytoscape can render the background behind it.
-    wrapper.style.background = 'transparent';
+    const hasBackground = annotation.backgroundColor !== 'transparent';
+    const overlayBackground = hasBackground
+      ? this.applyAlphaToColor(this.resolveBackgroundColor(annotation.backgroundColor, false), 0.9)
+      : 'transparent';
+    wrapper.style.background = overlayBackground;
     wrapper.style.opacity = '1';
     wrapper.style.boxShadow = 'none';
 
@@ -1275,6 +1359,10 @@ export class ManagerFreeText {
       this.updateOverlayScrollbar(entry);
     }
     wrapper.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${zoom})`;
+    const baseWidth = baseBox?.width ?? wrapper.offsetWidth ?? 0;
+    const baseHeight = baseBox?.height ?? wrapper.offsetHeight ?? 0;
+    const scaledUnrotatedWidth = baseWidth * zoom;
+    const scaledUnrotatedHeight = baseHeight * zoom;
     const scaledBox = this.getRotatedFrame(baseBox, rotation, zoom);
     entry.frame = {
       centerX: renderedPosition.x,
@@ -1283,8 +1371,18 @@ export class ManagerFreeText {
       height: scaledBox.height
     };
     this.syncNodeHitboxWithOverlay(node, scaledBox, zoom);
-    this.positionOverlayResizeHandle(resizeHandle, renderedPosition, scaledBox.width, scaledBox.height);
-    this.positionOverlayRotateHandle(rotateHandle, renderedPosition, scaledBox.height);
+    this.positionOverlayResizeHandle(
+      resizeHandle,
+      renderedPosition,
+      { width: scaledUnrotatedWidth, height: scaledUnrotatedHeight },
+      rotation
+    );
+    this.positionOverlayRotateHandle(
+      rotateHandle,
+      renderedPosition,
+      scaledUnrotatedHeight,
+      rotation
+    );
   }
 
   private getRotatedFrame(
@@ -1482,26 +1580,32 @@ export class ManagerFreeText {
   private positionOverlayResizeHandle(
     handle: HTMLButtonElement,
     position: { x: number; y: number },
-    width: number,
-    height: number
+    size: { width: number; height: number },
+    rotationDeg: number
   ): void {
     const handleWidth = handle.offsetWidth || 18;
     const handleHeight = handle.offsetHeight || 18;
     const handleInset = 6;
-    handle.style.left = `${position.x + width / 2 - handleWidth + handleInset}px`;
-    handle.style.top = `${position.y + height / 2 - handleHeight + handleInset}px`;
+    const offsetX = size.width / 2 - handleInset - handleWidth / 2;
+    const offsetY = size.height / 2 - handleInset - handleHeight / 2;
+    const rotated = this.rotateOffset(offsetX, offsetY, rotationDeg);
+    handle.style.left = `${position.x + rotated.x - handleWidth / 2}px`;
+    handle.style.top = `${position.y + rotated.y - handleHeight / 2}px`;
   }
 
   private positionOverlayRotateHandle(
     handle: HTMLButtonElement,
     position: { x: number; y: number },
-    height: number
+    height: number,
+    rotationDeg: number
   ): void {
     const handleWidth = handle.offsetWidth || 18;
     const handleHeight = handle.offsetHeight || 18;
     const handleOffset = 10;
-    handle.style.left = `${position.x - handleWidth / 2}px`;
-    handle.style.top = `${position.y - height / 2 - handleHeight - handleOffset}px`;
+    const offsetY = -height / 2 - handleHeight / 2 - handleOffset;
+    const rotated = this.rotateOffset(0, offsetY, rotationDeg);
+    handle.style.left = `${position.x + rotated.x - handleWidth / 2}px`;
+    handle.style.top = `${position.y + rotated.y - handleHeight / 2}px`;
   }
 
   private positionOverlayById(id: string): void {
@@ -1525,6 +1629,7 @@ export class ManagerFreeText {
       return;
     }
     if (this.isLabLocked()) {
+      this.updateOverlayHandleInteractivity(entry);
       entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
       entry.resizeHandle.classList.remove(HANDLE_VISIBLE_CLASS);
       entry.rotateHandle.classList.remove(ROTATE_HANDLE_VISIBLE_CLASS);
@@ -1561,6 +1666,21 @@ export class ManagerFreeText {
       entry.rotateHandle.classList.remove(ROTATE_HANDLE_VISIBLE_CLASS);
     }, 120);
     this.overlayHoverHideTimers.set(id, timeoutId);
+  }
+
+  private updateOverlayHandleInteractivity(entry?: OverlayEntry): void {
+    const locked = this.isLabLocked();
+    const apply = (target: OverlayEntry): void => {
+      target.resizeHandle.style.pointerEvents = locked ? 'none' : '';
+      target.rotateHandle.style.pointerEvents = locked ? 'none' : '';
+      target.resizeHandle.style.cursor = locked ? 'default' : '';
+      target.rotateHandle.style.cursor = locked ? 'default' : '';
+    };
+    if (entry) {
+      apply(entry);
+      return;
+    }
+    this.overlayElements.forEach(current => apply(current));
   }
 
   private canInitiateOverlayHandleAction(event: PointerEvent): boolean {
@@ -1787,11 +1907,12 @@ export class ManagerFreeText {
     els: FreeTextModalElements,
     state: FormattingState
   ): FreeTextAnnotation | null {
-    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect } = els;
+    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect, rotationInput } = els;
     const text = textInput.value.trim();
     if (!text) {
       return null;
     }
+    const rotationValue = this.normalizeRotation(Number.parseFloat(rotationInput.value));
     return {
       ...annotation,
       text,
@@ -1803,7 +1924,8 @@ export class ManagerFreeText {
       textDecoration: state.isUnderline ? 'underline' : 'none',
       fontFamily: fontFamilySelect.value,
       textAlign: state.alignment,
-      roundedBackground: state.hasRoundedBg
+      roundedBackground: state.hasRoundedBg,
+      rotation: rotationValue
     };
   }
 
@@ -1975,25 +2097,12 @@ export class ManagerFreeText {
   private getBackgroundStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
     const hasSolidBackground = annotation.backgroundColor !== 'transparent';
     if (useOverlay) {
-      if (!hasSolidBackground) {
-        return {
-          'text-background-opacity': 0,
-          'background-opacity': 0,
-          'background-color': 'transparent',
-          shape: 'rectangle',
-          'corner-radius': '0px'
-        };
-      }
-      const sizing = this.computeOverlaySizing(annotation);
-      const rounded = annotation.roundedBackground !== false;
-      const radius = rounded ? sizing.baseRadius : 0;
-      const backgroundColor = this.resolveBackgroundColor(annotation.backgroundColor, false);
       return {
         'text-background-opacity': 0,
-        'background-color': backgroundColor,
-        'background-opacity': 0.9,
-        shape: rounded ? 'round-rectangle' : 'rectangle',
-        'corner-radius': radius > 0 ? `${radius}px` : '0px'
+        'background-opacity': 0,
+        'background-color': 'transparent',
+        shape: 'rectangle',
+        'corner-radius': '0px'
       };
     }
 
