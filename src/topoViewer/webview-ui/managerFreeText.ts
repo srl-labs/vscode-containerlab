@@ -219,12 +219,13 @@ export class ManagerFreeText {
       return;
     }
     const { annotationId, startPointerAngle, startRotation, centerX, centerY } = this.overlayRotateState;
+    const pointer = this.getRelativePointerPosition(event);
     const annotation = this.annotations.get(annotationId);
     const node = this.annotationNodes.get(annotationId);
     if (!annotation || !node) {
       return;
     }
-    const pointerAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
+    const pointerAngle = Math.atan2(pointer.y - centerY, pointer.x - centerX);
     const deltaAngleDeg = (pointerAngle - startPointerAngle) * (180 / Math.PI);
     const nextRotation = this.normalizeRotation(startRotation + deltaAngleDeg);
     if (annotation.rotation === nextRotation) {
@@ -1119,11 +1120,23 @@ export class ManagerFreeText {
   }
 
   private registerLockStateListener(): void {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
       return;
     }
     window.addEventListener('topology-lock-change', this.onLockStateChanged);
     this.updateOverlayHandleInteractivity();
+  }
+
+  private getRelativePointerPosition(event: PointerEvent): { x: number; y: number } {
+    const container = this.cy.container();
+    if (!container || typeof container.getBoundingClientRect !== 'function') {
+      return { x: event.clientX, y: event.clientY };
+    }
+    const rect = container.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
   }
 
   private canUseResizeObserver(entry: OverlayEntry): boolean {
@@ -1789,9 +1802,10 @@ export class ManagerFreeText {
       this.positionAnnotationOverlay(node, entry, annotation);
     }
     const frame = entry.frame;
-    const centerX = frame?.centerX ?? event.clientX;
-    const centerY = frame?.centerY ?? event.clientY;
-    const startPointerAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
+    const pointer = this.getRelativePointerPosition(event);
+    const centerX = frame?.centerX ?? pointer.x;
+    const centerY = frame?.centerY ?? pointer.y;
+    const startPointerAngle = Math.atan2(pointer.y - centerY, pointer.x - centerX);
     const startRotation = this.normalizeRotation(annotation.rotation);
 
     this.overlayRotateState = {
