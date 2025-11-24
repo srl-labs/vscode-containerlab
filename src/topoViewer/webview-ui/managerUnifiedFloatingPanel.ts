@@ -12,6 +12,13 @@ const EDIT_CUSTOM_ID = 'edit-custom-node' as const;
 const DEFAULT_ROLE_PE = 'pe' as const;
 const DEFAULT_KIND_SR = 'nokia_srlinux' as const;
 const FLEX_COLUMN_CLASS = 'flex flex-col' as const;
+const TIPPY_PLACEMENT = 'right-start' as const;
+const TIPPY_BOX_SELECTOR = '.tippy-box' as const;
+const TIPPY_DROPDOWN_THEME = 'dropdown-menu' as const;
+const MENU_ITEM_CLASS = 'add-node-menu-item text-left filterable-item' as const;
+
+type ShapeType = 'rectangle' | 'circle' | 'line';
+
 interface NetworkTypeDefinition {
   readonly type: string;
   readonly label: string;
@@ -56,6 +63,7 @@ export class ManagerUnifiedFloatingPanel {
   private isProcessing: boolean = false;
   private addNodeMenuTippy: any = null;
   private addNetworkMenuTippy: any = null;
+  private addShapesMenuTippy: any = null;
   // Refs (actions/tooltips only; UI styles live in HTML)
   private deployBtn: HTMLButtonElement | null = null;
   private redeployBtn: HTMLButtonElement | null = null;
@@ -66,6 +74,7 @@ export class ManagerUnifiedFloatingPanel {
   private addNetworkBtn: HTMLButtonElement | null = null;
   private addGroupBtn: HTMLButtonElement | null = null;
   private addTextBtn: HTMLButtonElement | null = null;
+  private addShapesBtn: HTMLButtonElement | null = null;
   private addBulkLinkBtn: HTMLButtonElement | null = null;
   private lockBtn: HTMLButtonElement | null = null;
   private collapseBtn: HTMLButtonElement | null = null;
@@ -106,6 +115,7 @@ export class ManagerUnifiedFloatingPanel {
     this.addNetworkBtn = document.getElementById('add-network-btn') as HTMLButtonElement | null;
     this.addGroupBtn = document.getElementById('add-group-btn') as HTMLButtonElement | null;
     this.addTextBtn = document.getElementById('add-text-btn') as HTMLButtonElement | null;
+    this.addShapesBtn = document.getElementById('add-shapes-btn') as HTMLButtonElement | null;
     this.addBulkLinkBtn = document.getElementById('add-bulk-link-btn') as HTMLButtonElement | null;
     this.lockBtn = document.getElementById('lock-panel-btn') as HTMLButtonElement | null;
     this.collapseBtn = document.getElementById('collapse-panel-btn') as HTMLButtonElement | null;
@@ -119,6 +129,7 @@ export class ManagerUnifiedFloatingPanel {
     this.setupActionButtons();
     this.setupAddNodeMenu();
     this.setupAddNetworkMenu();
+    this.setupAddShapesMenu();
     // Delegate mode-driven UI (viewer/editor) to HTML script
     (window as any).updateUnifiedPanelState?.();
     document.addEventListener('topo-mode-changed', () => this.updateState());
@@ -129,6 +140,7 @@ export class ManagerUnifiedFloatingPanel {
       this.initializeTooltips();
       this.setupAddNodeMenu();
       this.setupAddNetworkMenu();
+      this.setupAddShapesMenu();
     }, 200);
 
     log.debug('Unified floating panel initialized');
@@ -220,6 +232,10 @@ export class ManagerUnifiedFloatingPanel {
       this.handleAddText();
     });
 
+    document.addEventListener('unified-add-shapes-click', () => {
+      this.handleAddShapes();
+    });
+
     document.addEventListener('unified-add-bulk-link-click', () => {
       this.handleAddBulkLink();
     });
@@ -239,16 +255,16 @@ export class ManagerUnifiedFloatingPanel {
       trigger: 'mouseenter',
       interactive: true,
       appendTo: document.body,
-      placement: 'right-start',
+      placement: TIPPY_PLACEMENT,
       delay: [100, 300], // delay show/hide to prevent flickering
       interactiveBorder: 10, // allow mouse movement between trigger and menu
       onShow(instance) {
         instance.setContent(self.buildAddNodeMenu(instance));
         // Force update the background color to match current theme
-        const box = instance.popper.querySelector('.tippy-box') as HTMLElement | null;
+        const box = instance.popper.querySelector(TIPPY_BOX_SELECTOR) as HTMLElement | null;
         self.applyDropdownTheme(box);
       },
-      theme: 'dropdown-menu',
+      theme: TIPPY_DROPDOWN_THEME,
       content: ''
     });
   }
@@ -266,15 +282,41 @@ export class ManagerUnifiedFloatingPanel {
       trigger: 'mouseenter',
       interactive: true,
       appendTo: document.body,
-      placement: 'right-start',
+      placement: TIPPY_PLACEMENT,
       delay: [100, 300],
       interactiveBorder: 10,
       onShow(instance) {
         instance.setContent(self.buildAddNetworkMenu(instance));
-        const box = instance.popper.querySelector('.tippy-box') as HTMLElement | null;
+        const box = instance.popper.querySelector(TIPPY_BOX_SELECTOR) as HTMLElement | null;
         self.applyDropdownTheme(box);
       },
-      theme: 'dropdown-menu',
+      theme: TIPPY_DROPDOWN_THEME,
+      content: ''
+    });
+  }
+
+  private setupAddShapesMenu(): void {
+    if (!this.addShapesBtn) return;
+
+    if (this.addShapesMenuTippy) {
+      this.addShapesMenuTippy.destroy();
+      this.addShapesMenuTippy = null;
+    }
+
+    const self = this;
+    this.addShapesMenuTippy = tippy(this.addShapesBtn, {
+      trigger: 'mouseenter',
+      interactive: true,
+      appendTo: document.body,
+      placement: TIPPY_PLACEMENT,
+      delay: [100, 300],
+      interactiveBorder: 10,
+      onShow(instance) {
+        instance.setContent(self.buildAddShapesMenu(instance));
+        const box = instance.popper.querySelector(TIPPY_BOX_SELECTOR) as HTMLElement | null;
+        self.applyDropdownTheme(box);
+      },
+      theme: TIPPY_DROPDOWN_THEME,
       content: ''
     });
   }
@@ -348,7 +390,7 @@ export class ManagerUnifiedFloatingPanel {
     addTopDivider = false
   ): void {
     const item = document.createElement('button');
-    item.className = 'add-node-menu-item text-left filterable-item';
+    item.className = MENU_ITEM_CLASS;
     if (addTopDivider) {
       item.classList.add('add-node-menu-item--top-divider');
     }
@@ -627,6 +669,46 @@ export class ManagerUnifiedFloatingPanel {
     return container;
   }
 
+  private buildAddShapesMenu(instance: any): HTMLElement {
+    const container = document.createElement('div');
+    container.className = FLEX_COLUMN_CLASS;
+
+    const menu = this.createMenuContainer(container);
+    const allItems: { element: HTMLElement; label: string; isDefault?: boolean }[] = [];
+
+    const shapes = [
+      { type: 'rectangle', label: 'Rectangle', icon: 'fa-square' },
+      { type: 'circle', label: 'Circle', icon: 'fa-circle' },
+      { type: 'line', label: 'Line', icon: 'fa-minus' }
+    ];
+
+    shapes.forEach((shape) => {
+      this.createShapeMenuItem(menu, allItems, shape.label, shape.type as 'rectangle' | 'circle' | 'line', shape.icon, instance);
+    });
+
+    return container;
+  }
+
+  private createShapeMenuItem(
+    menu: HTMLElement,
+    allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
+    label: string,
+    shapeType: ShapeType,
+    icon: string,
+    instance: any
+  ): void {
+    const item = document.createElement('button');
+    item.className = MENU_ITEM_CLASS;
+    item.innerHTML = `<i class="fas ${icon} mr-2"></i>${label}`;
+    item.type = 'button';
+    item.addEventListener('click', () => {
+      this.handleAddShapes(shapeType);
+      instance.hide();
+    });
+    menu.appendChild(item);
+    allItems.push({ element: item, label: label.toLowerCase() });
+  }
+
   private createNetworkMenuItem(
     menu: HTMLElement,
     allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
@@ -637,7 +719,7 @@ export class ManagerUnifiedFloatingPanel {
     addTopDivider = false
   ): void {
     const item = document.createElement('button');
-    item.className = 'add-node-menu-item text-left filterable-item';
+    item.className = MENU_ITEM_CLASS;
     if (addTopDivider) {
       item.classList.add('add-node-menu-item--top-divider');
     }
@@ -1078,6 +1160,21 @@ export class ManagerUnifiedFloatingPanel {
       log.info('Free text mode enabled via unified panel');
     } else {
       log.error('Free text manager not available');
+    }
+  }
+
+  /**
+   * Handles adding shapes to the topology
+   */
+  private handleAddShapes(shapeType: ShapeType = 'rectangle'): void {
+    log.debug(`Adding free shape (${shapeType}) via unified panel`);
+
+    const topoController = (window as any).topologyWebviewController;
+    if (topoController && topoController.freeShapesManager) {
+      topoController.freeShapesManager.enableAddShapeMode(shapeType);
+      log.info(`Free shape mode enabled (${shapeType}) via unified panel`);
+    } else {
+      log.error('Free shapes manager not available');
     }
   }
 

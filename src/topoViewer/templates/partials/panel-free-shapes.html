@@ -1,0 +1,151 @@
+<div id="free-shapes-modal-backdrop" class="modal-backdrop" style="display: none"></div>
+<div id="free-shapes-modal" class="modal-content" style="display: none">
+  <div
+    id="free-shapes-drag-handle"
+    class="panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150"
+    style="margin: 0 0 8px 0"
+  ></div>
+  <div class="p-6 pt-0">
+    <h3 id="free-shapes-modal-title" class="text-lg font-semibold mb-4"></h3>
+
+    <!-- Shape Type Selector -->
+    <div class="mb-4">
+      <label for="free-shapes-type" class="label mb-1">Shape Type:</label>
+      <select id="free-shapes-type" class="input-field w-full">
+        <option value="rectangle">Rectangle</option>
+        <option value="circle">Circle</option>
+        <option value="line">Line</option>
+      </select>
+    </div>
+
+    <!-- Size controls (for rectangle and circle) -->
+    <div id="free-shapes-size-controls" class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="free-shapes-width" class="label mb-1">Width:</label>
+        <input id="free-shapes-width" type="number" min="5" max="2000" class="input-field w-full" />
+      </div>
+      <div>
+        <label for="free-shapes-height" class="label mb-1">Height:</label>
+        <input
+          id="free-shapes-height"
+          type="number"
+          min="5"
+          max="2000"
+          class="input-field w-full"
+        />
+      </div>
+    </div>
+
+    <!-- Fill and Border controls -->
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="free-shapes-fill-color" class="label mb-1">Fill Color:</label>
+        <input id="free-shapes-fill-color" type="color" class="input-field w-full h-8 p-1" />
+      </div>
+      <div>
+        <label for="free-shapes-fill-opacity" class="label mb-1">Fill Opacity:</label>
+        <input
+          id="free-shapes-fill-opacity"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          class="input-field w-full"
+        />
+        <span id="free-shapes-fill-opacity-value" class="text-xs text-[var(--text-secondary)]">
+          100%
+        </span>
+      </div>
+      <div>
+        <label for="free-shapes-border-color" class="label mb-1">Border Color:</label>
+        <input id="free-shapes-border-color" type="color" class="input-field w-full h-8 p-1" />
+      </div>
+      <div>
+        <label for="free-shapes-border-width" class="label mb-1">Border Width:</label>
+        <input
+          id="free-shapes-border-width"
+          type="number"
+          min="0"
+          max="20"
+          step="1"
+          class="input-field w-full"
+        />
+      </div>
+    </div>
+
+    <!-- Border Style -->
+    <div class="mb-4">
+      <label for="free-shapes-border-style" class="label mb-1">Border Style:</label>
+      <select id="free-shapes-border-style" class="input-field w-full">
+        <option value="solid">Solid</option>
+        <option value="dashed">Dashed</option>
+        <option value="dotted">Dotted</option>
+      </select>
+    </div>
+
+    <!-- Rectangle-specific: Corner Radius -->
+    <div id="free-shapes-corner-radius-control" class="mb-4">
+      <label for="free-shapes-corner-radius" class="label mb-1">Corner Radius:</label>
+      <input
+        id="free-shapes-corner-radius"
+        type="number"
+        min="0"
+        max="100"
+        step="1"
+        class="input-field w-full"
+      />
+    </div>
+
+    <!-- Line-specific controls -->
+    <div id="free-shapes-line-controls" class="mb-4" style="display: none">
+      <div class="flex items-center gap-4 mb-2">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="free-shapes-line-start-arrow" type="checkbox" class="w-4 h-4 cursor-pointer" />
+          <span class="text-sm">Start Arrow</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="free-shapes-line-end-arrow" type="checkbox" class="w-4 h-4 cursor-pointer" />
+          <span class="text-sm">End Arrow</span>
+        </label>
+      </div>
+      <div>
+        <label for="free-shapes-arrow-size" class="label mb-1">Arrow Size:</label>
+        <input
+          id="free-shapes-arrow-size"
+          type="number"
+          min="5"
+          max="50"
+          step="1"
+          class="input-field w-full"
+        />
+      </div>
+    </div>
+
+    <!-- Rotation -->
+    <div class="mb-4">
+      <label for="free-shapes-rotation" class="label mb-1">Rotation (deg):</label>
+      <input
+        id="free-shapes-rotation"
+        type="number"
+        min="-360"
+        max="360"
+        step="1"
+        class="input-field w-full"
+      />
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <button id="free-shapes-transparent-btn" class="btn btn-small btn-outlined">
+        Transparent Fill
+      </button>
+      <button id="free-shapes-no-border-btn" class="btn btn-small btn-outlined">No Border</button>
+    </div>
+
+    <!-- Dialog Actions -->
+    <div class="flex justify-end gap-2 mt-4">
+      <button id="free-shapes-cancel-btn" class="btn btn-outlined btn-small">Cancel</button>
+      <button id="free-shapes-ok-btn" class="btn btn-primary btn-small">OK</button>
+    </div>
+  </div>
+</div>

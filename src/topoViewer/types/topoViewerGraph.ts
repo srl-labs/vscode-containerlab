@@ -152,6 +152,37 @@ export interface FreeTextAnnotation {
   roundedBackground?: boolean;
 }
 
+export interface FreeShapeAnnotation {
+  id: string;
+  shapeType: 'rectangle' | 'circle' | 'line';
+  position: {
+    x: number;
+    y: number;
+  };
+  // For rectangle and circle
+  width?: number;
+  height?: number;
+  // For line
+  endPosition?: {
+    x: number;
+    y: number;
+  };
+  // Styling
+  fillColor?: string;
+  fillOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  rotation?: number;
+  zIndex?: number;
+  // Line-specific properties
+  lineStartArrow?: boolean;
+  lineEndArrow?: boolean;
+  lineArrowSize?: number;
+  // Rectangle-specific
+  cornerRadius?: number;
+}
+
 export interface GroupStyleAnnotation {
   id: string;
   backgroundColor?: string;
@@ -205,6 +236,7 @@ export interface NodeAnnotation {
 
 export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
+  freeShapeAnnotations?: FreeShapeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
   cloudNodeAnnotations?: CloudNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];

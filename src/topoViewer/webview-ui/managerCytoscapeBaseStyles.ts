@@ -627,8 +627,41 @@ const freeTextStyles = [
   }
 ];
 
+const freeShapeStyles = [
+  {
+    selector: 'node[topoViewerRole="freeShape"]',
+    style: {
+      shape: 'rectangle',
+      'background-color': 'transparent',
+      'background-opacity': 0,
+      'border-width': 0,
+      label: '',
+      'z-index': 10,
+      width: 100,
+      height: 100,
+      'events': 'yes'
+    }
+  },
+  {
+    selector: 'node[topoViewerRole="freeShape"]:selected',
+    style: {
+      'border-width': '1px',
+      'border-color': '#007ACC',
+      'border-style': 'dashed',
+      'background-color': 'rgba(0, 122, 204, 0.1)',
+      'background-opacity': 0.1
+    }
+  },
+  {
+    selector: 'node[topoViewerRole="freeShape"]:grabbed',
+    style: {
+      'cursor': 'move'
+    }
+  }
+];
+
 const insertIndex = cytoscapeStylesBase.findIndex((s: any) => s.selector === 'edge');
-cytoscapeStylesBase.splice(insertIndex, 0, ...roleStyles, ...freeTextStyles);
+cytoscapeStylesBase.splice(insertIndex, 0, ...roleStyles, ...freeTextStyles, ...freeShapeStyles);
 
 /**
  * Returns a cloned Cytoscape style array adjusted for the given theme.

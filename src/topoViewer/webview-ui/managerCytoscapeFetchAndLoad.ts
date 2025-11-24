@@ -107,6 +107,15 @@ function loadFreeTextAnnotations(): void {
   }
 }
 
+function loadFreeShapeAnnotations(): void {
+  const freeShapesManager = (window as any).topologyWebviewController?.freeShapesManager;
+  if (freeShapesManager) {
+    freeShapesManager.loadAnnotations().catch((error: any) => {
+      log.error(`Failed to load free shape annotations: ${error}`);
+    });
+  }
+}
+
 function loadElementsIntoCytoscape(cy: cytoscape.Core, elementsToAdd: any[], incremental: boolean): void {
   if (incremental) {
     applyElementsIncrementally(cy, elementsToAdd);
@@ -285,6 +294,7 @@ export async function fetchAndLoadData(
 
       fitViewportAfterLayout(cy);
       loadFreeTextAnnotations();
+      loadFreeShapeAnnotations();
 
       if (overlap) {
         scheduleImprovedLayout(cy);

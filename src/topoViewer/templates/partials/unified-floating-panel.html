@@ -163,6 +163,15 @@
       <i class="fas fa-font text-[10px]"></i>
     </button>
 
+    <!-- Add Shapes Button -->
+    <button
+      id="add-shapes-btn"
+      class="bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] border border-transparent rounded p-[6px] cursor-pointer flex items-center justify-center text-[12px] transition-all duration-150 w-[28px] h-[28px] hover:bg-[var(--vscode-button-secondaryHoverBackground)] hover:-translate-y-[1px]"
+      data-tippy-content="Add Shapes"
+    >
+      <i class="fas fa-shapes text-[10px]"></i>
+    </button>
+
     <!-- Add Bulk Link Button -->
     <button
       id="add-bulk-link-btn"
@@ -758,6 +767,7 @@
     const addNetworkBtn = document.getElementById("add-network-btn");
     const addGroupBtn = document.getElementById("add-group-btn");
     const addTextBtn = document.getElementById("add-text-btn");
+    const addShapesBtn = document.getElementById("add-shapes-btn");
     const addBulkLinkBtn = document.getElementById("add-bulk-link-btn");
 
     if (deployBtn) {
@@ -818,6 +828,14 @@
       addTextBtn.addEventListener("click", function (e) {
         e.stopPropagation();
         const event = new CustomEvent("unified-add-text-click");
+        document.dispatchEvent(event);
+      });
+    }
+
+    if (addShapesBtn) {
+      addShapesBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const event = new CustomEvent("unified-add-shapes-click");
         document.dispatchEvent(event);
       });
     }

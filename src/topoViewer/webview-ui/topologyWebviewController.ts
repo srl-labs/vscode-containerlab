@@ -22,6 +22,7 @@ import { ManagerAddContainerlabNode } from "./managerAddContainerlabNode";
 import { ManagerViewportPanels } from "./managerViewportPanels";
 import { ManagerUnifiedFloatingPanel } from "./managerUnifiedFloatingPanel";
 import { ManagerFreeText } from "./managerFreeText";
+import { ManagerFreeShapes } from "./managerFreeShapes";
 import { ManagerNodeEditor } from "./managerNodeEditor";
 import { ManagerGroupStyle } from "./managerGroupStyle";
 import { CopyPasteManager } from "./managerCopyPaste";
@@ -136,6 +137,7 @@ class TopologyWebviewController {
   public zoomToFitManager!: ManagerZoomToFit;
   public labelEndpointManager!: ManagerLabelEndpoint;
   public freeTextManager?: ManagerFreeText;
+  public freeShapesManager?: ManagerFreeShapes;
   public copyPasteManager!: CopyPasteManager;
   public captureViewportManager!: { viewportButtonsCaptureViewportAsSvg: () => void };
   public labSettingsManager?: ManagerLabSettings;
@@ -153,6 +155,7 @@ class TopologyWebviewController {
   private edgeMenu: any;
   private groupMenu: any;
   private freeTextMenu: any;
+  private freeShapesMenu: any;
   private activeGroupMenuTarget?: cytoscape.NodeSingular;
   private suppressViewerCanvasClose = false;
   private editModeEventsRegistered = false;
@@ -510,6 +513,7 @@ class TopologyWebviewController {
     this.labSettingsManager = new ManagerLabSettings(this.messageSender);
     this.labSettingsManager.init();
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
+    this.freeShapesManager = new ManagerFreeShapes(this.cy, this.messageSender);
     this.groupStyleManager = new ManagerGroupStyle(
       this.cy,
       this.messageSender,
@@ -994,6 +998,9 @@ class TopologyWebviewController {
     if (!this.freeTextMenu) {
       this.freeTextMenu = this.initializeFreeTextContextMenu();
     }
+    if (!this.freeShapesMenu) {
+      this.freeShapesMenu = this.initializeFreeShapesContextMenu();
+    }
     if (!this.nodeMenu) {
       this.nodeMenu = this.initializeNodeContextMenu();
     }
@@ -1052,9 +1059,56 @@ class TopologyWebviewController {
     });
   }
 
+  private initializeFreeShapesContextMenu(): any {
+    return this.cy.cxtmenu({
+      selector: 'node[topoViewerRole = "freeShape"]',
+      commands: () => {
+        if (this.labLocked) {
+          return [];
+        }
+        return [
+          {
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-edit" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Edit Shape</span></div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              this.freeShapesManager?.editFreeShape(ele.id());
+            },
+          },
+          {
+            content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Remove Shape</span></div>`,
+            select: (ele: cytoscape.Singular) => {
+              if (!ele.isNode()) {
+                return;
+              }
+              this.freeShapesManager?.removeFreeShapeAnnotation(ele.id());
+            },
+          },
+        ];
+      },
+      menuRadius: 60,
+      fillColor: TopologyWebviewController.UI_FILL_COLOR,
+      activeFillColor: TopologyWebviewController.UI_ACTIVE_FILL_COLOR,
+      activePadding: 5,
+      indicatorSize: 0,
+      separatorWidth: 3,
+      spotlightPadding: 4,
+      adaptativeNodeSpotlightRadius: false,
+      minSpotlightRadius: 20,
+      maxSpotlightRadius: 20,
+      openMenuEvents: TopologyWebviewController.UI_OPEN_EVENT,
+      itemColor: TopologyWebviewController.UI_ITEM_COLOR,
+      itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
+      zIndex: 9999,
+      atMouse: false,
+      outsideMenuCancel: 10,
+    });
+  }
+
   private initializeNodeContextMenu(): any {
     return this.cy.cxtmenu({
-      selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"]',
+      selector: 'node[topoViewerRole != "group"][topoViewerRole != "freeText"][topoViewerRole != "freeShape"]',
       commands: (ele: cytoscape.Singular) => this.buildNodeMenuCommands(ele),
       menuRadius: 110,
       fillColor: TopologyWebviewController.UI_FILL_COLOR,

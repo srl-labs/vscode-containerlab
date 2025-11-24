@@ -1,0 +1,1021 @@
+import cytoscape from 'cytoscape';
+import { VscodeMessageSender } from './managerVscodeWebview';
+import { FreeShapeAnnotation } from '../types/topoViewerGraph';
+import { log } from '../logging/logger';
+
+const DEFAULT_SHAPE_WIDTH = 100;
+const DEFAULT_SHAPE_HEIGHT = 100;
+const DEFAULT_LINE_LENGTH = 150;
+const DEFAULT_FILL_COLOR = '#3498db';
+const DEFAULT_FILL_OPACITY = 0.5;
+const DEFAULT_BORDER_COLOR = '#2980b9';
+const DEFAULT_BORDER_WIDTH = 2;
+const DEFAULT_BORDER_STYLE = 'solid';
+const DEFAULT_ARROW_SIZE = 10;
+const DEFAULT_CORNER_RADIUS = 0;
+const MIN_SHAPE_SIZE = 5;
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+const SVG_STROKE_WIDTH_ATTR = 'stroke-width';
+const SVG_STROKE_DASHARRAY_ATTR = 'stroke-dasharray';
+const RESIZE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-resize-visible';
+const ROTATE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-rotate-visible';
+
+interface ShapeModalElements {
+  backdrop: HTMLDivElement;
+  dialog: HTMLDivElement;
+  dragHandle: HTMLDivElement;
+  titleEl: HTMLHeadingElement;
+  typeSelect: HTMLSelectElement;
+  widthInput: HTMLInputElement;
+  heightInput: HTMLInputElement;
+  fillColorInput: HTMLInputElement;
+  fillOpacityInput: HTMLInputElement;
+  fillOpacityValue: HTMLSpanElement;
+  borderColorInput: HTMLInputElement;
+  borderWidthInput: HTMLInputElement;
+  borderStyleSelect: HTMLSelectElement;
+  cornerRadiusInput: HTMLInputElement;
+  cornerRadiusControl: HTMLDivElement;
+  lineStartArrowCheck: HTMLInputElement;
+  lineEndArrowCheck: HTMLInputElement;
+  arrowSizeInput: HTMLInputElement;
+  lineControls: HTMLDivElement;
+  sizeControls: HTMLDivElement;
+  rotationInput: HTMLInputElement;
+  transparentBtn: HTMLButtonElement;
+  noBorderBtn: HTMLButtonElement;
+  cancelBtn: HTMLButtonElement;
+  okBtn: HTMLButtonElement;
+}
+
+interface OverlayEntry {
+  wrapper: HTMLDivElement;
+  svg: SVGSVGElement;
+  shape: SVGElement;
+  resizeHandle?: HTMLButtonElement;
+  rotateHandle?: HTMLButtonElement;
+}
+
+// eslint-disable-next-line no-unused-vars
+type ShapeResolve = (annotation: FreeShapeAnnotation | null) => void;
+type ShapeType = 'rectangle' | 'circle' | 'line';
+
+interface OverlayResizeState {
+  annotationId: string;
+  startWidth: number;
+  startHeight: number;
+  startClientX: number;
+  startClientY: number;
+}
+
+interface OverlayRotateState {
+  annotationId: string;
+  startRotation: number;
+  centerClientX: number;
+  centerClientY: number;
+  startAngle: number;
+}
+
+export class ManagerFreeShapes {
+  private cy: cytoscape.Core;
+  private messageSender: VscodeMessageSender;
+  private annotations: Map<string, FreeShapeAnnotation> = new Map();
+  private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
+  private overlayContainer: HTMLDivElement | null = null;
+  private overlayElements: Map<string, OverlayEntry> = new Map();
+  private idCounter = 0;
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private static readonly SAVE_DEBOUNCE_MS = 300;
+
+  private overlayResizeState: OverlayResizeState | null = null;
+  private overlayRotateState: OverlayRotateState | null = null;
+  private overlayHoverLocks: Set<string> = new Set();
+  private overlayHoverHideTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
+    this.cy = cy;
+    this.messageSender = messageSender;
+    this.setupEventHandlers();
+    this.initializeOverlayLayer();
+    this.registerLockStateListener();
+  }
+
+  private setupEventHandlers(): void {
+    const SELECTOR_FREE_SHAPE = 'node[topoViewerRole="freeShape"]';
+
+    this.cy.on('dblclick', SELECTOR_FREE_SHAPE, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if ((window as any).topologyLocked) {
+        (window as any).showLabLockedMessage?.();
+        return;
+      }
+      const node = event.target;
+      this.editFreeShape(node.id());
+    });
+
+    this.cy.on('dbltap', SELECTOR_FREE_SHAPE, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if ((window as any).topologyLocked) {
+        (window as any).showLabLockedMessage?.();
+        return;
+      }
+      const node = event.target;
+      this.editFreeShape(node.id());
+    });
+
+    this.cy.on('remove', SELECTOR_FREE_SHAPE, (event) => {
+      const node = event.target;
+      const id = node.id();
+      if (this.annotations.has(id)) {
+        this.annotations.delete(id);
+        this.annotationNodes.delete(id);
+        this.removeShapeOverlay(id);
+      }
+    });
+
+    this.cy.on('position', SELECTOR_FREE_SHAPE, (event) => {
+      const node = event.target;
+      if (node) {
+        this.positionOverlayById(node.id());
+        const annotation = this.annotations.get(node.id());
+        if (annotation) {
+          const pos = node.position();
+          annotation.position = {
+            x: Math.round(pos.x),
+            y: Math.round(pos.y)
+          };
+        }
+      }
+    });
+
+    this.cy.on('dragfree', SELECTOR_FREE_SHAPE, () => {
+      this.debouncedSave();
+    });
+
+    this.cy.on('viewport', () => {
+      this.overlayElements.forEach((_, id) => this.positionOverlayById(id));
+    });
+
+    this.cy.on('mouseover', SELECTOR_FREE_SHAPE, (event) => {
+      const node = event.target;
+      this.setOverlayHoverState(node.id(), true);
+    });
+
+    this.cy.on('mouseout', SELECTOR_FREE_SHAPE, (event) => {
+      const node = event.target;
+      this.setOverlayHoverState(node.id(), false);
+    });
+  }
+
+  private initializeOverlayLayer(): void {
+    const cyContainer = this.cy.container();
+    if (!cyContainer) return;
+
+    this.overlayContainer = document.createElement('div');
+    this.overlayContainer.id = 'free-shapes-overlay-container';
+    this.overlayContainer.style.position = 'absolute';
+    this.overlayContainer.style.top = '0';
+    this.overlayContainer.style.left = '0';
+    this.overlayContainer.style.width = '100%';
+    this.overlayContainer.style.height = '100%';
+    this.overlayContainer.style.pointerEvents = 'none';
+    this.overlayContainer.style.zIndex = '1';
+    cyContainer.appendChild(this.overlayContainer);
+  }
+
+  private registerLockStateListener(): void {
+    window.addEventListener('topology-lock-change', () => {
+      this.updateOverlayHandleInteractivity();
+    });
+  }
+
+  public enableAddShapeMode(shapeType: ShapeType): void {
+    const container = this.cy.container();
+    if (container) {
+      container.style.cursor = 'crosshair';
+    }
+
+    const handler = (event: cytoscape.EventObject) => {
+      const target = event.target;
+
+      if (target !== this.cy) {
+        if (target.isParent?.() || target.data?.('topoViewerRole') === 'group') {
+          this.disableAddShapeMode();
+          log.debug('Shape addition cancelled - cannot add shape to groups');
+          return;
+        }
+      }
+
+      if (event.target === this.cy) {
+        const position = event.position || (event as any).cyPosition;
+        if (position) {
+          this.addFreeShapeAtPosition(position, shapeType);
+        }
+        this.disableAddShapeMode();
+      }
+    };
+
+    this.cy.one('tap', handler);
+  }
+
+  public disableAddShapeMode(): void {
+    const container = this.cy.container();
+    if (container) {
+      container.style.cursor = '';
+    }
+  }
+
+  private async addFreeShapeAtPosition(
+    position: cytoscape.Position,
+    shapeType: ShapeType
+  ): Promise<void> {
+    const id = `freeShape_${Date.now()}_${++this.idCounter}`;
+    const defaultAnnotation = this.buildDefaultAnnotation(id, position, shapeType);
+
+    const result = await this.promptForShape('Add Shape', defaultAnnotation);
+    if (!result) return;
+
+    this.addFreeShapeAnnotation(result);
+  }
+
+  private buildDefaultAnnotation(
+    id: string,
+    position: cytoscape.Position,
+    shapeType: ShapeType
+  ): FreeShapeAnnotation {
+    const lastAnnotation = Array.from(this.annotations.values()).slice(-1)[0];
+    const baseAnnotation: FreeShapeAnnotation = {
+      id,
+      shapeType,
+      position: {
+        x: Math.round(position.x),
+        y: Math.round(position.y)
+      },
+      fillColor: lastAnnotation?.fillColor ?? DEFAULT_FILL_COLOR,
+      fillOpacity: lastAnnotation?.fillOpacity ?? DEFAULT_FILL_OPACITY,
+      borderColor: lastAnnotation?.borderColor ?? DEFAULT_BORDER_COLOR,
+      borderWidth: lastAnnotation?.borderWidth ?? DEFAULT_BORDER_WIDTH,
+      borderStyle: lastAnnotation?.borderStyle ?? DEFAULT_BORDER_STYLE,
+      rotation: 0
+    };
+
+    if (shapeType === 'line') {
+      baseAnnotation.endPosition = {
+        x: Math.round(position.x + DEFAULT_LINE_LENGTH),
+        y: Math.round(position.y)
+      };
+      baseAnnotation.lineStartArrow = false;
+      baseAnnotation.lineEndArrow = true;
+      baseAnnotation.lineArrowSize = DEFAULT_ARROW_SIZE;
+    } else {
+      baseAnnotation.width = DEFAULT_SHAPE_WIDTH;
+      baseAnnotation.height = DEFAULT_SHAPE_HEIGHT;
+      if (shapeType === 'rectangle') {
+        baseAnnotation.cornerRadius = DEFAULT_CORNER_RADIUS;
+      }
+    }
+
+    return baseAnnotation;
+  }
+
+  public addFreeShapeAnnotation(annotation: FreeShapeAnnotation, options: { skipSave?: boolean } = {}): void {
+    this.annotations.set(annotation.id, annotation);
+
+    const node = this.cy.add({
+      group: 'nodes',
+      data: {
+        id: annotation.id,
+        topoViewerRole: 'freeShape'
+      },
+      position: annotation.position,
+      selectable: true,
+      grabbable: true,
+      locked: false
+    });
+
+    this.annotationNodes.set(annotation.id, node);
+    this.applyShapeNodeStyles(node, annotation);
+    this.createShapeOverlay(node, annotation);
+
+    if (!options.skipSave) {
+      this.debouncedSave();
+    }
+  }
+
+  private applyShapeNodeStyles(node: cytoscape.NodeSingular, annotation: FreeShapeAnnotation): void {
+    const width = annotation.shapeType === 'line'
+      ? Math.abs((annotation.endPosition?.x ?? 0) - annotation.position.x)
+      : (annotation.width ?? DEFAULT_SHAPE_WIDTH);
+    const height = annotation.shapeType === 'line'
+      ? Math.abs((annotation.endPosition?.y ?? 0) - annotation.position.y)
+      : (annotation.height ?? DEFAULT_SHAPE_HEIGHT);
+
+    node.style({
+      'width': Math.max(MIN_SHAPE_SIZE, width),
+      'height': Math.max(MIN_SHAPE_SIZE, height),
+      'background-color': 'transparent',
+      'background-opacity': 0,
+      'border-width': 0,
+      'shape': 'rectangle',
+      'label': ''
+    });
+  }
+
+  private createShapeOverlay(node: cytoscape.NodeSingular, annotation: FreeShapeAnnotation): void {
+    if (!this.overlayContainer) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.pointerEvents = 'none';
+
+    const svg = document.createElementNS(SVG_NAMESPACE, 'svg');
+    svg.style.overflow = 'visible';
+    svg.style.position = 'absolute';
+
+    let shape: SVGElement;
+    if (annotation.shapeType === 'rectangle') {
+      shape = this.createRectangleShape(annotation);
+    } else if (annotation.shapeType === 'circle') {
+      shape = this.createCircleShape(annotation);
+    } else {
+      shape = this.createLineShape(annotation);
+    }
+
+    svg.appendChild(shape);
+    wrapper.appendChild(svg);
+    this.overlayContainer.appendChild(wrapper);
+
+    const resizeHandle = this.createOverlayHandle(
+      annotation.id,
+      'free-shape-overlay-resize',
+      'Resize shape',
+      (event) => this.startOverlayResize(annotation.id, event),
+      () => this.overlayResizeState?.annotationId === annotation.id
+    );
+    this.overlayContainer.appendChild(resizeHandle);
+
+    const rotateHandle = this.createOverlayHandle(
+      annotation.id,
+      'free-shape-overlay-rotate',
+      'Rotate shape',
+      (event) => this.startOverlayRotate(annotation.id, event),
+      () => this.overlayRotateState?.annotationId === annotation.id
+    );
+    this.overlayContainer.appendChild(rotateHandle);
+
+    this.overlayElements.set(annotation.id, { wrapper, svg, shape, resizeHandle, rotateHandle });
+    this.positionOverlayById(annotation.id);
+  }
+
+  private createRectangleShape(annotation: FreeShapeAnnotation): SVGRectElement {
+    const rect = document.createElementNS(SVG_NAMESPACE, 'rect');
+    const width = annotation.width ?? DEFAULT_SHAPE_WIDTH;
+    const height = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
+    const cornerRadius = annotation.cornerRadius ?? 0;
+
+    rect.setAttribute('width', String(width));
+    rect.setAttribute('height', String(height));
+    rect.setAttribute('rx', String(cornerRadius));
+    rect.setAttribute('ry', String(cornerRadius));
+    rect.setAttribute('fill', this.applyAlphaToColor(annotation.fillColor ?? DEFAULT_FILL_COLOR, annotation.fillOpacity ?? DEFAULT_FILL_OPACITY));
+    rect.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
+    rect.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
+    rect.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
+
+    return rect;
+  }
+
+  private createCircleShape(annotation: FreeShapeAnnotation): SVGEllipseElement {
+    const ellipse = document.createElementNS(SVG_NAMESPACE, 'ellipse');
+    const width = annotation.width ?? DEFAULT_SHAPE_WIDTH;
+    const height = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
+
+    ellipse.setAttribute('cx', String(width / 2));
+    ellipse.setAttribute('cy', String(height / 2));
+    ellipse.setAttribute('rx', String(width / 2));
+    ellipse.setAttribute('ry', String(height / 2));
+    ellipse.setAttribute('fill', this.applyAlphaToColor(annotation.fillColor ?? DEFAULT_FILL_COLOR, annotation.fillOpacity ?? DEFAULT_FILL_OPACITY));
+    ellipse.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
+    ellipse.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
+    ellipse.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
+
+    return ellipse;
+  }
+
+  private createLineShape(annotation: FreeShapeAnnotation): SVGGElement {
+    const g = document.createElementNS(SVG_NAMESPACE, 'g');
+    const line = document.createElementNS(SVG_NAMESPACE, 'line');
+
+    const endX = (annotation.endPosition?.x ?? annotation.position.x + DEFAULT_LINE_LENGTH) - annotation.position.x;
+    const endY = (annotation.endPosition?.y ?? annotation.position.y) - annotation.position.y;
+
+    line.setAttribute('x1', '0');
+    line.setAttribute('y1', '0');
+    line.setAttribute('x2', String(endX));
+    line.setAttribute('y2', String(endY));
+    line.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
+    line.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
+    line.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
+
+    g.appendChild(line);
+
+    if (annotation.lineStartArrow) {
+      g.appendChild(this.createArrow(0, 0, endX, endY, annotation));
+    }
+    if (annotation.lineEndArrow) {
+      g.appendChild(this.createArrow(endX, endY, 0, 0, annotation));
+    }
+
+    return g;
+  }
+
+  private createArrow(
+    x: number,
+    y: number,
+    fromX: number,
+    fromY: number,
+    annotation: FreeShapeAnnotation
+  ): SVGPolygonElement {
+    const arrow = document.createElementNS(SVG_NAMESPACE, 'polygon');
+    const arrowSize = annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE;
+
+    const angle = Math.atan2(y - fromY, x - fromX);
+    const arrowAngle = Math.PI / 6;
+
+    const p1x = x - arrowSize * Math.cos(angle - arrowAngle);
+    const p1y = y - arrowSize * Math.sin(angle - arrowAngle);
+    const p2x = x;
+    const p2y = y;
+    const p3x = x - arrowSize * Math.cos(angle + arrowAngle);
+    const p3y = y - arrowSize * Math.sin(angle + arrowAngle);
+
+    arrow.setAttribute('points', `${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y}`);
+    arrow.setAttribute('fill', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
+
+    return arrow;
+  }
+
+  private getBorderDashArray(style?: 'solid' | 'dashed' | 'dotted'): string {
+    switch (style) {
+      case 'dashed':
+        return '10,5';
+      case 'dotted':
+        return '2,2';
+      default:
+        return '';
+    }
+  }
+
+  private applyAlphaToColor(color: string, alpha: number): string {
+    const normalizedAlpha = Math.min(1, Math.max(0, alpha));
+    const hexMatch = /^#([0-9a-f]{6})$/i.exec(color);
+
+    if (hexMatch) {
+      const r = parseInt(hexMatch[1].slice(0, 2), 16);
+      const g = parseInt(hexMatch[1].slice(2, 4), 16);
+      const b = parseInt(hexMatch[1].slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${normalizedAlpha})`;
+    }
+
+    return color;
+  }
+
+  private positionOverlayById(id: string): void {
+    const node = this.annotationNodes.get(id);
+    const annotation = this.annotations.get(id);
+    const overlay = this.overlayElements.get(id);
+
+    if (!node || !annotation || !overlay || !node.inside()) return;
+
+    const pos = node.renderedPosition();
+    const zoom = this.cy.zoom();
+
+    this.positionOverlayShape(overlay, annotation, pos, zoom);
+    this.positionOverlayHandles(overlay, annotation, pos, zoom);
+  }
+
+  private positionOverlayShape(
+    overlay: OverlayEntry,
+    annotation: FreeShapeAnnotation,
+    pos: { x: number; y: number },
+    zoom: number
+  ): void {
+    if (annotation.shapeType === 'line') {
+      overlay.wrapper.style.left = `${pos.x}px`;
+      overlay.wrapper.style.top = `${pos.y}px`;
+      overlay.svg.style.transform = `rotate(${annotation.rotation ?? 0}deg)`;
+    } else {
+      const width = (annotation.width ?? DEFAULT_SHAPE_WIDTH) * zoom;
+      const height = (annotation.height ?? DEFAULT_SHAPE_HEIGHT) * zoom;
+
+      overlay.wrapper.style.left = `${pos.x - width / 2}px`;
+      overlay.wrapper.style.top = `${pos.y - height / 2}px`;
+      overlay.svg.setAttribute('width', String(width));
+      overlay.svg.setAttribute('height', String(height));
+      overlay.svg.style.transform = `rotate(${annotation.rotation ?? 0}deg)`;
+    }
+  }
+
+  private positionOverlayHandles(
+    overlay: OverlayEntry,
+    annotation: FreeShapeAnnotation,
+    pos: { x: number; y: number },
+    zoom: number
+  ): void {
+    const size = {
+      width: annotation.width ?? DEFAULT_SHAPE_WIDTH,
+      height: annotation.height ?? DEFAULT_SHAPE_HEIGHT
+    };
+    const rotation = annotation.rotation ?? 0;
+
+    if (overlay.resizeHandle) {
+      this.positionOverlayResizeHandle(overlay.resizeHandle, pos, size, rotation, zoom);
+    }
+    if (overlay.rotateHandle) {
+      this.positionOverlayRotateHandle(overlay.rotateHandle, pos, size.height, rotation, zoom);
+    }
+  }
+
+  private createOverlayHandle(
+    annotationId: string,
+    className: string,
+    ariaLabel: string,
+    // eslint-disable-next-line no-unused-vars
+    onPointerDown: (event: PointerEvent) => void,
+    isActiveCheck: () => boolean
+  ): HTMLButtonElement {
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = className;
+    handle.setAttribute('aria-label', ariaLabel);
+    handle.style.pointerEvents = 'auto';
+    handle.style.touchAction = 'none';
+    handle.onpointerdown = onPointerDown;
+    handle.onpointerenter = () => {
+      this.overlayHoverLocks.add(annotationId);
+      this.setOverlayHoverState(annotationId, true);
+    };
+    handle.onpointerleave = () => {
+      if (!isActiveCheck()) {
+        this.overlayHoverLocks.delete(annotationId);
+        this.setOverlayHoverState(annotationId, false);
+      }
+    };
+    return handle;
+  }
+
+  private positionOverlayResizeHandle(
+    handle: HTMLButtonElement,
+    centerPos: { x: number; y: number },
+    size: { width: number; height: number },
+    rotation: number,
+    zoom: number
+  ): void {
+    const halfW = (size.width * zoom) / 2;
+    const halfH = (size.height * zoom) / 2;
+    const rad = (rotation * Math.PI) / 180;
+
+    const localX = halfW;
+    const localY = halfH;
+    const rotatedX = localX * Math.cos(rad) - localY * Math.sin(rad);
+    const rotatedY = localX * Math.sin(rad) + localY * Math.cos(rad);
+
+    handle.style.left = `${centerPos.x + rotatedX}px`;
+    handle.style.top = `${centerPos.y + rotatedY}px`;
+    handle.style.transform = 'translate(-50%, -50%)';
+  }
+
+  private positionOverlayRotateHandle(
+    handle: HTMLButtonElement,
+    centerPos: { x: number; y: number },
+    height: number,
+    rotation: number,
+    zoom: number
+  ): void {
+    const offsetDistance = 20;
+    const halfH = (height * zoom) / 2;
+    const rad = (rotation * Math.PI) / 180;
+
+    const localX = 0;
+    const localY = -(halfH + offsetDistance);
+    const rotatedX = localX * Math.cos(rad) - localY * Math.sin(rad);
+    const rotatedY = localX * Math.sin(rad) + localY * Math.cos(rad);
+
+    handle.style.left = `${centerPos.x + rotatedX}px`;
+    handle.style.top = `${centerPos.y + rotatedY}px`;
+    handle.style.transform = 'translate(-50%, -50%)';
+  }
+
+  private startOverlayResize(annotationId: string, event: PointerEvent): void {
+    const annotation = this.annotations.get(annotationId);
+    const overlay = this.overlayElements.get(annotationId);
+    if (!annotation || !overlay || !overlay.resizeHandle) return;
+
+    this.overlayResizeState = {
+      annotationId,
+      startWidth: annotation.width ?? DEFAULT_SHAPE_WIDTH,
+      startHeight: annotation.height ?? DEFAULT_SHAPE_HEIGHT,
+      startClientX: event.clientX,
+      startClientY: event.clientY
+    };
+
+    overlay.resizeHandle.setPointerCapture(event.pointerId);
+    window.addEventListener('pointermove', this.onOverlayResizeMove);
+    window.addEventListener('pointerup', this.onOverlayResizeEnd);
+  }
+
+  private onOverlayResizeMove = (event: PointerEvent): void => {
+    if (!this.overlayResizeState) return;
+
+    const annotation = this.annotations.get(this.overlayResizeState.annotationId);
+    if (!annotation) return;
+
+    const zoom = this.cy.zoom();
+    const rotation = annotation.rotation ?? 0;
+    const rad = (rotation * Math.PI) / 180;
+
+    const dx = event.clientX - this.overlayResizeState.startClientX;
+    const dy = event.clientY - this.overlayResizeState.startClientY;
+
+    const rotatedDx = dx * Math.cos(-rad) - dy * Math.sin(-rad);
+    const rotatedDy = dx * Math.sin(-rad) + dy * Math.cos(-rad);
+
+    const newWidth = Math.max(MIN_SHAPE_SIZE, this.overlayResizeState.startWidth + rotatedDx / zoom);
+    const newHeight = Math.max(MIN_SHAPE_SIZE, this.overlayResizeState.startHeight + rotatedDy / zoom);
+
+    annotation.width = Math.round(newWidth);
+    annotation.height = Math.round(newHeight);
+
+    this.updateFreeShapeNode(this.overlayResizeState.annotationId, annotation);
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  private onOverlayResizeEnd = (_event: PointerEvent): void => {
+    if (!this.overlayResizeState) return;
+
+    window.removeEventListener('pointermove', this.onOverlayResizeMove);
+    window.removeEventListener('pointerup', this.onOverlayResizeEnd);
+
+    this.debouncedSave();
+    this.overlayResizeState = null;
+  };
+
+  private startOverlayRotate(annotationId: string, event: PointerEvent): void {
+    const annotation = this.annotations.get(annotationId);
+    const node = this.annotationNodes.get(annotationId);
+    const overlay = this.overlayElements.get(annotationId);
+    if (!annotation || !node || !overlay || !overlay.rotateHandle) return;
+
+    const pos = node.renderedPosition();
+    const startAngle = Math.atan2(event.clientY - pos.y, event.clientX - pos.x) * (180 / Math.PI);
+
+    this.overlayRotateState = {
+      annotationId,
+      startRotation: annotation.rotation ?? 0,
+      centerClientX: pos.x,
+      centerClientY: pos.y,
+      startAngle
+    };
+
+    overlay.rotateHandle.setPointerCapture(event.pointerId);
+    window.addEventListener('pointermove', this.onOverlayRotateMove);
+    window.addEventListener('pointerup', this.onOverlayRotateEnd);
+  }
+
+  private onOverlayRotateMove = (event: PointerEvent): void => {
+    if (!this.overlayRotateState) return;
+
+    const annotation = this.annotations.get(this.overlayRotateState.annotationId);
+    if (!annotation) return;
+
+    const currentAngle = Math.atan2(
+      event.clientY - this.overlayRotateState.centerClientY,
+      event.clientX - this.overlayRotateState.centerClientX
+    ) * (180 / Math.PI);
+
+    const angleDelta = currentAngle - this.overlayRotateState.startAngle;
+    let newRotation = this.overlayRotateState.startRotation + angleDelta;
+
+    while (newRotation < 0) newRotation += 360;
+    while (newRotation >= 360) newRotation -= 360;
+
+    annotation.rotation = Math.round(newRotation);
+    this.updateFreeShapeNode(this.overlayRotateState.annotationId, annotation);
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  private onOverlayRotateEnd = (_event: PointerEvent): void => {
+    if (!this.overlayRotateState) return;
+
+    window.removeEventListener('pointermove', this.onOverlayRotateMove);
+    window.removeEventListener('pointerup', this.onOverlayRotateEnd);
+
+    this.debouncedSave();
+    this.overlayRotateState = null;
+  };
+
+  private setOverlayHoverState(annotationId: string, hovered: boolean): void {
+    const overlay = this.overlayElements.get(annotationId);
+    if (!overlay) return;
+
+    if (hovered) {
+      const timer = this.overlayHoverHideTimers.get(annotationId);
+      if (timer) {
+        clearTimeout(timer);
+        this.overlayHoverHideTimers.delete(annotationId);
+      }
+
+      if (overlay.resizeHandle && !this.overlayResizeState) {
+        overlay.resizeHandle.classList.add(RESIZE_HANDLE_VISIBLE_CLASS);
+      }
+      if (overlay.rotateHandle && !this.overlayRotateState) {
+        overlay.rotateHandle.classList.add(ROTATE_HANDLE_VISIBLE_CLASS);
+      }
+    } else {
+      if (this.overlayHoverLocks.has(annotationId)) {
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        this.overlayHoverHideTimers.delete(annotationId);
+        if (overlay.resizeHandle && !this.overlayResizeState) {
+          overlay.resizeHandle.classList.remove(RESIZE_HANDLE_VISIBLE_CLASS);
+        }
+        if (overlay.rotateHandle && !this.overlayRotateState) {
+          overlay.rotateHandle.classList.remove(ROTATE_HANDLE_VISIBLE_CLASS);
+        }
+      }, 200);
+
+      this.overlayHoverHideTimers.set(annotationId, timer);
+    }
+  }
+
+  private updateOverlayHandleInteractivity(): void {
+    const locked = (window as any).topologyLocked;
+    this.overlayElements.forEach((overlay, annotationId) => {
+      if (overlay.resizeHandle) {
+        overlay.resizeHandle.style.pointerEvents = locked ? 'none' : 'auto';
+        if (locked) {
+          overlay.resizeHandle.classList.remove(RESIZE_HANDLE_VISIBLE_CLASS);
+        }
+      }
+      if (overlay.rotateHandle) {
+        overlay.rotateHandle.style.pointerEvents = locked ? 'none' : 'auto';
+        if (locked) {
+          overlay.rotateHandle.classList.remove(ROTATE_HANDLE_VISIBLE_CLASS);
+        }
+      }
+      if (locked) {
+        this.overlayHoverLocks.delete(annotationId);
+        const timer = this.overlayHoverHideTimers.get(annotationId);
+        if (timer) {
+          clearTimeout(timer);
+          this.overlayHoverHideTimers.delete(annotationId);
+        }
+      }
+    });
+  }
+
+  private removeShapeOverlay(id: string): void {
+    const overlay = this.overlayElements.get(id);
+    if (overlay) {
+      overlay.wrapper.remove();
+      if (overlay.resizeHandle) {
+        overlay.resizeHandle.remove();
+      }
+      if (overlay.rotateHandle) {
+        overlay.rotateHandle.remove();
+      }
+      this.overlayElements.delete(id);
+    }
+
+    const timer = this.overlayHoverHideTimers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.overlayHoverHideTimers.delete(id);
+    }
+    this.overlayHoverLocks.delete(id);
+  }
+
+  public async editFreeShape(id: string): Promise<void> {
+    const annotation = this.annotations.get(id);
+    if (!annotation) return;
+
+    const result = await this.promptForShape('Edit Shape', annotation);
+    if (result) {
+      Object.assign(annotation, result);
+      this.updateFreeShapeNode(id, annotation);
+      this.debouncedSave();
+    }
+  }
+
+  private updateFreeShapeNode(id: string, annotation: FreeShapeAnnotation): void {
+    const node = this.annotationNodes.get(id);
+    if (!node || !node.inside()) return;
+
+    this.applyShapeNodeStyles(node, annotation);
+    this.removeShapeOverlay(id);
+    this.createShapeOverlay(node, annotation);
+  }
+
+  private async promptForShape(title: string, annotation: FreeShapeAnnotation): Promise<FreeShapeAnnotation | null> {
+    return new Promise((resolve) => {
+      this.openShapeModal(title, annotation, resolve);
+    });
+  }
+
+  private openShapeModal(title: string, annotation: FreeShapeAnnotation, resolve: ShapeResolve): void {
+    const elements = this.getModalElements();
+    if (!elements) {
+      resolve(null);
+      return;
+    }
+
+    this.initializeModal(title, annotation, elements);
+    this.setupModalHandlers(annotation, elements, resolve);
+    this.showModal(elements);
+  }
+
+  private getModalElements(): ShapeModalElements | null {
+    const elements = {
+      backdrop: document.getElementById('free-shapes-modal-backdrop') as HTMLDivElement | null,
+      dialog: document.getElementById('free-shapes-modal') as HTMLDivElement | null,
+      dragHandle: document.getElementById('free-shapes-drag-handle') as HTMLDivElement | null,
+      titleEl: document.getElementById('free-shapes-modal-title') as HTMLHeadingElement | null,
+      typeSelect: document.getElementById('free-shapes-type') as HTMLSelectElement | null,
+      widthInput: document.getElementById('free-shapes-width') as HTMLInputElement | null,
+      heightInput: document.getElementById('free-shapes-height') as HTMLInputElement | null,
+      fillColorInput: document.getElementById('free-shapes-fill-color') as HTMLInputElement | null,
+      fillOpacityInput: document.getElementById('free-shapes-fill-opacity') as HTMLInputElement | null,
+      fillOpacityValue: document.getElementById('free-shapes-fill-opacity-value') as HTMLSpanElement | null,
+      borderColorInput: document.getElementById('free-shapes-border-color') as HTMLInputElement | null,
+      borderWidthInput: document.getElementById('free-shapes-border-width') as HTMLInputElement | null,
+      borderStyleSelect: document.getElementById('free-shapes-border-style') as HTMLSelectElement | null,
+      cornerRadiusInput: document.getElementById('free-shapes-corner-radius') as HTMLInputElement | null,
+      cornerRadiusControl: document.getElementById('free-shapes-corner-radius-control') as HTMLDivElement | null,
+      lineStartArrowCheck: document.getElementById('free-shapes-line-start-arrow') as HTMLInputElement | null,
+      lineEndArrowCheck: document.getElementById('free-shapes-line-end-arrow') as HTMLInputElement | null,
+      arrowSizeInput: document.getElementById('free-shapes-arrow-size') as HTMLInputElement | null,
+      lineControls: document.getElementById('free-shapes-line-controls') as HTMLDivElement | null,
+      sizeControls: document.getElementById('free-shapes-size-controls') as HTMLDivElement | null,
+      rotationInput: document.getElementById('free-shapes-rotation') as HTMLInputElement | null,
+      transparentBtn: document.getElementById('free-shapes-transparent-btn') as HTMLButtonElement | null,
+      noBorderBtn: document.getElementById('free-shapes-no-border-btn') as HTMLButtonElement | null,
+      cancelBtn: document.getElementById('free-shapes-cancel-btn') as HTMLButtonElement | null,
+      okBtn: document.getElementById('free-shapes-ok-btn') as HTMLButtonElement | null,
+    };
+
+    if (Object.values(elements).some(el => el === null)) {
+      log.error('Free shapes modal elements not found');
+      return null;
+    }
+
+    return elements as ShapeModalElements;
+  }
+
+  private initializeModal(title: string, annotation: FreeShapeAnnotation, els: ShapeModalElements): void {
+    els.titleEl.textContent = title;
+    els.typeSelect.value = annotation.shapeType;
+    els.widthInput.value = String(annotation.width ?? DEFAULT_SHAPE_WIDTH);
+    els.heightInput.value = String(annotation.height ?? DEFAULT_SHAPE_HEIGHT);
+    els.fillColorInput.value = annotation.fillColor ?? DEFAULT_FILL_COLOR;
+    els.fillOpacityInput.value = String(Math.round((annotation.fillOpacity ?? DEFAULT_FILL_OPACITY) * 100));
+    els.fillOpacityValue.textContent = `${Math.round((annotation.fillOpacity ?? DEFAULT_FILL_OPACITY) * 100)}%`;
+    els.borderColorInput.value = annotation.borderColor ?? DEFAULT_BORDER_COLOR;
+    els.borderWidthInput.value = String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH);
+    els.borderStyleSelect.value = annotation.borderStyle ?? DEFAULT_BORDER_STYLE;
+    els.cornerRadiusInput.value = String(annotation.cornerRadius ?? 0);
+    els.lineStartArrowCheck.checked = annotation.lineStartArrow ?? false;
+    els.lineEndArrowCheck.checked = annotation.lineEndArrow ?? false;
+    els.arrowSizeInput.value = String(annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE);
+    els.rotationInput.value = String(annotation.rotation ?? 0);
+
+    this.updateModalControlVisibility(annotation.shapeType, els);
+  }
+
+  private updateModalControlVisibility(shapeType: string, els: ShapeModalElements): void {
+    if (shapeType === 'line') {
+      els.sizeControls.style.display = 'none';
+      els.lineControls.style.display = 'block';
+      els.cornerRadiusControl.style.display = 'none';
+    } else {
+      els.sizeControls.style.display = 'grid';
+      els.lineControls.style.display = 'none';
+      els.cornerRadiusControl.style.display = shapeType === 'rectangle' ? 'block' : 'none';
+    }
+  }
+
+  private setupModalHandlers(annotation: FreeShapeAnnotation, els: ShapeModalElements, resolve: ShapeResolve): void {
+    const cleanup = () => {
+      els.backdrop.style.display = 'none';
+      els.dialog.style.display = 'none';
+    };
+
+    els.typeSelect.addEventListener('change', () => {
+      this.updateModalControlVisibility(els.typeSelect.value, els);
+    });
+
+    els.fillOpacityInput.addEventListener('input', () => {
+      els.fillOpacityValue.textContent = `${els.fillOpacityInput.value}%`;
+    });
+
+    els.transparentBtn.addEventListener('click', () => {
+      els.fillOpacityInput.value = '0';
+      els.fillOpacityValue.textContent = '0%';
+    });
+
+    els.noBorderBtn.addEventListener('click', () => {
+      els.borderWidthInput.value = '0';
+    });
+
+    els.cancelBtn.addEventListener('click', () => {
+      cleanup();
+      resolve(null);
+    });
+
+    els.okBtn.addEventListener('click', () => {
+      const result: FreeShapeAnnotation = {
+        ...annotation,
+        shapeType: els.typeSelect.value as 'rectangle' | 'circle' | 'line',
+        width: parseInt(els.widthInput.value),
+        height: parseInt(els.heightInput.value),
+        fillColor: els.fillColorInput.value,
+        fillOpacity: parseInt(els.fillOpacityInput.value) / 100,
+        borderColor: els.borderColorInput.value,
+        borderWidth: parseInt(els.borderWidthInput.value),
+        borderStyle: els.borderStyleSelect.value as 'solid' | 'dashed' | 'dotted',
+        cornerRadius: parseInt(els.cornerRadiusInput.value),
+        lineStartArrow: els.lineStartArrowCheck.checked,
+        lineEndArrow: els.lineEndArrowCheck.checked,
+        lineArrowSize: parseInt(els.arrowSizeInput.value),
+        rotation: parseInt(els.rotationInput.value)
+      };
+
+      cleanup();
+      resolve(result);
+    });
+  }
+
+  private showModal(els: ShapeModalElements): void {
+    els.backdrop.style.display = 'block';
+    els.dialog.style.display = 'block';
+  }
+
+  public removeFreeShapeAnnotation(id: string): void {
+    const node = this.annotationNodes.get(id);
+    if (node && node.inside()) {
+      node.remove();
+    }
+    this.annotations.delete(id);
+    this.annotationNodes.delete(id);
+    this.removeShapeOverlay(id);
+    this.debouncedSave();
+  }
+
+  private debouncedSave(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(() => {
+      this.saveAnnotations();
+    }, ManagerFreeShapes.SAVE_DEBOUNCE_MS);
+  }
+
+  private async saveAnnotations(): Promise<void> {
+    try {
+      const freeShapeAnnotations = Array.from(this.annotations.values());
+      await this.messageSender.sendMessageToVscodeEndpointPost(
+        'topo-editor-save-annotations',
+        { freeShapeAnnotations }
+      );
+      log.debug(`Saved ${freeShapeAnnotations.length} shape annotations`);
+    } catch (error) {
+      log.error(`Failed to save shape annotations: ${error}`);
+    }
+  }
+
+  public async loadAnnotations(): Promise<void> {
+    try {
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+        'topo-editor-load-annotations',
+        {}
+      );
+
+      if (response && response.freeShapeAnnotations) {
+        this.annotations.clear();
+        this.annotationNodes.forEach(node => { if (node && node.inside()) node.remove(); });
+        this.annotationNodes.clear();
+        this.overlayElements.forEach((overlay) => overlay.wrapper.remove());
+        this.overlayElements.clear();
+
+        const annotations = response.freeShapeAnnotations as FreeShapeAnnotation[];
+        annotations.forEach(annotation => this.addFreeShapeAnnotation(annotation, { skipSave: true }));
+        log.info(`Loaded ${annotations.length} shape annotations`);
+      }
+    } catch (error) {
+      log.error(`Failed to load shape annotations: ${error}`);
+    }
+  }
+}
