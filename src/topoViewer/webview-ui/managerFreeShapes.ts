@@ -17,6 +17,7 @@ const MIN_SHAPE_SIZE = 5;
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const SVG_STROKE_WIDTH_ATTR = 'stroke-width';
 const SVG_STROKE_DASHARRAY_ATTR = 'stroke-dasharray';
+const HANDLE_TRANSLATE = 'translate(-50%, -50%)';
 const RESIZE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-resize-visible';
 const ROTATE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-rotate-visible';
 
@@ -66,6 +67,12 @@ interface OverlayResizeState {
   startHeight: number;
   startClientX: number;
   startClientY: number;
+  anchorX: number;
+  anchorY: number;
+  rotationRad: number;
+  isLine: boolean;
+  startDx?: number;
+  startDy?: number;
 }
 
 interface OverlayRotateState {
@@ -81,6 +88,7 @@ export class ManagerFreeShapes {
   private messageSender: VscodeMessageSender;
   private annotations: Map<string, FreeShapeAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
+  private managedNodes: Set<string> = new Set();
   private overlayContainer: HTMLDivElement | null = null;
   private overlayElements: Map<string, OverlayEntry> = new Map();
   private idCounter = 0;
@@ -136,18 +144,7 @@ export class ManagerFreeShapes {
     });
 
     this.cy.on('position', SELECTOR_FREE_SHAPE, (event) => {
-      const node = event.target;
-      if (node) {
-        this.positionOverlayById(node.id());
-        const annotation = this.annotations.get(node.id());
-        if (annotation) {
-          const pos = node.position();
-          annotation.position = {
-            x: Math.round(pos.x),
-            y: Math.round(pos.y)
-          };
-        }
-      }
+      this.handleShapePositionChange(event.target);
     });
 
     this.cy.on('dragfree', SELECTOR_FREE_SHAPE, () => {
@@ -183,6 +180,34 @@ export class ManagerFreeShapes {
     this.overlayContainer.style.pointerEvents = 'none';
     this.overlayContainer.style.zIndex = '1';
     cyContainer.appendChild(this.overlayContainer);
+  }
+
+  private handleShapePositionChange(node: cytoscape.NodeSingular): void {
+    if (!node) return;
+    const annotation = this.annotations.get(node.id());
+    if (!annotation) return;
+
+    const pos = node.position();
+    if (annotation.shapeType === 'line' && annotation.endPosition) {
+      const prevCenter = this.getLineCenter(annotation);
+      const deltaX = Math.round(pos.x - prevCenter.x);
+      const deltaY = Math.round(pos.y - prevCenter.y);
+      annotation.endPosition = {
+        x: annotation.endPosition.x + deltaX,
+        y: annotation.endPosition.y + deltaY
+      };
+      annotation.position = {
+        x: annotation.position.x + deltaX,
+        y: annotation.position.y + deltaY
+      };
+    } else {
+      annotation.position = {
+        x: Math.round(pos.x),
+        y: Math.round(pos.y)
+      };
+    }
+
+    this.positionOverlayById(node.id());
   }
 
   private registerLockStateListener(): void {
@@ -262,8 +287,13 @@ export class ManagerFreeShapes {
     };
 
     if (shapeType === 'line') {
+      const halfLength = DEFAULT_LINE_LENGTH / 2;
+      baseAnnotation.position = {
+        x: Math.round(position.x - halfLength),
+        y: Math.round(position.y)
+      };
       baseAnnotation.endPosition = {
-        x: Math.round(position.x + DEFAULT_LINE_LENGTH),
+        x: Math.round(position.x + halfLength),
         y: Math.round(position.y)
       };
       baseAnnotation.lineStartArrow = false;
@@ -283,20 +313,42 @@ export class ManagerFreeShapes {
   public addFreeShapeAnnotation(annotation: FreeShapeAnnotation, options: { skipSave?: boolean } = {}): void {
     this.annotations.set(annotation.id, annotation);
 
-    const node = this.cy.add({
-      group: 'nodes',
-      data: {
-        id: annotation.id,
+    const existing = this.cy.getElementById(annotation.id);
+    let node: cytoscape.NodeSingular;
+    if (existing && existing.length > 0) {
+      node = existing[0] as cytoscape.NodeSingular;
+      node.data({
+        ...node.data(),
         topoViewerRole: 'freeShape'
-      },
-      position: annotation.position,
-      selectable: true,
-      grabbable: true,
-      locked: false
-    });
+      });
+      node.position(annotation.position);
+      node.selectify();
+      node.grabify();
+      node.unlock();
+      this.managedNodes.delete(annotation.id);
+    } else {
+      node = this.cy.add({
+        group: 'nodes',
+        data: {
+          id: annotation.id,
+          topoViewerRole: 'freeShape'
+        },
+        position: annotation.position,
+        selectable: true,
+        grabbable: true,
+        locked: false
+      })[0] as cytoscape.NodeSingular;
+      this.managedNodes.add(annotation.id);
+    }
 
     this.annotationNodes.set(annotation.id, node);
+    if (annotation.shapeType === 'line') {
+      node.position(this.getLineCenter(annotation));
+    } else if (annotation.position) {
+      node.position(annotation.position);
+    }
     this.applyShapeNodeStyles(node, annotation);
+    this.removeShapeOverlay(annotation.id);
     this.createShapeOverlay(node, annotation);
 
     if (!options.skipSave) {
@@ -323,7 +375,7 @@ export class ManagerFreeShapes {
     });
   }
 
-  private createShapeOverlay(node: cytoscape.NodeSingular, annotation: FreeShapeAnnotation): void {
+  private createShapeOverlay(_node: cytoscape.NodeSingular, annotation: FreeShapeAnnotation): void {
     if (!this.overlayContainer) return;
 
     const wrapper = document.createElement('div');
@@ -404,17 +456,69 @@ export class ManagerFreeShapes {
     return ellipse;
   }
 
+  private computeLineGeometry(annotation: FreeShapeAnnotation): {
+    dx: number;
+    dy: number;
+    minX: number;
+    minY: number;
+    width: number;
+    height: number;
+    start: { x: number; y: number };
+    end: { x: number; y: number };
+  } {
+    const startX = annotation.position.x;
+    const startY = annotation.position.y;
+    const endX = annotation.endPosition?.x ?? (annotation.position.x + DEFAULT_LINE_LENGTH);
+    const endY = annotation.endPosition?.y ?? annotation.position.y;
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    const strokeWidth = annotation.borderWidth ?? DEFAULT_BORDER_WIDTH;
+    const arrowSize = (annotation.lineStartArrow || annotation.lineEndArrow)
+      ? (annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE)
+      : 0;
+    const padding = Math.max(strokeWidth, arrowSize) + 1;
+
+    const halfDx = dx / 2;
+    const halfDy = dy / 2;
+    const startCenterX = -halfDx;
+    const startCenterY = -halfDy;
+    const endCenterX = halfDx;
+    const endCenterY = halfDy;
+
+    const minX = Math.min(startCenterX, endCenterX) - padding;
+    const maxX = Math.max(startCenterX, endCenterX) + padding;
+    const minY = Math.min(startCenterY, endCenterY) - padding;
+    const maxY = Math.max(startCenterY, endCenterY) + padding;
+
+    const width = Math.max(MIN_SHAPE_SIZE, maxX - minX);
+    const height = Math.max(MIN_SHAPE_SIZE, maxY - minY);
+
+    const start = { x: startCenterX - minX, y: startCenterY - minY };
+    const end = { x: endCenterX - minX, y: endCenterY - minY };
+
+    return { dx, dy, minX, minY, width, height, start, end };
+  }
+
+  private getLineCenter(annotation: FreeShapeAnnotation): { x: number; y: number } {
+    const endX = annotation.endPosition?.x ?? annotation.position.x;
+    const endY = annotation.endPosition?.y ?? annotation.position.y;
+    return {
+      x: (annotation.position.x + endX) / 2,
+      y: (annotation.position.y + endY) / 2
+    };
+  }
+
   private createLineShape(annotation: FreeShapeAnnotation): SVGGElement {
     const g = document.createElementNS(SVG_NAMESPACE, 'g');
     const line = document.createElementNS(SVG_NAMESPACE, 'line');
 
-    const endX = (annotation.endPosition?.x ?? annotation.position.x + DEFAULT_LINE_LENGTH) - annotation.position.x;
-    const endY = (annotation.endPosition?.y ?? annotation.position.y) - annotation.position.y;
+    const geometry = this.computeLineGeometry(annotation);
 
-    line.setAttribute('x1', '0');
-    line.setAttribute('y1', '0');
-    line.setAttribute('x2', String(endX));
-    line.setAttribute('y2', String(endY));
+    line.setAttribute('x1', String(geometry.start.x));
+    line.setAttribute('y1', String(geometry.start.y));
+    line.setAttribute('x2', String(geometry.end.x));
+    line.setAttribute('y2', String(geometry.end.y));
     line.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
     line.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
     line.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
@@ -422,10 +526,10 @@ export class ManagerFreeShapes {
     g.appendChild(line);
 
     if (annotation.lineStartArrow) {
-      g.appendChild(this.createArrow(0, 0, endX, endY, annotation));
+      g.appendChild(this.createArrow(geometry.start.x, geometry.start.y, geometry.end.x, geometry.end.y, annotation));
     }
     if (annotation.lineEndArrow) {
-      g.appendChild(this.createArrow(endX, endY, 0, 0, annotation));
+      g.appendChild(this.createArrow(geometry.end.x, geometry.end.y, geometry.start.x, geometry.start.y, annotation));
     }
 
     return g;
@@ -502,19 +606,33 @@ export class ManagerFreeShapes {
     pos: { x: number; y: number },
     zoom: number
   ): void {
+    const rotation = annotation.rotation ?? 0;
+
     if (annotation.shapeType === 'line') {
-      overlay.wrapper.style.left = `${pos.x}px`;
-      overlay.wrapper.style.top = `${pos.y}px`;
-      overlay.svg.style.transform = `rotate(${annotation.rotation ?? 0}deg)`;
+      const geometry = this.computeLineGeometry(annotation);
+      const centerX = pos.x;
+      const centerY = pos.y;
+      const width = geometry.width * zoom;
+      const height = geometry.height * zoom;
+
+      overlay.wrapper.style.left = `${centerX - width / 2}px`;
+      overlay.wrapper.style.top = `${centerY - height / 2}px`;
+      overlay.svg.setAttribute('width', String(width));
+      overlay.svg.setAttribute('height', String(height));
+      overlay.svg.setAttribute('viewBox', `0 0 ${geometry.width} ${geometry.height}`);
+      overlay.svg.style.transform = `rotate(${rotation}deg)`;
     } else {
-      const width = (annotation.width ?? DEFAULT_SHAPE_WIDTH) * zoom;
-      const height = (annotation.height ?? DEFAULT_SHAPE_HEIGHT) * zoom;
+      const baseWidth = annotation.width ?? DEFAULT_SHAPE_WIDTH;
+      const baseHeight = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
+      const width = baseWidth * zoom;
+      const height = baseHeight * zoom;
 
       overlay.wrapper.style.left = `${pos.x - width / 2}px`;
       overlay.wrapper.style.top = `${pos.y - height / 2}px`;
       overlay.svg.setAttribute('width', String(width));
       overlay.svg.setAttribute('height', String(height));
-      overlay.svg.style.transform = `rotate(${annotation.rotation ?? 0}deg)`;
+      overlay.svg.setAttribute('viewBox', `0 0 ${baseWidth} ${baseHeight}`);
+      overlay.svg.style.transform = `rotate(${rotation}deg)`;
     }
   }
 
@@ -524,6 +642,34 @@ export class ManagerFreeShapes {
     pos: { x: number; y: number },
     zoom: number
   ): void {
+    if (annotation.shapeType === 'line') {
+      const geometry = this.computeLineGeometry(annotation);
+      const rotation = annotation.rotation ?? 0;
+      const rad = (rotation * Math.PI) / 180;
+      const centerX = pos.x;
+      const centerY = pos.y;
+
+      if (overlay.resizeHandle) {
+        const endOffsetX = geometry.dx / 2;
+        const endOffsetY = geometry.dy / 2;
+        const rotatedEndX = (endOffsetX * Math.cos(rad) - endOffsetY * Math.sin(rad)) * zoom;
+        const rotatedEndY = (endOffsetX * Math.sin(rad) + endOffsetY * Math.cos(rad)) * zoom;
+        overlay.resizeHandle.style.left = `${centerX + rotatedEndX}px`;
+        overlay.resizeHandle.style.top = `${centerY + rotatedEndY}px`;
+        overlay.resizeHandle.style.transform = HANDLE_TRANSLATE;
+      }
+      if (overlay.rotateHandle) {
+        this.positionOverlayRotateHandle(
+          overlay.rotateHandle,
+          { x: centerX, y: centerY },
+          geometry.height,
+          rotation,
+          zoom
+        );
+      }
+      return;
+    }
+
     const size = {
       width: annotation.width ?? DEFAULT_SHAPE_WIDTH,
       height: annotation.height ?? DEFAULT_SHAPE_HEIGHT
@@ -584,7 +730,7 @@ export class ManagerFreeShapes {
 
     handle.style.left = `${centerPos.x + rotatedX}px`;
     handle.style.top = `${centerPos.y + rotatedY}px`;
-    handle.style.transform = 'translate(-50%, -50%)';
+    handle.style.transform = HANDLE_TRANSLATE;
   }
 
   private positionOverlayRotateHandle(
@@ -605,86 +751,175 @@ export class ManagerFreeShapes {
 
     handle.style.left = `${centerPos.x + rotatedX}px`;
     handle.style.top = `${centerPos.y + rotatedY}px`;
-    handle.style.transform = 'translate(-50%, -50%)';
+    handle.style.transform = HANDLE_TRANSLATE;
   }
 
   private startOverlayResize(annotationId: string, event: PointerEvent): void {
+    if (!this.canInitiateOverlayHandleAction(event)) {
+      return;
+    }
     const annotation = this.annotations.get(annotationId);
     const overlay = this.overlayElements.get(annotationId);
     if (!annotation || !overlay || !overlay.resizeHandle) return;
 
-    this.overlayResizeState = {
-      annotationId,
-      startWidth: annotation.width ?? DEFAULT_SHAPE_WIDTH,
-      startHeight: annotation.height ?? DEFAULT_SHAPE_HEIGHT,
-      startClientX: event.clientX,
-      startClientY: event.clientY
-    };
+    const isLine = annotation.shapeType === 'line';
+    const startWidth = annotation.width ?? DEFAULT_SHAPE_WIDTH;
+    const startHeight = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
+    const rotationRad = ((annotation.rotation ?? 0) * Math.PI) / 180;
+    if (isLine) {
+      const geometry = this.computeLineGeometry(annotation);
+      this.overlayResizeState = {
+        annotationId,
+        startWidth,
+        startHeight,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        anchorX: annotation.position.x,
+        anchorY: annotation.position.y,
+        rotationRad,
+        isLine: true,
+        startDx: geometry.dx,
+        startDy: geometry.dy
+      };
+    } else {
+      // Keep the rotated top-left corner fixed so the bottom-right handle drives the resize
+      const rotatedTopLeftX = (-startWidth / 2) * Math.cos(rotationRad) - (-startHeight / 2) * Math.sin(rotationRad);
+      const rotatedTopLeftY = (-startWidth / 2) * Math.sin(rotationRad) + (-startHeight / 2) * Math.cos(rotationRad);
+      const anchorX = annotation.position.x + rotatedTopLeftX;
+      const anchorY = annotation.position.y + rotatedTopLeftY;
+
+      this.overlayResizeState = {
+        annotationId,
+        startWidth,
+        startHeight,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        anchorX,
+        anchorY,
+        rotationRad,
+        isLine: false
+      };
+    }
 
     overlay.resizeHandle.setPointerCapture(event.pointerId);
     window.addEventListener('pointermove', this.onOverlayResizeMove);
     window.addEventListener('pointerup', this.onOverlayResizeEnd);
+    this.overlayHoverLocks.add(annotationId);
+    this.setOverlayHoverState(annotationId, true);
   }
 
   private onOverlayResizeMove = (event: PointerEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
     if (!this.overlayResizeState) return;
 
     const annotation = this.annotations.get(this.overlayResizeState.annotationId);
     if (!annotation) return;
 
+    const {
+      rotationRad,
+      anchorX,
+      anchorY,
+      isLine,
+      startDx = 0,
+      startDy = 0
+    } = this.overlayResizeState;
     const zoom = this.cy.zoom();
-    const rotation = annotation.rotation ?? 0;
-    const rad = (rotation * Math.PI) / 180;
 
     const dx = event.clientX - this.overlayResizeState.startClientX;
     const dy = event.clientY - this.overlayResizeState.startClientY;
 
-    const rotatedDx = dx * Math.cos(-rad) - dy * Math.sin(-rad);
-    const rotatedDy = dx * Math.sin(-rad) + dy * Math.cos(-rad);
+    const rotatedDx = dx * Math.cos(-rotationRad) - dy * Math.sin(-rotationRad);
+    const rotatedDy = dx * Math.sin(-rotationRad) + dy * Math.cos(-rotationRad);
+
+    if (isLine) {
+      let newDx = startDx + rotatedDx / zoom;
+      let newDy = startDy + rotatedDy / zoom;
+      const length = Math.hypot(newDx, newDy);
+      const minLength = MIN_SHAPE_SIZE;
+      if (length > 0 && length < minLength) {
+        const scale = minLength / length;
+        newDx *= scale;
+        newDy *= scale;
+      }
+
+      annotation.endPosition = {
+        x: Math.round(annotation.position.x + newDx),
+        y: Math.round(annotation.position.y + newDy)
+      };
+
+      this.updateFreeShapeNode(this.overlayResizeState.annotationId, annotation);
+      return;
+    }
 
     const newWidth = Math.max(MIN_SHAPE_SIZE, this.overlayResizeState.startWidth + rotatedDx / zoom);
     const newHeight = Math.max(MIN_SHAPE_SIZE, this.overlayResizeState.startHeight + rotatedDy / zoom);
 
     annotation.width = Math.round(newWidth);
     annotation.height = Math.round(newHeight);
+    if (!isLine) {
+      const rotatedTopLeftX = (-newWidth / 2) * Math.cos(rotationRad) - (-newHeight / 2) * Math.sin(rotationRad);
+      const rotatedTopLeftY = (-newWidth / 2) * Math.sin(rotationRad) + (-newHeight / 2) * Math.cos(rotationRad);
+      const newCenterX = anchorX - rotatedTopLeftX;
+      const newCenterY = anchorY - rotatedTopLeftY;
+      annotation.position = {
+        x: Math.round(newCenterX),
+        y: Math.round(newCenterY)
+      };
+    }
 
     this.updateFreeShapeNode(this.overlayResizeState.annotationId, annotation);
   };
 
-  // eslint-disable-next-line no-unused-vars
-  private onOverlayResizeEnd = (_event: PointerEvent): void => {
+  private onOverlayResizeEnd = (event: PointerEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
     if (!this.overlayResizeState) return;
+
+    const annotationId = this.overlayResizeState.annotationId;
 
     window.removeEventListener('pointermove', this.onOverlayResizeMove);
     window.removeEventListener('pointerup', this.onOverlayResizeEnd);
 
     this.debouncedSave();
     this.overlayResizeState = null;
+    this.overlayHoverLocks.delete(annotationId);
+    this.setOverlayHoverState(annotationId, false);
   };
 
   private startOverlayRotate(annotationId: string, event: PointerEvent): void {
+    if (!this.canInitiateOverlayHandleAction(event)) {
+      return;
+    }
     const annotation = this.annotations.get(annotationId);
     const node = this.annotationNodes.get(annotationId);
     const overlay = this.overlayElements.get(annotationId);
     if (!annotation || !node || !overlay || !overlay.rotateHandle) return;
 
     const pos = node.renderedPosition();
-    const startAngle = Math.atan2(event.clientY - pos.y, event.clientX - pos.x) * (180 / Math.PI);
+    const centerX = pos.x;
+    const centerY = pos.y;
+
+    const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
 
     this.overlayRotateState = {
       annotationId,
       startRotation: annotation.rotation ?? 0,
-      centerClientX: pos.x,
-      centerClientY: pos.y,
+      centerClientX: centerX,
+      centerClientY: centerY,
       startAngle
     };
 
     overlay.rotateHandle.setPointerCapture(event.pointerId);
     window.addEventListener('pointermove', this.onOverlayRotateMove);
     window.addEventListener('pointerup', this.onOverlayRotateEnd);
+    this.overlayHoverLocks.add(annotationId);
+    this.setOverlayHoverState(annotationId, true);
   }
 
   private onOverlayRotateMove = (event: PointerEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
     if (!this.overlayRotateState) return;
 
     const annotation = this.annotations.get(this.overlayRotateState.annotationId);
@@ -705,15 +940,20 @@ export class ManagerFreeShapes {
     this.updateFreeShapeNode(this.overlayRotateState.annotationId, annotation);
   };
 
-  // eslint-disable-next-line no-unused-vars
-  private onOverlayRotateEnd = (_event: PointerEvent): void => {
+  private onOverlayRotateEnd = (event: PointerEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
     if (!this.overlayRotateState) return;
+
+    const annotationId = this.overlayRotateState.annotationId;
 
     window.removeEventListener('pointermove', this.onOverlayRotateMove);
     window.removeEventListener('pointerup', this.onOverlayRotateEnd);
 
     this.debouncedSave();
     this.overlayRotateState = null;
+    this.overlayHoverLocks.delete(annotationId);
+    this.setOverlayHoverState(annotationId, false);
   };
 
   private setOverlayHoverState(annotationId: string, hovered: boolean): void {
@@ -815,9 +1055,28 @@ export class ManagerFreeShapes {
     const node = this.annotationNodes.get(id);
     if (!node || !node.inside()) return;
 
+    if (annotation.shapeType === 'line') {
+      const center = this.getLineCenter(annotation);
+      node.position(center);
+    } else if (annotation.position) {
+      node.position(annotation.position);
+    }
     this.applyShapeNodeStyles(node, annotation);
     this.removeShapeOverlay(id);
     this.createShapeOverlay(node, annotation);
+  }
+
+  private canInitiateOverlayHandleAction(event: PointerEvent): boolean {
+    if (event.button !== 0) {
+      return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if ((window as any).topologyLocked) {
+      (window as any).showLabLockedMessage?.();
+      return false;
+    }
+    return true;
   }
 
   private async promptForShape(title: string, annotation: FreeShapeAnnotation): Promise<FreeShapeAnnotation | null> {
@@ -965,11 +1224,12 @@ export class ManagerFreeShapes {
 
   public removeFreeShapeAnnotation(id: string): void {
     const node = this.annotationNodes.get(id);
-    if (node && node.inside()) {
+    if (node && node.inside() && this.managedNodes.has(id)) {
       node.remove();
     }
     this.annotations.delete(id);
     this.annotationNodes.delete(id);
+    this.managedNodes.delete(id);
     this.removeShapeOverlay(id);
     this.debouncedSave();
   }
@@ -1005,10 +1265,14 @@ export class ManagerFreeShapes {
 
       if (response && response.freeShapeAnnotations) {
         this.annotations.clear();
-        this.annotationNodes.forEach(node => { if (node && node.inside()) node.remove(); });
+        this.annotationNodes.forEach((node, id) => {
+          if (node && node.inside() && this.managedNodes.has(id)) {
+            node.remove();
+          }
+        });
         this.annotationNodes.clear();
-        this.overlayElements.forEach((overlay) => overlay.wrapper.remove());
-        this.overlayElements.clear();
+        this.managedNodes.clear();
+        Array.from(this.overlayElements.keys()).forEach((id) => this.removeShapeOverlay(id));
 
         const annotations = response.freeShapeAnnotations as FreeShapeAnnotation[];
         annotations.forEach(annotation => this.addFreeShapeAnnotation(annotation, { skipSave: true }));
