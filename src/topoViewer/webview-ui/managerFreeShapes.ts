@@ -381,10 +381,12 @@ export class ManagerFreeShapes {
     const wrapper = document.createElement('div');
     wrapper.style.position = 'absolute';
     wrapper.style.pointerEvents = 'none';
+    wrapper.style.transformOrigin = 'center center';
 
     const svg = document.createElementNS(SVG_NAMESPACE, 'svg');
     svg.style.overflow = 'visible';
     svg.style.position = 'absolute';
+    svg.style.transformOrigin = 'center center';
 
     let shape: SVGElement;
     if (annotation.shapeType === 'rectangle') {
@@ -408,14 +410,17 @@ export class ManagerFreeShapes {
     );
     this.overlayContainer.appendChild(resizeHandle);
 
-    const rotateHandle = this.createOverlayHandle(
-      annotation.id,
-      'free-shape-overlay-rotate',
-      'Rotate shape',
-      (event) => this.startOverlayRotate(annotation.id, event),
-      () => this.overlayRotateState?.annotationId === annotation.id
-    );
-    this.overlayContainer.appendChild(rotateHandle);
+    let rotateHandle: HTMLButtonElement | undefined;
+    if (annotation.shapeType !== 'line') {
+      rotateHandle = this.createOverlayHandle(
+        annotation.id,
+        'free-shape-overlay-rotate',
+        'Rotate shape',
+        (event) => this.startOverlayRotate(annotation.id, event),
+        () => this.overlayRotateState?.annotationId === annotation.id
+      );
+      this.overlayContainer.appendChild(rotateHandle);
+    }
 
     this.overlayElements.set(annotation.id, { wrapper, svg, shape, resizeHandle, rotateHandle });
     this.positionOverlayById(annotation.id);
@@ -615,12 +620,15 @@ export class ManagerFreeShapes {
       const width = geometry.width * zoom;
       const height = geometry.height * zoom;
 
-      overlay.wrapper.style.left = `${centerX - width / 2}px`;
-      overlay.wrapper.style.top = `${centerY - height / 2}px`;
+      overlay.wrapper.style.width = `${width}px`;
+      overlay.wrapper.style.height = `${height}px`;
+      overlay.wrapper.style.left = `${centerX}px`;
+      overlay.wrapper.style.top = `${centerY}px`;
+      overlay.wrapper.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
       overlay.svg.setAttribute('width', String(width));
       overlay.svg.setAttribute('height', String(height));
       overlay.svg.setAttribute('viewBox', `0 0 ${geometry.width} ${geometry.height}`);
-      overlay.svg.style.transform = `rotate(${rotation}deg)`;
+      overlay.svg.style.transform = '';
     } else {
       const baseWidth = annotation.width ?? DEFAULT_SHAPE_WIDTH;
       const baseHeight = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
@@ -629,6 +637,7 @@ export class ManagerFreeShapes {
 
       overlay.wrapper.style.left = `${pos.x - width / 2}px`;
       overlay.wrapper.style.top = `${pos.y - height / 2}px`;
+      overlay.wrapper.style.transform = '';
       overlay.svg.setAttribute('width', String(width));
       overlay.svg.setAttribute('height', String(height));
       overlay.svg.setAttribute('viewBox', `0 0 ${baseWidth} ${baseHeight}`);
@@ -657,15 +666,6 @@ export class ManagerFreeShapes {
         overlay.resizeHandle.style.left = `${centerX + rotatedEndX}px`;
         overlay.resizeHandle.style.top = `${centerY + rotatedEndY}px`;
         overlay.resizeHandle.style.transform = HANDLE_TRANSLATE;
-      }
-      if (overlay.rotateHandle) {
-        this.positionOverlayRotateHandle(
-          overlay.rotateHandle,
-          { x: centerX, y: centerY },
-          geometry.height,
-          rotation,
-          zoom
-        );
       }
       return;
     }
