@@ -145,6 +145,7 @@ export interface FreeTextAnnotation {
   textDecoration?: 'none' | 'underline';
   textAlign?: 'left' | 'center' | 'right';
   fontFamily?: string;
+  rotation?: number;
   width?: number;
   height?: number;
   zIndex?: number;

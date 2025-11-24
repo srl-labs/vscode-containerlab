@@ -12,6 +12,7 @@ import type { ManagerGroupStyle } from './managerGroupStyle';
 // the appearance on the Cytoscape canvas where text renders larger than the modal.
 const MIN_FREE_TEXT_FONT_SIZE = 1;
 const DEFAULT_FREE_TEXT_FONT_SIZE = 8;
+const DEFAULT_FREE_TEXT_PADDING = 3;
 const PREVIEW_FONT_SCALE = 2;
 const MARKDOWN_EMPTY_STATE_MESSAGE = 'Use Markdown (including ```fences```) to format notes.';
 const DEFAULT_FREE_TEXT_WIDTH = 420;
@@ -24,6 +25,7 @@ const BUTTON_OUTLINED_CLASS = 'btn-outlined';
 const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
 const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
 const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
+const ROTATE_HANDLE_VISIBLE_CLASS = 'free-text-overlay-rotate-visible';
 type TextAlignment = 'left' | 'center' | 'right';
 const htmlEscapeMap: Record<string, string> = {
   '&': '&amp;',
@@ -67,6 +69,7 @@ interface FreeTextModalElements {
   fontFamilySelect: HTMLSelectElement;
   fontColorInput: HTMLInputElement;
   bgColorInput: HTMLInputElement;
+  rotationInput: HTMLInputElement;
   boldBtn: HTMLButtonElement;
   italicBtn: HTMLButtonElement;
   underlineBtn: HTMLButtonElement;
@@ -91,7 +94,8 @@ interface FormattingState {
 interface OverlayEntry {
   wrapper: HTMLDivElement;
   content: HTMLDivElement;
-  handle: HTMLButtonElement;
+  resizeHandle: HTMLButtonElement;
+  rotateHandle: HTMLButtonElement;
   scrollbar: HTMLDivElement;
   frame?: { centerX: number; centerY: number; width: number; height: number };
   size?: { width: number; height: number };
@@ -106,6 +110,18 @@ interface OverlayResizeState {
   startWidth: number;
   startHeight: number;
 }
+
+interface OverlayRotateState {
+  annotationId: string;
+  pointerId: number;
+  startPointerAngle: number;
+  startRotation: number;
+  centerX: number;
+  centerY: number;
+}
+
+// eslint-disable-next-line no-unused-vars
+type PointerDownHandler = (event: PointerEvent) => void;
 
 // eslint-disable-next-line no-unused-vars
 type FreeTextResolve = (value: FreeTextAnnotation | null) => void;
@@ -122,10 +138,22 @@ export class ManagerFreeText {
   private overlayContainer: HTMLDivElement | null = null;
   private overlayElements: Map<string, OverlayEntry> = new Map();
   private overlayResizeState: OverlayResizeState | null = null;
+  private overlayRotateState: OverlayRotateState | null = null;
   private activeResizeHandle: HTMLButtonElement | null = null;
+  private activeRotateHandle: HTMLButtonElement | null = null;
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, number> = new Map();
   private overlayWheelTarget: HTMLElement | null = null;
+  private onLockStateChanged = (): void => {
+    this.updateOverlayHandleInteractivity();
+    if (this.isLabLocked()) {
+      this.overlayElements.forEach((_entry, id) => this.setOverlayHoverState(id, false));
+    }
+  };
+  // Track intended (unsnapped) positions for free text during drag
+  private intendedPositions: Map<string, { x: number; y: number }> = new Map();
+  // Guard to prevent recursive position corrections
+  private positionCorrectionInProgress: Set<string> = new Set();
   private saveInProgress = false;
   private pendingSaveWhileBusy = false;
   private lastSavedStateKey: string | null = null;
@@ -185,6 +213,48 @@ export class ManagerFreeText {
     this.activeResizeHandle = null;
     this.debouncedSave();
   };
+
+  private onOverlayRotateMove = (event: PointerEvent): void => {
+    if (!this.overlayRotateState) {
+      return;
+    }
+    const { annotationId, startPointerAngle, startRotation, centerX, centerY } = this.overlayRotateState;
+    const pointer = this.getRelativePointerPosition(event);
+    const annotation = this.annotations.get(annotationId);
+    const node = this.annotationNodes.get(annotationId);
+    if (!annotation || !node) {
+      return;
+    }
+    const pointerAngle = Math.atan2(pointer.y - centerY, pointer.x - centerX);
+    const deltaAngleDeg = (pointerAngle - startPointerAngle) * (180 / Math.PI);
+    const nextRotation = this.normalizeRotation(startRotation + deltaAngleDeg);
+    if (annotation.rotation === nextRotation) {
+      this.positionOverlayById(annotationId);
+      return;
+    }
+    annotation.rotation = nextRotation;
+    this.updateAnnotationOverlay(node, annotation);
+  };
+
+  private onOverlayRotateEnd = (): void => {
+    if (!this.overlayRotateState) {
+      return;
+    }
+    const { annotationId, pointerId } = this.overlayRotateState;
+    if (this.activeRotateHandle && typeof this.activeRotateHandle.releasePointerCapture === 'function') {
+      this.activeRotateHandle.releasePointerCapture(pointerId);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', this.onOverlayRotateMove);
+      window.removeEventListener('pointerup', this.onOverlayRotateEnd);
+      window.removeEventListener('pointercancel', this.onOverlayRotateEnd);
+    }
+    this.overlayHoverLocks.delete(annotationId);
+    this.setOverlayHoverState(annotationId, false);
+    this.overlayRotateState = null;
+    this.activeRotateHandle = null;
+    this.debouncedSave();
+  };
   private styleReapplyInProgress = false;
   private static readonly SAVE_DEBOUNCE_MS = 300;
   private static readonly SAVE_MAX_WAIT_MS = 1200;
@@ -203,6 +273,7 @@ export class ManagerFreeText {
     this.setupEventHandlers();
     this.setupStylePreservation();
     this.initializeOverlayLayer();
+    this.registerLockStateListener();
 
     this.reapplyStylesBound = () => {
       this.annotationNodes.forEach((node, id) => {
@@ -235,7 +306,7 @@ export class ManagerFreeText {
           this.lastSavedStateKey = this.buildSaveStateKey(annotations, groupStyles);
           log.info(`freeText:loadAnnotations:applied (annotations=${annotations.length})`);
 
-          setTimeout(this.reapplyStylesBound, 200);
+          this.schedulePositionRestores();
         }
       } catch (error) {
         log.error(`Failed to load annotations: ${error}`);
@@ -337,29 +408,75 @@ export class ManagerFreeText {
     });
 
     // Handle position changes for free text nodes
+    // After drag release, restore the intended (unsnapped) position to bypass grid snapping
     this.cy.on('dragfree', SELECTOR_FREE_TEXT, (event) => {
       const node = event.target;
-      this.updateFreeTextPosition(node.id(), node.position());
+      const nodeId = node.id();
+      const intendedPos = this.intendedPositions.get(nodeId);
+      if (intendedPos) {
+        // Restore the unsnapped position - grid snap has already modified node.position()
+        node.position(intendedPos);
+        this.updateFreeTextPosition(nodeId, intendedPos);
+        this.intendedPositions.delete(nodeId);
+      } else {
+        this.updateFreeTextPosition(nodeId, node.position());
+      }
     });
 
-    // Also handle position changes to keep overlays in sync (and persist user drags)
-    this.cy.on('position', SELECTOR_FREE_TEXT, (event) => {
-      const node = event.target;
-      if (!node) {
-        return;
-      }
-      this.positionOverlayById(node.id());
-      if (!node.grabbed()) {
-        return;
-      }
-      const annotation = this.annotations.get(node.id());
-      if (annotation) {
-        annotation.position = {
-          x: Math.round(node.position().x),
-          y: Math.round(node.position().y)
-        };
-      }
-    });
+    // Also handle position changes to keep overlays in sync and enforce annotation positions
+    this.cy.on('position', SELECTOR_FREE_TEXT, (event) => this.handleFreeTextPositionChange(event));
+  }
+
+  /**
+   * Handle position changes for free text nodes.
+   * If user is dragging, track the position. Otherwise, enforce annotation position.
+   */
+  private handleFreeTextPositionChange(event: cytoscape.EventObject): void {
+    const node = event.target;
+    if (!node) {
+      return;
+    }
+    this.positionOverlayById(node.id());
+
+    const annotation = this.annotations.get(node.id());
+    if (!annotation) {
+      return;
+    }
+
+    if (node.grabbed()) {
+      // Track the intended (unsnapped) position during drag
+      const pos = node.position();
+      this.intendedPositions.set(node.id(), {
+        x: Math.round(pos.x),
+        y: Math.round(pos.y)
+      });
+      annotation.position = {
+        x: Math.round(pos.x),
+        y: Math.round(pos.y)
+      };
+    } else {
+      // Node is NOT being dragged - enforce annotation position
+      this.enforceAnnotationPosition(node, annotation);
+    }
+  }
+
+  /**
+   * Force free text node position to match annotation data.
+   * This prevents external changes (layout, grid snap) from moving free text.
+   */
+  private enforceAnnotationPosition(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
+    const nodeId = node.id();
+    if (this.positionCorrectionInProgress.has(nodeId)) {
+      return; // Prevent infinite recursion
+    }
+    const pos = node.position();
+    const annotationX = annotation.position.x;
+    const annotationY = annotation.position.y;
+    if (Math.round(pos.x) !== annotationX || Math.round(pos.y) !== annotationY) {
+      this.positionCorrectionInProgress.add(nodeId);
+      node.position({ x: annotationX, y: annotationY });
+      this.positionCorrectionInProgress.delete(nodeId);
+    }
   }
 
   /**
@@ -414,7 +531,7 @@ export class ManagerFreeText {
    * Add free text at a specific position
   */
   private async addFreeTextAtPosition(position: cytoscape.Position): Promise<void> {
-    const id = `freeText_${Date.now()}_${++this.idCounter}`;
+   const id = `freeText_${Date.now()}_${++this.idCounter}`;
     const defaultAnnotation = this.buildDefaultAnnotation(id, position);
 
     const result = await this.promptForTextWithFormatting('Add Text', defaultAnnotation);
@@ -434,6 +551,7 @@ export class ManagerFreeText {
       textDecoration = 'none',
       fontFamily = 'monospace',
       textAlign = 'left',
+      rotation = 0,
       roundedBackground = true
     } = lastAnnotation ?? {};
     return {
@@ -451,6 +569,7 @@ export class ManagerFreeText {
       textDecoration,
       fontFamily,
       textAlign,
+      rotation: this.normalizeRotation(rotation),
       roundedBackground
     };
   }
@@ -524,6 +643,7 @@ export class ManagerFreeText {
       fontFamilySelect: document.getElementById('free-text-font-family') as HTMLSelectElement | null,
       fontColorInput: document.getElementById('free-text-font-color') as HTMLInputElement | null,
       bgColorInput: document.getElementById('free-text-bg-color') as HTMLInputElement | null,
+      rotationInput: document.getElementById('free-text-rotation') as HTMLInputElement | null,
       boldBtn: document.getElementById('free-text-bold-btn') as HTMLButtonElement | null,
       italicBtn: document.getElementById('free-text-italic-btn') as HTMLButtonElement | null,
       underlineBtn: document.getElementById('free-text-underline-btn') as HTMLButtonElement | null,
@@ -545,7 +665,15 @@ export class ManagerFreeText {
   }
 
   private initializeModal(title: string, annotation: FreeTextAnnotation, els: FreeTextModalElements): void {
-    const { titleEl, textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput } = els;
+    const {
+      titleEl,
+      textInput,
+      fontSizeInput,
+      fontFamilySelect,
+      fontColorInput,
+      bgColorInput,
+      rotationInput
+    } = els;
 
     titleEl.textContent = title;
     this.applyTextInputStyles(textInput, annotation);
@@ -554,6 +682,10 @@ export class ManagerFreeText {
     this.populateFontFamilySelect(fontFamilySelect, annotation.fontFamily);
     fontColorInput.value = annotation.fontColor ?? '#FFFFFF';
     bgColorInput.value = this.resolveBackgroundColor(annotation.backgroundColor, true);
+    rotationInput.min = '-360';
+    rotationInput.max = '360';
+    rotationInput.step = '1';
+    rotationInput.value = String(this.normalizeRotation(annotation.rotation));
   }
 
   private applyTextInputStyles(textInput: HTMLTextAreaElement, annotation: FreeTextAnnotation): void {
@@ -574,6 +706,31 @@ export class ManagerFreeText {
       ? Math.round(fontSize as number)
       : DEFAULT_FREE_TEXT_FONT_SIZE;
     return Math.max(MIN_FREE_TEXT_FONT_SIZE, numeric);
+  }
+
+  private normalizeRotation(rotation?: number): number {
+    if (typeof rotation !== 'number' || !Number.isFinite(rotation)) {
+      return 0;
+    }
+    const normalized = rotation % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
+  }
+
+  private degToRad(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  private rotateOffset(x: number, y: number, rotationDeg: number): { x: number; y: number } {
+    if (!rotationDeg) {
+      return { x, y };
+    }
+    const angle = this.degToRad(rotationDeg);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return {
+      x: x * cos - y * sin,
+      y: x * sin + y * cos
+    };
   }
 
   private applyPreviewFontSize(textInput: HTMLTextAreaElement, fontSize?: number): void {
@@ -600,6 +757,44 @@ export class ManagerFreeText {
       return forInput ? '#000000' : 'transparent';
     }
     return color ?? '#000000';
+  }
+
+  private applyAlphaToColor(color: string, alpha: number): string {
+    if (!color || color === 'transparent') {
+      return 'transparent';
+    }
+    const normalizedAlpha = Math.min(1, Math.max(0, alpha));
+    const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color);
+    if (hexMatch) {
+      const hex = hexMatch[1];
+      const expandHex = (value: string): number => {
+        if (value.length === 1) {
+          return Number.parseInt(`${value}${value}`, 16);
+        }
+        return Number.parseInt(value, 16);
+      };
+      if (hex.length === 3) {
+        const r = expandHex(hex[0]);
+        const g = expandHex(hex[1]);
+        const b = expandHex(hex[2]);
+        return `rgba(${r}, ${g}, ${b}, ${normalizedAlpha})`;
+      }
+      if (hex.length === 6 || hex.length === 8) {
+        const r = expandHex(hex.slice(0, 2));
+        const g = expandHex(hex.slice(2, 4));
+        const b = expandHex(hex.slice(4, 6));
+        const baseAlpha = hex.length === 8 ? expandHex(hex.slice(6, 8)) / 255 : 1;
+        return `rgba(${r}, ${g}, ${b}, ${baseAlpha * normalizedAlpha})`;
+      }
+    }
+    const rgbMatch = /^rgba?\(([^)]+)\)$/i.exec(color);
+    if (rgbMatch) {
+      const [r, g, b, existingAlpha = '1'] = rgbMatch[1].split(',').map(part => part.trim());
+      const currentAlpha = Number.parseFloat(existingAlpha);
+      const combinedAlpha = Number.isFinite(currentAlpha) ? currentAlpha * normalizedAlpha : normalizedAlpha;
+      return `rgba(${r}, ${g}, ${b}, ${combinedAlpha})`;
+    }
+    return color;
   }
 
   private bindHandler(
@@ -924,6 +1119,26 @@ export class ManagerFreeText {
     return Math.max(MIN_FREE_TEXT_NODE_SIZE, Math.round(numeric));
   }
 
+  private registerLockStateListener(): void {
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+      return;
+    }
+    window.addEventListener('topology-lock-change', this.onLockStateChanged);
+    this.updateOverlayHandleInteractivity();
+  }
+
+  private getRelativePointerPosition(event: PointerEvent): { x: number; y: number } {
+    const container = this.cy.container();
+    if (!container || typeof container.getBoundingClientRect !== 'function') {
+      return { x: event.clientX, y: event.clientY };
+    }
+    const rect = container.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+  }
+
   private canUseResizeObserver(entry: OverlayEntry): boolean {
     return !entry.resizeObserver && typeof window !== 'undefined' && typeof window.ResizeObserver !== 'undefined';
   }
@@ -954,6 +1169,7 @@ export class ManagerFreeText {
       return;
     }
     entry.size = { width, height };
+    this.updateOverlayScrollbar(entry);
     this.positionOverlayById(annotationId);
   }
 
@@ -970,20 +1186,14 @@ export class ManagerFreeText {
     entry.resizeObserver = observer;
   }
 
-  private getOrCreateOverlayEntry(annotation: FreeTextAnnotation): OverlayEntry | null {
-    const parent = this.cy.container();
-    if (!this.overlayContainer || !parent) {
-      return null;
-    }
-
-    let entry = this.overlayElements.get(annotation.id);
-    if (entry) {
-      return entry;
-    }
-
+  private createOverlayWrapper(annotationId: string): {
+    wrapper: HTMLDivElement;
+    content: HTMLDivElement;
+    scrollbar: HTMLDivElement;
+  } {
     const wrapper = document.createElement('div');
     wrapper.className = 'free-text-overlay free-text-overlay-scrollable';
-    wrapper.dataset.annotationId = annotation.id;
+    wrapper.dataset.annotationId = annotationId;
     wrapper.style.position = 'absolute';
     wrapper.style.pointerEvents = 'none';
     wrapper.style.transform = 'translate(-50%, -50%)';
@@ -1000,27 +1210,71 @@ export class ManagerFreeText {
     scrollbar.className = 'free-text-overlay-scrollbar';
     wrapper.appendChild(scrollbar);
 
+    return { wrapper, content, scrollbar };
+  }
+
+  private createOverlayHandle(
+    annotationId: string,
+    className: string,
+    ariaLabel: string,
+    onPointerDown: PointerDownHandler,
+    isActive: () => boolean
+  ): HTMLButtonElement {
     const handle = document.createElement('button');
     handle.type = 'button';
-    handle.className = 'free-text-overlay-resize';
-    handle.setAttribute('aria-label', 'Resize text block');
+    handle.className = className;
+    handle.setAttribute('aria-label', ariaLabel);
     handle.style.pointerEvents = 'auto';
     handle.style.touchAction = 'none';
-    handle.onpointerdown = (event: PointerEvent) => this.startOverlayResize(annotation.id, event);
+    handle.onpointerdown = onPointerDown;
     handle.onpointerenter = () => {
-      this.overlayHoverLocks.add(annotation.id);
-      this.setOverlayHoverState(annotation.id, true);
+      this.overlayHoverLocks.add(annotationId);
+      this.setOverlayHoverState(annotationId, true);
     };
     handle.onpointerleave = () => {
-      if (!this.overlayResizeState || this.overlayResizeState.annotationId !== annotation.id) {
-        this.overlayHoverLocks.delete(annotation.id);
-        this.setOverlayHoverState(annotation.id, false);
+      if (!isActive()) {
+        this.overlayHoverLocks.delete(annotationId);
+        this.setOverlayHoverState(annotationId, false);
       }
     };
+    return handle;
+  }
+
+  private getOrCreateOverlayEntry(annotation: FreeTextAnnotation): OverlayEntry | null {
+    const parent = this.cy.container();
+    if (!this.overlayContainer || !parent) {
+      return null;
+    }
+
+    let entry = this.overlayElements.get(annotation.id);
+    if (entry) {
+      return entry;
+    }
+
+    const { wrapper, content, scrollbar } = this.createOverlayWrapper(annotation.id);
+
+    const resizeHandle = this.createOverlayHandle(
+      annotation.id,
+      'free-text-overlay-resize',
+      'Resize text block',
+      (event: PointerEvent) => this.startOverlayResize(annotation.id, event),
+      () => this.overlayResizeState?.annotationId === annotation.id
+    );
+
+    const rotateHandle = this.createOverlayHandle(
+      annotation.id,
+      'free-text-overlay-rotate',
+      'Rotate text block',
+      (event: PointerEvent) => this.startOverlayRotate(annotation.id, event),
+      () => this.overlayRotateState?.annotationId === annotation.id
+    );
+
     this.overlayContainer.appendChild(wrapper);
-    parent.appendChild(handle);
-    entry = { wrapper, content, handle, scrollbar, resizeObserver: null };
+    parent.appendChild(resizeHandle);
+    parent.appendChild(rotateHandle);
+    entry = { wrapper, content, resizeHandle, rotateHandle, scrollbar, resizeObserver: null };
     this.overlayElements.set(annotation.id, entry);
+    this.updateOverlayHandleInteractivity(entry);
     this.installOverlayResizeObserver(annotation.id, entry);
     return entry;
   }
@@ -1035,8 +1289,8 @@ export class ManagerFreeText {
   } {
     const baseFontSize = this.normalizeFontSize(annotation.fontSize);
     const hasBackground = annotation.backgroundColor !== 'transparent';
-    const basePaddingY = hasBackground ? Math.max(3, Math.round(baseFontSize * 0.35)) : 0;
-    const basePaddingX = hasBackground ? Math.max(4, Math.round(baseFontSize * 0.65)) : 0;
+    const basePaddingY = hasBackground ? DEFAULT_FREE_TEXT_PADDING : 0;
+    const basePaddingX = hasBackground ? DEFAULT_FREE_TEXT_PADDING : 0;
     const baseRadius = hasBackground && (annotation.roundedBackground !== false)
       ? Math.max(4, Math.round(baseFontSize * 0.4))
       : 0;
@@ -1061,6 +1315,8 @@ export class ManagerFreeText {
     }
 
     const { wrapper, content } = entry;
+    const rotation = this.normalizeRotation(annotation.rotation);
+    annotation.rotation = rotation;
     const sizing = this.computeOverlaySizing(annotation);
     wrapper.dataset.baseFontSize = String(sizing.baseFontSize);
     wrapper.dataset.basePaddingY = String(sizing.basePaddingY);
@@ -1075,8 +1331,11 @@ export class ManagerFreeText {
     wrapper.style.fontStyle = annotation.fontStyle ?? 'normal';
     wrapper.style.textDecoration = annotation.textDecoration ?? 'none';
     wrapper.style.textAlign = annotation.textAlign ?? 'left';
-    // Keep overlay wrapper transparent so Cytoscape can render the background behind it.
-    wrapper.style.background = 'transparent';
+    const hasBackground = annotation.backgroundColor !== 'transparent';
+    const overlayBackground = hasBackground
+      ? this.applyAlphaToColor(this.resolveBackgroundColor(annotation.backgroundColor, false), 0.9)
+      : 'transparent';
+    wrapper.style.background = overlayBackground;
     wrapper.style.opacity = '1';
     wrapper.style.boxShadow = 'none';
 
@@ -1088,16 +1347,21 @@ export class ManagerFreeText {
 
     entry.size = this.applyOverlayBoxSizing(wrapper);
     this.updateOverlayScrollbar(entry);
-    this.positionAnnotationOverlay(node, entry);
+    this.positionAnnotationOverlay(node, entry, annotation);
   }
 
-  private positionAnnotationOverlay(node: cytoscape.NodeSingular, entry: OverlayEntry): void {
+  private positionAnnotationOverlay(
+    node: cytoscape.NodeSingular,
+    entry: OverlayEntry,
+    annotation: FreeTextAnnotation
+  ): void {
     const renderedPosition = node.renderedPosition();
     if (!renderedPosition) {
       return;
     }
-    const { wrapper, handle } = entry;
+    const { wrapper, resizeHandle, rotateHandle } = entry;
     const zoom = this.cy.zoom() || 1;
+    const rotation = this.normalizeRotation(annotation.rotation);
     wrapper.style.left = `${renderedPosition.x}px`;
     wrapper.style.top = `${renderedPosition.y}px`;
     const shouldCacheSize = Boolean(entry.resizeObserver);
@@ -1107,11 +1371,12 @@ export class ManagerFreeText {
       entry.size = baseBox;
       this.updateOverlayScrollbar(entry);
     }
-    wrapper.style.transform = `translate(-50%, -50%) scale(${zoom})`;
-    const scaledBox = {
-      width: baseBox.width * zoom,
-      height: baseBox.height * zoom
-    };
+    wrapper.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${zoom})`;
+    const baseWidth = baseBox?.width ?? wrapper.offsetWidth ?? 0;
+    const baseHeight = baseBox?.height ?? wrapper.offsetHeight ?? 0;
+    const scaledUnrotatedWidth = baseWidth * zoom;
+    const scaledUnrotatedHeight = baseHeight * zoom;
+    const scaledBox = this.getRotatedFrame(baseBox, rotation, zoom);
     entry.frame = {
       centerX: renderedPosition.x,
       centerY: renderedPosition.y,
@@ -1119,7 +1384,40 @@ export class ManagerFreeText {
       height: scaledBox.height
     };
     this.syncNodeHitboxWithOverlay(node, scaledBox, zoom);
-    this.positionOverlayHandle(handle, renderedPosition, scaledBox.width, scaledBox.height);
+    this.positionOverlayResizeHandle(
+      resizeHandle,
+      renderedPosition,
+      { width: scaledUnrotatedWidth, height: scaledUnrotatedHeight },
+      rotation
+    );
+    this.positionOverlayRotateHandle(
+      rotateHandle,
+      renderedPosition,
+      scaledUnrotatedHeight,
+      rotation
+    );
+  }
+
+  private getRotatedFrame(
+    box: { width: number; height: number },
+    rotationDeg: number,
+    zoom: number
+  ): { width: number; height: number } {
+    if (!rotationDeg) {
+      return {
+        width: box.width * zoom,
+        height: box.height * zoom
+      };
+    }
+    const angle = this.degToRad(rotationDeg);
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const rotatedWidth = Math.abs(box.width * cos) + Math.abs(box.height * sin);
+    const rotatedHeight = Math.abs(box.width * sin) + Math.abs(box.height * cos);
+    return {
+      width: rotatedWidth * zoom,
+      height: rotatedHeight * zoom
+    };
   }
 
   private syncNodeHitboxWithOverlay(
@@ -1202,8 +1500,12 @@ export class ManagerFreeText {
     }
     const scrollHeight = wrapper.scrollHeight;
     const clientHeight = wrapper.clientHeight;
-    const hasOverflow = scrollHeight - clientHeight > 1;
+    const overflowGap = scrollHeight - clientHeight;
+    const defaultVerticalMargin = Number(wrapper.dataset.basePaddingY ?? '0') * 2;
+    const overflowThreshold = Math.max(0.5, defaultVerticalMargin);
+    const hasOverflow = overflowGap > overflowThreshold;
     if (!hasOverflow) {
+      wrapper.scrollTop = 0;
       scrollbar.classList.remove('free-text-overlay-scrollbar-visible');
       scrollbar.style.opacity = '0';
       scrollbar.style.transform = '';
@@ -1288,24 +1590,43 @@ export class ManagerFreeText {
     }
   };
 
-  private positionOverlayHandle(
+  private positionOverlayResizeHandle(
     handle: HTMLButtonElement,
     position: { x: number; y: number },
-    width: number,
-    height: number
+    size: { width: number; height: number },
+    rotationDeg: number
   ): void {
     const handleWidth = handle.offsetWidth || 18;
     const handleHeight = handle.offsetHeight || 18;
     const handleInset = 6;
-    handle.style.left = `${position.x + width / 2 - handleWidth + handleInset}px`;
-    handle.style.top = `${position.y + height / 2 - handleHeight + handleInset}px`;
+    const offsetX = size.width / 2 - handleInset - handleWidth / 2;
+    const offsetY = size.height / 2 - handleInset - handleHeight / 2;
+    const rotated = this.rotateOffset(offsetX, offsetY, rotationDeg);
+    handle.style.left = `${position.x + rotated.x - handleWidth / 2}px`;
+    handle.style.top = `${position.y + rotated.y - handleHeight / 2}px`;
+  }
+
+  private positionOverlayRotateHandle(
+    handle: HTMLButtonElement,
+    position: { x: number; y: number },
+    height: number,
+    rotationDeg: number
+  ): void {
+    const handleWidth = handle.offsetWidth || 18;
+    const handleHeight = handle.offsetHeight || 18;
+    const handleOffset = 10;
+    const offsetY = -height / 2 - handleHeight / 2 - handleOffset;
+    const rotated = this.rotateOffset(0, offsetY, rotationDeg);
+    handle.style.left = `${position.x + rotated.x - handleWidth / 2}px`;
+    handle.style.top = `${position.y + rotated.y - handleHeight / 2}px`;
   }
 
   private positionOverlayById(id: string): void {
     const entry = this.overlayElements.get(id);
     const node = this.annotationNodes.get(id);
-    if (entry && node) {
-      this.positionAnnotationOverlay(node, entry);
+    const annotation = this.annotations.get(id);
+    if (entry && node && annotation) {
+      this.positionAnnotationOverlay(node, entry, annotation);
     }
   }
 
@@ -1321,8 +1642,10 @@ export class ManagerFreeText {
       return;
     }
     if (this.isLabLocked()) {
+      this.updateOverlayHandleInteractivity(entry);
       entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
-      entry.handle.classList.remove(HANDLE_VISIBLE_CLASS);
+      entry.resizeHandle.classList.remove(HANDLE_VISIBLE_CLASS);
+      entry.rotateHandle.classList.remove(ROTATE_HANDLE_VISIBLE_CLASS);
       this.overlayHoverLocks.delete(id);
       const pending = this.overlayHoverHideTimers.get(id);
       if (pending) {
@@ -1338,7 +1661,8 @@ export class ManagerFreeText {
         this.overlayHoverHideTimers.delete(id);
       }
       entry.wrapper.classList.add(OVERLAY_HOVER_CLASS);
-      entry.handle.classList.add(HANDLE_VISIBLE_CLASS);
+      entry.resizeHandle.classList.add(HANDLE_VISIBLE_CLASS);
+      entry.rotateHandle.classList.add(ROTATE_HANDLE_VISIBLE_CLASS);
       return;
     }
 
@@ -1351,12 +1675,28 @@ export class ManagerFreeText {
         return;
       }
       entry.wrapper.classList.remove(OVERLAY_HOVER_CLASS);
-      entry.handle.classList.remove(HANDLE_VISIBLE_CLASS);
+      entry.resizeHandle.classList.remove(HANDLE_VISIBLE_CLASS);
+      entry.rotateHandle.classList.remove(ROTATE_HANDLE_VISIBLE_CLASS);
     }, 120);
     this.overlayHoverHideTimers.set(id, timeoutId);
   }
 
-  private canInitiateOverlayResize(event: PointerEvent): boolean {
+  private updateOverlayHandleInteractivity(entry?: OverlayEntry): void {
+    const locked = this.isLabLocked();
+    const apply = (target: OverlayEntry): void => {
+      target.resizeHandle.style.pointerEvents = locked ? 'none' : '';
+      target.rotateHandle.style.pointerEvents = locked ? 'none' : '';
+      target.resizeHandle.style.cursor = locked ? 'default' : '';
+      target.rotateHandle.style.cursor = locked ? 'default' : '';
+    };
+    if (entry) {
+      apply(entry);
+      return;
+    }
+    this.overlayElements.forEach(current => apply(current));
+  }
+
+  private canInitiateOverlayHandleAction(event: PointerEvent): boolean {
     if (event.button !== 0) {
       return false;
     }
@@ -1379,6 +1719,19 @@ export class ManagerFreeText {
       return null;
     }
     return { annotation, entry };
+  }
+
+  private resolveRotateTargets(annotationId: string): {
+    annotation: FreeTextAnnotation;
+    entry: OverlayEntry;
+    node: cytoscape.NodeSingular | undefined;
+  } | null {
+    const annotation = this.annotations.get(annotationId);
+    const entry = this.overlayElements.get(annotationId);
+    if (!annotation || !entry) {
+      return null;
+    }
+    return { annotation, entry, node: this.annotationNodes.get(annotationId) };
   }
 
   private calculateOverlayStartWidth(annotation: FreeTextAnnotation, entry: OverlayEntry): number {
@@ -1405,7 +1758,7 @@ export class ManagerFreeText {
   }
 
   private startOverlayResize(annotationId: string, event: PointerEvent): void {
-    if (!this.canInitiateOverlayResize(event)) {
+    if (!this.canInitiateOverlayHandleAction(event)) {
       return;
     }
     const targets = this.resolveResizeTargets(annotationId);
@@ -1424,14 +1777,53 @@ export class ManagerFreeText {
       startWidth,
       startHeight
     };
-    this.activeResizeHandle = entry.handle;
-    if (typeof entry.handle.setPointerCapture === 'function') {
-      entry.handle.setPointerCapture(event.pointerId);
+    this.activeResizeHandle = entry.resizeHandle;
+    if (typeof entry.resizeHandle.setPointerCapture === 'function') {
+      entry.resizeHandle.setPointerCapture(event.pointerId);
     }
 
     window.addEventListener('pointermove', this.onOverlayResizeMove);
     window.addEventListener('pointerup', this.onOverlayResizeEnd);
     window.addEventListener('pointercancel', this.onOverlayResizeEnd);
+    this.overlayHoverLocks.add(annotationId);
+    this.setOverlayHoverState(annotationId, true);
+  }
+
+  private startOverlayRotate(annotationId: string, event: PointerEvent): void {
+    if (!this.canInitiateOverlayHandleAction(event)) {
+      return;
+    }
+    const targets = this.resolveRotateTargets(annotationId);
+    if (!targets) {
+      return;
+    }
+    const { annotation, entry, node } = targets;
+    if (node && !entry.frame) {
+      this.positionAnnotationOverlay(node, entry, annotation);
+    }
+    const frame = entry.frame;
+    const pointer = this.getRelativePointerPosition(event);
+    const centerX = frame?.centerX ?? pointer.x;
+    const centerY = frame?.centerY ?? pointer.y;
+    const startPointerAngle = Math.atan2(pointer.y - centerY, pointer.x - centerX);
+    const startRotation = this.normalizeRotation(annotation.rotation);
+
+    this.overlayRotateState = {
+      annotationId,
+      pointerId: event.pointerId,
+      startPointerAngle,
+      startRotation,
+      centerX,
+      centerY
+    };
+    this.activeRotateHandle = entry.rotateHandle;
+    if (typeof entry.rotateHandle.setPointerCapture === 'function') {
+      entry.rotateHandle.setPointerCapture(event.pointerId);
+    }
+
+    window.addEventListener('pointermove', this.onOverlayRotateMove);
+    window.addEventListener('pointerup', this.onOverlayRotateEnd);
+    window.addEventListener('pointercancel', this.onOverlayRotateEnd);
     this.overlayHoverLocks.add(annotationId);
     this.setOverlayHoverState(annotationId, true);
   }
@@ -1442,7 +1834,8 @@ export class ManagerFreeText {
       entry.resizeObserver = null;
     }
     entry.wrapper.remove();
-    entry.handle.remove();
+    entry.resizeHandle.remove();
+    entry.rotateHandle.remove();
     entry.size = undefined;
   }
 
@@ -1452,6 +1845,14 @@ export class ManagerFreeText {
       this.disposeOverlayEntry(entry);
       this.overlayElements.delete(id);
       this.overlayHoverLocks.delete(id);
+      if (this.overlayResizeState?.annotationId === id) {
+        this.overlayResizeState = null;
+        this.activeResizeHandle = null;
+      }
+      if (this.overlayRotateState?.annotationId === id) {
+        this.overlayRotateState = null;
+        this.activeRotateHandle = null;
+      }
       const pending = this.overlayHoverHideTimers.get(id);
       if (pending) {
         window.clearTimeout(pending);
@@ -1466,7 +1867,9 @@ export class ManagerFreeText {
     });
     this.overlayElements.clear();
     this.overlayResizeState = null;
+    this.overlayRotateState = null;
     this.activeResizeHandle = null;
+    this.activeRotateHandle = null;
     this.overlayHoverLocks.clear();
     this.overlayHoverHideTimers.forEach(timer => window.clearTimeout(timer));
     this.overlayHoverHideTimers.clear();
@@ -1518,11 +1921,12 @@ export class ManagerFreeText {
     els: FreeTextModalElements,
     state: FormattingState
   ): FreeTextAnnotation | null {
-    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect } = els;
+    const { textInput, fontSizeInput, fontColorInput, bgColorInput, fontFamilySelect, rotationInput } = els;
     const text = textInput.value.trim();
     if (!text) {
       return null;
     }
+    const rotationValue = this.normalizeRotation(Number.parseFloat(rotationInput.value));
     return {
       ...annotation,
       text,
@@ -1534,7 +1938,8 @@ export class ManagerFreeText {
       textDecoration: state.isUnderline ? 'underline' : 'none',
       fontFamily: fontFamilySelect.value,
       textAlign: state.alignment,
-      roundedBackground: state.hasRoundedBg
+      roundedBackground: state.hasRoundedBg,
+      rotation: rotationValue
     };
   }
 
@@ -1579,6 +1984,8 @@ export class ManagerFreeText {
    * Add a free text annotation to the graph
    */
   public addFreeTextAnnotation(annotation: FreeTextAnnotation, options?: { skipSave?: boolean }): void {
+    const rotation = this.normalizeRotation(annotation.rotation);
+    annotation.rotation = rotation;
     this.annotations.set(annotation.id, annotation);
 
     // Create a Cytoscape node for the text
@@ -1606,8 +2013,15 @@ export class ManagerFreeText {
     // Apply custom styles based on annotation properties with a slight delay to ensure node is rendered
     this.applyTextNodeStyles(node, annotation);
     // Apply styles again after a short delay to ensure they stick
+    // Also restore position to bypass any grid snapping
     setTimeout(() => {
       this.applyTextNodeStyles(node, annotation);
+      // Restore position from annotation data (bypass grid snap)
+      node.position({
+        x: annotation.position.x,
+        y: annotation.position.y
+      });
+      this.positionOverlayById(annotation.id);
     }, 100);
 
     this.annotationNodes.set(annotation.id, node);
@@ -1621,6 +2035,8 @@ export class ManagerFreeText {
    */
   private applyTextNodeStyles(node: cytoscape.NodeSingular, annotation: FreeTextAnnotation): void {
     // Store the annotation data in the node for persistence
+    const rotation = this.normalizeRotation(annotation.rotation);
+    annotation.rotation = rotation;
     node.data('freeTextData', annotation);
 
     // Create a comprehensive style object with all necessary properties
@@ -1650,6 +2066,7 @@ export class ManagerFreeText {
     styles['text-events'] = useOverlay ? 'no' : 'yes';
     styles['text-wrap'] = useOverlay ? 'none' : 'wrap';
     styles['text-max-width'] = this.getNodeTextMaxWidth(annotation, useOverlay);
+    styles['text-rotation'] = rotation;
 
     // Cytoscape doesn't support the CSS `font` shorthand property,
     // so we rely on the individual font-* properties above.
@@ -1694,25 +2111,12 @@ export class ManagerFreeText {
   private getBackgroundStyles(annotation: FreeTextAnnotation, useOverlay: boolean): Record<string, number | string> {
     const hasSolidBackground = annotation.backgroundColor !== 'transparent';
     if (useOverlay) {
-      if (!hasSolidBackground) {
-        return {
-          'text-background-opacity': 0,
-          'background-opacity': 0,
-          'background-color': 'transparent',
-          shape: 'rectangle',
-          'corner-radius': '0px'
-        };
-      }
-      const sizing = this.computeOverlaySizing(annotation);
-      const rounded = annotation.roundedBackground !== false;
-      const radius = rounded ? sizing.baseRadius : 0;
-      const backgroundColor = this.resolveBackgroundColor(annotation.backgroundColor, false);
       return {
         'text-background-opacity': 0,
-        'background-color': backgroundColor,
-        'background-opacity': 0.9,
-        shape: rounded ? 'round-rectangle' : 'rectangle',
-        'corner-radius': radius > 0 ? `${radius}px` : '0px'
+        'background-opacity': 0,
+        'background-color': 'transparent',
+        shape: 'rectangle',
+        'corner-radius': '0px'
       };
     }
 
@@ -1756,6 +2160,56 @@ export class ManagerFreeText {
       this.positionOverlayById(id);
       this.debouncedSave();
     }
+  }
+
+  /**
+   * Sync all free text annotation positions with their current Cytoscape node positions.
+   * Call this before saving to ensure coordinates persist correctly.
+   */
+  public syncAnnotationPositions(): void {
+    this.annotationNodes.forEach((node, id) => {
+      const annotation = this.annotations.get(id);
+      if (annotation && node && node.inside()) {
+        const pos = node.position();
+        annotation.position = {
+          x: Math.round(pos.x),
+          y: Math.round(pos.y)
+        };
+      }
+    });
+  }
+
+  /**
+   * Restore all free text node positions from their annotation data.
+   * Call this after loading to ensure nodes match saved positions (bypassing any grid snap).
+   */
+  public restoreAnnotationPositions(): void {
+    this.annotations.forEach((annotation, id) => {
+      const node = this.annotationNodes.get(id);
+      if (node && node.inside()) {
+        node.position({
+          x: annotation.position.x,
+          y: annotation.position.y
+        });
+        this.positionOverlayById(id);
+      }
+    });
+  }
+
+  /**
+   * Schedule multiple position restores after loading to ensure free text positions
+   * persist despite any grid snapping or layout operations.
+   */
+  private schedulePositionRestores(): void {
+    // Restore positions after delays to ensure nodes are rendered and
+    // bypass any grid snapping that may occur during initialization
+    setTimeout(() => {
+      this.reapplyStylesBound();
+      this.restoreAnnotationPositions();
+    }, 200);
+    // Additional restores at longer delays to catch any late layout operations
+    setTimeout(() => this.restoreAnnotationPositions(), 500);
+    setTimeout(() => this.restoreAnnotationPositions(), 1000);
   }
 
   /**
@@ -1841,6 +2295,9 @@ export class ManagerFreeText {
       log.info('freeText:saveAnnotations:queued (busy)');
       return;
     }
+
+    // Sync positions from Cytoscape nodes to annotation data before saving
+    this.syncAnnotationPositions();
 
     const annotations = Array.from(this.annotations.values());
     const groupStyles = this.groupStyleManager ? this.groupStyleManager.getGroupStyles() : [];

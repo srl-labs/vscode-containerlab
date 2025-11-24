@@ -25,6 +25,8 @@ export interface DataItem {
 
 const INITIAL_POSITION_START = { x: 105, y: 105 };
 const INITIAL_POSITION_SPACING = { x: 98, y: 98 };
+// Selector to exclude free text nodes from layouts
+const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"]' as const;
 
 
 function allNodesOverlap(cy: cytoscape.Core): boolean {
@@ -133,8 +135,11 @@ function scheduleImprovedLayout(cy: cytoscape.Core): void {
   };
 
   scheduleLayout(() => {
+    // Exclude free text nodes from layout - they have their own positions
+    const layoutNodes = cy.nodes().not(SELECTOR_NOT_FREETEXT);
+
     const nodeWeights: Record<string, number> = {};
-    cy.nodes().forEach((node) => {
+    layoutNodes.forEach((node) => {
       const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
       nodeWeights[node.id()] = 1 / level;
     });
@@ -143,7 +148,8 @@ function scheduleImprovedLayout(cy: cytoscape.Core): void {
       edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
     });
 
-    const improvedLayout = cy.layout({
+    // Run layout only on non-freetext nodes
+    const improvedLayout = layoutNodes.layout({
       name: 'cola',
       fit: true,
       nodeSpacing: 5,

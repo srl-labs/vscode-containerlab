@@ -1296,6 +1296,14 @@
     margin: 0.35rem 0;
   }
 
+  .free-text-markdown > :first-child {
+    margin-top: 0;
+  }
+
+  .free-text-markdown > :last-child {
+    margin-bottom: 0;
+  }
+
   .free-text-markdown pre {
     margin: 0.5rem 0;
     border-radius: 0;
@@ -1386,6 +1394,40 @@
   }
 
   .free-text-overlay-resize-visible {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+
+  .free-text-overlay-rotate {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: grab;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-text-overlay-rotate:active {
+    cursor: grabbing;
+  }
+
+  .free-text-overlay-rotate::before {
+    content: '\21bb';
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .free-text-overlay-rotate-visible {
     opacity: 0.9;
     pointer-events: auto;
   }
