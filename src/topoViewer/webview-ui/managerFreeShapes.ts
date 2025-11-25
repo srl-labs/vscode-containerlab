@@ -673,11 +673,41 @@ export class ManagerFreeShapes {
     const line = document.createElementNS(SVG_NAMESPACE, 'line');
 
     const geometry = this.computeLineGeometry(annotation);
+    const arrowSize = annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE;
 
-    line.setAttribute('x1', String(geometry.start.x));
-    line.setAttribute('y1', String(geometry.start.y));
-    line.setAttribute('x2', String(geometry.end.x));
-    line.setAttribute('y2', String(geometry.end.y));
+    // Calculate line endpoints, shortened if arrows are present
+    let lineStartX = geometry.start.x;
+    let lineStartY = geometry.start.y;
+    let lineEndX = geometry.end.x;
+    let lineEndY = geometry.end.y;
+
+    // Calculate line direction and length
+    const dx = geometry.end.x - geometry.start.x;
+    const dy = geometry.end.y - geometry.start.y;
+    const lineLength = Math.sqrt(dx * dx + dy * dy);
+
+    if (lineLength > 0) {
+      // Unit vector along the line
+      const ux = dx / lineLength;
+      const uy = dy / lineLength;
+
+      // Shorten line at start if there's a start arrow
+      if (annotation.lineStartArrow) {
+        lineStartX += ux * arrowSize * 0.7;
+        lineStartY += uy * arrowSize * 0.7;
+      }
+
+      // Shorten line at end if there's an end arrow
+      if (annotation.lineEndArrow) {
+        lineEndX -= ux * arrowSize * 0.7;
+        lineEndY -= uy * arrowSize * 0.7;
+      }
+    }
+
+    line.setAttribute('x1', String(lineStartX));
+    line.setAttribute('y1', String(lineStartY));
+    line.setAttribute('x2', String(lineEndX));
+    line.setAttribute('y2', String(lineEndY));
     line.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
     line.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
     line.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
