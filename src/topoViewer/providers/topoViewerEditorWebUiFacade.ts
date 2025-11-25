@@ -1771,10 +1771,12 @@ topology:
     try {
       const data = payloadObj;
       const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      // Preserve existing values when not provided in the payload
+      // This allows individual managers (freeText, freeShapes, groupStyle) to save independently
       await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-        freeTextAnnotations: data.annotations,
-        freeShapeAnnotations: data.freeShapeAnnotations || existing.freeShapeAnnotations,
-        groupStyleAnnotations: data.groupStyles,
+        freeTextAnnotations: data.annotations !== undefined ? data.annotations : existing.freeTextAnnotations,
+        freeShapeAnnotations: data.freeShapeAnnotations !== undefined ? data.freeShapeAnnotations : existing.freeShapeAnnotations,
+        groupStyleAnnotations: data.groupStyles !== undefined ? data.groupStyles : existing.groupStyleAnnotations,
         cloudNodeAnnotations: existing.cloudNodeAnnotations,
         nodeAnnotations: existing.nodeAnnotations,
         // Preserve viewer settings to avoid accidental loss when other managers save

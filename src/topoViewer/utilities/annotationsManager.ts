@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from '../logging/logger';
-import { FreeTextAnnotation, GroupStyleAnnotation, TopologyAnnotations, CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
+import { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, TopologyAnnotations, CloudNodeAnnotation, NodeAnnotation } from '../types/topoViewerGraph';
 
 /**
  * Manages free text annotations for a topology.
@@ -47,7 +47,7 @@ export class AnnotationsManager {
       log.warn(`Failed to load annotations from ${annotationsPath}: ${error}`);
     }
 
-    const emptyAnnotations = { freeTextAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [], aliasEndpointAnnotations: [] } as any;
+    const emptyAnnotations = { freeTextAnnotations: [], freeShapeAnnotations: [], groupStyleAnnotations: [], cloudNodeAnnotations: [], nodeAnnotations: [], aliasEndpointAnnotations: [] } as any;
     // Cache empty result too
     this.cache.set(annotationsPath, { data: emptyAnnotations, timestamp: Date.now() });
     return emptyAnnotations;
@@ -104,12 +104,52 @@ export class AnnotationsManager {
 
   private shouldSaveAnnotations(annotations: TopologyAnnotations): boolean {
     const hasFreeText = !!(annotations.freeTextAnnotations && annotations.freeTextAnnotations.length > 0);
+    const hasFreeShapes = !!(annotations.freeShapeAnnotations && annotations.freeShapeAnnotations.length > 0);
     const hasGroupStyles = !!(annotations.groupStyleAnnotations && annotations.groupStyleAnnotations.length > 0);
     const hasCloudNodes = !!(annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0);
     const hasNodeAnnotations = !!(annotations.nodeAnnotations && annotations.nodeAnnotations.length > 0);
     const hasAliasMappings = !!((annotations as any).aliasEndpointAnnotations && (annotations as any).aliasEndpointAnnotations.length > 0);
     const hasViewerSettings = !!(annotations as any).viewerSettings && Object.keys((annotations as any).viewerSettings || {}).length > 0;
-    return hasFreeText || hasGroupStyles || hasCloudNodes || hasNodeAnnotations || hasAliasMappings || hasViewerSettings;
+    return hasFreeText || hasFreeShapes || hasGroupStyles || hasCloudNodes || hasNodeAnnotations || hasAliasMappings || hasViewerSettings;
+  }
+
+  /**
+   * Add or update a free shape annotation
+   */
+  public addOrUpdateFreeShapeAnnotation(
+    annotations: TopologyAnnotations,
+    annotation: FreeShapeAnnotation
+  ): TopologyAnnotations {
+    if (!annotations.freeShapeAnnotations) {
+      annotations.freeShapeAnnotations = [];
+    }
+
+    const existingIndex = annotations.freeShapeAnnotations.findIndex(
+      a => a.id === annotation.id
+    );
+
+    if (existingIndex >= 0) {
+      annotations.freeShapeAnnotations[existingIndex] = annotation;
+    } else {
+      annotations.freeShapeAnnotations.push(annotation);
+    }
+
+    return annotations;
+  }
+
+  /**
+   * Remove a free shape annotation
+   */
+  public removeFreeShapeAnnotation(
+    annotations: TopologyAnnotations,
+    annotationId: string
+  ): TopologyAnnotations {
+    if (annotations.freeShapeAnnotations) {
+      annotations.freeShapeAnnotations = annotations.freeShapeAnnotations.filter(
+        a => a.id !== annotationId
+      );
+    }
+    return annotations;
   }
 
   /**

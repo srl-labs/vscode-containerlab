@@ -25,8 +25,8 @@ export interface DataItem {
 
 const INITIAL_POSITION_START = { x: 105, y: 105 };
 const INITIAL_POSITION_SPACING = { x: 98, y: 98 };
-// Selector to exclude free text nodes from layouts
-const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"]' as const;
+// Selector to exclude free text and free shape nodes from layouts
+const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"], [topoViewerRole="freeShape"]' as const;
 
 
 function allNodesOverlap(cy: cytoscape.Core): boolean {

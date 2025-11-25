@@ -99,6 +99,14 @@ export class ManagerFreeShapes {
   private overlayRotateState: OverlayRotateState | null = null;
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  // Track intended (unsnapped) positions for free shapes during drag
+  private intendedPositions: Map<string, { x: number; y: number }> = new Map();
+  // Guard to prevent recursive position corrections
+  private positionCorrectionInProgress: Set<string> = new Set();
+  // Loading state management (matches freeText pattern)
+  private loadInProgress = false;
+  private loadTimeout: ReturnType<typeof setTimeout> | null = null;
+  private onLoadTimeout: () => Promise<void>;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
     this.cy = cy;
@@ -106,6 +114,39 @@ export class ManagerFreeShapes {
     this.setupEventHandlers();
     this.initializeOverlayLayer();
     this.registerLockStateListener();
+
+    // Initialize the load timeout callback (matches freeText pattern)
+    this.onLoadTimeout = async () => {
+      this.loadInProgress = true;
+      try {
+        const response = await this.messageSender.sendMessageToVscodeEndpointPost(
+          'topo-editor-load-annotations',
+          {}
+        );
+
+        if (response && response.freeShapeAnnotations) {
+          this.annotations.clear();
+          this.annotationNodes.forEach((node, id) => {
+            if (node && node.inside() && this.managedNodes.has(id)) {
+              node.remove();
+            }
+          });
+          this.annotationNodes.clear();
+          this.managedNodes.clear();
+          Array.from(this.overlayElements.keys()).forEach((id) => this.removeShapeOverlay(id));
+
+          const annotations = response.freeShapeAnnotations as FreeShapeAnnotation[];
+          annotations.forEach(annotation => this.addFreeShapeAnnotation(annotation, { skipSave: true }));
+          log.info(`Loaded ${annotations.length} shape annotations`);
+
+          this.schedulePositionRestores();
+        }
+      } catch (error) {
+        log.error(`Failed to load shape annotations: ${error}`);
+      } finally {
+        this.loadInProgress = false;
+      }
+    };
   }
 
   private setupEventHandlers(): void {
@@ -145,11 +186,21 @@ export class ManagerFreeShapes {
       }
     });
 
-    this.cy.on('position', SELECTOR_FREE_SHAPE, (event) => {
-      this.handleShapePositionChange(event.target);
-    });
+    this.cy.on('position', SELECTOR_FREE_SHAPE, (event) => this.handleShapePositionChange(event));
 
-    this.cy.on('dragfree', SELECTOR_FREE_SHAPE, () => {
+    // After drag release, restore the intended (unsnapped) position to bypass grid snapping
+    this.cy.on('dragfree', SELECTOR_FREE_SHAPE, (event) => {
+      const node = event.target;
+      const nodeId = node.id();
+      const intendedPos = this.intendedPositions.get(nodeId);
+      if (intendedPos) {
+        // Restore the unsnapped position - grid snap has already modified node.position()
+        node.position(intendedPos);
+        this.updateShapePosition(nodeId, intendedPos);
+        this.intendedPositions.delete(nodeId);
+      } else {
+        this.updateShapePosition(nodeId, node.position());
+      }
       this.debouncedSave();
     });
 
@@ -184,32 +235,113 @@ export class ManagerFreeShapes {
     cyContainer.appendChild(this.overlayContainer);
   }
 
-  private handleShapePositionChange(node: cytoscape.NodeSingular): void {
-    if (!node) return;
+  /**
+   * Handle position changes for free shape nodes.
+   * If user is dragging, track the position. Otherwise, enforce annotation position.
+   */
+  private handleShapePositionChange(event: cytoscape.EventObject): void {
+    const node = event.target;
+    if (!node) {
+      return;
+    }
+    this.positionOverlayById(node.id());
+
     const annotation = this.annotations.get(node.id());
+    if (!annotation) {
+      return;
+    }
+
+    if (node.grabbed()) {
+      // Track the intended (unsnapped) position during drag
+      const pos = node.position();
+      if (annotation.shapeType === 'line' && annotation.endPosition) {
+        const prevCenter = this.getLineCenter(annotation);
+        const deltaX = Math.round(pos.x - prevCenter.x);
+        const deltaY = Math.round(pos.y - prevCenter.y);
+        annotation.endPosition = {
+          x: annotation.endPosition.x + deltaX,
+          y: annotation.endPosition.y + deltaY
+        };
+        annotation.position = {
+          x: annotation.position.x + deltaX,
+          y: annotation.position.y + deltaY
+        };
+        this.intendedPositions.set(node.id(), { x: pos.x, y: pos.y });
+      } else {
+        annotation.position = {
+          x: Math.round(pos.x),
+          y: Math.round(pos.y)
+        };
+        this.intendedPositions.set(node.id(), {
+          x: Math.round(pos.x),
+          y: Math.round(pos.y)
+        });
+      }
+    } else {
+      // Node is NOT being dragged - enforce annotation position
+      this.enforceAnnotationPosition(node, annotation);
+    }
+  }
+
+  /**
+   * Force free shape node position to match annotation data.
+   * This prevents external changes (layout, grid snap) from moving free shapes.
+   */
+  private enforceAnnotationPosition(node: cytoscape.NodeSingular, annotation: FreeShapeAnnotation): void {
+    const nodeId = node.id();
+    if (this.positionCorrectionInProgress.has(nodeId)) {
+      return; // Prevent infinite recursion
+    }
+    const pos = node.position();
+    let annotationX: number;
+    let annotationY: number;
+
+    if (annotation.shapeType === 'line') {
+      const center = this.getLineCenter(annotation);
+      annotationX = center.x;
+      annotationY = center.y;
+    } else {
+      annotationX = annotation.position.x;
+      annotationY = annotation.position.y;
+    }
+
+    if (Math.round(pos.x) !== annotationX || Math.round(pos.y) !== annotationY) {
+      this.positionCorrectionInProgress.add(nodeId);
+      node.position({ x: annotationX, y: annotationY });
+      this.positionCorrectionInProgress.delete(nodeId);
+    }
+  }
+
+  /**
+   * Update shape annotation position after drag.
+   */
+  private updateShapePosition(nodeId: string, position: { x: number; y: number }): void {
+    const annotation = this.annotations.get(nodeId);
     if (!annotation) return;
 
-    const pos = node.position();
-    if (annotation.shapeType === 'line' && annotation.endPosition) {
-      const prevCenter = this.getLineCenter(annotation);
-      const deltaX = Math.round(pos.x - prevCenter.x);
-      const deltaY = Math.round(pos.y - prevCenter.y);
-      annotation.endPosition = {
-        x: annotation.endPosition.x + deltaX,
-        y: annotation.endPosition.y + deltaY
-      };
+    if (annotation.shapeType === 'line') {
+      // For lines, position is the center - compute from endpoints
+      const center = this.getLineCenter(annotation);
+      const deltaX = Math.round(position.x - center.x);
+      const deltaY = Math.round(position.y - center.y);
+      if (annotation.endPosition) {
+        annotation.endPosition = {
+          x: annotation.endPosition.x + deltaX,
+          y: annotation.endPosition.y + deltaY
+        };
+      }
       annotation.position = {
         x: annotation.position.x + deltaX,
         y: annotation.position.y + deltaY
       };
     } else {
       annotation.position = {
-        x: Math.round(pos.x),
-        y: Math.round(pos.y)
+        x: Math.round(position.x),
+        y: Math.round(position.y)
       };
     }
 
-    this.positionOverlayById(node.id());
+    this.positionOverlayById(nodeId);
   }
 
   private registerLockStateListener(): void {
@@ -315,27 +447,39 @@ export class ManagerFreeShapes {
   public addFreeShapeAnnotation(annotation: FreeShapeAnnotation, options: { skipSave?: boolean } = {}): void {
     this.annotations.set(annotation.id, annotation);
 
+    // Calculate the correct initial position (for lines, use center; for others, use annotation position)
+    const initialPosition = annotation.shapeType === 'line'
+      ? this.getLineCenter(annotation)
+      : { x: annotation.position.x, y: annotation.position.y };
+
     const existing = this.cy.getElementById(annotation.id);
     let node: cytoscape.NodeSingular;
     if (existing && existing.length > 0) {
       node = existing[0] as cytoscape.NodeSingular;
       node.data({
         ...node.data(),
-        topoViewerRole: 'freeShape'
+        topoViewerRole: 'freeShape',
+        freeShapeData: annotation
       });
-      node.position(annotation.position);
+      node.position(initialPosition);
       node.selectify();
       node.grabify();
-      node.unlock();
+      // Respect lock state when updating existing node
+      if ((window as any).topologyLocked) {
+        node.lock();
+      } else {
+        node.unlock();
+      }
       this.managedNodes.delete(annotation.id);
     } else {
       node = this.cy.add({
         group: 'nodes',
         data: {
           id: annotation.id,
-          topoViewerRole: 'freeShape'
+          topoViewerRole: 'freeShape',
+          freeShapeData: annotation
         },
-        position: annotation.position,
+        position: initialPosition,
         selectable: true,
         grabbable: true,
         locked: false
@@ -343,15 +487,23 @@ export class ManagerFreeShapes {
       this.managedNodes.add(annotation.id);
     }
 
-    this.annotationNodes.set(annotation.id, node);
-    if (annotation.shapeType === 'line') {
-      node.position(this.getLineCenter(annotation));
-    } else if (annotation.position) {
-      node.position(annotation.position);
+    // Respect lock state after adding node
+    if ((window as any).topologyLocked) {
+      node.lock();
     }
+
+    this.annotationNodes.set(annotation.id, node);
+    // Set position again to ensure it's correct
+    node.position(initialPosition);
     this.applyShapeNodeStyles(node, annotation);
     this.removeShapeOverlay(annotation.id);
     this.createShapeOverlay(node, annotation);
+
+    // Restore position after a short delay to bypass any grid snapping
+    setTimeout(() => {
+      node.position(initialPosition);
+      this.positionOverlayById(annotation.id);
+    }, 100);
 
     if (!options.skipSave) {
       this.debouncedSave();
@@ -1258,30 +1410,75 @@ export class ManagerFreeShapes {
     }
   }
 
+  /**
+   * Load annotations from backend with debouncing to prevent duplicate requests
+   * and ensure graph is stable before loading (matches freeText pattern)
+   */
   public async loadAnnotations(): Promise<void> {
-    try {
-      const response = await this.messageSender.sendMessageToVscodeEndpointPost(
-        'topo-editor-load-annotations',
-        {}
-      );
-
-      if (response && response.freeShapeAnnotations) {
-        this.annotations.clear();
-        this.annotationNodes.forEach((node, id) => {
-          if (node && node.inside() && this.managedNodes.has(id)) {
-            node.remove();
-          }
-        });
-        this.annotationNodes.clear();
-        this.managedNodes.clear();
-        Array.from(this.overlayElements.keys()).forEach((id) => this.removeShapeOverlay(id));
-
-        const annotations = response.freeShapeAnnotations as FreeShapeAnnotation[];
-        annotations.forEach(annotation => this.addFreeShapeAnnotation(annotation, { skipSave: true }));
-        log.info(`Loaded ${annotations.length} shape annotations`);
-      }
-    } catch (error) {
-      log.error(`Failed to load shape annotations: ${error}`);
+    // If a load is already in progress, skip this request
+    if (this.loadInProgress) {
+      log.debug('Load already in progress, skipping duplicate request');
+      return;
     }
+
+    // Clear any pending load timeout
+    if (this.loadTimeout) {
+      clearTimeout(this.loadTimeout);
+    }
+
+    // Debounce the load to prevent rapid-fire requests and ensure graph is stable
+    this.loadTimeout = setTimeout(this.onLoadTimeout, 100);
+    return Promise.resolve();
+  }
+
+  /**
+   * Restore all shape annotation positions from stored annotation data.
+   * This ensures positions are preserved despite grid snapping or layout operations.
+   */
+  public restoreAnnotationPositions(): void {
+    this.annotations.forEach((annotation, id) => {
+      const node = this.annotationNodes.get(id);
+      if (node && node.inside()) {
+        if (annotation.shapeType === 'line') {
+          node.position(this.getLineCenter(annotation));
+        } else {
+          node.position({
+            x: annotation.position.x,
+            y: annotation.position.y
+          });
+        }
+        this.positionOverlayById(id);
+      }
+    });
+  }
+
+  /**
+   * Reapply styles to all shape annotations.
+   * Called before position restore to ensure nodes are in correct state.
+   */
+  private reapplyAllShapeStyles(): void {
+    this.annotationNodes.forEach((node, id) => {
+      const annotation = this.annotations.get(id);
+      if (annotation) {
+        this.applyShapeNodeStyles(node, annotation);
+      }
+    });
+    log.debug('Reapplied styles to free shape annotations');
+  }
+
+  /**
+   * Schedule multiple position restores after loading to ensure free shape positions
+   * persist despite any grid snapping or layout operations.
+   */
+  private schedulePositionRestores(): void {
+    // Restore positions after delays to ensure nodes are rendered and
+    // bypass any grid snapping that may occur during initialization
+    setTimeout(() => {
+      this.reapplyAllShapeStyles();
+      this.restoreAnnotationPositions();
+    }, 200);
+    // Additional restores at longer delays to catch any late layout operations
+    setTimeout(() => this.restoreAnnotationPositions(), 500);
+    setTimeout(() => this.restoreAnnotationPositions(), 1000);
   }
 }
