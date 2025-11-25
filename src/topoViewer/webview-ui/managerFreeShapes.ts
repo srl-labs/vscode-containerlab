@@ -3,10 +3,10 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { FreeShapeAnnotation } from '../types/topoViewerGraph';
 import { log } from '../logging/logger';
 
-const DEFAULT_SHAPE_WIDTH = 100;
-const DEFAULT_SHAPE_HEIGHT = 100;
+const DEFAULT_SHAPE_WIDTH = 50;
+const DEFAULT_SHAPE_HEIGHT = 50;
 const DEFAULT_LINE_LENGTH = 150;
-const DEFAULT_FILL_COLOR = '#3498db';
+const DEFAULT_FILL_COLOR = '#ffffff';
 const DEFAULT_FILL_OPACITY = 0;
 const DEFAULT_BORDER_COLOR = '#646464';
 const DEFAULT_BORDER_WIDTH = 2;
@@ -32,9 +32,13 @@ interface ShapeModalElements {
   fillColorInput: HTMLInputElement;
   fillOpacityInput: HTMLInputElement;
   fillOpacityValue: HTMLSpanElement;
+  fillControls: HTMLDivElement;
   borderColorInput: HTMLInputElement;
+  borderColorLabel: HTMLLabelElement;
   borderWidthInput: HTMLInputElement;
+  borderWidthLabel: HTMLLabelElement;
   borderStyleSelect: HTMLSelectElement;
+  borderStyleLabel: HTMLLabelElement;
   cornerRadiusInput: HTMLInputElement;
   cornerRadiusControl: HTMLDivElement;
   lineStartArrowCheck: HTMLInputElement;
@@ -43,6 +47,7 @@ interface ShapeModalElements {
   lineControls: HTMLDivElement;
   sizeControls: HTMLDivElement;
   rotationInput: HTMLInputElement;
+  rotationControl: HTMLDivElement;
   transparentBtn: HTMLButtonElement;
   noBorderBtn: HTMLButtonElement;
   cancelBtn: HTMLButtonElement;
@@ -1293,9 +1298,13 @@ export class ManagerFreeShapes {
       fillColorInput: document.getElementById('free-shapes-fill-color') as HTMLInputElement | null,
       fillOpacityInput: document.getElementById('free-shapes-fill-opacity') as HTMLInputElement | null,
       fillOpacityValue: document.getElementById('free-shapes-fill-opacity-value') as HTMLSpanElement | null,
+      fillControls: document.getElementById('free-shapes-fill-controls') as HTMLDivElement | null,
       borderColorInput: document.getElementById('free-shapes-border-color') as HTMLInputElement | null,
+      borderColorLabel: document.getElementById('free-shapes-border-color-label') as HTMLLabelElement | null,
       borderWidthInput: document.getElementById('free-shapes-border-width') as HTMLInputElement | null,
+      borderWidthLabel: document.getElementById('free-shapes-border-width-label') as HTMLLabelElement | null,
       borderStyleSelect: document.getElementById('free-shapes-border-style') as HTMLSelectElement | null,
+      borderStyleLabel: document.getElementById('free-shapes-border-style-label') as HTMLLabelElement | null,
       cornerRadiusInput: document.getElementById('free-shapes-corner-radius') as HTMLInputElement | null,
       cornerRadiusControl: document.getElementById('free-shapes-corner-radius-control') as HTMLDivElement | null,
       lineStartArrowCheck: document.getElementById('free-shapes-line-start-arrow') as HTMLInputElement | null,
@@ -1304,6 +1313,7 @@ export class ManagerFreeShapes {
       lineControls: document.getElementById('free-shapes-line-controls') as HTMLDivElement | null,
       sizeControls: document.getElementById('free-shapes-size-controls') as HTMLDivElement | null,
       rotationInput: document.getElementById('free-shapes-rotation') as HTMLInputElement | null,
+      rotationControl: document.getElementById('free-shapes-rotation-control') as HTMLDivElement | null,
       transparentBtn: document.getElementById('free-shapes-transparent-btn') as HTMLButtonElement | null,
       noBorderBtn: document.getElementById('free-shapes-no-border-btn') as HTMLButtonElement | null,
       cancelBtn: document.getElementById('free-shapes-cancel-btn') as HTMLButtonElement | null,
@@ -1339,15 +1349,27 @@ export class ManagerFreeShapes {
   }
 
   private updateModalControlVisibility(shapeType: string, els: ShapeModalElements): void {
-    if (shapeType === 'line') {
-      els.sizeControls.style.display = 'none';
-      els.lineControls.style.display = 'block';
-      els.cornerRadiusControl.style.display = 'none';
-    } else {
-      els.sizeControls.style.display = 'grid';
-      els.lineControls.style.display = 'none';
-      els.cornerRadiusControl.style.display = shapeType === 'rectangle' ? 'block' : 'none';
-    }
+    const isLine = shapeType === 'line';
+
+    // Size controls (hidden for lines)
+    els.sizeControls.style.display = isLine ? 'none' : 'grid';
+
+    // Line-specific controls
+    els.lineControls.style.display = isLine ? 'block' : 'none';
+
+    // Corner radius (only for rectangles)
+    els.cornerRadiusControl.style.display = shapeType === 'rectangle' ? 'block' : 'none';
+
+    // Fill controls (hidden for lines - lines don't have fill)
+    els.fillControls.style.display = isLine ? 'none' : 'grid';
+
+    // Rotation (hidden for lines - line angle is determined by endpoints)
+    els.rotationControl.style.display = isLine ? 'none' : 'block';
+
+    // Update labels for lines
+    els.borderColorLabel.textContent = isLine ? 'Line Color:' : 'Border Color:';
+    els.borderWidthLabel.textContent = isLine ? 'Line Width:' : 'Border Width:';
+    els.borderStyleLabel.textContent = isLine ? 'Line Style:' : 'Border Style:';
   }
 
   private setupModalHandlers(annotation: FreeShapeAnnotation, els: ShapeModalElements, resolve: ShapeResolve): void {
