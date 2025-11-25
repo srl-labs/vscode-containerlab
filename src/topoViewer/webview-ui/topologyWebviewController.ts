@@ -526,6 +526,7 @@ class TopologyWebviewController {
       this.groupStyleManager,
       this.freeTextManager
     );
+    this.copyPasteManager.setFreeShapesManager(this.freeShapesManager);
     if (mode === "edit") {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       (window as any).viewportPanels = this.viewportPanels;

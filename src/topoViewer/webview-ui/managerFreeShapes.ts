@@ -1507,8 +1507,9 @@ export class ManagerFreeShapes {
   /**
    * Reapply styles to all shape annotations.
    * Called before position restore to ensure nodes are in correct state.
+   * Also called after paste operations to restore proper dimensions.
    */
-  private reapplyAllShapeStyles(): void {
+  public reapplyAllShapeStyles(): void {
     this.annotationNodes.forEach((node, id) => {
       const annotation = this.annotations.get(id);
       if (annotation) {
