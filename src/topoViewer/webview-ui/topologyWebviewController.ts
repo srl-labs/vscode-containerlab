@@ -2467,6 +2467,9 @@ class TopologyWebviewController {
       // Handle free text nodes using the existing manager
       if (topoViewerRole === "freeText") {
         this.freeTextManager?.removeFreeTextAnnotation(node.id());
+      } else if (topoViewerRole === "freeShape") {
+        // Handle free shape nodes using the existing manager
+        this.freeShapesManager?.removeFreeShapeAnnotation(node.id());
       } else if (topoViewerRole === "group") {
         // Handle group nodes - use the group management system
         if (this.isViewportDrawerClabEditorChecked) {
