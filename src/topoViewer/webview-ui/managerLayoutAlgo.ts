@@ -16,6 +16,8 @@ const STYLE_ARROW_SCALE = 'arrow-scale' as const;
 // Common DOM class/value literals
 const DISPLAY_BLOCK = 'block' as const;
 const CLASS_HIDDEN = 'hidden' as const;
+// Selector to exclude free text nodes from layouts
+const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"]' as const;
 const CLASS_LEAFLET_ACTIVE = 'leaflet-active' as const;
 const COLOR_TRANSPARENT = 'transparent' as const;
 const ID_CY_LEAFLET = 'cy-leaflet' as const;
@@ -738,7 +740,8 @@ export class ManagerLayoutAlgo {
     } catch (err) {
       log.error(`[GeoMap] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
     }
-    cy.layout({
+    // Exclude free text nodes from layout
+    cy.nodes().not(SELECTOR_NOT_FREETEXT).layout({
       name: 'cola',
       nodeGap: 5,
       edgeLength: 100,
@@ -769,7 +772,8 @@ export class ManagerLayoutAlgo {
       log.error(`[Layout] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    cy.layout({
+    // Exclude free text nodes from layout
+    cy.nodes().not(SELECTOR_NOT_FREETEXT).layout({
       name: 'cola',
       nodeSpacing: () => nodeGap,
       edgeLength: (edge: cytoscape.EdgeSingular) =>
@@ -788,8 +792,11 @@ export class ManagerLayoutAlgo {
     const edgeLen = parseFloat((document.getElementById('force-directed-radial-slider-link-lenght') as HTMLInputElement)?.value || '1');
     const nodeGap = parseFloat((document.getElementById('force-directed-radial-slider-node-gap') as HTMLInputElement)?.value || '1');
 
+    // Exclude free text nodes from layout
+    const layoutNodes = cy.nodes().not(SELECTOR_NOT_FREETEXT);
+
     const nodeWeights: Record<string, number> = {};
-    cy.nodes().forEach((node) => {
+    layoutNodes.forEach((node) => {
       const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
       nodeWeights[node.id()] = 1 / level;
     });
@@ -804,7 +811,7 @@ export class ManagerLayoutAlgo {
       log.error(`[LayoutRadial] Failed to load cola extension: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    cy.layout({
+    layoutNodes.layout({
       name: 'cola',
       fit: true,
       nodeSpacing: nodeGap,

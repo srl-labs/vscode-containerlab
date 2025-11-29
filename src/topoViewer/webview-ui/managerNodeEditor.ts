@@ -5,7 +5,8 @@ import { log } from '../logging/logger';
 import { createFilterableDropdown } from './utilities/filterableDropdown';
 import { ManagerSaveTopo } from './managerSaveTopo';
 import { VscodeMessageSender } from './managerVscodeWebview';
-import { extractNodeIcons } from './managerCytoscapeBaseStyles';
+import { applyIconColorToNode, extractNodeIcons, getIconDataUriForRole } from './managerCytoscapeBaseStyles';
+import { createNodeIconOptionElement } from './utilities/iconDropdownRenderer';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import type { ClabTopology } from '../types/topoViewerType';
 import { DEFAULT_INTERFACE_PATTERN } from './utilities/interfacePatternUtils';
@@ -40,6 +41,10 @@ const ICON_CHEVRON_DOWN = 'fa-chevron-down' as const;
 const ATTR_ARIA_HIDDEN = 'aria-hidden' as const;
 const SELECTOR_SFM_VALUE = '[data-role="sfm-value"]' as const;
 const SELECTOR_SFM_DROPDOWN = '[data-role="sfm-dropdown"]' as const;
+const DEFAULT_ICON_COLOR = '#005aff' as const;
+const DEFAULT_ICON_CORNER_RADIUS = 0;
+const NODE_ICON_BASE_SIZE = 14;
+const ICON_PREVIEW_DEFAULT_SIZE = 64;
 
 const ID_PANEL_NODE_EDITOR = 'panel-node-editor' as const;
 const ID_PANEL_EDITOR_CLOSE = 'panel-node-editor-close' as const;
@@ -78,6 +83,20 @@ const ID_NODE_TYPE_FILTER_INPUT = 'panel-node-type-dropdown-container-filter-inp
 const ID_NODE_TYPE_WARNING = 'node-type-warning' as const;
 const ID_NODE_VERSION_DROPDOWN = 'node-version-dropdown-container' as const;
 const ID_NODE_VERSION_FILTER_INPUT = 'node-version-dropdown-container-filter-input' as const;
+const ID_NODE_ICON_COLOR = 'node-icon-color' as const;
+const ID_NODE_ICON_EDIT_BUTTON = 'node-icon-edit-button' as const;
+const ID_NODE_ICON_ADD_BUTTON = 'node-icon-add-button' as const;
+const ID_ICON_EDITOR_BACKDROP = 'node-icon-editor-backdrop' as const;
+const ID_ICON_EDITOR_MODAL = 'node-icon-editor-modal' as const;
+const ID_ICON_EDITOR_COLOR = 'node-icon-editor-color' as const;
+const ID_ICON_EDITOR_HEX = 'node-icon-editor-hex' as const;
+const ID_ICON_EDITOR_SHAPE = 'node-icon-editor-shape' as const;
+const ID_ICON_EDITOR_PREVIEW = 'node-icon-editor-preview' as const;
+const ID_ICON_EDITOR_SAVE = 'node-icon-editor-save' as const;
+const ID_ICON_EDITOR_CANCEL = 'node-icon-editor-cancel' as const;
+const ID_ICON_EDITOR_CLOSE = 'node-icon-editor-close' as const;
+const ID_ICON_EDITOR_CORNER = 'node-icon-editor-corner' as const;
+const ID_ICON_EDITOR_CORNER_VALUE = 'node-icon-editor-corner-value' as const;
 const ID_NODE_RP_DROPDOWN = 'node-restart-policy-dropdown-container' as const;
 const ID_NODE_RP_FILTER_INPUT = 'node-restart-policy-dropdown-container-filter-input' as const;
 const ID_NODE_NM_DROPDOWN = 'node-network-mode-dropdown-container' as const;
@@ -386,6 +405,11 @@ export class ManagerNodeEditor {
   private componentXiomCounters: Map<number, number> = new Map();
   private xiomMdaCounters: Map<string, number> = new Map();
   private pendingExpandedComponentSlots: Set<string> | undefined;
+  private cachedNodeIcons: string[] = [];
+  private cachedCustomIconSignature: string = '';
+  private currentIconColor: string | null = null;
+  private currentIconCornerRadius: number = DEFAULT_ICON_CORNER_RADIUS;
+  private iconEditorInitialized = false;
   // enums to be filled from schema
   private srosSfmTypes: string[] = [];
   private srosXiomTypes: string[] = [];
@@ -398,6 +422,12 @@ export class ManagerNodeEditor {
   );
   private integratedMode = false;
   private integratedMdaCounter = 0;
+  private readonly renderIconOption = (role: string): HTMLElement =>
+    createNodeIconOptionElement(role, {
+      onDelete: iconName => {
+        void this.handleIconDelete(iconName);
+      }
+    });
 
   constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
     this.cy = cy;
@@ -1584,6 +1614,7 @@ export class ManagerNodeEditor {
       typeOptionsWithEmpty,
       typeToSelect,
       (selectedType: string) => {
+        if (typeInput) typeInput.value = selectedType;
         log.debug(`Type ${selectedType || '(empty)'} selected for kind ${selectedKind}`);
         this.onTypeFieldChanged();
       },
@@ -1593,7 +1624,12 @@ export class ManagerNodeEditor {
 
     const filterInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement | null;
     if (filterInput) {
-      filterInput.oninput = () => this.onTypeFieldChanged();
+      const syncTypeValue = () => {
+        if (typeInput) typeInput.value = filterInput.value;
+        this.onTypeFieldChanged();
+      };
+      filterInput.oninput = syncTypeValue;
+      if (typeInput) typeInput.value = filterInput.value;
     }
   }
 
@@ -1603,28 +1639,57 @@ export class ManagerNodeEditor {
     typeDropdownContainer: HTMLElement | null,
     typeInput: HTMLInputElement | null,
   ) {
-    const hasTypeSupport = this.kindSupportsType(selectedKind);
+    const schemaReady = this.typeSchemaLoaded;
+    const hasTypeSupport = schemaReady ? this.kindSupportsType(selectedKind) : false;
+    const existingTypeValue = this.getExistingNodeTypeValue();
+    const hasExistingTypeValue = typeof existingTypeValue === 'string' && existingTypeValue.trim().length > 0;
+    if (!hasExistingTypeValue) {
+      this.setInputValue(ID_NODE_TYPE, '');
+      const filterInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement | null;
+      if (filterInput) filterInput.value = '';
+    }
+
     const hasTypeValue = this.hasTypeFieldValue();
-    const shouldShowFreeformType = hasTypeSupport || hasTypeValue;
+    const shouldShowFreeformType = !schemaReady || hasTypeSupport || hasTypeValue || hasExistingTypeValue;
 
     if (shouldShowFreeformType) {
-      typeFormGroup.style.display = 'block';
-      if (typeDropdownContainer && typeInput) {
-        typeDropdownContainer.style.display = 'none';
-        typeInput.style.display = 'block';
-      }
-      if (typeInput) {
-        typeInput.oninput = () => this.onTypeFieldChanged();
-      }
-      this.setTypeWarningVisibility(hasTypeValue && !hasTypeSupport);
+      this.displayFreeformTypeField(typeFormGroup, typeDropdownContainer, typeInput);
+      const shouldWarn = schemaReady && (hasTypeValue || hasExistingTypeValue) && !hasTypeSupport;
+      this.setTypeWarningVisibility(shouldWarn);
       return;
     }
 
+    this.hideTypeField(typeFormGroup, typeDropdownContainer, typeInput, hasTypeValue || hasExistingTypeValue);
+  }
+
+  private displayFreeformTypeField(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+  ): void {
+    typeFormGroup.style.display = 'block';
+    if (typeDropdownContainer && typeInput) {
+      typeDropdownContainer.style.display = 'none';
+      typeInput.style.display = 'block';
+    }
+    if (typeInput) {
+      typeInput.oninput = () => this.onTypeFieldChanged();
+    }
+  }
+
+  private hideTypeField(
+    typeFormGroup: HTMLElement,
+    typeDropdownContainer: HTMLElement | null,
+    typeInput: HTMLInputElement | null,
+    hasTypeValue: boolean,
+  ): void {
     typeFormGroup.style.display = 'none';
     this.setTypeWarningVisibility(false);
-    if (typeInput) typeInput.style.display = 'none';
+    if (typeInput) {
+      typeInput.style.display = 'none';
+      if (!hasTypeValue) typeInput.value = '';
+    }
     if (typeDropdownContainer) typeDropdownContainer.style.display = 'none';
-    if (typeInput && !hasTypeValue) typeInput.value = '';
   }
 
   private onTypeFieldChanged(): void {
@@ -1764,6 +1829,7 @@ export class ManagerNodeEditor {
 
     // Initialize event handlers
     this.setupEventHandlers();
+    this.setupIconEditorControls();
 
     // Setup dynamic entry handlers
     this.setupDynamicEntryHandlers();
@@ -2084,7 +2150,7 @@ export class ManagerNodeEditor {
   }
 
   private kindSupportsType(kind: string): boolean {
-    return this.typeSchemaLoaded && this.kindsWithTypeSupport.has(kind);
+    return this.kindsWithTypeSupport.has(kind);
   }
 
   /**
@@ -2151,6 +2217,204 @@ export class ManagerNodeEditor {
         certOptions?.classList.add(CLASS_HIDDEN);
       }
     });
+  }
+
+  private setupIconEditorControls(): void {
+    if (this.iconEditorInitialized) return;
+    const editButton = document.getElementById(ID_NODE_ICON_EDIT_BUTTON) as HTMLButtonElement | null;
+    const addButton = document.getElementById(ID_NODE_ICON_ADD_BUTTON) as HTMLButtonElement | null;
+    const modal = document.getElementById(ID_ICON_EDITOR_MODAL);
+    const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP);
+    if (!editButton || !modal || !backdrop) return;
+    this.iconEditorInitialized = true;
+
+    editButton.addEventListener('click', () => this.openIconEditor());
+    addButton?.addEventListener('click', () => {
+      void this.handleIconUpload();
+    });
+    this.registerIconEditorDismissHandlers();
+    this.registerIconEditorActionHandlers();
+    this.registerIconEditorInputHandlers();
+  }
+
+  private registerIconEditorDismissHandlers(): void {
+    const cancelBtn = document.getElementById(ID_ICON_EDITOR_CANCEL) as HTMLButtonElement | null;
+    cancelBtn?.addEventListener('click', () => this.closeIconEditor());
+
+    const closeBtn = document.getElementById(ID_ICON_EDITOR_CLOSE) as HTMLButtonElement | null;
+    closeBtn?.addEventListener('click', () => this.closeIconEditor());
+
+    const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP) as HTMLDivElement | null;
+    backdrop?.addEventListener('click', () => this.closeIconEditor());
+  }
+
+  private registerIconEditorActionHandlers(): void {
+    const saveBtn = document.getElementById(ID_ICON_EDITOR_SAVE) as HTMLButtonElement | null;
+    saveBtn?.addEventListener('click', () => this.applyIconEditorSelection());
+  }
+
+  private registerIconEditorInputHandlers(): void {
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
+    if (colorInput) {
+      colorInput.addEventListener('input', () => this.handleIconEditorColorInput(colorInput, hexInput));
+    }
+    if (hexInput) {
+      hexInput.addEventListener('input', () => this.handleIconEditorHexInput(hexInput, colorInput));
+    }
+
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    if (shapeSelect) {
+      this.populateIconShapeOptions(shapeSelect);
+      shapeSelect.addEventListener('change', () => this.updateIconPreviewElement());
+    }
+
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
+    if (cornerInput) {
+      cornerInput.addEventListener('input', () => this.handleIconEditorCornerInput(cornerInput));
+    }
+  }
+
+  private handleIconEditorColorInput(colorInput: HTMLInputElement, hexInput: HTMLInputElement | null): void {
+    const normalized = this.normalizeIconColor(colorInput.value, DEFAULT_ICON_COLOR);
+    if (hexInput && normalized) {
+      hexInput.value = normalized;
+    }
+    this.updateIconPreviewElement();
+  }
+
+  private resolveIconSelectionAfterChange(
+    preferredIcon: string | undefined,
+    previousSelection: string,
+    availableIcons: string[]
+  ): string {
+    const candidates = [preferredIcon, previousSelection, 'pe'];
+    for (const candidate of candidates) {
+      if (candidate && availableIcons.includes(candidate)) {
+        return candidate;
+      }
+    }
+    if (availableIcons.length > 0) {
+      return availableIcons[0];
+    }
+    return 'pe';
+  }
+
+  private handleIconEditorHexInput(hexInput: HTMLInputElement, colorInput: HTMLInputElement | null): void {
+    const normalized = this.normalizeIconColor(hexInput.value, null);
+    if (normalized && colorInput) {
+      colorInput.value = normalized;
+      hexInput.value = normalized;
+      this.updateIconPreviewElement();
+    }
+  }
+
+  private updateCornerRadiusLabel(value: number): void {
+    const radiusLabel = document.getElementById(ID_ICON_EDITOR_CORNER_VALUE);
+    if (radiusLabel) {
+      const normalized = Math.max(0, Math.round(value));
+      radiusLabel.textContent = `${normalized}px`;
+    }
+  }
+
+  private handleIconEditorCornerInput(cornerInput: HTMLInputElement): void {
+    this.updateCornerRadiusLabel(Number(cornerInput.value));
+    this.updateIconPreviewElement();
+  }
+
+  private scaleRadiusForPreview(value: number, preview: HTMLImageElement): number {
+    const previewSize = preview?.clientWidth || ICON_PREVIEW_DEFAULT_SIZE;
+    const normalizedRadius = Math.max(0, Number.isFinite(value) ? value : 0);
+    const scaled = (normalizedRadius / NODE_ICON_BASE_SIZE) * previewSize;
+    return Math.min(scaled, previewSize / 2);
+  }
+
+  private populateIconShapeOptions(select: HTMLSelectElement): void {
+    select.innerHTML = '';
+    for (const role of this.getNodeIconOptions()) {
+      const option = document.createElement('option');
+      option.value = role;
+      option.textContent = role;
+      select.appendChild(option);
+    }
+  }
+
+  private openIconEditor(): void {
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
+    const currentShape = this.getCurrentIconValue();
+    if (shapeSelect) {
+      if (!Array.from(shapeSelect.options).some(opt => opt.value === currentShape)) {
+        this.populateIconShapeOptions(shapeSelect);
+      }
+      shapeSelect.value = currentShape;
+    }
+    const colorValue = this.currentIconColor ?? DEFAULT_ICON_COLOR;
+    if (colorInput) colorInput.value = colorValue;
+    if (hexInput) hexInput.value = this.currentIconColor ?? '';
+    if (cornerInput) {
+      cornerInput.value = `${this.currentIconCornerRadius}`;
+      this.updateCornerRadiusLabel(this.currentIconCornerRadius);
+    }
+    this.toggleIconEditor(true);
+    this.updateIconPreviewElement();
+  }
+
+  private closeIconEditor(): void {
+    this.toggleIconEditor(false);
+  }
+
+  private toggleIconEditor(show: boolean): void {
+    const modal = document.getElementById(ID_ICON_EDITOR_MODAL) as HTMLDivElement | null;
+    const backdrop = document.getElementById(ID_ICON_EDITOR_BACKDROP) as HTMLDivElement | null;
+    if (!modal || !backdrop) return;
+    modal.style.display = show ? 'block' : 'none';
+    backdrop.style.display = show ? 'block' : 'none';
+  }
+
+  private updateIconPreviewElement(): void {
+    const preview = document.getElementById(ID_ICON_EDITOR_PREVIEW) as HTMLImageElement | null;
+    if (!preview) return;
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const color = this.normalizeIconColor(colorInput?.value || this.currentIconColor || DEFAULT_ICON_COLOR, DEFAULT_ICON_COLOR) ?? DEFAULT_ICON_COLOR;
+    const shape = shapeSelect?.value || this.getCurrentIconValue();
+    const dataUri = getIconDataUriForRole(shape, color);
+    if (dataUri) {
+      preview.src = dataUri;
+    }
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
+    const radius = cornerInput ? Number(cornerInput.value) : this.currentIconCornerRadius;
+    preview.style.borderRadius = `${this.scaleRadiusForPreview(radius, preview)}px`;
+  }
+
+  private applyIconEditorSelection(): void {
+    const colorInput = document.getElementById(ID_ICON_EDITOR_COLOR) as HTMLInputElement | null;
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    const cornerInput = document.getElementById(ID_ICON_EDITOR_CORNER) as HTMLInputElement | null;
+    const rawColor = colorInput?.value || '';
+    const normalized = this.normalizeIconColor(rawColor, null);
+    const effectiveColor =
+      normalized && normalized.toLowerCase() !== DEFAULT_ICON_COLOR ? normalized : null;
+    this.setIconColor(effectiveColor);
+    const hexInput = document.getElementById(ID_ICON_EDITOR_HEX) as HTMLInputElement | null;
+    if (hexInput) {
+      hexInput.value = effectiveColor ?? '';
+    }
+    const shape = shapeSelect?.value || this.getCurrentIconValue();
+    this.setIconShapeValue(shape);
+    const cornerRadius = cornerInput ? Number(cornerInput.value) : DEFAULT_ICON_CORNER_RADIUS;
+    this.setIconCornerRadius(Number.isFinite(cornerRadius) ? cornerRadius : DEFAULT_ICON_CORNER_RADIUS);
+    this.closeIconEditor();
+  }
+
+  private setIconShapeValue(shape: string): void {
+    const input = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
+    if (!input) return;
+    input.value = shape;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   /**
@@ -2341,6 +2605,12 @@ export class ManagerNodeEditor {
 
   private async refreshNodeExtraData(node: cytoscape.NodeSingular): Promise<void> {
     try {
+      // Skip fetching YAML-backed data when editing/creating a custom node template
+      if (node.id() === ID_TEMP_CUSTOM_NODE || node.id() === ID_EDIT_CUSTOM_NODE) {
+        log.debug(`Skipping YAML refresh for custom node template node: ${node.id()}`);
+        return;
+      }
+
       const sender = this.saveManager.getMessageSender();
       const nodeName = node.data('name') || node.id();
       const freshData = await sender.sendMessageToVscodeEndpointPost('topo-editor-get-node-config', { node: nodeName });
@@ -2487,6 +2757,26 @@ export class ManagerNodeEditor {
     this.setupCustomNodeFields(node);
   }
 
+  private getNodeIconOptions(): string[] {
+    const signature = this.computeCustomIconSignature();
+    if (!this.cachedNodeIcons.length || this.cachedCustomIconSignature !== signature) {
+      this.cachedNodeIcons = extractNodeIcons();
+      this.cachedCustomIconSignature = signature;
+    }
+    return this.cachedNodeIcons;
+  }
+
+  private computeCustomIconSignature(): string {
+    const customIcons = (window as any)?.customIcons;
+    if (!customIcons || typeof customIcons !== 'object') {
+      return '';
+    }
+    return Object.keys(customIcons)
+      .sort()
+      .map(key => `${key}-${(customIcons[key] as string)?.length ?? 0}`)
+      .join('|');
+  }
+
   private setupKindAndTypeFields(extraData: Record<string, any>, actualInherited: string[]): void {
     const desiredKind = extraData.kind || ((window as any).defaultKind || 'nokia_srlinux');
     const kindInitial =
@@ -2515,14 +2805,182 @@ export class ManagerNodeEditor {
   }
 
   private setupIconField(nodeData: Record<string, any>): void {
-    const nodeIcons = extractNodeIcons();
+    const nodeIcons = this.getNodeIconOptions();
     let iconInitial = 'pe';
     if (nodeData.topoViewerRole && typeof nodeData.topoViewerRole === 'string') {
       iconInitial = nodeData.topoViewerRole;
     } else if (nodeData.extraData?.icon && typeof nodeData.extraData.icon === 'string') {
       iconInitial = nodeData.extraData.icon;
     }
-    createFilterableDropdown(ID_PANEL_NODE_TOPOROLE_CONTAINER, nodeIcons, iconInitial, () => {}, 'Search for icon...');
+    createFilterableDropdown(
+      ID_PANEL_NODE_TOPOROLE_CONTAINER,
+      nodeIcons,
+      iconInitial,
+      () => {},
+      'Search for icon...',
+      false,
+      {
+        menuClassName: 'max-h-96',
+        dropdownWidth: 320,
+        renderOption: this.renderIconOption,
+      }
+    );
+    this.initializeIconColorState(nodeData);
+  }
+
+  private initializeIconColorState(nodeData: Record<string, any>): void {
+    const fromNode = typeof nodeData.iconColor === 'string' ? nodeData.iconColor : '';
+    const fromExtra =
+      typeof nodeData.extraData?.iconColor === 'string' ? (nodeData.extraData.iconColor as string) : '';
+    const normalized = this.normalizeIconColor(fromNode || fromExtra, null);
+    this.setIconColor(normalized);
+    const radiusSource = this.resolveNumericIconValue(
+      nodeData.iconCornerRadius,
+      nodeData.extraData?.iconCornerRadius
+    );
+    this.setIconCornerRadius(radiusSource);
+  }
+
+  private setIconColor(color: string | null): void {
+    this.currentIconColor = color;
+    const hidden = document.getElementById(ID_NODE_ICON_COLOR) as HTMLInputElement | null;
+    if (hidden) {
+      hidden.value = color ?? '';
+    }
+  }
+
+  private setIconCornerRadius(radius: number | null): void {
+    if (typeof radius === 'number' && Number.isFinite(radius)) {
+      this.currentIconCornerRadius = Math.max(0, Math.min(40, radius));
+      return;
+    }
+    this.currentIconCornerRadius = DEFAULT_ICON_CORNER_RADIUS;
+  }
+
+  private resolveNumericIconValue(primary: unknown, fallback: unknown): number | null {
+    if (typeof primary === 'number' && Number.isFinite(primary)) {
+      return primary;
+    }
+    if (typeof fallback === 'number' && Number.isFinite(fallback)) {
+      return fallback;
+    }
+    return null;
+  }
+
+  private normalizeIconColor(color: string | undefined, fallback: string | null = DEFAULT_ICON_COLOR): string | null {
+    if (!color) {
+      return fallback;
+    }
+    let candidate = color.trim();
+    if (!candidate) {
+      return fallback;
+    }
+    if (!candidate.startsWith('#')) {
+      candidate = `#${candidate}`;
+    }
+    const hexRegex = /^#([0-9a-fA-F]{6})$/;
+    if (!hexRegex.test(candidate)) {
+      return fallback;
+    }
+    return `#${candidate.slice(1).toLowerCase()}`;
+  }
+
+  private getCurrentIconValue(): string {
+    const input = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
+    return input?.value?.trim() || 'pe';
+  }
+
+  private async handleIconUpload(): Promise<void> {
+    if (!this.messageSender) {
+      return;
+    }
+    try {
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-upload-icon', {});
+      if (!response || response.cancelled || response.success !== true) {
+        return;
+      }
+      if (response.customIcons && typeof response.customIcons === 'object') {
+        (window as any).customIcons = response.customIcons;
+        this.cachedNodeIcons = [];
+        this.cachedCustomIconSignature = '';
+        this.refreshIconDropdownAfterIconChange(response.lastAddedIcon);
+      }
+    } catch (error) {
+      log.error(`Failed to upload custom icon: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private shouldUseBrowserConfirm(): boolean {
+    if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
+      return false;
+    }
+    // VS Code webviews expose acquireVsCodeApi/vscode but do not support blocking dialogs
+    const hasVscodeApi =
+      typeof (window as any).acquireVsCodeApi === 'function' || Boolean((window as any).vscode);
+    return !hasVscodeApi;
+  }
+
+  private async handleIconDelete(iconName: string): Promise<void> {
+    if (!this.messageSender || !iconName) {
+      return;
+    }
+    const confirmationMessage = `Delete custom icon "${iconName}"? This action cannot be undone.`;
+    if (this.shouldUseBrowserConfirm() && window.confirm(confirmationMessage) === false) {
+      return;
+    }
+    this.teardownIconDropdownMenu();
+    try {
+      const response = await this.messageSender.sendMessageToVscodeEndpointPost('topo-editor-delete-icon', { iconName });
+      if (!response || response.success !== true) {
+        return;
+      }
+      if (response.customIcons && typeof response.customIcons === 'object') {
+        (window as any).customIcons = response.customIcons;
+      }
+      this.cachedNodeIcons = [];
+      this.cachedCustomIconSignature = '';
+      this.refreshIconDropdownAfterIconChange();
+    } catch (error) {
+      log.error(`Failed to delete custom icon "${iconName}": ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private teardownIconDropdownMenu(): void {
+    const dropdownMenu = document.getElementById(`${ID_PANEL_NODE_TOPOROLE_CONTAINER}-dropdown-menu`) as HTMLElement | null;
+    if (dropdownMenu) {
+      dropdownMenu.remove();
+    }
+  }
+
+  private refreshIconDropdownAfterIconChange(preferredIcon?: string): void {
+    const previousSelection = this.getCurrentIconValue();
+    const availableIcons = this.getNodeIconOptions();
+    const selectedIcon = this.resolveIconSelectionAfterChange(preferredIcon, previousSelection, availableIcons);
+    this.teardownIconDropdownMenu();
+    createFilterableDropdown(
+      ID_PANEL_NODE_TOPOROLE_CONTAINER,
+      availableIcons,
+      selectedIcon,
+      () => {},
+      'Search for icon...',
+      false,
+      {
+        menuClassName: 'max-h-96',
+        dropdownWidth: 320,
+        renderOption: this.renderIconOption,
+      }
+    );
+    const filterInput = document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null;
+    if (filterInput) {
+      filterInput.value = selectedIcon;
+    }
+    const shapeSelect = document.getElementById(ID_ICON_EDITOR_SHAPE) as HTMLSelectElement | null;
+    if (shapeSelect) {
+      this.populateIconShapeOptions(shapeSelect);
+      const targetIcon = preferredIcon && availableIcons.includes(preferredIcon) ? preferredIcon : selectedIcon;
+      shapeSelect.value = targetIcon;
+    }
+    this.updateIconPreviewElement();
   }
 
   private setupCustomNodeFields(node: cytoscape.NodeSingular): void {
@@ -2960,16 +3418,6 @@ export class ManagerNodeEditor {
    * Get type field value from dropdown or input
    */
   private getTypeFieldValue(): string {
-    // First check if dropdown is visible
-    const dropdownContainer = document.getElementById(ID_NODE_TYPE_DROPDOWN);
-    if (dropdownContainer && dropdownContainer.style.display !== 'none') {
-      // Get value from dropdown filter input
-      const dropdownInput = document.getElementById(ID_NODE_TYPE_FILTER_INPUT) as HTMLInputElement;
-      if (dropdownInput) {
-        return dropdownInput.value;
-      }
-    }
-    // Otherwise get from regular input
     return this.getInputValue(ID_NODE_TYPE);
   }
 
@@ -3327,6 +3775,44 @@ export class ManagerNodeEditor {
     return true;
   }
 
+  private buildCustomNodePayload(params: {
+    name: string;
+    nodeProps: NodeProperties;
+    setDefault: boolean;
+    iconValue: string;
+    baseName: string;
+    interfacePattern: string;
+    iconColor: string | null;
+    oldName?: string;
+  }): any {
+    const { name, nodeProps, setDefault, iconValue, baseName, interfacePattern, iconColor, oldName } = params;
+    const payload: any = {
+      name,
+      kind: nodeProps.kind || '',
+      type: nodeProps.type,
+      image: nodeProps.image,
+      icon: iconValue,
+      baseName,
+      setDefault,
+      ...(oldName && { oldName })
+    };
+    if (this.currentIconCornerRadius > 0) {
+      payload.iconCornerRadius = this.currentIconCornerRadius;
+    }
+    if (iconColor) {
+      payload.iconColor = iconColor;
+    }
+    if (interfacePattern) {
+      payload.interfacePattern = interfacePattern;
+    }
+    Object.keys(nodeProps).forEach(key => {
+      if (!['name', 'kind', 'type', 'image'].includes(key)) {
+        payload[key] = nodeProps[key as keyof NodeProperties];
+      }
+    });
+    return payload;
+  }
+
   private async saveCustomNodeTemplate(name: string, nodeProps: NodeProperties, setDefault: boolean, oldName?: string): Promise<void> {
     try {
       // Get the icon/role value
@@ -3336,27 +3822,17 @@ export class ManagerNodeEditor {
       const baseName = this.getInputValue('node-base-name') || '';
       const interfacePattern = this.getInputValue(ID_NODE_INTERFACE_PATTERN).trim();
 
-      const payload: any = {
+      const iconColor = this.currentIconColor;
+
+      const payload = this.buildCustomNodePayload({
         name,
-        kind: nodeProps.kind || '',
-        type: nodeProps.type,
-        image: nodeProps.image,
-        icon: iconValue,  // Add icon to the saved template
-        baseName,  // Add base name for canvas nodes
+        nodeProps,
         setDefault,
-        // Include the old name if we're editing an existing template
-        ...(oldName && { oldName })
-      };
-
-      if (interfacePattern) {
-        payload.interfacePattern = interfacePattern;
-      }
-
-      // Always save all properties from nodeProps (excluding basic ones that are already set)
-      Object.keys(nodeProps).forEach(key => {
-        if (key !== 'name' && key !== 'kind' && key !== 'type' && key !== 'image') {
-          payload[key] = nodeProps[key as keyof NodeProperties];
-        }
+        iconValue,
+        baseName,
+        interfacePattern,
+        iconColor,
+        oldName
       });
 
       const resp = await this.messageSender.sendMessageToVscodeEndpointPost(
@@ -3816,7 +4292,25 @@ export class ManagerNodeEditor {
       (document.getElementById(ID_PANEL_NODE_TOPOROLE_FILTER_INPUT) as HTMLInputElement | null)?.value ||
       'pe';
     const updatedData = { ...currentData, name: nodeProps.name, topoViewerRole: iconValue, extraData: updatedExtraData };
+    if (this.currentIconColor) {
+      updatedData.iconColor = this.currentIconColor;
+    } else {
+      delete updatedData.iconColor;
+    }
+    if (this.currentIconCornerRadius > 0) {
+      updatedData.iconCornerRadius = this.currentIconCornerRadius;
+    } else {
+      delete updatedData.iconCornerRadius;
+    }
     this.currentNode!.data(updatedData);
+    const hadColorBefore = typeof currentData.iconColor === 'string' && currentData.iconColor.trim() !== '';
+    const preserveBackground = !hadColorBefore && !this.currentIconColor;
+    applyIconColorToNode(
+      this.currentNode!,
+      this.currentIconColor || undefined,
+      { cornerRadius: this.currentIconCornerRadius },
+      preserveBackground
+    );
     await this.saveManager.saveTopo(this.cy, false);
     await this.refreshNodeData(expandedSlots);
     this.updateInheritedBadges(inheritedProps);
@@ -3907,6 +4401,13 @@ export class ManagerNodeEditor {
   }
 
   private async refreshNodeData(expandedSlots?: Set<string>): Promise<void> {
+    if (!this.currentNode) {
+      return;
+    }
+    if (this.isCustomTemplateNode()) {
+      log.debug('Skipping YAML refresh after save for custom node template');
+      return;
+    }
     try {
       const sender = this.saveManager.getMessageSender();
       const nodeName = this.currentNode!.data('name') || this.currentNode!.id();

@@ -4,6 +4,19 @@ import cytoscape from 'cytoscape';
 import type { NodeData, NodeExtraData } from '../types/topoViewerGraph';
 import topoViewerState from '../state';
 import { getUniqueId } from './utilities/idUtils';
+import { applyIconColorToNode } from './managerCytoscapeBaseStyles';
+
+type CustomNodeTemplate = {
+  kind: string;
+  type?: string;
+  image?: string;
+  name?: string;
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  baseName?: string;
+  interfacePattern?: string;
+};
 
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.
@@ -14,25 +27,17 @@ export class ManagerAddContainerlabNode {
   public viewportButtonsAddContainerlabNode(
     cy: cytoscape.Core,
     event: cytoscape.EventObject,
-    template?: {
-      kind: string;
-      type?: string;
-      image?: string;
-      name?: string;
-      icon?: string;
-      baseName?: string;
-      interfacePattern?: string;
-    }
+    template?: CustomNodeTemplate
   ): void {
     this.initializeNodeCounter(cy);
-    const newNodeId = this.generateNodeId();
-    const nodeName = this.generateNodeName(cy, newNodeId, template);
+    const identifiers = this.resolveNodeIdentifiers(cy, template);
     const kind = template?.kind || window.defaultKind || 'nokia_srlinux';
-    const newNodeData = this.createNodeData(newNodeId, nodeName, template, kind);
+    const newNodeData = this.createNodeData(identifiers.nodeId, identifiers.nodeName, template, kind);
     const position = this.determinePosition(cy, event);
 
-    cy.add({ group: 'nodes', data: newNodeData, position });
-    this.applyGeoCoordinates(cy, newNodeId, position);
+    const createdNode = this.addNodeToCanvas(cy, newNodeData, position);
+    this.applyTemplateIconStyles(createdNode, template);
+    this.applyGeoCoordinates(cy, identifiers.nodeId, position);
   }
 
   private initializeNodeCounter(cy: cytoscape.Core): void {
@@ -68,17 +73,7 @@ export class ManagerAddContainerlabNode {
   private createNodeData(
     newNodeId: string,
     nodeName: string,
-    template:
-      | {
-          kind: string;
-          type?: string;
-          image?: string;
-          name?: string;
-          icon?: string;
-          baseName?: string;
-          interfacePattern?: string;
-        }
-      | undefined,
+    template: CustomNodeTemplate | undefined,
     kind: string
   ): NodeData {
     const extraData: NodeExtraData = {
@@ -108,6 +103,8 @@ export class ManagerAddContainerlabNode {
       name: nodeName,
       parent: '',
       topoViewerRole: template?.icon || 'pe',
+      iconColor: template?.iconColor,
+      iconCornerRadius: template?.iconCornerRadius,
       sourceEndpoint: '',
       targetEndpoint: '',
       containerDockerExtraAttribute: { state: '', status: '' },
@@ -119,12 +116,12 @@ export class ManagerAddContainerlabNode {
     kind: string,
     template?: { type?: string; name?: string }
   ): string | undefined {
+    if (template?.type) {
+      return template.type;
+    }
     const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
     if (!nokiaKinds.includes(kind)) {
       return undefined;
-    }
-    if (template?.type) {
-      return template.type;
     }
     // If this template represents a custom node (has a name) but no explicit type,
     // avoid assigning a default type.
@@ -140,10 +137,53 @@ export class ManagerAddContainerlabNode {
     if (!template) {
       return {};
     }
-    const excluded = ['name', 'kind', 'type', 'image', 'icon', 'setDefault', 'baseName'];
+    const excluded = ['name', 'kind', 'type', 'image', 'icon', 'iconColor', 'iconCornerRadius', 'setDefault', 'baseName'];
     return Object.fromEntries(
       Object.entries(template).filter(([key]) => !excluded.includes(key))
     );
+  }
+
+  private resolveNodeIdentifiers(
+    cy: cytoscape.Core,
+    template?: { baseName?: string }
+  ): { nodeId: string; nodeName: string } {
+    const generatedId = this.generateNodeId();
+    const nodeName = this.generateNodeName(cy, generatedId, template);
+    const nodeId = nodeName || generatedId;
+    return { nodeId, nodeName };
+  }
+
+  private addNodeToCanvas(
+    cy: cytoscape.Core,
+    data: NodeData,
+    position: { x: number; y: number }
+  ): cytoscape.NodeSingular | undefined {
+    const collection = cy.add({ group: 'nodes', data, position });
+    return collection[0];
+  }
+
+  private applyTemplateIconStyles(node: cytoscape.NodeSingular | undefined, template?: CustomNodeTemplate): void {
+    if (!node || !template) return;
+    const hasColor = typeof template.iconColor === 'string' && template.iconColor.trim() !== '';
+    const hasRadius = typeof template.iconCornerRadius === 'number';
+    const hasCustomIcon = this.hasCustomIcon(template.icon);
+    if (!hasColor && !hasRadius && !hasCustomIcon) return;
+
+    const options = hasRadius ? { cornerRadius: template.iconCornerRadius } : undefined;
+    const preserveDefaultBackground = !hasColor && !hasCustomIcon;
+    applyIconColorToNode(node, hasColor ? template.iconColor : undefined, options, preserveDefaultBackground);
+  }
+
+  private hasCustomIcon(iconName?: string | null): boolean {
+    if (!iconName) {
+      return false;
+    }
+    const customIcons = (window as any)?.customIcons;
+    if (!customIcons || typeof customIcons !== 'object') {
+      return false;
+    }
+    const iconData = customIcons[iconName];
+    return typeof iconData === 'string' && iconData.length > 0;
   }
 
   private determinePosition(

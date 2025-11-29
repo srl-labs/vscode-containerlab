@@ -18,6 +18,61 @@ if (vscodeApi) {
   (window as any).vscode = vscodeApi;
 }
 
+interface PendingRequest {
+  resolve: Function;
+  reject: Function;
+  owner: VscodeMessageSender;
+}
+
+// eslint-disable-next-line no-unused-vars
+type SharedMessageHandler = (event: MessageEvent) => void;
+
+let sharedMessageHandler: SharedMessageHandler | null = null;
+let sharedPendingRequests: Map<string, PendingRequest> | null = null;
+let sharedRequestCounter = 0;
+let activeSenderCount = 0;
+let sharedLogger: LoggerLike = log;
+
+const getPendingStore = (): Map<string, PendingRequest> => {
+  if (!sharedPendingRequests) {
+    sharedPendingRequests = new Map();
+  }
+  return sharedPendingRequests;
+};
+
+const ensureMessageHandler = (): void => {
+  if (sharedMessageHandler) {
+    return;
+  }
+  sharedMessageHandler = (event: MessageEvent): void => {
+    const msg = event.data;
+    if (msg && msg.type === 'POST_RESPONSE') {
+      const pending = getPendingStore().get(msg.requestId);
+      if (!pending) {
+        sharedLogger.warn(`Received response for unknown requestId: ${msg.requestId}`);
+        return;
+      }
+      getPendingStore().delete(msg.requestId);
+      const { resolve, reject } = pending;
+      if (msg.error) {
+        reject(new Error(msg.error));
+      } else {
+        resolve(msg.result);
+      }
+    }
+  };
+  window.addEventListener('message', sharedMessageHandler);
+};
+
+const cleanupMessageHandler = (): void => {
+  if (sharedMessageHandler && activeSenderCount === 0) {
+    window.removeEventListener('message', sharedMessageHandler);
+    sharedMessageHandler = null;
+    sharedPendingRequests?.clear();
+    sharedPendingRequests = null;
+  }
+};
+
 /* eslint-disable no-unused-vars */
 export interface LoggerLike {
   warn: (...args: any[]) => void;
@@ -29,10 +84,7 @@ export interface LoggerLike {
  */
 export class VscodeMessageSender {
   private vsCode: any;
-  private pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
-  private requestCounter = 0;
-  private messageHandler: EventListener;
-  private logger: LoggerLike;
+  private disposed = false;
 
   /**
    * Creates an instance of VscodeMessageSender.
@@ -41,41 +93,14 @@ export class VscodeMessageSender {
    * @throws Will throw an error if the VS Code API is not available in this environment.
    */
   constructor(logger: LoggerLike = log) {
-    this.logger = logger;
+    sharedLogger = logger;
     if (vscodeApi) {
       this.vsCode = vscodeApi;
     } else {
       throw new Error("VS Code API is not available in this environment.");
     }
-    // Initialize the listener for messages from the extension host.
-    this.messageHandler = this.handleMessage.bind(this) as EventListener;
-    window.addEventListener("message", this.messageHandler);
-  }
-
-  /**
-   * Handles incoming messages from the VS Code extension host.
-   * Resolves or rejects pending promises based on the response.
-   *
-   * @param event - The MessageEvent containing data from the extension host.
-   * @private
-   */
-  private handleMessage(event: MessageEvent): void {
-    const msg = event.data;
-    if (msg && msg.type === "POST_RESPONSE") {
-      const { requestId, result, error } = msg;
-      const pending = this.pendingRequests.get(requestId);
-      if (!pending) {
-        this.logger.warn(`Received response for unknown requestId: ${requestId}`);
-        return;
-      }
-      this.pendingRequests.delete(requestId);
-      const { resolve, reject } = pending as { resolve: Function; reject: Function };
-      if (error) {
-        reject(new Error(error));
-      } else {
-        resolve(result);
-      }
-    }
+    ensureMessageHandler();
+    activeSenderCount += 1;
   }
 
   /**
@@ -86,9 +111,12 @@ export class VscodeMessageSender {
    * @returns A Promise that resolves with the response from the backend.
    */
   public sendMessageToVscodeEndpointPost(endpoint: string, payload: any): Promise<any> {
+    if (this.disposed) {
+      return Promise.reject(new Error('VscodeMessageSender has been disposed.'));
+    }
     return new Promise((resolve, reject) => {
-      const requestId = `req_${Date.now()}_${++this.requestCounter}`;
-      this.pendingRequests.set(requestId, { resolve, reject });
+      const requestId = `req_${Date.now()}_${++sharedRequestCounter}`;
+      getPendingStore().set(requestId, { resolve, reject, owner: this });
 
       this.vsCode.postMessage({
         type: "POST",
@@ -103,8 +131,18 @@ export class VscodeMessageSender {
    * Cleans up resources by removing the message listener and clearing pending requests.
    */
   public dispose(): void {
-    window.removeEventListener("message", this.messageHandler);
-    this.pendingRequests.clear();
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    activeSenderCount = Math.max(0, activeSenderCount - 1);
+    const store = getPendingStore();
+    for (const [requestId, pending] of store.entries()) {
+      if (pending.owner === this) {
+        store.delete(requestId);
+      }
+    }
+    cleanupMessageHandler();
   }
 }
 

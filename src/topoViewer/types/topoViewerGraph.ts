@@ -97,6 +97,8 @@ export interface NodeData {
   name?: string;
   parent?: string;
   topoViewerRole?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
   sourceEndpoint?: string;
   targetEndpoint?: string;
   containerDockerExtraAttribute?: ContainerDockerExtraAttribute;
@@ -141,10 +143,13 @@ export interface FreeTextAnnotation {
   fontWeight?: 'normal' | 'bold';
   fontStyle?: 'normal' | 'italic';
   textDecoration?: 'none' | 'underline';
+  textAlign?: 'left' | 'center' | 'right';
   fontFamily?: string;
+  rotation?: number;
   width?: number;
   height?: number;
   zIndex?: number;
+  roundedBackground?: boolean;
 }
 
 export interface GroupStyleAnnotation {
@@ -191,6 +196,8 @@ export interface NodeAnnotation {
     lng: number;
   };
   icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
   groupLabelPos?: string;
   group?: string;
   level?: string;

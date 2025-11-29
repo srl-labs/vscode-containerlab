@@ -86,6 +86,7 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 | `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
 | `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
+| `skipInstallationCheck` | boolean | `false` | Skip containerlab install check/prompt; extension stays inactive if containerlab is missing |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
 
 The Containerlab Explorer listens to the containerlab event stream, so running labs update live without manual refresh intervals.

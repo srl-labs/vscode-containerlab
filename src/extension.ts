@@ -39,6 +39,51 @@ export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-
 
 export let containerlabBinaryPath: string = 'containerlab';
 
+function registerUnsupportedViews(context: vscode.ExtensionContext) {
+  let warningShown = false;
+  const showWarningOnce = () => {
+    if (warningShown) {
+      return;
+    }
+    warningShown = true;
+    vscode.window.showWarningMessage(
+      "The Containerlab extension is only supported on Linux or WSL. Features are disabled on this platform."
+    );
+  };
+
+  const unsupportedProvider: vscode.TreeDataProvider<vscode.TreeItem> = {
+    getTreeItem: (item: vscode.TreeItem) => item,
+    getChildren: () => {
+      const item = new vscode.TreeItem(
+        "Containerlab extension requires Linux or WSL.",
+        vscode.TreeItemCollapsibleState.None
+      );
+      item.description = "Features are disabled on this platform.";
+      item.iconPath = new vscode.ThemeIcon('warning');
+      item.command = {
+        command: 'vscode.open',
+        title: 'Open docs',
+        arguments: [vscode.Uri.parse('https://containerlab.dev/manual/vsc-extension/')]
+      };
+      return [item];
+    }
+  };
+
+  ['runningLabs', 'localLabs', 'helpFeedback'].forEach(viewId => {
+    const view = vscode.window.createTreeView(viewId, {
+      treeDataProvider: unsupportedProvider,
+      canSelectMany: false
+    });
+    context.subscriptions.push(
+      view.onDidChangeVisibility(e => {
+        if (e.visible) {
+          showWarningOnce();
+        }
+      })
+    );
+    context.subscriptions.push(view);
+  });
+}
 
 function extractLabName(session: any, prefix: string): string | undefined {
   if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
@@ -438,38 +483,27 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
 
+  const config = vscode.workspace.getConfiguration('containerlab');
+  const isSupportedPlatform = process.platform === "linux" || vscode.env.remoteName === "wsl";
 
   // Allow activation only on Linux or when connected via WSL.
-  // Provide a more helpful message for macOS users with a workaround link.
-  if (process.platform !== "linux" && vscode.env.remoteName !== "wsl") {
-    if (process.platform === "darwin") {
-      const openDocs = "Open macOS guide";
-      vscode.window
-        .showWarningMessage(
-          "Containerlab is not supported for native installation on macOS. See workarounds to run it on macOS.",
-          openDocs
-        )
-        .then((selection) => {
-          if (selection === openDocs) {
-            vscode.env.openExternal(
-              vscode.Uri.parse("https://containerlab.dev/macos/#containerlab-on-macos")
-            );
-          }
-        });
-    } else {
-      vscode.window.showWarningMessage(
-        "The Containerlab extension is only supported on Linux or WSL. It will not be activated on this system."
-      );
-    }
-    return; // Do not activate the extension.
+  // If unsupported, stay silent until the user opens the Containerlab view, then show a warning.
+  if (!isSupportedPlatform) {
+    registerUnsupportedViews(context);
+    return;
   }
 
   outputChannel.info('Containerlab extension activated.');
 
-  // 1) Ensure containerlab is installed
-  const clabInstalled = await utils.ensureClabInstalled(outputChannel);
+  // 1) Ensure containerlab is installed (or skip based on user setting)
+  const skipInstallationCheck = config.get<boolean>('skipInstallationCheck', false);
+  const clabInstalled = skipInstallationCheck
+    ? await utils.isClabInstalled(outputChannel)
+    : await utils.ensureClabInstalled(outputChannel);
   if (!clabInstalled) {
-    // If user declined installation, bail out
+    if (skipInstallationCheck) {
+      outputChannel.info('containerlab not detected; skipping activation because installation checks are disabled.');
+    }
     return;
   }
 
