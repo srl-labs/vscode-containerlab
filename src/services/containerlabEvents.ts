@@ -988,7 +988,7 @@ function startProcess(runtime: string): void {
     });
 
     const containerlabBinary = containerlabBinaryPath
-    const baseArgs = ["events", "--format", "json", "--initial-state"];
+    const baseArgs = ["events", "--format", "json", "--initial-state", "--interface-stats"];
     if (runtime) {
         baseArgs.splice(1, 0, "-r", runtime);
     }
