@@ -121,7 +121,6 @@ export type CommandFailureHandler = (error: unknown) => Promise<void>;
 export class Command {
     protected command: string;
     protected useSpinner: boolean;
-    protected useSudo: boolean;
     protected spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
     protected onSuccessCallback?: () => Promise<void>;
@@ -132,13 +131,11 @@ export class Command {
         this.useSpinner = options.useSpinner || false;
         this.spinnerMsg = options.spinnerMsg;
         this.terminalName = options.terminalName;
-        this.useSudo = utils.getConfig('sudoEnabledByDefault');
     }
 
     protected execute(args?: string[]): Promise<void> {
         let cmd: string[] = [];
 
-        if (this.useSudo) { cmd.push("sudo"); }
         cmd.push(this.command);
         if (args) { cmd.push(...args); }
 
@@ -230,7 +227,7 @@ export class Command {
 
             await vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
-            const command = this.useSudo ? cmd[2] : cmd[1];
+            const command = cmd[1];
             const failMsg = this.spinnerMsg?.failMsg ? `${this.spinnerMsg.failMsg}. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
             if (viewOutputBtn === "View logs") { outputChannel.show(); }

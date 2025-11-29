@@ -104,12 +104,12 @@ function extractLabName(session: any, prefix: string): string | undefined {
 
 export async function refreshSshxSessions() {
   try {
-    const out = await utils.runWithSudo(
+    const out = await utils.runCommand(
       `${containerlabBinaryPath} tools sshx list -f json`,
       'List SSHX sessions',
       outputChannel,
-      'containerlab',
-      true
+      true,
+      false
     ) as string;
     sshxSessions.clear();
     if (out) {
@@ -131,12 +131,12 @@ export async function refreshSshxSessions() {
 
 export async function refreshGottySessions() {
   try {
-    const out = await utils.runWithSudo(
+    const out = await utils.runCommand(
       `${containerlabBinaryPath} tools gotty list -f json`,
       'List GoTTY sessions',
       outputChannel,
-      'containerlab',
-      true
+      true,
+      false
     ) as string;
     gottySessions.clear();
     if (out) {
@@ -475,11 +475,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Create and register the output channel
   outputChannel = vscode.window.createOutputChannel('Containerlab', { log: true });
   context.subscriptions.push(outputChannel);
-
-  outputChannel.info(process.platform);
+  outputChannel.info('Registered output channel sucessfully.');
+  outputChannel.info(`Detected platform: ${process.platform}`);
 
   if (!setClabBinPath()) {
     // dont activate
+    outputChannel.error(`Error setting containerlab binary. Exiting activation.`);
     return;
   }
 
@@ -507,7 +508,20 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
 
-  // 2) If installed, check for updates
+  outputChannel.debug(`Starting user permissions check`);
+  // 2) Check if user has required permissions
+  const userInfo = utils.getUserInfo();
+  if (!userInfo.hasPermission) {
+    outputChannel.error(`User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`);
+
+    vscode.window.showErrorMessage(
+      `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the 'clab_admins' and 'docker' groups.`
+    )
+    return;
+  }
+  outputChannel.debug(`Permission check success for user '${userInfo.username}' (id:${userInfo.uid})`);
+
+  // 3) If installed, check for updates
   utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
     outputChannel.error(`Update check error: ${err.message}`);
   });

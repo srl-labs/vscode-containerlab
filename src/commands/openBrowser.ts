@@ -3,7 +3,6 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import { outputChannel } from "../extension";
 import { ClabContainerTreeNode } from "../treeView/common";
-import { getSudo } from "../helpers/utils";
 
 const execAsync = promisify(exec);
 
@@ -76,7 +75,7 @@ async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
     const runtime = config.get<string>("runtime", "docker");
 
     // Use the 'port' command which gives cleaner output format
-    const command = `${getSudo()}${runtime} port ${containerId}`;
+    const command = `${runtime} port ${containerId}`;
 
     const { stdout, stderr } = await execAsync(command);
 

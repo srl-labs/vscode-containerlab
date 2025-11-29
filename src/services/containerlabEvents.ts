@@ -1,6 +1,5 @@
 import { spawn, ChildProcess } from "child_process";
 import * as readline from "readline";
-import * as utils from "../helpers/utils";
 import type { ClabDetailedJSON } from "../treeView/common";
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
 import { containerlabBinaryPath } from "../extension";
@@ -988,21 +987,13 @@ function startProcess(runtime: string): void {
         rejectInitialLoad = reject;
     });
 
-    const sudo = utils.getSudo().trim();
     const containerlabBinary = containerlabBinaryPath
     const baseArgs = ["events", "--format", "json", "--initial-state"];
     if (runtime) {
         baseArgs.splice(1, 0, "-r", runtime);
     }
 
-    let spawned: ChildProcess;
-    if (sudo) {
-        const sudoParts = sudo.split(/\s+/).filter(Boolean);
-        const sudoCmd = sudoParts.shift() || "sudo";
-        spawned = spawn(sudoCmd, [...sudoParts, containerlabBinary, ...baseArgs], { stdio: ["ignore", "pipe", "pipe"] });
-    } else {
-        spawned = spawn(containerlabBinary, baseArgs, { stdio: ["ignore", "pipe", "pipe"] });
-    }
+    const spawned = spawn(containerlabBinary, baseArgs, { stdio: ["ignore", "pipe", "pipe"] });
     child = spawned;
 
     if (!spawned.stdout) {

@@ -2,11 +2,11 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
 import { ClabLabTreeNode } from "../treeView/common";
-import { containerlabBinaryPath } from "../extension";
+import { containerlabBinaryPath, outputChannel } from "../extension";
 
 const execAsync = promisify(exec);
 
@@ -81,15 +81,71 @@ export function titleCase(str: string) {
   return str[0].toLocaleUpperCase() + str.slice(1);
 }
 
-/**
- * If sudo is enabled in config, return 'sudo ', else ''.
- */
-export function getSudo() {
-  const sudo = vscode.workspace.getConfiguration("containerlab")
-    .get<boolean>("sudoEnabledByDefault", false)
-    ? "sudo "
-    : "";
-  return sudo;
+// Get relevant user information we need to validate permissions.
+export function getUserInfo(): {
+  hasPermission: boolean;
+  isRoot: boolean;
+  userGroups: string[];
+  username: string;
+  uid: number;
+} {
+  try {
+    // Check if running as root
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
+    const uidOut = execSync('id -u', { encoding: 'utf-8' });
+    const uid = parseInt(uidOut.trim(), 10);
+    const isRoot = uid === 0;
+
+    // Get username
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
+    const usernameOut = execSync('id -un', { encoding: 'utf-8' });
+    const username = usernameOut.trim();
+
+    // Check group membership
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
+    const groupsOut = execSync('id -nG', { encoding: 'utf-8' });
+    const userGroups = groupsOut.trim().split(/\s+/);
+
+    if (isRoot) {
+      return {
+        hasPermission: true,
+        isRoot: true,
+        userGroups,
+        username,
+        uid
+      };
+    }
+
+    const isMemberOfClabAdmins = userGroups.includes('clab_admins');
+    const isMemberOfDocker = userGroups.includes('docker');
+
+    if (isMemberOfClabAdmins && isMemberOfDocker) {
+      return {
+        hasPermission: true,
+        isRoot: false,
+        userGroups,
+        username,
+        uid
+      };
+    } else {
+      return {
+        hasPermission: false,
+        isRoot: false,
+        userGroups,
+        username,
+        uid
+      };
+    }
+  } catch (err: any) {
+    outputChannel.error(`User info check failed: ${err}`)
+    return {
+      hasPermission: false,
+      isRoot: false,
+      userGroups: [],
+      username: '',
+      uid: -1
+    };
+  }
 }
 
 /**
@@ -152,13 +208,6 @@ function log(message: string, channel: vscode.LogOutputChannel) {
   channel.info(message);
 }
 
-/**
- * Replaces any " with \", so that we can safely wrap the entire string in quotes.
- */
-function escapeDoubleQuotes(input: string): string {
-  return input.replace(/"/g, '\\"');
-}
-
 async function runAndLog(
   cmd: string,
   description: string,
@@ -175,186 +224,32 @@ async function runAndLog(
   return returnOutput ? combined : undefined;
 }
 
-async function tryRunAsGroupMember(
-  command: string,
-  description: string,
-  outputChannel: vscode.LogOutputChannel,
-  returnOutput: boolean,
-  includeStderr: boolean,
-  groupsToCheck: string[]
-): Promise<string | void | undefined> {
-  try {
-    const { stdout } = await execAsync("id -nG");
-    const groups = stdout.split(/\s+/);
-    for (const grp of groupsToCheck) {
-      if (groups.includes(grp)) {
-        log(`User is in "${grp}". Running without sudo: ${command}`, outputChannel);
-        const result = await runAndLog(
-          command,
-          description,
-          outputChannel,
-          returnOutput,
-          includeStderr
-        );
-        return returnOutput ? (result as string) : "";
-      }
-    }
-  } catch (err) {
-    log(`Failed to check user groups: ${err}`, outputChannel);
-  }
-  return undefined;
-}
-
-async function hasPasswordlessSudo(checkType: 'generic' | 'containerlab' | 'docker'): Promise<boolean> {
-  let checkCommand: string;
-  if (checkType === 'containerlab') {
-    checkCommand = `sudo -n ${containerlabBinaryPath} version >/dev/null 2>&1 && echo true || echo false`;
-  } else if (checkType === 'docker') {
-    checkCommand = "sudo -n docker ps >/dev/null 2>&1 && echo true || echo false";
-  } else {
-    checkCommand = "sudo -n true";
-  }
-  try {
-    await execAsync(checkCommand);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function runWithPasswordless(
-  command: string,
-  description: string,
-  outputChannel: vscode.LogOutputChannel,
-  returnOutput: boolean,
-  includeStderr: boolean
-): Promise<string | void> {
-  log(`Passwordless sudo available. Trying with -E: ${command}`, outputChannel);
-  const escapedCommand = escapeDoubleQuotes(command);
-  const cmdToRun = `sudo -E bash -c "${escapedCommand}"`;
-  try {
-    return await runAndLog(cmdToRun, description, outputChannel, returnOutput, includeStderr);
-  } catch (err) {
-    throw new Error(`Command failed: ${cmdToRun}\n${(err as Error).message}`);
-  }
-}
-
-async function runWithPasswordPrompt(
-  command: string,
-  description: string,
-  outputChannel: vscode.LogOutputChannel,
-  returnOutput: boolean,
-  includeStderr: boolean
-): Promise<string | void> {
-  log(
-    `Passwordless sudo not available for "${description}". Prompting for password.`,
-    outputChannel
-  );
-  const shouldProceed = await vscode.window.showWarningMessage(
-    `The command "${description}" requires sudo privileges. Proceed?`,
-    { modal: true },
-    'Yes'
-  );
-  if (shouldProceed !== 'Yes') {
-    throw new Error(`User cancelled sudo password prompt for: ${description}`);
-  }
-
-  const password = await vscode.window.showInputBox({
-    prompt: `Enter sudo password for: ${description}`,
-    password: true,
-    ignoreFocusOut: true
-  });
-  if (!password) {
-    throw new Error(`No sudo password provided for: ${description}`);
-  }
-
-  log(`Executing command with sudo and provided password: ${command}`, outputChannel);
-  const escapedCommand = escapeDoubleQuotes(command);
-  const cmdToRun = `echo '${password}' | sudo -S -E bash -c "${escapedCommand}"`;
-  try {
-    return await runAndLog(cmdToRun, description, outputChannel, returnOutput, includeStderr);
-  } catch (err) {
-    throw new Error(
-      `Command failed: runWithSudo [non-passwordless]\n${(err as Error).message}`
-    );
-  }
-}
-
 /**
- * Runs a command, checking for these possibilities in order:
- *   1) If sudo is not forced and the user belongs to an allowed group
- *      ("clab_admins"/"docker" for containerlab or "docker" for docker), run it directly.
- *   2) If passwordless sudo is available, run with "sudo -E".
- *   3) Otherwise, prompt the user for their sudo password and run with it.
- *
- * If `returnOutput` is true, the function returns the command’s stdout as a string.
+ * Runs a command and logs output to the channel.
+ * If `returnOutput` is true, the function returns the command's stdout as a string.
  */
-export async function runWithSudo(
+export async function runCommand(
   command: string,
   description: string,
   outputChannel: vscode.LogOutputChannel,
-  checkType: 'generic' | 'containerlab' | 'docker' = 'containerlab',
   returnOutput: boolean = false,
   includeStderr: boolean = false
 ): Promise<string | void> {
-  // Get forced sudo setting from user configuration.
-  // If the user has enabled "always use sudo" then getSudo() will return a non-empty string.
-  const forcedSudo = getSudo();
-
-  if (forcedSudo === "") {
-    if (checkType === 'containerlab') {
-      const direct = await tryRunAsGroupMember(
-        command,
-        description,
-        outputChannel,
-        returnOutput,
-        includeStderr,
-        ['clab_admins', 'docker']
-      );
-      if (typeof direct !== 'undefined') {
-        return direct;
-      }
-    } else if (checkType === 'docker') {
-      const direct = await tryRunAsGroupMember(
-        command,
-        description,
-        outputChannel,
-        returnOutput,
-        includeStderr,
-        ['docker']
-      );
-      if (typeof direct !== 'undefined') {
-        return direct;
-      }
-    }
+  log(`Running: ${command}`, outputChannel);
+  try {
+    return await runAndLog(command, description, outputChannel, returnOutput, includeStderr);
+  } catch (err) {
+    throw new Error(`Command failed: ${command}\n${(err as Error).message}`);
   }
-
-  if (await hasPasswordlessSudo(checkType)) {
-    return runWithPasswordless(
-      command,
-      description,
-      outputChannel,
-      returnOutput,
-      includeStderr
-    );
-  }
-
-  return runWithPasswordPrompt(
-    command,
-    description,
-    outputChannel,
-    returnOutput,
-    includeStderr
-  );
 }
 
 /**
- * Installs containerlab using the official installer script, via sudo.
+ * Installs containerlab using the official installer script.
  */
 export async function installContainerlab(outputChannel: vscode.LogOutputChannel): Promise<void> {
   log(`Installing containerlab...`, outputChannel);
   const installerCmd = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
-  await runWithSudo(installerCmd, 'Installing containerlab', outputChannel, 'generic');
+  await runCommand(installerCmd, 'Installing containerlab', outputChannel);
 }
 
 /**
@@ -416,7 +311,6 @@ export async function ensureClabInstalled(outputChannel: vscode.LogOutputChannel
 
 /**
  * Checks if containerlab is up to date, and if not, prompts the user to update it.
- * This version uses runWithSudo to execute the version check only once.
  */
 export async function checkAndUpdateClabIfNeeded(
   outputChannel: vscode.LogOutputChannel,
@@ -424,12 +318,10 @@ export async function checkAndUpdateClabIfNeeded(
 ): Promise<void> {
   try {
     log(`Running "${containerlabBinaryPath} version check".`, outputChannel);
-    // Run the version check via runWithSudo and capture output.
-    const versionOutputRaw = await runWithSudo(
+    const versionOutputRaw = await runCommand(
       `${containerlabBinaryPath} version check`,
       'containerlab version check',
       outputChannel,
-      'containerlab',
       true
     );
     const versionOutput = (versionOutputRaw || "").trim();
@@ -449,7 +341,7 @@ export async function checkAndUpdateClabIfNeeded(
       context.subscriptions.push(
         vscode.commands.registerCommand(updateCommandId, async () => {
           try {
-            await runWithSudo(`${containerlabBinaryPath} version upgrade`, 'Upgrading containerlab', outputChannel, 'generic');
+            await runCommand(`${containerlabBinaryPath} version upgrade`, 'Upgrading containerlab', outputChannel);
             vscode.window.showInformationMessage('Containerlab updated successfully!');
             log('Containerlab updated successfully.', outputChannel);
           } catch (err: any) {

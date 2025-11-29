@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
 import { ClabContainerTreeNode } from "../treeView/common";
-import { getSudo } from "../helpers/utils";
 
 export function showLogs(node: ClabContainerTreeNode) {
     if (!node) {
@@ -20,7 +19,7 @@ export function showLogs(node: ClabContainerTreeNode) {
     const config = vscode.workspace.getConfiguration("containerlab");
     const runtime = config.get<string>("runtime", "docker");
     execCommandInTerminal(
-        `${getSudo()}${runtime} logs -f ${containerId}`,
+        `${runtime} logs -f ${containerId}`,
         `Logs - ${container}`
     );
 }

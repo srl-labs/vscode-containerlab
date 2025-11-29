@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import * as utils from "../helpers/utils";
 import { execCommandInTerminal } from "./command";
 import { execCmdMapping } from "../extension";
 import { ClabContainerTreeNode } from "../treeView/common";
@@ -41,7 +40,7 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   execCmd = userExecMapping[ctx.containerKind] || execCmd;
 
   execCommandInTerminal(
-    `${utils.getSudo()}${runtime} exec -it ${ctx.containerId} ${execCmd}`,
+    `${runtime} exec -it ${ctx.containerId} ${execCmd}`,
     `Shell - ${ctx.container}`
   );
 }
@@ -53,7 +52,7 @@ export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
   const port = (config.get("node.telnetPort") as number) || 5000;
   const runtime = config.get<string>("runtime", "docker");
   execCommandInTerminal(
-    `${utils.getSudo()}${runtime} exec -it ${ctx.containerId} telnet 127.0.0.1 ${port}`,
+    `${runtime} exec -it ${ctx.containerId} telnet 127.0.0.1 ${port}`,
     `Telnet - ${ctx.container}`
   );
 }
