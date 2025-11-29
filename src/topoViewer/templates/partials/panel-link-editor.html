@@ -4,7 +4,12 @@
   id="panel-link-editor"
   style="display: none"
 >
-  <p class="panel-heading">Link Editor</p>
+  <div class="panel-heading panel-title-bar">
+    <span class="panel-title">Link Editor</span>
+    <button class="panel-close-btn" id="panel-link-editor-close" aria-label="Close" title="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
   <!-- Tab Navigation -->
   <div class="panel-tabs" style="justify-content: flex-start">
@@ -192,12 +197,12 @@
 
         const footerFrag = footerTpl.content.cloneNode(true);
         const saveBtn = footerFrag.querySelector(".editor-save-btn");
-        const closeBtn = footerFrag.querySelector(".editor-close-btn");
+        const applyBtn = footerFrag.querySelector(".editor-apply-btn");
         if (saveBtn) {
           saveBtn.id = "panel-link-editor-save-button";
         }
-        if (closeBtn) {
-          closeBtn.id = "panel-link-editor-close-button";
+        if (applyBtn) {
+          applyBtn.id = "panel-link-editor-apply-button";
         }
         document.getElementById("panel-link-footer-placeholder")?.appendChild(footerFrag);
       }

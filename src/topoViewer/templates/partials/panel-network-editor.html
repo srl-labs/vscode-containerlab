@@ -4,7 +4,17 @@
   id="panel-network-editor"
   style="display: none"
 >
-  <p class="panel-heading">Network Editor</p>
+  <div class="panel-heading panel-title-bar">
+    <span class="panel-title">Network Editor</span>
+    <button
+      class="panel-close-btn"
+      id="panel-network-editor-close"
+      aria-label="Close"
+      title="Close"
+    >
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
   <div class="panel-block">
     <div class="p-2 max-h-[420px] overflow-y-auto">
@@ -178,12 +188,12 @@
 
         const footerFrag = footerTpl.content.cloneNode(true);
         const saveBtn = footerFrag.querySelector(".editor-save-btn");
-        const closeBtn = footerFrag.querySelector(".editor-close-btn");
+        const applyBtn = footerFrag.querySelector(".editor-apply-btn");
         if (saveBtn) {
           saveBtn.id = "panel-network-editor-save-button";
         }
-        if (closeBtn) {
-          closeBtn.id = "panel-network-editor-close-button";
+        if (applyBtn) {
+          applyBtn.id = "panel-network-editor-apply-button";
         }
         document.getElementById("panel-network-footer-placeholder")?.appendChild(footerFrag);
       }

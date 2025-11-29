@@ -4,7 +4,12 @@
   id="panel-lab-settings"
   style="display: none"
 >
-  <p class="panel-heading" id="panel-lab-settings-heading">Lab Settings</p>
+  <div class="panel-heading panel-title-bar" id="panel-lab-settings-heading">
+    <span class="panel-title">Lab Settings</span>
+    <button class="panel-close-btn" id="panel-lab-settings-close" aria-label="Close" title="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
   <!-- Tab Navigation -->
   <div class="panel-tabs" style="justify-content: flex-start">
@@ -442,36 +447,7 @@
       }
     }
 
-    // Make panel draggable
-    let isDragging = false;
-    let startX, startY, initialLeft, initialTop;
-
-    const heading = panel.querySelector(".panel-heading");
-    heading.style.cursor = "move";
-
-    heading.addEventListener("mousedown", (e) => {
-      isDragging = true;
-      const rect = panel.getBoundingClientRect();
-      startX = e.clientX;
-      startY = e.clientY;
-      initialLeft = rect.left;
-      initialTop = rect.top;
-      e.preventDefault();
-    });
-
-    document.addEventListener("mousemove", (e) => {
-      if (!isDragging) return;
-
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-
-      panel.style.left = initialLeft + deltaX + "px";
-      panel.style.top = initialTop + deltaY + "px";
-    });
-
-    document.addEventListener("mouseup", () => {
-      isDragging = false;
-    });
+    // Panel drag handling is managed by draggable-panels.html script
   });
 
   // Global function to show the lab settings panel

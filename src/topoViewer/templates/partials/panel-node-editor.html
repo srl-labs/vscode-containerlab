@@ -4,7 +4,12 @@
   id="panel-node-editor"
   style="display: none"
 >
-  <p class="panel-heading" id="panel-node-editor-heading">Node Editor</p>
+  <div class="panel-heading panel-title-bar" id="panel-node-editor-heading">
+    <span class="panel-title">Node Editor</span>
+    <button class="panel-close-btn" id="panel-node-editor-close" aria-label="Close" title="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
   <!-- Tab Navigation (Scrollable with Arrow Buttons) -->
   <div class="panel-tabs panel-tabs--with-arrows">
@@ -996,13 +1001,13 @@
       const footerTpl = document.getElementById("editor-footer-template");
       if (footerTpl) {
         const footerFrag = footerTpl.content.cloneNode(true);
-        const saveBtn = footerFrag.querySelector(".editor-save-btn");
-        const closeBtn = footerFrag.querySelector(".editor-close-btn");
-        if (saveBtn) {
-          saveBtn.id = "panel-node-editor-save";
+        const applyBtn = footerFrag.querySelector(".editor-apply-btn");
+        const okBtn = footerFrag.querySelector(".editor-save-btn");
+        if (applyBtn) {
+          applyBtn.id = "panel-node-editor-apply";
         }
-        if (closeBtn) {
-          closeBtn.id = "panel-node-editor-cancel";
+        if (okBtn) {
+          okBtn.id = "panel-node-editor-save";
         }
         document.getElementById("panel-node-footer-placeholder")?.appendChild(footerFrag);
       }

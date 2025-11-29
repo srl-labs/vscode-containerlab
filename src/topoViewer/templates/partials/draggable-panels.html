@@ -106,26 +106,17 @@
     // expose for other scripts
     window.keepPanelWithinBounds = keepPanelWithinBounds;
 
-    // Create and insert drag handle for a panel
+    // Get the drag handle for a panel (title bar)
     function createDragHandle(panel) {
-      // Check if drag handle already exists
-      if (panel.querySelector(".panel-drag-handle")) {
-        return panel.querySelector(".panel-drag-handle");
+      // All panels should have a title bar - use it as the drag handle
+      const titleBar = panel.querySelector(".panel-title-bar");
+      if (titleBar) {
+        updateDragHandleAppearance(titleBar);
+        return titleBar;
       }
 
-      // Create the drag handle element
-      const dragHandle = document.createElement("div");
-      dragHandle.className =
-        "panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150";
-      dragHandle.style.margin = "0 0 8px 0";
-
-      // Insert as the first child of the panel
-      panel.insertBefore(dragHandle, panel.firstChild);
-
-      // Update appearance based on current lock state
-      updateDragHandleAppearance(dragHandle);
-
-      return dragHandle;
+      console.warn(`Panel ${panel.id} does not have a title bar (.panel-title-bar)`);
+      return null;
     }
 
     // Initialize drag functionality for a panel
@@ -164,8 +155,8 @@
 
       // Mouse down on drag handle (start drag)
       dragHandle.addEventListener("mousedown", function (e) {
-        // Don't start dragging if unified floating panel is locked
-        if (isUnifiedPanelLocked()) {
+        // Don't start dragging if clicking on close button or if panel is locked
+        if (e.target.closest(".panel-close-btn") || isUnifiedPanelLocked()) {
           return;
         }
 
@@ -192,18 +183,7 @@
         e.stopPropagation();
       });
 
-      // Add visual feedback on hover
-      dragHandle.addEventListener("mouseenter", function () {
-        if (!isDragging && !isUnifiedPanelLocked()) {
-          dragHandle.style.backgroundColor = "var(--vscode-button-hoverBackground)";
-        }
-      });
-
-      dragHandle.addEventListener("mouseleave", function () {
-        if (!isDragging) {
-          updateDragHandleAppearance(dragHandle);
-        }
-      });
+      // No hover effects on title bar - keep fixed background color
     }
 
     // Global mouse move (drag)
@@ -235,10 +215,9 @@
       if (isDragging && currentPanel) {
         isDragging = false;
 
-        const dragHandle = currentPanel.querySelector(".panel-drag-handle");
+        const dragHandle = currentPanel.querySelector(".panel-title-bar");
         if (dragHandle) {
           dragHandle.style.cursor = "grab";
-          dragHandle.style.backgroundColor = "";
         }
         currentPanel.style.cursor = "default";
 
@@ -306,8 +285,29 @@
       });
     }
 
+    // Wire up close buttons for all panels
+    function setupPanelCloseButtons() {
+      document.querySelectorAll(".panel-close-btn").forEach((closeBtn) => {
+        // Skip if already set up
+        if (closeBtn.dataset.listenerAttached === "true") {
+          return;
+        }
+        closeBtn.dataset.listenerAttached = "true";
+
+        // Add click listener
+        closeBtn.addEventListener("click", (e) => {
+          e.stopPropagation(); // Prevent drag from triggering
+          const panel = closeBtn.closest(".draggable-panel");
+          if (panel) {
+            panel.style.display = "none";
+          }
+        });
+      });
+    }
+
     // Initial setup
     initializeAllDraggablePanels();
+    setupPanelCloseButtons();
 
     // Listen for unified panel lock state changes
     // Check for lock state changes periodically (since localStorage doesn't emit events across scripts)
@@ -321,8 +321,13 @@
     }, 100); // Check every 100ms
 
     // Re-initialize when DOM changes (for dynamically added panels)
-    const mainObserver = new MutationObserver(() => {
-      initializeAllDraggablePanels();
+    const mainObserver = new MutationObserver((mutations) => {
+      // Only reinitialize if actual elements were added, not just attributes changed
+      const hasAddedNodes = mutations.some((mutation) => mutation.addedNodes.length > 0);
+      if (hasAddedNodes) {
+        initializeAllDraggablePanels();
+        setupPanelCloseButtons();
+      }
     });
 
     mainObserver.observe(document.body, {

@@ -91,12 +91,18 @@
 </template>
 
 <template id="editor-footer-template">
-  <div class="panel-block flex items-center">
-    <div class="w-1/5 pr-1"></div>
-    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
-      <button class="btn btn-primary btn-small editor-save-btn">Save</button>
-      <button class="btn btn-outlined btn-small editor-close-btn">Close</button>
-    </div>
+  <div
+    class="panel-block flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)]"
+  >
+    <button class="btn btn-primary btn-small editor-save-btn" title="Apply changes and close">
+      OK
+    </button>
+    <button
+      class="btn btn-outlined btn-small editor-apply-btn"
+      title="Apply changes without closing"
+    >
+      Apply
+    </button>
   </div>
 </template>
 
