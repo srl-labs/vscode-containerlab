@@ -611,34 +611,44 @@ class TopologyWebviewController {
       if (!msg?.type) {
         return;
       }
-      const runHandler = (type: string, fn: () => void | Promise<void>): void => {
-        Promise.resolve(fn()).catch((error) => {
-          log.error(`Error handling message "${type}": ${error instanceof Error ? error.message : String(error)}`);
-        });
-      };
-      switch (msg.type) {
-        case 'yaml-saved':
-          runHandler(msg.type, async () => {
-            await fetchAndLoadData(this.cy, this.messageSender, { incremental: true });
-          });
-          break;
-        case 'updateTopology':
-          runHandler(msg.type, () => {
-            this.updateTopology(msg.data);
-          });
-          break;
-        case 'copiedElements':
-          runHandler(msg.type, () => {
-            this.handleCopiedElements(msg.data);
-          });
-          break;
-        case 'topo-mode-changed':
-          runHandler(msg.type, () => this.handleModeSwitchMessage(msg.data as ModeSwitchPayload));
-          break;
-        default:
-          break;
-      }
+      this.dispatchIncomingMessage(msg);
     });
+  }
+
+  private dispatchIncomingMessage(msg: any): void {
+    const runHandler = (type: string, fn: () => void | Promise<void>): void => {
+      Promise.resolve(fn()).catch((error) => {
+        log.error(`Error handling message "${type}": ${error instanceof Error ? error.message : String(error)}`);
+      });
+    };
+
+    switch (msg.type) {
+      case 'yaml-saved':
+        runHandler(msg.type, async () => {
+          await fetchAndLoadData(this.cy, this.messageSender, { incremental: true });
+        });
+        return;
+      case 'updateTopology':
+        runHandler(msg.type, () => this.updateTopology(msg.data));
+        return;
+      case 'copiedElements':
+        runHandler(msg.type, () => this.handleCopiedElements(msg.data));
+        return;
+      case 'topo-mode-changed':
+        runHandler(msg.type, () => this.handleModeSwitchMessage(msg.data as ModeSwitchPayload));
+        return;
+      case 'docker-images-updated':
+        runHandler(msg.type, () => this.handleDockerImagesUpdatedMessage(msg.dockerImages as string[]));
+        return;
+      default:
+        return;
+    }
+  }
+
+  private handleDockerImagesUpdatedMessage(images?: string[]): void {
+    const nextImages = Array.isArray(images) ? images : [];
+    this.assignWindowValue('dockerImages', nextImages, []);
+    this.nodeEditor?.handleDockerImagesUpdated(nextImages);
   }
 
   private updateTopology(data: any): void {

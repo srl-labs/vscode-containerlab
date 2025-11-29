@@ -436,6 +436,19 @@ export class ManagerNodeEditor {
     this.initializePanel();
   }
 
+  public handleDockerImagesUpdated(images: string[]): void {
+    (window as any).dockerImages = images;
+    if (!this.panel || this.panel.style.display === 'none') {
+      return;
+    }
+    if (!this.currentNode) {
+      return;
+    }
+    const extraData = this.currentNode.data('extraData') || {};
+    const actualInherited = this.computeActualInheritedProps(extraData);
+    this.setupImageFields(extraData, actualInherited);
+  }
+
   /**
    * Parse docker images to extract base images and their versions
    */
