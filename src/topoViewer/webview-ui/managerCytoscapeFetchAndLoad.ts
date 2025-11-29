@@ -4,6 +4,7 @@ import { VscodeMessageSender } from './managerVscodeWebview';
 import { log } from '../logging/logger';
 import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
 import { assignMissingLatLngToElements } from '../utilities/geoUtils';
+import { applyCustomIconColors } from './managerCytoscapeBaseStyles';
 
 interface FetchOptions {
   incremental?: boolean;
@@ -21,6 +22,11 @@ export interface DataItem {
     [key: string]: any;
   };
 }
+
+const INITIAL_POSITION_START = { x: 105, y: 105 };
+const INITIAL_POSITION_SPACING = { x: 98, y: 98 };
+// Selector to exclude free text nodes from layouts
+const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"]' as const;
 
 
 function allNodesOverlap(cy: cytoscape.Core): boolean {
@@ -41,17 +47,24 @@ function allNodesOverlap(cy: cytoscape.Core): boolean {
   });
 }
 
+function getInitialPosition(index: number, cols: number): { x: number; y: number } {
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  return {
+    x: INITIAL_POSITION_START.x + col * INITIAL_POSITION_SPACING.x,
+    y: INITIAL_POSITION_START.y + row * INITIAL_POSITION_SPACING.y
+  };
+}
+
 function chooseInitialLayout(cy: cytoscape.Core, overlap: boolean): cytoscape.Layouts {
   if (overlap) {
     const nodeCount = cy.nodes().length;
-    const cols = Math.ceil(Math.sqrt(nodeCount));
-    const spacing = 120;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(nodeCount)));
     let index = 0;
 
     cy.nodes().forEach((node) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      node.position({ x: col * spacing + 100, y: row * spacing + 100 });
+      const pos = getInitialPosition(index, cols);
+      node.position(pos);
       index++;
     });
 
@@ -94,6 +107,24 @@ function loadFreeTextAnnotations(): void {
   }
 }
 
+function loadElementsIntoCytoscape(cy: cytoscape.Core, elementsToAdd: any[], incremental: boolean): void {
+  if (incremental) {
+    applyElementsIncrementally(cy, elementsToAdd);
+    return;
+  }
+  cy.json({ elements: [] });
+
+  // Separate parents and children
+  const parents = elementsToAdd.filter((el: any) => el.group === 'nodes' && el.data?.topoViewerRole === 'group');
+  const children = elementsToAdd.filter((el: any) => el.group === 'nodes' && el.data?.parent);
+  const others = elementsToAdd.filter((el: any) => !parents.includes(el) && !children.includes(el));
+
+  // Add parents first, then children, then others
+  cy.add(parents);
+  cy.add(children);
+  cy.add(others);
+}
+
 function scheduleImprovedLayout(cy: cytoscape.Core): void {
   const scheduleLayout = (callback: () => void) => {
     if ('requestIdleCallback' in window) {
@@ -104,8 +135,11 @@ function scheduleImprovedLayout(cy: cytoscape.Core): void {
   };
 
   scheduleLayout(() => {
+    // Exclude free text nodes from layout - they have their own positions
+    const layoutNodes = cy.nodes().not(SELECTOR_NOT_FREETEXT);
+
     const nodeWeights: Record<string, number> = {};
-    cy.nodes().forEach((node) => {
+    layoutNodes.forEach((node) => {
       const level = parseInt(node.data('extraData')?.labels?.TopoViewerGroupLevel || '1', 10);
       nodeWeights[node.id()] = 1 / level;
     });
@@ -114,7 +148,8 @@ function scheduleImprovedLayout(cy: cytoscape.Core): void {
       edge.style({ 'curve-style': 'bezier', 'control-point-step-size': 20 });
     });
 
-    const improvedLayout = cy.layout({
+    // Run layout only on non-freetext nodes
+    const improvedLayout = layoutNodes.layout({
       name: 'cola',
       fit: true,
       nodeSpacing: 5,
@@ -232,12 +267,8 @@ export async function fetchAndLoadData(
       ? updatedElements
       : ((updatedElements as { elements?: any[] }).elements ?? updatedElements);
 
-    if (options.incremental) {
-      applyElementsIncrementally(cy, elementsToAdd);
-    } else {
-      cy.json({ elements: [] });
-      cy.add(elementsToAdd);
-    }
+    loadElementsIntoCytoscape(cy, elementsToAdd, options.incremental === true);
+    applyCustomIconColors(cy);
 
     cy.filter('node[name = "topoviewer"]').remove();
     cy.filter('node[name = "TopoViewer:1"]').remove();

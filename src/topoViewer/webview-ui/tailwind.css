@@ -554,7 +554,7 @@
   .navbar-menu-option[data-selected="true"] .navbar-menu-option-check {
     opacity: 1;
   }
-  
+
   /* Label styles */
   .label {
     color: var(--text-primary);
@@ -649,26 +649,22 @@
   }
 
   .navbar-loading-indicator.is-active.is-deploy .navbar-loading-indicator__bar {
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
-      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
-      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
-      transparent 100%
-    );
+    background-image: linear-gradient(90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
+        transparent 100%);
     animation: navbar-progress-sweep 1.15s linear infinite;
   }
 
   .navbar-loading-indicator.is-active.is-destroy .navbar-loading-indicator__bar {
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
-      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
-      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
-      transparent 100%
-    );
+    background-image: linear-gradient(90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
+        transparent 100%);
     animation: navbar-progress-sweep 1.15s linear infinite;
   }
 
@@ -704,11 +700,9 @@
 
   button.processing.processing--deploy {
     color: var(--vscode-button-foreground);
-    background-color: color-mix(
-      in srgb,
-      var(--vscode-testing-iconPassed, #73c991) 40%,
-      var(--vscode-button-background, rgba(0, 0, 0, 0))
-    );
+    background-color: color-mix(in srgb,
+        var(--vscode-testing-iconPassed, #73c991) 40%,
+        var(--vscode-button-background, rgba(0, 0, 0, 0)));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
       0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent);
   }
@@ -722,11 +716,9 @@
 
   button.processing.processing--destroy {
     color: var(--vscode-button-foreground);
-    background-color: color-mix(
-      in srgb,
-      var(--vscode-testing-iconFailed, #f14c4c) 40%,
-      var(--vscode-button-background, rgba(0, 0, 0, 0))
-    );
+    background-color: color-mix(in srgb,
+        var(--vscode-testing-iconFailed, #f14c4c) 40%,
+        var(--vscode-button-background, rgba(0, 0, 0, 0)));
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
       0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 25%, transparent);
   }
@@ -1228,6 +1220,216 @@
 
   .link:hover {
     color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+  }
+
+  .free-text-overlay-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: var(--z-99, 99);
+  }
+
+  .free-text-overlay {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    transform-origin: center center;
+    pointer-events: none;
+    color: var(--text-primary);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+    box-sizing: border-box;
+  }
+
+  .free-text-overlay-scrollable {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .free-text-overlay-scrollable::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .free-text-overlay-scrollbar {
+    position: absolute;
+    right: 2px;
+    top: 6px;
+    width: 5px;
+    border-radius: 999px;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--text-secondary) 95%, transparent) 0%,
+      color-mix(in srgb, var(--text-secondary) 70%, transparent) 50%,
+      color-mix(in srgb, var(--text-secondary) 95%, transparent) 100%
+    );
+    opacity: 0.3;
+    pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease, background-image 120ms ease;
+  }
+
+  .free-text-overlay-scrollbar-visible {
+    opacity: 0.65;
+  }
+
+  .free-text-overlay-hover .free-text-overlay-scrollbar-visible {
+    opacity: 1;
+  }
+
+  .free-text-overlay-hover {
+    outline: 1px dashed rgba(255, 255, 255, 0.7);
+    outline-offset: 2px;
+  }
+
+  .free-text-overlay-content {
+    pointer-events: none;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .free-text-overlay-content a {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .free-text-markdown p {
+    margin: 0.35rem 0;
+  }
+
+  .free-text-markdown > :first-child {
+    margin-top: 0;
+  }
+
+  .free-text-markdown > :last-child {
+    margin-bottom: 0;
+  }
+
+  .free-text-markdown pre {
+    margin: 0.5rem 0;
+    border-radius: 0;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.45);
+  }
+
+  .free-text-markdown code {
+    font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    border-radius: 0;
+  }
+
+  .free-text-markdown a {
+    color: var(--vscode-textLink-foreground);
+    text-decoration: underline;
+  }
+
+  .free-text-markdown hr {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    margin: 0.85rem 0;
+  }
+
+  .free-text-markdown ul,
+  .free-text-markdown ol {
+    margin: 0.35rem 0;
+    padding-left: 1.25rem;
+  }
+
+  .free-text-markdown ul {
+    list-style-type: disc;
+  }
+
+  .free-text-markdown ol {
+    list-style-type: decimal;
+  }
+
+  .free-text-markdown li {
+    margin: 0.15rem 0;
+  }
+
+  .free-text-markdown blockquote {
+    border-left: 3px solid rgba(255, 255, 255, 0.35);
+    margin: 0.75rem 0;
+    padding-left: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .free-text-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+  }
+
+  .free-text-markdown th,
+  .free-text-markdown td {
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+  }
+
+  .free-text-overlay-resize {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: se-resize;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-text-overlay-resize::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(255, 255, 255, 0.9);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.9);
+    transform: rotate(45deg);
+    display: block;
+  }
+
+  .free-text-overlay-resize-visible {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+
+  .free-text-overlay-rotate {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: grab;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-text-overlay-rotate:active {
+    cursor: grabbing;
+  }
+
+  .free-text-overlay-rotate::before {
+    content: '\21bb';
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .free-text-overlay-rotate-visible {
+    opacity: 0.9;
+    pointer-events: auto;
   }
 
   .text-secondary {

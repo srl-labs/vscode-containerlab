@@ -38,7 +38,7 @@ export class ManagerSaveTopo {
       const updatedNodes = this.collectNodes(cy, layoutMgr);
       const updatedEdges = this.collectEdges(cy);
 
-      this.applyPostLoadStyles(cy, suppressNotification);
+      await this.applyPostLoadStyles(cy, suppressNotification);
 
       const updatedElements = [...updatedNodes, ...updatedEdges];
       log.debug(`Updated Topology Data: ${JSON.stringify(updatedElements, null, 2)}`);
@@ -61,9 +61,12 @@ export class ManagerSaveTopo {
   }
 
   private collectNodes(cy: cytoscape.Core, layoutMgr?: any): any[] {
-    return cy.nodes().map((node: cytoscape.NodeSingular) =>
-      this.prepareNodeJson(node, layoutMgr)
-    );
+    return cy
+      .nodes()
+      // Free text annotations have their own persistence path and should never be
+      // included in the topology payload sent back to the extension.
+      .filter((node: cytoscape.NodeSingular) => node.data('topoViewerRole') !== 'freeText')
+      .map((node: cytoscape.NodeSingular) => this.prepareNodeJson(node, layoutMgr));
   }
 
   private prepareNodeJson(node: cytoscape.NodeSingular, layoutMgr?: any): any {
@@ -120,13 +123,15 @@ export class ManagerSaveTopo {
     return null;
   }
 
-  private applyPostLoadStyles(cy: cytoscape.Core, suppressNotification: boolean): void {
+  private async applyPostLoadStyles(cy: cytoscape.Core, suppressNotification: boolean): Promise<void> {
+    const freeTextManager = topoViewerState.editorEngine?.freeTextManager;
     if (!suppressNotification) {
-      loadCytoStyle(cy);
+      await loadCytoStyle(cy);
       const groupStyleManager = topoViewerState.editorEngine?.groupStyleManager;
       groupStyleManager
         ?.getGroupStyles()
         .forEach((style: any) => groupStyleManager.applyStyleToNode(style.id));
+      freeTextManager?.reapplyAllFreeTextStyles();
       return;
     }
 
@@ -135,6 +140,7 @@ export class ManagerSaveTopo {
       const factor = lm.calculateGeoScale();
       lm.applyGeoScale(true, factor);
     }
+    freeTextManager?.reapplyAllFreeTextStyles();
   }
 
   private getEndpoint(mode: string, suppressNotification: boolean): string {

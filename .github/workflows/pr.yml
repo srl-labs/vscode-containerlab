@@ -7,7 +7,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,29 +16,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Compile TypeScript
-        run: npm run compile
-
-      - name: Run linting
-        run: npm run lint
+      - name: Create package and run lint
+        run: npm run package
 
       - name: Run tests
         run: npm test
 
-      - name: Build webview
-        run: npm run build:webview
-
-      - name: Package extension
-        run: npm run package
-
       - name: Upload test reports
         uses: actions/upload-artifact@v4
-        if: always()  # Upload test reports even if tests failed
+        if: always() # Upload test reports even if tests failed
         with:
           name: test-reports-${{ github.run_number }}
           path: |
@@ -66,7 +57,7 @@ jobs:
 
       - name: Upload build logs
         uses: actions/upload-artifact@v4
-        if: failure()  # Only upload logs if something failed
+        if: failure() # Only upload logs if something failed
         with:
           name: build-logs-${{ github.run_number }}
           path: |
@@ -80,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     if: always()
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -89,10 +80,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Download packaged extension
         uses: actions/download-artifact@v4
@@ -124,13 +115,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-test, package-validation]
     if: always()
-    
+
     steps:
       - name: Check results
         run: |
           echo "Build and Test: ${{ needs.build-and-test.result }}"
           echo "Package Validation: ${{ needs.package-validation.result }}"
-          
+
           if [[ "${{ needs.build-and-test.result }}" == "success" && "${{ needs.package-validation.result }}" == "success" ]]; then
             echo "✅ All checks passed!"
           else
