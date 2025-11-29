@@ -1129,11 +1129,6 @@
     "configuration": {
       "title": "Containerlab",
       "properties": {
-        "containerlab.sudoEnabledByDefault": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether to prepend 'sudo' to all containerlab commands by default."
-        },
         "containerlab.node.execCommandMapping": {
           "type": "object",
           "additionalProperties": {
