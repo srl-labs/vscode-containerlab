@@ -1,53 +1,58 @@
 // file: topologyWebviewController.ts
 
-import type cytoscape from 'cytoscape';
-import { createConfiguredCytoscape, loadExtension } from '../cytoscapeInstanceFactory';
+import type cytoscape from "cytoscape";
+import { createConfiguredCytoscape, loadExtension } from "../cytoscapeInstanceFactory";
 
 // Import Tailwind CSS and Font Awesome
-import './tailwind.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
+import "./tailwind.css";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 // Import Leaflet CSS for map tiles
-import 'leaflet/dist/leaflet.css';
-import 'tippy.js/dist/tippy.css';
-import 'highlight.js/styles/github-dark.css';
-import loadCytoStyle from './managerCytoscapeBaseStyles';
-import { VscodeMessageSender } from './managerVscodeWebview';
-import { fetchAndLoadData, fetchAndLoadDataEnvironment } from './managerCytoscapeFetchAndLoad';
-import { ManagerSaveTopo } from './managerSaveTopo';
-import { ManagerUndo } from './managerUndo';
-import { ManagerAddContainerlabNode } from './managerAddContainerlabNode';
-import { ManagerViewportPanels } from './managerViewportPanels';
-import { ManagerUnifiedFloatingPanel } from './managerUnifiedFloatingPanel';
-import { ManagerFreeText } from './managerFreeText';
-import { ManagerNodeEditor } from './managerNodeEditor';
-import { ManagerGroupStyle } from './managerGroupStyle';
-import { CopyPasteManager } from './managerCopyPaste';
-import { ManagerLabSettings } from './managerLabSettings';
-import { viewportButtonsCaptureViewportAsSvg } from './uiHandlers';
-import type { ManagerGroupManagement } from './managerGroupManagement';
-import type { ManagerLayoutAlgo } from './managerLayoutAlgo';
-import type { ManagerZoomToFit } from './managerZoomToFit';
-import type { ManagerLabelEndpoint } from './managerLabelEndpoint';
-import { ManagerShortcutDisplay } from './managerShortcutDisplay';
-import { layoutAlgoManager as layoutAlgoManagerSingleton, getGroupManager, zoomToFitManager as zoomToFitManagerSingleton, labelEndpointManager as labelEndpointManagerSingleton } from '../core/managerRegistry';
-import { log } from '../logging/logger';
-import { perfMark, perfMeasure } from '../utilities/performanceMonitor';
-import { registerCyEventHandlers } from './cyEventHandlers';
-import { PerformanceMonitor } from '../utilities/performanceMonitor';
-import { debounce } from '../utilities/asyncUtils';
-import { ManagerGridGuide } from './managerGridGuide';
-import topoViewerState from '../state';
-import type { EdgeData } from '../types/topoViewerGraph';
-import { FilterUtils } from '../../helpers/filterUtils';
-import { isSpecialNodeOrBridge, isSpecialEndpoint } from '../utilities/specialNodes';
+import "leaflet/dist/leaflet.css";
+import "tippy.js/dist/tippy.css";
+import "highlight.js/styles/github-dark.css";
+import loadCytoStyle from "./managerCytoscapeBaseStyles";
+import { VscodeMessageSender } from "./managerVscodeWebview";
+import { fetchAndLoadData, fetchAndLoadDataEnvironment } from "./managerCytoscapeFetchAndLoad";
+import { ManagerSaveTopo } from "./managerSaveTopo";
+import { ManagerUndo } from "./managerUndo";
+import { ManagerAddContainerlabNode } from "./managerAddContainerlabNode";
+import { ManagerViewportPanels } from "./managerViewportPanels";
+import { ManagerUnifiedFloatingPanel } from "./managerUnifiedFloatingPanel";
+import { ManagerFreeText } from "./managerFreeText";
+import { ManagerNodeEditor } from "./managerNodeEditor";
+import { ManagerGroupStyle } from "./managerGroupStyle";
+import { CopyPasteManager } from "./managerCopyPaste";
+import { ManagerLabSettings } from "./managerLabSettings";
+import { viewportButtonsCaptureViewportAsSvg } from "./uiHandlers";
+import type { ManagerGroupManagement } from "./managerGroupManagement";
+import type { ManagerLayoutAlgo } from "./managerLayoutAlgo";
+import type { ManagerZoomToFit } from "./managerZoomToFit";
+import type { ManagerLabelEndpoint } from "./managerLabelEndpoint";
+import { ManagerShortcutDisplay } from "./managerShortcutDisplay";
+import {
+  layoutAlgoManager as layoutAlgoManagerSingleton,
+  getGroupManager,
+  zoomToFitManager as zoomToFitManagerSingleton,
+  labelEndpointManager as labelEndpointManagerSingleton
+} from "../core/managerRegistry";
+import { log } from "../logging/logger";
+import { perfMark, perfMeasure } from "../utilities/performanceMonitor";
+import { registerCyEventHandlers } from "./cyEventHandlers";
+import { PerformanceMonitor } from "../utilities/performanceMonitor";
+import { debounce } from "../utilities/asyncUtils";
+import { ManagerGridGuide } from "./managerGridGuide";
+import topoViewerState from "../state";
+import type { EdgeData } from "../types/topoViewerGraph";
+import { FilterUtils } from "../../helpers/filterUtils";
+import { isSpecialNodeOrBridge, isSpecialEndpoint } from "../utilities/specialNodes";
 import {
   DEFAULT_INTERFACE_PATTERN,
   generateInterfaceName,
   getInterfaceIndex,
-  parseInterfacePattern,
-} from './utilities/interfacePatternUtils';
+  parseInterfacePattern
+} from "./utilities/interfacePatternUtils";
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as any).topoViewerState = topoViewerState;
 }
 
@@ -88,15 +93,13 @@ type InterfaceStatsPayload = {
 };
 
 interface ModeSwitchPayload {
-  mode: 'viewer' | 'editor' | string;
+  mode: "viewer" | "editor" | string;
   deploymentState?: string;
   viewerParams?: ViewerParamsPayload;
   editorParams?: EditorParamsPayload;
 }
 
 // Grid guide options now come from shared builder in utilities/gridGuide
-
-
 
 /**
  * TopologyWebviewController is responsible for initializing the Cytoscape instance,
@@ -110,11 +113,11 @@ class TopologyWebviewController {
   private isViewportDrawerClabEditorChecked: boolean = true; // Editor mode flag
 
   // Reused UI literals to avoid duplicate strings
-  public static readonly UI_FILL_COLOR = 'rgba(31, 31, 31, 0.75)';
-  public static readonly UI_ACTIVE_FILL_COLOR = 'rgba(66, 88, 255, 1)';
-  public static readonly UI_ITEM_COLOR = 'white';
-  public static readonly UI_ITEM_TEXT_SHADOW = 'rgba(61, 62, 64, 1)';
-  public static readonly UI_OPEN_EVENT = 'cxttap';
+  public static readonly UI_FILL_COLOR = "rgba(31, 31, 31, 0.75)";
+  public static readonly UI_ACTIVE_FILL_COLOR = "rgba(66, 88, 255, 1)";
+  public static readonly UI_ITEM_COLOR = "white";
+  public static readonly UI_ITEM_TEXT_SHADOW = "rgba(61, 62, 64, 1)";
+  public static readonly UI_OPEN_EVENT = "cxttap";
 
   public messageSender!: VscodeMessageSender;
   public saveManager!: ManagerSaveTopo;
@@ -133,15 +136,15 @@ class TopologyWebviewController {
   public copyPasteManager!: CopyPasteManager;
   public captureViewportManager!: { viewportButtonsCaptureViewportAsSvg: () => void };
   public labSettingsManager?: ManagerLabSettings;
-  private static readonly CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
-  private static readonly CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
-  private static readonly STYLE_LINE_COLOR = 'line-color' as const;
-  private static readonly KIND_BRIDGE = 'bridge' as const;
-  private static readonly KIND_OVS_BRIDGE = 'ovs-bridge' as const;
+  private static readonly CLASS_PANEL_OVERLAY = "panel-overlay" as const;
+  private static readonly CLASS_VIEWPORT_DRAWER = "viewport-drawer" as const;
+  private static readonly STYLE_LINE_COLOR = "line-color" as const;
+  private static readonly KIND_BRIDGE = "bridge" as const;
+  private static readonly KIND_OVS_BRIDGE = "ovs-bridge" as const;
   private interfaceCounters: Record<string, number> = {};
   private interfacePatternCache: Map<string, ReturnType<typeof parseInterfacePattern>> = new Map();
   private labLocked = true;
-  private currentMode: 'edit' | 'view' = 'edit';
+  private currentMode: "edit" | "view" = "edit";
   private nodeMenu: any;
   private edgeMenu: any;
   private groupMenu: any;
@@ -173,29 +176,29 @@ class TopologyWebviewController {
     g: () => {
       this.groupManager.viewportButtonsAddGroup();
     },
-    'ctrl+a': (event) => {
+    "ctrl+a": (event) => {
       event.preventDefault();
       this.handleSelectAll();
     },
-    'ctrl+c': (event) => {
+    "ctrl+c": (event) => {
       event.preventDefault();
       this.copyPasteManager.handleCopy();
     },
-    'ctrl+v': (event) => {
+    "ctrl+v": (event) => {
       if (!this.isViewportDrawerClabEditorChecked) {
         return;
       }
       event.preventDefault();
       this.copyPasteManager.handlePaste();
     },
-    'ctrl+x': (event) => {
+    "ctrl+x": (event) => {
       if (!this.isViewportDrawerClabEditorChecked) {
         return;
       }
       event.preventDefault();
       this.handleCutKeyPress();
     },
-    'ctrl+d': (event) => {
+    "ctrl+d": (event) => {
       if (!this.isViewportDrawerClabEditorChecked) {
         return;
       }
@@ -203,7 +206,7 @@ class TopologyWebviewController {
       this.copyPasteManager.handleDuplicate();
     }
   };
-  public async initAsync(mode: 'edit' | 'view'): Promise<void> {
+  public async initAsync(mode: "edit" | "view"): Promise<void> {
     await this.loadInitialGraph(mode);
     this.scheduleInitialFit();
     this.gridManager.enableSnapping(true);
@@ -213,23 +216,23 @@ class TopologyWebviewController {
     await this.loadGroupStylesSafe();
   }
 
-  private async loadInitialGraph(mode: 'edit' | 'view'): Promise<void> {
-    perfMark('cytoscape_style_start');
+  private async loadInitialGraph(mode: "edit" | "view"): Promise<void> {
+    perfMark("cytoscape_style_start");
     await loadCytoStyle(this.cy);
-    perfMeasure('cytoscape_style', 'cytoscape_style_start');
-    perfMark('fetch_data_start');
+    perfMeasure("cytoscape_style", "cytoscape_style_start");
+    perfMark("fetch_data_start");
     await fetchAndLoadData(this.cy, this.messageSender);
-    if (mode === 'edit') {
-      this.cy.edges().forEach(edge => {
-        edge.removeClass('link-up');
-        edge.removeClass('link-down');
+    if (mode === "edit") {
+      this.cy.edges().forEach((edge) => {
+        edge.removeClass("link-up");
+        edge.removeClass("link-down");
       });
-      log.debug('initAsync: cleared link state classes for edit mode');
+      log.debug("initAsync: cleared link state classes for edit mode");
     }
-    perfMeasure('fetch_data', 'fetch_data_start');
-    perfMeasure('topoViewer_init_total', 'topoViewer_init_start');
+    perfMeasure("fetch_data", "fetch_data_start");
+    perfMeasure("topoViewer_init_total", "topoViewer_init_start");
     this.initialGraphLoaded = true;
-    this.messageSender.sendMessageToVscodeEndpointPost('performance-metrics', {
+    this.messageSender.sendMessageToVscodeEndpointPost("performance-metrics", {
       metrics: PerformanceMonitor.getMeasures()
     });
   }
@@ -238,9 +241,9 @@ class TopologyWebviewController {
     if (this.cy.elements().length === 0) {
       return;
     }
-    if (typeof requestAnimationFrame === 'undefined') {
+    if (typeof requestAnimationFrame === "undefined") {
       this.cy.fit(this.cy.elements(), 50);
-      log.debug('Viewport fitted immediately (no RAF available)');
+      log.debug("Viewport fitted immediately (no RAF available)");
       return;
     }
     // eslint-disable-next-line no-undef
@@ -248,7 +251,7 @@ class TopologyWebviewController {
       this.cy.animate({
         fit: { eles: this.cy.elements(), padding: 50 },
         duration: 150,
-        easing: 'ease-out'
+        easing: "ease-out"
       });
     });
   }
@@ -256,15 +259,17 @@ class TopologyWebviewController {
   private fetchEnvironmentMetadata(): void {
     void (async () => {
       try {
-        const result = await fetchAndLoadDataEnvironment(['clab-name', 'clab-prefix']);
-        const labName = result['clab-name'] || 'Unknown';
+        const result = await fetchAndLoadDataEnvironment(["clab-name", "clab-prefix"]);
+        const labName = result["clab-name"] || "Unknown";
         this.updateSubtitle(labName);
         topoViewerState.labName = labName;
-        if (typeof result['clab-prefix'] === 'string') {
-          topoViewerState.prefixName = result['clab-prefix'] as string;
+        if (typeof result["clab-prefix"] === "string") {
+          topoViewerState.prefixName = result["clab-prefix"] as string;
         }
       } catch (error) {
-        log.error(`Error loading environment data: ${error instanceof Error ? error.message : String(error)}`);
+        log.error(
+          `Error loading environment data: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     })();
   }
@@ -274,9 +279,9 @@ class TopologyWebviewController {
     this.applyLockState(this.labLocked);
   }
 
-  private async configureModeHandlers(mode: 'edit' | 'view'): Promise<void> {
+  private async configureModeHandlers(mode: "edit" | "view"): Promise<void> {
     await this.registerEvents(mode);
-    if (mode === 'edit') {
+    if (mode === "edit") {
       this.setupAutoSave();
       setTimeout(() => this.initializeEdgehandles(), 50);
     } else {
@@ -293,8 +298,6 @@ class TopologyWebviewController {
     }
   }
 
-
-
   // Add automatic save on change
   private setupAutoSave(): void {
     if (this.editAutoSaveConfigured) {
@@ -302,9 +305,9 @@ class TopologyWebviewController {
     }
     this.editAutoSaveConfigured = true;
     const autoSave = this.createDebouncedAutoSave();
-    this.cy.on('add remove data', (event) => this.handleNodeEvent(event, autoSave));
-    this.cy.on('position', (event) => this.handleNodePositionEvent(event, autoSave));
-    this.cy.on('dragfree', 'node', (event) => this.handleNodeEvent(event, autoSave));
+    this.cy.on("add remove data", (event) => this.handleNodeEvent(event, autoSave));
+    this.cy.on("position", (event) => this.handleNodePositionEvent(event, autoSave));
+    this.cy.on("dragfree", "node", (event) => this.handleNodeEvent(event, autoSave));
   }
 
   // Add automatic save for view mode (only saves annotations.json)
@@ -314,8 +317,8 @@ class TopologyWebviewController {
     }
     this.viewAutoSaveConfigured = true;
     const autoSaveViewMode = this.createDebouncedViewAutoSave();
-    this.cy.on('position', (event) => this.handleNodePositionEvent(event, autoSaveViewMode));
-    this.cy.on('dragfree', 'node', (event) => this.handleNodeEvent(event, autoSaveViewMode));
+    this.cy.on("position", (event) => this.handleNodePositionEvent(event, autoSaveViewMode));
+    this.cy.on("dragfree", "node", (event) => this.handleNodeEvent(event, autoSaveViewMode));
   }
 
   private createDebouncedAutoSave(): () => void {
@@ -371,7 +374,7 @@ class TopologyWebviewController {
     if (!target || !target.isNode()) {
       return true;
     }
-    return target.data('topoViewerRole') === 'freeText';
+    return target.data("topoViewerRole") === "freeText";
   }
 
   private suspendAutoSave(): void {
@@ -400,7 +403,7 @@ class TopologyWebviewController {
   private registerCustomZoom(): void {
     this.cy.userZoomingEnabled(false);
     const container = this.cy.container();
-    container?.addEventListener('wheel', this.handleCustomWheel, { passive: false });
+    container?.addEventListener("wheel", this.handleCustomWheel, { passive: false });
   }
 
   private handleCustomWheel = (event: WheelEvent): void => {
@@ -411,13 +414,14 @@ class TopologyWebviewController {
     } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
       step *= window.innerHeight;
     }
-    const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
+    const isTrackpad =
+      event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
     const sensitivity = isTrackpad ? 0.002 : 0.0002;
     const factor = Math.pow(10, -step * sensitivity);
     const newZoom = this.cy.zoom() * factor;
     this.cy.zoom({
       level: newZoom,
-      renderedPosition: { x: event.offsetX, y: event.offsetY },
+      renderedPosition: { x: event.offsetX, y: event.offsetY }
     });
   };
 
@@ -426,8 +430,8 @@ class TopologyWebviewController {
    * @param containerId - The ID of the container element for Cytoscape.
    * @throws Will throw an error if the container element is not found.
    */
-  constructor(containerId: string, mode: 'edit' | 'view' = 'edit') {
-    perfMark('topoViewer_init_start');
+  constructor(containerId: string, mode: "edit" | "view" = "edit") {
+    perfMark("topoViewer_init_start");
     this.currentMode = mode;
     (topoViewerState as any).currentMode = mode;
     const container = this.getContainer(containerId);
@@ -436,7 +440,7 @@ class TopologyWebviewController {
     this.initializeCytoscape(container, theme);
     this.initializeManagers(mode);
 
-    window.addEventListener('topology-lock-change', (e: any) => {
+    window.addEventListener("topology-lock-change", (e: any) => {
       this.applyLockState(!!e.detail);
     });
   }
@@ -450,42 +454,42 @@ class TopologyWebviewController {
   }
 
   private initializeCytoscape(container: HTMLElement, theme: string): void {
-    perfMark('cytoscape_create_start');
+    perfMark("cytoscape_create_start");
     this.cy = createConfiguredCytoscape(container);
-    perfMeasure('cytoscape_create', 'cytoscape_create_start');
+    perfMeasure("cytoscape_create", "cytoscape_create_start");
     this.cy.viewport({
       zoom: 1,
-      pan: { x: container.clientWidth / 2, y: container.clientHeight / 2 },
+      pan: { x: container.clientWidth / 2, y: container.clientHeight / 2 }
     });
-    const cyContainer = document.getElementById('cy') as HTMLDivElement | null;
+    const cyContainer = document.getElementById("cy") as HTMLDivElement | null;
     if (cyContainer) {
       cyContainer.tabIndex = 0;
-      cyContainer.addEventListener('mousedown', () => {
+      cyContainer.addEventListener("mousedown", () => {
         cyContainer.focus();
       });
     }
     this.registerCustomZoom();
-    this.cy.on('tap', (event) => {
+    this.cy.on("tap", (event) => {
       log.debug(`Cytoscape event: ${event.type}`);
     });
     // Initialize unified GridManager (overlay + plugin config)
     this.gridManager = new ManagerGridGuide(this.cy);
-    this.gridManager.initialize(theme as 'light' | 'dark');
+    this.gridManager.initialize(theme as "light" | "dark");
     // Provide a global hook for theme updates from outside
-    (window as any).updateTopoGridTheme = (newTheme: 'light' | 'dark') => {
+    (window as any).updateTopoGridTheme = (newTheme: "light" | "dark") => {
       this.gridManager.updateTheme(newTheme);
     };
   }
 
-  private initializeManagers(mode: 'edit' | 'view'): void {
+  private initializeManagers(mode: "edit" | "view"): void {
     this.setupManagers(mode);
     this.registerDoubleClickHandlers();
     this.exposeWindowFunctions();
     this.registerMessageListener();
-    document.getElementById('cy')?.focus();
+    document.getElementById("cy")?.focus();
   }
 
-  private setupManagers(mode: 'edit' | 'view'): void {
+  private setupManagers(mode: "edit" | "view"): void {
     // eslint-disable-next-line sonarjs/constructor-for-side-effects
     new ManagerShortcutDisplay();
     this.saveManager = new ManagerSaveTopo(this.messageSender);
@@ -494,15 +498,29 @@ class TopologyWebviewController {
     this.labSettingsManager = new ManagerLabSettings(this.messageSender);
     this.labSettingsManager.init();
     this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
-    this.groupStyleManager = new ManagerGroupStyle(this.cy, this.messageSender, this.freeTextManager);
+    this.groupStyleManager = new ManagerGroupStyle(
+      this.cy,
+      this.messageSender,
+      this.freeTextManager
+    );
     this.freeTextManager.setGroupStyleManager(this.groupStyleManager);
-    this.copyPasteManager = new CopyPasteManager(this.cy, this.messageSender, this.groupStyleManager, this.freeTextManager);
-    if (mode === 'edit') {
+    this.copyPasteManager = new CopyPasteManager(
+      this.cy,
+      this.messageSender,
+      this.groupStyleManager,
+      this.freeTextManager
+    );
+    if (mode === "edit") {
       this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
       (window as any).viewportPanels = this.viewportPanels;
       this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
     }
-    this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(this.cy, this.messageSender, this.addNodeManager, this.nodeEditor);
+    this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(
+      this.cy,
+      this.messageSender,
+      this.addNodeManager,
+      this.nodeEditor
+    );
     this.groupManager = getGroupManager(this.cy, this.groupStyleManager, mode);
     this.groupManager.initializeWheelSelection();
     this.groupManager.initializeGroupManagement();
@@ -510,11 +528,11 @@ class TopologyWebviewController {
     this.zoomToFitManager = zoomToFitManagerSingleton;
     this.labelEndpointManager = labelEndpointManagerSingleton;
     this.labelEndpointManager.initialize(this.cy);
-    this.isViewportDrawerClabEditorChecked = mode === 'edit';
+    this.isViewportDrawerClabEditorChecked = mode === "edit";
     this.captureViewportManager = {
       viewportButtonsCaptureViewportAsSvg: () => {
         viewportButtonsCaptureViewportAsSvg();
-      },
+      }
     };
   }
 
@@ -534,26 +552,30 @@ class TopologyWebviewController {
   ): string {
     const hasNode = node && !node.empty();
     const extraData = hasNode
-      ? (node!.data('extraData') as { interfacePattern?: unknown; kind?: unknown } | undefined)
+      ? (node!.data("extraData") as { interfacePattern?: unknown; kind?: unknown } | undefined)
       : undefined;
-    const customPattern = typeof extraData?.interfacePattern === 'string' ? extraData.interfacePattern.trim() : '';
+    const customPattern =
+      typeof extraData?.interfacePattern === "string" ? extraData.interfacePattern.trim() : "";
     if (customPattern) {
       return customPattern;
     }
-    const kind = typeof extraData?.kind === 'string' && extraData.kind ? (extraData.kind as string) : 'default';
+    const kind =
+      typeof extraData?.kind === "string" && extraData.kind
+        ? (extraData.kind as string)
+        : "default";
     return ifaceMap[kind] || DEFAULT_INTERFACE_PATTERN;
   }
 
   private registerDoubleClickHandlers(): void {
-    this.cy.on('dblclick', 'node[topoViewerRole != "freeText"]', (event) => {
+    this.cy.on("dblclick", 'node[topoViewerRole != "freeText"]', (event) => {
       if (this.labLocked) {
         this.showLockedMessage();
         return;
       }
       const node = event.target;
-      if (node.data('topoViewerRole') === 'group') {
+      if (node.data("topoViewerRole") === "group") {
         this.groupManager.showGroupEditor(node);
-      } else if (node.data('topoViewerRole') === 'cloud') {
+      } else if (node.data("topoViewerRole") === "cloud") {
         this.viewportPanels?.panelNetworkEditor(node);
       } else if (this.nodeEditor) {
         void this.nodeEditor.open(node);
@@ -561,7 +583,7 @@ class TopologyWebviewController {
         this.viewportPanels?.panelNodeEditor(node);
       }
     });
-    this.cy.on('dblclick', 'edge', (event) => {
+    this.cy.on("dblclick", "edge", (event) => {
       if (this.labLocked) {
         this.showLockedMessage();
         return;
@@ -572,38 +594,58 @@ class TopologyWebviewController {
   }
 
   private exposeWindowFunctions(): void {
-    window.viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(this.layoutAlgoManager);
+    window.viewportButtonsLayoutAlgo = this.layoutAlgoManager.viewportButtonsLayoutAlgo.bind(
+      this.layoutAlgoManager
+    );
     window.layoutAlgoChange = this.layoutAlgoManager.layoutAlgoChange.bind(this.layoutAlgoManager);
-    window.viewportDrawerLayoutGeoMap = this.layoutAlgoManager.viewportDrawerLayoutGeoMap.bind(this.layoutAlgoManager);
-    window.viewportDrawerDisableGeoMap = this.layoutAlgoManager.viewportDrawerDisableGeoMap.bind(this.layoutAlgoManager);
-    window.viewportDrawerLayoutForceDirected = this.layoutAlgoManager.viewportDrawerLayoutForceDirected.bind(this.layoutAlgoManager);
-    window.viewportDrawerLayoutForceDirectedRadial = this.layoutAlgoManager.viewportDrawerLayoutForceDirectedRadial.bind(this.layoutAlgoManager);
-    window.viewportDrawerLayoutVertical = this.layoutAlgoManager.viewportDrawerLayoutVertical.bind(this.layoutAlgoManager);
-    window.viewportDrawerLayoutHorizontal = this.layoutAlgoManager.viewportDrawerLayoutHorizontal.bind(this.layoutAlgoManager);
-    window.viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(this.layoutAlgoManager);
-    window.viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(this.layoutAlgoManager);
-    window.viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutGeoMap = this.layoutAlgoManager.viewportDrawerLayoutGeoMap.bind(
+      this.layoutAlgoManager
+    );
+    window.viewportDrawerDisableGeoMap = this.layoutAlgoManager.viewportDrawerDisableGeoMap.bind(
+      this.layoutAlgoManager
+    );
+    window.viewportDrawerLayoutForceDirected =
+      this.layoutAlgoManager.viewportDrawerLayoutForceDirected.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutForceDirectedRadial =
+      this.layoutAlgoManager.viewportDrawerLayoutForceDirectedRadial.bind(this.layoutAlgoManager);
+    window.viewportDrawerLayoutVertical = this.layoutAlgoManager.viewportDrawerLayoutVertical.bind(
+      this.layoutAlgoManager
+    );
+    window.viewportDrawerLayoutHorizontal =
+      this.layoutAlgoManager.viewportDrawerLayoutHorizontal.bind(this.layoutAlgoManager);
+    window.viewportDrawerPreset = this.layoutAlgoManager.viewportDrawerPreset.bind(
+      this.layoutAlgoManager
+    );
+    window.viewportButtonsGeoMapPan = this.layoutAlgoManager.viewportButtonsGeoMapPan.bind(
+      this.layoutAlgoManager
+    );
+    window.viewportButtonsGeoMapEdit = this.layoutAlgoManager.viewportButtonsGeoMapEdit.bind(
+      this.layoutAlgoManager
+    );
     window.viewportButtonsTopologyOverview = this.viewportButtonsTopologyOverview.bind(this);
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
-    window.viewportButtonsCaptureViewportAsSvg = () => this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
+    window.viewportButtonsCaptureViewportAsSvg = () =>
+      this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
     window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
     // Grid controls: allow UI to adjust grid line width at runtime
     (window as any).viewportDrawerGridLineWidthChange = (value: string | number) => {
-      const n = typeof value === 'number' ? value : parseFloat(String(value));
+      const n = typeof value === "number" ? value : parseFloat(String(value));
       if (!Number.isNaN(n)) {
         this.gridManager?.setLineWidth(n);
       }
     };
     (window as any).viewportDrawerGridLineWidthReset = () => {
       const def = 0.5;
-      const el = document.getElementById('viewport-drawer-grid-line-width') as HTMLInputElement | null;
+      const el = document.getElementById(
+        "viewport-drawer-grid-line-width"
+      ) as HTMLInputElement | null;
       if (el) el.value = String(def);
       this.gridManager?.setLineWidth(def);
     };
   }
 
   private registerMessageListener(): void {
-    window.addEventListener('message', (event) => {
+    window.addEventListener("message", (event) => {
       if (event.origin !== window.location.origin) {
         return;
       }
@@ -618,27 +660,31 @@ class TopologyWebviewController {
   private dispatchIncomingMessage(msg: any): void {
     const runHandler = (type: string, fn: () => void | Promise<void>): void => {
       Promise.resolve(fn()).catch((error) => {
-        log.error(`Error handling message "${type}": ${error instanceof Error ? error.message : String(error)}`);
+        log.error(
+          `Error handling message "${type}": ${error instanceof Error ? error.message : String(error)}`
+        );
       });
     };
 
     switch (msg.type) {
-      case 'yaml-saved':
+      case "yaml-saved":
         runHandler(msg.type, async () => {
           await fetchAndLoadData(this.cy, this.messageSender, { incremental: true });
         });
         return;
-      case 'updateTopology':
+      case "updateTopology":
         runHandler(msg.type, () => this.updateTopology(msg.data));
         return;
-      case 'copiedElements':
+      case "copiedElements":
         runHandler(msg.type, () => this.handleCopiedElements(msg.data));
         return;
-      case 'topo-mode-changed':
+      case "topo-mode-changed":
         runHandler(msg.type, () => this.handleModeSwitchMessage(msg.data as ModeSwitchPayload));
         return;
-      case 'docker-images-updated':
-        runHandler(msg.type, () => this.handleDockerImagesUpdatedMessage(msg.dockerImages as string[]));
+      case "docker-images-updated":
+        runHandler(msg.type, () =>
+          this.handleDockerImagesUpdatedMessage(msg.dockerImages as string[])
+        );
         return;
       default:
         return;
@@ -647,7 +693,7 @@ class TopologyWebviewController {
 
   private handleDockerImagesUpdatedMessage(images?: string[]): void {
     const nextImages = Array.isArray(images) ? images : [];
-    this.assignWindowValue('dockerImages', nextImages, []);
+    this.assignWindowValue("dockerImages", nextImages, []);
     this.nodeEditor?.handleDockerImagesUpdated(nextImages);
   }
 
@@ -665,12 +711,12 @@ class TopologyWebviewController {
           const existing = this.cy.getElementById(id);
           if (existing && existing.length > 0) {
             existing.data(el.data);
-            if (typeof el.classes === 'string') {
+            if (typeof el.classes === "string") {
               existing.classes(el.classes);
             }
-            if (this.currentMode === 'edit' && existing.isEdge()) {
-              existing.removeClass('link-up');
-              existing.removeClass('link-down');
+            if (this.currentMode === "edit" && existing.isEdge()) {
+              existing.removeClass("link-up");
+              existing.removeClass("link-down");
             }
             if (existing.isEdge()) {
               this.refreshLinkPanelIfSelected(existing);
@@ -697,27 +743,34 @@ class TopologyWebviewController {
     }
   }
 
-  private normalizeModeFromPayload(payload: ModeSwitchPayload): { normalized: 'viewer' | 'editor'; target: 'edit' | 'view' } {
-    const normalized = payload.mode === 'viewer' ? 'viewer' : 'editor';
-    const target: 'edit' | 'view' = normalized === 'viewer' ? 'view' : 'edit';
+  private normalizeModeFromPayload(payload: ModeSwitchPayload): {
+    normalized: "viewer" | "editor";
+    target: "edit" | "view";
+  } {
+    const normalized = payload.mode === "viewer" ? "viewer" : "editor";
+    const target: "edit" | "view" = normalized === "viewer" ? "view" : "edit";
     return { normalized, target };
   }
 
-  private setGlobalModeState(normalized: 'viewer' | 'editor', target: 'edit' | 'view', deploymentState?: string): void {
+  private setGlobalModeState(
+    normalized: "viewer" | "editor",
+    target: "edit" | "view",
+    deploymentState?: string
+  ): void {
     (window as any).topoViewerMode = normalized;
     (topoViewerState as any).currentMode = target;
     this.currentMode = target;
-    this.isViewportDrawerClabEditorChecked = target === 'edit';
-    if (typeof deploymentState === 'string') {
+    this.isViewportDrawerClabEditorChecked = target === "edit";
+    if (typeof deploymentState === "string") {
       topoViewerState.deploymentType = deploymentState;
     }
   }
 
   private resolveLockPreference(payload: ModeSwitchPayload): boolean | undefined {
-    if (typeof payload.editorParams?.lockLabByDefault === 'boolean') {
+    if (typeof payload.editorParams?.lockLabByDefault === "boolean") {
       return payload.editorParams.lockLabByDefault;
     }
-    if (typeof payload.viewerParams?.lockLabByDefault === 'boolean') {
+    if (typeof payload.viewerParams?.lockLabByDefault === "boolean") {
       return payload.viewerParams.lockLabByDefault;
     }
     return undefined;
@@ -727,28 +780,31 @@ class TopologyWebviewController {
     if (!params) {
       return;
     }
-    this.assignWindowValue('lockLabByDefault', params.lockLabByDefault);
-    this.assignWindowValue('currentLabPath', params.currentLabPath);
+    this.assignWindowValue("lockLabByDefault", params.lockLabByDefault);
+    this.assignWindowValue("currentLabPath", params.currentLabPath);
   }
 
   private applyEditorParameters(params?: EditorParamsPayload): void {
     if (!params) {
       return;
     }
-    this.assignWindowValue('lockLabByDefault', params.lockLabByDefault);
-    this.assignWindowValue('imageMapping', params.imageMapping, {});
-    this.assignWindowValue('ifacePatternMapping', params.ifacePatternMapping, {});
-    this.assignWindowValue('defaultKind', params.defaultKind, 'nokia_srlinux');
-    this.assignWindowValue('defaultType', params.defaultType, '');
-    this.assignWindowValue('updateLinkEndpointsOnKindChange', params.updateLinkEndpointsOnKindChange);
-    this.assignWindowValue('customNodes', params.customNodes, []);
-    this.assignWindowValue('defaultNode', params.defaultNode, '');
-    this.assignWindowValue('topologyDefaults', params.topologyDefaults, {});
-    this.assignWindowValue('topologyKinds', params.topologyKinds, {});
-    this.assignWindowValue('topologyGroups', params.topologyGroups, {});
-    this.assignWindowValue('dockerImages', params.dockerImages, []);
-    this.assignWindowValue('currentLabPath', params.currentLabPath);
-    this.assignWindowValue('customIcons', params.customIcons, {});
+    this.assignWindowValue("lockLabByDefault", params.lockLabByDefault);
+    this.assignWindowValue("imageMapping", params.imageMapping, {});
+    this.assignWindowValue("ifacePatternMapping", params.ifacePatternMapping, {});
+    this.assignWindowValue("defaultKind", params.defaultKind, "nokia_srlinux");
+    this.assignWindowValue("defaultType", params.defaultType, "");
+    this.assignWindowValue(
+      "updateLinkEndpointsOnKindChange",
+      params.updateLinkEndpointsOnKindChange
+    );
+    this.assignWindowValue("customNodes", params.customNodes, []);
+    this.assignWindowValue("defaultNode", params.defaultNode, "");
+    this.assignWindowValue("topologyDefaults", params.topologyDefaults, {});
+    this.assignWindowValue("topologyKinds", params.topologyKinds, {});
+    this.assignWindowValue("topologyGroups", params.topologyGroups, {});
+    this.assignWindowValue("dockerImages", params.dockerImages, []);
+    this.assignWindowValue("currentLabPath", params.currentLabPath);
+    this.assignWindowValue("customIcons", params.customIcons, {});
   }
 
   private assignWindowValue<T>(key: string, value: T | undefined, fallback?: T): void {
@@ -761,9 +817,9 @@ class TopologyWebviewController {
     }
   }
 
-  private async ensureModeResources(mode: 'edit' | 'view'): Promise<void> {
+  private async ensureModeResources(mode: "edit" | "view"): Promise<void> {
     await this.registerEvents(mode);
-    if (mode === 'edit') {
+    if (mode === "edit") {
       if (!this.viewportPanels) {
         this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
         (window as any).viewportPanels = this.viewportPanels;
@@ -776,13 +832,13 @@ class TopologyWebviewController {
       this.setupAutoSaveViewMode();
     }
     this.unifiedFloatingPanel?.setNodeEditor(this.nodeEditor ?? null);
-    this.toggleEdgehandles(mode === 'edit');
+    this.toggleEdgehandles(mode === "edit");
     await this.initializeContextMenu();
   }
 
-  private finalizeModeChange(normalized: 'viewer' | 'editor'): void {
+  private finalizeModeChange(normalized: "viewer" | "editor"): void {
     this.updateModeIndicator(normalized);
-    document.dispatchEvent(new CustomEvent('topo-mode-changed'));
+    document.dispatchEvent(new CustomEvent("topo-mode-changed"));
     this.unifiedFloatingPanel?.updateState();
   }
 
@@ -792,7 +848,7 @@ class TopologyWebviewController {
     }
 
     if (this.modeTransitionInProgress) {
-      log.warn('Mode transition already in progress; ignoring new mode switch request');
+      log.warn("Mode transition already in progress; ignoring new mode switch request");
       return;
     }
 
@@ -811,15 +867,17 @@ class TopologyWebviewController {
         this.initialGraphLoaded = true;
       }
       await this.ensureModeResources(target);
-      if (target === 'edit') {
-        this.cy.edges().forEach(edge => {
-          edge.removeClass('link-up');
-          edge.removeClass('link-down');
+      if (target === "edit") {
+        this.cy.edges().forEach((edge) => {
+          edge.removeClass("link-up");
+          edge.removeClass("link-down");
         });
-        window.writeTopoDebugLog?.('handleModeSwitchMessage: cleared link state classes for edit mode');
+        window.writeTopoDebugLog?.(
+          "handleModeSwitchMessage: cleared link state classes for edit mode"
+        );
       }
 
-      if (typeof resolvedLock === 'boolean') {
+      if (typeof resolvedLock === "boolean") {
         this.labLocked = resolvedLock;
       }
       this.applyLockState(this.labLocked);
@@ -827,7 +885,9 @@ class TopologyWebviewController {
       this.finalizeModeChange(normalized);
       log.info(`Mode switched to ${target}`);
     } catch (error) {
-      log.error(`Error handling mode switch: ${error instanceof Error ? error.message : String(error)}`);
+      log.error(
+        `Error handling mode switch: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       this.modeTransitionInProgress = false;
     }
@@ -841,7 +901,7 @@ class TopologyWebviewController {
   private async initializeEdgehandles(): Promise<void> {
     // Load edgehandles extension lazily
     this.interfaceCounters = {};
-    await loadExtension('edgehandles');
+    await loadExtension("edgehandles");
     const edgehandlesOptions = {
       hoverDelay: 50,
       snap: false,
@@ -850,19 +910,25 @@ class TopologyWebviewController {
       noEdgeEventsInDraw: false,
       disableBrowserGestures: false,
       handleNodes: 'node[topoViewerRole != "freeText"]',
-      canConnect: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): boolean => {
-        const sourceRole = sourceNode.data('topoViewerRole');
-        const targetRole = targetNode.data('topoViewerRole');
+      canConnect: (
+        sourceNode: cytoscape.NodeSingular,
+        targetNode: cytoscape.NodeSingular
+      ): boolean => {
+        const sourceRole = sourceNode.data("topoViewerRole");
+        const targetRole = targetNode.data("topoViewerRole");
         return (
-          sourceRole !== 'freeText' &&
-          targetRole !== 'freeText' &&
+          sourceRole !== "freeText" &&
+          targetRole !== "freeText" &&
           !sourceNode.same(targetNode) &&
           !sourceNode.isParent() &&
           !targetNode.isParent() &&
-          targetRole !== 'group'
+          targetRole !== "group"
         );
       },
-      edgeParams: (sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular): EdgeData => {
+      edgeParams: (
+        sourceNode: cytoscape.NodeSingular,
+        targetNode: cytoscape.NodeSingular
+      ): EdgeData => {
         const ifaceMap = window.ifacePatternMapping || {};
         const srcPattern = this.resolveInterfacePattern(sourceNode, ifaceMap);
         const dstPattern = this.resolveInterfacePattern(targetNode, ifaceMap);
@@ -883,9 +949,9 @@ class TopologyWebviewController {
           source: sourceNode.id(),
           target: targetNode.id(),
           sourceEndpoint,
-          targetEndpoint,
+          targetEndpoint
         };
-      },
+      }
     };
 
     this.eh = (this.cy as any).edgehandles(edgehandlesOptions);
@@ -908,12 +974,11 @@ class TopologyWebviewController {
     }
   }
 
-
   /**
    * Initializes the circular context menus.
    */
   private async initializeContextMenu(): Promise<void> {
-    await loadExtension('cxtmenu');
+    await loadExtension("cxtmenu");
     if (!this.freeTextMenu) {
       this.freeTextMenu = this.initializeFreeTextContextMenu();
     }
@@ -943,7 +1008,7 @@ class TopologyWebviewController {
                 return;
               }
               this.freeTextManager?.editFreeText(ele.id());
-            },
+            }
           },
           {
             content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Remove Text</span></div>`,
@@ -952,8 +1017,8 @@ class TopologyWebviewController {
                 return;
               }
               this.freeTextManager?.removeFreeTextAnnotation(ele.id());
-            },
-          },
+            }
+          }
         ];
       },
       menuRadius: 60,
@@ -971,7 +1036,7 @@ class TopologyWebviewController {
       itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
       zIndex: 9999,
       atMouse: false,
-      outsideMenuCancel: 10,
+      outsideMenuCancel: 10
     });
   }
 
@@ -994,12 +1059,12 @@ class TopologyWebviewController {
       itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
       zIndex: 9999,
       atMouse: false,
-      outsideMenuCancel: 10,
+      outsideMenuCancel: 10
     });
   }
 
   private buildNodeMenuCommands(ele: cytoscape.Singular): any[] {
-    if (this.currentMode === 'view') {
+    if (this.currentMode === "view") {
       return this.buildViewerNodeCommands(ele);
     }
     if (this.labLocked) {
@@ -1036,8 +1101,8 @@ class TopologyWebviewController {
   }
 
   private createEditCommand(isNetwork: boolean): any {
-    const label = isNetwork ? 'Edit Network' : 'Edit Node';
-    return this.createNodeMenuItem('fas fa-pen-to-square', label, (node) => {
+    const label = isNetwork ? "Edit Network" : "Edit Node";
+    return this.createNodeMenuItem("fas fa-pen-to-square", label, (node) => {
       this.viewportPanels?.setNodeClicked(true);
       if (isNetwork) {
         this.viewportPanels?.panelNetworkEditor(node);
@@ -1048,7 +1113,7 @@ class TopologyWebviewController {
   }
 
   private createDeleteCommand(): any {
-    return this.createNodeMenuItem('fas fa-trash-alt', 'Delete Node', (node) => {
+    return this.createNodeMenuItem("fas fa-trash-alt", "Delete Node", (node) => {
       const parent = node.parent();
       node.remove();
       if (parent.nonempty() && parent.children().length === 0) {
@@ -1062,7 +1127,7 @@ class TopologyWebviewController {
       await this.initializeEdgehandles();
       return;
     }
-    if (typeof this.eh.enable === 'function') {
+    if (typeof this.eh.enable === "function") {
       this.eh.enable();
     }
   }
@@ -1070,7 +1135,7 @@ class TopologyWebviewController {
   private async startEdgeCreationFromNode(node: cytoscape.NodeSingular): Promise<void> {
     await this.ensureEdgehandlesReady();
     if (!this.eh) {
-      log.error('Edgehandles is not available; unable to start edge creation.');
+      log.error("Edgehandles is not available; unable to start edge creation.");
       return;
     }
     this.isEdgeHandlerActive = true;
@@ -1078,13 +1143,13 @@ class TopologyWebviewController {
   }
 
   private createAddLinkCommand(): any {
-    return this.createNodeMenuItem('fas fa-link', 'Add Link', async (node) => {
+    return this.createNodeMenuItem("fas fa-link", "Add Link", async (node) => {
       await this.startEdgeCreationFromNode(node);
     });
   }
 
   private createReleaseFromGroupCommand(): any {
-    return this.createNodeMenuItem('fas fa-users-slash', 'Release from Group', (node) => {
+    return this.createNodeMenuItem("fas fa-users-slash", "Release from Group", (node) => {
       setTimeout(() => {
         this.groupManager.orphaningNode(node);
       }, 50);
@@ -1092,7 +1157,7 @@ class TopologyWebviewController {
   }
 
   private getNodeName(node: cytoscape.NodeSingular): string {
-    return node.data('extraData')?.longname || node.data('name') || node.id();
+    return node.data("extraData")?.longname || node.data("name") || node.id();
   }
 
   private initializeGroupContextMenu(): any {
@@ -1114,7 +1179,7 @@ class TopologyWebviewController {
       itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
       zIndex: 9999,
       atMouse: false,
-      outsideMenuCancel: 10,
+      outsideMenuCancel: 10
     });
   }
 
@@ -1137,13 +1202,13 @@ class TopologyWebviewController {
             return;
           }
           this.viewportPanels?.setNodeClicked(true);
-          if (node.data('topoViewerRole') === 'group') {
-            if (this.currentMode === 'view') {
+          if (node.data("topoViewerRole") === "group") {
+            if (this.currentMode === "view") {
               this.suppressViewerCanvasClose = true;
             }
             this.groupManager.showGroupEditor(node);
           }
-        },
+        }
       },
       {
         content: `<div style="display:flex; flex-direction:column; align-items:center; line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Group</span></div>`,
@@ -1152,19 +1217,19 @@ class TopologyWebviewController {
           if (!node) {
             return;
           }
-          const role = node.data('topoViewerRole');
-          if (role === 'group' || node.isParent()) {
+          const role = node.data("topoViewerRole");
+          if (role === "group" || node.isParent()) {
             this.groupManager.directGroupRemoval(node.id());
           }
-        },
-      },
+        }
+      }
     ];
   }
 
   private resolveGroupMenuTarget(ele?: cytoscape.Singular): cytoscape.NodeSingular | undefined {
     if (ele && ele.isNode()) {
       const node = ele as cytoscape.NodeSingular;
-      if (!node.removed() && (node.data('topoViewerRole') === 'group' || node.isParent())) {
+      if (!node.removed() && (node.data("topoViewerRole") === "group" || node.isParent())) {
         this.activeGroupMenuTarget = node;
         return node;
       }
@@ -1180,9 +1245,9 @@ class TopologyWebviewController {
 
   private initializeEdgeContextMenu(): any {
     return this.cy.cxtmenu({
-      selector: 'edge',
+      selector: "edge",
       commands: (ele: cytoscape.Singular) => {
-        if (this.currentMode === 'view') {
+        if (this.currentMode === "view") {
           return this.buildViewerEdgeMenuCommands(ele);
         }
         if (this.labLocked) {
@@ -1205,7 +1270,7 @@ class TopologyWebviewController {
       itemTextShadowColor: TopologyWebviewController.UI_ITEM_TEXT_SHADOW,
       zIndex: 9999,
       atMouse: false,
-      outsideMenuCancel: 10,
+      outsideMenuCancel: 10
     });
   }
 
@@ -1218,7 +1283,7 @@ class TopologyWebviewController {
         if (!edge.isEdge()) return;
         this.viewportPanels?.setEdgeClicked(true);
         this.viewportPanels?.panelEdgeEditor(edge);
-      },
+      }
     });
 
     // Delete link
@@ -1226,31 +1291,33 @@ class TopologyWebviewController {
       content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-trash-alt" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Delete Link</span></div>`,
       select: (edge: cytoscape.Singular) => {
         edge.remove();
-      },
+      }
     });
 
     return commands;
   }
-
 
   private buildViewerNodeCommands(ele: cytoscape.Singular): any[] {
     if (this.isNetworkNode(ele.id())) {
       return [];
     }
     const commands = [
-      this.createNodeMenuItem('fas fa-terminal', 'SSH', async (node) => {
+      this.createNodeMenuItem("fas fa-terminal", "SSH", async (node) => {
         const nodeName = this.getNodeName(node);
-        await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-connect-ssh', nodeName);
+        await this.messageSender.sendMessageToVscodeEndpointPost("clab-node-connect-ssh", nodeName);
       }),
-      this.createNodeMenuItem('fas fa-cube', 'Shell', async (node) => {
+      this.createNodeMenuItem("fas fa-cube", "Shell", async (node) => {
         const nodeName = this.getNodeName(node);
-        await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-attach-shell', nodeName);
+        await this.messageSender.sendMessageToVscodeEndpointPost(
+          "clab-node-attach-shell",
+          nodeName
+        );
       }),
-      this.createNodeMenuItem('fas fa-file-alt', 'Logs', async (node) => {
+      this.createNodeMenuItem("fas fa-file-alt", "Logs", async (node) => {
         const nodeName = this.getNodeName(node);
-        await this.messageSender.sendMessageToVscodeEndpointPost('clab-node-view-logs', nodeName);
+        await this.messageSender.sendMessageToVscodeEndpointPost("clab-node-view-logs", nodeName);
       }),
-      this.createNodeMenuItem('fas fa-info-circle', 'Properties', (node) => {
+      this.createNodeMenuItem("fas fa-info-circle", "Properties", (node) => {
         setTimeout(() => this.showNodePropertiesPanel(node as unknown as cytoscape.Singular), 50);
       })
     ];
@@ -1261,19 +1328,25 @@ class TopologyWebviewController {
   }
 
   private buildViewerEdgeMenuCommands(ele: cytoscape.Singular): any[] {
-    const commands = [
-      ...this.buildEdgeCaptureCommands(ele),
-      {
-        content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-info-circle" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Properties</span></div>`,
-        select: (edge: cytoscape.Singular) => {
-          if (!edge.isEdge()) {
-            return;
-          }
-          setTimeout(() => this.showLinkPropertiesPanel(edge), 50);
-        },
-      },
-    ];
-    return commands;
+    const captureCommands = this.buildEdgeCaptureCommands(ele);
+    const propertiesCommand = {
+      content: `<div style="display:flex;flex-direction:column;align-items:center;line-height:1;"><i class="fas fa-info-circle" style="font-size:1.5em;"></i><div style="height:0.5em;"></div><span>Properties</span></div>`,
+      select: (edge: cytoscape.Singular) => {
+        if (!edge.isEdge()) {
+          return;
+        }
+        setTimeout(() => this.showLinkPropertiesPanel(edge), 50);
+      }
+    };
+
+    // For 3 items in circular menu: item at 0°=top, 120°=bottom-right, 240°=bottom-left
+    // Place: Capture1 (top), Properties (bottom-right), Capture2 (bottom-left)
+    // This gives packet captures the top 2/3 arc and properties in bottom 1/3
+    if (captureCommands.length === 2) {
+      return [captureCommands[0], propertiesCommand, captureCommands[1]];
+    }
+    // Fallback for other cases
+    return [...captureCommands, propertiesCommand];
   }
 
   private buildEdgeCaptureCommands(ele: cytoscape.Singular): any[] {
@@ -1286,13 +1359,13 @@ class TopologyWebviewController {
     if (srcNode && srcIf) {
       items.push({
         content: this.buildCaptureMenuContent(imagesUrl, srcNode, srcIf),
-        select: this.captureInterface.bind(this, srcNode, srcIf),
+        select: this.captureInterface.bind(this, srcNode, srcIf)
       });
     }
     if (dstNode && dstIf) {
       items.push({
         content: this.buildCaptureMenuContent(imagesUrl, dstNode, dstIf),
-        select: this.captureInterface.bind(this, dstNode, dstIf),
+        select: this.captureInterface.bind(this, dstNode, dstIf)
       });
     }
 
@@ -1300,7 +1373,7 @@ class TopologyWebviewController {
   }
 
   private getImagesUrl(): string {
-    return (window as any).imagesUrl || '';
+    return (window as any).imagesUrl || "";
   }
 
   private buildCaptureMenuContent(imagesUrl: string, name: string, endpoint: string): string {
@@ -1311,33 +1384,36 @@ class TopologyWebviewController {
                         </div>`;
   }
 
-  private computeEdgeCaptureEndpoints(ele: cytoscape.Singular): { srcNode: string; srcIf: string; dstNode: string; dstIf: string } {
+  private computeEdgeCaptureEndpoints(ele: cytoscape.Singular): {
+    srcNode: string;
+    srcIf: string;
+    dstNode: string;
+    dstIf: string;
+  } {
     const data = ele.data();
     const extra = data.extraData || {};
-    const srcNode: string = extra.clabSourceLongName || data.source || '';
-    const dstNode: string = extra.clabTargetLongName || data.target || '';
-    const srcIf: string = data.sourceEndpoint || '';
-    const dstIf: string = data.targetEndpoint || '';
+    const srcNode: string = extra.clabSourceLongName || data.source || "";
+    const dstNode: string = extra.clabTargetLongName || data.target || "";
+    const srcIf: string = data.sourceEndpoint || "";
+    const dstIf: string = data.targetEndpoint || "";
     return { srcNode, srcIf, dstNode, dstIf };
   }
 
   private async captureInterface(nodeName: string, interfaceName: string): Promise<void> {
-    await this.messageSender.sendMessageToVscodeEndpointPost('clab-interface-capture', {
+    await this.messageSender.sendMessageToVscodeEndpointPost("clab-interface-capture", {
       nodeName,
-      interfaceName,
+      interfaceName
     });
   }
-
-
 
   /**
    * Registers event handlers for Cytoscape elements such as canvas, nodes, and edges.
    * @private
    */
-  private async registerEvents(mode: 'edit' | 'view'): Promise<void> {
+  private async registerEvents(mode: "edit" | "view"): Promise<void> {
     if (!this.commonTapstartHandlerRegistered) {
-      this.cy.on('tapstart', 'node', (e) => {
-        if (this.labLocked && this.currentMode === 'edit') {
+      this.cy.on("tapstart", "node", (e) => {
+        if (this.labLocked && this.currentMode === "edit") {
           this.showLockedMessage();
           e.preventDefault();
         }
@@ -1346,7 +1422,7 @@ class TopologyWebviewController {
     }
 
     if (!this.freeTextContextGuardRegistered) {
-      this.cy.on('cxttapstart', 'node[topoViewerRole = "freeText"]', (e) => {
+      this.cy.on("cxttapstart", 'node[topoViewerRole = "freeText"]', (e) => {
         if (!this.labLocked) {
           return;
         }
@@ -1357,7 +1433,7 @@ class TopologyWebviewController {
       this.freeTextContextGuardRegistered = true;
     }
 
-    if (mode === 'edit') {
+    if (mode === "edit") {
       if (!this.editModeEventsRegistered) {
         await this.registerEditModeEvents();
         this.editModeEventsRegistered = true;
@@ -1369,7 +1445,7 @@ class TopologyWebviewController {
   }
 
   private handleCanvasClick(event: cytoscape.EventObject): void {
-    if (this.currentMode !== 'edit') {
+    if (this.currentMode !== "edit") {
       return;
     }
     if (this.labLocked) {
@@ -1377,7 +1453,7 @@ class TopologyWebviewController {
     }
     const mouseEvent = event.originalEvent as MouseEvent;
     if (mouseEvent.shiftKey && this.isViewportDrawerClabEditorChecked) {
-      log.debug('Canvas clicked with Shift key - adding node.');
+      log.debug("Canvas clicked with Shift key - adding node.");
       const defaultName = (window as any).defaultNode;
       let template: any | undefined;
       if (defaultName) {
@@ -1389,7 +1465,7 @@ class TopologyWebviewController {
   }
 
   private handleEditModeEdgeClick(event: cytoscape.EventObject): void {
-    if (this.currentMode !== 'edit') {
+    if (this.currentMode !== "edit") {
       return;
     }
     if (this.labLocked) {
@@ -1405,10 +1481,10 @@ class TopologyWebviewController {
   }
 
   private registerEdgehandlesLifecycleEvents(): void {
-    this.cy.on('ehstart', () => {
+    this.cy.on("ehstart", () => {
       this.isEdgeHandlerActive = true;
     });
-    this.cy.on('ehstop ehcancel', () => {
+    this.cy.on("ehstop ehcancel", () => {
       this.isEdgeHandlerActive = false;
     });
   }
@@ -1425,7 +1501,7 @@ class TopologyWebviewController {
 
   private getInitialLockState(): boolean {
     const configured = (window as any).lockLabByDefault;
-    return typeof configured === 'boolean' ? configured : true;
+    return typeof configured === "boolean" ? configured : true;
   }
 
   private showLockedMessage(): void {
@@ -1453,12 +1529,12 @@ class TopologyWebviewController {
         e.stopPropagation();
       }
     };
-    this.cy.on('cxttapstart', '*', blockContextMenu);
-    this.cy.on('cxttap', '*', blockContextMenu);
+    this.cy.on("cxttapstart", "*", blockContextMenu);
+    this.cy.on("cxttap", "*", blockContextMenu);
 
     this.registerEdgehandlesLifecycleEvents();
-    document.addEventListener('keydown', (event) => this.handleKeyDown(event));
-    this.cy.on('ehcomplete', (_event, sourceNode, targetNode, addedEdge) =>
+    document.addEventListener("keydown", (event) => this.handleKeyDown(event));
+    this.cy.on("ehcomplete", (_event, sourceNode, targetNode, addedEdge) =>
       this.handleEdgeCreation(sourceNode, targetNode, addedEdge)
     );
   }
@@ -1467,15 +1543,15 @@ class TopologyWebviewController {
     const cy = this.cy;
     let radialMenuOpen = false;
 
-    cy.on('cxtmenu:open', () => {
-      if (this.currentMode !== 'view') {
+    cy.on("cxtmenu:open", () => {
+      if (this.currentMode !== "view") {
         return;
       }
       radialMenuOpen = true;
     });
 
-    cy.on('cxtmenu:close', () => {
-      if (this.currentMode !== 'view') {
+    cy.on("cxtmenu:close", () => {
+      if (this.currentMode !== "view") {
         return;
       }
       setTimeout(() => {
@@ -1486,7 +1562,7 @@ class TopologyWebviewController {
     registerCyEventHandlers({
       cy,
       onCanvasClick: () => {
-        if (this.currentMode !== 'view') {
+        if (this.currentMode !== "view") {
           return;
         }
         if (this.suppressViewerCanvasClose) {
@@ -1500,14 +1576,14 @@ class TopologyWebviewController {
       }
     });
 
-    document.addEventListener('keydown', (event) => {
-      if (this.currentMode !== 'view') {
+    document.addEventListener("keydown", (event) => {
+      if (this.currentMode !== "view") {
         return;
       }
       if (!this.shouldHandleKeyboardEvent(event)) {
         return;
       }
-      if (event.ctrlKey && event.key === 'a') {
+      if (event.ctrlKey && event.key === "a") {
         event.preventDefault();
         this.handleSelectAll();
       }
@@ -1515,13 +1591,17 @@ class TopologyWebviewController {
   }
 
   private closePanelsAndResetState(): void {
-    const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
+    const panelOverlays = document.getElementsByClassName(
+      TopologyWebviewController.CLASS_PANEL_OVERLAY
+    );
     for (let i = 0; i < panelOverlays.length; i++) {
-      (panelOverlays[i] as HTMLElement).style.display = 'none';
+      (panelOverlays[i] as HTMLElement).style.display = "none";
     }
-    const viewportDrawer = document.getElementsByClassName(TopologyWebviewController.CLASS_VIEWPORT_DRAWER);
+    const viewportDrawer = document.getElementsByClassName(
+      TopologyWebviewController.CLASS_VIEWPORT_DRAWER
+    );
     for (let i = 0; i < viewportDrawer.length; i++) {
-      (viewportDrawer[i] as HTMLElement).style.display = 'none';
+      (viewportDrawer[i] as HTMLElement).style.display = "none";
     }
     topoViewerState.nodeClicked = false;
     topoViewerState.edgeClicked = false;
@@ -1529,9 +1609,8 @@ class TopologyWebviewController {
     topoViewerState.selectedEdge = null;
   }
 
-
   private async handleEditModeNodeClick(event: cytoscape.EventObject): Promise<void> {
-    if (this.currentMode !== 'edit') {
+    if (this.currentMode !== "edit") {
       return;
     }
     if (this.labLocked) {
@@ -1541,8 +1620,8 @@ class TopologyWebviewController {
     const node = event.target;
     log.debug(`Node clicked: ${node.id()}`);
     const originalEvent = event.originalEvent as MouseEvent;
-    const extraData = node.data('extraData');
-    const isNodeInEditMode = this.currentMode === 'edit';
+    const extraData = node.data("extraData");
+    const isNodeInEditMode = this.currentMode === "edit";
 
     if (originalEvent.ctrlKey && node.isChild()) {
       log.debug(`Orphaning node: ${node.id()} from parent: ${node.parent().id()}`);
@@ -1550,30 +1629,34 @@ class TopologyWebviewController {
       return;
     }
 
-    if (originalEvent.shiftKey && node.data('topoViewerRole') !== 'freeText') {
-      log.debug(`Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`);
+    if (originalEvent.shiftKey && node.data("topoViewerRole") !== "freeText") {
+      log.debug(
+        `Shift+click on node: starting edge creation from node: ${extraData?.longname || node.id()}`
+      );
       await this.startEdgeCreationFromNode(node);
       return;
     }
 
     if (
       originalEvent.altKey &&
-      (isNodeInEditMode || node.data('topoViewerRole') === 'group' || node.data('topoViewerRole') === 'freeText')
+      (isNodeInEditMode ||
+        node.data("topoViewerRole") === "group" ||
+        node.data("topoViewerRole") === "freeText")
     ) {
       this.handleAltNodeClick(node, extraData);
       return;
     }
 
-    if (node.data('topoViewerRole') === 'textbox') {
+    if (node.data("topoViewerRole") === "textbox") {
       return;
     }
   }
 
   private handleAltNodeClick(node: cytoscape.Singular, extraData: any): void {
-    if (node.data('topoViewerRole') === 'group') {
+    if (node.data("topoViewerRole") === "group") {
       log.debug(`Alt+click on group: deleting group ${node.id()}`);
       this.groupManager?.directGroupRemoval(node.id());
-    } else if (node.data('topoViewerRole') === 'freeText') {
+    } else if (node.data("topoViewerRole") === "freeText") {
       log.debug(`Alt+click on freeText: deleting text ${node.id()}`);
       this.freeTextManager?.removeFreeTextAnnotation(node.id());
     } else {
@@ -1591,7 +1674,7 @@ class TopologyWebviewController {
       return;
     }
     const key = event.key.toLowerCase();
-    const combo = `${event.ctrlKey ? 'ctrl+' : ''}${key}`;
+    const combo = `${event.ctrlKey ? "ctrl+" : ""}${key}`;
     const handler = this.keyHandlers[combo] || this.keyHandlers[key];
     if (handler) {
       handler(event);
@@ -1599,27 +1682,29 @@ class TopologyWebviewController {
   }
 
   private showNodePropertiesPanel(node: cytoscape.Singular): void {
-    const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
-    Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = 'none');
-    const panelNode = document.getElementById('panel-node');
+    const panelOverlays = document.getElementsByClassName(
+      TopologyWebviewController.CLASS_PANEL_OVERLAY
+    );
+    Array.from(panelOverlays).forEach((panel) => ((panel as HTMLElement).style.display = "none"));
+    const panelNode = document.getElementById("panel-node");
     if (!panelNode) {
       return;
     }
-    panelNode.style.display = 'block';
-    const extraData = node.data('extraData') || {};
+    panelNode.style.display = "block";
+    const extraData = node.data("extraData") || {};
     const entries: Array<[string, string | undefined]> = [
-      ['panel-node-name', extraData.longname || node.data('name') || node.id()],
-      ['panel-node-kind', extraData.kind],
-      ['panel-node-mgmtipv4', extraData.mgmtIpv4Address],
-      ['panel-node-mgmtipv6', extraData.mgmtIpv6Address],
-      ['panel-node-fqdn', extraData.fqdn],
-      ['panel-node-topoviewerrole', node.data('topoViewerRole')],
-      ['panel-node-state', extraData.state],
-      ['panel-node-image', extraData.image]
+      ["panel-node-name", extraData.longname || node.data("name") || node.id()],
+      ["panel-node-kind", extraData.kind],
+      ["panel-node-mgmtipv4", extraData.mgmtIpv4Address],
+      ["panel-node-mgmtipv6", extraData.mgmtIpv6Address],
+      ["panel-node-fqdn", extraData.fqdn],
+      ["panel-node-topoviewerrole", node.data("topoViewerRole")],
+      ["panel-node-state", extraData.state],
+      ["panel-node-image", extraData.image]
     ];
     entries.forEach(([id, value]) => {
       const el = document.getElementById(id);
-      if (el) el.textContent = value || '';
+      if (el) el.textContent = value || "";
     });
     topoViewerState.selectedNode = extraData.longname || node.id();
     topoViewerState.nodeClicked = true;
@@ -1628,29 +1713,31 @@ class TopologyWebviewController {
   private showLinkPropertiesPanel(ele: cytoscape.Singular): void {
     this.hideAllPanels();
     this.highlightLink(ele);
-    const panelLink = document.getElementById('panel-link');
+    const panelLink = document.getElementById("panel-link");
     if (!panelLink) {
       return;
     }
-    panelLink.style.display = 'block';
+    panelLink.style.display = "block";
     this.populateLinkPanel(ele);
     topoViewerState.selectedEdge = ele.id();
     topoViewerState.edgeClicked = true;
   }
 
   private hideAllPanels(): void {
-    const panelOverlays = document.getElementsByClassName(TopologyWebviewController.CLASS_PANEL_OVERLAY);
-    Array.from(panelOverlays).forEach(panel => (panel as HTMLElement).style.display = 'none');
+    const panelOverlays = document.getElementsByClassName(
+      TopologyWebviewController.CLASS_PANEL_OVERLAY
+    );
+    Array.from(panelOverlays).forEach((panel) => ((panel as HTMLElement).style.display = "none"));
   }
 
   private highlightLink(ele: cytoscape.Singular): void {
     this.cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
-    const highlightColor = this.currentMode === 'edit' ? '#32CD32' : '#0043BF';
+    const highlightColor = this.currentMode === "edit" ? "#32CD32" : "#0043BF";
     ele.style(TopologyWebviewController.STYLE_LINE_COLOR, highlightColor);
   }
 
   private populateLinkPanel(ele: cytoscape.Singular): void {
-    const extraData = ele.data('extraData') || {};
+    const extraData = ele.data("extraData") || {};
     this.updateLinkName(ele);
     this.updateLinkEndpointInfo(ele, extraData);
   }
@@ -1663,51 +1750,57 @@ class TopologyWebviewController {
     if (!selectedId || edge.id() !== selectedId) {
       return;
     }
-    const panelLink = document.getElementById('panel-link') as HTMLElement | null;
-    if (!panelLink || panelLink.style.display === 'none') {
+    const panelLink = document.getElementById("panel-link") as HTMLElement | null;
+    if (!panelLink || panelLink.style.display === "none") {
       return;
     }
     this.populateLinkPanel(edge);
   }
 
   private updateLinkName(ele: cytoscape.Singular): void {
-    const linkNameEl = document.getElementById('panel-link-name');
+    const linkNameEl = document.getElementById("panel-link-name");
     if (linkNameEl) {
-      linkNameEl.innerHTML = `┌ ${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}<br>└ ${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`;
+      linkNameEl.innerHTML = `┌ ${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}<br>└ ${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`;
     }
   }
 
   private updateLinkEndpointInfo(ele: cytoscape.Singular, extraData: any): void {
-    this.setEndpointFields('a', {
-      name: `${ele.data('source')} :: ${ele.data('sourceEndpoint') || ''}`,
+    this.setEndpointFields("a", {
+      name: `${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}`,
       mac: extraData?.clabSourceMacAddress,
       mtu: extraData?.clabSourceMtu,
       type: extraData?.clabSourceType,
-      stats: extraData?.clabSourceStats as InterfaceStatsPayload | undefined,
+      stats: extraData?.clabSourceStats as InterfaceStatsPayload | undefined
     });
-    this.setEndpointFields('b', {
-      name: `${ele.data('target')} :: ${ele.data('targetEndpoint') || ''}`,
+    this.setEndpointFields("b", {
+      name: `${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`,
       mac: extraData?.clabTargetMacAddress,
       mtu: extraData?.clabTargetMtu,
       type: extraData?.clabTargetType,
-      stats: extraData?.clabTargetStats as InterfaceStatsPayload | undefined,
+      stats: extraData?.clabTargetStats as InterfaceStatsPayload | undefined
     });
   }
 
   private setEndpointFields(
-    letter: 'a' | 'b',
-    data: { name: string; mac?: string; mtu?: string | number; type?: string; stats?: InterfaceStatsPayload }
+    letter: "a" | "b",
+    data: {
+      name: string;
+      mac?: string;
+      mtu?: string | number;
+      type?: string;
+      stats?: InterfaceStatsPayload;
+    }
   ): void {
     const prefix = `panel-link-endpoint-${letter}`;
-    this.setLabelText(`${prefix}-name`, data.name, 'N/A');
-    this.setLabelText(`${prefix}-mac-address`, data.mac, 'N/A');
-    this.setLabelText(`${prefix}-mtu`, data.mtu, 'N/A');
-    this.setLabelText(`${prefix}-type`, data.type, 'N/A');
-    this.setLabelText(`${prefix}-rx-rate`, this.buildRateLine(data.stats, 'rx'), 'N/A');
-    this.setLabelText(`${prefix}-tx-rate`, this.buildRateLine(data.stats, 'tx'), 'N/A');
-    this.setLabelText(`${prefix}-rx-total`, this.buildCounterLine(data.stats, 'rx'), 'N/A');
-    this.setLabelText(`${prefix}-tx-total`, this.buildCounterLine(data.stats, 'tx'), 'N/A');
-    this.setLabelText(`${prefix}-stats-interval`, this.buildIntervalLine(data.stats), 'N/A');
+    this.setLabelText(`${prefix}-name`, data.name, "N/A");
+    this.setLabelText(`${prefix}-mac-address`, data.mac, "N/A");
+    this.setLabelText(`${prefix}-mtu`, data.mtu, "N/A");
+    this.setLabelText(`${prefix}-type`, data.type, "N/A");
+    this.setLabelText(`${prefix}-rx-rate`, this.buildRateLine(data.stats, "rx"), "N/A");
+    this.setLabelText(`${prefix}-tx-rate`, this.buildRateLine(data.stats, "tx"), "N/A");
+    this.setLabelText(`${prefix}-rx-total`, this.buildCounterLine(data.stats, "rx"), "N/A");
+    this.setLabelText(`${prefix}-tx-total`, this.buildCounterLine(data.stats, "tx"), "N/A");
+    this.setLabelText(`${prefix}-stats-interval`, this.buildIntervalLine(data.stats), "N/A");
   }
 
   private setLabelText(id: string, value: string | number | undefined, fallback: string): void {
@@ -1718,9 +1811,9 @@ class TopologyWebviewController {
     let text: string;
     if (value === undefined) {
       text = fallback;
-    } else if (typeof value === 'number') {
+    } else if (typeof value === "number") {
       text = value.toLocaleString();
-    } else if (value.trim() === '') {
+    } else if (value.trim() === "") {
       text = fallback;
     } else {
       text = value;
@@ -1728,17 +1821,20 @@ class TopologyWebviewController {
     el.textContent = text;
   }
 
-  private buildRateLine(stats: InterfaceStatsPayload | undefined, direction: 'rx' | 'tx'): string | undefined {
+  private buildRateLine(
+    stats: InterfaceStatsPayload | undefined,
+    direction: "rx" | "tx"
+  ): string | undefined {
     if (!stats) {
       return undefined;
     }
-    const bpsKey = direction === 'rx' ? 'rxBps' : 'txBps';
-    const ppsKey = direction === 'rx' ? 'rxPps' : 'txPps';
+    const bpsKey = direction === "rx" ? "rxBps" : "txBps";
+    const ppsKey = direction === "rx" ? "rxPps" : "txPps";
     const bps = stats[bpsKey];
     const pps = stats[ppsKey];
 
-    if (typeof bps !== 'number' || !Number.isFinite(bps)) {
-      if (typeof pps !== 'number' || !Number.isFinite(pps)) {
+    if (typeof bps !== "number" || !Number.isFinite(bps)) {
+      if (typeof pps !== "number" || !Number.isFinite(pps)) {
         return undefined;
       }
       return `PPS ${this.formatWithPrecision(pps, 2)}`;
@@ -1748,30 +1844,33 @@ class TopologyWebviewController {
       `${this.formatWithPrecision(bps, 0)} bps`,
       `${this.formatWithPrecision(bps / 1_000, 2)} Kbps`,
       `${this.formatWithPrecision(bps / 1_000_000, 2)} Mbps`,
-      `${this.formatWithPrecision(bps / 1_000_000_000, 2)} Gbps`,
+      `${this.formatWithPrecision(bps / 1_000_000_000, 2)} Gbps`
     ];
 
-    let line = rateParts.join(' / ');
-    if (typeof pps === 'number' && Number.isFinite(pps)) {
+    let line = rateParts.join(" / ");
+    if (typeof pps === "number" && Number.isFinite(pps)) {
       line += ` | PPS: ${this.formatWithPrecision(pps, 2)}`;
     }
     return line;
   }
 
-  private buildCounterLine(stats: InterfaceStatsPayload | undefined, direction: 'rx' | 'tx'): string | undefined {
+  private buildCounterLine(
+    stats: InterfaceStatsPayload | undefined,
+    direction: "rx" | "tx"
+  ): string | undefined {
     if (!stats) {
       return undefined;
     }
-    const bytesKey = direction === 'rx' ? 'rxBytes' : 'txBytes';
-    const packetsKey = direction === 'rx' ? 'rxPackets' : 'txPackets';
+    const bytesKey = direction === "rx" ? "rxBytes" : "txBytes";
+    const packetsKey = direction === "rx" ? "rxPackets" : "txPackets";
     const bytes = stats[bytesKey];
     const packets = stats[packetsKey];
     const segments: string[] = [];
 
-    if (typeof bytes === 'number' && Number.isFinite(bytes)) {
+    if (typeof bytes === "number" && Number.isFinite(bytes)) {
       segments.push(`${this.formatWithPrecision(bytes, 0)} bytes`);
     }
-    if (typeof packets === 'number' && Number.isFinite(packets)) {
+    if (typeof packets === "number" && Number.isFinite(packets)) {
       segments.push(`${this.formatWithPrecision(packets, 0)} packets`);
     }
 
@@ -1779,7 +1878,7 @@ class TopologyWebviewController {
       return undefined;
     }
 
-    return segments.join(' / ');
+    return segments.join(" / ");
   }
 
   private buildIntervalLine(stats: InterfaceStatsPayload | undefined): string | undefined {
@@ -1787,7 +1886,7 @@ class TopologyWebviewController {
       return undefined;
     }
     const interval = stats.statsIntervalSeconds;
-    if (typeof interval !== 'number' || !Number.isFinite(interval)) {
+    if (typeof interval !== "number" || !Number.isFinite(interval)) {
       return undefined;
     }
     return `${this.formatWithPrecision(interval, 3)} s`;
@@ -1796,11 +1895,15 @@ class TopologyWebviewController {
   private formatWithPrecision(value: number, fractionDigits: number): string {
     return value.toLocaleString(undefined, {
       minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits
     });
   }
 
-  private handleEdgeCreation(sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular, addedEdge: cytoscape.EdgeSingular): void {
+  private handleEdgeCreation(
+    sourceNode: cytoscape.NodeSingular,
+    targetNode: cytoscape.NodeSingular,
+    addedEdge: cytoscape.EdgeSingular
+  ): void {
     log.debug(`Edge created from ${sourceNode.id()} to ${targetNode.id()}`);
     log.debug(`Added edge: ${addedEdge.id()}`);
     setTimeout(() => {
@@ -1808,21 +1911,26 @@ class TopologyWebviewController {
     }, 100);
     const sourceEndpoint = this.getNextEndpoint(sourceNode.id());
     const targetEndpoint = this.getNextEndpoint(targetNode.id());
-    const edgeData: any = { sourceEndpoint, targetEndpoint, editor: 'true' };
+    const edgeData: any = { sourceEndpoint, targetEndpoint, editor: "true" };
     this.addNetworkEdgeProperties(sourceNode, targetNode, addedEdge, edgeData);
     addedEdge.data(edgeData);
   }
 
-  private addNetworkEdgeProperties(sourceNode: cytoscape.NodeSingular, targetNode: cytoscape.NodeSingular, addedEdge: cytoscape.EdgeSingular, edgeData: any): void {
+  private addNetworkEdgeProperties(
+    sourceNode: cytoscape.NodeSingular,
+    targetNode: cytoscape.NodeSingular,
+    addedEdge: cytoscape.EdgeSingular,
+    edgeData: any
+  ): void {
     const sourceIsNetwork = this.isNetworkNode(sourceNode.id());
     const targetIsNetwork = this.isNetworkNode(targetNode.id());
     if (!(sourceIsNetwork || targetIsNetwork)) {
       return;
     }
-    addedEdge.addClass('stub-link');
+    addedEdge.addClass("stub-link");
     const networkNode = sourceIsNetwork ? sourceNode : targetNode;
     const networkData = networkNode.data();
-    const networkType = networkData.extraData?.kind || networkNode.id().split(':')[0];
+    const networkType = networkData.extraData?.kind || networkNode.id().split(":")[0];
     const extra = networkData.extraData || {};
     const extData = this.collectNetworkExtraData(networkType, extra, sourceIsNetwork);
     if (Object.keys(extData).length > 0) {
@@ -1830,30 +1938,37 @@ class TopologyWebviewController {
     }
   }
 
-  private collectNetworkExtraData(networkType: string, extra: any, sourceIsNetwork: boolean): Record<string, any> {
+  private collectNetworkExtraData(
+    networkType: string,
+    extra: any,
+    sourceIsNetwork: boolean
+  ): Record<string, any> {
     const extData: Record<string, any> = {};
     const assignIf = (key: string, value: any) => {
       if (value !== undefined) {
         extData[key] = value;
       }
     };
-    if (networkType !== TopologyWebviewController.KIND_BRIDGE && networkType !== TopologyWebviewController.KIND_OVS_BRIDGE) {
+    if (
+      networkType !== TopologyWebviewController.KIND_BRIDGE &&
+      networkType !== TopologyWebviewController.KIND_OVS_BRIDGE
+    ) {
       extData.extType = networkType;
     }
-    assignIf(sourceIsNetwork ? 'extSourceMac' : 'extTargetMac', extra.extMac);
-    assignIf('extMtu', extra.extMtu);
-    assignIf('extVars', extra.extVars);
-    assignIf('extLabels', extra.extLabels);
-    if (['host', 'mgmt-net', 'macvlan'].includes(networkType)) {
-      assignIf('extHostInterface', extra.extHostInterface);
+    assignIf(sourceIsNetwork ? "extSourceMac" : "extTargetMac", extra.extMac);
+    assignIf("extMtu", extra.extMtu);
+    assignIf("extVars", extra.extVars);
+    assignIf("extLabels", extra.extLabels);
+    if (["host", "mgmt-net", "macvlan"].includes(networkType)) {
+      assignIf("extHostInterface", extra.extHostInterface);
     }
-    if (networkType === 'macvlan') {
-      assignIf('extMode', extra.extMode);
+    if (networkType === "macvlan") {
+      assignIf("extMode", extra.extMode);
     }
-    if (['vxlan', 'vxlan-stitch'].includes(networkType)) {
-      assignIf('extRemote', extra.extRemote);
-      assignIf('extVni', extra.extVni);
-      assignIf('extUdpPort', extra.extUdpPort);
+    if (["vxlan", "vxlan-stitch"].includes(networkType)) {
+      assignIf("extRemote", extra.extRemote);
+      assignIf("extVni", extra.extVni);
+      assignIf("extUdpPort", extra.extUdpPort);
     }
     return extData;
   }
@@ -1863,8 +1978,11 @@ class TopologyWebviewController {
       return true;
     }
     const node = this.cy.getElementById(nodeId);
-    const kind = node.data('extraData')?.kind;
-    return kind === TopologyWebviewController.KIND_BRIDGE || kind === TopologyWebviewController.KIND_OVS_BRIDGE;
+    const kind = node.data("extraData")?.kind;
+    return (
+      kind === TopologyWebviewController.KIND_BRIDGE ||
+      kind === TopologyWebviewController.KIND_OVS_BRIDGE
+    );
   }
 
   /**
@@ -1875,32 +1993,36 @@ class TopologyWebviewController {
     const target = event.target as HTMLElement;
 
     // Don't handle if focus is on an input, textarea, or contenteditable element
-    if (target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.contentEditable === 'true' ||
-      target.isContentEditable) {
+    if (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.contentEditable === "true" ||
+      target.isContentEditable
+    ) {
       return false;
     }
 
     // Don't handle if focus is on a dropdown or select element
-    if (target.tagName === 'SELECT') {
+    if (target.tagName === "SELECT") {
       return false;
     }
 
     // Don't handle if we're inside a dialog or modal that's not our confirmation dialog
-    const isInDialog = target.closest(`.free-text-dialog, .${TopologyWebviewController.CLASS_PANEL_OVERLAY}, .dropdown-menu`);
-    const isInOurConfirmDialog = target.closest('.delete-confirmation-dialog');
+    const isInDialog = target.closest(
+      `.free-text-dialog, .${TopologyWebviewController.CLASS_PANEL_OVERLAY}, .dropdown-menu`
+    );
+    const isInOurConfirmDialog = target.closest(".delete-confirmation-dialog");
 
     if (isInDialog && !isInOurConfirmDialog) {
       return false;
     }
 
     // Only handle if the event target is: doc body, cytoscape/canvas area
-    const cyContainer = document.getElementById('cy');
+    const cyContainer = document.getElementById("cy");
     const isInCyContainer = cyContainer && (target === cyContainer || cyContainer.contains(target));
     const isDocumentBody = target === document.body;
 
-    return isDocumentBody || isInCyContainer || target.tagName === 'CANVAS';
+    return isDocumentBody || isInCyContainer || target.tagName === "CANVAS";
   }
 
   /**
@@ -1909,13 +2031,13 @@ class TopologyWebviewController {
    */
   private handleSelectAll(): void {
     // Get all nodes and edges that are selectable
-    const selectableElements = this.cy.$('node, edge').filter((element) => {
+    const selectableElements = this.cy.$("node, edge").filter((element) => {
       // Only select elements that are actually selectable
       return element.selectable();
     });
 
     // Deselect all first, then select all selectable elements
-    this.cy.$(':selected').unselect();
+    this.cy.$(":selected").unselect();
     selectableElements.select();
 
     log.debug(`Selected ${selectableElements.length} elements with Ctrl+A`);
@@ -1927,7 +2049,7 @@ class TopologyWebviewController {
    */
   private async handleDeleteKeyPress(): Promise<void> {
     // Get all selected elements
-    const selectedElements = this.cy.$(':selected');
+    const selectedElements = this.cy.$(":selected");
 
     if (selectedElements.length === 0) {
       return;
@@ -1943,13 +2065,13 @@ class TopologyWebviewController {
 
     // Handle selected nodes
     const selectedNodes = selectedElements.nodes();
-    selectedNodes.forEach(node => {
-      const topoViewerRole = node.data('topoViewerRole');
+    selectedNodes.forEach((node) => {
+      const topoViewerRole = node.data("topoViewerRole");
 
       // Handle free text nodes using the existing manager
-      if (topoViewerRole === 'freeText') {
+      if (topoViewerRole === "freeText") {
         this.freeTextManager?.removeFreeTextAnnotation(node.id());
-      } else if (topoViewerRole === 'group') {
+      } else if (topoViewerRole === "group") {
         // Handle group nodes - use the group management system
         if (this.isViewportDrawerClabEditorChecked) {
           log.debug(`Delete key: removing group ${node.id()}`);
@@ -1959,7 +2081,7 @@ class TopologyWebviewController {
         // Handle regular nodes - only delete if in edit mode and node is editable
         const isNodeInEditMode = node.data("editor") === "true";
         if (this.isViewportDrawerClabEditorChecked && isNodeInEditMode) {
-          log.debug(`Delete key: removing node ${node.data('extraData')?.longname || node.id()}`);
+          log.debug(`Delete key: removing node ${node.data("extraData")?.longname || node.id()}`);
           node.remove();
         }
       }
@@ -1967,7 +2089,7 @@ class TopologyWebviewController {
 
     // Handle selected edges
     const selectedEdges = selectedElements.edges();
-    selectedEdges.forEach(edge => {
+    selectedEdges.forEach((edge) => {
       if (this.isViewportDrawerClabEditorChecked) {
         log.debug(`Delete key: removing edge ${edge.id()}`);
         edge.remove();
@@ -1984,24 +2106,24 @@ class TopologyWebviewController {
     this.copyPasteManager.handleCopy();
 
     // Get all selected elements
-    const selectedElements = this.cy.$(':selected');
+    const selectedElements = this.cy.$(":selected");
     if (selectedElements.length === 0) {
       return;
     }
 
     // Remove selected nodes
     const selectedNodes = selectedElements.nodes();
-    selectedNodes.forEach(node => {
-      const topoViewerRole = node.data('topoViewerRole');
+    selectedNodes.forEach((node) => {
+      const topoViewerRole = node.data("topoViewerRole");
 
-      if (topoViewerRole === 'freeText') {
+      if (topoViewerRole === "freeText") {
         this.freeTextManager?.removeFreeTextAnnotation(node.id());
-      } else if (topoViewerRole === 'group') {
+      } else if (topoViewerRole === "group") {
         if (this.isViewportDrawerClabEditorChecked) {
           this.groupManager?.directGroupRemoval(node.id());
         }
       } else {
-        const isNodeInEditMode = this.currentMode === 'edit';
+        const isNodeInEditMode = this.currentMode === "edit";
         if (this.isViewportDrawerClabEditorChecked && isNodeInEditMode) {
           node.remove();
         }
@@ -2010,7 +2132,7 @@ class TopologyWebviewController {
 
     // Remove selected edges
     const selectedEdges = selectedElements.edges();
-    selectedEdges.forEach(edge => {
+    selectedEdges.forEach((edge) => {
       if (this.isViewportDrawerClabEditorChecked) {
         edge.remove();
       }
@@ -2025,7 +2147,7 @@ class TopologyWebviewController {
    * @param nodeId - The ID of the node.
    * @returns The next available endpoint string.
    * @private
-  */
+   */
   private getNextEndpoint(nodeId: string): string {
     // Cloud-based nodes like host, mgmt-net or macvlan do not expose
     // regular interfaces. When creating a link to such nodes we must not
@@ -2033,7 +2155,7 @@ class TopologyWebviewController {
     // empty string here ensures that the calling code stores only the node ID
     // itself as the link endpoint.
     if (isSpecialEndpoint(nodeId)) {
-      return '';
+      return "";
     }
 
     const ifaceMap = window.ifacePatternMapping || {};
@@ -2072,7 +2194,9 @@ class TopologyWebviewController {
     if (members.length > 1 && !this.loggedBridgeAliasGroups.has(baseYamlId)) {
       this.loggedBridgeAliasGroups.add(baseYamlId);
       try {
-        log.info(`Bridge alias group detected for YAML node '${baseYamlId}': members [${members.join(', ')}]`);
+        log.info(
+          `Bridge alias group detected for YAML node '${baseYamlId}': members [${members.join(", ")}]`
+        );
       } catch {
         // no-op if logger throws unexpectedly in webview
       }
@@ -2081,35 +2205,45 @@ class TopologyWebviewController {
   }
 
   private isBridgeNode(node: cytoscape.NodeSingular): boolean {
-    const kind = node.data('extraData')?.kind as string | undefined;
-    return kind === TopologyWebviewController.KIND_BRIDGE || kind === TopologyWebviewController.KIND_OVS_BRIDGE;
+    const kind = node.data("extraData")?.kind as string | undefined;
+    return (
+      kind === TopologyWebviewController.KIND_BRIDGE ||
+      kind === TopologyWebviewController.KIND_OVS_BRIDGE
+    );
   }
 
   private getBaseYamlIdForNode(node: cytoscape.NodeSingular): string | null {
-    const extra = node.data('extraData') || {};
-    const ref = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
+    const extra = node.data("extraData") || {};
+    const ref = typeof extra.extYamlNodeId === "string" ? extra.extYamlNodeId.trim() : "";
     return ref || node.id() || null;
   }
 
   private listBridgeMembersForYaml(baseYamlId: string): string[] {
     const out: string[] = [];
-    this.cy.nodes().forEach(n => {
+    this.cy.nodes().forEach((n) => {
       if (!this.isBridgeNode(n)) return;
       const id = n.id();
-      const ref = typeof n.data('extraData')?.extYamlNodeId === 'string' ? n.data('extraData').extYamlNodeId.trim() : '';
+      const ref =
+        typeof n.data("extraData")?.extYamlNodeId === "string"
+          ? n.data("extraData").extYamlNodeId.trim()
+          : "";
       if (id === baseYamlId || (ref && ref === baseYamlId)) out.push(id);
     });
     return out;
   }
 
-  private collectUsedIndices(memberIds: string[], parsedPattern: ReturnType<typeof parseInterfacePattern>, sink: Set<number>): void {
-    memberIds.forEach(memberId => {
+  private collectUsedIndices(
+    memberIds: string[],
+    parsedPattern: ReturnType<typeof parseInterfacePattern>,
+    sink: Set<number>
+  ): void {
+    memberIds.forEach((memberId) => {
       const edges = this.cy.edges(`[source = "${memberId}"], [target = "${memberId}"]`);
-      edges.forEach(edge => {
-        const src = edge.data('source');
-        const tgt = edge.data('target');
-        const epSrc = edge.data('sourceEndpoint');
-        const epTgt = edge.data('targetEndpoint');
+      edges.forEach((edge) => {
+        const src = edge.data("source");
+        const tgt = edge.data("target");
+        const epSrc = edge.data("sourceEndpoint");
+        const epTgt = edge.data("targetEndpoint");
         if (src === memberId && epSrc) {
           const idx = getInterfaceIndex(parsedPattern, epSrc);
           if (idx !== null) sink.add(idx);
@@ -2126,10 +2260,11 @@ class TopologyWebviewController {
    * Detects the user's preferred color scheme and applies the corresponding theme.
    * @returns The applied theme ("dark" or "light").
    */
-  public detectColorScheme(): 'light' | 'dark' {
+  public detectColorScheme(): "light" | "dark" {
     const bodyClassList = document.body?.classList;
-    const darkMode = bodyClassList?.contains('vscode-dark') || bodyClassList?.contains('vscode-high-contrast');
-    const theme: 'light' | 'dark' = darkMode ? 'dark' : 'light';
+    const darkMode =
+      bodyClassList?.contains("vscode-dark") || bodyClassList?.contains("vscode-high-contrast");
+    const theme: "light" | "dark" = darkMode ? "dark" : "light";
     this.applyTheme(theme);
     return theme;
   }
@@ -2139,26 +2274,26 @@ class TopologyWebviewController {
    * @param theme - The theme to apply ("dark" or "light").
    * @private
    */
-  private applyTheme(theme: 'light' | 'dark'): void {
-    const rootElement = document.getElementById('root');
+  private applyTheme(theme: "light" | "dark"): void {
+    const rootElement = document.getElementById("root");
     if (rootElement) {
-      rootElement.setAttribute('data-theme', theme);
+      rootElement.setAttribute("data-theme", theme);
       log.debug(`Applied Theme: ${theme}`);
     } else {
       log.warn(`'root' element not found; cannot apply theme: ${theme}`);
     }
   }
 
-  private updateModeIndicator(mode: 'viewer' | 'editor'): void {
-    const indicator = document.getElementById('mode-indicator');
+  private updateModeIndicator(mode: "viewer" | "editor"): void {
+    const indicator = document.getElementById("mode-indicator");
     if (indicator) {
       indicator.textContent = mode;
-      indicator.classList.remove('mode-viewer', 'mode-editor');
+      indicator.classList.remove("mode-viewer", "mode-editor");
       indicator.classList.add(`mode-${mode}`);
     } else {
-      log.warn('Mode indicator element not found');
+      log.warn("Mode indicator element not found");
     }
-    document.title = mode === 'editor' ? 'TopoViewer Editor' : 'TopoViewer';
+    document.title = mode === "editor" ? "TopoViewer Editor" : "TopoViewer";
   }
 
   /**
@@ -2170,12 +2305,9 @@ class TopologyWebviewController {
     if (subtitleElement) {
       subtitleElement.textContent = `Topology Editor ::: ${newText}`;
     } else {
-      log.warn('Subtitle element not found');
+      log.warn("Subtitle element not found");
     }
   }
-
-
-
 
   /**
    * Show/hide topology overview panel
@@ -2184,7 +2316,7 @@ class TopologyWebviewController {
     try {
       const overviewDrawer = document.getElementById("viewport-drawer-topology-overview");
       if (!overviewDrawer) {
-        log.warn('Topology overview drawer not found');
+        log.warn("Topology overview drawer not found");
         return;
       }
 
@@ -2193,7 +2325,9 @@ class TopologyWebviewController {
         overviewDrawer.style.display = "none";
       } else {
         // Hide all viewport drawers first
-        const viewportDrawer = document.getElementsByClassName(TopologyWebviewController.CLASS_VIEWPORT_DRAWER);
+        const viewportDrawer = document.getElementsByClassName(
+          TopologyWebviewController.CLASS_VIEWPORT_DRAWER
+        );
         for (let i = 0; i < viewportDrawer.length; i++) {
           (viewportDrawer[i] as HTMLElement).style.display = "none";
         }
@@ -2206,9 +2340,9 @@ class TopologyWebviewController {
   }
 
   public showBulkLinkPanel(): void {
-    const panel = document.getElementById('panel-bulk-link');
+    const panel = document.getElementById("panel-bulk-link");
     if (panel) {
-      panel.style.display = 'block';
+      panel.style.display = "block";
     }
   }
 
@@ -2217,33 +2351,40 @@ class TopologyWebviewController {
       return pattern;
     }
 
-    return pattern.replace(/\$\$|\$<([^>]+)>|\$(\d+)/g, (fullMatch: string, namedGroup?: string, numberedGroup?: string) => {
-      if (fullMatch === '$$') {
-        return '$';
-      }
-
-      if (!match) {
-        return fullMatch;
-      }
-
-      if (fullMatch.startsWith('$<')) {
-        if (namedGroup && match.groups && Object.prototype.hasOwnProperty.call(match.groups, namedGroup)) {
-          const value = match.groups[namedGroup];
-          return value ?? '';
+    return pattern.replace(
+      /\$\$|\$<([^>]+)>|\$(\d+)/g,
+      (fullMatch: string, namedGroup?: string, numberedGroup?: string) => {
+        if (fullMatch === "$$") {
+          return "$";
         }
-        return fullMatch;
-      }
 
-      if (numberedGroup) {
-        const index = Number(numberedGroup);
-        if (!Number.isNaN(index) && index < match.length) {
-          return match[index] ?? '';
+        if (!match) {
+          return fullMatch;
         }
+
+        if (fullMatch.startsWith("$<")) {
+          if (
+            namedGroup &&
+            match.groups &&
+            Object.prototype.hasOwnProperty.call(match.groups, namedGroup)
+          ) {
+            const value = match.groups[namedGroup];
+            return value ?? "";
+          }
+          return fullMatch;
+        }
+
+        if (numberedGroup) {
+          const index = Number(numberedGroup);
+          if (!Number.isNaN(index) && index < match.length) {
+            return match[index] ?? "";
+          }
+          return fullMatch;
+        }
+
         return fullMatch;
       }
-
-      return fullMatch;
-    });
+    );
   }
 
   private getSourceMatch(
@@ -2265,17 +2406,16 @@ class TopologyWebviewController {
 
   public async bulkCreateLinks(sourceFilterText: string, targetFilterText: string): Promise<void> {
     const nodes = this.cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]');
-    const candidateLinks: Array<{ source: cytoscape.NodeSingular; target: cytoscape.NodeSingular }> = [];
+    const candidateLinks: Array<{
+      source: cytoscape.NodeSingular;
+      target: cytoscape.NodeSingular;
+    }> = [];
 
     const sourceRegex = FilterUtils.tryCreateRegExp(sourceFilterText);
     const sourceFallbackFilter = sourceRegex ? null : FilterUtils.createFilter(sourceFilterText);
 
     nodes.forEach((sourceNode) => {
-      const match = this.getSourceMatch(
-        sourceNode.data('name'),
-        sourceRegex,
-        sourceFallbackFilter
-      );
+      const match = this.getSourceMatch(sourceNode.data("name"), sourceRegex, sourceFallbackFilter);
 
       if (match === undefined) {
         return;
@@ -2287,7 +2427,7 @@ class TopologyWebviewController {
       nodes.forEach((targetNode) => {
         if (
           sourceNode.id() === targetNode.id() ||
-          !targetFilter(targetNode.data('name')) ||
+          !targetFilter(targetNode.data("name")) ||
           sourceNode.edgesTo(targetNode).nonempty()
         ) {
           return;
@@ -2304,11 +2444,11 @@ class TopologyWebviewController {
 
     if (potentialLinks === 0) {
       (window as any).showConfirmDialog({
-        title: 'No Links to Create',
-        message: 'No new links would be created with the specified patterns.',
-        icon: 'fas fa-info-circle text-blue-500',
-        confirmText: 'OK',
-        confirmStyle: 'btn-primary',
+        title: "No Links to Create",
+        message: "No new links would be created with the specified patterns.",
+        icon: "fas fa-info-circle text-blue-500",
+        confirmText: "OK",
+        confirmStyle: "btn-primary",
         cancelText: null // Hide cancel button for info dialogs
       });
       return;
@@ -2316,7 +2456,7 @@ class TopologyWebviewController {
 
     // Show confirmation dialog
     const result = await (window as any).showBulkActionConfirm(
-      'Bulk Link Creation',
+      "Bulk Link Creation",
       sourceFilterText,
       targetFilterText,
       potentialLinks
@@ -2333,14 +2473,13 @@ class TopologyWebviewController {
         target: target.id(),
         sourceEndpoint: this.getNextEndpoint(source.id()),
         targetEndpoint: this.getNextEndpoint(target.id()),
-        editor: 'true'
+        editor: "true"
       };
-      const isStubLink =
-        this.isNetworkNode(source.id()) || this.isNetworkNode(target.id());
+      const isStubLink = this.isNetworkNode(source.id()) || this.isNetworkNode(target.id());
       this.cy.add({
-        group: 'edges',
+        group: "edges",
         data: edgeData,
-        classes: isStubLink ? 'stub-link' : undefined
+        classes: isStubLink ? "stub-link" : undefined
       });
     });
     this.saveManager.saveTopo(this.cy, true);
@@ -2354,10 +2493,9 @@ class TopologyWebviewController {
   }
 }
 
-
-document.addEventListener('DOMContentLoaded', () => {
-  const mode = (window as any).topoViewerMode === 'viewer' ? 'view' : 'edit';
-  const controller = new TopologyWebviewController('cy', mode);
+document.addEventListener("DOMContentLoaded", () => {
+  const mode = (window as any).topoViewerMode === "viewer" ? "view" : "edit";
+  const controller = new TopologyWebviewController("cy", mode);
   void controller.initAsync(mode);
   // Store the instance for other modules
   topoViewerState.editorEngine = controller;
@@ -2375,7 +2513,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.viewportButtonsAddGroup = gm.viewportButtonsAddGroup.bind(gm);
   window.showPanelGroupEditor = gm.showGroupEditor.bind(gm);
 
-  window.addEventListener('unload', () => {
+  window.addEventListener("unload", () => {
     controller.dispose();
   });
 
@@ -2384,7 +2522,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     if (controller.cy.elements().length > 0) {
       controller.cy.fit(controller.cy.elements(), 50);
-      log.debug('Final viewport adjustment completed');
+      log.debug("Final viewport adjustment completed");
     }
   }, 100); // Much shorter delay - just for final adjustments
 });
