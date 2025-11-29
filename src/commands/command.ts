@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as utils from '../helpers/utils';
+import * as utils from '../utils/index';
 import { spawn } from 'child_process';
 import { outputChannel } from '../extension';
 import * as fs from 'fs';

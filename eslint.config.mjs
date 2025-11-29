@@ -14,7 +14,8 @@ export default [
       'node_modules/**',
       '.vscode-test.mjs',  // VS Code test harness
       'legacy-backup/**',   // Legacy backup files
-      'labs/**'            // containerlab lab files
+      'labs/**',            // containerlab lab files
+      "src/utils/consts.ts"
     ]
   },
 
@@ -65,8 +66,8 @@ export default [
       'sonarjs/no-alphabetical-sort': 'off',
       'aggregate-complexity/aggregate-complexity': ['error', { max: 15 }]
 
-    }
+    },
   }
 
-  
+
 ];

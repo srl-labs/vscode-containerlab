@@ -13,7 +13,8 @@ import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
 import { resolveNodeConfig } from '../core/nodeConfig';
 import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
-import { runningLabsProvider, refreshDockerImages } from "../../extension";
+import { runningLabsProvider } from "../../extension";
+import * as utils from "../../utils/index";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
@@ -64,6 +65,7 @@ export class TopoViewerEditor {
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
   private isSplitViewOpen: boolean = false; // Track if YAML split view is open
+  private dockerImagesSubscription: vscode.Disposable | undefined;
   /* eslint-disable no-unused-vars */
 
   private readonly generalEndpointHandlers: Record<
@@ -107,6 +109,12 @@ export class TopoViewerEditor {
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+    this.dockerImagesSubscription = utils.onDockerImagesUpdated(images => {
+      if (this.currentPanel) {
+        this.currentPanel.webview.postMessage({ type: 'docker-images-updated', dockerImages: images });
+      }
+    });
+    context.subscriptions.push(this.dockerImagesSubscription);
   }
 
   private logDebug(message: string): void {
@@ -734,7 +742,7 @@ topology:
   }
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
-    await refreshDockerImages(this.context);
+    await utils.refreshDockerImages();
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
     const legacyIfacePatternMapping = this.getLegacyInterfacePatternMapping(config);
@@ -755,7 +763,7 @@ topology:
     );
     const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
     const imageMapping = this.buildImageMapping(customNodes);
-    const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+    const dockerImages = utils.getDockerImages();
     const customIcons = await this.loadCustomIcons();
     return {
       imageMapping,
@@ -1996,8 +2004,8 @@ topology:
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
     try {
-      await refreshDockerImages(this.context);
-      const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+      await utils.refreshDockerImages();
+      const dockerImages = utils.getDockerImages();
       log.info(`Docker images refreshed, found ${dockerImages.length} images`);
       return { result: { success: true, dockerImages }, error: null };
     } catch (err) {

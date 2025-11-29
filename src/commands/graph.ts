@@ -5,7 +5,7 @@ import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer";
-import { getSelectedLabNode } from "../helpers/utils";
+import { getSelectedLabNode } from "../utils/utils";
 
 
 /**

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, sshxSessions, runningLabsProvider, refreshSshxSessions, containerlabBinaryPath } from "../extension";
-import { runCommand } from "../helpers/utils";
+import { runCommand } from "../utils/utils";
 
 function parseLink(output: string): string | undefined {
   const re = /(https?:\/\/\S+)/;

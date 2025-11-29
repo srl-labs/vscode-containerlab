@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import * as cmd from './commands/index';
-import * as utils from './helpers/utils';
+import * as utils from './utils/index';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+import Docker from 'dockerode';
 
 import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
 import { setCurrentTopoViewer } from './commands/graph';
@@ -33,11 +34,11 @@ export let runningLabsProvider: RunningLabTreeDataProvider;
 export let helpFeedbackProvider: HelpFeedbackProvider;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
-export const DOCKER_IMAGES_STATE_KEY = 'dockerImages';
 
 export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
 
 export let containerlabBinaryPath: string = 'containerlab';
+export let dockerClient: Docker;
 
 function registerUnsupportedViews(context: vscode.ExtensionContext) {
   let warningShown = false;
@@ -162,30 +163,6 @@ export async function refreshGottySessions() {
   }
 }
 
-/**
- * Refreshes the cached list of local Docker images and stores them in extension global state.
- * The list is a unique, sorted array of strings in the form "repository:tag".
- */
-export async function refreshDockerImages(context?: vscode.ExtensionContext): Promise<void> {
-  // Fail silently if docker is not available or any error occurs.
-  const ctx = context ?? extensionContext;
-  if (!ctx) return;
-  try {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
-    const { stdout } = await execAsync('docker images --format "{{.Repository}}:{{.Tag}}"');
-    const images = (stdout || '')
-      .split(/\r?\n/)
-      .map(s => s.trim())
-      .filter(s => s && !s.endsWith(':<none>') && !s.startsWith('<none>'));
-    const unique = Array.from(new Set(images)).sort((a, b) => a.localeCompare(b));
-    await ctx.globalState.update(DOCKER_IMAGES_STATE_KEY, unique);
-  } catch {
-    // On failure, do not prompt or log; leave cache as-is.
-    return;
-  }
-}
 
 import * as execCmdJson from '../resources/exec_cmd.json';
 import * as sshUserJson from '../resources/ssh_users.json';
@@ -363,6 +340,8 @@ function registerCommands(context: vscode.ExtensionContext) {
     ['containerlab.lab.graph.topoViewerReload', cmd.graphTopoviewerReload],
     ['containerlab.node.start', cmd.startNode],
     ['containerlab.node.stop', cmd.stopNode],
+    ['containerlab.node.pause', cmd.pauseNode],
+    ['containerlab.node.unpause', cmd.unpauseNode],
     ['containerlab.node.save', cmd.saveNode],
     ['containerlab.node.attachShell', cmd.attachShell],
     ['containerlab.node.ssh', cmd.sshToNode],
@@ -520,6 +499,7 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel.debug(`Starting user permissions check`);
   // 1) Check if user has required permissions
   const userInfo = utils.getUserInfo();
+  username = userInfo.username;
   if (!userInfo.hasPermission) {
     outputChannel.error(`User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`);
 
@@ -537,6 +517,31 @@ export async function activate(context: vscode.ExtensionContext) {
       outputChannel.error(`Update check error: ${err.message}`);
     });
   }
+
+  /**
+   * CONNECT TO DOCKER SOCKET VIA DOCKERODE
+   */
+  try {
+    dockerClient = new Docker({ socketPath: '/var/run/docker.sock' });
+    // verify we are connected
+    await dockerClient.ping();
+    outputChannel.info('Successfully connected to Docker socket');
+  } catch (err: any) {
+    outputChannel.error(`Failed to connect to Docker socket: ${err.message}`);
+    vscode.window.showErrorMessage(
+      `Failed to connect to Docker. Ensure Docker is running and you have proper permissions.`
+    );
+    return;
+  }
+
+  /**
+   * At this stage we should have successfully connected to the docker socket.
+   * now we can:
+   *  - Initially load docker images cache
+   *  - Start the docker images listener
+   */
+  utils.refreshDockerImages();
+  utils.startDockerImageEventMonitor(context);
 
   // Show welcome page
   const welcomePage = new WelcomePage(context);
@@ -574,9 +579,6 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   registerRealtimeUpdates(context);
-
-  // get the username
-  username = utils.getUsername();
 
   // Determine if local capture is allowed.
   const isLocalCaptureAllowed =

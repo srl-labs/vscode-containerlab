@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { ClabContainerTreeNode } from "../treeView/common";
 import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
 import { outputChannel, containerlabBinaryPath } from "../extension";
-import { runCommand } from "../helpers/utils";
+import { runCommand } from "../utils/utils";
 
 type NetemFields = {
   delay: string;

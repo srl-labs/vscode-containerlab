@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as utils from "../helpers/utils";
+import * as utils from "../utils/utils";
 import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
 
 const ERR_NO_LAB_NODE = 'No lab node selected.';

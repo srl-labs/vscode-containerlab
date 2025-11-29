@@ -162,19 +162,6 @@ export function isOrbstack(): boolean {
   }
 }
 
-export function getUsername(): string {
-  let username = "";
-  try {
-    username = os.userInfo().username;
-  } catch {
-    throw new Error(
-      "Could not determine user. Failed to execute command: whoami",
-    );
-  }
-  return username;
-}
-
-
 export async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -264,6 +251,7 @@ export async function checkAndUpdateClabIfNeeded(
       `${containerlabBinaryPath} version check`,
       'containerlab version check',
       outputChannel,
+      true,
       true
     );
     const versionOutput = (versionOutputRaw || "").trim();

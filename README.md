@@ -129,8 +129,8 @@ The Containerlab Explorer listens to the containerlab event stream, so running l
 | `capture.wireshark.theme` | string | `Follow VS Code theme` | Wireshark theme |
 | `capture.wireshark.stayOpenInBackground` | boolean | `true` | Keep sessions alive in background |
 | `edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
-| `remote.hostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
-| `remote.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
+| `capture.remoteHostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
+| `capture.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
 
 ### 🌐 Lab Sharing
 
