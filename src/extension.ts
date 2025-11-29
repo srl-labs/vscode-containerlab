@@ -478,12 +478,6 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel.info('Registered output channel sucessfully.');
   outputChannel.info(`Detected platform: ${process.platform}`);
 
-  if (!setClabBinPath()) {
-    // dont activate
-    outputChannel.error(`Error setting containerlab binary. Exiting activation.`);
-    return;
-  }
-
   const config = vscode.workspace.getConfiguration('containerlab');
   const isSupportedPlatform = process.platform === "linux" || vscode.env.remoteName === "wsl";
 
@@ -494,22 +488,37 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
 
-  outputChannel.info('Containerlab extension activated.');
+  if (!setClabBinPath()) {
+    // don't activate
+    outputChannel.error(`Error setting containerlab binary. Exiting activation.`);
+    return;
+  }
 
-  // 1) Ensure containerlab is installed (or skip based on user setting)
-  const skipInstallationCheck = config.get<boolean>('skipInstallationCheck', false);
-  const clabInstalled = skipInstallationCheck
-    ? await utils.isClabInstalled(outputChannel)
-    : await utils.ensureClabInstalled(outputChannel);
-  if (!clabInstalled) {
-    if (skipInstallationCheck) {
-      outputChannel.info('containerlab not detected; skipping activation because installation checks are disabled.');
+  // Ensure clab is installed if the binpath was unable to be set.
+  if (containerlabBinaryPath === 'containerlab') {
+    const installChoice = await vscode.window.showWarningMessage(
+      'Containerlab is not installed. Would you like to install it?',
+      'Install',
+      'Cancel'
+    );
+    if (installChoice === 'Install') {
+      utils.installContainerlab();
+      vscode.window.showInformationMessage(
+        'Please complete the installation in the terminal, then reload the window.',
+        'Reload Window'
+      ).then(choice => {
+        if (choice === 'Reload Window') {
+          vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+      });
     }
     return;
   }
 
+  outputChannel.info('Containerlab extension activated.');
+
   outputChannel.debug(`Starting user permissions check`);
-  // 2) Check if user has required permissions
+  // 1) Check if user has required permissions
   const userInfo = utils.getUserInfo();
   if (!userInfo.hasPermission) {
     outputChannel.error(`User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`);
@@ -521,10 +530,13 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   outputChannel.debug(`Permission check success for user '${userInfo.username}' (id:${userInfo.uid})`);
 
-  // 3) If installed, check for updates
-  utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
-    outputChannel.error(`Update check error: ${err.message}`);
-  });
+  // 2) Check for updates
+  const skipUpdateCheck = config.get<boolean>('skipUpdateCheck', false);
+  if (!skipUpdateCheck) {
+    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
+      outputChannel.error(`Update check error: ${err.message}`);
+    });
+  }
 
   // Show welcome page
   const welcomePage = new WelcomePage(context);

@@ -243,81 +243,23 @@ export async function runCommand(
   }
 }
 
-/**
- * Installs containerlab using the official installer script.
- */
-export async function installContainerlab(outputChannel: vscode.LogOutputChannel): Promise<void> {
-  log(`Installing containerlab...`, outputChannel);
-  const installerCmd = `curl -sL https://containerlab.dev/setup | bash -s "all"`;
-  await runCommand(installerCmd, 'Installing containerlab', outputChannel);
-}
 
-/**
- * Returns true if containerlab is already present on PATH.
- */
-export async function isClabInstalled(outputChannel: vscode.LogOutputChannel): Promise<boolean> {
-  log(`Checking "which containerlab" to verify installation...`, outputChannel);
-  try {
-    const { stdout } = await execAsync('which containerlab');
-    const installed = Boolean(stdout && stdout.trim().length > 0);
-    if (!installed) {
-      log('containerlab not found on PATH.', outputChannel);
-    }
-    return installed;
-  } catch (err: any) {
-    log(`Error while checking for containerlab: ${err?.message ?? err}`, outputChannel);
-    return false;
-  }
-}
-
-/**
- * Ensures containerlab is installed by running "which containerlab".
- * If not found, offers to install it.
- */
-export async function ensureClabInstalled(outputChannel: vscode.LogOutputChannel): Promise<boolean> {
-  const clabInstalled = await isClabInstalled(outputChannel);
-  if (clabInstalled) {
-    log(`containerlab is already installed.`, outputChannel);
-    return true;
-  }
-
-  log(`containerlab is not installed. Prompting user for installation.`, outputChannel);
-  const installAction = 'Install containerlab';
-  const cancelAction = 'No';
-  const chosen = await vscode.window.showWarningMessage(
-    'Containerlab is not installed. Would you like to install it now?',
-    installAction,
-    cancelAction
-  );
-  if (chosen !== installAction) {
-    log('User declined containerlab installation.', outputChannel);
-    return false;
-  }
-  try {
-    await installContainerlab(outputChannel);
-    // Verify the installation once more.
-    if (await isClabInstalled(outputChannel)) {
-      vscode.window.showInformationMessage('Containerlab installed successfully!');
-      log(`containerlab installed successfully.`, outputChannel);
-      return true;
-    }
-    throw new Error('containerlab installation failed; command not found after installation.');
-  } catch (installErr: any) {
-    vscode.window.showErrorMessage(`Failed to install containerlab:\n${installErr.message}`);
-    log(`Failed to install containerlab: ${installErr}`, outputChannel);
-    return false;
-  }
+// Launch clab install script in a terminal. Let the shell handle sudo passwords.
+export function installContainerlab(): void {
+  const terminal = vscode.window.createTerminal('Containerlab Installation');
+  terminal.show();
+  terminal.sendText('curl -sL https://containerlab.dev/setup | sudo bash -s "all"');
 }
 
 /**
  * Checks if containerlab is up to date, and if not, prompts the user to update it.
+ * Handled in a terminal to let the shell handle sudo passwords
  */
 export async function checkAndUpdateClabIfNeeded(
   outputChannel: vscode.LogOutputChannel,
   context: vscode.ExtensionContext
 ): Promise<void> {
   try {
-    log(`Running "${containerlabBinaryPath} version check".`, outputChannel);
     const versionOutputRaw = await runCommand(
       `${containerlabBinaryPath} version check`,
       'containerlab version check',
@@ -339,14 +281,11 @@ export async function checkAndUpdateClabIfNeeded(
       // Register command for performing the update
       const updateCommandId = 'containerlab.updateClab';
       context.subscriptions.push(
-        vscode.commands.registerCommand(updateCommandId, async () => {
-          try {
-            await runCommand(`${containerlabBinaryPath} version upgrade`, 'Upgrading containerlab', outputChannel);
-            vscode.window.showInformationMessage('Containerlab updated successfully!');
-            log('Containerlab updated successfully.', outputChannel);
-          } catch (err: any) {
-            vscode.window.showErrorMessage(`Update failed: ${err.message}`);
-          }
+        vscode.commands.registerCommand(updateCommandId, () => {
+          const terminal = vscode.window.createTerminal('Containerlab Update');
+          terminal.show();
+          terminal.sendText(`${containerlabBinaryPath} version upgrade`);
+          vscode.window.showInformationMessage(`Containerlab update started in terminal 'Containerlab Update'. Please follow the prompts.`);
         })
       );
 
