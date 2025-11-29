@@ -489,6 +489,10 @@ export async function activate(context: vscode.ExtensionContext) {
   if (!isSupportedPlatform) {
     registerUnsupportedViews(context);
     return;
+  // If unsupported, stay silent until the user opens the Containerlab view, then show a warning.
+  if (!isSupportedPlatform) {
+    registerUnsupportedViews(context);
+    return;
   }
 
   outputChannel.info('Containerlab extension activated.');
@@ -498,7 +502,15 @@ export async function activate(context: vscode.ExtensionContext) {
   const clabInstalled = skipInstallationCheck
     ? await utils.isClabInstalled(outputChannel)
     : await utils.ensureClabInstalled(outputChannel);
+  // 1) Ensure containerlab is installed (or skip based on user setting)
+  const skipInstallationCheck = config.get<boolean>('skipInstallationCheck', false);
+  const clabInstalled = skipInstallationCheck
+    ? await utils.isClabInstalled(outputChannel)
+    : await utils.ensureClabInstalled(outputChannel);
   if (!clabInstalled) {
+    if (skipInstallationCheck) {
+      outputChannel.info('containerlab not detected; skipping activation because installation checks are disabled.');
+    }
     if (skipInstallationCheck) {
       outputChannel.info('containerlab not detected; skipping activation because installation checks are disabled.');
     }
