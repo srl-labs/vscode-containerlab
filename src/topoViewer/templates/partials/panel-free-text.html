@@ -124,13 +124,21 @@
     </div>
   </div>
 
-  <!-- Footer with buttons -->
+  <!-- Footer with buttons (same style as editor-footer-template) -->
   <div
     id="panel-free-text-footer"
-    class="panel-block p-3 flex justify-end gap-2 flex-shrink-0 border-t border-[var(--vscode-panel-border)]"
+    class="panel-block flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)] flex-shrink-0"
   >
-    <button id="free-text-cancel-btn" class="btn btn-outlined btn-small">Cancel</button>
-    <button id="free-text-ok-btn" class="btn btn-primary btn-small">OK</button>
+    <button id="free-text-ok-btn" class="btn btn-primary btn-small" title="Apply changes and close">
+      OK
+    </button>
+    <button
+      id="free-text-apply-btn"
+      class="btn btn-outlined btn-small"
+      title="Apply changes without closing"
+    >
+      Apply
+    </button>
   </div>
 
   <script>

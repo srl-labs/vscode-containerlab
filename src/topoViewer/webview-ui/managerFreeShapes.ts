@@ -50,7 +50,7 @@ interface ShapeModalElements {
   rotationControl: HTMLDivElement;
   transparentBtn: HTMLButtonElement;
   noBorderBtn: HTMLButtonElement;
-  cancelBtn: HTMLButtonElement;
+  applyBtn: HTMLButtonElement;
   okBtn: HTMLButtonElement;
 }
 
@@ -1315,7 +1315,7 @@ export class ManagerFreeShapes {
       rotationControl: document.getElementById('free-shapes-rotation-control') as HTMLDivElement | null,
       transparentBtn: document.getElementById('free-shapes-transparent-btn') as HTMLButtonElement | null,
       noBorderBtn: document.getElementById('free-shapes-no-border-btn') as HTMLButtonElement | null,
-      cancelBtn: document.getElementById('free-shapes-cancel-btn') as HTMLButtonElement | null,
+      applyBtn: document.getElementById('free-shapes-apply-btn') as HTMLButtonElement | null,
       okBtn: document.getElementById('free-shapes-ok-btn') as HTMLButtonElement | null,
     };
 
@@ -1398,29 +1398,35 @@ export class ManagerFreeShapes {
       els.borderWidthInput.value = '0';
     });
 
-    els.cancelBtn.addEventListener('click', handleCancel);
+    // Close button just closes without saving
     els.closeBtn.addEventListener('click', handleCancel);
 
-    els.okBtn.addEventListener('click', () => {
-      const result: FreeShapeAnnotation = {
-        ...annotation,
-        shapeType: els.typeSelect.value as 'rectangle' | 'circle' | 'line',
-        width: parseInt(els.widthInput.value),
-        height: parseInt(els.heightInput.value),
-        fillColor: els.fillColorInput.value,
-        fillOpacity: parseInt(els.fillOpacityInput.value) / 100,
-        borderColor: els.borderColorInput.value,
-        borderWidth: parseInt(els.borderWidthInput.value),
-        borderStyle: els.borderStyleSelect.value as 'solid' | 'dashed' | 'dotted',
-        cornerRadius: parseInt(els.cornerRadiusInput.value),
-        lineStartArrow: els.lineStartArrowCheck.checked,
-        lineEndArrow: els.lineEndArrowCheck.checked,
-        lineArrowSize: parseInt(els.arrowSizeInput.value),
-        rotation: parseInt(els.rotationInput.value)
-      };
+    const buildResult = (): FreeShapeAnnotation => ({
+      ...annotation,
+      shapeType: els.typeSelect.value as 'rectangle' | 'circle' | 'line',
+      width: parseInt(els.widthInput.value),
+      height: parseInt(els.heightInput.value),
+      fillColor: els.fillColorInput.value,
+      fillOpacity: parseInt(els.fillOpacityInput.value) / 100,
+      borderColor: els.borderColorInput.value,
+      borderWidth: parseInt(els.borderWidthInput.value),
+      borderStyle: els.borderStyleSelect.value as 'solid' | 'dashed' | 'dotted',
+      cornerRadius: parseInt(els.cornerRadiusInput.value),
+      lineStartArrow: els.lineStartArrowCheck.checked,
+      lineEndArrow: els.lineEndArrowCheck.checked,
+      lineArrowSize: parseInt(els.arrowSizeInput.value),
+      rotation: parseInt(els.rotationInput.value)
+    });
 
+    // Apply saves but keeps panel open
+    els.applyBtn.addEventListener('click', () => {
+      resolve(buildResult());
+    });
+
+    // OK saves and closes
+    els.okBtn.addEventListener('click', () => {
       cleanup();
-      resolve(result);
+      resolve(buildResult());
     });
   }
 

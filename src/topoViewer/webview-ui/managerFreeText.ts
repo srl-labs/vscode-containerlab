@@ -78,7 +78,7 @@ interface FreeTextModalElements {
   alignRightBtn: HTMLButtonElement;
   transparentBtn: HTMLButtonElement;
   roundedBtn: HTMLButtonElement;
-  cancelBtn: HTMLButtonElement;
+  applyBtn: HTMLButtonElement;
   okBtn: HTMLButtonElement;
 }
 
@@ -645,7 +645,7 @@ export class ManagerFreeText {
       alignRightBtn: document.getElementById('free-text-align-right-btn') as HTMLButtonElement | null,
       transparentBtn: document.getElementById('free-text-transparent-btn') as HTMLButtonElement | null,
       roundedBtn: document.getElementById('free-text-rounded-btn') as HTMLButtonElement | null,
-      cancelBtn: document.getElementById('free-text-cancel-btn') as HTMLButtonElement | null,
+      applyBtn: document.getElementById('free-text-apply-btn') as HTMLButtonElement | null,
       okBtn: document.getElementById('free-text-ok-btn') as HTMLButtonElement | null,
     };
 
@@ -1903,16 +1903,23 @@ export class ManagerFreeText {
     cleanup: () => void,
     cleanupTasks: Array<() => void>
   ): void {
-    const { textInput, cancelBtn, okBtn, closeBtn } = els;
+    const { textInput, applyBtn, okBtn, closeBtn } = els;
 
-    const handleCancel = () => {
+    const handleClose = () => {
       cleanup();
       resolve(null);
     };
 
-    this.bindHandler(cancelBtn, 'onclick', handleCancel, cleanupTasks);
-    this.bindHandler(closeBtn, 'onclick', handleCancel, cleanupTasks);
+    // Close button just closes without saving
+    this.bindHandler(closeBtn, 'onclick', handleClose, cleanupTasks);
 
+    // Apply saves but keeps panel open
+    this.bindHandler(applyBtn, 'onclick', () => {
+      const result = this.buildAnnotationResult(annotation, els, state);
+      resolve(result);
+    }, cleanupTasks);
+
+    // OK saves and closes
     this.bindHandler(okBtn, 'onclick', () => {
       const result = this.buildAnnotationResult(annotation, els, state);
       cleanup();
@@ -1921,7 +1928,7 @@ export class ManagerFreeText {
 
     this.bindHandler(textInput, 'onkeydown', (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        cancelBtn.click();
+        handleClose();
       } else if (e.key === 'Enter' && e.ctrlKey) {
         okBtn.click();
       }

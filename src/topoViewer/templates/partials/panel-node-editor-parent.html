@@ -210,17 +210,25 @@
       </div>
     </div>
   </div>
-  <!-- Footer with Save/Close buttons -->
-  <div class="panel-block flex items-center flex-shrink-0" id="group-editor-footer">
-    <div class="w-1/5 pr-1"></div>
-    <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
-      <button class="btn btn-primary btn-small" id="panel-node-editor-parent-save-button">
-        Save
-      </button>
-      <button class="btn btn-outlined btn-small" id="panel-node-editor-parent-close-button">
-        Close
-      </button>
-    </div>
+  <!-- Footer with OK/Apply buttons -->
+  <div
+    class="panel-block flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--vscode-panel-border)] bg-[var(--vscode-sideBar-background)] flex-shrink-0"
+    id="group-editor-footer"
+  >
+    <button
+      class="btn btn-primary btn-small"
+      id="panel-node-editor-parent-ok-button"
+      title="Apply changes and close"
+    >
+      OK
+    </button>
+    <button
+      class="btn btn-outlined btn-small"
+      id="panel-node-editor-parent-apply-button"
+      title="Apply changes without closing"
+    >
+      Apply
+    </button>
   </div>
 </section>
 
