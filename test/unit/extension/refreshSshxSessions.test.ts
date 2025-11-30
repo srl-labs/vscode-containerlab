@@ -1,37 +1,60 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, afterEach, __dirname */
+/* global describe, it, before, after, beforeEach, afterEach, __dirname */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
-// Stub vscode and containerlab utils before importing the module
-const originalResolve = (Module as any)._resolveFilename;
-(Module as any)._resolveFilename = function(request: string, parent: any, isMain: boolean, options: any) {
-  if (request === 'vscode') {
-    return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
-  }
-  if (request.includes('helpers/utils')) {
-    return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
-  }
-  return originalResolve.call(this, request, parent, isMain, options);
-};
-
-import * as extension from '../../../src/extension';
-const { refreshSshxSessions, sshxSessions } = extension;
-const utilsStub = require('../../helpers/utils-stub.js');
-const vscodeStub = require('../../helpers/vscode-stub');
-
 describe('refreshSshxSessions', () => {
+  const originalResolve = (Module as any)._resolveFilename;
+  let refreshSshxSessions: () => Promise<void>;
+  let sshxSessions: Map<string, string>;
+  let utilsStub: any;
+  let vscodeStub: any;
+  let extension: any;
+
+  // Helper to clear module cache for all vscode-containerlab modules
+  function clearModuleCache() {
+    Object.keys(require.cache).forEach(key => {
+      if (key.includes('vscode-containerlab') && !key.includes('node_modules')) {
+        delete require.cache[key];
+      }
+    });
+  }
+
+  before(() => {
+    // Clear any previously cached modules
+    clearModuleCache();
+
+    // Set up module resolution intercepts
+    (Module as any)._resolveFilename = function(request: string, parent: any, isMain: boolean, options: any) {
+      if (request === 'vscode') {
+        return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
+      }
+      if (request.includes('utils') && !request.includes('stub')) {
+        return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
+      }
+      return originalResolve.call(this, request, parent, isMain, options);
+    };
+
+    // Now require the modules fresh
+    vscodeStub = require('../../helpers/vscode-stub');
+    utilsStub = require('../../helpers/utils-stub');
+    extension = require('../../../src/extension');
+    refreshSshxSessions = extension.refreshSshxSessions;
+    sshxSessions = extension.sshxSessions;
+  });
+
   after(() => {
     (Module as any)._resolveFilename = originalResolve;
+    clearModuleCache();
   });
 
   beforeEach(() => {
     utilsStub.calls.length = 0;
     utilsStub.setOutput('');
     sshxSessions.clear();
-    (extension as any).outputChannel = vscodeStub.window.createOutputChannel();
+    (extension as any).outputChannel = vscodeStub.window.createOutputChannel('test', { log: true });
   });
 
   afterEach(() => {

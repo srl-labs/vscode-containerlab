@@ -8,7 +8,8 @@ import path from 'path';
 
 describe('clab.schema.json', () => {
   it('compiles with custom markdownDescription keyword', () => {
-    const schemaPath = path.join(__dirname, '..', '..', '..', 'schema', 'clab.schema.json');
+    // Go up from out/test/test/unit/utils to project root, then into schema/
+    const schemaPath = path.join(__dirname, '..', '..', '..', '..', '..', 'schema', 'clab.schema.json');
     const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
     const ajv = new Ajv({ strict: false, allErrors: true, verbose: true });
     addFormats(ajv);

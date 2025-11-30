@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-/* global describe, it, after, beforeEach, afterEach, __dirname */
+/* global describe, it, before, after, beforeEach, afterEach, __dirname */
 /**
  * Tests for the `deploy` command.
  *
@@ -8,36 +8,55 @@
  * module and the command implementation we can exercise the logic in a
  * plain Node environment without invoking containerlab.
  */
-// These tests use stubs to emulate VS Code and containerlab CLI behaviour
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
-// Replace the vscode module and ClabCommand with stubs before importing the command
-const originalResolve = (Module as any)._resolveFilename;
-(Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
-  if (request === 'vscode') {
-    return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
-  }
-  if (request.includes('clabCommand')) {
-    return path.join(__dirname, '..', '..', 'helpers', 'clabCommand-stub.js');
-  }
-  if (request.includes('utils')) {
-    return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
-  }
-  if (request === './graph' || request.endsWith('/graph')) {
-    return path.join(__dirname, '..', '..', 'helpers', 'graph-stub.js');
-  }
-  return originalResolve.call(this, request, parent, isMain, options);
-};
-
-import { deploy } from '../../../src/commands/deploy';
-const clabStub = require('../../helpers/clabCommand-stub');
-
 describe('deploy command', () => {
+  const originalResolve = (Module as any)._resolveFilename;
+  let deploy: (node?: any) => Promise<void>;
+  let clabStub: any;
+
+  // Helper to clear module cache for all vscode-containerlab modules
+  function clearModuleCache() {
+    Object.keys(require.cache).forEach(key => {
+      if (key.includes('vscode-containerlab') && !key.includes('node_modules')) {
+        delete require.cache[key];
+      }
+    });
+  }
+
+  before(() => {
+    // Clear any previously cached modules
+    clearModuleCache();
+
+    // Set up module resolution intercepts
+    (Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
+      if (request === 'vscode') {
+        return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
+      }
+      if (request.includes('clabCommand') && !request.includes('stub')) {
+        return path.join(__dirname, '..', '..', 'helpers', 'clabCommand-stub.js');
+      }
+      if (request.includes('utils') && !request.includes('stub')) {
+        return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
+      }
+      if ((request === './graph' || request.endsWith('/graph')) && !request.includes('stub')) {
+        return path.join(__dirname, '..', '..', 'helpers', 'graph-stub.js');
+      }
+      return originalResolve.call(this, request, parent, isMain, options);
+    };
+
+    // Now require the modules fresh
+    clabStub = require('../../helpers/clabCommand-stub');
+    const deployModule = require('../../../src/commands/deploy');
+    deploy = deployModule.deploy;
+  });
+
   after(() => {
     (Module as any)._resolveFilename = originalResolve;
+    clearModuleCache();
   });
 
   beforeEach(() => {

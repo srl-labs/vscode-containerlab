@@ -22,8 +22,8 @@ const originalResolve = (Module as any)._resolveFilename;
   if (request === 'vscode') {
     return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
   }
-  if (request.includes('utils')) {
-    return path.join(__dirname, '..', '..', '..', 'src', 'helpers', 'utils.js');
+  if (request.includes('utils/utils')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
   }
   return originalResolve.call(this, request, parent, isMain, options);
 };
@@ -64,7 +64,11 @@ describe('LocalLabTreeDataProvider', () => {
     vscodeStub.workspace.createFileSystemWatcher = createFileWatcher;
     vscodeStub.workspace.findFiles = emptyFindFiles;
     vscodeStub.EventEmitter = EventEmitterStub as any;
-    delete require.cache[require.resolve('../../../src/helpers/utils')];
+    try {
+      delete require.cache[require.resolve('../../../src/utils/utils')];
+    } catch {
+      /* ignore if module not in cache */
+    }
     try {
       delete require.cache[require.resolve('../../helpers/utils-stub')];
     } catch {

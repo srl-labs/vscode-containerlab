@@ -1,10 +1,19 @@
 export const window = {
   lastErrorMessage: '',
   lastInfoMessage: '',
-  createOutputChannel() {
+  createOutputChannel(_name: string, options?: { log: boolean } | string) {
+    const isLogChannel = typeof options === 'object' && options?.log;
     return {
       appendLine() {},
       show() {},
+      // LogOutputChannel methods (when { log: true } is passed)
+      ...(isLogChannel && {
+        info() {},
+        debug() {},
+        warn() {},
+        error() {},
+        trace() {},
+      }),
     };
   },
   showErrorMessage(message: string) {
@@ -104,3 +113,41 @@ export const env = {
     },
   },
 };
+
+export const extensions = {
+  getExtension(_extensionId: string) {
+    return {
+      packageJSON: {
+        version: '0.0.0-test',
+      },
+    };
+  },
+};
+
+export class EventEmitter<T> {
+  private listeners: Array<(e: T) => any> = [];
+
+  get event(): (listener: (e: T) => any) => { dispose(): void } {
+    return (listener: (e: T) => any) => {
+      this.listeners.push(listener);
+      return {
+        dispose: () => {
+          const idx = this.listeners.indexOf(listener);
+          if (idx >= 0) {
+            this.listeners.splice(idx, 1);
+          }
+        },
+      };
+    };
+  }
+
+  fire(data: T): void {
+    for (const listener of this.listeners) {
+      listener(data);
+    }
+  }
+
+  dispose(): void {
+    this.listeners = [];
+  }
+}

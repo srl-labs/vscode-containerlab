@@ -6,3 +6,10 @@ export async function notifyCurrentTopoViewerOfCommandSuccess(
   }
   // no-op stub
 }
+
+export async function notifyCurrentTopoViewerOfCommandFailure(
+  _commandType: 'deploy' | 'destroy' | 'redeploy',
+  _error?: Error
+) {
+  // no-op stub
+}
