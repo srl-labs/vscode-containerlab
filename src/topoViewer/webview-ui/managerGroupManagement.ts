@@ -253,7 +253,8 @@ export class ManagerGroupManagement {
   };
 
   private shouldSkipDragfree(draggedNode: cytoscape.NodeSingular): boolean {
-    if (draggedNode.data('topoViewerRole') === 'freeText') {
+    if (draggedNode.data('topoViewerRole') === 'freeText' ||
+        draggedNode.data('topoViewerRole') === 'freeShape') {
       return true;
     }
     if (this.cy.nodes('[topoViewerRole = "group"]').some(group => (group as cytoscape.NodeSingular).grabbed())) {

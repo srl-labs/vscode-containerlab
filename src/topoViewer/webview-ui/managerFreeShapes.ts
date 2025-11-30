@@ -364,7 +364,9 @@ export class ManagerFreeShapes {
     const handler = (event: cytoscape.EventObject) => {
       const target = event.target;
 
+      // Check if target is a group or parent node - prevent shape addition on groups
       if (target !== this.cy) {
+        // If clicked on a group or parent node, cancel shape mode
         if (target.isParent?.() || target.data?.('topoViewerRole') === 'group') {
           this.disableAddShapeMode();
           log.debug('Shape addition cancelled - cannot add shape to groups');
@@ -372,6 +374,7 @@ export class ManagerFreeShapes {
         }
       }
 
+      // Only add shape when clicking on empty canvas
       if (event.target === this.cy) {
         const position = event.position || (event as any).cyPosition;
         if (position) {
