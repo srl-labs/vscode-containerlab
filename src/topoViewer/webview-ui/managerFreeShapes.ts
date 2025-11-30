@@ -1418,10 +1418,17 @@ export class ManagerFreeShapes {
       rotation: parseInt(els.rotationInput.value)
     });
 
-    // Apply saves but keeps panel open
-    els.applyBtn.addEventListener('click', () => {
-      resolve(buildResult());
-    });
+    // Apply changes without closing or resolving
+    const applyChanges = () => {
+      const result = buildResult();
+      // Update annotation in place
+      Object.assign(annotation, result);
+      this.updateFreeShapeNode(annotation.id, annotation);
+      this.debouncedSave();
+    };
+
+    // Apply saves but keeps panel open (doesn't resolve promise)
+    els.applyBtn.addEventListener('click', applyChanges);
 
     // OK saves and closes
     els.okBtn.addEventListener('click', () => {

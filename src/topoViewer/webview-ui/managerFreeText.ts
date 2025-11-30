@@ -1910,14 +1910,22 @@ export class ManagerFreeText {
       resolve(null);
     };
 
+    // Apply changes without closing or resolving
+    const applyChanges = () => {
+      const result = this.buildAnnotationResult(annotation, els, state);
+      if (result && result.text) {
+        // Update annotation in place
+        Object.assign(annotation, result);
+        this.updateFreeTextNode(annotation.id, annotation);
+        this.debouncedSave();
+      }
+    };
+
     // Close button just closes without saving
     this.bindHandler(closeBtn, 'onclick', handleClose, cleanupTasks);
 
-    // Apply saves but keeps panel open
-    this.bindHandler(applyBtn, 'onclick', () => {
-      const result = this.buildAnnotationResult(annotation, els, state);
-      resolve(result);
-    }, cleanupTasks);
+    // Apply saves but keeps panel open (doesn't resolve promise)
+    this.bindHandler(applyBtn, 'onclick', applyChanges, cleanupTasks);
 
     // OK saves and closes
     this.bindHandler(okBtn, 'onclick', () => {
