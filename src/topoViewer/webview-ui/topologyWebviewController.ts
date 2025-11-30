@@ -10,6 +10,9 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import "leaflet/dist/leaflet.css";
 import "tippy.js/dist/tippy.css";
 import "highlight.js/styles/github-dark.css";
+// Import uPlot for graphs
+import uPlot from "uplot";
+import "uplot/dist/uPlot.min.css";
 import loadCytoStyle from "./managerCytoscapeBaseStyles";
 import { VscodeMessageSender } from "./managerVscodeWebview";
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from "./managerCytoscapeFetchAndLoad";
@@ -139,6 +142,7 @@ class TopologyWebviewController {
   private static readonly CLASS_PANEL_OVERLAY = "panel-overlay" as const;
   private static readonly CLASS_VIEWPORT_DRAWER = "viewport-drawer" as const;
   private static readonly STYLE_LINE_COLOR = "line-color" as const;
+  private static readonly PANEL_LINK_ID = "panel-link" as const;
   private static readonly KIND_BRIDGE = "bridge" as const;
   private static readonly KIND_OVS_BRIDGE = "ovs-bridge" as const;
   private interfaceCounters: Record<string, number> = {};
@@ -163,6 +167,14 @@ class TopologyWebviewController {
   private freeTextContextGuardRegistered = false;
   private initialGraphLoaded = false;
   public gridManager!: ManagerGridGuide;
+
+  // uPlot graph instances for link panel
+  private linkGraphs: { a: uPlot | null; b: uPlot | null } = { a: null, b: null };
+  // Data buffers for each endpoint (max 60 data points = 1 minute at 1s interval)
+  private linkStatsHistory: Map<string, { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] }> = new Map();
+  private readonly MAX_GRAPH_POINTS = 60;
+  // ResizeObserver for link panel graph resizing
+  private linkPanelResizeObserver: ResizeObserver | null = null;
   // eslint-disable-next-line no-unused-vars
   private keyHandlers: Record<string, (event: KeyboardEvent) => void> = {
     delete: (event) => {
@@ -1713,14 +1725,18 @@ class TopologyWebviewController {
   private showLinkPropertiesPanel(ele: cytoscape.Singular): void {
     this.hideAllPanels();
     this.highlightLink(ele);
-    const panelLink = document.getElementById("panel-link");
+    const panelLink = document.getElementById(TopologyWebviewController.PANEL_LINK_ID);
     if (!panelLink) {
       return;
     }
+    // Clear history for new link to avoid mixing data from different links
+    this.linkStatsHistory.clear();
     panelLink.style.display = "block";
     this.populateLinkPanel(ele);
     topoViewerState.selectedEdge = ele.id();
     topoViewerState.edgeClicked = true;
+    // Set up resize observer for graph resizing
+    this.setupLinkPanelResizeObserver();
   }
 
   private hideAllPanels(): void {
@@ -1728,6 +1744,9 @@ class TopologyWebviewController {
       TopologyWebviewController.CLASS_PANEL_OVERLAY
     );
     Array.from(panelOverlays).forEach((panel) => ((panel as HTMLElement).style.display = "none"));
+    // Clean up graphs and resize observer when hiding panels
+    this.destroyGraphs();
+    this.disconnectLinkPanelResizeObserver();
   }
 
   private highlightLink(ele: cytoscape.Singular): void {
@@ -1738,7 +1757,6 @@ class TopologyWebviewController {
 
   private populateLinkPanel(ele: cytoscape.Singular): void {
     const extraData = ele.data("extraData") || {};
-    this.updateLinkName(ele);
     this.updateLinkEndpointInfo(ele, extraData);
   }
 
@@ -1750,18 +1768,11 @@ class TopologyWebviewController {
     if (!selectedId || edge.id() !== selectedId) {
       return;
     }
-    const panelLink = document.getElementById("panel-link") as HTMLElement | null;
+    const panelLink = document.getElementById(TopologyWebviewController.PANEL_LINK_ID) as HTMLElement | null;
     if (!panelLink || panelLink.style.display === "none") {
       return;
     }
     this.populateLinkPanel(edge);
-  }
-
-  private updateLinkName(ele: cytoscape.Singular): void {
-    const linkNameEl = document.getElementById("panel-link-name");
-    if (linkNameEl) {
-      linkNameEl.innerHTML = `┌ ${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}<br>└ ${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`;
-    }
   }
 
   private updateLinkEndpointInfo(ele: cytoscape.Singular, extraData: any): void {
@@ -1792,15 +1803,23 @@ class TopologyWebviewController {
     }
   ): void {
     const prefix = `panel-link-endpoint-${letter}`;
-    this.setLabelText(`${prefix}-name`, data.name, "N/A");
     this.setLabelText(`${prefix}-mac-address`, data.mac, "N/A");
     this.setLabelText(`${prefix}-mtu`, data.mtu, "N/A");
     this.setLabelText(`${prefix}-type`, data.type, "N/A");
-    this.setLabelText(`${prefix}-rx-rate`, this.buildRateLine(data.stats, "rx"), "N/A");
-    this.setLabelText(`${prefix}-tx-rate`, this.buildRateLine(data.stats, "tx"), "N/A");
-    this.setLabelText(`${prefix}-rx-total`, this.buildCounterLine(data.stats, "rx"), "N/A");
-    this.setLabelText(`${prefix}-tx-total`, this.buildCounterLine(data.stats, "tx"), "N/A");
-    this.setLabelText(`${prefix}-stats-interval`, this.buildIntervalLine(data.stats), "N/A");
+
+    // Update tab label with interface name
+    this.updateTabLabel(letter, data.name);
+
+    // Update graph with stats
+    const endpointKey = `${letter}:${data.name}`;
+    this.initOrUpdateGraph(letter, endpointKey, data.stats);
+  }
+
+  private updateTabLabel(endpoint: "a" | "b", name: string): void {
+    const tabButton = document.querySelector(`button.endpoint-tab[data-endpoint="${endpoint}"]`);
+    if (tabButton) {
+      tabButton.textContent = name || `Endpoint ${endpoint.toUpperCase()}`;
+    }
   }
 
   private setLabelText(id: string, value: string | number | undefined, fallback: string): void {
@@ -1897,6 +1916,328 @@ class TopologyWebviewController {
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits
     });
+  }
+
+  private initOrUpdateGraph(endpoint: "a" | "b", endpointKey: string, stats: InterfaceStatsPayload | undefined): void {
+    const containerEl = document.getElementById(`panel-link-endpoint-${endpoint}-graph`);
+    if (!containerEl) {
+      return;
+    }
+
+    // Initialize graph with empty data if it doesn't exist yet
+    if (!this.linkGraphs[endpoint]) {
+      // Use parent container's bounding rect to get actual available space
+      const rect = containerEl.getBoundingClientRect();
+      const width = rect.width || 500;
+      // Reduce height to leave room for legend (subtract ~60px for legend space)
+      const height = (rect.height || 400) - 60;
+      const emptyData = [[], [], [], [], []];
+      const opts = this.createGraphOptions(width, height);
+      this.linkGraphs[endpoint] = new uPlot(opts, emptyData, containerEl);
+    }
+
+    // Update with actual data if stats are available
+    if (stats) {
+      const history = this.updateStatsHistory(endpointKey, stats);
+      const data = this.prepareGraphData(history);
+      this.linkGraphs[endpoint]?.setData(data);
+    }
+  }
+
+  private updateStatsHistory(endpointKey: string, stats: InterfaceStatsPayload): { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] } {
+    let history = this.linkStatsHistory.get(endpointKey);
+    if (!history) {
+      history = {
+        timestamps: [],
+        rxBps: [],
+        rxPps: [],
+        txBps: [],
+        txPps: []
+      };
+      this.linkStatsHistory.set(endpointKey, history);
+    }
+
+    const now = Date.now() / 1000;
+    history.timestamps.push(now);
+    history.rxBps.push(stats.rxBps ?? 0);
+    history.rxPps.push(stats.rxPps ?? 0);
+    history.txBps.push(stats.txBps ?? 0);
+    history.txPps.push(stats.txPps ?? 0);
+
+    if (history.timestamps.length > this.MAX_GRAPH_POINTS) {
+      history.timestamps.shift();
+      history.rxBps.shift();
+      history.rxPps.shift();
+      history.txBps.shift();
+      history.txPps.shift();
+    }
+
+    return history;
+  }
+
+  private prepareGraphData(history: { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] }): number[][] {
+    const rxKbps = history.rxBps.map(v => v / 1000);
+    const txKbps = history.txBps.map(v => v / 1000);
+
+    return [
+      history.timestamps,
+      rxKbps,
+      txKbps,
+      history.rxPps,
+      history.txPps
+    ];
+  }
+
+  private createGraphSeries(): uPlot.Series[] {
+    const formatValue = (_self: uPlot, rawValue: number | null): string => {
+      return rawValue == null ? "-" : rawValue.toFixed(2);
+    };
+
+    return [
+      {},
+      {
+        label: "RX Kbps",
+        stroke: "#4ec9b0",
+        width: 2,
+        scale: "kbps",
+        value: formatValue
+      },
+      {
+        label: "TX Kbps",
+        stroke: "#569cd6",
+        width: 2,
+        scale: "kbps",
+        value: formatValue
+      },
+      {
+        label: "RX PPS",
+        stroke: "#b5cea8",
+        width: 2,
+        scale: "pps",
+        value: formatValue
+      },
+      {
+        label: "TX PPS",
+        stroke: "#9cdcfe",
+        width: 2,
+        scale: "pps",
+        value: formatValue
+      }
+    ];
+  }
+
+  private createGraphOptions(width: number, height: number = 300): uPlot.Options {
+    return {
+      width,
+      height,
+      padding: [12, 12, 12, 0],
+      cursor: {
+        show: true,
+        x: false,
+        y: false,
+        points: {
+          show: false
+        }
+      },
+      series: this.createGraphSeries(),
+      axes: [
+        {
+          scale: "x",
+          show: false
+        },
+        {
+          scale: "kbps",
+          side: 3,
+          label: "Kbps",
+          labelSize: 20,
+          labelFont: "12px sans-serif",
+          size: 60,
+          stroke: "#cccccc",
+          grid: {
+            show: true,
+            stroke: "#3e3e42",
+            width: 1
+          },
+          ticks: {
+            show: true,
+            stroke: "#3e3e42",
+            width: 1
+          },
+          values: (_self, ticks) => ticks.map(v => v.toFixed(1))
+        },
+        {
+          scale: "pps",
+          side: 1,
+          label: "PPS",
+          labelSize: 20,
+          labelFont: "12px sans-serif",
+          size: 60,
+          stroke: "#cccccc",
+          grid: {
+            show: false
+          },
+          ticks: {
+            show: true,
+            stroke: "#3e3e42",
+            width: 1
+          },
+          values: (_self, ticks) => ticks.map(v => v.toFixed(1))
+        }
+      ],
+      scales: {
+        x: {},
+        kbps: {
+          auto: true,
+          range: (_self, dataMin, dataMax) => {
+            // Set minimum range to make lines visible even with small values
+            const minRange = 10; // 10 Kbps minimum
+            const actualMax = Math.max(dataMax, minRange);
+            const pad = (actualMax - dataMin) * 0.1;
+            return [0, actualMax + pad];
+          }
+        },
+        pps: {
+          auto: true,
+          range: (_self, dataMin, dataMax) => {
+            // Set minimum range to make lines visible even with small values
+            const minRange = 10; // 10 PPS minimum
+            const actualMax = Math.max(dataMax, minRange);
+            const pad = (actualMax - dataMin) * 0.1;
+            return [0, actualMax + pad];
+          }
+        }
+      },
+      legend: {
+        show: true,
+        live: true,
+        isolate: false,
+        markers: {
+          show: true,
+          width: 2
+        },
+        mount: (self, legend) => {
+          // Mount legend inside the uPlot container
+          self.root.appendChild(legend);
+        }
+      },
+      hooks: this.createGraphHooks()
+    };
+  }
+
+  private createGraphHooks(): uPlot.Hooks.Arrays {
+    const setCursorToLatest = (u: uPlot): void => {
+      if (u.data && u.data[0] && u.data[0].length > 0) {
+        const lastIdx = u.data[0].length - 1;
+        window.requestAnimationFrame(() => {
+          // Set legend to show the latest values
+          u.setLegend({ idx: lastIdx });
+        });
+      }
+    };
+
+    const setupMouseLeaveHandler = (u: uPlot): void => {
+      // Reset cursor to latest when mouse leaves the graph
+      u.over.addEventListener("mouseleave", () => {
+        setCursorToLatest(u);
+      });
+    };
+
+    return {
+      init: [(u: uPlot) => {
+        this.fixLegendDisplay(u);
+        setupMouseLeaveHandler(u);
+        setCursorToLatest(u);
+      }],
+      setData: [setCursorToLatest]
+    };
+  }
+
+  private destroyGraphs(): void {
+    if (this.linkGraphs.a) {
+      this.linkGraphs.a.destroy();
+      this.linkGraphs.a = null;
+    }
+    if (this.linkGraphs.b) {
+      this.linkGraphs.b.destroy();
+      this.linkGraphs.b = null;
+    }
+  }
+
+  private fixLegendDisplay(u: uPlot): void {
+    // Hide the first legend series (Time/x-axis)
+    window.requestAnimationFrame(() => {
+      const legendEl = u.root.querySelector(".u-legend");
+      if (!legendEl) {
+        return;
+      }
+
+      // uPlot creates inline legend items, find and hide the first one (index 0 = time series)
+      const seriesItems = legendEl.querySelectorAll(".u-series");
+      if (seriesItems && seriesItems.length > 0) {
+        (seriesItems[0] as HTMLElement).style.display = "none";
+      }
+    });
+  }
+
+  private setupLinkPanelResizeObserver(): void {
+    // Clean up any existing observer first
+    this.disconnectLinkPanelResizeObserver();
+
+    const panelLink = document.getElementById(TopologyWebviewController.PANEL_LINK_ID);
+    if (!panelLink) {
+      return;
+    }
+
+    this.linkPanelResizeObserver = new ResizeObserver(() => {
+      this.resizeLinkGraphs();
+    });
+
+    this.linkPanelResizeObserver.observe(panelLink);
+
+    // Listen for tab switch events to resize graphs
+    window.addEventListener("link-tab-switched", () => {
+      // Use setTimeout to ensure the tab content is visible before resizing
+      setTimeout(() => {
+        this.resizeLinkGraphs();
+      }, 0);
+    });
+  }
+
+  private disconnectLinkPanelResizeObserver(): void {
+    if (this.linkPanelResizeObserver) {
+      this.linkPanelResizeObserver.disconnect();
+      this.linkPanelResizeObserver = null;
+    }
+  }
+
+  private resizeLinkGraphs(): void {
+    // Resize endpoint A graph using getBoundingClientRect
+    if (this.linkGraphs.a) {
+      const containerA = document.getElementById("panel-link-endpoint-a-graph");
+      if (containerA) {
+        const rect = containerA.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height - 60; // Reserve space for legend
+        if (width > 0 && height > 0) {
+          this.linkGraphs.a.setSize({ width, height });
+          this.fixLegendDisplay(this.linkGraphs.a);
+        }
+      }
+    }
+
+    // Resize endpoint B graph using getBoundingClientRect
+    if (this.linkGraphs.b) {
+      const containerB = document.getElementById("panel-link-endpoint-b-graph");
+      if (containerB) {
+        const rect = containerB.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height - 60; // Reserve space for legend
+        if (width > 0 && height > 0) {
+          this.linkGraphs.b.setSize({ width, height });
+          this.fixLegendDisplay(this.linkGraphs.b);
+        }
+      }
+    }
   }
 
   private handleEdgeCreation(
