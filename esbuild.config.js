@@ -32,6 +32,20 @@ async function build() {
   // Note: CSS and JS files are now bundled by webpack
   // No need to copy them separately from html-static
 
+  // Plugin to stub native .node files - ssh2 has JS fallbacks
+  const nativeNodeModulesPlugin = {
+    name: 'native-node-modules',
+    setup(build) {
+      build.onResolve({ filter: /\.node$/ }, () => ({
+        path: 'noop',
+        namespace: 'native-node-empty',
+      }));
+      build.onLoad({ filter: /.*/, namespace: 'native-node-empty' }, () => ({
+        contents: 'module.exports = {};',
+      }));
+    },
+  };
+
   // Build the extension
   await esbuild.build({
     entryPoints: ['src/extension.ts'],
@@ -40,7 +54,8 @@ async function build() {
     format: 'cjs',
     external: ['vscode'],
     outfile: 'dist/extension.js',
-    sourcemap: true
+    sourcemap: true,
+    plugins: [nativeNodeModulesPlugin],
   });
   
   console.log('Build complete! HTML templates copied to dist/');
