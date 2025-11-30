@@ -1,6 +1,6 @@
 <!-- Node Properties Panel -->
 <section
-  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+  class="panel panel-overlay bottom-10 left-20 draggable-panel overflow-hidden"
   id="panel-node"
   aria-labelledby="node-panel-heading"
   style="display: none"
@@ -11,156 +11,66 @@
       <i class="fas fa-times"></i>
     </button>
   </div>
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <!-- Node Name and Actions -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Node Name</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-node-name">
-                  node-name-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+  <div class="p-4">
+    <!-- Grid layout: 3 columns, auto rows -->
+    <div class="grid grid-cols-3 gap-4">
+      <!-- Row 1: Name (spans full width) -->
+      <div class="flex flex-col items-center col-span-3">
+        <span class="vscode-label text-xs mb-1 font-bold">Name</span>
+        <span id="panel-node-name" class="text-sm text-[var(--vscode-foreground)] text-center">
+          N/A
+        </span>
       </div>
-    </div>
 
-    <!-- Node Properties List -->
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <!-- Kind -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Kind</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-node-kind">
-                  node-kind-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Row 2: Kind, State -->
+      <div class="flex flex-col items-center">
+        <span class="vscode-label text-xs mb-1 font-bold">Kind</span>
+        <span id="panel-node-kind" class="text-sm text-[var(--vscode-foreground)] text-center">
+          N/A
+        </span>
+      </div>
 
-        <!-- Image -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Image</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label
-                  class="text-left font-extralight text-base break-words"
-                  id="panel-node-image"
-                >
-                  node-image-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="flex flex-col items-center">
+        <span class="vscode-label text-xs mb-1 font-bold">State</span>
+        <span id="panel-node-state" class="text-sm text-[var(--vscode-foreground)] text-center">
+          N/A
+        </span>
+      </div>
 
-        <!-- State -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">State</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label
-                  class="text-left font-extralight text-base break-words"
-                  id="panel-node-state"
-                >
-                  node-state-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Row 2: Image, Mgmt IPv4, Mgmt IPv6 -->
+      <div class="flex flex-col items-center">
+        <span class="vscode-label text-xs mb-1 font-bold">Image</span>
+        <span
+          id="panel-node-image"
+          class="text-sm text-[var(--vscode-foreground)] text-center break-all"
+        >
+          N/A
+        </span>
+      </div>
 
-        <!-- Management IPv4 -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Management IPv4</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label
-                  class="text-left font-extralight text-base break-words"
-                  id="panel-node-mgmtipv4"
-                >
-                  node-mgmtipv4-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="flex flex-col items-center">
+        <span class="vscode-label text-xs mb-1 font-bold">Mgmt IPv4</span>
+        <span id="panel-node-mgmtipv4" class="text-sm text-[var(--vscode-foreground)] text-center">
+          N/A
+        </span>
+      </div>
 
-        <!-- Management IPv6 -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Management IPv6</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label
-                  class="text-left font-extralight text-base break-words"
-                  id="panel-node-mgmtipv6"
-                >
-                  node-mgmtipv6-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="flex flex-col items-center">
+        <span class="vscode-label text-xs mb-1 font-bold">Mgmt IPv6</span>
+        <span id="panel-node-mgmtipv6" class="text-sm text-[var(--vscode-foreground)] text-center">
+          N/A
+        </span>
+      </div>
 
-        <!-- FQDN -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">FQDN</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-node-fqdn">
-                  node-fqdn-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Icon -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Icon</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label
-                  class="text-left font-extralight text-base break-words"
-                  id="panel-node-topoviewerrole"
-                >
-                  node-topoviewerrole-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Row 4: FQDN -->
+      <div class="flex flex-col items-center">
+        <span class="vscode-label text-xs mb-1 font-bold">FQDN</span>
+        <span
+          id="panel-node-fqdn"
+          class="text-sm text-[var(--vscode-foreground)] text-center break-all"
+        >
+          N/A
+        </span>
       </div>
     </div>
   </div>

@@ -1216,6 +1216,114 @@
   .cxtmenu-item:hover {
     background-color: var(--vscode-list-hoverBackground);
   }
+
+  /* Window Manager Styles */
+  .wm-window {
+    position: absolute;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wm-dragging {
+    user-select: none;
+    cursor: grabbing !important;
+  }
+
+  .wm-dragging * {
+    cursor: grabbing !important;
+  }
+
+  .wm-resizing {
+    user-select: none;
+  }
+
+  /* Resize handles */
+  .wm-resize-handle {
+    position: absolute;
+    z-index: 10;
+  }
+
+  /* North */
+  .wm-resize-n {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: n-resize;
+  }
+
+  /* South */
+  .wm-resize-s {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: s-resize;
+  }
+
+  /* East */
+  .wm-resize-e {
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: e-resize;
+  }
+
+  /* West */
+  .wm-resize-w {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: w-resize;
+  }
+
+  /* Northeast */
+  .wm-resize-ne {
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: ne-resize;
+  }
+
+  /* Northwest */
+  .wm-resize-nw {
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nw-resize;
+  }
+
+  /* Southeast */
+  .wm-resize-se {
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: se-resize;
+  }
+
+  /* Southwest */
+  .wm-resize-sw {
+    bottom: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: sw-resize;
+  }
+
+  /* Visual feedback for resize handles on hover */
+  .wm-window:hover .wm-resize-handle {
+    background-color: transparent;
+  }
+
+  .wm-resize-handle:hover {
+    background-color: var(--vscode-focusBorder, rgba(0, 122, 204, 0.3));
+  }
 }
 
 /* Custom utility classes */
