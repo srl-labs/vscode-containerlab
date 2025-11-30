@@ -396,29 +396,30 @@ export class ManagerViewportPanels {
       // Execute toggle logic only when no node or edge was clicked.
       if (!this.nodeClicked && !this.edgeClicked) {
         if (!this.isPanel01Cy) {
+          // Don't close panels when clicking on canvas - allow multiple panels to stay open
           // Remove all overlay panels.
-          const panelOverlays = document.getElementsByClassName(
-            ManagerViewportPanels.CLASS_PANEL_OVERLAY
-          );
-          for (let i = 0; i < panelOverlays.length; i++) {
-            (panelOverlays[i] as HTMLElement).style.display = "none";
-          }
+          // const panelOverlays = document.getElementsByClassName(
+          //   ManagerViewportPanels.CLASS_PANEL_OVERLAY
+          // );
+          // for (let i = 0; i < panelOverlays.length; i++) {
+          //   (panelOverlays[i] as HTMLElement).style.display = "none";
+          // }
 
           // Hide viewport drawers.
-          const viewportDrawers = document.getElementsByClassName(
-            ManagerViewportPanels.CLASS_VIEWPORT_DRAWER
-          );
-          for (let i = 0; i < viewportDrawers.length; i++) {
-            (viewportDrawers[i] as HTMLElement).style.display = "none";
-          }
+          // const viewportDrawers = document.getElementsByClassName(
+          //   ManagerViewportPanels.CLASS_VIEWPORT_DRAWER
+          // );
+          // for (let i = 0; i < viewportDrawers.length; i++) {
+          //   (viewportDrawers[i] as HTMLElement).style.display = "none";
+          // }
 
           // Hide any elements with the class "ViewPortDrawer".
-          const viewPortDrawerElements = document.getElementsByClassName(
-            ManagerViewportPanels.CLASS_VIEWPORT_DRAWER_ALT
-          );
-          Array.from(viewPortDrawerElements).forEach((element) => {
-            (element as HTMLElement).style.display = "none";
-          });
+          // const viewPortDrawerElements = document.getElementsByClassName(
+          //   ManagerViewportPanels.CLASS_VIEWPORT_DRAWER_ALT
+          // );
+          // Array.from(viewPortDrawerElements).forEach((element) => {
+          //   (element as HTMLElement).style.display = "none";
+          // });
         } else {
           this.removeElementById("Panel-01");
           this.appendMessage("try to remove panel01-Cy");
@@ -441,7 +442,8 @@ export class ManagerViewportPanels {
   public async panelNodeEditor(node: cytoscape.NodeSingular): Promise<void> {
     this.nodeClicked = true;
     this.panelNodeEditorNode = node;
-    this.hidePanelOverlays();
+    // Allow multiple panels to be open at once
+    // this.hidePanelOverlays();
     this.populateNodeEditorBasics(node);
     const panel = this.showNodeEditorPanel();
 
@@ -905,7 +907,8 @@ export class ManagerViewportPanels {
    */
   public async panelNetworkEditor(node: cytoscape.NodeSingular): Promise<void> {
     this.nodeClicked = true;
-    this.hidePanelOverlays();
+    // Allow multiple panels to be open at once
+    // this.hidePanelOverlays();
 
     const nodeId = node.data("id") as string;
     const nodeData = node.data();
@@ -976,7 +979,8 @@ export class ManagerViewportPanels {
   public async panelEdgeEditor(edge: cytoscape.EdgeSingular): Promise<void> {
     try {
       this.edgeClicked = true;
-      this.hideAllPanels();
+      // Allow multiple panels to be open at once
+      // this.hideAllPanels();
       const elems = this.getEdgeEditorElements();
       if (!elems) {
         this.edgeClicked = false;
@@ -1224,7 +1228,8 @@ export class ManagerViewportPanels {
    */
   private async panelEdgeEditorExtended(edge: cytoscape.EdgeSingular): Promise<void> {
     this.edgeClicked = true;
-    this.hideAllPanels();
+    // Allow multiple panels to be open at once
+    // this.hideAllPanels();
 
     const elements = this.getExtendedEditorElements();
     if (!elements) {
@@ -2113,9 +2118,10 @@ export class ManagerViewportPanels {
    */
   public async panelAbout(): Promise<void> {
     try {
+      // Allow multiple panels to be open at once
       // 1) Hide other overlays
-      const overlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
-      Array.from(overlays).forEach((el) => ((el as HTMLElement).style.display = "none"));
+      // const overlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
+      // Array.from(overlays).forEach((el) => ((el as HTMLElement).style.display = "none"));
 
       // 2) Grab the static parts and initial data
       const panelTopoviewerAbout = document.getElementById("panel-topoviewer-about");

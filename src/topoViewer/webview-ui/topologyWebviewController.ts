@@ -1584,7 +1584,8 @@ class TopologyWebviewController {
         if (radialMenuOpen) {
           return;
         }
-        this.closePanelsAndResetState();
+        // Allow multiple panels to be open at once - don't close panels on canvas click
+        // this.closePanelsAndResetState();
       }
     });
 
@@ -1694,15 +1695,41 @@ class TopologyWebviewController {
   }
 
   private showNodePropertiesPanel(node: cytoscape.Singular): void {
-    const panelOverlays = document.getElementsByClassName(
-      TopologyWebviewController.CLASS_PANEL_OVERLAY
-    );
-    Array.from(panelOverlays).forEach((panel) => ((panel as HTMLElement).style.display = "none"));
+    // Use window manager to get or create panel instance for this specific node
+    const nodeId = node.id();
+    const panelManager = (window as any).panelManager;
+    if (panelManager) {
+      const panelInstance = panelManager.getOrCreatePanelInstance('panel-node', nodeId);
+      if (panelInstance) {
+        // Update panel title with node info
+        const extraData = node.data("extraData") || {};
+        const nodeName = extraData.longname || node.data("name") || nodeId;
+        const titleElement = panelInstance.element.querySelector('.panel-title');
+        if (titleElement) {
+          titleElement.textContent = `Node: ${nodeName}`;
+        }
+
+        // Populate node data in the specific panel instance
+        this.populateNodePanel(node, panelInstance.element);
+        panelInstance.show();
+        topoViewerState.selectedNode = nodeName;
+        topoViewerState.nodeClicked = true;
+        return;
+      }
+    }
+
+    // Fallback to original behavior if window manager not available
     const panelNode = document.getElementById("panel-node");
     if (!panelNode) {
       return;
     }
     panelNode.style.display = "block";
+    this.populateNodePanel(node);
+    topoViewerState.selectedNode = node.data("extraData")?.longname || node.id();
+    topoViewerState.nodeClicked = true;
+  }
+
+  private populateNodePanel(node: cytoscape.Singular, panelElement?: HTMLElement): void {
     const extraData = node.data("extraData") || {};
     const entries: Array<[string, string | undefined]> = [
       ["panel-node-name", extraData.longname || node.data("name") || node.id()],
@@ -1714,17 +1741,57 @@ class TopologyWebviewController {
       ["panel-node-state", extraData.state],
       ["panel-node-image", extraData.image]
     ];
+
+    const context = panelElement || document;
     entries.forEach(([id, value]) => {
-      const el = document.getElementById(id);
+      const el = context.querySelector(`#${id}`) as HTMLElement | null || document.getElementById(id);
       if (el) el.textContent = value || "";
     });
-    topoViewerState.selectedNode = extraData.longname || node.id();
-    topoViewerState.nodeClicked = true;
   }
 
   private showLinkPropertiesPanel(ele: cytoscape.Singular): void {
-    this.hideAllPanels();
+    // Allow multiple panels to be open at once
+    // this.hideAllPanels();
     this.highlightLink(ele);
+
+    // Use window manager to get or create panel instance for this specific link
+    const linkId = ele.id();
+    const panelManager = (window as any).panelManager;
+    if (panelManager) {
+      // Check if this is a new instance or existing one
+      const isNewInstance = !panelManager.hasPanelInstance(TopologyWebviewController.PANEL_LINK_ID, linkId);
+
+      const panelInstance = panelManager.getOrCreatePanelInstance(TopologyWebviewController.PANEL_LINK_ID, linkId);
+      if (panelInstance) {
+        // Update panel title with link info
+        const source = ele.data('source');
+        const target = ele.data('target');
+        const titleElement = panelInstance.element.querySelector('.panel-title');
+        if (titleElement) {
+          titleElement.textContent = `Link: ${source} → ${target}`;
+        }
+
+        // Only clear history for this specific link's endpoints when creating new instance
+        // Don't clear all history as that would affect other open panels
+        if (isNewInstance) {
+          const sourceEndpoint = `a:${source} :: ${ele.data('sourceEndpoint') || ''}`;
+          const targetEndpoint = `b:${target} :: ${ele.data('targetEndpoint') || ''}`;
+          this.linkStatsHistory.delete(sourceEndpoint);
+          this.linkStatsHistory.delete(targetEndpoint);
+        }
+
+        // Populate the panel with link data
+        this.populateLinkPanel(ele, panelInstance.element);
+        panelInstance.show();
+        topoViewerState.selectedEdge = ele.id();
+        topoViewerState.edgeClicked = true;
+        // Set up resize observer for graph resizing
+        this.setupLinkPanelResizeObserver();
+        return;
+      }
+    }
+
+    // Fallback to original behavior if window manager not available
     const panelLink = document.getElementById(TopologyWebviewController.PANEL_LINK_ID);
     if (!panelLink) {
       return;
@@ -1755,15 +1822,29 @@ class TopologyWebviewController {
     ele.style(TopologyWebviewController.STYLE_LINE_COLOR, highlightColor);
   }
 
-  private populateLinkPanel(ele: cytoscape.Singular): void {
+  private populateLinkPanel(ele: cytoscape.Singular, panelElement?: HTMLElement): void {
     const extraData = ele.data("extraData") || {};
-    this.updateLinkEndpointInfo(ele, extraData);
+    this.updateLinkEndpointInfo(ele, extraData, panelElement);
   }
 
   private refreshLinkPanelIfSelected(edge: cytoscape.Singular): void {
     if (!edge.isEdge()) {
       return;
     }
+
+    const linkId = edge.id();
+    const panelManager = (window as any).panelManager;
+
+    // Try to update the panel instance for this specific link
+    if (panelManager && panelManager.hasPanelInstance(TopologyWebviewController.PANEL_LINK_ID, linkId)) {
+      const panelInstance = panelManager.getOrCreatePanelInstance(TopologyWebviewController.PANEL_LINK_ID, linkId);
+      if (panelInstance && panelInstance.element.style.display !== 'none') {
+        this.populateLinkPanel(edge, panelInstance.element);
+      }
+      return;
+    }
+
+    // Fallback: check if using the old template panel
     const selectedId = topoViewerState.selectedEdge;
     if (!selectedId || edge.id() !== selectedId) {
       return;
@@ -1775,21 +1856,21 @@ class TopologyWebviewController {
     this.populateLinkPanel(edge);
   }
 
-  private updateLinkEndpointInfo(ele: cytoscape.Singular, extraData: any): void {
+  private updateLinkEndpointInfo(ele: cytoscape.Singular, extraData: any, panelElement?: HTMLElement): void {
     this.setEndpointFields("a", {
       name: `${ele.data("source")} :: ${ele.data("sourceEndpoint") || ""}`,
       mac: extraData?.clabSourceMacAddress,
       mtu: extraData?.clabSourceMtu,
       type: extraData?.clabSourceType,
       stats: extraData?.clabSourceStats as InterfaceStatsPayload | undefined
-    });
+    }, panelElement);
     this.setEndpointFields("b", {
       name: `${ele.data("target")} :: ${ele.data("targetEndpoint") || ""}`,
       mac: extraData?.clabTargetMacAddress,
       mtu: extraData?.clabTargetMtu,
       type: extraData?.clabTargetType,
       stats: extraData?.clabTargetStats as InterfaceStatsPayload | undefined
-    });
+    }, panelElement);
   }
 
   private setEndpointFields(
@@ -1800,29 +1881,63 @@ class TopologyWebviewController {
       mtu?: string | number;
       type?: string;
       stats?: InterfaceStatsPayload;
-    }
+    },
+    panelElement?: HTMLElement
   ): void {
     const prefix = `panel-link-endpoint-${letter}`;
-    this.setLabelText(`${prefix}-mac-address`, data.mac, "N/A");
-    this.setLabelText(`${prefix}-mtu`, data.mtu, "N/A");
-    this.setLabelText(`${prefix}-type`, data.type, "N/A");
+    this.setLabelText(`${prefix}-mac-address`, data.mac, "N/A", panelElement);
+    this.setLabelText(`${prefix}-mtu`, data.mtu, "N/A", panelElement);
+    this.setLabelText(`${prefix}-type`, data.type, "N/A", panelElement);
 
     // Update tab label with interface name
-    this.updateTabLabel(letter, data.name);
+    this.updateTabLabel(letter, data.name, panelElement);
 
     // Update graph with stats
     const endpointKey = `${letter}:${data.name}`;
-    this.initOrUpdateGraph(letter, endpointKey, data.stats);
+    this.initOrUpdateGraph(letter, endpointKey, data.stats, panelElement);
   }
 
-  private updateTabLabel(endpoint: "a" | "b", name: string): void {
-    const tabButton = document.querySelector(`button.endpoint-tab[data-endpoint="${endpoint}"]`);
+  private updateTabLabel(endpoint: "a" | "b", name: string, panelElement?: HTMLElement): void {
+    const context = panelElement || document;
+    const tabButton = context.querySelector(`button.endpoint-tab[data-endpoint="${endpoint}"]`);
     if (tabButton) {
       tabButton.textContent = name || `Endpoint ${endpoint.toUpperCase()}`;
     }
   }
 
-  private setLabelText(id: string, value: string | number | undefined, fallback: string): void {
+  private setLabelText(id: string, value: string | number | undefined, fallback: string, panelElement?: HTMLElement): void {
+    const context = panelElement || document;
+    const el = context.querySelector(`#${id}`) as HTMLElement | null;
+    if (!el) {
+      // Fallback to document.getElementById if querySelector doesn't work
+      const globalEl = document.getElementById(id);
+      if (!globalEl) {
+        return;
+      }
+      let text: string;
+      if (value === undefined) {
+        text = fallback;
+      } else if (typeof value === "number") {
+        text = value.toLocaleString();
+      } else {
+        text = value;
+      }
+      globalEl.textContent = text;
+      return;
+    }
+    let text: string;
+    if (value === undefined) {
+      text = fallback;
+    } else if (typeof value === "number") {
+      text = value.toLocaleString();
+    } else {
+      text = value;
+    }
+    el.textContent = text;
+  }
+
+  // Keep old signature for backward compatibility
+  private setLabelTextOld(id: string, value: string | number | undefined, fallback: string): void {
     const el = document.getElementById(id);
     if (!el) {
       return;
@@ -1918,14 +2033,18 @@ class TopologyWebviewController {
     });
   }
 
-  private initOrUpdateGraph(endpoint: "a" | "b", endpointKey: string, stats: InterfaceStatsPayload | undefined): void {
-    const containerEl = document.getElementById(`panel-link-endpoint-${endpoint}-graph`);
+  private initOrUpdateGraph(endpoint: "a" | "b", endpointKey: string, stats: InterfaceStatsPayload | undefined, panelElement?: HTMLElement): void {
+    const context = panelElement || document;
+    const containerEl = context.querySelector(`#panel-link-endpoint-${endpoint}-graph`) as HTMLElement | null || document.getElementById(`panel-link-endpoint-${endpoint}-graph`);
     if (!containerEl) {
       return;
     }
 
+    // Get or create graph instance stored on the container element
+    let graphInstance = (containerEl as any).__uplot_instance__;
+
     // Initialize graph with empty data if it doesn't exist yet
-    if (!this.linkGraphs[endpoint]) {
+    if (!graphInstance) {
       // Use parent container's bounding rect to get actual available space
       const rect = containerEl.getBoundingClientRect();
       const width = rect.width || 500;
@@ -1933,15 +2052,45 @@ class TopologyWebviewController {
       const height = (rect.height || 400) - 60;
       const emptyData = [[], [], [], [], []];
       const opts = this.createGraphOptions(width, height);
-      this.linkGraphs[endpoint] = new uPlot(opts, emptyData, containerEl);
+      graphInstance = new uPlot(opts, emptyData, containerEl);
+
+      // Store graph instance on the container element
+      (containerEl as any).__uplot_instance__ = graphInstance;
+
+      // Also store in the old location for backward compatibility (if no panel element specified)
+      if (!panelElement) {
+        this.linkGraphs[endpoint] = graphInstance;
+      }
+
+      // Set up resize observer for this specific panel
+      this.setupPanelGraphResizeObserver(panelElement, endpoint, containerEl, graphInstance);
     }
 
     // Update with actual data if stats are available
     if (stats) {
       const history = this.updateStatsHistory(endpointKey, stats);
       const data = this.prepareGraphData(history);
-      this.linkGraphs[endpoint]?.setData(data);
+      graphInstance?.setData(data);
     }
+  }
+
+  private setupPanelGraphResizeObserver(panelElement: HTMLElement | undefined, endpoint: string, containerEl: HTMLElement, graphInstance: uPlot): void {
+    if (!panelElement) return; // Only set up for panel instances, not the template
+
+    const resizeObserver = new ResizeObserver(() => {
+      const rect = containerEl.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height - 60; // Reserve space for legend
+      if (width > 0 && height > 0) {
+        graphInstance.setSize({ width, height });
+        this.fixLegendDisplay(graphInstance);
+      }
+    });
+
+    resizeObserver.observe(containerEl);
+
+    // Store observer on the container for cleanup
+    (containerEl as any).__resize_observer__ = resizeObserver;
   }
 
   private updateStatsHistory(endpointKey: string, stats: InterfaceStatsPayload): { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] } {

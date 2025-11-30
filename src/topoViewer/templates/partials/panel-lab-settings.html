@@ -1,6 +1,6 @@
 <!-- Lab Settings Panel with Tabs -->
 <div
-  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[600px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 overflow-hidden z-[21] draggable-panel flex flex-col"
   id="panel-lab-settings"
   style="display: none"
 >
@@ -18,192 +18,178 @@
   </div>
 
   <!-- Tab Content Container -->
-  <div class="panel-block p-0">
-    <div class="p-2 max-h-[420px] overflow-y-auto">
-      <!-- Basic Tab -->
-      <div class="tab-content" id="tab-basic-lab">
-        <div class="space-y-3">
-          <!-- Lab Name -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Lab Name</label>
-            <input
-              type="text"
-              id="lab-name"
-              class="input-field w-full"
-              placeholder="Enter lab name"
-            />
-            <small class="text-gray-500">
-              Unique name to identify and distinguish this topology from others
-            </small>
-          </div>
+  <div class="panel-block p-2 overflow-y-auto" id="lab-settings-tab-container">
+    <!-- Basic Tab -->
+    <div class="tab-content" id="tab-basic-lab">
+      <div class="space-y-3">
+        <!-- Lab Name -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Lab Name</label>
+          <input
+            type="text"
+            id="lab-name"
+            class="input-field w-full"
+            placeholder="Enter lab name"
+          />
+          <small class="text-gray-500">
+            Unique name to identify and distinguish this topology from others
+          </small>
+        </div>
 
-          <!-- Prefix -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Container Name Prefix</label>
-            <select id="lab-prefix-type" class="input-field w-full mb-2">
-              <option value="default">Default (clab)</option>
-              <option value="custom">Custom</option>
-              <option value="no-prefix">No prefix</option>
-            </select>
-            <input
-              type="text"
-              id="lab-prefix-custom"
-              class="input-field w-full"
-              placeholder="Enter custom prefix"
-              style="display: none"
-            />
-            <small class="text-gray-500">
-              Default: clab-&lt;lab-name&gt;-&lt;node-name&gt; | No prefix: &lt;node-name&gt;
-            </small>
-          </div>
+        <!-- Prefix -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Container Name Prefix</label>
+          <select id="lab-prefix-type" class="input-field w-full mb-2">
+            <option value="default">Default (clab)</option>
+            <option value="custom">Custom</option>
+            <option value="no-prefix">No prefix</option>
+          </select>
+          <input
+            type="text"
+            id="lab-prefix-custom"
+            class="input-field w-full"
+            placeholder="Enter custom prefix"
+            style="display: none"
+          />
+          <small class="text-gray-500">
+            Default: clab-&lt;lab-name&gt;-&lt;node-name&gt; | No prefix: &lt;node-name&gt;
+          </small>
         </div>
       </div>
+    </div>
 
-      <!-- Management Network Tab -->
-      <div class="tab-content" id="tab-mgmt" style="display: none">
-        <div class="space-y-3">
-          <!-- Network Name -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Network Name</label>
-            <input
-              type="text"
-              id="mgmt-network-name"
-              class="input-field w-full"
-              placeholder="clab"
-            />
-            <small class="text-gray-500">Docker network name (default: clab)</small>
-          </div>
+    <!-- Management Network Tab -->
+    <div class="tab-content" id="tab-mgmt" style="display: none">
+      <div class="space-y-3">
+        <!-- Network Name -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Network Name</label>
+          <input type="text" id="mgmt-network-name" class="input-field w-full" placeholder="clab" />
+          <small class="text-gray-500">Docker network name (default: clab)</small>
+        </div>
 
-          <!-- IPv4 Configuration -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">IPv4 Subnet</label>
-            <select id="mgmt-ipv4-type" class="input-field w-full mb-2">
-              <option value="default">Default (172.20.20.0/24)</option>
-              <option value="auto">Auto-assign</option>
-              <option value="custom">Custom</option>
-            </select>
-            <input
-              type="text"
-              id="mgmt-ipv4-subnet"
-              class="input-field w-full"
-              placeholder="e.g., 172.100.100.0/24"
-              style="display: none"
-            />
-          </div>
+        <!-- IPv4 Configuration -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">IPv4 Subnet</label>
+          <select id="mgmt-ipv4-type" class="input-field w-full mb-2">
+            <option value="default">Default (172.20.20.0/24)</option>
+            <option value="auto">Auto-assign</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input
+            type="text"
+            id="mgmt-ipv4-subnet"
+            class="input-field w-full"
+            placeholder="e.g., 172.100.100.0/24"
+            style="display: none"
+          />
+        </div>
 
-          <!-- IPv4 Gateway -->
-          <div class="form-group" id="mgmt-ipv4-gateway-group" style="display: none">
-            <label class="block vscode-label mb-1">IPv4 Gateway</label>
-            <input
-              type="text"
-              id="mgmt-ipv4-gateway"
-              class="input-field w-full"
-              placeholder="e.g., 172.100.100.1"
-            />
-            <small class="text-gray-500">Custom gateway IP for the management bridge</small>
-          </div>
+        <!-- IPv4 Gateway -->
+        <div class="form-group" id="mgmt-ipv4-gateway-group" style="display: none">
+          <label class="block vscode-label mb-1">IPv4 Gateway</label>
+          <input
+            type="text"
+            id="mgmt-ipv4-gateway"
+            class="input-field w-full"
+            placeholder="e.g., 172.100.100.1"
+          />
+          <small class="text-gray-500">Custom gateway IP for the management bridge</small>
+        </div>
 
-          <!-- IPv4 Range -->
-          <div class="form-group" id="mgmt-ipv4-range-group" style="display: none">
-            <label class="block vscode-label mb-1">IPv4 Range</label>
-            <input
-              type="text"
-              id="mgmt-ipv4-range"
-              class="input-field w-full"
-              placeholder="e.g., 172.100.100.128/25"
-            />
-            <small class="text-gray-500">Limit IP allocation range within the subnet</small>
-          </div>
+        <!-- IPv4 Range -->
+        <div class="form-group" id="mgmt-ipv4-range-group" style="display: none">
+          <label class="block vscode-label mb-1">IPv4 Range</label>
+          <input
+            type="text"
+            id="mgmt-ipv4-range"
+            class="input-field w-full"
+            placeholder="e.g., 172.100.100.128/25"
+          />
+          <small class="text-gray-500">Limit IP allocation range within the subnet</small>
+        </div>
 
-          <!-- IPv6 Configuration -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">IPv6 Subnet</label>
-            <select id="mgmt-ipv6-type" class="input-field w-full mb-2">
-              <option value="default">Default (3fff:172:20:20::/64)</option>
-              <option value="auto">Auto-assign</option>
-              <option value="custom">Custom</option>
-            </select>
-            <input
-              type="text"
-              id="mgmt-ipv6-subnet"
-              class="input-field w-full"
-              placeholder="e.g., 3fff:172:100:100::/80"
-              style="display: none"
-            />
-          </div>
+        <!-- IPv6 Configuration -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">IPv6 Subnet</label>
+          <select id="mgmt-ipv6-type" class="input-field w-full mb-2">
+            <option value="default">Default (3fff:172:20:20::/64)</option>
+            <option value="auto">Auto-assign</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input
+            type="text"
+            id="mgmt-ipv6-subnet"
+            class="input-field w-full"
+            placeholder="e.g., 3fff:172:100:100::/80"
+            style="display: none"
+          />
+        </div>
 
-          <!-- IPv6 Gateway -->
-          <div class="form-group" id="mgmt-ipv6-gateway-group" style="display: none">
-            <label class="block vscode-label mb-1">IPv6 Gateway</label>
-            <input
-              type="text"
-              id="mgmt-ipv6-gateway"
-              class="input-field w-full"
-              placeholder="e.g., 3fff:172:100:100::1"
-            />
-            <small class="text-gray-500">Custom IPv6 gateway IP for the management bridge</small>
-          </div>
+        <!-- IPv6 Gateway -->
+        <div class="form-group" id="mgmt-ipv6-gateway-group" style="display: none">
+          <label class="block vscode-label mb-1">IPv6 Gateway</label>
+          <input
+            type="text"
+            id="mgmt-ipv6-gateway"
+            class="input-field w-full"
+            placeholder="e.g., 3fff:172:100:100::1"
+          />
+          <small class="text-gray-500">Custom IPv6 gateway IP for the management bridge</small>
+        </div>
 
-          <!-- MTU -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">MTU</label>
-            <input
-              type="number"
-              id="mgmt-mtu"
-              class="input-field w-full"
-              placeholder="Default: auto"
-            />
-            <small class="text-gray-500">MTU size (defaults to docker0 interface MTU)</small>
-          </div>
+        <!-- MTU -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">MTU</label>
+          <input
+            type="number"
+            id="mgmt-mtu"
+            class="input-field w-full"
+            placeholder="Default: auto"
+          />
+          <small class="text-gray-500">MTU size (defaults to docker0 interface MTU)</small>
+        </div>
 
-          <!-- Bridge Name -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Bridge Name</label>
-            <input
-              type="text"
-              id="mgmt-bridge"
-              class="input-field w-full"
-              placeholder="Default: auto"
-            />
-            <small class="text-gray-500">
-              Custom Linux bridge name (default: br-&lt;network-id&gt;)
-            </small>
-          </div>
+        <!-- Bridge Name -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Bridge Name</label>
+          <input
+            type="text"
+            id="mgmt-bridge"
+            class="input-field w-full"
+            placeholder="Default: auto"
+          />
+          <small class="text-gray-500">
+            Custom Linux bridge name (default: br-&lt;network-id&gt;)
+          </small>
+        </div>
 
-          <!-- External Access -->
-          <div class="form-group">
-            <div class="flex items-center">
-              <input
-                type="checkbox"
-                id="mgmt-external-access"
-                class="vscode-checkbox mr-2"
-                checked
-              />
-              <label for="mgmt-external-access" class="checkbox-label">
-                Enable External Access
-              </label>
-            </div>
-            <small class="text-gray-500">Allow external systems to reach lab nodes</small>
+        <!-- External Access -->
+        <div class="form-group">
+          <div class="flex items-center">
+            <input type="checkbox" id="mgmt-external-access" class="vscode-checkbox mr-2" checked />
+            <label for="mgmt-external-access" class="checkbox-label">Enable External Access</label>
           </div>
+          <small class="text-gray-500">Allow external systems to reach lab nodes</small>
+        </div>
 
-          <!-- Bridge Driver Options -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Bridge Driver Options</label>
-            <div id="driver-options-container" class="space-y-2">
-              <!-- Driver options will be dynamically added here -->
-            </div>
-            <button id="add-driver-option" class="btn btn-small mt-2">
-              <i class="fas fa-plus mr-1"></i>
-              Add Option
-            </button>
+        <!-- Bridge Driver Options -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Bridge Driver Options</label>
+          <div id="driver-options-container" class="space-y-2">
+            <!-- Driver options will be dynamically added here -->
           </div>
+          <button id="add-driver-option" class="btn btn-small mt-2">
+            <i class="fas fa-plus mr-1"></i>
+            Add Option
+          </button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Footer with buttons -->
-  <div class="panel-block flex items-center">
+  <div class="panel-block flex items-center flex-shrink-0">
     <div class="w-1/5 pr-1"></div>
     <div class="w-4/5 pl-2 pr-4 space-x-2 flex justify-end">
       <button id="lab-settings-apply" class="btn btn-primary btn-small">Save</button>
@@ -216,6 +202,33 @@
   // Lab Settings Panel functionality
   document.addEventListener("DOMContentLoaded", function () {
     const panel = document.getElementById("panel-lab-settings");
+    const tabContainer = document.getElementById("lab-settings-tab-container");
+
+    // Resize observer to calculate tab container height
+    function resizeTabContainer() {
+      const panelRect = panel.getBoundingClientRect();
+      const tabContainerRect = tabContainer.getBoundingClientRect();
+      const footer = panel.querySelector(".panel-block.flex.items-center");
+      const footerRect = footer ? footer.getBoundingClientRect() : { height: 0 };
+
+      // Calculate available height: panel height - everything above tab container - footer height
+      const availableHeight =
+        panelRect.height - (tabContainerRect.top - panelRect.top) - footerRect.height;
+
+      if (availableHeight > 0) {
+        tabContainer.style.height = `${availableHeight}px`;
+      }
+    }
+
+    // Set up resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      resizeTabContainer();
+    });
+
+    resizeObserver.observe(panel);
+
+    // Initial resize
+    setTimeout(resizeTabContainer, 0);
 
     // Tab switching
     const tabButtons = panel.querySelectorAll(".panel-tab-button");

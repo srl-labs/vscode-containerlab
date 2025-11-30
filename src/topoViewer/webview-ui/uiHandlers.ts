@@ -11,7 +11,7 @@ import { FilterUtils } from '../../helpers/filterUtils';
 import { normalizeLinkLabelMode, linkLabelModeLabel, type LinkLabelMode } from '../types/linkLabelMode';
 
 // Common class and display constants
-const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+// const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
 const CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
 const DISPLAY_BLOCK = 'block' as const;
 const DISPLAY_NONE = 'none' as const;
@@ -136,11 +136,12 @@ export async function showPanelAbout(): Promise<void> {
       // Hide the panel
       aboutPanel.style.display = DISPLAY_NONE;
     } else {
+      // Allow multiple panels to be open at once
       // Remove all overlay panels first
-      const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
-      for (let i = 0; i < panelOverlays.length; i++) {
-        (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
-      }
+      // const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
+      // for (let i = 0; i < panelOverlays.length; i++) {
+      //   (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
+      // }
 
       // Hide shortcuts panel if open
       const shortcutsPanel = document.getElementById('shortcuts-panel');
