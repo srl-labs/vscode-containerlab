@@ -116,6 +116,9 @@ export const env = {
 
 export const extensions = {
   getExtension(_extensionId: string) {
+    if (_extensionId) {
+      // no-op
+    }
     return {
       packageJSON: {
         version: '0.0.0-test',
@@ -125,14 +128,14 @@ export const extensions = {
 };
 
 export class EventEmitter<T> {
-  private listeners: Array<(e: T) => any> = [];
+  private listeners: Function[] = [];
 
-  get event(): (listener: (e: T) => any) => { dispose(): void } {
-    return (listener: (e: T) => any) => {
-      this.listeners.push(listener);
+  get event(): Function {
+    return (callback: Function) => {
+      this.listeners.push(callback);
       return {
         dispose: () => {
-          const idx = this.listeners.indexOf(listener);
+          const idx = this.listeners.indexOf(callback);
           if (idx >= 0) {
             this.listeners.splice(idx, 1);
           }

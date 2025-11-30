@@ -13,42 +13,49 @@ import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
 
+const originalResolve = (Module as any)._resolveFilename;
+
+// Helper to clear module cache for all vscode-containerlab modules
+function clearModuleCache() {
+  Object.keys(require.cache).forEach(key => {
+    if (key.includes('vscode-containerlab') && !key.includes('node_modules')) {
+      delete require.cache[key];
+    }
+  });
+}
+
+// Helper to resolve stub paths for module interception
+function getStubPath(request: string): string | null {
+  if (request === 'vscode') {
+    return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
+  }
+  if (request.includes('clabCommand') && !request.includes('stub')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'clabCommand-stub.js');
+  }
+  if (request.includes('utils') && !request.includes('stub')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
+  }
+  if ((request === './graph' || request.endsWith('/graph')) && !request.includes('stub')) {
+    return path.join(__dirname, '..', '..', 'helpers', 'graph-stub.js');
+  }
+  return null;
+}
+
 describe('deploy command', () => {
-  const originalResolve = (Module as any)._resolveFilename;
-  let deploy: (node?: any) => Promise<void>;
+  let deploy: Function;
   let clabStub: any;
 
-  // Helper to clear module cache for all vscode-containerlab modules
-  function clearModuleCache() {
-    Object.keys(require.cache).forEach(key => {
-      if (key.includes('vscode-containerlab') && !key.includes('node_modules')) {
-        delete require.cache[key];
-      }
-    });
-  }
-
   before(() => {
-    // Clear any previously cached modules
     clearModuleCache();
 
-    // Set up module resolution intercepts
     (Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
-      if (request === 'vscode') {
-        return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
-      }
-      if (request.includes('clabCommand') && !request.includes('stub')) {
-        return path.join(__dirname, '..', '..', 'helpers', 'clabCommand-stub.js');
-      }
-      if (request.includes('utils') && !request.includes('stub')) {
-        return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
-      }
-      if ((request === './graph' || request.endsWith('/graph')) && !request.includes('stub')) {
-        return path.join(__dirname, '..', '..', 'helpers', 'graph-stub.js');
+      const stubPath = getStubPath(request);
+      if (stubPath) {
+        return stubPath;
       }
       return originalResolve.call(this, request, parent, isMain, options);
     };
 
-    // Now require the modules fresh
     clabStub = require('../../helpers/clabCommand-stub');
     const deployModule = require('../../../src/commands/deploy');
     deploy = deployModule.deploy;
