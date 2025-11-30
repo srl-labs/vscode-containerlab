@@ -18,6 +18,7 @@ const DISPLAY_NONE = 'none' as const;
 const ERR_NO_CY = 'Cytoscape instance not available' as const;
 const LINK_LABEL_MENU_ID = 'viewport-link-label-menu' as const;
 const LINK_LABEL_TRIGGER_ID = 'viewport-link-label-button' as const;
+const CAPTURE_PANEL_ID = 'viewport-drawer-capture-sceenshoot' as const;
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -374,7 +375,7 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
       borderPadding
     });
 
-    const panel = document.getElementById('viewport-drawer-capture-sceenshoot');
+    const panel = document.getElementById(CAPTURE_PANEL_ID);
     if (panel) {
       panel.style.display = 'none';
     }
@@ -387,18 +388,17 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
  * Capture viewport as SVG - called by the navbar button
  */
 export function viewportButtonsCaptureViewportAsSvg(): void {
-  const panel = document.getElementById('viewport-drawer-capture-sceenshoot');
+  const panel = document.getElementById(CAPTURE_PANEL_ID);
   if (!panel) return;
 
-  // Hide other viewport drawers
+  const isVisible = panel.style.display === 'block';
   const drawers = document.getElementsByClassName('viewport-drawer');
   for (let i = 0; i < drawers.length; i++) {
     (drawers[i] as HTMLElement).style.display = 'none';
   }
 
-  panel.style.display = 'block';
+  panel.style.display = isVisible ? 'none' : 'block';
 }
-
 
 /**
  * Toggle split view with YAML editor
