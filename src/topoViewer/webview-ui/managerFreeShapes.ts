@@ -20,12 +20,12 @@ const SVG_STROKE_DASHARRAY_ATTR = 'stroke-dasharray';
 const HANDLE_TRANSLATE = 'translate(-50%, -50%)';
 const RESIZE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-resize-visible';
 const ROTATE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-rotate-visible';
+const PANEL_FREE_SHAPES_ID = 'panel-free-shapes';
 
 interface ShapeModalElements {
-  backdrop: HTMLDivElement;
-  dialog: HTMLDivElement;
-  dragHandle: HTMLDivElement;
-  titleEl: HTMLHeadingElement;
+  panel: HTMLDivElement;
+  titleEl: HTMLSpanElement;
+  closeBtn: HTMLButtonElement;
   typeSelect: HTMLSelectElement;
   widthInput: HTMLInputElement;
   heightInput: HTMLInputElement;
@@ -1288,10 +1288,9 @@ export class ManagerFreeShapes {
 
   private getModalElements(): ShapeModalElements | null {
     const elements = {
-      backdrop: document.getElementById('free-shapes-modal-backdrop') as HTMLDivElement | null,
-      dialog: document.getElementById('free-shapes-modal') as HTMLDivElement | null,
-      dragHandle: document.getElementById('free-shapes-drag-handle') as HTMLDivElement | null,
-      titleEl: document.getElementById('free-shapes-modal-title') as HTMLHeadingElement | null,
+      panel: document.getElementById(PANEL_FREE_SHAPES_ID) as HTMLDivElement | null,
+      titleEl: document.getElementById(`${PANEL_FREE_SHAPES_ID}-title`) as HTMLSpanElement | null,
+      closeBtn: document.getElementById(`${PANEL_FREE_SHAPES_ID}-close`) as HTMLButtonElement | null,
       typeSelect: document.getElementById('free-shapes-type') as HTMLSelectElement | null,
       widthInput: document.getElementById('free-shapes-width') as HTMLInputElement | null,
       heightInput: document.getElementById('free-shapes-height') as HTMLInputElement | null,
@@ -1374,8 +1373,12 @@ export class ManagerFreeShapes {
 
   private setupModalHandlers(annotation: FreeShapeAnnotation, els: ShapeModalElements, resolve: ShapeResolve): void {
     const cleanup = () => {
-      els.backdrop.style.display = 'none';
-      els.dialog.style.display = 'none';
+      this.hideModal(els);
+    };
+
+    const handleCancel = () => {
+      cleanup();
+      resolve(null);
     };
 
     els.typeSelect.addEventListener('change', () => {
@@ -1395,10 +1398,8 @@ export class ManagerFreeShapes {
       els.borderWidthInput.value = '0';
     });
 
-    els.cancelBtn.addEventListener('click', () => {
-      cleanup();
-      resolve(null);
-    });
+    els.cancelBtn.addEventListener('click', handleCancel);
+    els.closeBtn.addEventListener('click', handleCancel);
 
     els.okBtn.addEventListener('click', () => {
       const result: FreeShapeAnnotation = {
@@ -1424,8 +1425,25 @@ export class ManagerFreeShapes {
   }
 
   private showModal(els: ShapeModalElements): void {
-    els.backdrop.style.display = 'block';
-    els.dialog.style.display = 'block';
+    // Use window manager to show the panel
+    const managedWindow = (window as any).panelManager?.getPanel(PANEL_FREE_SHAPES_ID);
+    if (managedWindow) {
+      managedWindow.show();
+    } else {
+      // Fallback if window manager not available
+      els.panel.style.display = 'flex';
+    }
+  }
+
+  private hideModal(els: ShapeModalElements): void {
+    // Use window manager to hide the panel
+    const managedWindow = (window as any).panelManager?.getPanel(PANEL_FREE_SHAPES_ID);
+    if (managedWindow) {
+      managedWindow.hide();
+    } else {
+      // Fallback if window manager not available
+      els.panel.style.display = 'none';
+    }
   }
 
   public removeFreeShapeAnnotation(id: string): void {

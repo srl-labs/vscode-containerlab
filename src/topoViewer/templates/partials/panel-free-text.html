@@ -1,98 +1,163 @@
-<div id="free-text-modal-backdrop" class="modal-backdrop" style="display: none"></div>
-<div id="free-text-modal" class="modal-content" style="display: none">
-  <div
-    id="free-text-drag-handle"
-    class="panel-drag-handle w-full h-[6px] bg-[var(--vscode-panel-border)] rounded-t-md cursor-grab hover:bg-[var(--vscode-button-hoverBackground)] transition-colors duration-150"
-    style="margin: 0 0 8px 0"
-  ></div>
-  <div class="p-6 pt-0">
-    <h3 id="free-text-modal-title" class="text-lg font-semibold mb-4"></h3>
-    <label for="free-text-modal-text" class="label mb-1">Text:</label>
-    <div class="flex items-center gap-2 mb-2">
-      <div class="flex items-center gap-2">
-        <button id="free-text-tab-write" class="btn btn-small btn-primary">Write</button>
-        <button id="free-text-tab-preview" class="btn btn-small btn-outlined">Preview</button>
+<!-- Free Text Editor Panel -->
+<div
+  id="panel-free-text"
+  class="panel panel-overlay panel-editor fixed overflow-hidden z-[21] draggable-panel flex flex-col"
+  style="display: none"
+>
+  <div class="panel-heading panel-title-bar flex-shrink-0" id="panel-free-text-heading">
+    <span class="panel-title" id="panel-free-text-title">Add Text</span>
+    <button class="panel-close-btn" id="panel-free-text-close" aria-label="Close" title="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <div class="panel-block p-4 overflow-y-auto" id="panel-free-text-content">
+    <div class="space-y-4">
+      <!-- Text Input -->
+      <div class="form-group">
+        <label for="free-text-modal-text" class="vscode-label mb-1">Text:</label>
+        <div class="flex items-center gap-2 mb-2">
+          <div class="flex items-center gap-2">
+            <button id="free-text-tab-write" class="btn btn-small btn-primary">Write</button>
+            <button id="free-text-tab-preview" class="btn btn-small btn-outlined">Preview</button>
+          </div>
+          <span class="text-xs text-[var(--text-secondary)] italic ml-auto">
+            Markdown and fenced code blocks supported
+          </span>
+        </div>
+        <div class="w-full">
+          <textarea
+            id="free-text-modal-text"
+            class="input-field w-full h-36 mb-2 resize-y"
+          ></textarea>
+          <div
+            id="free-text-preview-container"
+            class="input-field w-full h-36 overflow-auto hidden"
+          >
+            <div
+              id="free-text-preview"
+              class="text-sm leading-relaxed whitespace-pre-wrap break-words free-text-markdown"
+            ></div>
+          </div>
+        </div>
       </div>
-      <span class="text-xs text-[var(--text-secondary)] italic ml-auto">
-        Markdown and fenced code blocks supported
-      </span>
-    </div>
-    <div class="w-full mb-4">
-      <textarea id="free-text-modal-text" class="input-field w-full h-36 mb-2 resize-y"></textarea>
-      <div id="free-text-preview-container" class="input-field w-full h-36 overflow-auto hidden">
-        <div
-          id="free-text-preview"
-          class="text-sm leading-relaxed whitespace-pre-wrap break-words free-text-markdown"
-        ></div>
+
+      <!-- Font Settings -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="form-group">
+          <label for="free-text-font-size" class="vscode-label mb-1">Font Size:</label>
+          <input
+            id="free-text-font-size"
+            type="number"
+            min="1"
+            max="72"
+            class="input-field w-full"
+          />
+        </div>
+        <div class="form-group">
+          <label for="free-text-font-family" class="vscode-label mb-1">Font Family:</label>
+          <select id="free-text-font-family" class="input-field w-full"></select>
+        </div>
+        <div class="form-group">
+          <label for="free-text-font-color" class="vscode-label mb-1">Text Color:</label>
+          <input id="free-text-font-color" type="color" class="input-field w-full h-8 p-1" />
+        </div>
+        <div class="form-group">
+          <label for="free-text-bg-color" class="vscode-label mb-1">Background:</label>
+          <input id="free-text-bg-color" type="color" class="input-field w-full h-8 p-1" />
+        </div>
+        <div class="form-group">
+          <label for="free-text-rotation" class="vscode-label mb-1">Rotation (deg):</label>
+          <input
+            id="free-text-rotation"
+            type="number"
+            min="-360"
+            max="360"
+            step="1"
+            class="input-field w-full"
+          />
+        </div>
       </div>
-    </div>
-    <div class="grid grid-cols-2 gap-4 mb-4">
-      <div>
-        <label for="free-text-font-size" class="label mb-1">Font Size:</label>
-        <input id="free-text-font-size" type="number" min="1" max="72" class="input-field w-full" />
-      </div>
-      <div>
-        <label for="free-text-font-family" class="label mb-1">Font Family:</label>
-        <select id="free-text-font-family" class="input-field w-full"></select>
-      </div>
-      <div>
-        <label for="free-text-font-color" class="label mb-1">Text Color:</label>
-        <input id="free-text-font-color" type="color" class="input-field w-full h-8 p-1" />
-      </div>
-      <div>
-        <label for="free-text-bg-color" class="label mb-1">Background:</label>
-        <input id="free-text-bg-color" type="color" class="input-field w-full h-8 p-1" />
-      </div>
-      <div>
-        <label for="free-text-rotation" class="label mb-1">Rotation (deg):</label>
-        <input
-          id="free-text-rotation"
-          type="number"
-          min="-360"
-          max="360"
-          step="1"
-          class="input-field w-full"
-        />
-      </div>
-    </div>
-    <div class="flex flex-wrap items-center gap-2 mb-2">
-      <button id="free-text-bold-btn" class="btn btn-small btn-outlined"><strong>B</strong></button>
-      <button id="free-text-italic-btn" class="btn btn-small btn-outlined"><em>I</em></button>
-      <button id="free-text-underline-btn" class="btn btn-small btn-outlined"><u>U</u></button>
-      <button id="free-text-transparent-btn" class="btn btn-small btn-outlined ml-auto">
-        Transparent BG
-      </button>
-      <button id="free-text-rounded-btn" class="btn btn-small btn-outlined">Rounded Corners</button>
-    </div>
-    <div class="flex flex-wrap items-center gap-2 justify-end mb-4">
-      <span class="text-xs uppercase tracking-wide text-[var(--text-secondary)]">Align</span>
-      <div class="flex items-center gap-1">
-        <button
-          id="free-text-align-left-btn"
-          class="btn btn-small btn-outlined"
-          aria-label="Align text left"
-        >
-          <i class="fas fa-align-left text-sm" aria-hidden="true"></i>
+
+      <!-- Formatting Buttons -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="free-text-bold-btn" class="btn btn-small btn-outlined">
+          <strong>B</strong>
         </button>
-        <button
-          id="free-text-align-center-btn"
-          class="btn btn-small btn-outlined"
-          aria-label="Align text center"
-        >
-          <i class="fas fa-align-center text-sm" aria-hidden="true"></i>
+        <button id="free-text-italic-btn" class="btn btn-small btn-outlined"><em>I</em></button>
+        <button id="free-text-underline-btn" class="btn btn-small btn-outlined"><u>U</u></button>
+        <button id="free-text-transparent-btn" class="btn btn-small btn-outlined ml-auto">
+          Transparent BG
         </button>
-        <button
-          id="free-text-align-right-btn"
-          class="btn btn-small btn-outlined"
-          aria-label="Align text right"
-        >
-          <i class="fas fa-align-right text-sm" aria-hidden="true"></i>
+        <button id="free-text-rounded-btn" class="btn btn-small btn-outlined">
+          Rounded Corners
         </button>
       </div>
-    </div>
-    <div class="flex justify-end gap-2 mt-4">
-      <button id="free-text-cancel-btn" class="btn btn-outlined btn-small">Cancel</button>
-      <button id="free-text-ok-btn" class="btn btn-primary btn-small">OK</button>
+
+      <!-- Alignment -->
+      <div class="flex flex-wrap items-center gap-2 justify-end">
+        <span class="text-xs uppercase tracking-wide text-[var(--text-secondary)]">Align</span>
+        <div class="flex items-center gap-1">
+          <button
+            id="free-text-align-left-btn"
+            class="btn btn-small btn-outlined"
+            aria-label="Align text left"
+          >
+            <i class="fas fa-align-left text-sm" aria-hidden="true"></i>
+          </button>
+          <button
+            id="free-text-align-center-btn"
+            class="btn btn-small btn-outlined"
+            aria-label="Align text center"
+          >
+            <i class="fas fa-align-center text-sm" aria-hidden="true"></i>
+          </button>
+          <button
+            id="free-text-align-right-btn"
+            class="btn btn-small btn-outlined"
+            aria-label="Align text right"
+          >
+            <i class="fas fa-align-right text-sm" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Footer with buttons -->
+  <div
+    id="panel-free-text-footer"
+    class="panel-block p-3 flex justify-end gap-2 flex-shrink-0 border-t border-[var(--vscode-panel-border)]"
+  >
+    <button id="free-text-cancel-btn" class="btn btn-outlined btn-small">Cancel</button>
+    <button id="free-text-ok-btn" class="btn btn-primary btn-small">OK</button>
+  </div>
+
+  <script>
+    (function () {
+      const panel = document.getElementById("panel-free-text");
+      const content = document.getElementById("panel-free-text-content");
+      const footer = document.getElementById("panel-free-text-footer");
+
+      function resizeContent() {
+        if (!panel || !content || !footer) return;
+        const panelRect = panel.getBoundingClientRect();
+        const contentRect = content.getBoundingClientRect();
+        const footerHeight = footer.getBoundingClientRect().height;
+
+        const availableHeight = panelRect.height - (contentRect.top - panelRect.top) - footerHeight;
+
+        if (availableHeight > 0) {
+          content.style.height = `${availableHeight}px`;
+        }
+      }
+
+      const resizeObserver = new ResizeObserver(() => {
+        resizeContent();
+      });
+
+      resizeObserver.observe(panel);
+      setTimeout(resizeContent, 100);
+    })();
+  </script>
 </div>
