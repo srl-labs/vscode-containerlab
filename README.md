@@ -52,7 +52,8 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 
 ## Requirements
 
-- **containerlab** must be installed and accessible in your system `PATH`. The extension will offer to install it if not found.
+- **containerlab** must be installed. The extension will offer to install it if not found.
+- You must be in the `clab_admins` and `docker` group. Podman is not supported for runtime features.
 - (Optional) **Edgeshark** for packet capture features - can be installed directly from the extension using the "Install Edgeshark" command.
 
 
@@ -83,10 +84,9 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
-| `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
+| `binaryPath` | string | `""` | Custom path to containerlab binary (leave empty to resolve from PATH) |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
-| `skipInstallationCheck` | boolean | `false` | Skip containerlab install check/prompt; extension stays inactive if containerlab is missing |
+| `skipUpdateCheck` | boolean | `false` | Skip extension update check |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
 
 The Containerlab Explorer listens to the containerlab event stream, so running labs update live without manual refresh intervals.
@@ -125,10 +125,9 @@ The Containerlab Explorer listens to the containerlab event stream, so running l
 | `capture.preferredAction` | string | `Wireshark VNC` | Preferred capture method (`Edgeshark`, `Wireshark VNC`) |
 | `capture.wireshark.dockerImage` | string | `ghcr.io/kaelemc/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC |
 | `capture.wireshark.pullPolicy` | string | `always` | Image pull policy (`always`, `missing`, `never`) |
-| `capture.wireshark.extraDockerArgs` | string | `-e HTTP_PROXY=""`<br/>`-e http_proxy=""` | Extra docker arguments |
 | `capture.wireshark.theme` | string | `Follow VS Code theme` | Wireshark theme |
 | `capture.wireshark.stayOpenInBackground` | boolean | `true` | Keep sessions alive in background |
-| `edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
+| `capture.edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
 | `capture.remoteHostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
 | `capture.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
 
@@ -147,6 +146,10 @@ The Containerlab Explorer listens to the containerlab event stream, so running l
   "containerlab.node.execCommandMapping": {
     "nokia_srlinux": "sr_cli",
     "arista_ceos": "Cli"
+  },
+  "containerlab.node.sshUserMapping": {
+    "nokia_srlinux": "admin",
+    "cisco_xrd": "clab"
   },
   "containerlab.editor.customNodes": [
     {
