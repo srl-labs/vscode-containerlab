@@ -1750,15 +1750,16 @@ topology:
       const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
       const result = {
         annotations: annotations.freeTextAnnotations || [],
+        freeShapeAnnotations: annotations.freeShapeAnnotations || [],
         groupStyles: annotations.groupStyleAnnotations || []
       };
       log.info(
-        `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
+        `Loaded ${annotations.freeTextAnnotations?.length || 0} text annotations, ${annotations.freeShapeAnnotations?.length || 0} shape annotations, and ${annotations.groupStyleAnnotations?.length || 0} group styles`
       );
       return { result, error: null };
     } catch (err) {
       log.error(`Error loading annotations: ${JSON.stringify(err, null, 2)}`);
-      return { result: { annotations: [], groupStyles: [] }, error: null };
+      return { result: { annotations: [], freeShapeAnnotations: [], groupStyles: [] }, error: null };
     }
   }
 
@@ -1770,16 +1771,19 @@ topology:
     try {
       const data = payloadObj;
       const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      // Preserve existing values when not provided in the payload
+      // This allows individual managers (freeText, freeShapes, groupStyle) to save independently
       await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-        freeTextAnnotations: data.annotations,
-        groupStyleAnnotations: data.groupStyles,
+        freeTextAnnotations: data.annotations !== undefined ? data.annotations : existing.freeTextAnnotations,
+        freeShapeAnnotations: data.freeShapeAnnotations !== undefined ? data.freeShapeAnnotations : existing.freeShapeAnnotations,
+        groupStyleAnnotations: data.groupStyles !== undefined ? data.groupStyles : existing.groupStyleAnnotations,
         cloudNodeAnnotations: existing.cloudNodeAnnotations,
         nodeAnnotations: existing.nodeAnnotations,
         // Preserve viewer settings to avoid accidental loss when other managers save
         viewerSettings: (existing as any).viewerSettings
       });
       log.info(
-        `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
+        `Saved ${data.annotations?.length || 0} text annotations, ${data.freeShapeAnnotations?.length || 0} shape annotations, and ${data.groupStyles?.length || 0} group styles`
       );
       return { result: { success: true }, error: null };
     } catch (err) {

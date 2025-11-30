@@ -1643,6 +1643,73 @@
     pointer-events: auto;
   }
 
+  .free-shape-overlay-resize {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: se-resize;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-shape-overlay-resize::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(255, 255, 255, 0.9);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.9);
+    transform: rotate(45deg);
+    display: block;
+  }
+
+  .free-shape-overlay-resize-visible {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+
+  .free-shape-overlay-rotate {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: grab;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-shape-overlay-rotate:active {
+    cursor: grabbing;
+  }
+
+  .free-shape-overlay-rotate::before {
+    content: '\21bb';
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .free-shape-overlay-rotate-visible {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+
   .text-secondary {
     color: var(--text-secondary);
   }

@@ -253,7 +253,8 @@ export class ManagerGroupManagement {
   };
 
   private shouldSkipDragfree(draggedNode: cytoscape.NodeSingular): boolean {
-    if (draggedNode.data('topoViewerRole') === 'freeText') {
+    if (draggedNode.data('topoViewerRole') === 'freeText' ||
+        draggedNode.data('topoViewerRole') === 'freeShape') {
       return true;
     }
     if (this.cy.nodes('[topoViewerRole = "group"]').some(group => (group as cytoscape.NodeSingular).grabbed())) {
@@ -410,11 +411,18 @@ export class ManagerGroupManagement {
     const deleteButton = document.getElementById(`${PANEL_EL_PREFIX}delete-button`);
     if (deleteButton) deleteButton.addEventListener('click', () => this.nodeParentRemoval());
 
-    const closeButton = document.getElementById(`${PANEL_EL_PREFIX}close-button`);
-    if (closeButton) closeButton.addEventListener('click', () => this.nodeParentPropertiesUpdateClose());
+    // OK button: save and close
+    const okButton = document.getElementById(`${PANEL_EL_PREFIX}ok-button`);
+    if (okButton) {
+      okButton.addEventListener('click', () => {
+        autoUpdateGroup();
+        this.nodeParentPropertiesUpdateClose();
+      });
+    }
 
-    const updateButton = panel.querySelector('.btn-primary') as HTMLButtonElement | null;
-    if (updateButton) updateButton.addEventListener('click', autoUpdateGroup);
+    // Apply button: save without closing
+    const applyButton = document.getElementById(`${PANEL_EL_PREFIX}apply-button`);
+    if (applyButton) applyButton.addEventListener('click', autoUpdateGroup);
 
     this.initializeLabelDropdown(autoUpdateGroup);
   }

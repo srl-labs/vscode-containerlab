@@ -25,8 +25,8 @@ export interface DataItem {
 
 const INITIAL_POSITION_START = { x: 105, y: 105 };
 const INITIAL_POSITION_SPACING = { x: 98, y: 98 };
-// Selector to exclude free text nodes from layouts
-const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"]' as const;
+// Selector to exclude free text and free shape nodes from layouts
+const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"], [topoViewerRole="freeShape"]' as const;
 
 
 function allNodesOverlap(cy: cytoscape.Core): boolean {
@@ -103,6 +103,15 @@ function loadFreeTextAnnotations(): void {
   if (freeTextManager) {
     freeTextManager.loadAnnotations().catch((error: any) => {
       log.error(`Failed to load free text annotations: ${error}`);
+    });
+  }
+}
+
+function loadFreeShapeAnnotations(): void {
+  const freeShapesManager = (window as any).topologyWebviewController?.freeShapesManager;
+  if (freeShapesManager) {
+    freeShapesManager.loadAnnotations().catch((error: any) => {
+      log.error(`Failed to load free shape annotations: ${error}`);
     });
   }
 }
@@ -285,6 +294,7 @@ export async function fetchAndLoadData(
 
       fitViewportAfterLayout(cy);
       loadFreeTextAnnotations();
+      loadFreeShapeAnnotations();
 
       if (overlap) {
         scheduleImprovedLayout(cy);

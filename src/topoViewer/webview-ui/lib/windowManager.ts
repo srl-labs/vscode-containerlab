@@ -422,6 +422,7 @@ export class ManagedWindow {
 
   public show(): void {
     this.element.style.display = 'block';
+    this.applyState();
     this.focus();
   }
 
