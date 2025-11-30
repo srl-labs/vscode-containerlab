@@ -17,7 +17,7 @@ import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
-import { onDataChanged } from "./services/containerlabEvents";
+import { onDataChanged, onContainerStateChanged } from "./services/containerlabEvents";
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -407,6 +407,17 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push({ dispose: disposeRealtime });
+
+  // Register listener for container state changes to trigger background interface inspection
+  const disposeStateChange = onContainerStateChanged((containerShortId, newState) => {
+    if (runningLabsProvider) {
+      void runningLabsProvider.refreshContainer(containerShortId, newState).catch(err => {
+        outputChannel.debug(`Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`);
+      });
+    }
+  });
+  context.subscriptions.push({ dispose: disposeStateChange });
+
   ins.refreshFromEventStream();
 }
 

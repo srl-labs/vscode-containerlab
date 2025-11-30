@@ -5,7 +5,7 @@ import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions, outputChannel } from "../extension";
 import { getCurrentTopoViewer } from "../commands/graph";
 
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry, ClabInterfaceStats } from "../types/containerlab";
@@ -78,6 +78,65 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             // Selective refresh - only refresh this element
             this._onDidChangeTreeData.fire(element);
         }
+    }
+
+    /**
+     * Refresh a specific container by its short ID.
+     * Rebuilds the interface list from scratch based on current inspection data.
+     */
+    async refreshContainer(containerShortId: string, newState: string) {
+        outputChannel.info(`Container state change detected: ${containerShortId} → ${newState}`);
+        console.log(`[RunningLabTreeDataProvider]:\tRefreshing container ${containerShortId} (state: ${newState})`);
+
+        // Find the container node in our tree
+        const containerNode = this.findContainerNode(containerShortId);
+        if (!containerNode) {
+            outputChannel.warn(`Container ${containerShortId} not found in tree for refresh`);
+            console.log(`[RunningLabTreeDataProvider]:\tContainer ${containerShortId} not found in tree`);
+            return;
+        }
+
+        outputChannel.info(`Triggering interface inspection for container: ${containerNode.name} (${containerShortId})`);
+
+        // Rebuild interface list from inspection data
+        // This will get current interfaces if running, or empty list if not
+        const newInterfaces = this.discoverContainerInterfaces(
+            containerNode.name,
+            containerShortId,
+            true  // Log to output channel
+        ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
+        outputChannel.info(`Interface inspection complete: ${containerNode.name} - found ${newInterfaces.length} interfaces`);
+        console.log(`[RunningLabTreeDataProvider]:\tFound ${newInterfaces.length} interfaces for container ${containerShortId}`);
+
+        // Replace the entire interface list
+        (containerNode as any).interfaces = newInterfaces;
+
+        // Update collapsible state based on interface count
+        containerNode.collapsibleState = newInterfaces.length > 0
+            ? vscode.TreeItemCollapsibleState.Collapsed
+            : vscode.TreeItemCollapsibleState.None;
+
+        // Fire refresh for this specific container
+        this._onDidChangeTreeData.fire(containerNode);
+
+        // Also refresh the topology viewer if it's open
+        await this.refreshTopoViewerIfOpen();
+    }
+
+    /**
+     * Find a container node by its short ID
+     */
+    private findContainerNode(containerShortId: string): c.ClabContainerTreeNode | undefined {
+        for (const lab of this.treeItems) {
+            if (!lab.containers) continue;
+            for (const container of lab.containers) {
+                if (container.cID === containerShortId) {
+                    return container;
+                }
+            }
+        }
+        return undefined;
     }
 
     setTreeFilter(filterText: string) {
@@ -1054,10 +1113,18 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     private discoverContainerInterfaces(
         cName: string,
-        cID: string
+        cID: string,
+        logToOutput: boolean = false
     ): c.ClabInterfaceTreeNode[] {
+        if (logToOutput) {
+            outputChannel.debug(`Inspecting interfaces for container: ${cName} (${cID})`);
+        }
         const snapshot = ins.getInterfacesSnapshot(cID, cName);
-        return this.buildInterfaceNodes(snapshot, cName, cID);
+        const interfaces = this.buildInterfaceNodes(snapshot, cName, cID);
+        if (logToOutput) {
+            outputChannel.debug(`Interface snapshot retrieved: ${cName} - ${interfaces.length} interfaces`);
+        }
+        return interfaces;
     }
 
     private buildInterfaceNodes(clabInsJSON: ClabInterfaceSnapshot[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {

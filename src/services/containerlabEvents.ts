@@ -225,7 +225,10 @@ const interfacesByContainer = new Map<string, Map<string, InterfaceRecord>>();
 const interfaceVersions = new Map<string, number>();
 const nodeSnapshots = new Map<string, NodeSnapshot>();
 type DataListener = () => void;
+/* eslint-disable-next-line no-unused-vars */
+type ContainerStateChangedListener = (containerShortId: string, newState: string) => void;
 const dataListeners = new Set<DataListener>();
+const containerStateChangedListeners = new Set<ContainerStateChangedListener>();
 let dataChangedTimer: ReturnType<typeof setTimeout> | null = null;
 const DATA_NOTIFY_DELAY_MS = 50;
 
@@ -246,6 +249,19 @@ function scheduleDataChanged(): void {
             }
         }
     }, DATA_NOTIFY_DELAY_MS);
+}
+
+function notifyContainerStateChanged(containerShortId: string, newState: string): void {
+    if (containerStateChangedListeners.size === 0) {
+        return;
+    }
+    for (const listener of Array.from(containerStateChangedListeners)) {
+        try {
+            listener(containerShortId, newState);
+        } catch (err) {
+            console.error(`[containerlabEvents]: Failed to notify state change listener: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
 }
 
 function scheduleInitialResolution(): void {
@@ -833,11 +849,18 @@ function applyContainerEvent(event: ContainerlabEvent): void {
 
     const eventTimestamp = parseEventTimestamp(event.timestamp);
     const existing = containersById.get(record.data.ShortID);
+    const oldState = existing?.data.State;
     const mergedRecord = mergeContainerRecord(existing, record, action);
     updateNodeSnapshot(mergedRecord, eventTimestamp, action);
     const enrichedRecord = applyNodeSnapshot(mergedRecord);
+    const newState = enrichedRecord.data.State;
+
     containersById.set(enrichedRecord.data.ShortID, enrichedRecord);
     updateLabMappings(existing, enrichedRecord);
+
+    if (oldState && oldState !== newState) {
+        notifyContainerStateChanged(enrichedRecord.data.ShortID, newState);
+    }
 
     if (shouldMarkInterfacesDown(enrichedRecord.data.State)) {
         if (markInterfacesDown(enrichedRecord.data.ShortID)) {
@@ -942,22 +965,11 @@ function markInterfacesDown(containerId: string): boolean {
         return false;
     }
 
-    let changed = false;
+    // When a container goes down, clear all interfaces
+    interfacesByContainer.delete(containerId);
+    bumpInterfaceVersion(containerId);
 
-    for (const [name, iface] of ifaceMap.entries()) {
-        if ((iface.state || "").toLowerCase() === "down") {
-            continue;
-        }
-
-        ifaceMap.set(name, { ...iface, state: "down" });
-        changed = true;
-    }
-
-    if (changed) {
-        bumpInterfaceVersion(containerId);
-    }
-
-    return changed;
+    return true;
 }
 
 function handleEventLine(line: string): void {
@@ -1105,5 +1117,12 @@ export function onDataChanged(listener: DataListener): () => void {
     dataListeners.add(listener);
     return () => {
         dataListeners.delete(listener);
+    };
+}
+
+export function onContainerStateChanged(listener: ContainerStateChangedListener): () => void {
+    containerStateChangedListeners.add(listener);
+    return () => {
+        containerStateChangedListeners.delete(listener);
     };
 }
