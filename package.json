@@ -1206,7 +1206,7 @@
               "polling"
             ],
             "default": "events",
-            "markdownDescription": "How to refresh lab data. `events` uses real-time containerlab events (requires containerlab 0.60+). `polling` uses periodic `containerlab inspect` calls."
+            "markdownDescription": "How to refresh lab data. `events` uses real-time containerlab events. `polling` uses periodic `containerlab inspect` calls."
           },
           "containerlab.pollInterval": {
             "type": "number",
