@@ -530,7 +530,8 @@ export class ManagerFreeShapes {
       'background-opacity': 0,
       'border-width': 0,
       'shape': 'rectangle',
-      'label': ''
+      'label': '',
+      'z-index': 0
     });
   }
 
