@@ -40,9 +40,6 @@ export class ManagerViewportPanels {
   private static readonly CLASS_DYNAMIC_ENTRY = "dynamic-entry" as const;
   private static readonly CLASS_INPUT_FIELD = "input-field" as const;
   private static readonly CLASS_DYNAMIC_DELETE_BTN = "dynamic-delete-btn" as const;
-  private static readonly CLASS_PANEL_OVERLAY = "panel-overlay" as const;
-  private static readonly CLASS_VIEWPORT_DRAWER = "viewport-drawer" as const;
-  private static readonly CLASS_VIEWPORT_DRAWER_ALT = "ViewPortDrawer" as const;
   private static readonly CLASS_OPACITY_50 = "opacity-50" as const;
   private static readonly CLASS_CURSOR_NOT_ALLOWED = "cursor-not-allowed" as const;
 
@@ -465,14 +462,6 @@ export class ManagerViewportPanels {
     }
   }
 
-  private hidePanelOverlays(): void {
-    const panelOverlays = document.getElementsByClassName(
-      ManagerViewportPanels.CLASS_PANEL_OVERLAY
-    );
-    Array.from(panelOverlays).forEach((panel) => {
-      (panel as HTMLElement).style.display = "none";
-    });
-  }
 
   private populateNodeEditorBasics(node: cytoscape.NodeSingular): void {
     log.debug(`panelNodeEditor - node ID: ${node.data("id")}`);
@@ -1005,10 +994,6 @@ export class ManagerViewportPanels {
     }
   }
 
-  private hideAllPanels(): void {
-    const overlays = document.getElementsByClassName(ManagerViewportPanels.CLASS_PANEL_OVERLAY);
-    Array.from(overlays).forEach((el) => ((el as HTMLElement).style.display = "none"));
-  }
 
   private getEdgeEditorElements(): {
     panel: HTMLElement;

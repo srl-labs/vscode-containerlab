@@ -1658,24 +1658,6 @@ class TopologyWebviewController {
     });
   }
 
-  private closePanelsAndResetState(): void {
-    const panelOverlays = document.getElementsByClassName(
-      TopologyWebviewController.CLASS_PANEL_OVERLAY
-    );
-    for (let i = 0; i < panelOverlays.length; i++) {
-      (panelOverlays[i] as HTMLElement).style.display = "none";
-    }
-    const viewportDrawer = document.getElementsByClassName(
-      TopologyWebviewController.CLASS_VIEWPORT_DRAWER
-    );
-    for (let i = 0; i < viewportDrawer.length; i++) {
-      (viewportDrawer[i] as HTMLElement).style.display = "none";
-    }
-    topoViewerState.nodeClicked = false;
-    topoViewerState.edgeClicked = false;
-    this.cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
-    topoViewerState.selectedEdge = null;
-  }
 
   private async handleEditModeNodeClick(event: cytoscape.EventObject): Promise<void> {
     if (this.currentMode !== "edit") {
@@ -1861,15 +1843,6 @@ class TopologyWebviewController {
     this.setupLinkPanelResizeObserver();
   }
 
-  private hideAllPanels(): void {
-    const panelOverlays = document.getElementsByClassName(
-      TopologyWebviewController.CLASS_PANEL_OVERLAY
-    );
-    Array.from(panelOverlays).forEach((panel) => ((panel as HTMLElement).style.display = "none"));
-    // Clean up graphs and resize observer when hiding panels
-    this.destroyGraphs();
-    this.disconnectLinkPanelResizeObserver();
-  }
 
   private highlightLink(ele: cytoscape.Singular): void {
     this.cy.edges().removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
@@ -1991,103 +1964,6 @@ class TopologyWebviewController {
     el.textContent = text;
   }
 
-  // Keep old signature for backward compatibility
-  private setLabelTextOld(id: string, value: string | number | undefined, fallback: string): void {
-    const el = document.getElementById(id);
-    if (!el) {
-      return;
-    }
-    let text: string;
-    if (value === undefined) {
-      text = fallback;
-    } else if (typeof value === "number") {
-      text = value.toLocaleString();
-    } else if (value.trim() === "") {
-      text = fallback;
-    } else {
-      text = value;
-    }
-    el.textContent = text;
-  }
-
-  private buildRateLine(
-    stats: InterfaceStatsPayload | undefined,
-    direction: "rx" | "tx"
-  ): string | undefined {
-    if (!stats) {
-      return undefined;
-    }
-    const bpsKey = direction === "rx" ? "rxBps" : "txBps";
-    const ppsKey = direction === "rx" ? "rxPps" : "txPps";
-    const bps = stats[bpsKey];
-    const pps = stats[ppsKey];
-
-    if (typeof bps !== "number" || !Number.isFinite(bps)) {
-      if (typeof pps !== "number" || !Number.isFinite(pps)) {
-        return undefined;
-      }
-      return `PPS ${this.formatWithPrecision(pps, 2)}`;
-    }
-
-    const rateParts = [
-      `${this.formatWithPrecision(bps, 0)} bps`,
-      `${this.formatWithPrecision(bps / 1_000, 2)} Kbps`,
-      `${this.formatWithPrecision(bps / 1_000_000, 2)} Mbps`,
-      `${this.formatWithPrecision(bps / 1_000_000_000, 2)} Gbps`
-    ];
-
-    let line = rateParts.join(" / ");
-    if (typeof pps === "number" && Number.isFinite(pps)) {
-      line += ` | PPS: ${this.formatWithPrecision(pps, 2)}`;
-    }
-    return line;
-  }
-
-  private buildCounterLine(
-    stats: InterfaceStatsPayload | undefined,
-    direction: "rx" | "tx"
-  ): string | undefined {
-    if (!stats) {
-      return undefined;
-    }
-    const bytesKey = direction === "rx" ? "rxBytes" : "txBytes";
-    const packetsKey = direction === "rx" ? "rxPackets" : "txPackets";
-    const bytes = stats[bytesKey];
-    const packets = stats[packetsKey];
-    const segments: string[] = [];
-
-    if (typeof bytes === "number" && Number.isFinite(bytes)) {
-      segments.push(`${this.formatWithPrecision(bytes, 0)} bytes`);
-    }
-    if (typeof packets === "number" && Number.isFinite(packets)) {
-      segments.push(`${this.formatWithPrecision(packets, 0)} packets`);
-    }
-
-    if (segments.length === 0) {
-      return undefined;
-    }
-
-    return segments.join(" / ");
-  }
-
-  private buildIntervalLine(stats: InterfaceStatsPayload | undefined): string | undefined {
-    if (!stats) {
-      return undefined;
-    }
-    const interval = stats.statsIntervalSeconds;
-    if (typeof interval !== "number" || !Number.isFinite(interval)) {
-      return undefined;
-    }
-    return `${this.formatWithPrecision(interval, 3)} s`;
-  }
-
-  private formatWithPrecision(value: number, fractionDigits: number): string {
-    return value.toLocaleString(undefined, {
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits
-    });
-  }
-
   private initOrUpdateGraph(endpoint: "a" | "b", endpointKey: string, stats: InterfaceStatsPayload | undefined, panelElement?: HTMLElement): void {
     const context = panelElement || document;
     const containerEl = context.querySelector(`#panel-link-endpoint-${endpoint}-graph`) as HTMLElement | null || document.getElementById(`panel-link-endpoint-${endpoint}-graph`);
@@ -2105,7 +1981,7 @@ class TopologyWebviewController {
       const width = rect.width || 500;
       // Reduce height to leave room for legend (subtract ~60px for legend space)
       const height = (rect.height || 400) - 60;
-      const emptyData = [[], [], [], [], []];
+      const emptyData: uPlot.AlignedData = [[], [], [], [], []] as unknown as uPlot.AlignedData;
       const opts = this.createGraphOptions(width, height);
       graphInstance = new uPlot(opts, emptyData, containerEl);
 
@@ -2129,7 +2005,7 @@ class TopologyWebviewController {
     }
   }
 
-  private setupPanelGraphResizeObserver(panelElement: HTMLElement | undefined, endpoint: string, containerEl: HTMLElement, graphInstance: uPlot): void {
+  private setupPanelGraphResizeObserver(panelElement: HTMLElement | undefined, _endpoint: string, containerEl: HTMLElement, graphInstance: uPlot): void {
     if (!panelElement) return; // Only set up for panel instances, not the template
 
     const resizeObserver = new ResizeObserver(() => {
@@ -2354,17 +2230,6 @@ class TopologyWebviewController {
       }],
       setData: [setCursorToLatest]
     };
-  }
-
-  private destroyGraphs(): void {
-    if (this.linkGraphs.a) {
-      this.linkGraphs.a.destroy();
-      this.linkGraphs.a = null;
-    }
-    if (this.linkGraphs.b) {
-      this.linkGraphs.b.destroy();
-      this.linkGraphs.b = null;
-    }
   }
 
   private fixLegendDisplay(u: uPlot): void {
