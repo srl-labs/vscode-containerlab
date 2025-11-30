@@ -1193,6 +1193,31 @@
             "type": "number",
             "default": 8080,
             "description": "Port for GoTTY web terminal."
+          },
+          "containerlab.runtime": {
+            "type": "string",
+            "default": "docker",
+            "description": "Container runtime to use (docker, podman)."
+          },
+          "containerlab.refreshMode": {
+            "type": "string",
+            "enum": [
+              "events",
+              "polling"
+            ],
+            "default": "events",
+            "markdownDescription": "How to refresh lab data. `events` uses real-time containerlab events (requires containerlab 0.60+). `polling` uses periodic `containerlab inspect` calls."
+          },
+          "containerlab.pollInterval": {
+            "type": "number",
+            "default": 5000,
+            "minimum": 1000,
+            "markdownDescription": "Polling interval in milliseconds when using `polling` refresh mode."
+          },
+          "containerlab.enableInterfaceStats": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Enable interface statistics (RX/TX bytes, packets, etc.) in the tree view. Disable to reduce resource usage."
           }
         }
       },

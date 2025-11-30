@@ -17,7 +17,9 @@ import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
 import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
-import { onDataChanged, onContainerStateChanged } from "./services/containerlabEvents";
+import { onDataChanged as onEventsDataChanged, onContainerStateChanged } from "./services/containerlabEvents";
+import { onDataChanged as onFallbackDataChanged, stopPolling as stopFallbackPolling } from "./services/containerlabInspectFallback";
+import { isPollingMode } from "./treeView/inspector";
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -398,25 +400,51 @@ function registerCommands(context: vscode.ExtensionContext) {
 }
 
 function registerRealtimeUpdates(context: vscode.ExtensionContext) {
-  const disposeRealtime = onDataChanged(() => {
+  // Common handler for data changes (used by both events and fallback)
+  const handleDataChanged = () => {
     ins.refreshFromEventStream();
     if (runningLabsProvider) {
       void runningLabsProvider.softRefresh().catch(err => {
         console.error("[containerlab extension]: realtime refresh failed", err);
       });
     }
-  });
-  context.subscriptions.push({ dispose: disposeRealtime });
+  };
 
-  // Register listener for container state changes to trigger background interface inspection
+  // Register BOTH listeners - isPollingMode() will dynamically check which one applies
+  // This handles the case where events fail and we fall back to polling mid-session
+
+  // Events listener (only fires if events mode is active)
+  const disposeEventsRealtime = onEventsDataChanged(() => {
+    if (!isPollingMode()) {
+      handleDataChanged();
+    }
+  });
+  context.subscriptions.push({ dispose: disposeEventsRealtime });
+
+  // Fallback polling listener (only fires if polling mode is active)
+  const disposeFallbackRealtime = onFallbackDataChanged(() => {
+    if (isPollingMode()) {
+      handleDataChanged();
+    }
+  });
+  context.subscriptions.push({ dispose: disposeFallbackRealtime });
+
+  // Register listener for container state changes (only relevant in events mode)
   const disposeStateChange = onContainerStateChanged((containerShortId, newState) => {
-    if (runningLabsProvider) {
+    if (!isPollingMode() && runningLabsProvider) {
       void runningLabsProvider.refreshContainer(containerShortId, newState).catch(err => {
         outputChannel.debug(`Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`);
       });
     }
   });
   context.subscriptions.push({ dispose: disposeStateChange });
+
+  // Stop fallback polling on deactivate
+  context.subscriptions.push({
+    dispose: () => {
+      stopFallbackPolling();
+    }
+  });
 
   ins.refreshFromEventStream();
 }

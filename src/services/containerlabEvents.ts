@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from "child_process";
 import * as readline from "readline";
+import * as vscode from "vscode";
 import type { ClabDetailedJSON } from "../treeView/common";
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
 import { containerlabBinaryPath } from "../extension";
@@ -999,8 +1000,17 @@ function startProcess(runtime: string): void {
         rejectInitialLoad = reject;
     });
 
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const enableInterfaceStats = config.get<boolean>("enableInterfaceStats", true);
+
     const containerlabBinary = containerlabBinaryPath
-    const baseArgs = ["events", "--format", "json", "--initial-state", "--interface-stats"];
+    const baseArgs = ["events", "--format", "json", "--initial-state"];
+
+    // Only add --interface-stats if enabled in settings
+    if (enableInterfaceStats) {
+        baseArgs.push("--interface-stats");
+    }
+
     if (runtime) {
         baseArgs.splice(1, 0, "-r", runtime);
     }
