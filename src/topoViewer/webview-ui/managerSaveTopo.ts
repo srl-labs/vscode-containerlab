@@ -63,9 +63,12 @@ export class ManagerSaveTopo {
   private collectNodes(cy: cytoscape.Core, layoutMgr?: any): any[] {
     return cy
       .nodes()
-      // Free text annotations have their own persistence path and should never be
+      // Free text and free shape annotations have their own persistence path and should never be
       // included in the topology payload sent back to the extension.
-      .filter((node: cytoscape.NodeSingular) => node.data('topoViewerRole') !== 'freeText')
+      .filter((node: cytoscape.NodeSingular) => {
+        const role = node.data('topoViewerRole');
+        return role !== 'freeText' && role !== 'freeShape';
+      })
       .map((node: cytoscape.NodeSingular) => this.prepareNodeJson(node, layoutMgr));
   }
 
@@ -125,6 +128,7 @@ export class ManagerSaveTopo {
 
   private async applyPostLoadStyles(cy: cytoscape.Core, suppressNotification: boolean): Promise<void> {
     const freeTextManager = topoViewerState.editorEngine?.freeTextManager;
+    const freeShapesManager = topoViewerState.editorEngine?.freeShapesManager;
     if (!suppressNotification) {
       await loadCytoStyle(cy);
       const groupStyleManager = topoViewerState.editorEngine?.groupStyleManager;
@@ -132,6 +136,7 @@ export class ManagerSaveTopo {
         ?.getGroupStyles()
         .forEach((style: any) => groupStyleManager.applyStyleToNode(style.id));
       freeTextManager?.reapplyAllFreeTextStyles();
+      freeShapesManager?.reapplyAllShapeStyles();
       return;
     }
 
@@ -141,6 +146,7 @@ export class ManagerSaveTopo {
       lm.applyGeoScale(true, factor);
     }
     freeTextManager?.reapplyAllFreeTextStyles();
+    freeShapesManager?.reapplyAllShapeStyles();
   }
 
   private getEndpoint(mode: string, suppressNotification: boolean): string {

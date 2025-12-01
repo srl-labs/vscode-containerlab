@@ -894,7 +894,13 @@ export class ManagerFreeShapes {
     handle.setAttribute('aria-label', ariaLabel);
     handle.style.pointerEvents = 'auto';
     handle.style.touchAction = 'none';
-    handle.onpointerdown = onPointerDown;
+    handle.onpointerdown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        this.forwardContextMenuEvent(annotationId, event);
+        return;
+      }
+      onPointerDown(event);
+    };
     handle.onpointerenter = () => {
       this.overlayHoverLocks.add(annotationId);
       this.setOverlayHoverState(annotationId, true);
@@ -906,6 +912,19 @@ export class ManagerFreeShapes {
       }
     };
     return handle;
+  }
+
+  private forwardContextMenuEvent(annotationId: string, event: PointerEvent): void {
+    const node = this.annotationNodes.get(annotationId);
+    if (!node) return;
+
+    const cxtEvent = {
+      target: node,
+      originalEvent: event
+    } as unknown as cytoscape.EventObject;
+
+    node.emit('cxttapstart', [cxtEvent]);
+    node.emit('cxttap', [cxtEvent]);
   }
 
   private positionOverlayResizeHandle(
