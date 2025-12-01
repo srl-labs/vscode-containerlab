@@ -1373,6 +1373,31 @@ export class TopoViewerAdaptorClab {
     return label.label ?? '';
   }
 
+  public computeEdgeClassFromStates(
+    topology: NonNullable<ClabTopology['topology']>,
+    sourceNode: string,
+    targetNode: string,
+    sourceState?: string,
+    targetState?: string
+  ): string {
+    const sourceNodeData = topology.nodes?.[sourceNode];
+    const targetNodeData = topology.nodes?.[targetNode];
+    const sourceIsSpecial = this.isSpecialNode(sourceNodeData, sourceNode);
+    const targetIsSpecial = this.isSpecialNode(targetNodeData, targetNode);
+    if (sourceIsSpecial || targetIsSpecial) {
+      return this.edgeClassForSpecial(
+        sourceIsSpecial,
+        targetIsSpecial,
+        { state: sourceState },
+        { state: targetState }
+      );
+    }
+    if (sourceState && targetState) {
+      return sourceState === 'up' && targetState === 'up' ? 'link-up' : 'link-down';
+    }
+    return '';
+  }
+
   private computeEdgeClass(
     sourceNode: string,
     targetNode: string,
@@ -1608,6 +1633,8 @@ export class TopoViewerAdaptorClab {
       sourceIfaceData,
       targetIfaceData,
       extValidationErrors,
+      sourceNodeId: sourceNode,
+      targetNodeId: targetNode,
     });
 
     return {
@@ -1661,6 +1688,8 @@ export class TopoViewerAdaptorClab {
     sourceIfaceData: any;
     targetIfaceData: any;
     extValidationErrors: string[];
+    sourceNodeId: string;
+    targetNodeId: string;
   }): any {
     const {
       linkObj,
@@ -1673,6 +1702,8 @@ export class TopoViewerAdaptorClab {
       sourceIfaceData,
       targetIfaceData,
       extValidationErrors,
+      sourceNodeId,
+      targetNodeId,
     } = params;
 
     const yamlFormat = typeof linkObj?.type === 'string' && linkObj.type ? 'extended' : 'short';
@@ -1689,7 +1720,14 @@ export class TopoViewerAdaptorClab {
 
     const extInfo = this.createExtInfo({ linkObj, endA, endB });
 
-    return { ...clabInfo, ...extInfo, yamlFormat, extValidationErrors: extErrors };
+    return {
+      ...clabInfo,
+      ...extInfo,
+      yamlFormat,
+      extValidationErrors: extErrors,
+      yamlSourceNodeId: sourceNodeId,
+      yamlTargetNodeId: targetNodeId,
+    };
   }
 
   private createClabInfo(params: {
