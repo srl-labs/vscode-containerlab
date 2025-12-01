@@ -1,10 +1,10 @@
 import type cytoscape from 'cytoscape';
-import { ManagerGroupManagement } from '../webview-ui/managerGroupManagement';
-import type { ManagerGroupStyle } from '../webview-ui/managerGroupStyle';
-import { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
-import { ManagerZoomToFit } from '../webview-ui/managerZoomToFit';
-import { ManagerLabelEndpoint } from '../webview-ui/managerLabelEndpoint';
-import { ManagerDummyLinks } from '../webview-ui/managerDummyLinks';
+import { ManagerGroupManagement } from '../webview-ui/groups/GroupManager';
+import type { ManagerGroupStyle } from '../webview-ui/groups/GroupStyleManager';
+import { ManagerLayoutAlgo } from '../webview-ui/cytoscape/LayoutAlgorithms';
+import { ManagerZoomToFit } from '../webview-ui/cytoscape/ZoomToFit';
+import { ManagerLabelEndpoint } from '../webview-ui/cytoscape/LinkLabelManager';
+import { ManagerDummyLinks } from '../webview-ui/cytoscape/DummyLinks';
 
 // Singleton instances for managers that don't require external dependencies
 export const layoutAlgoManager = new ManagerLayoutAlgo();

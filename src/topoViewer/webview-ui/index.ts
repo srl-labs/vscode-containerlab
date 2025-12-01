@@ -1,8 +1,8 @@
 // Mode is now set from the HTML template via window.topoViewerMode
 
-import { initializeGlobalHandlers } from './uiHandlers';
-import { windowManager, WindowManager, ManagedWindow } from './lib/windowManager';
-import { panelManager, PanelManager, defaultPanelConfigs, initializeDefaultPanels } from './lib/windowManagerIntegration';
+import { initializeGlobalHandlers } from './utilities/UiHandlers';
+import { windowManager, WindowManager, ManagedWindow } from './lib/WindowManager';
+import { panelManager, PanelManager, defaultPanelConfigs, initializeDefaultPanels } from './lib/WindowManagerIntegration';
 
 import('./topologyWebviewController').then(() => {
   initializeGlobalHandlers();
@@ -32,14 +32,14 @@ window.defaultPanelConfigs = defaultPanelConfigs;
 window.initializeDefaultPanels = initializeDefaultPanels;
 
 export { default as TopologyWebviewController } from './topologyWebviewController';
-export * from './managerVscodeWebview';
-export { ManagerLayoutAlgo } from './managerLayoutAlgo';
-export { ManagerGroupManagement } from './managerGroupManagement';
+export * from './core/VscodeMessaging';
+export { ManagerLayoutAlgo } from './cytoscape/LayoutAlgorithms';
+export { ManagerGroupManagement } from './groups/GroupManager';
 /**
  * @deprecated Use ManagerGroupManagement instead.
  */
-export { ManagerGroupManagemetn } from './managerGroupManagement';
-export * from './managerSvgGenerator';
-export * from './uiHandlers';
-export { windowManager, WindowManager, ManagedWindow } from './lib/windowManager';
-export { panelManager, PanelManager, defaultPanelConfigs, initializeDefaultPanels } from './lib/windowManagerIntegration';
+export { ManagerGroupManagemetn } from './groups/GroupManager';
+export * from './cytoscape/SvgGenerator';
+export * from './utilities/UiHandlers';
+export { windowManager, WindowManager, ManagedWindow } from './lib/WindowManager';
+export { panelManager, PanelManager, defaultPanelConfigs, initializeDefaultPanels } from './lib/WindowManagerIntegration';

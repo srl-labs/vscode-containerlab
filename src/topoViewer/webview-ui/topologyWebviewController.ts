@@ -13,26 +13,26 @@ import "highlight.js/styles/github-dark.css";
 // Import uPlot for graphs
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
-import loadCytoStyle from "./managerCytoscapeBaseStyles";
-import { VscodeMessageSender } from "./managerVscodeWebview";
-import { fetchAndLoadData, fetchAndLoadDataEnvironment } from "./managerCytoscapeFetchAndLoad";
-import { ManagerSaveTopo } from "./managerSaveTopo";
-import { ManagerUndo } from "./managerUndo";
-import { ManagerAddContainerlabNode } from "./managerAddContainerlabNode";
-import { ManagerViewportPanels } from "./managerViewportPanels";
-import { ManagerUnifiedFloatingPanel } from "./managerUnifiedFloatingPanel";
-import { ManagerFreeText } from "./managerFreeText";
-import { ManagerFreeShapes } from "./managerFreeShapes";
-import { ManagerNodeEditor } from "./managerNodeEditor";
-import { ManagerGroupStyle } from "./managerGroupStyle";
-import { CopyPasteManager } from "./managerCopyPaste";
-import { ManagerLabSettings } from "./managerLabSettings";
-import { viewportButtonsCaptureViewportAsSvg } from "./uiHandlers";
-import type { ManagerGroupManagement } from "./managerGroupManagement";
-import type { ManagerLayoutAlgo } from "./managerLayoutAlgo";
-import type { ManagerZoomToFit } from "./managerZoomToFit";
-import type { ManagerLabelEndpoint } from "./managerLabelEndpoint";
-import { ManagerShortcutDisplay } from "./managerShortcutDisplay";
+import loadCytoStyle from "./cytoscape/BaseStyles";
+import { VscodeMessageSender } from "./core/VscodeMessaging";
+import { fetchAndLoadData, fetchAndLoadDataEnvironment } from "./cytoscape/FetchAndLoad";
+import { ManagerSaveTopo } from "./core/SaveManager";
+import { ManagerUndo } from "./core/UndoManager";
+import { ManagerAddContainerlabNode } from "./nodes/AddNodeManager";
+import { ManagerViewportPanels } from "./panels/ViewportPanelsManager";
+import { ManagerUnifiedFloatingPanel } from "./panels/UnifiedFloatingPanel";
+import { ManagerFreeText } from "./annotations/FreeTextManager";
+import { ManagerFreeShapes } from "./annotations/FreeShapesManager";
+import { ManagerNodeEditor } from "./node-editor/NodeEditorManager";
+import { ManagerGroupStyle } from "./groups/GroupStyleManager";
+import { CopyPasteManager } from "./nodes/CopyPasteManager";
+import { ManagerLabSettings } from "./panels/LabSettingsManager";
+import { viewportButtonsCaptureViewportAsSvg } from "./utilities/UiHandlers";
+import type { ManagerGroupManagement } from "./groups/GroupManager";
+import type { ManagerLayoutAlgo } from "./cytoscape/LayoutAlgorithms";
+import type { ManagerZoomToFit } from "./cytoscape/ZoomToFit";
+import type { ManagerLabelEndpoint } from "./cytoscape/LinkLabelManager";
+import { ManagerShortcutDisplay } from "./utilities/ShortcutDisplay";
 import {
   layoutAlgoManager as layoutAlgoManagerSingleton,
   getGroupManager,
@@ -42,10 +42,10 @@ import {
 } from "../core/managerRegistry";
 import { log } from "../logging/logger";
 import { perfMark, perfMeasure } from "../utilities/performanceMonitor";
-import { registerCyEventHandlers } from "./cyEventHandlers";
+import { registerCyEventHandlers } from "./cytoscape/EventHandlers";
 import { PerformanceMonitor } from "../utilities/performanceMonitor";
 import { debounce } from "../utilities/asyncUtils";
-import { ManagerGridGuide } from "./managerGridGuide";
+import { ManagerGridGuide } from "./cytoscape/GridGuide";
 import topoViewerState from "../state";
 import type { EdgeData } from "../types/topoViewerGraph";
 import { FilterUtils } from "../../helpers/filterUtils";
@@ -55,7 +55,7 @@ import {
   generateInterfaceName,
   getInterfaceIndex,
   parseInterfacePattern
-} from "./utilities/interfacePatternUtils";
+} from "./utilities/InterfacePatternUtils";
 
 if (typeof window !== "undefined") {
   (window as any).topoViewerState = topoViewerState;
@@ -137,7 +137,7 @@ class TopologyWebviewController {
   public layoutAlgoManager!: ManagerLayoutAlgo;
   public zoomToFitManager!: ManagerZoomToFit;
   public labelEndpointManager!: ManagerLabelEndpoint;
-  public dummyLinksManager!: import('./managerDummyLinks').ManagerDummyLinks;
+  public dummyLinksManager!: import('./cytoscape/DummyLinks').ManagerDummyLinks;
   public freeTextManager?: ManagerFreeText;
   public freeShapesManager?: ManagerFreeShapes;
   public copyPasteManager!: CopyPasteManager;
