@@ -173,6 +173,17 @@
     color: var(--vscode-button-foreground);
   }
 
+  /* Apply button state when there are unsaved changes */
+  .btn-has-changes {
+    background-color: var(--accent);
+    color: var(--vscode-button-foreground);
+    border-color: var(--accent);
+  }
+
+  .btn-has-changes:hover {
+    background-color: var(--vscode-button-hoverBackground);
+  }
+
   .btn-danger {
     border: 1px solid var(--error);
     color: var(--error);

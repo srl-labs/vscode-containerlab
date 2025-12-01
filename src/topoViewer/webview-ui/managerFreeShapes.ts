@@ -21,6 +21,7 @@ const HANDLE_TRANSLATE = 'translate(-50%, -50%)';
 const RESIZE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-resize-visible';
 const ROTATE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-rotate-visible';
 const PANEL_FREE_SHAPES_ID = 'panel-free-shapes';
+const CLASS_HAS_CHANGES = 'btn-has-changes';
 
 interface ShapeModalElements {
   panel: HTMLDivElement;
@@ -112,6 +113,8 @@ export class ManagerFreeShapes {
   private loadInProgress = false;
   private loadTimeout: ReturnType<typeof setTimeout> | null = null;
   private onLoadTimeout: () => Promise<void>;
+  // Initial values for change tracking
+  private freeShapeInitialValues: Record<string, string> | null = null;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
     this.cy = cy;
@@ -1287,7 +1290,39 @@ export class ManagerFreeShapes {
 
     this.initializeModal(title, annotation, elements);
     this.setupModalHandlers(annotation, elements, resolve);
+
+    // Capture initial values for change tracking after a small delay to ensure DOM is updated
+    setTimeout(() => {
+      this.freeShapeInitialValues = this.captureFreeShapeValues(elements);
+      this.updateFreeShapeApplyButtonState(elements);
+    }, 0);
+
+    // Set up change tracking on all inputs
+    this.setupFreeShapeChangeTracking(elements);
+
     this.showModal(elements);
+  }
+
+  /**
+   * Sets up change tracking on free shape editor inputs.
+   */
+  private setupFreeShapeChangeTracking(els: ShapeModalElements): void {
+    const updateState = () => this.updateFreeShapeApplyButtonState(els);
+
+    const inputs = [
+      els.typeSelect, els.widthInput, els.heightInput,
+      els.fillColorInput, els.fillOpacityInput,
+      els.borderColorInput, els.borderWidthInput, els.borderStyleSelect,
+      els.cornerRadiusInput, els.lineStartArrowCheck, els.lineEndArrowCheck,
+      els.arrowSizeInput, els.rotationInput
+    ];
+
+    inputs.forEach(input => {
+      if (input) {
+        input.addEventListener('input', updateState);
+        input.addEventListener('change', updateState);
+      }
+    });
   }
 
   private getModalElements(): ShapeModalElements | null {
@@ -1375,6 +1410,56 @@ export class ManagerFreeShapes {
     els.borderStyleLabel.textContent = isLine ? 'Line Style:' : 'Border Style:';
   }
 
+  /**
+   * Captures current values from free shape editor inputs for change tracking.
+   */
+  private captureFreeShapeValues(els: ShapeModalElements): Record<string, string> {
+    return {
+      type: els.typeSelect.value,
+      width: els.widthInput.value,
+      height: els.heightInput.value,
+      fillColor: els.fillColorInput.value,
+      fillOpacity: els.fillOpacityInput.value,
+      borderColor: els.borderColorInput.value,
+      borderWidth: els.borderWidthInput.value,
+      borderStyle: els.borderStyleSelect.value,
+      cornerRadius: els.cornerRadiusInput.value,
+      lineStartArrow: String(els.lineStartArrowCheck.checked),
+      lineEndArrow: String(els.lineEndArrowCheck.checked),
+      arrowSize: els.arrowSizeInput.value,
+      rotation: els.rotationInput.value
+    };
+  }
+
+  /**
+   * Checks if there are unsaved changes in the free shape editor.
+   */
+  private hasFreeShapeChanges(els: ShapeModalElements): boolean {
+    if (!this.freeShapeInitialValues) return false;
+    const current = this.captureFreeShapeValues(els);
+    return Object.keys(this.freeShapeInitialValues).some(
+      key => this.freeShapeInitialValues![key] !== current[key]
+    );
+  }
+
+  /**
+   * Updates the free shape editor Apply button visual state.
+   */
+  private updateFreeShapeApplyButtonState(els: ShapeModalElements): void {
+    const { applyBtn } = els;
+    if (!applyBtn) return;
+    const hasChanges = this.hasFreeShapeChanges(els);
+    applyBtn.classList.toggle(CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets free shape editor initial values after applying changes.
+   */
+  private resetFreeShapeInitialValues(els: ShapeModalElements): void {
+    this.freeShapeInitialValues = this.captureFreeShapeValues(els);
+    this.updateFreeShapeApplyButtonState(els);
+  }
+
   private setupModalHandlers(annotation: FreeShapeAnnotation, els: ShapeModalElements, resolve: ShapeResolve): void {
     const cleanup = () => {
       this.hideModal(els);
@@ -1429,6 +1514,8 @@ export class ManagerFreeShapes {
       Object.assign(annotation, result);
       this.updateFreeShapeNode(annotation.id, annotation);
       this.debouncedSave();
+      // Reset initial values after successful apply
+      this.resetFreeShapeInitialValues(els);
     };
 
     // Apply saves but keeps panel open (doesn't resolve promise)

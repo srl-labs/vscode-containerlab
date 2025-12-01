@@ -23,6 +23,7 @@ const BUTTON_BASE_CLASS = 'btn btn-small';
 const BUTTON_PRIMARY_CLASS = 'btn-primary';
 const BUTTON_OUTLINED_CLASS = 'btn-outlined';
 const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
+const CLASS_HAS_CHANGES = 'btn-has-changes';
 const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
 const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
 const ROTATE_HANDLE_VISIBLE_CLASS = 'free-text-overlay-rotate-visible';
@@ -157,6 +158,7 @@ export class ManagerFreeText {
   private saveInProgress = false;
   private pendingSaveWhileBusy = false;
   private lastSavedStateKey: string | null = null;
+  private freeTextInitialValues: Record<string, string> | null = null;
   private onInteractiveAnchorPointerDown = (event: PointerEvent): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -619,7 +621,38 @@ export class ManagerFreeText {
       this.hideModal(elements);
     });
 
+    // Capture initial values for change tracking after a small delay to ensure DOM is updated
+    setTimeout(() => {
+      this.freeTextInitialValues = this.captureFreeTextValues(elements);
+      this.updateFreeTextApplyButtonState(elements);
+    }, 0);
+
+    // Set up change tracking on all inputs
+    this.setupFreeTextChangeTracking(elements, cleanupTasks);
+
     this.showModal(elements);
+  }
+
+  /**
+   * Sets up change tracking on free text editor inputs.
+   */
+  private setupFreeTextChangeTracking(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
+    const { textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, rotationInput } = els;
+    const updateState = () => this.updateFreeTextApplyButtonState(els);
+
+    const inputs = [textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, rotationInput];
+    inputs.forEach(input => {
+      if (input) {
+        input.addEventListener('input', updateState);
+        cleanupTasks.push(() => input.removeEventListener('input', updateState));
+      }
+    });
+
+    // Also track change events for selects
+    if (fontFamilySelect) {
+      fontFamilySelect.addEventListener('change', updateState);
+      cleanupTasks.push(() => fontFamilySelect.removeEventListener('change', updateState));
+    }
   }
 
   private getModalElements(): FreeTextModalElements | null {
@@ -750,6 +783,49 @@ export class ManagerFreeText {
       return forInput ? '#000000' : 'transparent';
     }
     return color ?? '#000000';
+  }
+
+  /**
+   * Captures current values from free text editor inputs for change tracking.
+   */
+  private captureFreeTextValues(els: FreeTextModalElements): Record<string, string> {
+    return {
+      text: els.textInput.value,
+      fontSize: els.fontSizeInput.value,
+      fontFamily: els.fontFamilySelect.value,
+      fontColor: els.fontColorInput.value,
+      bgColor: els.bgColorInput.value,
+      rotation: els.rotationInput.value
+    };
+  }
+
+  /**
+   * Checks if there are unsaved changes in the free text editor.
+   */
+  private hasFreeTextChanges(els: FreeTextModalElements): boolean {
+    if (!this.freeTextInitialValues) return false;
+    const current = this.captureFreeTextValues(els);
+    return Object.keys(this.freeTextInitialValues).some(
+      key => this.freeTextInitialValues![key] !== current[key]
+    );
+  }
+
+  /**
+   * Updates the free text editor Apply button visual state.
+   */
+  private updateFreeTextApplyButtonState(els: FreeTextModalElements): void {
+    const { applyBtn } = els;
+    if (!applyBtn) return;
+    const hasChanges = this.hasFreeTextChanges(els);
+    applyBtn.classList.toggle(CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets free text editor initial values after applying changes.
+   */
+  private resetFreeTextInitialValues(els: FreeTextModalElements): void {
+    this.freeTextInitialValues = this.captureFreeTextValues(els);
+    this.updateFreeTextApplyButtonState(els);
   }
 
   private applyAlphaToColor(color: string, alpha: number): string {
@@ -1918,6 +1994,8 @@ export class ManagerFreeText {
         Object.assign(annotation, result);
         this.updateFreeTextNode(annotation.id, annotation);
         this.debouncedSave();
+        // Reset initial values after successful apply
+        this.resetFreeTextInitialValues(els);
       }
     };
 

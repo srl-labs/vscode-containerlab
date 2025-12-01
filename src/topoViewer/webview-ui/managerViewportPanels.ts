@@ -59,6 +59,9 @@ export class ManagerViewportPanels {
 
   private static readonly ID_LINK_EDITOR_SAVE_BUTTON = "panel-link-editor-save-button" as const;
   private static readonly ID_LINK_EXT_MTU = "panel-link-ext-mtu" as const;
+  private static readonly ID_LINK_EDITOR_SOURCE_ENDPOINT = "panel-link-editor-source-endpoint" as const;
+  private static readonly ID_LINK_EDITOR_TARGET_ENDPOINT = "panel-link-editor-target-endpoint" as const;
+  private static readonly ID_LINK_EDITOR_APPLY_BUTTON = "panel-link-editor-apply-button" as const;
 
   private static readonly ID_NETWORK_TYPE_DROPDOWN =
     "panel-network-type-dropdown-container" as const;
@@ -70,6 +73,13 @@ export class ManagerViewportPanels {
   private static readonly ID_NETWORK_LABEL = "panel-network-label" as const;
 
   private static readonly PH_SEARCH_NETWORK_TYPE = "Search for network type..." as const;
+
+  // CSS class for Apply button with pending changes
+  private static readonly CLASS_HAS_CHANGES = "btn-has-changes" as const;
+
+  // Initial values for change tracking
+  private networkEditorInitialValues: Record<string, string> | null = null;
+  private linkEditorInitialValues: Record<string, string> | null = null;
 
   // Network type constants
   private static readonly TYPE_HOST = "host" as const;
@@ -742,6 +752,85 @@ export class ManagerViewportPanels {
   }
 
   /**
+   * Updates button state based on validation result.
+   */
+  private setButtonValidationState(btn: HTMLElement, isValid: boolean): void {
+    (btn as HTMLButtonElement).disabled = !isValid;
+    btn.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !isValid);
+    btn.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !isValid);
+  }
+
+  /**
+   * Sets up the network editor OK (save) button.
+   */
+  private setupNetworkOkButton(
+    networkType: string,
+    node: cytoscape.NodeSingular,
+    panel: HTMLElement | null
+  ): void {
+    const saveBtn = document.getElementById(ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON);
+    if (!saveBtn) return;
+
+    const newSaveBtn = saveBtn.cloneNode(true) as HTMLElement;
+    saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
+
+    const { isValid: initialValid } = this.validateNetworkFields(networkType);
+    this.setButtonValidationState(newSaveBtn, initialValid);
+
+    newSaveBtn.addEventListener("click", async () => {
+      const { isValid, errors } = this.validateNetworkFields(networkType, true);
+      if (!isValid) {
+        console.error("Cannot save network node:", errors);
+        return;
+      }
+      await this.updateNetworkFromEditor(node);
+      await this.saveManager.saveTopo(this.cy, false);
+      if (panel) panel.style.display = "none";
+    });
+  }
+
+  /**
+   * Sets up the network editor Apply button with change tracking.
+   */
+  private setupNetworkApplyButton(networkType: string, node: cytoscape.NodeSingular): void {
+    const applyBtn = document.getElementById("panel-network-editor-apply-button");
+    if (!applyBtn) return;
+
+    const newApplyBtn = applyBtn.cloneNode(true) as HTMLElement;
+    applyBtn.parentNode?.replaceChild(newApplyBtn, applyBtn);
+
+    newApplyBtn.addEventListener("click", async () => {
+      const { isValid, errors } = this.validateNetworkFields(networkType, true);
+      if (!isValid) {
+        console.error("Cannot apply network node changes:", errors);
+        return;
+      }
+      await this.updateNetworkFromEditor(node);
+      await this.saveManager.saveTopo(this.cy, false);
+      this.resetNetworkEditorInitialValues();
+    });
+
+    const updateApplyState = () => {
+      const { isValid } = this.validateNetworkFields(networkType);
+      this.setButtonValidationState(newApplyBtn, isValid);
+      this.updateNetworkApplyButtonState();
+    };
+    updateApplyState();
+
+    // Update apply button state when VXLAN inputs change
+    ManagerViewportPanels.VXLAN_INPUT_IDS.forEach((inputId) => {
+      const input = document.getElementById(inputId) as HTMLInputElement;
+      if (input) input.addEventListener("input", updateApplyState);
+    });
+
+    // Also track changes on interface and label inputs
+    [ManagerViewportPanels.ID_NETWORK_INTERFACE, ManagerViewportPanels.ID_NETWORK_LABEL].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) input.addEventListener("input", () => this.updateNetworkApplyButtonState());
+    });
+  }
+
+  /**
    * Set up validation listeners and save button behavior for the network editor.
    */
   private setupNetworkValidation(
@@ -749,8 +838,8 @@ export class ManagerViewportPanels {
     node: cytoscape.NodeSingular,
     panel: HTMLElement | null
   ): void {
-    const vxlanInputs = ManagerViewportPanels.VXLAN_INPUT_IDS;
-    vxlanInputs.forEach((inputId) => {
+    // Set up save button validation listeners
+    ManagerViewportPanels.VXLAN_INPUT_IDS.forEach((inputId) => {
       const input = document.getElementById(inputId) as HTMLInputElement;
       if (input) {
         input.addEventListener("input", () => {
@@ -758,75 +847,13 @@ export class ManagerViewportPanels {
           const saveButton = document.getElementById(
             ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON
           ) as HTMLButtonElement;
-          if (saveButton) {
-            saveButton.disabled = !isValid;
-            saveButton.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !isValid);
-            saveButton.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !isValid);
-          }
+          if (saveButton) this.setButtonValidationState(saveButton, isValid);
         });
       }
     });
 
-    const saveBtn = document.getElementById(ManagerViewportPanels.ID_NETWORK_SAVE_BUTTON);
-    if (saveBtn) {
-      const newSaveBtn = saveBtn.cloneNode(true) as HTMLElement;
-      saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
-
-      const { isValid: initialValid } = this.validateNetworkFields(networkType);
-      (newSaveBtn as HTMLButtonElement).disabled = !initialValid;
-      newSaveBtn.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !initialValid);
-      newSaveBtn.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !initialValid);
-
-      // OK button (save and close)
-      newSaveBtn.addEventListener("click", async () => {
-        const { isValid, errors } = this.validateNetworkFields(networkType, true);
-        if (!isValid) {
-          console.error("Cannot save network node:", errors);
-          return;
-        }
-
-        await this.updateNetworkFromEditor(node);
-        const suppressNotification = false;
-        await this.saveManager.saveTopo(this.cy, suppressNotification);
-        if (panel) panel.style.display = "none";
-      });
-    }
-
-    // Apply button (save without closing)
-    const applyBtn = document.getElementById("panel-network-editor-apply-button");
-    if (applyBtn) {
-      const newApplyBtn = applyBtn.cloneNode(true) as HTMLElement;
-      applyBtn.parentNode?.replaceChild(newApplyBtn, applyBtn);
-
-      newApplyBtn.addEventListener("click", async () => {
-        const { isValid, errors } = this.validateNetworkFields(networkType, true);
-        if (!isValid) {
-          console.error("Cannot apply network node changes:", errors);
-          return;
-        }
-
-        await this.updateNetworkFromEditor(node);
-        const suppressNotification = false;
-        await this.saveManager.saveTopo(this.cy, suppressNotification);
-      });
-
-      // Also handle disabled state for apply button based on validation
-      const updateApplyState = () => {
-        const { isValid } = this.validateNetworkFields(networkType);
-        (newApplyBtn as HTMLButtonElement).disabled = !isValid;
-        newApplyBtn.classList.toggle(ManagerViewportPanels.CLASS_OPACITY_50, !isValid);
-        newApplyBtn.classList.toggle(ManagerViewportPanels.CLASS_CURSOR_NOT_ALLOWED, !isValid);
-      };
-      updateApplyState();
-
-      // Update apply button state when inputs change
-      vxlanInputs.forEach((inputId) => {
-        const input = document.getElementById(inputId) as HTMLInputElement;
-        if (input) {
-          input.addEventListener("input", updateApplyState);
-        }
-      });
-    }
+    this.setupNetworkOkButton(networkType, node, panel);
+    this.setupNetworkApplyButton(networkType, node);
   }
 
   /**
@@ -891,6 +918,118 @@ export class ManagerViewportPanels {
   }
 
   /**
+   * Captures current values from network editor inputs for change tracking.
+   */
+  private captureNetworkEditorValues(): Record<string, string> {
+    const typeInput = document.getElementById(
+      ManagerViewportPanels.ID_NETWORK_TYPE_FILTER_INPUT
+    ) as HTMLInputElement | null;
+    const interfaceInput = document.getElementById(
+      ManagerViewportPanels.ID_NETWORK_INTERFACE
+    ) as HTMLInputElement | null;
+    const labelInput = document.getElementById(
+      ManagerViewportPanels.ID_NETWORK_LABEL
+    ) as HTMLInputElement | null;
+    const remoteInput = document.getElementById(
+      ManagerViewportPanels.ID_NETWORK_REMOTE
+    ) as HTMLInputElement | null;
+    const vniInput = document.getElementById(
+      ManagerViewportPanels.ID_NETWORK_VNI
+    ) as HTMLInputElement | null;
+    const udpPortInput = document.getElementById(
+      ManagerViewportPanels.ID_NETWORK_UDP_PORT
+    ) as HTMLInputElement | null;
+
+    return {
+      type: typeInput?.value || "",
+      interface: interfaceInput?.value || "",
+      label: labelInput?.value || "",
+      remote: remoteInput?.value || "",
+      vni: vniInput?.value || "",
+      udpPort: udpPortInput?.value || ""
+    };
+  }
+
+  /**
+   * Checks if there are unsaved changes in the network editor.
+   */
+  private hasNetworkEditorChanges(): boolean {
+    if (!this.networkEditorInitialValues) return false;
+    const current = this.captureNetworkEditorValues();
+    return Object.keys(this.networkEditorInitialValues).some(
+      (key) => this.networkEditorInitialValues![key] !== current[key]
+    );
+  }
+
+  /**
+   * Updates the network editor Apply button visual state.
+   */
+  private updateNetworkApplyButtonState(): void {
+    const applyBtn = document.getElementById("panel-network-editor-apply-button");
+    if (!applyBtn) return;
+    const hasChanges = this.hasNetworkEditorChanges();
+    applyBtn.classList.toggle(ManagerViewportPanels.CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets network editor initial values after applying changes.
+   */
+  private resetNetworkEditorInitialValues(): void {
+    this.networkEditorInitialValues = this.captureNetworkEditorValues();
+    this.updateNetworkApplyButtonState();
+  }
+
+  /**
+   * Captures current values from link editor inputs for change tracking.
+   */
+  private captureLinkEditorValues(): Record<string, string> {
+    const sourceInput = document.getElementById(
+      ManagerViewportPanels.ID_LINK_EDITOR_SOURCE_ENDPOINT
+    ) as HTMLInputElement | null;
+    const targetInput = document.getElementById(
+      ManagerViewportPanels.ID_LINK_EDITOR_TARGET_ENDPOINT
+    ) as HTMLInputElement | null;
+    const mtuInput = document.getElementById(
+      ManagerViewportPanels.ID_LINK_EXT_MTU
+    ) as HTMLInputElement | null;
+
+    return {
+      sourceEndpoint: sourceInput?.value || "",
+      targetEndpoint: targetInput?.value || "",
+      mtu: mtuInput?.value || ""
+    };
+  }
+
+  /**
+   * Checks if there are unsaved changes in the link editor.
+   */
+  private hasLinkEditorChanges(): boolean {
+    if (!this.linkEditorInitialValues) return false;
+    const current = this.captureLinkEditorValues();
+    return Object.keys(this.linkEditorInitialValues).some(
+      (key) => this.linkEditorInitialValues![key] !== current[key]
+    );
+  }
+
+  /**
+   * Updates the link editor Apply button visual state.
+   */
+  private updateLinkApplyButtonState(): void {
+    const applyBtn = document.getElementById(ManagerViewportPanels.ID_LINK_EDITOR_APPLY_BUTTON);
+    if (!applyBtn) return;
+    const hasChanges = this.hasLinkEditorChanges();
+    applyBtn.classList.toggle(ManagerViewportPanels.CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets link editor initial values after applying changes.
+   */
+  private resetLinkEditorInitialValues(): void {
+    this.linkEditorInitialValues = this.captureLinkEditorValues();
+    this.updateLinkApplyButtonState();
+  }
+
+  /**
    * Displays the network editor panel for a cloud network node.
    * @param node - The Cytoscape node representing the network.
    */
@@ -926,6 +1065,12 @@ export class ManagerViewportPanels {
         panel.style.display = "none";
       });
     }
+
+    // Capture initial values for change tracking after a small delay to ensure DOM is updated
+    setTimeout(() => {
+      this.networkEditorInitialValues = this.captureNetworkEditorValues();
+      this.updateNetworkApplyButtonState();
+    }, 0);
 
     this.setupNetworkValidation(networkType, node, panel);
   }
@@ -983,6 +1128,13 @@ export class ManagerViewportPanels {
       this.setupBasicTab(edge, ctx, elems.panel);
 
       await this.panelEdgeEditorExtended(edge);
+
+      // Capture initial values for change tracking after a small delay to ensure DOM is updated
+      setTimeout(() => {
+        this.linkEditorInitialValues = this.captureLinkEditorValues();
+        this.updateLinkApplyButtonState();
+      }, 0);
+
       setTimeout(() => {
         this.edgeClicked = false;
       }, 100);
@@ -1085,10 +1237,10 @@ export class ManagerViewportPanels {
 
   private setupBasicTab(edge: cytoscape.EdgeSingular, ctx: any, panel: HTMLElement): void {
     const srcInput = document.getElementById(
-      "panel-link-editor-source-endpoint"
+      ManagerViewportPanels.ID_LINK_EDITOR_SOURCE_ENDPOINT
     ) as HTMLInputElement | null;
     const tgtInput = document.getElementById(
-      "panel-link-editor-target-endpoint"
+      ManagerViewportPanels.ID_LINK_EDITOR_TARGET_ENDPOINT
     ) as HTMLInputElement | null;
     this.configureEndpointInput(
       srcInput,
@@ -1192,13 +1344,15 @@ export class ManagerViewportPanels {
     }
 
     // Apply button (save without closing)
-    const basicApply = document.getElementById("panel-link-editor-apply-button");
+    const basicApply = document.getElementById(ManagerViewportPanels.ID_LINK_EDITOR_APPLY_BUTTON);
     if (basicApply) {
       const freshApply = basicApply.cloneNode(true) as HTMLElement;
       basicApply.parentNode?.replaceChild(freshApply, basicApply);
       freshApply.addEventListener("click", async () => {
         try {
           await this.saveEdgeEndpoints(edge, ctx, srcInput, tgtInput);
+          // Reset initial values after successful apply
+          this.resetLinkEditorInitialValues();
         } catch (err) {
           log.error(
             `panelEdgeEditor basic apply error: ${err instanceof Error ? err.message : String(err)}`
@@ -1206,6 +1360,13 @@ export class ManagerViewportPanels {
         }
       });
     }
+
+    // Track changes on endpoint inputs for Apply button state
+    [srcInput, tgtInput].forEach((input) => {
+      if (input) {
+        input.addEventListener("input", () => this.updateLinkApplyButtonState());
+      }
+    });
   }
 
   /**
@@ -1249,13 +1410,21 @@ export class ManagerViewportPanels {
     });
 
     // Apply button (save without closing)
-    const applyBtn = document.getElementById("panel-link-editor-apply-button");
+    const applyBtn = document.getElementById(ManagerViewportPanels.ID_LINK_EDITOR_APPLY_BUTTON);
     if (applyBtn) {
       const freshApply = applyBtn.cloneNode(true) as HTMLElement;
       applyBtn.parentNode?.replaceChild(freshApply, applyBtn);
       freshApply.addEventListener("click", async () => {
         await this.handleExtendedSave(edge, ctx, validate, renderErrors);
+        // Reset initial values after successful apply
+        this.resetLinkEditorInitialValues();
       });
+    }
+
+    // Track changes on MTU input for Apply button state
+    const mtuInput = document.getElementById(ManagerViewportPanels.ID_LINK_EXT_MTU);
+    if (mtuInput) {
+      mtuInput.addEventListener("input", () => this.updateLinkApplyButtonState());
     }
 
     setTimeout(() => {
@@ -1484,10 +1653,10 @@ export class ManagerViewportPanels {
     const source = edge.data("source") as string;
     const target = edge.data("target") as string;
     const srcInput = document.getElementById(
-      "panel-link-editor-source-endpoint"
+      ManagerViewportPanels.ID_LINK_EDITOR_SOURCE_ENDPOINT
     ) as HTMLInputElement | null;
     const tgtInput = document.getElementById(
-      "panel-link-editor-target-endpoint"
+      ManagerViewportPanels.ID_LINK_EDITOR_TARGET_ENDPOINT
     ) as HTMLInputElement | null;
     const newSourceEP = this.shouldClearEndpoint(source) ? "" : srcInput?.value?.trim() || "";
     const newTargetEP = this.shouldClearEndpoint(target) ? "" : tgtInput?.value?.trim() || "";

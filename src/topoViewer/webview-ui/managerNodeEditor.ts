@@ -54,6 +54,7 @@ const ID_PANEL_NODE_EDITOR = "panel-node-editor" as const;
 const ID_PANEL_EDITOR_CLOSE = "panel-node-editor-close" as const;
 const ID_PANEL_EDITOR_APPLY = "panel-node-editor-apply" as const;
 const ID_PANEL_EDITOR_SAVE = "panel-node-editor-save" as const;
+const CLASS_HAS_CHANGES = "btn-has-changes" as const;
 const ID_NODE_CERT_ISSUE = "node-cert-issue" as const;
 const ID_CERT_OPTIONS = "cert-options" as const;
 const ID_PANEL_NODE_EDITOR_HEADING = "panel-node-editor-heading" as const;
@@ -429,6 +430,8 @@ export class ManagerNodeEditor {
   );
   private integratedMode = false;
   private integratedMdaCounter = 0;
+  // Initial values for change tracking
+  private nodeEditorInitialValues: string | null = null;
   private readonly renderIconOption = (role: string): HTMLElement =>
     createNodeIconOptionElement(role, {
       onDelete: (iconName) => {
@@ -2371,7 +2374,10 @@ export class ManagerNodeEditor {
 
     // Apply button (save without closing)
     const applyBtn = document.getElementById(ID_PANEL_EDITOR_APPLY);
-    applyBtn?.addEventListener("click", () => this.save());
+    applyBtn?.addEventListener("click", async () => {
+      await this.save();
+      this.resetNodeEditorInitialValues();
+    });
 
     // OK button (save and close)
     const saveBtn = document.getElementById(ID_PANEL_EDITOR_SAVE);
@@ -2389,6 +2395,64 @@ export class ManagerNodeEditor {
       } else {
         certOptions?.classList.add(CLASS_HIDDEN);
       }
+    });
+  }
+
+  /**
+   * Captures a serialized snapshot of all form inputs in the node editor panel.
+   */
+  private captureNodeEditorValues(): string {
+    if (!this.panel) return "";
+    const inputs = this.panel.querySelectorAll("input, select, textarea");
+    const values: Record<string, string> = {};
+    inputs.forEach((el, idx) => {
+      const input = el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+      const key = input.id || input.name || `input-${idx}`;
+      if (input.type === "checkbox") {
+        values[key] = String((input as HTMLInputElement).checked);
+      } else {
+        values[key] = input.value || "";
+      }
+    });
+    return JSON.stringify(values);
+  }
+
+  /**
+   * Checks if there are unsaved changes in the node editor.
+   */
+  private hasNodeEditorChanges(): boolean {
+    if (!this.nodeEditorInitialValues) return false;
+    const current = this.captureNodeEditorValues();
+    return this.nodeEditorInitialValues !== current;
+  }
+
+  /**
+   * Updates the node editor Apply button visual state.
+   */
+  private updateNodeEditorApplyButtonState(): void {
+    const applyBtn = document.getElementById(ID_PANEL_EDITOR_APPLY);
+    if (!applyBtn) return;
+    const hasChanges = this.hasNodeEditorChanges();
+    applyBtn.classList.toggle(CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets node editor initial values after applying changes.
+   */
+  private resetNodeEditorInitialValues(): void {
+    this.nodeEditorInitialValues = this.captureNodeEditorValues();
+    this.updateNodeEditorApplyButtonState();
+  }
+
+  /**
+   * Sets up change tracking on all form inputs in the node editor.
+   */
+  private setupNodeEditorChangeTracking(): void {
+    if (!this.panel) return;
+    const inputs = this.panel.querySelectorAll("input, select, textarea");
+    inputs.forEach((el) => {
+      el.addEventListener("input", () => this.updateNodeEditorApplyButtonState());
+      el.addEventListener("change", () => this.updateNodeEditorApplyButtonState());
     });
   }
 
@@ -2805,6 +2869,14 @@ export class ManagerNodeEditor {
     } else {
       setTimeout(afterVisible, 0);
     }
+
+    // Capture initial values for change tracking after a delay to ensure all fields are populated
+    setTimeout(() => {
+      this.nodeEditorInitialValues = this.captureNodeEditorValues();
+      this.updateNodeEditorApplyButtonState();
+      this.setupNodeEditorChangeTracking();
+    }, 100);
+
     log.debug(`Opened enhanced node editor for node: ${node.id()}`);
   }
 

@@ -63,9 +63,13 @@ interface ParentEditorInputs {
   textColorEl: HTMLInputElement | null;
 }
 
+// CSS class for Apply button with pending changes
+const CLASS_HAS_CHANGES = 'btn-has-changes' as const;
+
 export class ManagerGroupManagement {
   private cy: cytoscape.Core;
   private groupStyleManager: ManagerGroupStyle;
+  private initialValues: Record<string, string> | null = null;
 
   /* eslint-disable no-unused-vars */
   constructor(cy: cytoscape.Core, groupStyleManager: ManagerGroupStyle, _mode: 'edit' | 'view' = 'view') {
@@ -358,6 +362,62 @@ export class ManagerGroupManagement {
     if (el) el.value = value;
   }
 
+  /**
+   * Gets the value of an input element or empty string if null.
+   */
+  private getInputValue(el: HTMLInputElement | HTMLSelectElement | null): string {
+    return el?.value || '';
+  }
+
+  /**
+   * Captures current values from all group editor inputs for change tracking.
+   */
+  private captureCurrentValues(): Record<string, string> {
+    const el = this.getGroupEditorElements();
+    const labelButton = document.getElementById(LABEL_BUTTON_TEXT_ID);
+    return {
+      group: this.getInputValue(el.groupEl),
+      level: this.getInputValue(el.levelEl),
+      labelPos: labelButton?.textContent || '',
+      bgColor: this.getInputValue(el.bgColorEl),
+      bgOpacity: this.getInputValue(el.bgOpacityEl),
+      borderColor: this.getInputValue(el.borderColorEl),
+      borderWidth: this.getInputValue(el.borderWidthEl),
+      borderStyle: this.getInputValue(el.borderStyleEl),
+      borderRadius: this.getInputValue(el.borderRadiusEl),
+      textColor: this.getInputValue(el.textColorEl)
+    };
+  }
+
+  /**
+   * Checks if there are unsaved changes by comparing current values to initial values.
+   */
+  private hasUnsavedChanges(): boolean {
+    if (!this.initialValues) return false;
+    const current = this.captureCurrentValues();
+    return Object.keys(this.initialValues).some(
+      key => this.initialValues![key] !== current[key]
+    );
+  }
+
+  /**
+   * Updates the Apply button's visual state based on whether there are unsaved changes.
+   */
+  private updateApplyButtonState(): void {
+    const applyButton = document.getElementById(`${PANEL_EL_PREFIX}apply-button`);
+    if (!applyButton) return;
+    const hasChanges = this.hasUnsavedChanges();
+    applyButton.classList.toggle(CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets initial values to current values after applying changes.
+   */
+  private resetInitialValues(): void {
+    this.initialValues = this.captureCurrentValues();
+    this.updateApplyButtonState();
+  }
+
   private setLabelButton(node: cytoscape.NodeSingular, labelButtonEl: HTMLElement | null): void {
     if (!labelButtonEl) return;
     const currentClass = GROUP_LABEL_POSITIONS.find(cls => node.hasClass(cls));
@@ -403,10 +463,22 @@ export class ManagerGroupManagement {
     }
 
     this.setValue(ui.textColorEl, style.color);
+
+    // Capture initial values for change tracking after a small delay to ensure DOM is updated
+    setTimeout(() => {
+      this.initialValues = this.captureCurrentValues();
+      this.updateApplyButtonState();
+    }, 0);
   }
 
   private attachGroupEditorListeners(panel: HTMLElement, autoUpdateGroup: () => void): void {
-    this.attachInputListeners(panel, autoUpdateGroup);
+    // Wrap autoUpdateGroup to also update Apply button state
+    const autoUpdateWithChangeTracking = () => {
+      autoUpdateGroup();
+      this.updateApplyButtonState();
+    };
+
+    this.attachInputListeners(panel, autoUpdateWithChangeTracking);
 
     const deleteButton = document.getElementById(`${PANEL_EL_PREFIX}delete-button`);
     if (deleteButton) deleteButton.addEventListener('click', () => this.nodeParentRemoval());
@@ -420,11 +492,16 @@ export class ManagerGroupManagement {
       });
     }
 
-    // Apply button: save without closing
+    // Apply button: save without closing and reset initial values
     const applyButton = document.getElementById(`${PANEL_EL_PREFIX}apply-button`);
-    if (applyButton) applyButton.addEventListener('click', autoUpdateGroup);
+    if (applyButton) {
+      applyButton.addEventListener('click', () => {
+        autoUpdateGroup();
+        this.resetInitialValues();
+      });
+    }
 
-    this.initializeLabelDropdown(autoUpdateGroup);
+    this.initializeLabelDropdown(autoUpdateWithChangeTracking);
   }
 
   private initializeLabelDropdown(autoUpdateGroup: () => void): void {
