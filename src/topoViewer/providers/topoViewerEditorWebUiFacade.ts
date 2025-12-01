@@ -109,6 +109,7 @@ export class TopoViewerEditor {
       'topo-editor-upload-icon': this.handleUploadIconEndpoint.bind(this),
       'topo-editor-delete-icon': this.handleDeleteIconEndpoint.bind(this),
       showError: this.handleShowErrorEndpoint.bind(this),
+      'performance-metrics': this.handlePerformanceMetricsEndpoint.bind(this),
       'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
       copyElements: this.handleCopyElementsEndpoint.bind(this),
       getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this),
@@ -1552,6 +1553,64 @@ topology:
       vscode.window.showErrorMessage(data.message);
     }
     return { result: { success: true }, error: null };
+  }
+
+  private async handlePerformanceMetricsEndpoint(
+    payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const metricsPayload = this.normalizeMetricsPayload(payload, payloadObj);
+      const metrics = metricsPayload?.metrics;
+      if (!metrics || typeof metrics !== 'object') {
+        const warning = 'Received performance-metrics call without metrics payload';
+        log.warn(warning);
+        return { result: { success: false, warning }, error: null };
+      }
+
+      const numericEntries = Object.entries(metrics)
+        .map(([name, value]) => [name, typeof value === 'number' ? value : Number(value)] as [string, number])
+        .filter(([, value]) => Number.isFinite(value));
+
+      if (!numericEntries.length) {
+        const warning = 'Performance metrics payload contained no numeric values';
+        log.warn(warning);
+        return { result: { success: false, warning }, error: null };
+      }
+
+      const total = numericEntries.reduce((sum, [, value]) => sum + value, 0);
+      log.info(
+        `TopoViewer performance metrics (${numericEntries.length} entries, total ${total.toFixed(2)}ms):`
+      );
+      const sortedEntries = [...numericEntries].sort((a, b) => b[1] - a[1]);
+      sortedEntries.slice(0, 8).forEach(([name, value]) => {
+        log.info(`  ${name}: ${value.toFixed(2)}ms`);
+      });
+
+      return { result: { success: true }, error: null };
+    } catch (err) {
+      const error = `Failed to record performance metrics: ${err instanceof Error ? err.message : String(err)}`;
+      log.error(error);
+      return { result: null, error };
+    }
+  }
+
+  private normalizeMetricsPayload(
+    payload: string | undefined,
+    payloadObj: any
+  ): any {
+    if (payloadObj && typeof payloadObj === 'object') {
+      return payloadObj;
+    }
+    if (typeof payload === 'string' && payload.trim()) {
+      try {
+        return JSON.parse(payload);
+      } catch (err) {
+        log.warn(`Failed to parse performance metrics payload: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return undefined;
   }
 
   private async handleViewportSaveEditEndpoint(
