@@ -2002,7 +2002,35 @@ class TopologyWebviewController {
       const history = this.updateStatsHistory(endpointKey, stats);
       const data = this.prepareGraphData(history);
       graphInstance?.setData(data);
+
+      // Update axis label and legend to reflect current unit
+      this.updateGraphUnitLabels(graphInstance, containerEl);
     }
+  }
+
+  /**
+   * Updates the graph's axis label and legend labels to reflect the current bps unit.
+   */
+  private updateGraphUnitLabels(graphInstance: uPlot, containerEl: HTMLElement): void {
+    if (!graphInstance) return;
+
+    const unitLabel = this.currentBpsUnit.label;
+
+    // Update the Y-axis label (left axis, index 1)
+    const axisLabel = containerEl.querySelector('.u-axis.u-off1 .u-label') as HTMLElement | null;
+    if (axisLabel) {
+      axisLabel.textContent = unitLabel;
+    }
+
+    // Update legend labels for RX and TX series
+    const legendLabels = containerEl.querySelectorAll('.u-legend .u-series td.u-label');
+    legendLabels.forEach((label, index) => {
+      if (index === 1) {
+        label.textContent = `RX ${unitLabel}`;
+      } else if (index === 2) {
+        label.textContent = `TX ${unitLabel}`;
+      }
+    });
   }
 
   private setupPanelGraphResizeObserver(panelElement: HTMLElement | undefined, _endpoint: string, containerEl: HTMLElement, graphInstance: uPlot): void {
@@ -2055,14 +2083,45 @@ class TopologyWebviewController {
     return history;
   }
 
+  /**
+   * Determines the best unit for displaying bandwidth values.
+   * Returns the unit info with divisor and label.
+   */
+  private determineBpsUnit(maxBps: number): { divisor: number; label: string; shortLabel: string } {
+    if (maxBps >= 1_000_000_000) {
+      return { divisor: 1_000_000_000, label: "Gbps", shortLabel: "Gbps" };
+    } else if (maxBps >= 1_000_000) {
+      return { divisor: 1_000_000, label: "Mbps", shortLabel: "Mbps" };
+    } else if (maxBps >= 1_000) {
+      return { divisor: 1_000, label: "Kbps", shortLabel: "Kbps" };
+    } else {
+      return { divisor: 1, label: "bps", shortLabel: "bps" };
+    }
+  }
+
+  /**
+   * Stores the current bps unit for the graph to use in axis labels and series.
+   */
+  private currentBpsUnit: { divisor: number; label: string; shortLabel: string } = { divisor: 1000, label: "Kbps", shortLabel: "Kbps" };
+
   private prepareGraphData(history: { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] }): number[][] {
-    const rxKbps = history.rxBps.map(v => v / 1000);
-    const txKbps = history.txBps.map(v => v / 1000);
+    // Find max value to determine the best unit
+    const maxBps = Math.max(
+      ...history.rxBps,
+      ...history.txBps,
+      1 // Avoid 0 for empty arrays
+    );
+
+    this.currentBpsUnit = this.determineBpsUnit(maxBps);
+    const { divisor } = this.currentBpsUnit;
+
+    const rxScaled = history.rxBps.map(v => v / divisor);
+    const txScaled = history.txBps.map(v => v / divisor);
 
     return [
       history.timestamps,
-      rxKbps,
-      txKbps,
+      rxScaled,
+      txScaled,
       history.rxPps,
       history.txPps
     ];
@@ -2073,20 +2132,23 @@ class TopologyWebviewController {
       return rawValue == null ? "-" : rawValue.toFixed(2);
     };
 
+    // Use current unit label (will be updated dynamically when data changes)
+    const unitLabel = this.currentBpsUnit.label;
+
     return [
       {},
       {
-        label: "RX Kbps",
+        label: `RX ${unitLabel}`,
         stroke: "#4ec9b0",
         width: 2,
-        scale: "kbps",
+        scale: "bps",
         value: formatValue
       },
       {
-        label: "TX Kbps",
+        label: `TX ${unitLabel}`,
         stroke: "#569cd6",
         width: 2,
-        scale: "kbps",
+        scale: "bps",
         value: formatValue
       },
       {
@@ -2126,9 +2188,9 @@ class TopologyWebviewController {
           show: false
         },
         {
-          scale: "kbps",
+          scale: "bps",
           side: 3,
-          label: "Kbps",
+          label: this.currentBpsUnit.label,
           labelSize: 20,
           labelFont: "12px sans-serif",
           size: 60,
@@ -2166,11 +2228,11 @@ class TopologyWebviewController {
       ],
       scales: {
         x: {},
-        kbps: {
+        bps: {
           auto: true,
           range: (_self, dataMin, dataMax) => {
             // Set minimum range to make lines visible even with small values
-            const minRange = 10; // 10 Kbps minimum
+            const minRange = 10; // 10 units minimum (adapts to current unit)
             const actualMax = Math.max(dataMax, minRange);
             const pad = (actualMax - dataMin) * 0.1;
             return [0, actualMax + pad];
