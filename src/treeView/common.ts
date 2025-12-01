@@ -69,6 +69,9 @@ export class ClabLabTreeNode extends vscode.TreeItem {
             title: 'Open TopoViewer',
             arguments: [this]
         };
+
+        // Set stable ID to help VS Code track this item across refreshes
+        this.id = `lab:${labPath.absolute}`;
     }
 }
 
@@ -133,6 +136,9 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
         this.nodeGroup = nodeGroup;
         this.status = status;
         this.contextValue = contextValue;
+
+        // Set stable ID to help VS Code track this item across refreshes
+        this.id = `container:${labPath.absolute}:${name}`;
     }
 
     // Get the IPv4 address without CIDR mask
@@ -196,6 +202,9 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
         this.state = state;
         this.contextValue = contextValue;
         this.stats = stats;
+
+        // Set stable ID to help VS Code track this item across refreshes
+        this.id = `interface:${cID}:${name}`;
     }
 }
 

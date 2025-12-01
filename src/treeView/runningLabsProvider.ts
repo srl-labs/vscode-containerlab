@@ -180,7 +180,32 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     getTreeItem(element: RunningTreeNode): vscode.TreeItem {
+        // Don't include tooltip here - it will be resolved lazily via resolveTreeItem
+        // This helps prevent tooltip dismissal during tree refreshes
+        // We store the tooltip on a separate property and clear it from the TreeItem
+        const storedTooltip = element.tooltip;
+        (element as any)._storedTooltip = storedTooltip;
+        element.tooltip = undefined;
         return element;
+    }
+
+    /**
+     * Lazily resolve tree item details like tooltip.
+     * This is called by VS Code when it needs to display the tooltip,
+     * allowing the tooltip to persist better during tree refreshes.
+     */
+    resolveTreeItem(
+        item: vscode.TreeItem,
+        element: RunningTreeNode,
+        // eslint-disable-next-line no-unused-vars
+        _token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.TreeItem> {
+        // Restore the tooltip from our stored property
+        const storedTooltip = (element as any)._storedTooltip;
+        if (storedTooltip !== undefined) {
+            item.tooltip = storedTooltip;
+        }
+        return item;
     }
 
     /**
@@ -372,9 +397,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             target.description = source.description;
             labChanged = true;
         }
+        // Always update tooltip (VS Code fetches it lazily on hover)
+        // but don't mark as changed to avoid dismissing visible tooltips
         if (target.tooltip !== source.tooltip) {
             target.tooltip = source.tooltip;
-            labChanged = true;
         }
         if (!this.iconsEqual(target.iconPath, source.iconPath)) {
             target.iconPath = source.iconPath;
@@ -471,7 +497,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         if (this.applySimpleUpdates(targetAny, [
             ['label', source.label, true],
             ['description', source.description, true],
-            ['tooltip', source.tooltip, true],
             ['contextValue', source.contextValue],
             ['cID', (source as any).cID],
             ['state', source.state],
@@ -484,6 +509,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             ['nodeGroup', (source as any).nodeGroup]
         ])) {
             changed = true;
+        }
+
+        // Always update tooltip (VS Code fetches it lazily on hover)
+        // but don't mark as changed to avoid dismissing visible tooltips
+        if (String(target.tooltip ?? '') !== String(source.tooltip ?? '')) {
+            target.tooltip = source.tooltip;
         }
 
         if (!this.iconsEqual(target.iconPath, source.iconPath)) {
@@ -549,7 +580,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         if (this.applySimpleUpdates(targetAny, [
             ['label', source.label, true],
             ['description', source.description, true],
-            ['tooltip', source.tooltip, true],
             ['contextValue', source.contextValue],
             ['cID', (source as any).cID],
             ['state', source.state],
@@ -560,6 +590,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             ['ifIndex', (source as any).ifIndex]
         ])) {
             changed = true;
+        }
+
+        // Always update tooltip (VS Code fetches it lazily on hover)
+        // but don't mark as changed to avoid dismissing visible tooltips
+        if (String(target.tooltip ?? '') !== String(source.tooltip ?? '')) {
+            target.tooltip = source.tooltip;
         }
 
         if (!this.iconsEqual(target.iconPath, source.iconPath)) {
@@ -1192,7 +1228,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 stats
             );
 
-            this.appendInterfaceStats(tooltipParts, intf);
+            // Note: Interface stats are not shown in tooltip because tooltips are
+            // cached to prevent dismissal during tree refreshes, so stats would be stale
 
             node.tooltip = tooltipParts.join("\n");
             node.description = description;
@@ -1229,75 +1266,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         assign('statsIntervalSeconds', intf.statsIntervalSeconds);
 
         return Object.keys(stats).length > 0 ? stats : undefined;
-    }
-
-    private appendInterfaceStats(tooltipParts: string[], intf: ClabInterfaceSnapshotEntry): void {
-        const rxRateLine = this.buildRateLine("RX", intf.rxBps, intf.rxPps);
-        if (rxRateLine) {
-            tooltipParts.push(rxRateLine);
-        }
-
-        const txRateLine = this.buildRateLine("TX", intf.txBps, intf.txPps);
-        if (txRateLine) {
-            tooltipParts.push(txRateLine);
-        }
-
-        const rxCounterLine = this.buildCounterLine("RX", intf.rxBytes, intf.rxPackets);
-        if (rxCounterLine) {
-            tooltipParts.push(rxCounterLine);
-        }
-
-        const txCounterLine = this.buildCounterLine("TX", intf.txBytes, intf.txPackets);
-        if (txCounterLine) {
-            tooltipParts.push(txCounterLine);
-        }
-
-        if (typeof intf.statsIntervalSeconds === 'number' && Number.isFinite(intf.statsIntervalSeconds)) {
-            tooltipParts.push(`Stats Interval: ${this.formatWithPrecision(intf.statsIntervalSeconds, 3)} s`);
-        }
-    }
-
-    private buildRateLine(direction: string, bps?: number, pps?: number): string | undefined {
-        if (typeof bps !== 'number' || !Number.isFinite(bps)) {
-            if (typeof pps !== 'number' || !Number.isFinite(pps)) {
-                return undefined;
-            }
-            return `${direction}: PPS ${this.formatWithPrecision(pps, 2)}`;
-        }
-
-        const rateParts = [
-            `${this.formatWithPrecision(bps, 0)} bps`,
-            `${this.formatWithPrecision(bps / 1_000, 2)} Kbps`,
-            `${this.formatWithPrecision(bps / 1_000_000, 2)} Mbps`,
-            `${this.formatWithPrecision(bps / 1_000_000_000, 2)} Gbps`,
-        ];
-
-        let line = `${direction}: ${rateParts.join(' / ')}`;
-        if (typeof pps === 'number' && Number.isFinite(pps)) {
-            line += ` | PPS: ${this.formatWithPrecision(pps, 2)}`;
-        }
-        return line;
-    }
-
-    private buildCounterLine(direction: string, bytes?: number, packets?: number): string | undefined {
-        const segments: string[] = [];
-        if (typeof bytes === 'number' && Number.isFinite(bytes)) {
-            segments.push(`${this.formatWithPrecision(bytes, 0)} bytes`);
-        }
-        if (typeof packets === 'number' && Number.isFinite(packets)) {
-            segments.push(`${this.formatWithPrecision(packets, 0)} packets`);
-        }
-        if (segments.length === 0) {
-            return undefined;
-        }
-        return `${direction} Total: ${segments.join(' / ')}`;
-    }
-
-    private formatWithPrecision(value: number, fractionDigits: number): string {
-        return value.toLocaleString(undefined, {
-            minimumFractionDigits: fractionDigits,
-            maximumFractionDigits: fractionDigits,
-        });
     }
 
     // getResourceUri remains unchanged
