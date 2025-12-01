@@ -268,6 +268,25 @@ export function viewportCloseLinkLabelMenu(): void {
 }
 
 /**
+ * Toggle dummy links visibility in the topology viewer.
+ */
+export function viewportToggleDummyLinks(event?: MouseEvent): void {
+  try {
+    event?.preventDefault();
+    const manager = topoViewerState.editorEngine?.dummyLinksManager;
+    if (manager) {
+      manager.toggle();
+    } else {
+      // Fallback: toggle state directly and apply via singleton
+      const { dummyLinksManager } = require('../core/managerRegistry');
+      dummyLinksManager.toggle();
+    }
+  } catch (error) {
+    log.error(`Error toggling dummy links: ${error}`);
+  }
+}
+
+/**
  * Search for nodes in the topology
  */
 function getTopologySearchInput(): HTMLInputElement | null {
@@ -433,6 +452,7 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportToggleLinkLabelMenu = viewportToggleLinkLabelMenu;
   (globalThis as any).viewportSelectLinkLabelMode = viewportSelectLinkLabelMode;
   (globalThis as any).viewportCloseLinkLabelMenu = viewportCloseLinkLabelMenu;
+  (globalThis as any).viewportToggleDummyLinks = viewportToggleDummyLinks;
 
   log.info('Global UI handlers initialized');
 }

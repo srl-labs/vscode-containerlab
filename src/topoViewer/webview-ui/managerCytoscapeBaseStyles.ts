@@ -306,6 +306,19 @@ const cytoscapeStylesBase: any[] = [
       height: '14'
     }
   },
+  // Hidden dummy link/node styles
+  {
+    selector: 'edge.dummy-link-hidden',
+    style: {
+      display: 'none'
+    }
+  },
+  {
+    selector: 'node.dummy-link-hidden',
+    style: {
+      display: 'none'
+    }
+  },
   // Cloud node styles for network endpoints
   {
     selector: 'node[topoViewerRole="cloud"]',

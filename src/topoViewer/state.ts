@@ -9,6 +9,7 @@ export const topoViewerState: TopoViewerState = {
   selectedEdge: null,
   linkLabelMode: DEFAULT_LINK_LABEL_MODE,
   nodeContainerStatusVisibility: false,
+  dummyLinksVisible: true,
   labName: '',
   prefixName: 'clab',
   multiLayerViewPortState: false,
@@ -28,6 +29,7 @@ export function resetState(): void {
   topoViewerState.selectedEdge = null;
   topoViewerState.linkLabelMode = DEFAULT_LINK_LABEL_MODE;
   topoViewerState.nodeContainerStatusVisibility = false;
+  topoViewerState.dummyLinksVisible = true;
   topoViewerState.multiLayerViewPortState = false;
   topoViewerState.isGeoMapInitialized = false;
   topoViewerState.isPanel01Cy = false;

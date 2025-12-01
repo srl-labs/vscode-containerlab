@@ -37,7 +37,8 @@ import {
   layoutAlgoManager as layoutAlgoManagerSingleton,
   getGroupManager,
   zoomToFitManager as zoomToFitManagerSingleton,
-  labelEndpointManager as labelEndpointManagerSingleton
+  labelEndpointManager as labelEndpointManagerSingleton,
+  dummyLinksManager as dummyLinksManagerSingleton
 } from "../core/managerRegistry";
 import { log } from "../logging/logger";
 import { perfMark, perfMeasure } from "../utilities/performanceMonitor";
@@ -136,6 +137,7 @@ class TopologyWebviewController {
   public layoutAlgoManager!: ManagerLayoutAlgo;
   public zoomToFitManager!: ManagerZoomToFit;
   public labelEndpointManager!: ManagerLabelEndpoint;
+  public dummyLinksManager!: import('./managerDummyLinks').ManagerDummyLinks;
   public freeTextManager?: ManagerFreeText;
   public freeShapesManager?: ManagerFreeShapes;
   public copyPasteManager!: CopyPasteManager;
@@ -545,6 +547,8 @@ class TopologyWebviewController {
     this.zoomToFitManager = zoomToFitManagerSingleton;
     this.labelEndpointManager = labelEndpointManagerSingleton;
     this.labelEndpointManager.initialize(this.cy);
+    this.dummyLinksManager = dummyLinksManagerSingleton;
+    this.dummyLinksManager.initialize(this.cy);
     this.isViewportDrawerClabEditorChecked = mode === "edit";
     this.captureViewportManager = {
       viewportButtonsCaptureViewportAsSvg: () => {
