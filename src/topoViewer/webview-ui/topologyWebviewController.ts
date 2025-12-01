@@ -1815,6 +1815,11 @@ class TopologyWebviewController {
           const targetEndpoint = `b:${target} :: ${ele.data('targetEndpoint') || ''}`;
           this.linkStatsHistory.delete(sourceEndpoint);
           this.linkStatsHistory.delete(targetEndpoint);
+
+          // Register callback to unhighlight link when panel is closed
+          panelManager.onInstanceClose(TopologyWebviewController.PANEL_LINK_ID, linkId, () => {
+            ele.removeStyle(TopologyWebviewController.STYLE_LINE_COLOR);
+          });
         }
 
         // Populate the panel with link data

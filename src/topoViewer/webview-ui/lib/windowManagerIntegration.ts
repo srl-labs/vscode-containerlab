@@ -35,6 +35,7 @@ export interface PanelConfig {
 export class PanelManager {
   private panels: Map<string, ManagedWindow> = new Map();
   private panelInstances: Map<string, Map<string, ManagedWindow>> = new Map(); // type -> (instanceId -> window)
+  private instanceCloseCallbacks: Map<string, Map<string, () => void>> = new Map(); // type -> (instanceId -> callback)
 
   /**
    * Register a panel with the window manager
@@ -313,6 +314,19 @@ export class PanelManager {
    * Remove a panel instance
    */
   private removePanelInstance(panelType: string, instanceId: string): void {
+    // Call registered close callback if exists
+    if (this.instanceCloseCallbacks.has(panelType)) {
+      const callbacks = this.instanceCloseCallbacks.get(panelType)!;
+      const callback = callbacks.get(instanceId);
+      if (callback) {
+        callback();
+        callbacks.delete(instanceId);
+        if (callbacks.size === 0) {
+          this.instanceCloseCallbacks.delete(panelType);
+        }
+      }
+    }
+
     if (this.panelInstances.has(panelType)) {
       const instances = this.panelInstances.get(panelType)!;
       const panel = instances.get(instanceId);
@@ -337,6 +351,16 @@ export class PanelManager {
   }
 
   /**
+   * Register a callback to be called when a panel instance is closed
+   */
+  onInstanceClose(panelType: string, instanceId: string, callback: () => void): void {
+    if (!this.instanceCloseCallbacks.has(panelType)) {
+      this.instanceCloseCallbacks.set(panelType, new Map());
+    }
+    this.instanceCloseCallbacks.get(panelType)!.set(instanceId, callback);
+  }
+
+  /**
    * Destroy all panels
    */
   destroyAll(): void {
@@ -353,6 +377,7 @@ export class PanelManager {
       });
     });
     this.panelInstances.clear();
+    this.instanceCloseCallbacks.clear();
   }
 }
 
