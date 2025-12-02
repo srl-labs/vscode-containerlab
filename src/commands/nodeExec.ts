@@ -42,7 +42,8 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
 
   execCommandInTerminal(
     `${runtime} exec -it ${ctx.containerId} ${execCmd}`,
-    `Shell - ${ctx.container}`
+    `Shell - ${ctx.container}`,
+    true  // If terminal exists, just focus it
   );
 }
 
@@ -54,6 +55,7 @@ export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
   const runtime = config.get<string>("runtime", "docker");
   execCommandInTerminal(
     `${runtime} exec -it ${ctx.containerId} telnet 127.0.0.1 ${port}`,
-    `Telnet - ${ctx.container}`
+    `Telnet - ${ctx.container}`,
+    true  // If terminal exists, just focus it
   );
 }

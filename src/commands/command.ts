@@ -8,22 +8,29 @@ import * as path from 'path';
 
 /**
  * Run a shell command in a named VS Code terminal.
- * If that terminal already exists, we send a Ctrl+C first.
+ * @param command The command to execute
+ * @param terminalName The name for the terminal
+ * @param reuseOnly If true, just focus existing terminal without sending command again.
+ *                  If false (default), reuses existing terminal with Ctrl+C and resends command.
  */
-export function execCommandInTerminal(command: string, terminalName: string) {
-    let terminal: vscode.Terminal | undefined;
+export function execCommandInTerminal(command: string, terminalName: string, reuseOnly: boolean = false) {
     for (const term of vscode.window.terminals) {
         if (term.name === terminalName) {
-            terminal = term;
-            // Send Ctrl+C & enter to stop any previous command
+            if (reuseOnly) {
+                // Terminal already exists - just focus it
+                term.show();
+                return;
+            }
+            // Send Ctrl+C & enter to stop any previous command, then resend
             term.sendText("\x03\r");
-            break;
+            term.sendText(command);
+            term.show();
+            return;
         }
     }
-    if (!terminal) {
-        terminal = vscode.window.createTerminal({ name: terminalName });
-    }
 
+    // Terminal doesn't exist - create new one
+    const terminal = vscode.window.createTerminal({ name: terminalName });
     terminal.sendText(command);
     terminal.show();
 }

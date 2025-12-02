@@ -157,27 +157,26 @@ topology:
 
   private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
     const labs = await runningLabsProvider?.discoverInspectLabs();
-    if (!labs) {
+    if (!labs || !this.lastYamlFilePath) {
       return undefined;
     }
 
-    let distributedSrosFallback: ClabContainerTreeNode | undefined;
-
-    for (const lab of Object.values(labs)) {
-      const containers = lab.containers ?? [];
-      const directMatch = containers.find(
-        (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
-      );
-      if (directMatch) {
-        return directMatch;
-      }
-
-      if (!distributedSrosFallback) {
-        distributedSrosFallback = this.resolveDistributedSrosContainer(containers, nodeName);
-      }
+    // Only search in the current lab
+    const currentLab = Object.values(labs).find(lab => lab.labPath.absolute === this.lastYamlFilePath);
+    if (!currentLab) {
+      return undefined;
     }
 
-    return distributedSrosFallback;
+    const containers = currentLab.containers ?? [];
+    const directMatch = containers.find(
+      (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+    );
+    if (directMatch) {
+      return directMatch;
+    }
+
+    // Check for distributed SROS container
+    return this.resolveDistributedSrosContainer(containers, nodeName);
   }
 
   private resolveDistributedSrosContainer(
