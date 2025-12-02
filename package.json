@@ -1466,6 +1466,6 @@
     "typescript-eslint": "^8.47.0",
     "uplot": "^1.6.32",
     "webpack-cli": "^6.0.1",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.2"
   }
 }
