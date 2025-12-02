@@ -2,58 +2,26 @@ import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from '../../core/VscodeMessaging';
 import { FreeShapeAnnotation } from '../../../shared/types/topoViewerGraph';
 import { log } from '../../platform/logging/logger';
+import {
+  FreeShapesSvgRenderer,
+  DEFAULT_SHAPE_WIDTH,
+  DEFAULT_SHAPE_HEIGHT,
+  DEFAULT_LINE_LENGTH,
+  DEFAULT_FILL_COLOR,
+  DEFAULT_FILL_OPACITY,
+  DEFAULT_BORDER_COLOR,
+  DEFAULT_BORDER_WIDTH,
+  DEFAULT_BORDER_STYLE,
+  DEFAULT_ARROW_SIZE,
+  DEFAULT_CORNER_RADIUS,
+  MIN_SHAPE_SIZE,
+  SVG_NAMESPACE
+} from './FreeShapesSvgRenderer';
+import { FreeShapesModal } from './FreeShapesModal';
 
-const DEFAULT_SHAPE_WIDTH = 50;
-const DEFAULT_SHAPE_HEIGHT = 50;
-const DEFAULT_LINE_LENGTH = 150;
-const DEFAULT_FILL_COLOR = '#ffffff';
-const DEFAULT_FILL_OPACITY = 0;
-const DEFAULT_BORDER_COLOR = '#646464';
-const DEFAULT_BORDER_WIDTH = 2;
-const DEFAULT_BORDER_STYLE = 'solid';
-const DEFAULT_ARROW_SIZE = 10;
-const DEFAULT_CORNER_RADIUS = 0;
-const MIN_SHAPE_SIZE = 5;
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
-const SVG_STROKE_WIDTH_ATTR = 'stroke-width';
-const SVG_STROKE_DASHARRAY_ATTR = 'stroke-dasharray';
 const HANDLE_TRANSLATE = 'translate(-50%, -50%)';
 const RESIZE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-resize-visible';
 const ROTATE_HANDLE_VISIBLE_CLASS = 'free-shape-overlay-rotate-visible';
-const PANEL_FREE_SHAPES_ID = 'panel-free-shapes';
-const CLASS_HAS_CHANGES = 'btn-has-changes';
-
-interface ShapeModalElements {
-  panel: HTMLDivElement;
-  titleEl: HTMLSpanElement;
-  closeBtn: HTMLButtonElement;
-  typeSelect: HTMLSelectElement;
-  widthInput: HTMLInputElement;
-  heightInput: HTMLInputElement;
-  fillColorInput: HTMLInputElement;
-  fillOpacityInput: HTMLInputElement;
-  fillOpacityValue: HTMLSpanElement;
-  fillControls: HTMLDivElement;
-  borderColorInput: HTMLInputElement;
-  borderColorLabel: HTMLLabelElement;
-  borderWidthInput: HTMLInputElement;
-  borderWidthLabel: HTMLLabelElement;
-  borderStyleSelect: HTMLSelectElement;
-  borderStyleLabel: HTMLLabelElement;
-  cornerRadiusInput: HTMLInputElement;
-  cornerRadiusControl: HTMLDivElement;
-  lineStartArrowCheck: HTMLInputElement;
-  lineEndArrowCheck: HTMLInputElement;
-  arrowSizeInput: HTMLInputElement;
-  lineControls: HTMLDivElement;
-  sizeControls: HTMLDivElement;
-  rotationInput: HTMLInputElement;
-  rotationControl: HTMLDivElement;
-  transparentBtn: HTMLButtonElement;
-  noBorderBtn: HTMLButtonElement;
-  applyBtn: HTMLButtonElement;
-  okBtn: HTMLButtonElement;
-}
 
 interface OverlayEntry {
   wrapper: HTMLDivElement;
@@ -63,8 +31,6 @@ interface OverlayEntry {
   rotateHandle?: HTMLButtonElement;
 }
 
-// eslint-disable-next-line no-unused-vars
-type ShapeResolve = (annotation: FreeShapeAnnotation | null) => void;
 type ShapeType = 'rectangle' | 'circle' | 'line';
 
 interface OverlayResizeState {
@@ -105,25 +71,24 @@ export class ManagerFreeShapes {
   private overlayRotateState: OverlayRotateState | null = null;
   private overlayHoverLocks: Set<string> = new Set();
   private overlayHoverHideTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-  // Track intended (unsnapped) positions for free shapes during drag
   private intendedPositions: Map<string, { x: number; y: number }> = new Map();
-  // Guard to prevent recursive position corrections
   private positionCorrectionInProgress: Set<string> = new Set();
-  // Loading state management (matches freeText pattern)
   private loadInProgress = false;
   private loadTimeout: ReturnType<typeof setTimeout> | null = null;
   private onLoadTimeout: () => Promise<void>;
-  // Initial values for change tracking
-  private freeShapeInitialValues: Record<string, string> | null = null;
+
+  private svgRenderer: FreeShapesSvgRenderer;
+  private modal: FreeShapesModal;
 
   constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender) {
     this.cy = cy;
     this.messageSender = messageSender;
+    this.svgRenderer = new FreeShapesSvgRenderer();
+    this.modal = new FreeShapesModal();
     this.setupEventHandlers();
     this.initializeOverlayLayer();
     this.registerLockStateListener();
 
-    // Initialize the load timeout callback (matches freeText pattern)
     this.onLoadTimeout = async () => {
       this.loadInProgress = true;
       try {
@@ -196,13 +161,11 @@ export class ManagerFreeShapes {
 
     this.cy.on('position', SELECTOR_FREE_SHAPE, (event) => this.handleShapePositionChange(event));
 
-    // After drag release, restore the intended (unsnapped) position to bypass grid snapping
     this.cy.on('dragfree', SELECTOR_FREE_SHAPE, (event) => {
       const node = event.target;
       const nodeId = node.id();
       const intendedPos = this.intendedPositions.get(nodeId);
       if (intendedPos) {
-        // Restore the unsnapped position - grid snap has already modified node.position()
         node.position(intendedPos);
         this.updateShapePosition(nodeId, intendedPos);
         this.intendedPositions.delete(nodeId);
@@ -243,27 +206,18 @@ export class ManagerFreeShapes {
     cyContainer.appendChild(this.overlayContainer);
   }
 
-  /**
-   * Handle position changes for free shape nodes.
-   * If user is dragging, track the position. Otherwise, enforce annotation position.
-   */
   private handleShapePositionChange(event: cytoscape.EventObject): void {
     const node = event.target;
-    if (!node) {
-      return;
-    }
+    if (!node) return;
     this.positionOverlayById(node.id());
 
     const annotation = this.annotations.get(node.id());
-    if (!annotation) {
-      return;
-    }
+    if (!annotation) return;
 
     if (node.grabbed()) {
-      // Track the intended (unsnapped) position during drag
       const pos = node.position();
       if (annotation.shapeType === 'line' && annotation.endPosition) {
-        const prevCenter = this.getLineCenter(annotation);
+        const prevCenter = this.svgRenderer.getLineCenter(annotation);
         const deltaX = Math.round(pos.x - prevCenter.x);
         const deltaY = Math.round(pos.y - prevCenter.y);
         annotation.endPosition = {
@@ -286,26 +240,19 @@ export class ManagerFreeShapes {
         });
       }
     } else {
-      // Node is NOT being dragged - enforce annotation position
       this.enforceAnnotationPosition(node, annotation);
     }
   }
 
-  /**
-   * Force free shape node position to match annotation data.
-   * This prevents external changes (layout, grid snap) from moving free shapes.
-   */
   private enforceAnnotationPosition(node: cytoscape.NodeSingular, annotation: FreeShapeAnnotation): void {
     const nodeId = node.id();
-    if (this.positionCorrectionInProgress.has(nodeId)) {
-      return; // Prevent infinite recursion
-    }
+    if (this.positionCorrectionInProgress.has(nodeId)) return;
     const pos = node.position();
     let annotationX: number;
     let annotationY: number;
 
     if (annotation.shapeType === 'line') {
-      const center = this.getLineCenter(annotation);
+      const center = this.svgRenderer.getLineCenter(annotation);
       annotationX = center.x;
       annotationY = center.y;
     } else {
@@ -320,16 +267,12 @@ export class ManagerFreeShapes {
     }
   }
 
-  /**
-   * Update shape annotation position after drag.
-   */
   private updateShapePosition(nodeId: string, position: { x: number; y: number }): void {
     const annotation = this.annotations.get(nodeId);
     if (!annotation) return;
 
     if (annotation.shapeType === 'line') {
-      // For lines, position is the center - compute from endpoints
-      const center = this.getLineCenter(annotation);
+      const center = this.svgRenderer.getLineCenter(annotation);
       const deltaX = Math.round(position.x - center.x);
       const deltaY = Math.round(position.y - center.y);
       if (annotation.endPosition) {
@@ -367,9 +310,7 @@ export class ManagerFreeShapes {
     const handler = (event: cytoscape.EventObject) => {
       const target = event.target;
 
-      // Check if target is a group or parent node - prevent shape addition on groups
       if (target !== this.cy) {
-        // If clicked on a group or parent node, cancel shape mode
         if (target.isParent?.() || target.data?.('topoViewerRole') === 'group') {
           this.disableAddShapeMode();
           log.debug('Shape addition cancelled - cannot add shape to groups');
@@ -377,7 +318,6 @@ export class ManagerFreeShapes {
         }
       }
 
-      // Only add shape when clicking on empty canvas
       if (event.target === this.cy) {
         const position = event.position || (event as any).cyPosition;
         if (position) {
@@ -397,24 +337,17 @@ export class ManagerFreeShapes {
     }
   }
 
-  private async addFreeShapeAtPosition(
-    position: cytoscape.Position,
-    shapeType: ShapeType
-  ): Promise<void> {
+  private async addFreeShapeAtPosition(position: cytoscape.Position, shapeType: ShapeType): Promise<void> {
     const id = `freeShape_${Date.now()}_${++this.idCounter}`;
     const defaultAnnotation = this.buildDefaultAnnotation(id, position, shapeType);
 
-    const result = await this.promptForShape('Add Shape', defaultAnnotation);
+    const result = await this.modal.promptForShape('Add Shape', defaultAnnotation);
     if (!result) return;
 
     this.addFreeShapeAnnotation(result);
   }
 
-  private buildDefaultAnnotation(
-    id: string,
-    position: cytoscape.Position,
-    shapeType: ShapeType
-  ): FreeShapeAnnotation {
+  private buildDefaultAnnotation(id: string, position: cytoscape.Position, shapeType: ShapeType): FreeShapeAnnotation {
     const lastAnnotation = Array.from(this.annotations.values()).slice(-1)[0];
     const baseAnnotation: FreeShapeAnnotation = {
       id,
@@ -458,9 +391,8 @@ export class ManagerFreeShapes {
   public addFreeShapeAnnotation(annotation: FreeShapeAnnotation, options: { skipSave?: boolean } = {}): void {
     this.annotations.set(annotation.id, annotation);
 
-    // Calculate the correct initial position (for lines, use center; for others, use annotation position)
     const initialPosition = annotation.shapeType === 'line'
-      ? this.getLineCenter(annotation)
+      ? this.svgRenderer.getLineCenter(annotation)
       : { x: annotation.position.x, y: annotation.position.y };
 
     const existing = this.cy.getElementById(annotation.id);
@@ -475,7 +407,6 @@ export class ManagerFreeShapes {
       node.position(initialPosition);
       node.selectify();
       node.grabify();
-      // Respect lock state when updating existing node
       if ((window as any).topologyLocked) {
         node.lock();
       } else {
@@ -498,19 +429,16 @@ export class ManagerFreeShapes {
       this.managedNodes.add(annotation.id);
     }
 
-    // Respect lock state after adding node
     if ((window as any).topologyLocked) {
       node.lock();
     }
 
     this.annotationNodes.set(annotation.id, node);
-    // Set position again to ensure it's correct
     node.position(initialPosition);
     this.applyShapeNodeStyles(node, annotation);
     this.removeShapeOverlay(annotation.id);
     this.createShapeOverlay(node, annotation);
 
-    // Restore position after a short delay to bypass any grid snapping
     setTimeout(() => {
       node.position(initialPosition);
       this.positionOverlayById(annotation.id);
@@ -554,14 +482,7 @@ export class ManagerFreeShapes {
     svg.style.position = 'absolute';
     svg.style.transformOrigin = 'center center';
 
-    let shape: SVGElement;
-    if (annotation.shapeType === 'rectangle') {
-      shape = this.createRectangleShape(annotation);
-    } else if (annotation.shapeType === 'circle') {
-      shape = this.createCircleShape(annotation);
-    } else {
-      shape = this.createLineShape(annotation);
-    }
+    const shape = this.svgRenderer.createShapeElement(annotation);
 
     svg.appendChild(shape);
     wrapper.appendChild(svg);
@@ -592,201 +513,6 @@ export class ManagerFreeShapes {
     this.positionOverlayById(annotation.id);
   }
 
-  private createRectangleShape(annotation: FreeShapeAnnotation): SVGRectElement {
-    const rect = document.createElementNS(SVG_NAMESPACE, 'rect');
-    const width = annotation.width ?? DEFAULT_SHAPE_WIDTH;
-    const height = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
-    const cornerRadius = annotation.cornerRadius ?? 0;
-
-    rect.setAttribute('width', String(width));
-    rect.setAttribute('height', String(height));
-    rect.setAttribute('rx', String(cornerRadius));
-    rect.setAttribute('ry', String(cornerRadius));
-    rect.setAttribute('fill', this.applyAlphaToColor(annotation.fillColor ?? DEFAULT_FILL_COLOR, annotation.fillOpacity ?? DEFAULT_FILL_OPACITY));
-    rect.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
-    rect.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
-    rect.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
-
-    return rect;
-  }
-
-  private createCircleShape(annotation: FreeShapeAnnotation): SVGEllipseElement {
-    const ellipse = document.createElementNS(SVG_NAMESPACE, 'ellipse');
-    const width = annotation.width ?? DEFAULT_SHAPE_WIDTH;
-    const height = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
-
-    ellipse.setAttribute('cx', String(width / 2));
-    ellipse.setAttribute('cy', String(height / 2));
-    ellipse.setAttribute('rx', String(width / 2));
-    ellipse.setAttribute('ry', String(height / 2));
-    ellipse.setAttribute('fill', this.applyAlphaToColor(annotation.fillColor ?? DEFAULT_FILL_COLOR, annotation.fillOpacity ?? DEFAULT_FILL_OPACITY));
-    ellipse.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
-    ellipse.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
-    ellipse.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
-
-    return ellipse;
-  }
-
-  private computeLineGeometry(annotation: FreeShapeAnnotation): {
-    dx: number;
-    dy: number;
-    minX: number;
-    minY: number;
-    width: number;
-    height: number;
-    start: { x: number; y: number };
-    end: { x: number; y: number };
-  } {
-    const startX = annotation.position.x;
-    const startY = annotation.position.y;
-    const endX = annotation.endPosition?.x ?? (annotation.position.x + DEFAULT_LINE_LENGTH);
-    const endY = annotation.endPosition?.y ?? annotation.position.y;
-    const dx = endX - startX;
-    const dy = endY - startY;
-
-    const strokeWidth = annotation.borderWidth ?? DEFAULT_BORDER_WIDTH;
-    const arrowSize = (annotation.lineStartArrow || annotation.lineEndArrow)
-      ? (annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE)
-      : 0;
-    const padding = Math.max(strokeWidth, arrowSize) + 1;
-
-    const halfDx = dx / 2;
-    const halfDy = dy / 2;
-    const startCenterX = -halfDx;
-    const startCenterY = -halfDy;
-    const endCenterX = halfDx;
-    const endCenterY = halfDy;
-
-    const minX = Math.min(startCenterX, endCenterX) - padding;
-    const maxX = Math.max(startCenterX, endCenterX) + padding;
-    const minY = Math.min(startCenterY, endCenterY) - padding;
-    const maxY = Math.max(startCenterY, endCenterY) + padding;
-
-    const width = Math.max(MIN_SHAPE_SIZE, maxX - minX);
-    const height = Math.max(MIN_SHAPE_SIZE, maxY - minY);
-
-    const start = { x: startCenterX - minX, y: startCenterY - minY };
-    const end = { x: endCenterX - minX, y: endCenterY - minY };
-
-    return { dx, dy, minX, minY, width, height, start, end };
-  }
-
-  private getLineCenter(annotation: FreeShapeAnnotation): { x: number; y: number } {
-    const endX = annotation.endPosition?.x ?? annotation.position.x;
-    const endY = annotation.endPosition?.y ?? annotation.position.y;
-    return {
-      x: (annotation.position.x + endX) / 2,
-      y: (annotation.position.y + endY) / 2
-    };
-  }
-
-  private createLineShape(annotation: FreeShapeAnnotation): SVGGElement {
-    const g = document.createElementNS(SVG_NAMESPACE, 'g');
-    const line = document.createElementNS(SVG_NAMESPACE, 'line');
-
-    const geometry = this.computeLineGeometry(annotation);
-    const arrowSize = annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE;
-
-    // Calculate line endpoints, shortened if arrows are present
-    let lineStartX = geometry.start.x;
-    let lineStartY = geometry.start.y;
-    let lineEndX = geometry.end.x;
-    let lineEndY = geometry.end.y;
-
-    // Calculate line direction and length
-    const dx = geometry.end.x - geometry.start.x;
-    const dy = geometry.end.y - geometry.start.y;
-    const lineLength = Math.sqrt(dx * dx + dy * dy);
-
-    if (lineLength > 0) {
-      // Unit vector along the line
-      const ux = dx / lineLength;
-      const uy = dy / lineLength;
-
-      // Shorten line at start if there's a start arrow
-      if (annotation.lineStartArrow) {
-        lineStartX += ux * arrowSize * 0.7;
-        lineStartY += uy * arrowSize * 0.7;
-      }
-
-      // Shorten line at end if there's an end arrow
-      if (annotation.lineEndArrow) {
-        lineEndX -= ux * arrowSize * 0.7;
-        lineEndY -= uy * arrowSize * 0.7;
-      }
-    }
-
-    line.setAttribute('x1', String(lineStartX));
-    line.setAttribute('y1', String(lineStartY));
-    line.setAttribute('x2', String(lineEndX));
-    line.setAttribute('y2', String(lineEndY));
-    line.setAttribute('stroke', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
-    line.setAttribute(SVG_STROKE_WIDTH_ATTR, String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH));
-    line.setAttribute(SVG_STROKE_DASHARRAY_ATTR, this.getBorderDashArray(annotation.borderStyle));
-
-    g.appendChild(line);
-
-    if (annotation.lineStartArrow) {
-      g.appendChild(this.createArrow(geometry.start.x, geometry.start.y, geometry.end.x, geometry.end.y, annotation));
-    }
-    if (annotation.lineEndArrow) {
-      g.appendChild(this.createArrow(geometry.end.x, geometry.end.y, geometry.start.x, geometry.start.y, annotation));
-    }
-
-    return g;
-  }
-
-  private createArrow(
-    x: number,
-    y: number,
-    fromX: number,
-    fromY: number,
-    annotation: FreeShapeAnnotation
-  ): SVGPolygonElement {
-    const arrow = document.createElementNS(SVG_NAMESPACE, 'polygon');
-    const arrowSize = annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE;
-
-    const angle = Math.atan2(y - fromY, x - fromX);
-    const arrowAngle = Math.PI / 6;
-
-    const p1x = x - arrowSize * Math.cos(angle - arrowAngle);
-    const p1y = y - arrowSize * Math.sin(angle - arrowAngle);
-    const p2x = x;
-    const p2y = y;
-    const p3x = x - arrowSize * Math.cos(angle + arrowAngle);
-    const p3y = y - arrowSize * Math.sin(angle + arrowAngle);
-
-    arrow.setAttribute('points', `${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y}`);
-    arrow.setAttribute('fill', annotation.borderColor ?? DEFAULT_BORDER_COLOR);
-
-    return arrow;
-  }
-
-  private getBorderDashArray(style?: 'solid' | 'dashed' | 'dotted'): string {
-    switch (style) {
-      case 'dashed':
-        return '10,5';
-      case 'dotted':
-        return '2,2';
-      default:
-        return '';
-    }
-  }
-
-  private applyAlphaToColor(color: string, alpha: number): string {
-    const normalizedAlpha = Math.min(1, Math.max(0, alpha));
-    const hexMatch = /^#([0-9a-f]{6})$/i.exec(color);
-
-    if (hexMatch) {
-      const r = parseInt(hexMatch[1].slice(0, 2), 16);
-      const g = parseInt(hexMatch[1].slice(2, 4), 16);
-      const b = parseInt(hexMatch[1].slice(4, 6), 16);
-      return `rgba(${r}, ${g}, ${b}, ${normalizedAlpha})`;
-    }
-
-    return color;
-  }
-
   private positionOverlayById(id: string): void {
     const node = this.annotationNodes.get(id);
     const annotation = this.annotations.get(id);
@@ -810,7 +536,7 @@ export class ManagerFreeShapes {
     const rotation = annotation.rotation ?? 0;
 
     if (annotation.shapeType === 'line') {
-      const geometry = this.computeLineGeometry(annotation);
+      const geometry = this.svgRenderer.computeLineGeometry(annotation);
       const centerX = pos.x;
       const centerY = pos.y;
       const width = geometry.width * zoom;
@@ -848,7 +574,7 @@ export class ManagerFreeShapes {
     zoom: number
   ): void {
     if (annotation.shapeType === 'line') {
-      const geometry = this.computeLineGeometry(annotation);
+      const geometry = this.svgRenderer.computeLineGeometry(annotation);
       const rotation = annotation.rotation ?? 0;
       const rad = (rotation * Math.PI) / 180;
       const centerX = pos.x;
@@ -970,9 +696,7 @@ export class ManagerFreeShapes {
   }
 
   private startOverlayResize(annotationId: string, event: PointerEvent): void {
-    if (!this.canInitiateOverlayHandleAction(event)) {
-      return;
-    }
+    if (!this.canInitiateOverlayHandleAction(event)) return;
     const annotation = this.annotations.get(annotationId);
     const overlay = this.overlayElements.get(annotationId);
     if (!annotation || !overlay || !overlay.resizeHandle) return;
@@ -982,7 +706,7 @@ export class ManagerFreeShapes {
     const startHeight = annotation.height ?? DEFAULT_SHAPE_HEIGHT;
     const rotationRad = ((annotation.rotation ?? 0) * Math.PI) / 180;
     if (isLine) {
-      const geometry = this.computeLineGeometry(annotation);
+      const geometry = this.svgRenderer.computeLineGeometry(annotation);
       this.overlayResizeState = {
         annotationId,
         startWidth,
@@ -997,7 +721,6 @@ export class ManagerFreeShapes {
         startDy: geometry.dy
       };
     } else {
-      // Keep the rotated top-left corner fixed so the bottom-right handle drives the resize
       const rotatedTopLeftX = (-startWidth / 2) * Math.cos(rotationRad) - (-startHeight / 2) * Math.sin(rotationRad);
       const rotatedTopLeftY = (-startWidth / 2) * Math.sin(rotationRad) + (-startHeight / 2) * Math.cos(rotationRad);
       const anchorX = annotation.position.x + rotatedTopLeftX;
@@ -1031,14 +754,7 @@ export class ManagerFreeShapes {
     const annotation = this.annotations.get(this.overlayResizeState.annotationId);
     if (!annotation) return;
 
-    const {
-      rotationRad,
-      anchorX,
-      anchorY,
-      isLine,
-      startDx = 0,
-      startDy = 0
-    } = this.overlayResizeState;
+    const { rotationRad, anchorX, anchorY, isLine, startDx = 0, startDy = 0 } = this.overlayResizeState;
     const zoom = this.cy.zoom();
 
     const dx = event.clientX - this.overlayResizeState.startClientX;
@@ -1103,9 +819,7 @@ export class ManagerFreeShapes {
   };
 
   private startOverlayRotate(annotationId: string, event: PointerEvent): void {
-    if (!this.canInitiateOverlayHandleAction(event)) {
-      return;
-    }
+    if (!this.canInitiateOverlayHandleAction(event)) return;
     const annotation = this.annotations.get(annotationId);
     const node = this.annotationNodes.get(annotationId);
     const overlay = this.overlayElements.get(annotationId);
@@ -1189,9 +903,7 @@ export class ManagerFreeShapes {
         overlay.rotateHandle.classList.add(ROTATE_HANDLE_VISIBLE_CLASS);
       }
     } else {
-      if (this.overlayHoverLocks.has(annotationId)) {
-        return;
-      }
+      if (this.overlayHoverLocks.has(annotationId)) return;
 
       const timer = setTimeout(() => {
         this.overlayHoverHideTimers.delete(annotationId);
@@ -1258,7 +970,14 @@ export class ManagerFreeShapes {
     const annotation = this.annotations.get(id);
     if (!annotation) return;
 
-    const result = await this.promptForShape('Edit Shape', annotation);
+    const result = await this.modal.promptForShape(
+      'Edit Shape',
+      annotation,
+      (updated) => {
+        this.updateFreeShapeNode(id, updated);
+        this.debouncedSave();
+      }
+    );
     if (result) {
       Object.assign(annotation, result);
       this.updateFreeShapeNode(id, annotation);
@@ -1271,7 +990,7 @@ export class ManagerFreeShapes {
     if (!node || !node.inside()) return;
 
     if (annotation.shapeType === 'line') {
-      const center = this.getLineCenter(annotation);
+      const center = this.svgRenderer.getLineCenter(annotation);
       node.position(center);
     } else if (annotation.position) {
       node.position(annotation.position);
@@ -1282,9 +1001,7 @@ export class ManagerFreeShapes {
   }
 
   private canInitiateOverlayHandleAction(event: PointerEvent): boolean {
-    if (event.button !== 0) {
-      return false;
-    }
+    if (event.button !== 0) return false;
     event.preventDefault();
     event.stopPropagation();
     if ((window as any).topologyLocked) {
@@ -1292,281 +1009,6 @@ export class ManagerFreeShapes {
       return false;
     }
     return true;
-  }
-
-  private async promptForShape(title: string, annotation: FreeShapeAnnotation): Promise<FreeShapeAnnotation | null> {
-    return new Promise((resolve) => {
-      this.openShapeModal(title, annotation, resolve);
-    });
-  }
-
-  private openShapeModal(title: string, annotation: FreeShapeAnnotation, resolve: ShapeResolve): void {
-    const elements = this.getModalElements();
-    if (!elements) {
-      resolve(null);
-      return;
-    }
-
-    this.initializeModal(title, annotation, elements);
-    this.setupModalHandlers(annotation, elements, resolve);
-
-    // Capture initial values for change tracking after a small delay to ensure DOM is updated
-    setTimeout(() => {
-      this.freeShapeInitialValues = this.captureFreeShapeValues(elements);
-      this.updateFreeShapeApplyButtonState(elements);
-    }, 0);
-
-    // Set up change tracking on all inputs
-    this.setupFreeShapeChangeTracking(elements);
-
-    this.showModal(elements);
-  }
-
-  /**
-   * Sets up change tracking on free shape editor inputs.
-   */
-  private setupFreeShapeChangeTracking(els: ShapeModalElements): void {
-    const updateState = () => this.updateFreeShapeApplyButtonState(els);
-
-    const inputs = [
-      els.typeSelect, els.widthInput, els.heightInput,
-      els.fillColorInput, els.fillOpacityInput,
-      els.borderColorInput, els.borderWidthInput, els.borderStyleSelect,
-      els.cornerRadiusInput, els.lineStartArrowCheck, els.lineEndArrowCheck,
-      els.arrowSizeInput, els.rotationInput
-    ];
-
-    inputs.forEach(input => {
-      if (input) {
-        input.addEventListener('input', updateState);
-        input.addEventListener('change', updateState);
-      }
-    });
-  }
-
-  private getModalElements(): ShapeModalElements | null {
-    const elements = {
-      panel: document.getElementById(PANEL_FREE_SHAPES_ID) as HTMLDivElement | null,
-      titleEl: document.getElementById(`${PANEL_FREE_SHAPES_ID}-title`) as HTMLSpanElement | null,
-      closeBtn: document.getElementById(`${PANEL_FREE_SHAPES_ID}-close`) as HTMLButtonElement | null,
-      typeSelect: document.getElementById('free-shapes-type') as HTMLSelectElement | null,
-      widthInput: document.getElementById('free-shapes-width') as HTMLInputElement | null,
-      heightInput: document.getElementById('free-shapes-height') as HTMLInputElement | null,
-      fillColorInput: document.getElementById('free-shapes-fill-color') as HTMLInputElement | null,
-      fillOpacityInput: document.getElementById('free-shapes-fill-opacity') as HTMLInputElement | null,
-      fillOpacityValue: document.getElementById('free-shapes-fill-opacity-value') as HTMLSpanElement | null,
-      fillControls: document.getElementById('free-shapes-fill-controls') as HTMLDivElement | null,
-      borderColorInput: document.getElementById('free-shapes-border-color') as HTMLInputElement | null,
-      borderColorLabel: document.getElementById('free-shapes-border-color-label') as HTMLLabelElement | null,
-      borderWidthInput: document.getElementById('free-shapes-border-width') as HTMLInputElement | null,
-      borderWidthLabel: document.getElementById('free-shapes-border-width-label') as HTMLLabelElement | null,
-      borderStyleSelect: document.getElementById('free-shapes-border-style') as HTMLSelectElement | null,
-      borderStyleLabel: document.getElementById('free-shapes-border-style-label') as HTMLLabelElement | null,
-      cornerRadiusInput: document.getElementById('free-shapes-corner-radius') as HTMLInputElement | null,
-      cornerRadiusControl: document.getElementById('free-shapes-corner-radius-control') as HTMLDivElement | null,
-      lineStartArrowCheck: document.getElementById('free-shapes-line-start-arrow') as HTMLInputElement | null,
-      lineEndArrowCheck: document.getElementById('free-shapes-line-end-arrow') as HTMLInputElement | null,
-      arrowSizeInput: document.getElementById('free-shapes-arrow-size') as HTMLInputElement | null,
-      lineControls: document.getElementById('free-shapes-line-controls') as HTMLDivElement | null,
-      sizeControls: document.getElementById('free-shapes-size-controls') as HTMLDivElement | null,
-      rotationInput: document.getElementById('free-shapes-rotation') as HTMLInputElement | null,
-      rotationControl: document.getElementById('free-shapes-rotation-control') as HTMLDivElement | null,
-      transparentBtn: document.getElementById('free-shapes-transparent-btn') as HTMLButtonElement | null,
-      noBorderBtn: document.getElementById('free-shapes-no-border-btn') as HTMLButtonElement | null,
-      applyBtn: document.getElementById('free-shapes-apply-btn') as HTMLButtonElement | null,
-      okBtn: document.getElementById('free-shapes-ok-btn') as HTMLButtonElement | null,
-    };
-
-    if (Object.values(elements).some(el => el === null)) {
-      log.error('Free shapes modal elements not found');
-      return null;
-    }
-
-    return elements as ShapeModalElements;
-  }
-
-  private initializeModal(title: string, annotation: FreeShapeAnnotation, els: ShapeModalElements): void {
-    els.titleEl.textContent = title;
-    els.typeSelect.value = annotation.shapeType;
-    els.widthInput.value = String(annotation.width ?? DEFAULT_SHAPE_WIDTH);
-    els.heightInput.value = String(annotation.height ?? DEFAULT_SHAPE_HEIGHT);
-    els.fillColorInput.value = annotation.fillColor ?? DEFAULT_FILL_COLOR;
-    els.fillOpacityInput.value = String(Math.round((annotation.fillOpacity ?? DEFAULT_FILL_OPACITY) * 100));
-    els.fillOpacityValue.textContent = `${Math.round((annotation.fillOpacity ?? DEFAULT_FILL_OPACITY) * 100)}%`;
-    els.borderColorInput.value = annotation.borderColor ?? DEFAULT_BORDER_COLOR;
-    els.borderWidthInput.value = String(annotation.borderWidth ?? DEFAULT_BORDER_WIDTH);
-    els.borderStyleSelect.value = annotation.borderStyle ?? DEFAULT_BORDER_STYLE;
-    els.cornerRadiusInput.value = String(annotation.cornerRadius ?? 0);
-    els.lineStartArrowCheck.checked = annotation.lineStartArrow ?? false;
-    els.lineEndArrowCheck.checked = annotation.lineEndArrow ?? false;
-    els.arrowSizeInput.value = String(annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE);
-    els.rotationInput.value = String(annotation.rotation ?? 0);
-
-    this.updateModalControlVisibility(annotation.shapeType, els);
-  }
-
-  private updateModalControlVisibility(shapeType: string, els: ShapeModalElements): void {
-    const isLine = shapeType === 'line';
-
-    // Size controls (hidden for lines)
-    els.sizeControls.style.display = isLine ? 'none' : 'grid';
-
-    // Line-specific controls
-    els.lineControls.style.display = isLine ? 'block' : 'none';
-
-    // Corner radius (only for rectangles)
-    els.cornerRadiusControl.style.display = shapeType === 'rectangle' ? 'block' : 'none';
-
-    // Fill controls (hidden for lines - lines don't have fill)
-    els.fillControls.style.display = isLine ? 'none' : 'grid';
-
-    // Rotation (hidden for lines - line angle is determined by endpoints)
-    els.rotationControl.style.display = isLine ? 'none' : 'block';
-
-    // Update labels for lines
-    els.borderColorLabel.textContent = isLine ? 'Line Color:' : 'Border Color:';
-    els.borderWidthLabel.textContent = isLine ? 'Line Width:' : 'Border Width:';
-    els.borderStyleLabel.textContent = isLine ? 'Line Style:' : 'Border Style:';
-  }
-
-  /**
-   * Captures current values from free shape editor inputs for change tracking.
-   */
-  private captureFreeShapeValues(els: ShapeModalElements): Record<string, string> {
-    return {
-      type: els.typeSelect.value,
-      width: els.widthInput.value,
-      height: els.heightInput.value,
-      fillColor: els.fillColorInput.value,
-      fillOpacity: els.fillOpacityInput.value,
-      borderColor: els.borderColorInput.value,
-      borderWidth: els.borderWidthInput.value,
-      borderStyle: els.borderStyleSelect.value,
-      cornerRadius: els.cornerRadiusInput.value,
-      lineStartArrow: String(els.lineStartArrowCheck.checked),
-      lineEndArrow: String(els.lineEndArrowCheck.checked),
-      arrowSize: els.arrowSizeInput.value,
-      rotation: els.rotationInput.value
-    };
-  }
-
-  /**
-   * Checks if there are unsaved changes in the free shape editor.
-   */
-  private hasFreeShapeChanges(els: ShapeModalElements): boolean {
-    if (!this.freeShapeInitialValues) return false;
-    const current = this.captureFreeShapeValues(els);
-    return Object.keys(this.freeShapeInitialValues).some(
-      key => this.freeShapeInitialValues![key] !== current[key]
-    );
-  }
-
-  /**
-   * Updates the free shape editor Apply button visual state.
-   */
-  private updateFreeShapeApplyButtonState(els: ShapeModalElements): void {
-    const { applyBtn } = els;
-    if (!applyBtn) return;
-    const hasChanges = this.hasFreeShapeChanges(els);
-    applyBtn.classList.toggle(CLASS_HAS_CHANGES, hasChanges);
-  }
-
-  /**
-   * Resets free shape editor initial values after applying changes.
-   */
-  private resetFreeShapeInitialValues(els: ShapeModalElements): void {
-    this.freeShapeInitialValues = this.captureFreeShapeValues(els);
-    this.updateFreeShapeApplyButtonState(els);
-  }
-
-  private setupModalHandlers(annotation: FreeShapeAnnotation, els: ShapeModalElements, resolve: ShapeResolve): void {
-    const cleanup = () => {
-      this.hideModal(els);
-    };
-
-    const handleCancel = () => {
-      cleanup();
-      resolve(null);
-    };
-
-    els.typeSelect.addEventListener('change', () => {
-      this.updateModalControlVisibility(els.typeSelect.value, els);
-    });
-
-    els.fillOpacityInput.addEventListener('input', () => {
-      els.fillOpacityValue.textContent = `${els.fillOpacityInput.value}%`;
-    });
-
-    els.transparentBtn.addEventListener('click', () => {
-      els.fillOpacityInput.value = '0';
-      els.fillOpacityValue.textContent = '0%';
-    });
-
-    els.noBorderBtn.addEventListener('click', () => {
-      els.borderWidthInput.value = '0';
-    });
-
-    // Close button just closes without saving
-    els.closeBtn.addEventListener('click', handleCancel);
-
-    const buildResult = (): FreeShapeAnnotation => ({
-      ...annotation,
-      shapeType: els.typeSelect.value as 'rectangle' | 'circle' | 'line',
-      width: parseInt(els.widthInput.value),
-      height: parseInt(els.heightInput.value),
-      fillColor: els.fillColorInput.value,
-      fillOpacity: parseInt(els.fillOpacityInput.value) / 100,
-      borderColor: els.borderColorInput.value,
-      borderWidth: parseInt(els.borderWidthInput.value),
-      borderStyle: els.borderStyleSelect.value as 'solid' | 'dashed' | 'dotted',
-      cornerRadius: parseInt(els.cornerRadiusInput.value),
-      lineStartArrow: els.lineStartArrowCheck.checked,
-      lineEndArrow: els.lineEndArrowCheck.checked,
-      lineArrowSize: parseInt(els.arrowSizeInput.value),
-      rotation: parseInt(els.rotationInput.value)
-    });
-
-    // Apply changes without closing or resolving
-    const applyChanges = () => {
-      const result = buildResult();
-      // Update annotation in place
-      Object.assign(annotation, result);
-      this.updateFreeShapeNode(annotation.id, annotation);
-      this.debouncedSave();
-      // Reset initial values after successful apply
-      this.resetFreeShapeInitialValues(els);
-    };
-
-    // Apply saves but keeps panel open (doesn't resolve promise)
-    els.applyBtn.addEventListener('click', applyChanges);
-
-    // OK saves and closes
-    els.okBtn.addEventListener('click', () => {
-      cleanup();
-      resolve(buildResult());
-    });
-  }
-
-  private showModal(els: ShapeModalElements): void {
-    // Use window manager to show the panel
-    const managedWindow = (window as any).panelManager?.getPanel(PANEL_FREE_SHAPES_ID);
-    if (managedWindow) {
-      managedWindow.show();
-    } else {
-      // Fallback if window manager not available
-      els.panel.style.display = 'flex';
-    }
-  }
-
-  private hideModal(els: ShapeModalElements): void {
-    // Use window manager to hide the panel
-    const managedWindow = (window as any).panelManager?.getPanel(PANEL_FREE_SHAPES_ID);
-    if (managedWindow) {
-      managedWindow.hide();
-    } else {
-      // Fallback if window manager not available
-      els.panel.style.display = 'none';
-    }
   }
 
   public removeFreeShapeAnnotation(id: string): void {
@@ -1603,37 +1045,26 @@ export class ManagerFreeShapes {
     }
   }
 
-  /**
-   * Load annotations from backend with debouncing to prevent duplicate requests
-   * and ensure graph is stable before loading (matches freeText pattern)
-   */
   public async loadAnnotations(): Promise<void> {
-    // If a load is already in progress, skip this request
     if (this.loadInProgress) {
       log.debug('Load already in progress, skipping duplicate request');
       return;
     }
 
-    // Clear any pending load timeout
     if (this.loadTimeout) {
       clearTimeout(this.loadTimeout);
     }
 
-    // Debounce the load to prevent rapid-fire requests and ensure graph is stable
     this.loadTimeout = setTimeout(this.onLoadTimeout, 100);
     return Promise.resolve();
   }
 
-  /**
-   * Restore all shape annotation positions from stored annotation data.
-   * This ensures positions are preserved despite grid snapping or layout operations.
-   */
   public restoreAnnotationPositions(): void {
     this.annotations.forEach((annotation, id) => {
       const node = this.annotationNodes.get(id);
       if (node && node.inside()) {
         if (annotation.shapeType === 'line') {
-          node.position(this.getLineCenter(annotation));
+          node.position(this.svgRenderer.getLineCenter(annotation));
         } else {
           node.position({
             x: annotation.position.x,
@@ -1645,11 +1076,6 @@ export class ManagerFreeShapes {
     });
   }
 
-  /**
-   * Reapply styles to all shape annotations.
-   * Called before position restore to ensure nodes are in correct state.
-   * Also called after paste operations to restore proper dimensions.
-   */
   public reapplyAllShapeStyles(): void {
     this.annotationNodes.forEach((node, id) => {
       const annotation = this.annotations.get(id);
@@ -1660,18 +1086,11 @@ export class ManagerFreeShapes {
     log.debug('Reapplied styles to free shape annotations');
   }
 
-  /**
-   * Schedule multiple position restores after loading to ensure free shape positions
-   * persist despite any grid snapping or layout operations.
-   */
   private schedulePositionRestores(): void {
-    // Restore positions after delays to ensure nodes are rendered and
-    // bypass any grid snapping that may occur during initialization
     setTimeout(() => {
       this.reapplyAllShapeStyles();
       this.restoreAnnotationPositions();
     }, 200);
-    // Additional restores at longer delays to catch any late layout operations
     setTimeout(() => this.restoreAnnotationPositions(), 500);
     setTimeout(() => this.restoreAnnotationPositions(), 1000);
   }
