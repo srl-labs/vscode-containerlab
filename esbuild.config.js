@@ -8,12 +8,12 @@ async function build() {
 
   // Copy main template
   await fs.copy(
-    path.join(__dirname, 'src/topoViewer/templates/main.html'),
+    path.join(__dirname, 'src/topoViewer/webview/assets/templates/main.html'),
     path.join(templateDestDir, 'main.html')
   );
 
   // Copy shared partials
-  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/templates/partials');
+  const sharedPartialsDir = path.join(__dirname, 'src/topoViewer/webview/assets/templates/partials');
   if (fs.existsSync(sharedPartialsDir)) {
     await fs.copy(sharedPartialsDir, path.join(templateDestDir, 'partials'));
   }
@@ -21,7 +21,7 @@ async function build() {
   // Editor partials are now merged with shared partials
 
   // Copy images
-  const commonImagesDir = path.join(__dirname, 'src/topoViewer/images');
+  const commonImagesDir = path.join(__dirname, 'src/topoViewer/webview/assets/images');
   const imagesDestDir = path.join(__dirname, 'dist/images');
   
   if (fs.existsSync(commonImagesDir)) {

@@ -3,7 +3,7 @@
  * Tracks load times and provides metrics for optimization
  */
 
-import { log } from '../../logging/logger';
+import { log } from '../../webview/platform/logging/logger';
 
 // Use Date.now() for Node.js compatibility, performance is browser-only
 // eslint-disable-next-line no-undef

@@ -1,1 +1,1 @@
-export { TopoViewerEditor as TopoViewer } from './extension/EditorProvider';
+export { TopoViewerEditor as TopoViewer } from './extension/providers/EditorProvider';
