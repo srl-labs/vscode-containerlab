@@ -67,7 +67,13 @@ export default [
       'aggregate-complexity/aggregate-complexity': ['error', { max: 15 }]
 
     },
+  },
+
+  /* ---------- topoViewer: max-lines limit ---------- */
+  {
+    files: ['src/topoViewer/**/*.ts', 'src/topoViewer/**/*.tsx'],
+    rules: {
+      'max-lines': ['error', { max: 1600, skipBlankLines: true, skipComments: true }]
+    }
   }
-
-
 ];

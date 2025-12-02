@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as os from 'os';
 
 import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
@@ -12,8 +11,7 @@ import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, Templa
 import { TopoViewerAdaptorClab } from '../services/TopologyAdapter';
 import { ClabTopology, CyElement } from '../../shared/types/topoViewerType';
 import { resolveNodeConfig } from '../../webview/core/nodeConfig';
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from "../../../treeView/common";
-import * as inspector from "../../../treeView/inspector";
+import { ClabLabTreeNode } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../extension";
 import * as utils from "../../../utils/index";
 
@@ -22,13 +20,18 @@ import { saveViewport } from '../services/SaveViewport';
 import { annotationsManager } from '../services/AnnotationsFile';
 import { perfMark, perfMeasure, perfSummary } from '../../shared/utilities/PerformanceMonitor';
 import { sleep } from '../../shared/utilities/AsyncUtils';
-import { DEFAULT_INTERFACE_PATTERNS } from '../../shared/constants/interfacePatterns';
-import type { ClabInterfaceStats } from '../../../types/containerlab';
-import { findInterfaceNode } from '../services/TreeUtils';
+import { iconManager } from '../services/IconManager';
+import { nodeCommandService } from '../services/NodeCommandService';
+import { LinkStateManager, ViewModeCache } from '../services/LinkStateManager';
+import { yamlSettingsManager } from '../services/YamlSettingsManager';
+import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
+import { labLifecycleService } from '../services/LabLifecycleService';
+import { simpleEndpointHandlers } from '../services/SimpleEndpointHandlers';
+import { splitViewManager } from '../services/SplitViewManager';
+import { deploymentStateChecker } from '../services/DeploymentStateChecker';
 
 // Common configuration section key used throughout this module
 const CONFIG_SECTION = 'containerlab.editor';
-const SUPPORTED_ICON_EXTENSIONS = new Set(['.svg', '.png']);
 
 interface WebviewMessage {
   type?: string;
@@ -67,15 +70,9 @@ export class TopoViewerEditor {
   public isViewMode: boolean = false; // Indicates if running in view-only mode
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
-  private isSplitViewOpen: boolean = false; // Track if YAML split view is open
   private dockerImagesSubscription: vscode.Disposable | undefined;
-  private viewModeCache:
-    | {
-      elements: CyElement[];
-      parsedTopology?: ClabTopology;
-      yamlMtimeMs?: number;
-    }
-    | undefined;
+  private viewModeCache: ViewModeCache | undefined;
+  private linkStateManager: LinkStateManager;
   /* eslint-disable no-unused-vars */
 
   private readonly generalEndpointHandlers: Record<
@@ -120,6 +117,7 @@ export class TopoViewerEditor {
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+    this.linkStateManager = new LinkStateManager(this.adaptor);
     this.dockerImagesSubscription = utils.onDockerImagesUpdated(images => {
       if (this.currentPanel) {
         this.currentPanel.webview.postMessage({ type: 'docker-images-updated', dockerImages: images });
@@ -153,89 +151,6 @@ topology:
     - endpoints: [ srl1:e1-1, srl2:e1-1 ]
     - endpoints: [ srl1:e1-2, srl2:e1-2 ]
 `;
-  }
-
-  private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
-    const labs = await runningLabsProvider?.discoverInspectLabs();
-    if (!labs || !this.lastYamlFilePath) {
-      return undefined;
-    }
-
-    // Only search in the current lab
-    const currentLab = Object.values(labs).find(lab => lab.labPath.absolute === this.lastYamlFilePath);
-    if (!currentLab) {
-      return undefined;
-    }
-
-    const containers = currentLab.containers ?? [];
-    const directMatch = containers.find(
-      (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
-    );
-    if (directMatch) {
-      return directMatch;
-    }
-
-    // Check for distributed SROS container
-    return this.resolveDistributedSrosContainer(containers, nodeName);
-  }
-
-  private resolveDistributedSrosContainer(
-    containers: ClabContainerTreeNode[],
-    nodeName: string
-  ): ClabContainerTreeNode | undefined {
-    const normalizedTarget = nodeName.toLowerCase();
-    const candidates = containers
-      .filter((container) => container.kind === 'nokia_srsim')
-      .map((container) => ({ container, info: this.extractSrosComponentInfo(container) }))
-      .filter((entry): entry is { container: ClabContainerTreeNode; info: { base: string; slot: string } } => {
-        return !!entry.info && entry.info.base.toLowerCase() === normalizedTarget;
-      });
-
-    if (!candidates.length) {
-      return undefined;
-    }
-
-    candidates.sort((a, b) => {
-      const slotOrder = this.srosSlotPriority(a.info.slot) - this.srosSlotPriority(b.info.slot);
-      if (slotOrder !== 0) {
-        return slotOrder;
-      }
-      return a.info.slot.localeCompare(b.info.slot, undefined, { sensitivity: 'base' });
-    });
-    return candidates[0].container;
-  }
-
-  private extractSrosComponentInfo(
-    container: ClabContainerTreeNode
-  ): { base: string; slot: string } | undefined {
-    const rawLabel = (container.name_short || container.name || '').trim();
-    if (!rawLabel) {
-      return undefined;
-    }
-
-    const lastDash = rawLabel.lastIndexOf('-');
-    if (lastDash === -1) {
-      return undefined;
-    }
-
-    const base = rawLabel.slice(0, lastDash);
-    const slot = rawLabel.slice(lastDash + 1);
-    if (!base || !slot) {
-      return undefined;
-    }
-
-    return { base, slot };
-  }
-
-  private srosSlotPriority(slot: string): number {
-    const normalized = slot.toLowerCase();
-    if (normalized === 'a') {
-      return 0;
-    }
-    if (normalized === 'b') {
-      return 1;
-    }
-    return 2;
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
@@ -785,26 +700,26 @@ topology:
     await utils.refreshDockerImages();
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
-    const legacyIfacePatternMapping = this.getLegacyInterfacePatternMapping(config);
+    const legacyIfacePatternMapping = customNodeConfigManager.getLegacyInterfacePatternMapping(config);
     const updateLinkEndpointsOnKindChange = config.get<boolean>(
       'updateLinkEndpointsOnKindChange',
       true
     );
     const rawCustomNodes = config.get<unknown>('customNodes', []);
     const normalizedCustomNodes = Array.isArray(rawCustomNodes) ? rawCustomNodes : [];
-    const customNodes = await this.ensureCustomNodeInterfacePatterns(
+    const customNodes = await customNodeConfigManager.ensureCustomNodeInterfacePatterns(
       config,
       normalizedCustomNodes,
       legacyIfacePatternMapping
     );
-    const ifacePatternMapping = this.buildInterfacePatternMapping(
+    const ifacePatternMapping = customNodeConfigManager.buildInterfacePatternMapping(
       customNodes,
       legacyIfacePatternMapping
     );
-    const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
-    const imageMapping = this.buildImageMapping(customNodes);
+    const { defaultNode, defaultKind, defaultType } = customNodeConfigManager.getDefaultCustomNode(customNodes);
+    const imageMapping = customNodeConfigManager.buildImageMapping(customNodes);
     const dockerImages = utils.getDockerImages();
-    const customIcons = await this.loadCustomIcons();
+    const customIcons = await iconManager.loadCustomIcons();
     return {
       imageMapping,
       ifacePatternMapping,
@@ -868,113 +783,6 @@ topology:
         `postLifecycleStatus failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }
-
-  private getDefaultCustomNode(customNodes: any[]): {
-    defaultNode: string;
-    defaultKind: string;
-    defaultType: string;
-  } {
-    const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
-    return {
-      defaultNode: defaultCustomNode?.name || '',
-      defaultKind: defaultCustomNode?.kind || 'nokia_srlinux',
-      defaultType: defaultCustomNode?.type || '',
-    };
-  }
-
-  private buildImageMapping(customNodes: any[]): Record<string, string> {
-    const imageMapping: Record<string, string> = {};
-    customNodes.forEach((node: any) => {
-      if (node.image && node.kind) {
-        imageMapping[node.kind] = node.image;
-      }
-    });
-    return imageMapping;
-  }
-
-  private getLegacyInterfacePatternMapping(
-    config: vscode.WorkspaceConfiguration
-  ): Record<string, string> {
-    const legacy = config.get<Record<string, string> | undefined>('interfacePatternMapping');
-    if (!legacy || typeof legacy !== 'object') {
-      return {};
-    }
-    return Object.fromEntries(
-      Object.entries(legacy)
-        .filter(([key, value]) => typeof key === 'string' && typeof value === 'string')
-        .map(([key, value]) => [key, value.trim()])
-        .filter(([, value]) => value.length > 0)
-    );
-  }
-
-  private async ensureCustomNodeInterfacePatterns(
-    config: vscode.WorkspaceConfiguration,
-    customNodes: any[],
-    legacyIfacePatternMapping: Record<string, string>
-  ): Promise<any[]> {
-    let didUpdate = false;
-
-    const normalized = customNodes.map(node => {
-      if (!node || typeof node !== 'object') {
-        return node;
-      }
-
-      const kind = typeof node.kind === 'string' ? node.kind : '';
-      const rawPattern = typeof node.interfacePattern === 'string' ? node.interfacePattern : '';
-      const trimmedPattern = rawPattern.trim();
-
-      if (trimmedPattern.length > 0) {
-        if (trimmedPattern !== rawPattern) {
-          didUpdate = true;
-          return { ...node, interfacePattern: trimmedPattern };
-        }
-        return node;
-      }
-
-      if (!kind) {
-        return node;
-      }
-
-      const fallback =
-        legacyIfacePatternMapping[kind] || DEFAULT_INTERFACE_PATTERNS[kind];
-      if (!fallback) {
-        return node;
-      }
-
-      didUpdate = true;
-      return { ...node, interfacePattern: fallback };
-    });
-
-    if (didUpdate) {
-      await config.update('customNodes', normalized, vscode.ConfigurationTarget.Global);
-    }
-
-    return normalized;
-  }
-
-  private buildInterfacePatternMapping(
-    customNodes: any[],
-    legacyIfacePatternMapping: Record<string, string>
-  ): Record<string, string> {
-    const mapping: Record<string, string> = {
-      ...DEFAULT_INTERFACE_PATTERNS,
-      ...legacyIfacePatternMapping,
-    };
-
-    customNodes.forEach(node => {
-      if (!node || typeof node !== 'object') {
-        return;
-      }
-      const kind = typeof node.kind === 'string' ? node.kind : '';
-      const pattern = typeof node.interfacePattern === 'string' ? node.interfacePattern.trim() : '';
-      if (!kind || !pattern) {
-        return;
-      }
-      mapping[kind] = pattern;
-    });
-
-    return mapping;
   }
 
   private async updateCachedYamlFromCurrentDoc(): Promise<void> {
@@ -1372,9 +1180,9 @@ topology:
     try {
       const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
       const doc = YAML.parseDocument(yamlContent, { keepCstNodes: true } as any);
-      const { hadPrefix, hadMgmt } = this.applyExistingSettings(doc, settings);
+      const { hadPrefix, hadMgmt } = yamlSettingsManager.applyExistingSettings(doc, settings);
       let updatedYaml = doc.toString();
-      updatedYaml = this.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
+      updatedYaml = yamlSettingsManager.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
       this.isInternalUpdate = true;
       await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
       if (this.currentPanel) {
@@ -1393,65 +1201,6 @@ topology:
     }
   }
 
-  private applyExistingSettings(doc: YAML.Document, settings: any): { hadPrefix: boolean; hadMgmt: boolean } {
-    if (settings.name !== undefined && settings.name !== '') {
-      doc.set('name', settings.name);
-    }
-    const hadPrefix = doc.has('prefix');
-    const hadMgmt = doc.has('mgmt');
-    if (settings.prefix !== undefined && hadPrefix) {
-      if (settings.prefix === null) {
-        doc.delete('prefix');
-      } else {
-        doc.set('prefix', settings.prefix);
-      }
-    }
-    if (settings.mgmt !== undefined && hadMgmt) {
-      if (settings.mgmt === null || (typeof settings.mgmt === 'object' && Object.keys(settings.mgmt).length === 0)) {
-        doc.delete('mgmt');
-      } else {
-        doc.set('mgmt', settings.mgmt);
-      }
-    }
-    return { hadPrefix, hadMgmt };
-  }
-
-  private insertMissingSettings(
-    updatedYaml: string,
-    settings: any,
-    hadPrefix: boolean,
-    hadMgmt: boolean
-  ): string {
-    updatedYaml = this.maybeInsertPrefix(updatedYaml, settings, hadPrefix);
-    updatedYaml = this.maybeInsertMgmt(updatedYaml, settings, hadMgmt);
-    return updatedYaml;
-  }
-
-  private maybeInsertPrefix(updatedYaml: string, settings: any, hadPrefix: boolean): string {
-    if (settings.prefix === undefined || settings.prefix === null || hadPrefix) return updatedYaml;
-    const lines = updatedYaml.split('\n');
-    const nameIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-    if (nameIndex === -1) return updatedYaml;
-    const prefixValue = settings.prefix === '' ? '""' : settings.prefix;
-    lines.splice(nameIndex + 1, 0, `prefix: ${prefixValue}`);
-    return lines.join('\n');
-  }
-
-  private maybeInsertMgmt(updatedYaml: string, settings: any, hadMgmt: boolean): string {
-    if (settings.mgmt === undefined || hadMgmt || !settings.mgmt || Object.keys(settings.mgmt).length === 0) {
-      return updatedYaml;
-    }
-    const lines = updatedYaml.split('\n');
-    let insertIndex = lines.findIndex(line => line.trim().startsWith('prefix:'));
-    if (insertIndex === -1) insertIndex = lines.findIndex(line => line.trim().startsWith('name:'));
-    if (insertIndex === -1) return updatedYaml;
-    const mgmtYaml = YAML.stringify({ mgmt: settings.mgmt });
-    const mgmtLines = mgmtYaml.split('\n').filter(line => line.trim());
-    const nextLine = lines[insertIndex + 1];
-    if (nextLine && nextLine.trim() !== '') lines.splice(insertIndex + 1, 0, '', ...mgmtLines);
-    else lines.splice(insertIndex + 1, 0, ...mgmtLines);
-    return lines.join('\n');
-  }
   private async handleGeneralEndpoint(
     endpointName: string,
     payload: string | undefined,
@@ -1547,11 +1296,7 @@ topology:
     _payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    const data = payload as any;
-    if (data && data.message) {
-      vscode.window.showErrorMessage(data.message);
-    }
-    return { result: { success: true }, error: null };
+    return simpleEndpointHandlers.handleShowErrorMessageEndpoint(payload);
   }
 
   private async handlePerformanceMetricsEndpoint(
@@ -1559,57 +1304,7 @@ topology:
     payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const metricsPayload = this.normalizeMetricsPayload(payload, payloadObj);
-      const metrics = metricsPayload?.metrics;
-      if (!metrics || typeof metrics !== 'object') {
-        const warning = 'Received performance-metrics call without metrics payload';
-        log.warn(warning);
-        return { result: { success: false, warning }, error: null };
-      }
-
-      const numericEntries = Object.entries(metrics)
-        .map(([name, value]) => [name, typeof value === 'number' ? value : Number(value)] as [string, number])
-        .filter(([, value]) => Number.isFinite(value));
-
-      if (!numericEntries.length) {
-        const warning = 'Performance metrics payload contained no numeric values';
-        log.warn(warning);
-        return { result: { success: false, warning }, error: null };
-      }
-
-      const total = numericEntries.reduce((sum, [, value]) => sum + value, 0);
-      log.info(
-        `TopoViewer performance metrics (${numericEntries.length} entries, total ${total.toFixed(2)}ms):`
-      );
-      const sortedEntries = [...numericEntries].sort((a, b) => b[1] - a[1]);
-      sortedEntries.slice(0, 8).forEach(([name, value]) => {
-        log.info(`  ${name}: ${value.toFixed(2)}ms`);
-      });
-
-      return { result: { success: true }, error: null };
-    } catch (err) {
-      const error = `Failed to record performance metrics: ${err instanceof Error ? err.message : String(err)}`;
-      log.error(error);
-      return { result: null, error };
-    }
-  }
-
-  private normalizeMetricsPayload(
-    payload: string | undefined,
-    payloadObj: any
-  ): any {
-    if (payloadObj && typeof payloadObj === 'object') {
-      return payloadObj;
-    }
-    if (typeof payload === 'string' && payload.trim()) {
-      try {
-        return JSON.parse(payload);
-      } catch (err) {
-        log.warn(`Failed to parse performance metrics payload: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-    return undefined;
+    return simpleEndpointHandlers.handlePerformanceMetricsEndpoint(payload, payloadObj);
   }
 
   private async handleViewportSaveEditEndpoint(
@@ -1715,29 +1410,7 @@ topology:
     _payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const data = JSON.parse(payload as string) as { type: 'info' | 'warning' | 'error'; message: string };
-      switch (data.type) {
-        case 'info':
-          await vscode.window.showInformationMessage(data.message);
-          break;
-        case 'warning':
-          await vscode.window.showWarningMessage(data.message);
-          break;
-        case 'error':
-          await vscode.window.showErrorMessage(data.message);
-          break;
-        default:
-          log.error(`Unsupported message type: ${JSON.stringify(data.type, null, 2)}`);
-      }
-      const result = `Displayed ${data.type} message: ${data.message}`;
-      log.info(result);
-      return { result, error: null };
-    } catch (err) {
-      const result = 'Error executing endpoint "clab-show-vscode-message".';
-      log.error(`Error executing endpoint "clab-show-vscode-message": ${JSON.stringify(err, null, 2)}`);
-      return { result, error: null };
-    }
+    return simpleEndpointHandlers.handleShowVscodeMessageEndpoint(payload);
   }
 
   private async handleSwitchModeEndpoint(
@@ -1803,17 +1476,7 @@ topology:
     _payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const url: string = JSON.parse(payload as string);
-      await vscode.env.openExternal(vscode.Uri.parse(url));
-      const result = `Opened external URL: ${url}`;
-      log.info(result);
-      return { result, error: null };
-    } catch (err) {
-      const result = 'Error executing endpoint "open-external".';
-      log.error(`Error executing endpoint "open-external": ${JSON.stringify(err, null, 2)}`);
-      return { result, error: null };
-    }
+    return simpleEndpointHandlers.handleOpenExternalEndpoint(payload);
   }
 
   private async handleOpenExternalLinkEndpoint(
@@ -1821,23 +1484,7 @@ topology:
     _payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const parsed = payload ? JSON.parse(payload) : {};
-      const url = typeof parsed?.url === 'string' ? parsed.url : '';
-      if (!url) {
-        const warning = 'topo-editor-open-link called without a URL';
-        log.warn(warning);
-        return { result: warning, error: warning };
-      }
-      await vscode.env.openExternal(vscode.Uri.parse(url));
-      const result = `Opened free text link: ${url}`;
-      log.debug(result);
-      return { result, error: null };
-    } catch (err) {
-      const result = 'Error executing endpoint "topo-editor-open-link".';
-      log.error(`Error executing endpoint "topo-editor-open-link": ${JSON.stringify(err, null, 2)}`);
-      return { result, error: null };
-    }
+    return simpleEndpointHandlers.handleOpenExternalLinkEndpoint(payload);
   }
 
   private async handleLoadAnnotationsEndpoint(
@@ -1937,39 +1584,7 @@ topology:
     payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const data = payloadObj;
-      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      let customNodes = config.get<any[]>('customNodes', []);
-      if (data.setDefault) {
-        customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
-      }
-      if (data.oldName) {
-        const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
-        const nodeData = { ...data };
-        delete nodeData.oldName;
-        if (oldIndex >= 0) {
-          customNodes[oldIndex] = nodeData;
-        } else {
-          customNodes.push(nodeData);
-        }
-      } else {
-        const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
-        if (existingIndex >= 0) {
-          customNodes[existingIndex] = data;
-        } else {
-          customNodes.push(data);
-        }
-      }
-      await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
-      const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
-      log.info(`Saved custom node ${data.name}`);
-      return { result: { customNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
-    } catch (err) {
-      const error = `Error saving custom node: ${err}`;
-      log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
+    return customNodeConfigManager.saveCustomNode(payloadObj);
   }
 
   private async handleSetDefaultCustomNodeEndpoint(
@@ -1977,42 +1592,8 @@ topology:
     payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const data = payloadObj as { name?: string };
-      if (!data?.name) {
-        throw new Error('Missing custom node name');
-      }
-
-      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<any[]>('customNodes', []);
-
-      let found = false;
-      const updatedNodes = customNodes.map((node: any) => {
-        const updated = { ...node, setDefault: false };
-        if (node.name === data.name) {
-          found = true;
-          updated.setDefault = true;
-        }
-        return updated;
-      });
-
-      if (!found) {
-        throw new Error(`Custom node ${data.name} not found`);
-      }
-
-      await config.update('customNodes', updatedNodes, vscode.ConfigurationTarget.Global);
-      const defaultCustomNode = updatedNodes.find((n: any) => n.setDefault === true);
-      log.info(`Set default custom node ${data.name}`);
-
-      return {
-        result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name || '' },
-        error: null
-      };
-    } catch (err) {
-      const error = `Error setting default custom node: ${err}`;
-      log.error(`Error setting default custom node: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
+    const data = payloadObj as { name?: string };
+    return customNodeConfigManager.setDefaultCustomNode(data?.name || '');
   }
 
   private async handleDeleteCustomNodeEndpoint(
@@ -2020,20 +1601,7 @@ topology:
     payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const data = payloadObj;
-      const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<any[]>('customNodes', []);
-      const filteredNodes = customNodes.filter((n: any) => n.name !== data.name);
-      await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
-      const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
-      log.info(`Deleted custom node ${data.name}`);
-      return { result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
-    } catch (err) {
-      const error = `Error deleting custom node: ${err}`;
-      log.error(`Error deleting custom node: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
+    return customNodeConfigManager.deleteCustomNode(payloadObj?.name || '');
   }
 
   private async handleShowErrorEndpoint(
@@ -2041,16 +1609,7 @@ topology:
     payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const message = payloadObj as string;
-      await vscode.window.showErrorMessage(message);
-      const result = 'Error message displayed';
-      return { result, error: null };
-    } catch (err) {
-      const error = `Error showing error message: ${err}`;
-      log.error(`Error showing error message: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
+    return simpleEndpointHandlers.handleShowErrorEndpoint(payloadObj);
   }
 
   private async handleToggleSplitViewEndpoint(
@@ -2058,16 +1617,9 @@ topology:
     _payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      await this.toggleSplitView();
-      const result = { splitViewOpen: this.isSplitViewOpen };
-      log.info(`Split view toggled: ${this.isSplitViewOpen ? 'opened' : 'closed'}`);
-      return { result, error: null };
-    } catch (err) {
-      const error = `Error toggling split view: ${err}`;
-      log.error(`Error toggling split view: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
+    const isOpen = await splitViewManager.toggleSplitView(this.lastYamlFilePath, this.currentPanel);
+    log.info(`Split view toggled: ${isOpen ? 'opened' : 'closed'}`);
+    return { result: { splitViewOpen: isOpen }, error: null };
   }
 
   private async handleCopyElementsEndpoint(
@@ -2075,8 +1627,7 @@ topology:
     payloadObj: any,
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    this.context.globalState.update('topoClipboard', payloadObj);
-    return { result: 'Elements copied', error: null };
+    return simpleEndpointHandlers.handleCopyElementsEndpoint(this.context, payloadObj);
   }
 
   private async handleGetCopiedElementsEndpoint(
@@ -2084,21 +1635,14 @@ topology:
     _payloadObj: any,
     panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
-    const clipboard = this.context.globalState.get('topoClipboard') || [];
-    panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
-    return { result: 'Clipboard sent', error: null };
+    return simpleEndpointHandlers.handleGetCopiedElementsEndpoint(this.context, panel);
   }
 
   private async handleDebugLogEndpoint(
     _payload: string | undefined,
     payloadObj: any
   ): Promise<{ result: unknown; error: string | null }> {
-    const message = typeof payloadObj?.message === 'string' ? payloadObj.message : '';
-    if (!message) {
-      return { result: false, error: 'No message provided' };
-    }
-    log.debug(message);
-    return { result: true, error: null };
+    return simpleEndpointHandlers.handleDebugLogEndpoint(payloadObj);
   }
 
   private async handleRefreshDockerImagesEndpoint(
@@ -2124,20 +1668,20 @@ topology:
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
     try {
-      const uploadSource = await this.promptIconUploadSource();
+      const uploadSource = await iconManager.promptIconUploadSource();
       if (!uploadSource) {
         return { result: { cancelled: true }, error: null };
       }
 
       const selection = await vscode.window.showOpenDialog(
-        this.getIconPickerOptions(uploadSource)
+        iconManager.getIconPickerOptions(uploadSource)
       );
       if (!selection || selection.length === 0) {
         return { result: { cancelled: true }, error: null };
       }
 
-      const { name } = await this.importCustomIcon(selection[0]);
-      const customIcons = await this.loadCustomIcons();
+      const { name } = await iconManager.importCustomIcon(selection[0]);
+      const customIcons = await iconManager.loadCustomIcons();
       void vscode.window.showInformationMessage(`Added custom icon "${name}".`);
       return { result: { success: true, customIcons, lastAddedIcon: name }, error: null };
     } catch (err) {
@@ -2145,66 +1689,6 @@ topology:
       log.error(`Failed to import custom icon: ${message}`);
       void vscode.window.showErrorMessage(`Failed to add custom icon: ${message}`);
       return { result: null, error: message };
-    }
-  }
-
-  private async promptIconUploadSource(): Promise<'remote' | 'local' | null> {
-    if (!vscode.env.remoteName) {
-      return 'remote';
-    }
-
-    const pick = await vscode.window.showQuickPick<{
-      label: string;
-      description: string;
-      value: 'remote' | 'local';
-    }>(
-      [
-        {
-          label: 'Upload from remote environment',
-          description: 'Use a file accessible from the current VS Code session',
-          value: 'remote'
-        },
-        {
-          label: 'Upload from local machine',
-          description: 'Choose a file on your local computer (SSH/WSL)',
-          value: 'local'
-        }
-      ],
-      {
-        title: 'Select icon source',
-        placeHolder: 'Where should the custom icon be uploaded from?'
-      }
-    );
-
-    return pick?.value ?? null;
-  }
-
-  private getIconPickerOptions(source: 'remote' | 'local'): vscode.OpenDialogOptions {
-    const baseOptions: vscode.OpenDialogOptions = {
-      canSelectMany: false,
-      title: 'Select a Containerlab icon',
-      openLabel: 'Import Icon',
-      filters: { Images: ['svg', 'png'], SVG: ['svg'] }
-    };
-
-    if (source === 'local') {
-      const defaultUri = this.getLocalFilePickerBaseUri();
-      if (defaultUri) {
-        baseOptions.defaultUri = defaultUri;
-      }
-    }
-
-    return baseOptions;
-  }
-
-  private getLocalFilePickerBaseUri(): vscode.Uri | undefined {
-    try {
-      return vscode.Uri.parse('vscode-userdata:/');
-    } catch (err) {
-      log.warn(
-        `Failed to build local file picker URI: ${err instanceof Error ? err.message : String(err)}`
-      );
-      return undefined;
     }
   }
 
@@ -2218,11 +1702,11 @@ topology:
       if (!iconName) {
         throw new Error('Icon name is required.');
       }
-      const removed = await this.deleteCustomIcon(iconName);
+      const removed = await iconManager.deleteCustomIcon(iconName);
       if (!removed) {
         throw new Error(`Custom icon "${iconName}" was not found.`);
       }
-      const customIcons = await this.loadCustomIcons();
+      const customIcons = await iconManager.loadCustomIcons();
       void vscode.window.showInformationMessage(`Deleted custom icon "${iconName}".`);
       return { result: { success: true, customIcons, deletedIcon: iconName }, error: null };
     } catch (err) {
@@ -2233,381 +1717,21 @@ topology:
     }
   }
 
-  private getCustomIconDirectory(): string {
-    return path.join(os.homedir(), '.clab', 'icons');
-  }
-
-  private sanitizeIconBaseName(name: string): string {
-    const normalized = name.toLowerCase().replace(/[^a-z0-9-_]+/g, '-');
-    let start = 0;
-    while (start < normalized.length && normalized[start] === '-') {
-      start += 1;
-    }
-    let end = normalized.length;
-    while (end > start && normalized[end - 1] === '-') {
-      end -= 1;
-    }
-    const trimmed = normalized.slice(start, end);
-    return trimmed || 'custom-icon';
-  }
-
-  private async ensureCustomIconDirectory(): Promise<string> {
-    const dir = this.getCustomIconDirectory();
-    await fsPromises.mkdir(dir, { recursive: true });
-    return dir;
-  }
-
-  private async pathExists(target: string): Promise<boolean> {
-    try {
-      await fsPromises.access(target);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  private async generateUniqueIconFileName(dir: string, base: string, ext: string): Promise<string> {
-    let candidate = `${base}${ext}`;
-    let counter = 1;
-    while (await this.pathExists(path.join(dir, candidate))) {
-      candidate = `${base}-${counter}${ext}`;
-      counter += 1;
-    }
-    return candidate;
-  }
-
-  private async importCustomIcon(uri: vscode.Uri): Promise<{ name: string; filePath: string }> {
-    const ext = path.extname(uri.path).toLowerCase();
-    if (!SUPPORTED_ICON_EXTENSIONS.has(ext)) {
-      throw new Error('Only .svg and .png icons are supported.');
-    }
-    const dir = await this.ensureCustomIconDirectory();
-    const baseName = this.sanitizeIconBaseName(path.basename(uri.path, ext));
-    const fileName = await this.generateUniqueIconFileName(dir, baseName, ext);
-    const destination = path.join(dir, fileName);
-    const content = await vscode.workspace.fs.readFile(uri);
-    await fsPromises.writeFile(destination, Buffer.from(content));
-    return { name: path.basename(fileName, ext), filePath: destination };
-  }
-
-  private async deleteCustomIcon(iconName: string): Promise<boolean> {
-    const dir = this.getCustomIconDirectory();
-    if (!(await this.pathExists(dir))) {
-      return false;
-    }
-    let deleted = false;
-    for (const ext of SUPPORTED_ICON_EXTENSIONS) {
-      const candidate = path.join(dir, `${iconName}${ext}`);
-      if (await this.pathExists(candidate)) {
-        await fsPromises.unlink(candidate);
-        deleted = true;
-      }
-    }
-    return deleted;
-  }
-
-  private async loadCustomIcons(): Promise<Record<string, string>> {
-    const dir = this.getCustomIconDirectory();
-    try {
-      const entries = await fsPromises.readdir(dir, { withFileTypes: true });
-      const result: Record<string, string> = {};
-      for (const entry of entries) {
-        const iconRecord = await this.readCustomIconEntry(dir, entry);
-        if (iconRecord) {
-          result[iconRecord.name] = iconRecord.data;
-        }
-      }
-      return result;
-    } catch (error: any) {
-      if (error?.code === 'ENOENT') {
-        return {};
-      }
-      log.error(`Failed to read custom icon directory: ${error instanceof Error ? error.message : String(error)}`);
-      return {};
-    }
-  }
-
-  private async readCustomIconEntry(
-    dir: string,
-    entry: fs.Dirent
-  ): Promise<{ name: string; data: string } | null> {
-    if (!entry.isFile()) {
-      return null;
-    }
-    const ext = path.extname(entry.name).toLowerCase();
-    if (!SUPPORTED_ICON_EXTENSIONS.has(ext)) {
-      return null;
-    }
-    try {
-      const buffer = await fsPromises.readFile(path.join(dir, entry.name));
-      const mime = ext === '.svg' ? 'image/svg+xml' : 'image/png';
-      const base64 = buffer.toString('base64');
-      return { name: path.basename(entry.name, ext), data: `data:${mime};base64,${base64}` };
-    } catch (error) {
-      log.warn(
-        `Failed to load custom icon ${entry.name}: ${error instanceof Error ? error.message : String(error)}`
-      );
-      return null;
-    }
-  }
-
   /* eslint-enable no-unused-vars */
   private async handleNodeEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
-    let result: unknown = null;
-    let error: string | null = null;
-
-    switch (endpointName) {
-      case 'clab-node-connect-ssh': {
-        try {
-          const nodeName = payloadObj as string;
-          const containerNode = (await this.getContainerNode(nodeName)) ?? {
-            label: nodeName,
-            name: nodeName,
-            name_short: nodeName,
-            cID: nodeName,
-            state: '',
-            kind: '',
-            image: '',
-            interfaces: [],
-            labPath: { absolute: '', relative: '' }
-          } as any;
-          await vscode.commands.executeCommand('containerlab.node.ssh', containerNode);
-          result = `SSH connection executed for ${nodeName}`;
-        } catch (innerError) {
-          error = `Error executing SSH connection: ${innerError}`;
-          log.error(`Error executing SSH connection: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'clab-node-attach-shell': {
-        try {
-          const nodeName = payloadObj as string;
-          const node = (await this.getContainerNode(nodeName)) ?? {
-            label: nodeName,
-            name: nodeName,
-            name_short: nodeName,
-            cID: nodeName,
-            state: '',
-            kind: '',
-            image: '',
-            interfaces: [],
-            labPath: { absolute: '', relative: '' }
-          } as any;
-          await vscode.commands.executeCommand('containerlab.node.attachShell', node);
-          result = `Attach shell executed for ${nodeName}`;
-        } catch (innerError) {
-          error = `Error executing attach shell: ${innerError}`;
-          log.error(`Error executing attach shell: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'clab-node-view-logs': {
-        try {
-          const nodeName = payloadObj as string;
-          const node = {
-            label: nodeName,
-            name: nodeName,
-            name_short: nodeName,
-            cID: nodeName,
-            state: '',
-            kind: '',
-            image: '',
-            interfaces: [],
-            labPath: { absolute: '', relative: '' }
-          } as any;
-          await vscode.commands.executeCommand('containerlab.node.showLogs', node);
-          result = `Show logs executed for ${nodeName}`;
-        } catch (innerError) {
-          error = `Error executing show logs: ${innerError}`;
-          log.error(`Error executing show logs: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      default: {
-        error = `Unknown endpoint "${endpointName}".`;
-        log.error(error);
-      }
-    }
-
-    return { result, error };
+    nodeCommandService.setYamlFilePath(this.lastYamlFilePath);
+    return nodeCommandService.handleNodeEndpoint(endpointName, payloadObj);
   }
+
   private async handleInterfaceEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
-    let result: unknown = null;
-    let error: string | null = null;
-
-    const resolveInterface = (nodeName: string, interfaceName: string) => this.resolveInterfaceName(nodeName, interfaceName);
-
-    switch (endpointName) {
-      case 'clab-interface-capture': {
-        try {
-          const data = payloadObj as { nodeName: string; interfaceName: string };
-          const actualInterfaceName = await resolveInterface(data.nodeName, data.interfaceName);
-          const iface = {
-            label: actualInterfaceName,
-            parentName: data.nodeName,
-            cID: data.nodeName,
-            name: actualInterfaceName,
-            type: '',
-            alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
-            mac: '',
-            mtu: 0,
-            ifIndex: 0,
-            state: ''
-          } as any;
-          await vscode.commands.executeCommand('containerlab.interface.capture', iface);
-          result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
-        } catch (innerError) {
-          error = `Error executing capture: ${innerError}`;
-          log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'clab-link-capture': {
-        try {
-          const data = payloadObj as { nodeName: string; interfaceName: string };
-          const actualInterfaceName = await resolveInterface(data.nodeName, data.interfaceName);
-          const iface = {
-            label: actualInterfaceName,
-            parentName: data.nodeName,
-            cID: data.nodeName,
-            name: actualInterfaceName,
-            type: '',
-            alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
-            mac: '',
-            mtu: 0,
-            ifIndex: 0,
-            state: ''
-          } as any;
-          await vscode.commands.executeCommand('containerlab.interface.captureWithEdgeshark', iface);
-          result = `Capture executed for ${data.nodeName}/${actualInterfaceName}`;
-        } catch (innerError) {
-          error = `Error executing capture: ${innerError}`;
-          log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      case 'clab-link-capture-edgeshark-vnc': {
-        try {
-          const data = payloadObj as { nodeName: string; interfaceName: string };
-          const actualInterfaceName = await resolveInterface(data.nodeName, data.interfaceName);
-          const iface = {
-            label: actualInterfaceName,
-            parentName: data.nodeName,
-            cID: data.nodeName,
-            name: actualInterfaceName,
-            type: '',
-            alias: data.interfaceName !== actualInterfaceName ? data.interfaceName : '',
-            mac: '',
-            mtu: 0,
-            ifIndex: 0,
-            state: ''
-          } as any;
-          await vscode.commands.executeCommand('containerlab.interface.captureWithEdgesharkVNC', iface);
-          result = `VNC capture executed for ${data.nodeName}/${actualInterfaceName}`;
-        } catch (innerError) {
-          error = `Error executing VNC capture: ${innerError}`;
-          log.error(`Error executing VNC capture: ${JSON.stringify(innerError, null, 2)}`);
-        }
-        break;
-      }
-
-      default: {
-        error = `Unknown endpoint "${endpointName}".`;
-        log.error(error);
-      }
-    }
-
-    return { result, error };
+    return nodeCommandService.handleInterfaceEndpoint(endpointName, payloadObj);
   }
 
-  private async resolveInterfaceName(nodeName: string, interfaceName: string): Promise<string> {
-    if (!runningLabsProvider) return interfaceName;
-    const treeData = await runningLabsProvider.discoverInspectLabs();
-    if (!treeData) return interfaceName;
-    for (const lab of Object.values(treeData)) {
-      const container = (lab as any).containers?.find((c: any) => c.name === nodeName || c.name_short === nodeName);
-      const intf = container?.interfaces?.find((i: any) => i.name === interfaceName || i.alias === interfaceName);
-      if (intf) return intf.name;
-    }
-    return interfaceName;
-  }
   private async handleLabLifecycleEndpoint(
     endpointName: string,
     payloadObj: any
   ): Promise<{ result: unknown; error: string | null }> {
-    const actions: Record<
-      string,
-      { command: string; resultMsg: string; errorMsg: string; noLabPath: string }
-    > = {
-      deployLab: {
-        command: 'containerlab.lab.deploy',
-        resultMsg: 'Lab deployment initiated',
-        errorMsg: 'Error deploying lab',
-        noLabPath: 'No lab path provided for deployment',
-      },
-      destroyLab: {
-        command: 'containerlab.lab.destroy',
-        resultMsg: 'Lab destruction initiated',
-        errorMsg: 'Error destroying lab',
-        noLabPath: 'No lab path provided for destruction',
-      },
-      deployLabCleanup: {
-        command: 'containerlab.lab.deploy.cleanup',
-        resultMsg: 'Lab deployment with cleanup initiated',
-        errorMsg: 'Error deploying lab with cleanup',
-        noLabPath: 'No lab path provided for deployment with cleanup',
-      },
-      destroyLabCleanup: {
-        command: 'containerlab.lab.destroy.cleanup',
-        resultMsg: 'Lab destruction with cleanup initiated',
-        errorMsg: 'Error destroying lab with cleanup',
-        noLabPath: 'No lab path provided for destruction with cleanup',
-      },
-      redeployLab: {
-        command: 'containerlab.lab.redeploy',
-        resultMsg: 'Lab redeploy initiated',
-        errorMsg: 'Error redeploying lab',
-        noLabPath: 'No lab path provided for redeploy',
-      },
-      redeployLabCleanup: {
-        command: 'containerlab.lab.redeploy.cleanup',
-        resultMsg: 'Lab redeploy with cleanup initiated',
-        errorMsg: 'Error redeploying lab with cleanup',
-        noLabPath: 'No lab path provided for redeploy with cleanup',
-      },
-    };
-
-    const action = actions[endpointName];
-    if (!action) {
-      const error = `Unknown endpoint "${endpointName}".`;
-      log.error(error);
-      return { result: null, error };
-    }
-
-    const labPath = payloadObj as string;
-    if (!labPath) {
-      return { result: null, error: action.noLabPath };
-    }
-
-    try {
-      const { ClabLabTreeNode } = await import('../../treeView/common');
-      const tempNode = new ClabLabTreeNode(
-        '',
-        vscode.TreeItemCollapsibleState.None,
-        { absolute: labPath, relative: '' }
-      );
-      vscode.commands.executeCommand(action.command, tempNode);
-      return { result: `${action.resultMsg} for ${labPath}`, error: null };
-    } catch (innerError) {
-      const error = `${action.errorMsg}: ${innerError}`;
-      log.error(`${action.errorMsg}: ${JSON.stringify(innerError, null, 2)}`);
-      return { result: null, error };
-    }
+    return labLifecycleService.handleLabLifecycleEndpoint(endpointName, payloadObj as string);
   }
 
 
@@ -2687,178 +1811,12 @@ topology:
   }
 
   private buildEdgeUpdatesFromCache(labs: Record<string, ClabLabTreeNode>): CyElement[] {
-    const cache = this.viewModeCache;
-    if (!cache || cache.elements.length === 0) {
+    if (!this.viewModeCache) {
       return [];
     }
-
-    const updates: CyElement[] = [];
-    const topology = cache.parsedTopology?.topology;
-
-    for (const el of cache.elements) {
-      if (el.group !== 'edges') {
-        continue;
-      }
-      const updated = this.refreshEdgeWithLatestData(el, labs, topology);
-      if (updated) {
-        updates.push(updated);
-      }
-    }
-
-    return updates;
+    this.linkStateManager.setCurrentLabName(this.currentLabName);
+    return this.linkStateManager.buildEdgeUpdatesFromCache(this.viewModeCache, labs);
   }
-
-  private refreshEdgeWithLatestData(
-    edge: CyElement,
-    labs: Record<string, ClabLabTreeNode>,
-    topology?: ClabTopology['topology']
-  ): CyElement | null {
-    if (edge.group !== 'edges') {
-      return null;
-    }
-
-    const data = { ...edge.data };
-    const extraData = { ...(data.extraData || {}) };
-
-    const sourceIfaceName = this.normalizeInterfaceName(extraData.clabSourcePort, data.sourceEndpoint);
-    const targetIfaceName = this.normalizeInterfaceName(extraData.clabTargetPort, data.targetEndpoint);
-
-    const sourceIface = findInterfaceNode(
-      labs,
-      extraData.clabSourceLongName ?? '',
-      sourceIfaceName,
-      this.currentLabName
-    );
-    const targetIface = findInterfaceNode(
-      labs,
-      extraData.clabTargetLongName ?? '',
-      targetIfaceName,
-      this.currentLabName
-    );
-
-    const sourceState = this.applyInterfaceDetails(extraData, 'Source', sourceIface);
-    const targetState = this.applyInterfaceDetails(extraData, 'Target', targetIface);
-
-    data.extraData = extraData;
-
-    const sourceNodeForClass = this.pickNodeId(extraData.yamlSourceNodeId, data.source);
-    const targetNodeForClass = this.pickNodeId(extraData.yamlTargetNodeId, data.target);
-
-    const stateClass =
-      topology && sourceNodeForClass && targetNodeForClass
-        ? this.adaptor.computeEdgeClassFromStates(
-          topology,
-          sourceNodeForClass,
-          targetNodeForClass,
-          sourceState,
-          targetState
-        )
-        : undefined;
-
-    const mergedClasses = this.mergeLinkStateClasses(edge.classes, stateClass);
-
-    edge.data = data;
-    if (mergedClasses !== undefined) {
-      edge.classes = mergedClasses;
-    }
-
-    return edge;
-  }
-
-  private applyInterfaceDetails(
-    extraData: Record<string, any>,
-    prefix: 'Source' | 'Target',
-    iface: ClabInterfaceTreeNode | undefined
-  ): string | undefined {
-    const stateKey = prefix === 'Source' ? 'clabSourceInterfaceState' : 'clabTargetInterfaceState';
-    const macKey = prefix === 'Source' ? 'clabSourceMacAddress' : 'clabTargetMacAddress';
-    const mtuKey = prefix === 'Source' ? 'clabSourceMtu' : 'clabTargetMtu';
-    const typeKey = prefix === 'Source' ? 'clabSourceType' : 'clabTargetType';
-    const statsKey = prefix === 'Source' ? 'clabSourceStats' : 'clabTargetStats';
-
-    if (!iface) {
-      delete extraData[statsKey];
-      return typeof extraData[stateKey] === 'string' ? extraData[stateKey] : undefined;
-    }
-
-    extraData[stateKey] = iface.state || '';
-    extraData[macKey] = iface.mac ?? '';
-    extraData[mtuKey] = iface.mtu ?? '';
-    extraData[typeKey] = iface.type ?? '';
-
-    const stats = this.extractInterfaceStatsForEdge(iface.stats);
-    if (stats) {
-      extraData[statsKey] = stats;
-    } else {
-      delete extraData[statsKey];
-    }
-
-    return iface.state;
-  }
-
-  private extractInterfaceStatsForEdge(stats?: ClabInterfaceStats): Record<string, number> | undefined {
-    if (!stats) {
-      return undefined;
-    }
-
-    const result: Record<string, number> = {};
-    const keys: Array<keyof ClabInterfaceStats> = [
-      'rxBps',
-      'rxPps',
-      'rxBytes',
-      'rxPackets',
-      'txBps',
-      'txPps',
-      'txBytes',
-      'txPackets',
-      'statsIntervalSeconds',
-    ];
-
-    for (const key of keys) {
-      const value = stats[key];
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        result[key] = value;
-      }
-    }
-
-    return Object.keys(result).length > 0 ? result : undefined;
-  }
-
-  private normalizeInterfaceName(value: unknown, fallback: unknown): string {
-    if (typeof value === 'string' && value.trim()) {
-      return value;
-    }
-    if (typeof fallback === 'string' && fallback.trim()) {
-      return fallback;
-    }
-    return '';
-  }
-
-  private pickNodeId(primary: unknown, fallback: unknown): string {
-    if (typeof primary === 'string' && primary.trim()) {
-      return primary;
-    }
-    if (typeof fallback === 'string' && fallback.trim()) {
-      return fallback;
-    }
-    return '';
-  }
-
-  private mergeLinkStateClasses(existing: string | undefined, stateClass: string | undefined): string | undefined {
-    if (!stateClass) {
-      return existing;
-    }
-
-    const tokens = (existing ?? '')
-      .split(/\s+/)
-      .filter(Boolean)
-      .filter(token => token !== 'link-up' && token !== 'link-down');
-
-    tokens.unshift(stateClass);
-
-    return tokens.join(' ');
-  }
-
 
   /**
    * Check if a mode switch operation is currently in progress
@@ -2874,129 +1832,26 @@ topology:
     labName: string,
     topoFilePath: string | undefined = this.lastYamlFilePath
   ): Promise<'deployed' | 'undeployed' | 'unknown'> {
-    try {
-      await inspector.update();
-      if (!inspector.rawInspectData) return 'unknown';
-      if (this.labExistsByName(labName)) return 'deployed';
-      if (topoFilePath && this.updateLabNameFromTopoFileMatch(topoFilePath)) return 'deployed';
-      return 'undeployed';
-    } catch (err) {
-      log.warn(`Failed to check deployment state: ${err}`);
-      return 'unknown';
-    }
-  }
-
-  private labExistsByName(labName: string): boolean {
-    return labName in (inspector.rawInspectData as any);
-  }
-
-  private updateLabNameFromTopoFileMatch(topoFilePath: string): boolean {
-    const normalizedYamlPath = topoFilePath.replace(/\\/g, '/');
-    for (const [deployedLabName, labData] of Object.entries(inspector.rawInspectData as any)) {
-      const topo = (labData as any)['topo-file'];
-      if (!topo) continue;
-      const normalizedTopoFile = (topo as string).replace(/\\/g, '/');
-      if (normalizedTopoFile === normalizedYamlPath) {
-        if (this.currentLabName !== deployedLabName) {
-          log.info(`Updating lab name from '${this.currentLabName}' to '${deployedLabName}' based on topo-file match`);
-          this.currentLabName = deployedLabName;
-        }
-        return true;
-      }
-    }
-    return false;
+    return deploymentStateChecker.checkDeploymentState(
+      labName,
+      topoFilePath,
+      (newName: string) => { this.currentLabName = newName; }
+    );
   }
 
   /**
- * Opens the specified file (usually the created YAML template) in a split editor.
- *
- * @param filePath - The absolute path to the file.
- */
+   * Opens the specified file (usually the created YAML template) in a split editor.
+   *
+   * @param filePath - The absolute path to the file.
+   */
   public async openTemplateFile(filePath: string): Promise<void> {
-    try {
-      const document = await vscode.workspace.openTextDocument(filePath);
-
-      // First, open the YAML file in a split view
-      await vscode.window.showTextDocument(document, {
-        preview: false,
-        viewColumn: vscode.ViewColumn.Beside,
-      });
-
-      // Wait for the editor to be fully rendered
-      await sleep(100);
-
-      // Set a custom layout with the topology editor taking 60% and YAML taking 40%
-      // This provides a good balance - the topology editor has more space while
-      // the YAML remains comfortably readable
-      await vscode.commands.executeCommand('vscode.setEditorLayout', {
-        orientation: 0,  // 0 = horizontal (left-right split)
-        groups: [
-          { size: 0.6 },  // Topology editor: 60%
-          { size: 0.4 }   // YAML editor: 40%
-        ]
-      });
-
-      // Mark split view as open
-      this.isSplitViewOpen = true;
-
-      // Return focus to the webview panel if it exists
-      if (this.currentPanel) {
-        this.currentPanel.reveal();
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(`Error opening template file: ${error}`);
-    }
+    await splitViewManager.openTemplateFile(filePath, this.currentPanel);
   }
 
   /**
    * Toggle the split view with YAML editor
    */
   public async toggleSplitView(): Promise<void> {
-    try {
-      if (!this.lastYamlFilePath) {
-        vscode.window.showWarningMessage('No YAML file associated with this topology');
-        return;
-      }
-
-      if (this.isSplitViewOpen) {
-        // Close the YAML editor
-        // Find the text editor showing the YAML file
-        const yamlUri = vscode.Uri.file(this.lastYamlFilePath);
-        const editors = vscode.window.visibleTextEditors;
-        let yamlEditor: vscode.TextEditor | undefined;
-
-        for (const editor of editors) {
-          if (editor.document.uri.fsPath === yamlUri.fsPath) {
-            yamlEditor = editor;
-            break;
-          }
-        }
-
-        if (yamlEditor) {
-          // Make the YAML editor active, then close it
-          await vscode.window.showTextDocument(yamlEditor.document, yamlEditor.viewColumn);
-          await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-        }
-
-        // Reset to single column layout
-        await vscode.commands.executeCommand('vscode.setEditorLayout', {
-          orientation: 0,
-          groups: [{ size: 1 }]
-        });
-
-        this.isSplitViewOpen = false;
-
-        // Ensure webview has focus
-        if (this.currentPanel) {
-          this.currentPanel.reveal();
-        }
-      } else {
-        // Open the YAML editor in split view
-        await this.openTemplateFile(this.lastYamlFilePath);
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(`Error toggling split view: ${error}`);
-      log.error(`Error toggling split view: ${error}`);
-    }
+    await splitViewManager.toggleSplitView(this.lastYamlFilePath, this.currentPanel);
   }
 }
