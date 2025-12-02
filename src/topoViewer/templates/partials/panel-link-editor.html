@@ -1,10 +1,15 @@
 <!-- Unified Link Editor Panel (Tabbed: Basic | Extended) -->
 <div
-  class="panel panel-overlay panel-editor fixed bottom-10 left-20 w-[420px] max-h-[560px] overflow-y-hidden overflow-x-hidden z-[21] draggable-panel"
+  class="panel panel-overlay panel-editor fixed bottom-10 left-20 overflow-hidden z-[21] draggable-panel flex flex-col"
   id="panel-link-editor"
   style="display: none"
 >
-  <p class="panel-heading">Link Editor</p>
+  <div class="panel-heading panel-title-bar">
+    <span class="panel-title">Link Editor</span>
+    <button class="panel-close-btn" id="panel-link-editor-close" aria-label="Close" title="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
   <!-- Tab Navigation -->
   <div class="panel-tabs" style="justify-content: flex-start">
@@ -17,17 +22,58 @@
   </div>
 
   <!-- Tab Content Container -->
-  <div class="panel-block p-0">
-    <div class="p-2 max-h-[420px] overflow-y-auto">
-      <!-- Basic Tab -->
-      <div class="tab-content" id="panel-link-tab-basic" style="display: block">
-        <div class="space-y-3">
+  <div class="panel-block p-2 overflow-y-auto" id="link-editor-tab-container">
+    <!-- Basic Tab -->
+    <div class="tab-content" id="panel-link-tab-basic" style="display: block">
+      <div class="space-y-3">
+        <!-- Link preview -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Link Name</label>
+          <div>
+            <span
+              id="panel-link-editor-id"
+              class="text-base px-2 py-1 inline-block rounded"
+              style="
+                background-color: var(--vscode-textBlockQuote-background);
+                border: 1px solid var(--vscode-textBlockQuote-border);
+              "
+            ></span>
+          </div>
+        </div>
+        <!-- Source Endpoint -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Source Endpoint</label>
+          <input
+            type="text"
+            id="panel-link-editor-source-endpoint"
+            class="input-field w-full"
+            placeholder="e.g., eth1, e1-1"
+          />
+        </div>
+        <!-- Target Endpoint -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Target Endpoint</label>
+          <input
+            type="text"
+            id="panel-link-editor-target-endpoint"
+            class="input-field w-full"
+            placeholder="e.g., eth1, e1-1"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Extended Tab -->
+    <div class="tab-content" id="panel-link-tab-extended" style="display: none">
+      <div class="space-y-3">
+        <!-- Basic Information Section -->
+        <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
           <!-- Link preview -->
           <div class="form-group">
             <label class="block vscode-label mb-1">Link Name</label>
             <div>
               <span
-                id="panel-link-editor-id"
+                id="panel-link-extended-editor-id"
                 class="text-base px-2 py-1 inline-block rounded"
                 style="
                   background-color: var(--vscode-textBlockQuote-background);
@@ -36,136 +82,93 @@
               ></span>
             </div>
           </div>
-          <!-- Source Endpoint -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Source Endpoint</label>
-            <input
-              type="text"
-              id="panel-link-editor-source-endpoint"
-              class="input-field w-full"
-              placeholder="e.g., eth1, e1-1"
-            />
+
+          <!-- Validation banner -->
+          <div
+            id="panel-link-ext-errors"
+            style="display: none"
+            class="my-2 p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]"
+          >
+            <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">
+              Invalid link configuration
+            </div>
+            <div
+              id="panel-link-ext-errors-list"
+              class="text-[var(--vscode-editorError-foreground)] text-xs mt-1"
+            ></div>
           </div>
-          <!-- Target Endpoint -->
+
+          <!-- Type dropdown -->
           <div class="form-group">
-            <label class="block vscode-label mb-1">Target Endpoint</label>
-            <input
-              type="text"
-              id="panel-link-editor-target-endpoint"
-              class="input-field w-full"
-              placeholder="e.g., eth1, e1-1"
-            />
+            <label class="block vscode-label mb-1">Type</label>
+            <div>
+              <span
+                id="panel-link-ext-type-display"
+                class="text-base px-2 py-1 inline-block rounded"
+                style="
+                  background-color: var(--vscode-textBlockQuote-background);
+                  border: 1px solid var(--vscode-textBlockQuote-border);
+                "
+              >
+                veth
+              </span>
+              <span class="text-xs text-[var(--vscode-descriptionForeground)] ml-2">
+                (auto-detected)
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Extended Tab -->
-      <div class="tab-content" id="panel-link-tab-extended" style="display: none">
-        <div class="space-y-3">
-          <!-- Basic Information Section -->
-          <div class="border-b pb-3 mb-3" style="border-color: var(--vscode-panel-border)">
-            <!-- Link preview -->
-            <div class="form-group">
-              <label class="block vscode-label mb-1">Link Name</label>
-              <div>
-                <span
-                  id="panel-link-extended-editor-id"
-                  class="text-base px-2 py-1 inline-block rounded"
-                  style="
-                    background-color: var(--vscode-textBlockQuote-background);
-                    border: 1px solid var(--vscode-textBlockQuote-border);
-                  "
-                ></span>
-              </div>
-            </div>
+        <!-- Common fields -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Source MAC</label>
+          <input
+            type="text"
+            id="panel-link-ext-src-mac"
+            class="input-field w-full"
+            placeholder="e.g., 02:42:ac:11:00:01"
+          />
+        </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Target MAC</label>
+          <input
+            type="text"
+            id="panel-link-ext-tgt-mac"
+            class="input-field w-full"
+            placeholder="e.g., 02:42:ac:11:00:02"
+          />
+        </div>
+        <div class="form-group">
+          <label class="block vscode-label mb-1">MTU</label>
+          <input
+            type="number"
+            id="panel-link-ext-mtu"
+            class="input-field w-full"
+            placeholder="e.g., 1500"
+          />
+        </div>
 
-            <!-- Validation banner -->
-            <div
-              id="panel-link-ext-errors"
-              style="display: none"
-              class="my-2 p-2 rounded bg-[var(--vscode-inputValidation-errorBackground)] border border-[var(--vscode-inputValidation-errorBorder)]"
-            >
-              <div class="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">
-                Invalid link configuration
-              </div>
-              <div
-                id="panel-link-ext-errors-list"
-                class="text-[var(--vscode-editorError-foreground)] text-xs mt-1"
-              ></div>
-            </div>
+        <div id="panel-link-vars-placeholder"></div>
 
-            <!-- Type dropdown -->
-            <div class="form-group">
-              <label class="block vscode-label mb-1">Type</label>
-              <div>
-                <span
-                  id="panel-link-ext-type-display"
-                  class="text-base px-2 py-1 inline-block rounded"
-                  style="
-                    background-color: var(--vscode-textBlockQuote-background);
-                    border: 1px solid var(--vscode-textBlockQuote-border);
-                  "
-                >
-                  veth
-                </span>
-                <span class="text-xs text-[var(--vscode-descriptionForeground)] ml-2">
-                  (auto-detected)
-                </span>
-              </div>
-            </div>
-          </div>
+        <!-- Labels -->
+        <div class="form-group">
+          <label class="block vscode-label mb-1">Labels</label>
+          <div id="panel-link-ext-labels-container" class="space-y-2"></div>
+          <button class="btn btn-small mt-2" onclick="addLinkLabelEntry()">
+            <i class="fas fa-plus mr-1"></i>
+            Add Label
+          </button>
+        </div>
 
-          <!-- Common fields -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Source MAC</label>
-            <input
-              type="text"
-              id="panel-link-ext-src-mac"
-              class="input-field w-full"
-              placeholder="e.g., 02:42:ac:11:00:01"
-            />
-          </div>
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Target MAC</label>
-            <input
-              type="text"
-              id="panel-link-ext-tgt-mac"
-              class="input-field w-full"
-              placeholder="e.g., 02:42:ac:11:00:02"
-            />
-          </div>
-          <div class="form-group">
-            <label class="block vscode-label mb-1">MTU</label>
-            <input
-              type="number"
-              id="panel-link-ext-mtu"
-              class="input-field w-full"
-              placeholder="e.g., 1500"
-            />
-          </div>
-
-          <div id="panel-link-vars-placeholder"></div>
-
-          <!-- Labels -->
-          <div class="form-group">
-            <label class="block vscode-label mb-1">Labels</label>
-            <div id="panel-link-ext-labels-container" class="space-y-2"></div>
-            <button class="btn btn-small mt-2" onclick="addLinkLabelEntry()">
-              <i class="fas fa-plus mr-1"></i>
-              Add Label
-            </button>
-          </div>
-
-          <!-- Info message for non-veth links -->
-          <div class="my-1" id="panel-link-ext-non-veth-info" style="display: none">
-            <div
-              class="p-2 rounded bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]"
-            >
-              <div class="text-sm">
-                <span class="font-semibold">Note:</span>
-                This link connects to a network node. Configure extended properties on the network
-                node itself.
-              </div>
+        <!-- Info message for non-veth links -->
+        <div class="my-1" id="panel-link-ext-non-veth-info" style="display: none">
+          <div
+            class="p-2 rounded bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]"
+          >
+            <div class="text-sm">
+              <span class="font-semibold">Note:</span>
+              This link connects to a network node. Configure extended properties on the network
+              node itself.
             </div>
           </div>
         </div>
@@ -173,7 +176,7 @@
     </div>
   </div>
 
-  <div id="panel-link-footer-placeholder"></div>
+  <div id="panel-link-footer-placeholder" class="flex-shrink-0"></div>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const varsTpl = document.getElementById("vars-section-template");
@@ -192,15 +195,45 @@
 
         const footerFrag = footerTpl.content.cloneNode(true);
         const saveBtn = footerFrag.querySelector(".editor-save-btn");
-        const closeBtn = footerFrag.querySelector(".editor-close-btn");
+        const applyBtn = footerFrag.querySelector(".editor-apply-btn");
         if (saveBtn) {
           saveBtn.id = "panel-link-editor-save-button";
         }
-        if (closeBtn) {
-          closeBtn.id = "panel-link-editor-close-button";
+        if (applyBtn) {
+          applyBtn.id = "panel-link-editor-apply-button";
         }
         document.getElementById("panel-link-footer-placeholder")?.appendChild(footerFrag);
       }
+
+      // Resize observer to calculate tab container height
+      const panel = document.getElementById("panel-link-editor");
+      const tabContainer = document.getElementById("link-editor-tab-container");
+
+      function resizeTabContainer() {
+        if (!panel || !tabContainer) return;
+        const panelRect = panel.getBoundingClientRect();
+        const tabContainerRect = tabContainer.getBoundingClientRect();
+        const footer = document.getElementById("panel-link-footer-placeholder");
+        const footerRect = footer ? footer.getBoundingClientRect() : { height: 0 };
+
+        // Calculate available height: panel height - everything above tab container - footer height
+        const availableHeight =
+          panelRect.height - (tabContainerRect.top - panelRect.top) - footerRect.height;
+
+        if (availableHeight > 0) {
+          tabContainer.style.height = `${availableHeight}px`;
+        }
+      }
+
+      // Set up resize observer
+      const resizeObserver = new ResizeObserver(() => {
+        resizeTabContainer();
+      });
+
+      resizeObserver.observe(panel);
+
+      // Initial resize after a short delay to ensure footer is rendered
+      setTimeout(resizeTabContainer, 100);
     });
   </script>
 </div>

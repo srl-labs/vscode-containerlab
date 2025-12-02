@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
-import * as utils from "../helpers/utils";
 import { execCommandInTerminal } from "./command";
 import { execCmdMapping } from "../extension";
 import { ClabContainerTreeNode } from "../treeView/common";
+import { DEFAULT_ATTACH_SHELL_CMD, DEFAULT_ATTACH_TELNET_PORT } from "../utils";
 
 interface NodeContext {
   containerId: string;
@@ -33,7 +33,7 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   const ctx = getNodeContext(node);
   if (!ctx) return;
 
-  let execCmd = (execCmdMapping as any)[ctx.containerKind] || "sh";
+  let execCmd = (execCmdMapping as any)[ctx.containerKind] || DEFAULT_ATTACH_SHELL_CMD;
   const config = vscode.workspace.getConfiguration("containerlab");
   const userExecMapping = config.get("node.execCommandMapping") as { [key: string]: string };
   const runtime = config.get<string>("runtime", "docker");
@@ -41,8 +41,9 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   execCmd = userExecMapping[ctx.containerKind] || execCmd;
 
   execCommandInTerminal(
-    `${utils.getSudo()}${runtime} exec -it ${ctx.containerId} ${execCmd}`,
-    `Shell - ${ctx.container}`
+    `${runtime} exec -it ${ctx.containerId} ${execCmd}`,
+    `Shell - ${ctx.container}`,
+    true  // If terminal exists, just focus it
   );
 }
 
@@ -50,10 +51,11 @@ export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
   const ctx = getNodeContext(node);
   if (!ctx) return;
   const config = vscode.workspace.getConfiguration("containerlab");
-  const port = (config.get("node.telnetPort") as number) || 5000;
+  const port = (config.get("node.telnetPort") as number) || DEFAULT_ATTACH_TELNET_PORT;
   const runtime = config.get<string>("runtime", "docker");
   execCommandInTerminal(
-    `${utils.getSudo()}${runtime} exec -it ${ctx.containerId} telnet 127.0.0.1 ${port}`,
-    `Telnet - ${ctx.container}`
+    `${runtime} exec -it ${ctx.containerId} telnet 127.0.0.1 ${port}`,
+    `Telnet - ${ctx.container}`,
+    true  // If terminal exists, just focus it
   );
 }

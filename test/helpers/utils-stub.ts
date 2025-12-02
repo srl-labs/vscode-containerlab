@@ -5,7 +5,7 @@ export function setOutput(out: string) {
   output = out;
 }
 
-export async function runWithSudo(command: string, ..._args: any[]): Promise<string> {
+export async function runCommand(command: string, ..._args: any[]): Promise<string> {
   calls.push(command);
   if (_args.length > 0) {
     // no-op to consume args for linter
@@ -13,8 +13,21 @@ export async function runWithSudo(command: string, ..._args: any[]): Promise<str
   return output;
 }
 
-export function getSudo() {
-  return '';
+export function getUserInfo(): {
+  hasPermission: boolean;
+  isRoot: boolean;
+  userGroups: string[];
+  username: string;
+  uid: number;
+} {
+  // In tests, always return that permissions are granted
+  return {
+    hasPermission: true,
+    isRoot: false,
+    userGroups: ['clab_admins', 'docker'],
+    username: 'testuser',
+    uid: 1000
+  };
 }
 
 export async function getSelectedLabNode(node?: any): Promise<any> {

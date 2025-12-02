@@ -1,33 +1,14 @@
 import * as vscode from "vscode"
-import * as utils from "../helpers/utils"
+import * as utils from "../utils/utils"
 import * as c from "./common";
 import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
-import { execFileSync } from "child_process";
-import * as fs from "fs";
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions, outputChannel } from "../extension";
 import { getCurrentTopoViewer } from "../commands/graph";
 
-/**
- * Interface corresponding to fields in the
- *  the JSON output of 'clab ins interfaces'
- */
-interface ClabInsIntfJSON {
-    name: string,
-    interfaces: [
-        {
-            name: string,
-            type: string,
-            state: string,
-            alias: string,
-            mac: string,
-            mtu: number,
-            ifindex: number,
-        }
-    ]
-}
+import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry, ClabInterfaceStats } from "../types/containerlab";
 
 type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
 
@@ -37,10 +18,6 @@ interface LabDiscoveryResult {
     containersToRefresh: Set<c.ClabContainerTreeNode>;
 }
 
-interface DiscoveryOptions {
-    forceInterfaceRefresh?: boolean;
-}
-
 export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabLabTreeNode | c.ClabContainerTreeNode> {
     private _onDidChangeTreeData = new vscode.EventEmitter<void | c.ClabLabTreeNode | c.ClabContainerTreeNode | null | undefined>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -48,46 +25,19 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     private treeItems: c.ClabLabTreeNode[] = [];
     private treeFilter: string = '';
     private labNodeCache: Map<string, c.ClabLabTreeNode> = new Map();
-
-
-    private containerInterfacesCache: Map<string, {
-        state: string,
-        timestamp: number,
-        interfaces: c.ClabInterfaceTreeNode[]
-    }> = new Map();
-
-    // Cache for labs: both local and inspect (running) labs.
-    private labsCache: {
-        inspect: { data: Record<string, c.ClabLabTreeNode> | undefined, timestamp: number, rawDataHash?: string } | null,
-    } = { inspect: null };
-
-    private refreshInterval: number = 5000; // Default to ~5 seconds
-    private cacheTTL: number = 30000; // Default to 30 seconds, will be overridden
-    private interfaceCacheTTL: number = 5000; // Tracks how long interface data stays fresh
+    private labsSnapshot: Record<string, c.ClabLabTreeNode> | undefined;
 
     private context: vscode.ExtensionContext;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
-        // Get the refresh interval from configuration
-        const config = vscode.workspace.getConfiguration('containerlab');
-        this.refreshInterval = config.get<number>('refreshInterval', 5000);
-
-        const minCacheTtl = Math.max(this.refreshInterval * 3, 30000);
-        this.cacheTTL = minCacheTtl;
-        this.interfaceCacheTTL = Math.max(this.refreshInterval, 1000);
-
-        this.startCacheJanitor();
     }
 
     async refresh(element?: c.ClabLabTreeNode | c.ClabContainerTreeNode) {
         if (!element) {
-            // Full refresh - update inspect data and clear interface cache
-            this.containerInterfacesCache.clear();
-            // Don't clear labs cache - let the hash comparison handle it
-
+            // Full refresh - update inspect data from the event stream
             await ins.update();
-            const discovery = await this.discoverLabs({ forceInterfaceRefresh: true });
+            const discovery = await this.discoverLabs();
             this.emitRefreshEvents(discovery);
 
             // Also refresh the topology viewer if it's open
@@ -103,12 +53,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
     // a soft refresh will check for changes and only update if needed
     async softRefresh(
-        element?: c.ClabLabTreeNode | c.ClabContainerTreeNode,
-        options: DiscoveryOptions = {}
+        element?: c.ClabLabTreeNode | c.ClabContainerTreeNode
     ) {
         if (!element) {
             // Discover labs without clearing caches first
-            const discovery = await this.discoverLabs(options);
+            const discovery = await this.discoverLabs();
             this.emitRefreshEvents(discovery);
 
             // Always refresh the topology viewer to catch interface state changes
@@ -129,6 +78,65 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             // Selective refresh - only refresh this element
             this._onDidChangeTreeData.fire(element);
         }
+    }
+
+    /**
+     * Refresh a specific container by its short ID.
+     * Rebuilds the interface list from scratch based on current inspection data.
+     */
+    async refreshContainer(containerShortId: string, newState: string) {
+        outputChannel.info(`Container state change detected: ${containerShortId} → ${newState}`);
+        console.log(`[RunningLabTreeDataProvider]:\tRefreshing container ${containerShortId} (state: ${newState})`);
+
+        // Find the container node in our tree
+        const containerNode = this.findContainerNode(containerShortId);
+        if (!containerNode) {
+            outputChannel.warn(`Container ${containerShortId} not found in tree for refresh`);
+            console.log(`[RunningLabTreeDataProvider]:\tContainer ${containerShortId} not found in tree`);
+            return;
+        }
+
+        outputChannel.info(`Triggering interface inspection for container: ${containerNode.name} (${containerShortId})`);
+
+        // Rebuild interface list from inspection data
+        // This will get current interfaces if running, or empty list if not
+        const newInterfaces = this.discoverContainerInterfaces(
+            containerNode.name,
+            containerShortId,
+            true  // Log to output channel
+        ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
+        outputChannel.info(`Interface inspection complete: ${containerNode.name} - found ${newInterfaces.length} interfaces`);
+        console.log(`[RunningLabTreeDataProvider]:\tFound ${newInterfaces.length} interfaces for container ${containerShortId}`);
+
+        // Replace the entire interface list
+        (containerNode as any).interfaces = newInterfaces;
+
+        // Update collapsible state based on interface count
+        containerNode.collapsibleState = newInterfaces.length > 0
+            ? vscode.TreeItemCollapsibleState.Collapsed
+            : vscode.TreeItemCollapsibleState.None;
+
+        // Fire refresh for this specific container
+        this._onDidChangeTreeData.fire(containerNode);
+
+        // Also refresh the topology viewer if it's open
+        await this.refreshTopoViewerIfOpen();
+    }
+
+    /**
+     * Find a container node by its short ID
+     */
+    private findContainerNode(containerShortId: string): c.ClabContainerTreeNode | undefined {
+        for (const lab of this.treeItems) {
+            if (!lab.containers) continue;
+            for (const container of lab.containers) {
+                if (container.cID === containerShortId) {
+                    return container;
+                }
+            }
+        }
+        return undefined;
     }
 
     setTreeFilter(filterText: string) {
@@ -164,31 +172,40 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         }
 
         try {
-            await viewer.refreshLinkStatesFromInspect(this.labsCache.inspect?.data ?? undefined);
+            await viewer.refreshLinkStatesFromInspect(this.labsSnapshot);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error(`[RunningLabTreeDataProvider]:\tFailed to refresh TopoViewer link states: ${message}`);
         }
     }
 
-    hasChanges(): boolean {
-        const now = Date.now();
-
-        // Check for expired caches
-        let anyInterfaceExpired = false;
-        for (const value of this.containerInterfacesCache.values()) {
-            if (now - value.timestamp > this.interfaceCacheTTL) {
-                anyInterfaceExpired = true;
-                break;
-            }
-        }
-
-        const labsExpired = !!(this.labsCache.inspect && (now - this.labsCache.inspect.timestamp >= this.cacheTTL));
-        return anyInterfaceExpired || labsExpired;
+    getTreeItem(element: RunningTreeNode): vscode.TreeItem {
+        // Don't include tooltip here - it will be resolved lazily via resolveTreeItem
+        // This helps prevent tooltip dismissal during tree refreshes
+        // We store the tooltip on a separate property and clear it from the TreeItem
+        const storedTooltip = element.tooltip;
+        (element as any)._storedTooltip = storedTooltip;
+        element.tooltip = undefined;
+        return element;
     }
 
-    getTreeItem(element: RunningTreeNode): vscode.TreeItem {
-        return element;
+    /**
+     * Lazily resolve tree item details like tooltip.
+     * This is called by VS Code when it needs to display the tooltip,
+     * allowing the tooltip to persist better during tree refreshes.
+     */
+    resolveTreeItem(
+        item: vscode.TreeItem,
+        element: RunningTreeNode,
+        // eslint-disable-next-line no-unused-vars
+        _token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.TreeItem> {
+        // Restore the tooltip from our stored property
+        const storedTooltip = (element as any)._storedTooltip;
+        if (storedTooltip !== undefined) {
+            item.tooltip = storedTooltip;
+        }
+        return item;
     }
 
     /**
@@ -256,14 +273,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return containerMatches ? interfaces : interfaces.filter(it => filter(String(it.label)));
     }
 
-    private async discoverLabs(options: DiscoveryOptions = {}): Promise<LabDiscoveryResult> {
+    private async discoverLabs(): Promise<LabDiscoveryResult> {
         console.log("[RunningLabTreeDataProvider]:\tDiscovering labs");
 
         const previousCache = this.labNodeCache;
         const labsToRefresh: Set<c.ClabLabTreeNode> = new Set();
         const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
 
-        const globalLabs = await this.discoverInspectLabs(options);  // Deployed labs from `clab inspect -a`
+        const globalLabs = await this.discoverInspectLabs();  // Deployed labs from `clab inspect -a`
 
         // --- Combine local and global labs ---
         // Initialize with global labs (deployed)
@@ -380,9 +397,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             target.description = source.description;
             labChanged = true;
         }
+        // Always update tooltip (VS Code fetches it lazily on hover)
+        // but don't mark as changed to avoid dismissing visible tooltips
         if (target.tooltip !== source.tooltip) {
             target.tooltip = source.tooltip;
-            labChanged = true;
         }
         if (!this.iconsEqual(target.iconPath, source.iconPath)) {
             target.iconPath = source.iconPath;
@@ -479,7 +497,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         if (this.applySimpleUpdates(targetAny, [
             ['label', source.label, true],
             ['description', source.description, true],
-            ['tooltip', source.tooltip, true],
             ['contextValue', source.contextValue],
             ['cID', (source as any).cID],
             ['state', source.state],
@@ -494,9 +511,20 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             changed = true;
         }
 
+        // Always update tooltip (VS Code fetches it lazily on hover)
+        // but don't mark as changed to avoid dismissing visible tooltips
+        if (String(target.tooltip ?? '') !== String(source.tooltip ?? '')) {
+            target.tooltip = source.tooltip;
+        }
+
         if (!this.iconsEqual(target.iconPath, source.iconPath)) {
             target.iconPath = source.iconPath;
             changed = true;
+        }
+
+        if (target.collapsibleState !== source.collapsibleState) {
+            target.collapsibleState = source.collapsibleState;
+            structureChanged = true;
         }
 
         const interfacesResult = this.mergeInterfaceNodes(target, source);
@@ -552,7 +580,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         if (this.applySimpleUpdates(targetAny, [
             ['label', source.label, true],
             ['description', source.description, true],
-            ['tooltip', source.tooltip, true],
             ['contextValue', source.contextValue],
             ['cID', (source as any).cID],
             ['state', source.state],
@@ -563,6 +590,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             ['ifIndex', (source as any).ifIndex]
         ])) {
             changed = true;
+        }
+
+        // Always update tooltip (VS Code fetches it lazily on hover)
+        // but don't mark as changed to avoid dismissing visible tooltips
+        if (String(target.tooltip ?? '') !== String(source.tooltip ?? '')) {
+            target.tooltip = source.tooltip;
         }
 
         if (!this.iconsEqual(target.iconPath, source.iconPath)) {
@@ -639,6 +672,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         if (String(a.label) !== String(b.label)) return false;
         if (a.tooltip !== b.tooltip) return false;
+        if (a.collapsibleState !== b.collapsibleState) return false;
         if (!this.iconsEqual(a.iconPath, b.iconPath)) return false;
 
         const aLink = (a as any).link;
@@ -662,6 +696,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             if (!Array.isArray(detailedData[labName])) continue;
 
             result[labName] = detailedData[labName].map(container => {
+                const status = this.computeContainerStatus(container);
+
                 // Construct IPv4 and IPv6 addresses with prefix length
                 let ipv4Address = "N/A";
                 if (container.NetworkSettings.IPv4addr && container.NetworkSettings.IPv4pLen !== undefined) {
@@ -692,10 +728,11 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     name_short: container.Labels['clab-node-name'],
                     owner: container.Labels['clab-owner'],
                     state: container.State,
-                    status: container.Status,
+                    status: status,
                     node_type: container.Labels['clab-node-type'] || undefined,
                     node_group: container.Labels['clab-node-group'] || undefined,
-                    network_name: container.NetworkName || undefined
+                    network_name: container.NetworkName || undefined,
+                    startedAt: container.StartedAt
                 };
             });
         }
@@ -703,51 +740,96 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return result;
     }
 
-    private createContainerHash(containers: c.ClabJSON[] | undefined): string {
-        if (!containers || containers.length === 0) {
-            return 'empty';
+    private computeContainerStatus(container: c.ClabDetailedJSON): string {
+        const rawStatus = container.Status?.trim() ?? "";
+
+        if (container.State === "running") {
+            const suffix = this.extractStatusSuffix(rawStatus);
+            if (typeof container.StartedAt === "number") {
+                const uptime = this.formatUptime(container.StartedAt);
+                return suffix ? `${uptime} ${suffix}` : uptime;
+            }
+            return rawStatus || "Running";
         }
 
-        const tokens = containers.map(container => {
-            const normPath = container.absLabPath || utils.normalizeLabPath(container.labPath);
-            const name = container.name || '';
-            const state = container.state || '';
-            const status = container.status || '';
-            const owner = container.owner || '';
-            const id = container.container_id || '';
-            const kind = container.kind || '';
-            const nodeType = container.node_type || '';
-            const nodeGroup = container.node_group || '';
-            return `${normPath}|${name}|${state}|${status}|${owner}|${id}|${kind}|${nodeType}|${nodeGroup}`;
-        });
-
-        tokens.sort();
-        return tokens.join('~');
+        return rawStatus || this.formatStateLabel(container.State);
     }
 
-    public async discoverInspectLabs(options: DiscoveryOptions = {}): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
+    private extractStatusSuffix(status: string): string | undefined {
+        if (!status) {
+            return undefined;
+        }
+        const trimmed = status.trim();
+        const openIdx = trimmed.lastIndexOf("(");
+        const closeIdx = trimmed.lastIndexOf(")");
+        if (openIdx === -1 || closeIdx === -1 || closeIdx <= openIdx) {
+            return undefined;
+        }
+        return trimmed.slice(openIdx, closeIdx + 1);
+    }
+
+    private formatStateLabel(state?: string): string {
+        if (!state) {
+            return "Unknown";
+        }
+        const normalized = state.replace(/[_-]+/g, " ");
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    }
+
+    private formatUptime(startedAt: number): string {
+        const elapsedMs = Math.max(0, Date.now() - startedAt);
+        if (elapsedMs < 60000) {
+            return "Up less than a minute";
+        }
+
+        const totalMinutes = Math.floor(elapsedMs / 60000);
+        if (totalMinutes < 60) {
+            return `Up ${this.formatQuantity(totalMinutes, "minute")}`;
+        }
+
+        const totalHours = Math.floor(totalMinutes / 60);
+        if (totalHours < 24) {
+            const remainingMinutes = totalMinutes % 60;
+            const hoursPart = this.formatQuantity(totalHours, "hour");
+            if (remainingMinutes > 0) {
+                return `Up ${hoursPart} ${this.formatQuantity(remainingMinutes, "minute")}`;
+            }
+            return `Up ${hoursPart}`;
+        }
+
+        const totalDays = Math.floor(totalHours / 24);
+        const remainingHours = totalHours % 24;
+        const daysPart = this.formatQuantity(totalDays, "day");
+        if (remainingHours > 0) {
+            return `Up ${daysPart} ${this.formatQuantity(remainingHours, "hour")}`;
+        }
+        return `Up ${daysPart}`;
+    }
+
+    private formatQuantity(value: number, unit: string): string {
+        const quantity = Math.max(1, Math.floor(value));
+        const suffix = quantity === 1 ? unit : `${unit}s`;
+        return `${quantity} ${suffix}`;
+    }
+
+    public async discoverInspectLabs(): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
         console.log("[RunningLabTreeDataProvider]:\tDiscovering labs via inspect...");
 
         const inspectData = await this.getInspectData(); // This now properly handles both formats
 
         // --- Normalize inspectData into a flat list of containers ---
         const allContainers = this.normalizeInspectData(inspectData);
-        const currentDataHash = this.createContainerHash(allContainers);
-
-        // Check if we have cached data and if the raw data hasn't changed
-        const cached = this.getCachedInspectIfFresh(currentDataHash, options.forceInterfaceRefresh === true);
-        if (cached) return cached;
 
         if (!inspectData || !allContainers) {
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
+            this.labsSnapshot = undefined;
             return undefined;
         }
 
         // If after normalization, we have no containers, return undefined
         if (allContainers.length === 0) {
             this.updateBadge(0);
-            this.labsCache.inspect = { data: undefined, timestamp: Date.now(), rawDataHash: currentDataHash };
+            this.labsSnapshot = undefined;
             return undefined;
         }
 
@@ -758,22 +840,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         this.updateBadge(Object.keys(labs).length);
 
-        this.labsCache.inspect = { data: labs, timestamp: Date.now(), rawDataHash: currentDataHash };
+        this.labsSnapshot = labs;
         return labs;
-    }
-
-    private getCachedInspectIfFresh(currentDataHash: string, forceInterfaceRefresh: boolean) {
-        if (forceInterfaceRefresh) {
-            return undefined;
-        }
-
-        if (this.labsCache.inspect &&
-            this.labsCache.inspect.rawDataHash === currentDataHash &&
-            (Date.now() - this.labsCache.inspect.timestamp < this.cacheTTL)) {
-            console.log("[RunningLabTreeDataProvider]:\tUsing cached labs (data unchanged)");
-            return this.labsCache.inspect.data;
-        }
-        return undefined;
     }
 
     private normalizeInspectData(inspectData: any): c.ClabJSON[] | undefined {
@@ -911,6 +979,10 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         const parsedData = ins.rawInspectData;
 
+        if (!parsedData) {
+            return parsedData;
+        }
+
         // Determine the format of the returned data
         // Check if it's an array (old flat format) or an object with lab keys (new grouped format)
         const isOldFlatFormat = Array.isArray(parsedData);
@@ -1033,10 +1105,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
             const icon = this.getContainerIcon(container);
 
             const interfaces = this.discoverContainerInterfaces(
-                absLabPath,
                 container.name,
-                container.container_id,
-                container.state
+                container.container_id
             ).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
             const collapsible = interfaces.length > 0
@@ -1078,55 +1148,22 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     private discoverContainerInterfaces(
-        absLabPath: string, // Use absolute lab path
         cName: string,
         cID: string,
-        containerState: string
+        logToOutput: boolean = false
     ): c.ClabInterfaceTreeNode[] {
-        const cacheKey = `${absLabPath}::${cName}::${cID}`;
-        const cached = this.containerInterfacesCache.get(cacheKey);
-        const cachedValid = cached && cached.state === containerState &&
-            (Date.now() - cached.timestamp < this.interfaceCacheTTL);
-        if (cachedValid) return cached!.interfaces;
-
-        let interfaces: c.ClabInterfaceTreeNode[] = [];
-        try {
-            const bin = this.findContainerlabBinary();
-            const clabInsJSON = this.getInterfacesJSON(bin, absLabPath, cName);
-            interfaces = this.buildInterfaceNodes(clabInsJSON, cName, cID);
-            this.containerInterfacesCache.set(cacheKey, {
-                state: containerState,
-                timestamp: Date.now(),
-                interfaces
-            });
-        } catch (err: any) {
-            if (err.killed || err.signal === 'SIGTERM') {
-                console.error(`[RunningLabTreeDataProvider]: Interface detection timed out for ${cName}. Cmd: ${err.cmd}`);
-            } else {
-                console.error(`[RunningLabTreeDataProvider]: Interface detection failed for ${cName}. ${err.message || String(err)}`);
-            }
-            this.containerInterfacesCache.delete(cacheKey);
+        if (logToOutput) {
+            outputChannel.debug(`Inspecting interfaces for container: ${cName} (${cID})`);
+        }
+        const snapshot = ins.getInterfacesSnapshot(cID, cName);
+        const interfaces = this.buildInterfaceNodes(snapshot, cName, cID);
+        if (logToOutput) {
+            outputChannel.debug(`Interface snapshot retrieved: ${cName} - ${interfaces.length} interfaces`);
         }
         return interfaces;
     }
 
-    private findContainerlabBinary(): string {
-        const candidateBins = ['/usr/bin/containerlab', '/bin/containerlab', '/usr/local/bin/containerlab'];
-        return candidateBins.find(p => {
-            try { return fs.existsSync(p); } catch { return false; }
-        }) || 'containerlab';
-    }
-
-    private getInterfacesJSON(bin: string, absLabPath: string, cName: string): ClabInsIntfJSON[] {
-        const clabStdout = execFileSync(
-            bin,
-            ['inspect', 'interfaces', '-t', absLabPath, '-f', 'json', '-n', cName],
-            { stdio: ['pipe', 'pipe', 'ignore'], timeout: 10000 }
-        ).toString();
-        return JSON.parse(clabStdout);
-    }
-
-    private buildInterfaceNodes(clabInsJSON: ClabInsIntfJSON[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
+    private buildInterfaceNodes(clabInsJSON: ClabInterfaceSnapshot[], cName: string, cID: string): c.ClabInterfaceTreeNode[] {
         const interfaces: c.ClabInterfaceTreeNode[] = [];
 
         if (!(clabInsJSON && clabInsJSON.length > 0 && Array.isArray(clabInsJSON[0].interfaces))) {
@@ -1173,6 +1210,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                     break;
             }
 
+            const stats = this.extractInterfaceStats(intf);
+
             const node = new c.ClabInterfaceTreeNode(
                 label,
                 vscode.TreeItemCollapsibleState.None,
@@ -1185,8 +1224,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
                 intf.mtu,
                 intf.ifindex,
                 intf.state,
-                contextValue
+                contextValue,
+                stats
             );
+
+            // Note: Interface stats are not shown in tooltip because tooltips are
+            // cached to prevent dismissal during tree refreshes, so stats would be stale
 
             node.tooltip = tooltipParts.join("\n");
             node.description = description;
@@ -1204,34 +1247,25 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         return state === 'up' ? 'containerlabInterfaceUp' : 'containerlabInterfaceDown';
     }
 
-    // startCacheJanitor clears expired caches and triggers soft refresh when needed
-    private startCacheJanitor() {
-        const janitorInterval = Math.max(1000, Math.min(this.refreshInterval, this.cacheTTL, this.interfaceCacheTTL));
-
-        setInterval(() => {
-            const now = Date.now();
-            let hasExpired = false;
-
-            // Check for expired container interfaces
-            this.containerInterfacesCache.forEach((value, key) => {
-                if (now - value.timestamp >= this.interfaceCacheTTL) {
-                    this.containerInterfacesCache.delete(key);
-                    hasExpired = true;
-                }
-            });
-
-            if (this.labsCache.inspect && now - this.labsCache.inspect.timestamp >= this.cacheTTL) {
-                this.labsCache.inspect = null;
-                hasExpired = true;
+    private extractInterfaceStats(intf: ClabInterfaceSnapshotEntry): ClabInterfaceStats | undefined {
+        const stats: ClabInterfaceStats = {};
+        const assign = (key: keyof ClabInterfaceStats, value: number | undefined) => {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                stats[key] = value;
             }
+        };
 
-            if (hasExpired) {
-                const options: DiscoveryOptions = { forceInterfaceRefresh: true };
-                void this.softRefresh(undefined, options).catch(err => {
-                    console.error("[RunningLabTreeDataProvider]:\tCache janitor refresh failed", err);
-                });
-            }
-        }, janitorInterval);
+        assign('rxBps', intf.rxBps);
+        assign('rxPps', intf.rxPps);
+        assign('rxBytes', intf.rxBytes);
+        assign('rxPackets', intf.rxPackets);
+        assign('txBps', intf.txBps);
+        assign('txPps', intf.txPps);
+        assign('txBytes', intf.txBytes);
+        assign('txPackets', intf.txPackets);
+        assign('statsIntervalSeconds', intf.statsIntervalSeconds);
+
+        return Object.keys(stats).length > 0 ? stats : undefined;
     }
 
     // getResourceUri remains unchanged

@@ -1,40 +1,115 @@
 import * as vscode from "vscode";
-import * as utils from "../helpers/utils";
 import * as c from "./common";
+import * as events from "../services/containerlabEvents";
+import * as fallback from "../services/containerlabInspectFallback";
+import type { ClabInterfaceSnapshot } from "../types/containerlab";
 
-import { promisify } from "util";
-import { exec } from "child_process";
+export let rawInspectData: Record<string, c.ClabDetailedJSON[]> | undefined;
 
-const execAsync = promisify(exec);
+// Track if we've fallen back to polling due to events not being available
+let forcedPollingMode = false;
 
-export let rawInspectData: any;
-export let transformedInspectData: c.ClabJSON;
+/**
+ * Check if we should use polling mode (fallback) instead of events
+ */
+export function isPollingMode(): boolean {
+    if (forcedPollingMode) {
+        return true;
+    }
+    const config = vscode.workspace.getConfiguration("containerlab");
+    return config.get<string>("refreshMode", "events") === "polling";
+}
 
-const config = vscode.workspace.getConfiguration("containerlab");
-const runtime = config.get<string>("runtime", "docker");
+/**
+ * Check if interface stats are enabled
+ */
+export function isInterfaceStatsEnabled(): boolean {
+    const config = vscode.workspace.getConfiguration("containerlab");
+    return config.get<boolean>("enableInterfaceStats", true);
+}
 
-export async function update() {
+/**
+ * Check if events were available or we had to fall back
+ */
+export function isUsingForcedPolling(): boolean {
+    return forcedPollingMode;
+}
 
-    console.log("[inspector]:\tUpdating inspect data");
-    const t_start = Date.now()
+export async function update(): Promise<void> {
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const runtime = config.get<string>("runtime", "docker");
+    const preferPolling = config.get<string>("refreshMode", "events") === "polling";
 
-    const cmd = `${utils.getSudo()}containerlab inspect -r ${runtime} --all --details --format json 2>/dev/null`;
+    // If user explicitly wants polling, or we've been forced into polling mode
+    if (preferPolling || forcedPollingMode) {
+        await updateWithPolling(runtime);
+        return;
+    }
 
-    let clabStdout;
+    // Try events first, fall back to polling if it fails
     try {
-        const { stdout } = await execAsync(cmd);
-        clabStdout = stdout;
+        console.log("[inspector]:\tUpdating inspect data via events stream");
+        const start = Date.now();
+
+        await events.ensureEventStream(runtime);
+        rawInspectData = events.getGroupedContainers();
+
+        const duration = (Date.now() - start) / 1000;
+        const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
+        console.log(`[inspector]:\tUpdated inspect data for ${labsCount} labs in ${duration.toFixed(3)} seconds.`);
     } catch (err) {
-        throw new Error(`Could not run ${cmd}.\n${err}`);
+        // Events failed - likely "Unknown command" error
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`[inspector]:\tEvents stream failed: ${errorMsg}`);
+        console.log("[inspector]:\tFalling back to polling mode");
+
+        // Mark that we've been forced into polling mode
+        forcedPollingMode = true;
+
+        // Use polling fallback
+        await updateWithPolling(runtime);
     }
+}
 
-    if (!clabStdout) {
-        return undefined;
+async function updateWithPolling(runtime: string): Promise<void> {
+    console.log("[inspector]:\tUpdating inspect data via polling fallback");
+    const start = Date.now();
+
+    await fallback.ensureFallback(runtime);
+    rawInspectData = fallback.getGroupedContainers();
+
+    const duration = (Date.now() - start) / 1000;
+    const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
+    console.log(`[inspector]:\tUpdated inspect data for ${labsCount} labs in ${duration.toFixed(3)} seconds (polling).`);
+}
+
+export function getInterfacesSnapshot(containerShortId: string, containerName: string): ClabInterfaceSnapshot[] {
+    if (isPollingMode()) {
+        // Use fallback's interface fetching via containerlab inspect interfaces
+        return fallback.getInterfaceSnapshot(containerShortId, containerName);
     }
+    return events.getInterfaceSnapshot(containerShortId, containerName);
+}
 
-    rawInspectData = JSON.parse(clabStdout);
+export function getInterfaceVersion(containerShortId: string): number {
+    if (isPollingMode()) {
+        // Fallback doesn't track versions
+        return fallback.getInterfaceVersion(containerShortId);
+    }
+    return events.getInterfaceVersion(containerShortId);
+}
 
-    const duration = (Date.now() - t_start) / 1000;
+export function refreshFromEventStream(): void {
+    if (isPollingMode()) {
+        rawInspectData = fallback.getGroupedContainers();
+    } else {
+        rawInspectData = events.getGroupedContainers();
+    }
+}
 
-    console.log(`[inspector]:\tParsed inspect data. Took ${duration} seconds.`);
+/**
+ * Reset forced polling mode (for testing or reconfiguration)
+ */
+export function resetForcedPollingMode(): void {
+    forcedPollingMode = false;
 }

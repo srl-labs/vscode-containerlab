@@ -52,7 +52,8 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 
 ## Requirements
 
-- **containerlab** must be installed and accessible in your system `PATH`. The extension will offer to install it if not found.
+- **containerlab** must be installed. The extension will offer to install it if not found.
+- You must be in the `clab_admins` and `docker` group. Podman is not supported for runtime features.
 - (Optional) **Edgeshark** for packet capture features - can be installed directly from the extension using the "Install Edgeshark" command.
 
 
@@ -83,12 +84,12 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `sudoEnabledByDefault` | boolean | `false` | Prepend `sudo` to containerlab commands |
-| `runtime` | string | `docker` | Container runtime (`docker`, `podman`, `ignite`) |
-| `refreshInterval` | number | `5000` | Auto-refresh interval in milliseconds |
+| `binaryPath` | string | `""` | Custom path to containerlab binary (leave empty to resolve from PATH) |
 | `showWelcomePage` | boolean | `true` | Show welcome page on activation |
-| `skipInstallationCheck` | boolean | `false` | Skip containerlab install check/prompt; extension stays inactive if containerlab is missing |
+| `skipUpdateCheck` | boolean | `false` | Skip extension update check |
 | `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
+
+The Containerlab Explorer listens to the containerlab event stream, so running labs update live without manual refresh intervals.
 
 ### 🎯 Command Options
 
@@ -124,12 +125,11 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
 | `capture.preferredAction` | string | `Wireshark VNC` | Preferred capture method (`Edgeshark`, `Wireshark VNC`) |
 | `capture.wireshark.dockerImage` | string | `ghcr.io/kaelemc/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC |
 | `capture.wireshark.pullPolicy` | string | `always` | Image pull policy (`always`, `missing`, `never`) |
-| `capture.wireshark.extraDockerArgs` | string | `-e HTTP_PROXY=""`<br/>`-e http_proxy=""` | Extra docker arguments |
 | `capture.wireshark.theme` | string | `Follow VS Code theme` | Wireshark theme |
 | `capture.wireshark.stayOpenInBackground` | boolean | `true` | Keep sessions alive in background |
-| `edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
-| `remote.hostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
-| `remote.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
+| `capture.edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
+| `capture.remoteHostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
+| `capture.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
 
 ### 🌐 Lab Sharing
 
@@ -146,6 +146,10 @@ Configure the extension behavior through VS Code settings (`containerlab.*`):
   "containerlab.node.execCommandMapping": {
     "nokia_srlinux": "sr_cli",
     "arista_ceos": "Cli"
+  },
+  "containerlab.node.sshUserMapping": {
+    "nokia_srlinux": "admin",
+    "cisco_xrd": "clab"
   },
   "containerlab.editor.customNodes": [
     {
@@ -166,8 +170,8 @@ When deploying labs, you can monitor the detailed progress in the Output window:
 2. Select "Containerlab" from the dropdown menu
 3. Watch the deployment logs in real-time
 
-## Auto-refresh Behavior
-- The Containerlab Explorer automatically refreshes based on the `containerlab.refreshInterval` setting
+## Live Updates
+- The Containerlab Explorer streams containerlab events, so running labs refresh immediately without polling
 - Labs are consistently sorted:
   - Deployed labs appear before undeployed labs
   - Within each group (deployed/undeployed), labs are sorted by their absolute path

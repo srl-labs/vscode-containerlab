@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as YAML from "yaml";
 import { execCommandInTerminal } from "./command";
 import { ClabLabTreeNode } from "../treeView/common";
-import { getSudo } from "../helpers/utils";
 
 function buildNetworkFromYaml(topoPath: string): string {
     try {
@@ -37,7 +36,7 @@ function runFcli(node: ClabLabTreeNode, cmd: string) {
 
     const network = buildNetworkFromYaml(topo);
 
-    const command = `${getSudo()}${runtime} run --pull always -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${topo}":/topo.yml ${extraArgs} ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml ${cmd}`;
+    const command = `${runtime} run --pull always -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${topo}":/topo.yml ${extraArgs} ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml ${cmd}`;
 
     execCommandInTerminal(command, `fcli - ${node.label}`);
 }

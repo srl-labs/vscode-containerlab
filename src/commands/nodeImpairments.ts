@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import { ClabContainerTreeNode } from "../treeView/common";
 import { getNodeImpairmentsHtml } from "../webview/nodeImpairmentsHtml";
-import { runWithSudo } from "../helpers/utils";
-import { outputChannel } from "../extension";
+import { outputChannel, containerlabBinaryPath } from "../extension";
+import { runCommand } from "../utils/utils";
 
 type NetemFields = {
   delay: string;
@@ -74,21 +74,20 @@ function ensureDefaults(map: Record<string, NetemFields>, node: ClabContainerTre
 async function refreshNetemSettings(node: ClabContainerTreeNode): Promise<Record<string, NetemFields>> {
   const config = vscode.workspace.getConfiguration("containerlab");
   const runtime = config.get<string>("runtime", "docker");
-  const showCmd = `containerlab tools -r ${runtime} netem show -n ${node.name} --format json`;
+  const showCmd = `${containerlabBinaryPath} tools -r ${runtime} netem show -n ${node.name} --format json`;
   let netemMap: Record<string, NetemFields> = {};
 
   try {
-    const stdoutResult = await runWithSudo(
+    const stdout = await runCommand(
       showCmd,
-      `Retrieving netem settings for ${node.name}`,
+      'Refresh netem settings',
       outputChannel,
-      "containerlab",
-      true
-    );
-    if (!stdoutResult) {
+      true,
+      false
+    ) as string;
+    if (!stdout) {
       throw new Error("No output from netem show command");
     }
-    const stdout = stdoutResult as string;
     const rawData = JSON.parse(stdout);
     const interfacesData = rawData[node.name] || [];
     interfacesData.forEach((item: any) => {
@@ -143,13 +142,14 @@ async function applyNetem(
   for (const [intfName, fields] of Object.entries(netemData)) {
     const netemArgs = buildNetemArgs(fields as Record<string, string>);
     if (netemArgs.length > 0) {
-      const cmd = `containerlab tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")} > /dev/null 2>&1`;
+      const cmd = `${containerlabBinaryPath} tools netem set -n ${node.name} -i ${intfName} ${netemArgs.join(" ")} > /dev/null 2>&1`;
       ops.push(
-        runWithSudo(
+        runCommand(
           cmd,
-          `Applying netem on ${node.name}/${intfName}`,
+          `Apply netem to ${intfName}`,
           outputChannel,
-          "containerlab"
+          false,
+          false
         )
       );
     }
@@ -179,13 +179,14 @@ async function clearNetem(
       continue;
     }
     const cmd =
-      `containerlab tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001 > /dev/null 2>&1`;
+      `${containerlabBinaryPath} tools netem set -n ${node.name} -i ${norm} --delay 0s --jitter 0s --loss 0 --rate 0 --corruption 0.0000000000000001 > /dev/null 2>&1`;
     ops.push(
-      runWithSudo(
+      runCommand(
         cmd,
-        `Clearing netem on ${node.name}/${norm}`,
+        `Clear netem for ${norm}`,
         outputChannel,
-        "containerlab"
+        false,
+        false
       )
     );
   }

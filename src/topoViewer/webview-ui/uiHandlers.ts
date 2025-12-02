@@ -11,13 +11,14 @@ import { FilterUtils } from '../../helpers/filterUtils';
 import { normalizeLinkLabelMode, linkLabelModeLabel, type LinkLabelMode } from '../types/linkLabelMode';
 
 // Common class and display constants
-const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+// const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
 const CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
 const DISPLAY_BLOCK = 'block' as const;
 const DISPLAY_NONE = 'none' as const;
 const ERR_NO_CY = 'Cytoscape instance not available' as const;
 const LINK_LABEL_MENU_ID = 'viewport-link-label-menu' as const;
 const LINK_LABEL_TRIGGER_ID = 'viewport-link-label-button' as const;
+const CAPTURE_PANEL_ID = 'viewport-drawer-capture-sceenshoot' as const;
 
 // Global message sender instance
 let messageSender: VscodeMessageSender | null = null;
@@ -135,11 +136,12 @@ export async function showPanelAbout(): Promise<void> {
       // Hide the panel
       aboutPanel.style.display = DISPLAY_NONE;
     } else {
+      // Allow multiple panels to be open at once
       // Remove all overlay panels first
-      const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
-      for (let i = 0; i < panelOverlays.length; i++) {
-        (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
-      }
+      // const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
+      // for (let i = 0; i < panelOverlays.length; i++) {
+      //   (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
+      // }
 
       // Hide shortcuts panel if open
       const shortcutsPanel = document.getElementById('shortcuts-panel');
@@ -266,6 +268,25 @@ export function viewportCloseLinkLabelMenu(): void {
 }
 
 /**
+ * Toggle dummy links visibility in the topology viewer.
+ */
+export function viewportToggleDummyLinks(event?: MouseEvent): void {
+  try {
+    event?.preventDefault();
+    const manager = topoViewerState.editorEngine?.dummyLinksManager;
+    if (manager) {
+      manager.toggle();
+    } else {
+      // Fallback: toggle state directly and apply via singleton
+      const { dummyLinksManager } = require('../core/managerRegistry');
+      dummyLinksManager.toggle();
+    }
+  } catch (error) {
+    log.error(`Error toggling dummy links: ${error}`);
+  }
+}
+
+/**
  * Search for nodes in the topology
  */
 function getTopologySearchInput(): HTMLInputElement | null {
@@ -374,7 +395,7 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
       borderPadding
     });
 
-    const panel = document.getElementById('viewport-drawer-capture-sceenshoot');
+    const panel = document.getElementById(CAPTURE_PANEL_ID);
     if (panel) {
       panel.style.display = 'none';
     }
@@ -387,18 +408,17 @@ export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
  * Capture viewport as SVG - called by the navbar button
  */
 export function viewportButtonsCaptureViewportAsSvg(): void {
-  const panel = document.getElementById('viewport-drawer-capture-sceenshoot');
+  const panel = document.getElementById(CAPTURE_PANEL_ID);
   if (!panel) return;
 
-  // Hide other viewport drawers
+  const isVisible = panel.style.display === 'block';
   const drawers = document.getElementsByClassName('viewport-drawer');
   for (let i = 0; i < drawers.length; i++) {
     (drawers[i] as HTMLElement).style.display = 'none';
   }
 
-  panel.style.display = 'block';
+  panel.style.display = isVisible ? 'none' : 'block';
 }
-
 
 /**
  * Toggle split view with YAML editor
@@ -432,6 +452,7 @@ export function initializeGlobalHandlers(): void {
   (globalThis as any).viewportToggleLinkLabelMenu = viewportToggleLinkLabelMenu;
   (globalThis as any).viewportSelectLinkLabelMode = viewportSelectLinkLabelMode;
   (globalThis as any).viewportCloseLinkLabelMenu = viewportCloseLinkLabelMenu;
+  (globalThis as any).viewportToggleDummyLinks = viewportToggleDummyLinks;
 
   log.info('Global UI handlers initialized');
 }

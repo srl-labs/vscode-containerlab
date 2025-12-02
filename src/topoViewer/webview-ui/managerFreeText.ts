@@ -23,9 +23,11 @@ const BUTTON_BASE_CLASS = 'btn btn-small';
 const BUTTON_PRIMARY_CLASS = 'btn-primary';
 const BUTTON_OUTLINED_CLASS = 'btn-outlined';
 const BUTTON_BASE_RIGHT_CLASS = 'btn btn-small ml-auto';
+const CLASS_HAS_CHANGES = 'btn-has-changes';
 const OVERLAY_HOVER_CLASS = 'free-text-overlay-hover';
 const HANDLE_VISIBLE_CLASS = 'free-text-overlay-resize-visible';
 const ROTATE_HANDLE_VISIBLE_CLASS = 'free-text-overlay-rotate-visible';
+const PANEL_FREE_TEXT_ID = 'panel-free-text';
 type TextAlignment = 'left' | 'center' | 'right';
 const htmlEscapeMap: Record<string, string> = {
   '&': '&amp;',
@@ -56,10 +58,9 @@ const markdownRenderer = new MarkdownIt({
 }).use(markdownItEmoji);
 
 interface FreeTextModalElements {
-  backdrop: HTMLDivElement;
-  dialog: HTMLDivElement;
-  dragHandle: HTMLDivElement;
-  titleEl: HTMLHeadingElement;
+  panel: HTMLDivElement;
+  titleEl: HTMLSpanElement;
+  closeBtn: HTMLButtonElement;
   textInput: HTMLTextAreaElement;
   previewContainer: HTMLDivElement;
   previewContent: HTMLDivElement;
@@ -78,7 +79,7 @@ interface FreeTextModalElements {
   alignRightBtn: HTMLButtonElement;
   transparentBtn: HTMLButtonElement;
   roundedBtn: HTMLButtonElement;
-  cancelBtn: HTMLButtonElement;
+  applyBtn: HTMLButtonElement;
   okBtn: HTMLButtonElement;
 }
 
@@ -157,6 +158,7 @@ export class ManagerFreeText {
   private saveInProgress = false;
   private pendingSaveWhileBusy = false;
   private lastSavedStateKey: string | null = null;
+  private freeTextInitialValues: Record<string, string> | null = null;
   private onInteractiveAnchorPointerDown = (event: PointerEvent): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -613,27 +615,51 @@ export class ManagerFreeText {
     this.initializeModal(title, annotation, elements);
     const state = this.setupFormattingControls(annotation, elements, cleanupTasks);
     this.initializeMarkdownPreview(elements, cleanupTasks);
-    cleanupTasks.push(this.setupDragHandlers(elements.dialog, elements.dragHandle));
+    // Note: dragging is now handled by the window manager via panel-title-bar class
     this.setupSubmitHandlers(annotation, elements, state, resolve, cleanup, cleanupTasks);
     cleanupTasks.push(() => {
-      elements.dialog.style.display = 'none';
-      elements.dialog.style.position = '';
-      elements.dialog.style.left = '';
-      elements.dialog.style.top = '';
-      elements.dialog.style.transform = '';
-      elements.dragHandle.style.cursor = 'grab';
-      elements.backdrop.style.display = 'none';
+      this.hideModal(elements);
     });
+
+    // Capture initial values for change tracking after a small delay to ensure DOM is updated
+    setTimeout(() => {
+      this.freeTextInitialValues = this.captureFreeTextValues(elements);
+      this.updateFreeTextApplyButtonState(elements);
+    }, 0);
+
+    // Set up change tracking on all inputs
+    this.setupFreeTextChangeTracking(elements, cleanupTasks);
 
     this.showModal(elements);
   }
 
+  /**
+   * Sets up change tracking on free text editor inputs.
+   */
+  private setupFreeTextChangeTracking(els: FreeTextModalElements, cleanupTasks: Array<() => void>): void {
+    const { textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, rotationInput } = els;
+    const updateState = () => this.updateFreeTextApplyButtonState(els);
+
+    const inputs = [textInput, fontSizeInput, fontFamilySelect, fontColorInput, bgColorInput, rotationInput];
+    inputs.forEach(input => {
+      if (input) {
+        input.addEventListener('input', updateState);
+        cleanupTasks.push(() => input.removeEventListener('input', updateState));
+      }
+    });
+
+    // Also track change events for selects
+    if (fontFamilySelect) {
+      fontFamilySelect.addEventListener('change', updateState);
+      cleanupTasks.push(() => fontFamilySelect.removeEventListener('change', updateState));
+    }
+  }
+
   private getModalElements(): FreeTextModalElements | null {
     const elements = {
-      backdrop: document.getElementById('free-text-modal-backdrop') as HTMLDivElement | null,
-      dialog: document.getElementById('free-text-modal') as HTMLDivElement | null,
-      dragHandle: document.getElementById('free-text-drag-handle') as HTMLDivElement | null,
-      titleEl: document.getElementById('free-text-modal-title') as HTMLHeadingElement | null,
+      panel: document.getElementById(PANEL_FREE_TEXT_ID) as HTMLDivElement | null,
+      titleEl: document.getElementById(`${PANEL_FREE_TEXT_ID}-title`) as HTMLSpanElement | null,
+      closeBtn: document.getElementById(`${PANEL_FREE_TEXT_ID}-close`) as HTMLButtonElement | null,
       textInput: document.getElementById('free-text-modal-text') as HTMLTextAreaElement | null,
       previewContainer: document.getElementById('free-text-preview-container') as HTMLDivElement | null,
       previewContent: document.getElementById('free-text-preview') as HTMLDivElement | null,
@@ -652,7 +678,7 @@ export class ManagerFreeText {
       alignRightBtn: document.getElementById('free-text-align-right-btn') as HTMLButtonElement | null,
       transparentBtn: document.getElementById('free-text-transparent-btn') as HTMLButtonElement | null,
       roundedBtn: document.getElementById('free-text-rounded-btn') as HTMLButtonElement | null,
-      cancelBtn: document.getElementById('free-text-cancel-btn') as HTMLButtonElement | null,
+      applyBtn: document.getElementById('free-text-apply-btn') as HTMLButtonElement | null,
       okBtn: document.getElementById('free-text-ok-btn') as HTMLButtonElement | null,
     };
 
@@ -757,6 +783,49 @@ export class ManagerFreeText {
       return forInput ? '#000000' : 'transparent';
     }
     return color ?? '#000000';
+  }
+
+  /**
+   * Captures current values from free text editor inputs for change tracking.
+   */
+  private captureFreeTextValues(els: FreeTextModalElements): Record<string, string> {
+    return {
+      text: els.textInput.value,
+      fontSize: els.fontSizeInput.value,
+      fontFamily: els.fontFamilySelect.value,
+      fontColor: els.fontColorInput.value,
+      bgColor: els.bgColorInput.value,
+      rotation: els.rotationInput.value
+    };
+  }
+
+  /**
+   * Checks if there are unsaved changes in the free text editor.
+   */
+  private hasFreeTextChanges(els: FreeTextModalElements): boolean {
+    if (!this.freeTextInitialValues) return false;
+    const current = this.captureFreeTextValues(els);
+    return Object.keys(this.freeTextInitialValues).some(
+      key => this.freeTextInitialValues![key] !== current[key]
+    );
+  }
+
+  /**
+   * Updates the free text editor Apply button visual state.
+   */
+  private updateFreeTextApplyButtonState(els: FreeTextModalElements): void {
+    const { applyBtn } = els;
+    if (!applyBtn) return;
+    const hasChanges = this.hasFreeTextChanges(els);
+    applyBtn.classList.toggle(CLASS_HAS_CHANGES, hasChanges);
+  }
+
+  /**
+   * Resets free text editor initial values after applying changes.
+   */
+  private resetFreeTextInitialValues(els: FreeTextModalElements): void {
+    this.freeTextInitialValues = this.captureFreeTextValues(els);
+    this.updateFreeTextApplyButtonState(els);
   }
 
   private applyAlphaToColor(color: string, alpha: number): string {
@@ -1875,47 +1944,6 @@ export class ManagerFreeText {
     this.overlayHoverHideTimers.clear();
   }
 
-  private setupDragHandlers(dialog: HTMLDivElement, dragHandle: HTMLDivElement): () => void {
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      dialog.style.left = `${e.clientX - offsetX}px`;
-      dialog.style.top = `${e.clientY - offsetY}px`;
-    };
-
-    const onMouseUp = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      dragHandle.style.cursor = 'grab';
-    };
-
-    dragHandle.onmousedown = (e: MouseEvent) => {
-      isDragging = true;
-      const rect = dialog.getBoundingClientRect();
-      offsetX = e.clientX - rect.left;
-      offsetY = e.clientY - rect.top;
-      dialog.style.position = 'fixed';
-      dialog.style.left = `${rect.left}px`;
-      dialog.style.top = `${rect.top}px`;
-      dialog.style.transform = 'none';
-      dragHandle.style.cursor = 'grabbing';
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-      e.preventDefault();
-    };
-
-    return () => {
-      dragHandle.onmousedown = null;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-  }
-
   private buildAnnotationResult(
     annotation: FreeTextAnnotation,
     els: FreeTextModalElements,
@@ -1951,13 +1979,33 @@ export class ManagerFreeText {
     cleanup: () => void,
     cleanupTasks: Array<() => void>
   ): void {
-    const { textInput, cancelBtn, okBtn } = els;
+    const { textInput, applyBtn, okBtn, closeBtn } = els;
 
-    this.bindHandler(cancelBtn, 'onclick', () => {
+    const handleClose = () => {
       cleanup();
       resolve(null);
-    }, cleanupTasks);
+    };
 
+    // Apply changes without closing or resolving
+    const applyChanges = () => {
+      const result = this.buildAnnotationResult(annotation, els, state);
+      if (result && result.text) {
+        // Update annotation in place
+        Object.assign(annotation, result);
+        this.updateFreeTextNode(annotation.id, annotation);
+        this.debouncedSave();
+        // Reset initial values after successful apply
+        this.resetFreeTextInitialValues(els);
+      }
+    };
+
+    // Close button just closes without saving
+    this.bindHandler(closeBtn, 'onclick', handleClose, cleanupTasks);
+
+    // Apply saves but keeps panel open (doesn't resolve promise)
+    this.bindHandler(applyBtn, 'onclick', applyChanges, cleanupTasks);
+
+    // OK saves and closes
     this.bindHandler(okBtn, 'onclick', () => {
       const result = this.buildAnnotationResult(annotation, els, state);
       cleanup();
@@ -1966,7 +2014,7 @@ export class ManagerFreeText {
 
     this.bindHandler(textInput, 'onkeydown', (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        cancelBtn.click();
+        handleClose();
       } else if (e.key === 'Enter' && e.ctrlKey) {
         okBtn.click();
       }
@@ -1974,10 +2022,27 @@ export class ManagerFreeText {
   }
 
   private showModal(els: FreeTextModalElements): void {
-    els.backdrop.style.display = 'block';
-    els.dialog.style.display = 'block';
+    // Use window manager to show the panel
+    const managedWindow = (window as any).panelManager?.getPanel(PANEL_FREE_TEXT_ID);
+    if (managedWindow) {
+      managedWindow.show();
+    } else {
+      // Fallback if window manager not available
+      els.panel.style.display = 'flex';
+    }
     els.textInput.focus();
     els.textInput.select();
+  }
+
+  private hideModal(els: FreeTextModalElements): void {
+    // Use window manager to hide the panel
+    const managedWindow = (window as any).panelManager?.getPanel(PANEL_FREE_TEXT_ID);
+    if (managedWindow) {
+      managedWindow.hide();
+    } else {
+      // Fallback if window manager not available
+      els.panel.style.display = 'none';
+    }
   }
 
   /**

@@ -16,8 +16,8 @@ const STYLE_ARROW_SCALE = 'arrow-scale' as const;
 // Common DOM class/value literals
 const DISPLAY_BLOCK = 'block' as const;
 const CLASS_HIDDEN = 'hidden' as const;
-// Selector to exclude free text nodes from layouts
-const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"]' as const;
+// Selector to exclude free text and free shape nodes from layouts
+const SELECTOR_NOT_FREETEXT = '[topoViewerRole="freeText"], [topoViewerRole="freeShape"]' as const;
 const CLASS_LEAFLET_ACTIVE = 'leaflet-active' as const;
 const COLOR_TRANSPARENT = 'transparent' as const;
 const ID_CY_LEAFLET = 'cy-leaflet' as const;

@@ -244,6 +244,7 @@ function isRegularNode(el: any): boolean {
     el.data.topoViewerRole !== 'group' &&
     el.data.topoViewerRole !== 'cloud' &&
     el.data.topoViewerRole !== 'freeText' &&
+    el.data.topoViewerRole !== 'freeShape' &&
     !isSpecialEndpoint(el.data.id)
   );
 }
@@ -530,6 +531,7 @@ function isWritableNode(el: any): boolean {
     el.group === 'nodes' &&
     el.data.topoViewerRole !== 'group' &&
     el.data.topoViewerRole !== 'freeText' &&
+    el.data.topoViewerRole !== 'freeShape' &&
     !isSpecialEndpoint(el.data.id)
   );
 }

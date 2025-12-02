@@ -1,83 +1,115 @@
 <!-- Link Properties Panel -->
 <section
-  class="panel panel-overlay bottom-10 left-20 w-[360px] max-h-[700px] overflow-y-auto overflow-x-hidden draggable-panel"
+  class="panel panel-overlay bottom-10 left-20 draggable-panel overflow-hidden"
   id="panel-link"
   style="display: none"
 >
-  <p class="panel-heading text-base font-bold">Link Properties</p>
+  <div class="panel-heading panel-title-bar">
+    <span class="panel-title">Link Properties</span>
+    <button class="panel-close-btn" id="panel-link-close" aria-label="Close" title="Close">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 
-  <div class="p-0 pl-4 pb-2">
-    <div class="panel-block p-0">
-      <div class="px-0">
-        <!-- Link Name -->
-        <div class="my-1">
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">Link Name</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="panel-link-name">
-                  link-name-placeholder
-                </label>
-              </div>
-            </div>
-          </div>
+  <div class="p-0 pb-2 flex flex-col h-[calc(100%-40px)] overflow-hidden">
+    <!-- Tabs for endpoints -->
+    <div class="flex border-b border-gray-700 shrink-0">
+      <button class="endpoint-tab panel-tab-button tab-active" data-endpoint="a">Endpoint A</button>
+      <button class="endpoint-tab panel-tab-button" data-endpoint="b">Endpoint B</button>
+    </div>
+
+    <!-- Tab content containers -->
+    <div id="endpoint-a-content" class="endpoint-content flex-1 flex flex-col min-h-0">
+      <div class="grid grid-cols-3 gap-4 mb-3 mt-2 px-4 shrink-0">
+        <div class="flex flex-col items-center">
+          <span class="vscode-label text-xs mb-1 font-bold">MAC</span>
+          <span
+            id="panel-link-endpoint-a-mac-address"
+            class="text-sm text-[var(--vscode-foreground)]"
+          >
+            N/A
+          </span>
         </div>
+        <div class="flex flex-col items-center">
+          <span class="vscode-label text-xs mb-1 font-bold">MTU</span>
+          <span id="panel-link-endpoint-a-mtu" class="text-sm text-[var(--vscode-foreground)]">
+            N/A
+          </span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="vscode-label text-xs mb-1 font-bold">Type</span>
+          <span id="panel-link-endpoint-a-type" class="text-sm text-[var(--vscode-foreground)]">
+            N/A
+          </span>
+        </div>
+      </div>
+      <div class="graph-container flex-1 min-h-0">
+        <div id="panel-link-endpoint-a-graph" class="w-full h-full mb-1"></div>
       </div>
     </div>
 
-    <div id="panel-link-endpoints"></div>
-
-    <template id="link-endpoint-template">
-      <div class="panel-block p-0">
-        <div class="px-0 endpoint-fields"></div>
+    <div
+      id="endpoint-b-content"
+      class="endpoint-content flex-1 flex flex-col min-h-0"
+      style="display: none"
+    >
+      <div class="grid grid-cols-3 gap-4 mb-3 mt-2 px-4 shrink-0">
+        <div class="flex flex-col items-center">
+          <span class="vscode-label text-xs mb-1 font-bold">MAC</span>
+          <span
+            id="panel-link-endpoint-b-mac-address"
+            class="text-sm text-[var(--vscode-foreground)]"
+          >
+            N/A
+          </span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="vscode-label text-xs mb-1 font-bold">MTU</span>
+          <span id="panel-link-endpoint-b-mtu" class="text-sm text-[var(--vscode-foreground)]">
+            N/A
+          </span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="vscode-label text-xs mb-1 font-bold">Type</span>
+          <span id="panel-link-endpoint-b-type" class="text-sm text-[var(--vscode-foreground)]">
+            N/A
+          </span>
+        </div>
       </div>
-    </template>
+      <div class="graph-container flex-1 min-h-0">
+        <div id="panel-link-endpoint-b-graph" class="w-full h-full mb-1"></div>
+      </div>
+    </div>
   </div>
 </section>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const endpoints = ["a", "b"];
-    const container = document.getElementById("panel-link-endpoints");
-    const template = document.getElementById("link-endpoint-template");
-    if (!container || !(template instanceof HTMLTemplateElement)) {
-      return;
-    }
+    // Tab switching functionality
+    const tabs = document.querySelectorAll(".endpoint-tab");
+    const contents = document.querySelectorAll(".endpoint-content");
 
-    function createField(labelText, id) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "my-1";
-      wrapper.innerHTML = `
-          <div class="p-0.5">
-            <div class="flex items-center">
-              <div class="w-2/5 pr-1">
-                <label class="label text-right text-base font-semibold">${labelText}</label>
-              </div>
-              <div class="w-3/5 pl-2">
-                <label class="text-left font-extralight text-base break-words" id="${id}">N/A</label>
-              </div>
-            </div>
-          </div>`;
-      return wrapper;
-    }
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", function () {
+        const endpoint = this.getAttribute("data-endpoint");
 
-    endpoints.forEach((letter) => {
-      const fragment = template.content.cloneNode(true);
-      const block = fragment.querySelector(".panel-block");
-      const fields = fragment.querySelector(".endpoint-fields");
-      const prefix = `panel-link-endpoint-${letter}`;
-      if (block) {
-        block.id = prefix;
-      }
-      if (fields) {
-        fields.appendChild(createField(`Endpoint-${letter.toUpperCase()}`, `${prefix}-name`));
-        fields.appendChild(createField("MAC address", `${prefix}-mac-address`));
-        fields.appendChild(createField("MTU", `${prefix}-mtu`));
-        fields.appendChild(createField("Type", `${prefix}-type`));
-      }
-      container.appendChild(fragment);
+        // Update tab styles - use tab-active class like node editor
+        tabs.forEach((t) => {
+          t.classList.remove("tab-active");
+        });
+        this.classList.add("tab-active");
+
+        // Update content visibility
+        contents.forEach((content) => {
+          content.style.display = "none";
+        });
+        const activeContent = document.getElementById(`endpoint-${endpoint}-content`);
+        if (activeContent) {
+          activeContent.style.display = "flex";
+          // Dispatch event to trigger graph resize after tab switch
+          window.dispatchEvent(new CustomEvent("link-tab-switched", { detail: { endpoint } }));
+        }
+      });
     });
   });
 </script>

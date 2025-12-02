@@ -1,11 +1,6 @@
 import * as vscode from "vscode";
-import { promisify } from "util";
-import { exec } from "child_process";
-import { outputChannel } from "../extension";
+import { outputChannel, dockerClient } from "../extension";
 import { ClabContainerTreeNode } from "../treeView/common";
-import { getSudo } from "../helpers/utils";
-
-const execAsync = promisify(exec);
 
 interface PortMapping {
   containerPort: string;
@@ -19,132 +14,141 @@ interface PortMapping {
  * If multiple ports are exposed, presents a quick pick to select which one.
  */
 export async function openBrowser(node: ClabContainerTreeNode) {
+  const containerId = resolveContainerId(node);
+  if (!containerId) {
+    return;
+  }
+
+  const portMappings = await getExposedPorts(containerId);
+  if (!portMappings || portMappings.length === 0) {
+    vscode.window.showInformationMessage(`No exposed ports found for container ${node.name}.`);
+    return;
+  }
+
+  const mapping = await pickPortMapping(portMappings);
+  if (!mapping) {
+    return;
+  }
+
+  openPortInBrowser(mapping, node.name);
+}
+
+function resolveContainerId(node?: ClabContainerTreeNode): string | undefined {
   if (!node) {
     vscode.window.showErrorMessage("No container node selected.");
-    return;
+    return undefined;
   }
 
-  const containerId = node.cID;
-  if (!containerId) {
+  if (!node.cID) {
     vscode.window.showErrorMessage("No container ID found.");
-    return;
+    return undefined;
   }
 
-  try {
-    // Get the exposed ports for this container
-    const portMappings = await getExposedPorts(containerId);
+  return node.cID;
+}
 
-    if (!portMappings || portMappings.length === 0) {
-      vscode.window.showInformationMessage(`No exposed ports found for container ${node.name}.`);
-      return;
-    }
-
-    // If only one port is exposed, open it directly
-    if (portMappings.length === 1) {
-      openPortInBrowser(portMappings[0], node.name);
-      return;
-    }
-
-    // If multiple ports are exposed, show a quick pick
-    const quickPickItems = portMappings.map(mapping => ({
-      label: `${mapping.hostPort}:${mapping.containerPort}/${mapping.protocol}`,
-      description: mapping.description || "",
-      detail: `Open in browser`,
-      mapping: mapping
-    }));
-
-    const selected = await vscode.window.showQuickPick(quickPickItems, {
-      placeHolder: "Select a port to open in browser"
-    });
-
-    if (selected) {
-      openPortInBrowser(selected.mapping, node.name);
-    }
-  } catch (error: any) {
-    vscode.window.showErrorMessage(`Error getting port mappings: ${error.message}`);
-    outputChannel.error(`openPort() => ${error.message}`);
+async function pickPortMapping(portMappings: PortMapping[]): Promise<PortMapping | undefined> {
+  if (portMappings.length === 1) {
+    return portMappings[0];
   }
+
+  const quickPickItems = portMappings.map(mapping => ({
+    label: `${mapping.hostPort}:${mapping.containerPort}/${mapping.protocol}`,
+    description: mapping.description || "",
+    detail: `Open in browser`,
+    mapping
+  }));
+
+  const selected = await vscode.window.showQuickPick(quickPickItems, {
+    placeHolder: "Select a port to open in browser"
+  });
+
+  return selected?.mapping;
 }
 
 /**
- * Get the exposed ports for a container using docker/podman port command
+ * Get the exposed ports for a container using Dockerode
  */
 async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
+  if (!dockerClient) {
+    outputChannel.error('Docker client not initialized');
+    return [];
+  }
+
   try {
-    // Use runtime from user configuration
-    const config = vscode.workspace.getConfiguration("containerlab");
-    const runtime = config.get<string>("runtime", "docker");
+    const container = dockerClient.getContainer(containerId);
+    const containerInfo = await container.inspect();
+    const ports = containerInfo.NetworkSettings.Ports || {};
 
-    // Use the 'port' command which gives cleaner output format
-    const command = `${getSudo()}${runtime} port ${containerId}`;
+    const mappings = collectPortMappings(ports);
 
-    const { stdout, stderr } = await execAsync(command);
-
-    if (stderr) {
-      outputChannel.warn(`stderr from port mapping command: ${stderr}`);
-    }
-
-    // Store unique port mappings by hostPort to avoid duplicates
-    const portMap = new Map<string, PortMapping>();
-
-    if (!stdout.trim()) {
+    if (mappings.length === 0) {
       outputChannel.info(`No exposed ports found for container ${containerId}`);
-      return [];
     }
 
-    // Output can vary by Docker version, but generally looks like:
-    // 8080/tcp -> 0.0.0.0:30008
-    // or
-    // 80/tcp -> 0.0.0.0:8080
-    // or sometimes just
-    // 80/tcp -> :8080
-    const portLines = stdout.trim().split('\n');
-
-    for (const line of portLines) {
-
-      // Match container port and protocol
-      let containerPort = '';
-      let protocol = '';
-      let hostPort = '';
-
-      // Look for format like "80/tcp -> 0.0.0.0:8080" or "80/tcp -> :8080"
-      const parts = line.trim().split(/\s+/);
-      const first = parts[0] || '';
-      const last = parts[parts.length - 1] || '';
-      const portProto = /^(\d+)\/(\w+)$/;
-      const hostPortRegex = /:(\d+)$/;
-      const ppMatch = portProto.exec(first);
-      const hpMatch = hostPortRegex.exec(last);
-      const match = ppMatch && hpMatch ? [first, ppMatch[1], ppMatch[2], hpMatch[1]] as unknown as RegExpExecArray : null;
-
-      if (match) {
-        containerPort = match[1];
-        protocol = match[2];
-        hostPort = match[3];
-
-        // Get a description for this port
-        const description = getPortDescription(containerPort);
-
-        // Use hostPort as the key to avoid duplicates
-        if (!portMap.has(hostPort)) {
-          portMap.set(hostPort, {
-            containerPort,
-            hostPort,
-            protocol,
-            description
-          });
-        }
-      } else {
-        outputChannel.warn(`Failed to parse port mapping from: ${line}`);
-      }
-    }
-
-    // Convert the map values to an array
-    return Array.from(portMap.values());
+    return mappings;
   } catch (error: any) {
     outputChannel.error(`Error getting port mappings: ${error.message}`);
     return [];
   }
+}
+
+type DockerPortBinding = { HostIp?: string; HostPort?: string };
+type DockerPortBindings = Record<string, DockerPortBinding[] | undefined>;
+
+function collectPortMappings(ports: DockerPortBindings): PortMapping[] {
+  const portMap = new Map<string, PortMapping>();
+
+  for (const [portProto, bindings] of Object.entries(ports)) {
+    addBindingsForPort(portMap, portProto, bindings);
+  }
+
+  return Array.from(portMap.values());
+}
+
+function addBindingsForPort(
+  portMap: Map<string, PortMapping>,
+  portProto: string,
+  bindings?: DockerPortBinding[]
+) {
+  if (!bindings || bindings.length === 0) {
+    return;
+  }
+
+  const parsed = parseContainerPort(portProto);
+  if (!parsed) {
+    return;
+  }
+
+  for (const binding of bindings) {
+    addBinding(portMap, binding.HostPort, parsed.containerPort, parsed.protocol);
+  }
+}
+
+function parseContainerPort(portProto: string): { containerPort: string; protocol: string } | undefined {
+  const match = /^(\d+)\/(\w+)$/.exec(portProto);
+  if (!match) {
+    return undefined;
+  }
+  return { containerPort: match[1], protocol: match[2] };
+}
+
+function addBinding(
+  portMap: Map<string, PortMapping>,
+  hostPort: string | undefined,
+  containerPort: string,
+  protocol: string
+) {
+  if (!hostPort || portMap.has(hostPort)) {
+    return;
+  }
+
+  portMap.set(hostPort, {
+    containerPort,
+    hostPort,
+    protocol,
+    description: getPortDescription(containerPort)
+  });
 }
 
 /**

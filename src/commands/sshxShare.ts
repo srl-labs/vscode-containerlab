@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel, sshxSessions, runningLabsProvider, refreshSshxSessions } from "../extension";
-import { runWithSudo } from "../helpers/utils";
+import { outputChannel, sshxSessions, runningLabsProvider, refreshSshxSessions, containerlabBinaryPath } from "../extension";
+import { runCommand } from "../utils/utils";
 
 function parseLink(output: string): string | undefined {
   const re = /(https?:\/\/\S+)/;
@@ -15,7 +15,13 @@ async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
     return;
   }
   try {
-    const out = await runWithSudo(`containerlab tools sshx ${action} -l ${node.name}`, `SSHX ${action}`, outputChannel, 'containerlab', true, true) as string;
+    const out = await runCommand(
+      `${containerlabBinaryPath} tools sshx ${action} -l ${node.name}`,
+      `SSHX ${action}`,
+      outputChannel,
+      true,
+      true
+    ) as string;
     const link = parseLink(out || '');
     if (link) {
       sshxSessions.set(node.name, link);
@@ -49,7 +55,13 @@ export async function sshxDetach(node: ClabLabTreeNode) {
     return;
   }
   try {
-    await runWithSudo(`containerlab tools sshx detach -l ${node.name}`, 'SSHX detach', outputChannel);
+    await runCommand(
+      `${containerlabBinaryPath} tools sshx detach -l ${node.name}`,
+      'SSHX detach',
+      outputChannel,
+      false,
+      false
+    );
     sshxSessions.delete(node.name);
     vscode.window.showInformationMessage('SSHX session detached');
   } catch (err: any) {

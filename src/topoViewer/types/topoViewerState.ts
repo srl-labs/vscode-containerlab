@@ -7,6 +7,7 @@ export interface TopoViewerState {
   selectedEdge: string | null;
   linkLabelMode: LinkLabelMode;
   nodeContainerStatusVisibility: boolean;
+  dummyLinksVisible: boolean;
   labName: string;
   prefixName: string;
   multiLayerViewPortState: boolean;

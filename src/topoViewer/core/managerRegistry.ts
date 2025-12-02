@@ -4,11 +4,13 @@ import type { ManagerGroupStyle } from '../webview-ui/managerGroupStyle';
 import { ManagerLayoutAlgo } from '../webview-ui/managerLayoutAlgo';
 import { ManagerZoomToFit } from '../webview-ui/managerZoomToFit';
 import { ManagerLabelEndpoint } from '../webview-ui/managerLabelEndpoint';
+import { ManagerDummyLinks } from '../webview-ui/managerDummyLinks';
 
 // Singleton instances for managers that don't require external dependencies
 export const layoutAlgoManager = new ManagerLayoutAlgo();
 export const zoomToFitManager = new ManagerZoomToFit();
 export const labelEndpointManager = new ManagerLabelEndpoint();
+export const dummyLinksManager = new ManagerDummyLinks();
 
 // Lazy singletons for managers that require initialization parameters
 let groupManager: ManagerGroupManagement | null = null;

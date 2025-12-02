@@ -10,10 +10,12 @@ import { log } from '../logging/logger';
 
 import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../htmlTemplateUtils';
 import { TopoViewerAdaptorClab } from '../core/topoViewerAdaptorClab';
+import { ClabTopology, CyElement } from '../types/topoViewerType';
 import { resolveNodeConfig } from '../core/nodeConfig';
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../../treeView/common";
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from "../../treeView/common";
 import * as inspector from "../../treeView/inspector";
-import { runningLabsProvider, refreshDockerImages } from "../../extension";
+import { runningLabsProvider } from "../../extension";
+import * as utils from "../../utils/index";
 
 import { validateYamlContent } from '../utilities/yamlValidator';
 import { saveViewport } from '../utilities/saveViewport';
@@ -21,6 +23,8 @@ import { annotationsManager } from '../utilities/annotationsManager';
 import { perfMark, perfMeasure, perfSummary } from '../utilities/performanceMonitor';
 import { sleep } from '../utilities/asyncUtils';
 import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
+import type { ClabInterfaceStats } from '../../types/containerlab';
+import { findInterfaceNode } from '../utilities/treeUtils';
 
 // Common configuration section key used throughout this module
 const CONFIG_SECTION = 'containerlab.editor';
@@ -64,6 +68,14 @@ export class TopoViewerEditor {
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private isSwitchingMode: boolean = false; // Flag to prevent concurrent mode switches
   private isSplitViewOpen: boolean = false; // Track if YAML split view is open
+  private dockerImagesSubscription: vscode.Disposable | undefined;
+  private viewModeCache:
+    | {
+      elements: CyElement[];
+      parsedTopology?: ClabTopology;
+      yamlMtimeMs?: number;
+    }
+    | undefined;
   /* eslint-disable no-unused-vars */
 
   private readonly generalEndpointHandlers: Record<
@@ -74,39 +86,46 @@ export class TopoViewerEditor {
       _panel: vscode.WebviewPanel
     ) => Promise<{ result: unknown; error: string | null }>
   > = {
-    'topo-viewport-save': this.handleViewportSaveEndpoint.bind(this),
-    'lab-settings-get': this.handleLabSettingsGetEndpoint.bind(this),
-    'lab-settings-update': this.handleLabSettingsUpdateEndpoint.bind(this),
-    'topo-editor-get-node-config': this.handleGetNodeConfigEndpoint.bind(this),
-    'show-error-message': this.handleShowErrorMessageEndpoint.bind(this),
-    'topo-editor-viewport-save': this.handleViewportSaveEditEndpoint.bind(this),
-    'topo-editor-viewport-save-suppress-notification':
-      this.handleViewportSaveSuppressNotificationEndpoint.bind(this),
-    'topo-editor-undo': this.handleUndoEndpoint.bind(this),
-    'topo-editor-show-vscode-message': this.handleShowVscodeMessageEndpoint.bind(this),
-    'topo-switch-mode': this.handleSwitchModeEndpoint.bind(this),
-    'open-external': this.handleOpenExternalEndpoint.bind(this),
-    'topo-editor-load-annotations': this.handleLoadAnnotationsEndpoint.bind(this),
-    'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
-    'topo-editor-load-viewer-settings': this.handleLoadViewerSettingsEndpoint.bind(this),
-    'topo-editor-save-viewer-settings': this.handleSaveViewerSettingsEndpoint.bind(this),
-    'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
-    'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
-    'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
-    'refresh-docker-images': this.handleRefreshDockerImagesEndpoint.bind(this),
-    'topo-editor-upload-icon': this.handleUploadIconEndpoint.bind(this),
-    'topo-editor-delete-icon': this.handleDeleteIconEndpoint.bind(this),
-    showError: this.handleShowErrorEndpoint.bind(this),
-    'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
-    copyElements: this.handleCopyElementsEndpoint.bind(this),
-    getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this),
-    'topo-debug-log': this.handleDebugLogEndpoint.bind(this),
-    'topo-editor-open-link': this.handleOpenExternalLinkEndpoint.bind(this)
-  };
+      'topo-viewport-save': this.handleViewportSaveEndpoint.bind(this),
+      'lab-settings-get': this.handleLabSettingsGetEndpoint.bind(this),
+      'lab-settings-update': this.handleLabSettingsUpdateEndpoint.bind(this),
+      'topo-editor-get-node-config': this.handleGetNodeConfigEndpoint.bind(this),
+      'show-error-message': this.handleShowErrorMessageEndpoint.bind(this),
+      'topo-editor-viewport-save': this.handleViewportSaveEditEndpoint.bind(this),
+      'topo-editor-viewport-save-suppress-notification':
+        this.handleViewportSaveSuppressNotificationEndpoint.bind(this),
+      'topo-editor-undo': this.handleUndoEndpoint.bind(this),
+      'topo-editor-show-vscode-message': this.handleShowVscodeMessageEndpoint.bind(this),
+      'topo-switch-mode': this.handleSwitchModeEndpoint.bind(this),
+      'open-external': this.handleOpenExternalEndpoint.bind(this),
+      'topo-editor-load-annotations': this.handleLoadAnnotationsEndpoint.bind(this),
+      'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
+      'topo-editor-load-viewer-settings': this.handleLoadViewerSettingsEndpoint.bind(this),
+      'topo-editor-save-viewer-settings': this.handleSaveViewerSettingsEndpoint.bind(this),
+      'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
+      'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
+      'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
+      'refresh-docker-images': this.handleRefreshDockerImagesEndpoint.bind(this),
+      'topo-editor-upload-icon': this.handleUploadIconEndpoint.bind(this),
+      'topo-editor-delete-icon': this.handleDeleteIconEndpoint.bind(this),
+      showError: this.handleShowErrorEndpoint.bind(this),
+      'performance-metrics': this.handlePerformanceMetricsEndpoint.bind(this),
+      'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
+      copyElements: this.handleCopyElementsEndpoint.bind(this),
+      getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this),
+      'topo-debug-log': this.handleDebugLogEndpoint.bind(this),
+      'topo-editor-open-link': this.handleOpenExternalLinkEndpoint.bind(this)
+    };
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+    this.dockerImagesSubscription = utils.onDockerImagesUpdated(images => {
+      if (this.currentPanel) {
+        this.currentPanel.webview.postMessage({ type: 'docker-images-updated', dockerImages: images });
+      }
+    });
+    context.subscriptions.push(this.dockerImagesSubscription);
   }
 
   private logDebug(message: string): void {
@@ -138,27 +157,26 @@ topology:
 
   private async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
     const labs = await runningLabsProvider?.discoverInspectLabs();
-    if (!labs) {
+    if (!labs || !this.lastYamlFilePath) {
       return undefined;
     }
 
-    let distributedSrosFallback: ClabContainerTreeNode | undefined;
-
-    for (const lab of Object.values(labs)) {
-      const containers = lab.containers ?? [];
-      const directMatch = containers.find(
-        (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
-      );
-      if (directMatch) {
-        return directMatch;
-      }
-
-      if (!distributedSrosFallback) {
-        distributedSrosFallback = this.resolveDistributedSrosContainer(containers, nodeName);
-      }
+    // Only search in the current lab
+    const currentLab = Object.values(labs).find(lab => lab.labPath.absolute === this.lastYamlFilePath);
+    if (!currentLab) {
+      return undefined;
     }
 
-    return distributedSrosFallback;
+    const containers = currentLab.containers ?? [];
+    const directMatch = containers.find(
+      (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+    );
+    if (directMatch) {
+      return directMatch;
+    }
+
+    // Check for distributed SROS container
+    return this.resolveDistributedSrosContainer(containers, nodeName);
   }
 
   private resolveDistributedSrosContainer(
@@ -530,6 +548,12 @@ topology:
       this.lastYamlFilePath
     );
 
+    if (this.isViewMode) {
+      await this.updateViewModeCache(yamlContent, cytoTopology);
+    } else {
+      this.viewModeCache = undefined;
+    }
+
     const writeOk = await this.writeTopologyFiles(
       folderName,
       cytoTopology,
@@ -640,6 +664,30 @@ topology:
     return yamlContent;
   }
 
+  private async updateViewModeCache(yamlContent: string, elements: CyElement[]): Promise<void> {
+    let parsedTopology: ClabTopology | undefined;
+    try {
+      parsedTopology = YAML.parse(yamlContent) as ClabTopology;
+    } catch (err) {
+      log.debug(`Failed to cache parsed topology: ${err}`);
+    }
+
+    const yamlMtimeMs = await this.getYamlMtimeMs();
+    this.viewModeCache = { elements, parsedTopology, yamlMtimeMs };
+  }
+
+  private async getYamlMtimeMs(): Promise<number | undefined> {
+    if (!this.lastYamlFilePath) {
+      return undefined;
+    }
+    try {
+      const stats = await fs.promises.stat(this.lastYamlFilePath);
+      return stats.mtimeMs;
+    } catch {
+      return undefined;
+    }
+  }
+
   private shouldSkipUpdate(yamlContent: string, isInitialLoad: boolean): boolean {
     if (isInitialLoad || this.isViewMode) {
       return false;
@@ -734,7 +782,7 @@ topology:
   }
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
-    await refreshDockerImages(this.context);
+    await utils.refreshDockerImages();
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
     const legacyIfacePatternMapping = this.getLegacyInterfacePatternMapping(config);
@@ -755,7 +803,7 @@ topology:
     );
     const { defaultNode, defaultKind, defaultType } = this.getDefaultCustomNode(customNodes);
     const imageMapping = this.buildImageMapping(customNodes);
-    const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+    const dockerImages = utils.getDockerImages();
     const customIcons = await this.loadCustomIcons();
     return {
       imageMapping,
@@ -1155,6 +1203,7 @@ topology:
   private registerPanelListeners(panel: vscode.WebviewPanel, context: vscode.ExtensionContext): void {
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
+      this.viewModeCache = undefined;
       this.disposeFileHandlers();
     }, null, context.subscriptions);
 
@@ -1212,7 +1261,7 @@ topology:
       const baseName = path.basename(this.lastYamlFilePath);
       const labNameFromFile = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
       const defaultContent = `name: ${labNameFromFile}\n\n` +
-`topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
+        `topology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    # inter-switch link\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
       this.isInternalUpdate = true;
       await fs.promises.writeFile(this.lastYamlFilePath, defaultContent, 'utf8');
       await sleep(50);
@@ -1505,6 +1554,64 @@ topology:
     return { result: { success: true }, error: null };
   }
 
+  private async handlePerformanceMetricsEndpoint(
+    payload: string | undefined,
+    payloadObj: any,
+    _panel: vscode.WebviewPanel
+  ): Promise<{ result: unknown; error: string | null }> {
+    try {
+      const metricsPayload = this.normalizeMetricsPayload(payload, payloadObj);
+      const metrics = metricsPayload?.metrics;
+      if (!metrics || typeof metrics !== 'object') {
+        const warning = 'Received performance-metrics call without metrics payload';
+        log.warn(warning);
+        return { result: { success: false, warning }, error: null };
+      }
+
+      const numericEntries = Object.entries(metrics)
+        .map(([name, value]) => [name, typeof value === 'number' ? value : Number(value)] as [string, number])
+        .filter(([, value]) => Number.isFinite(value));
+
+      if (!numericEntries.length) {
+        const warning = 'Performance metrics payload contained no numeric values';
+        log.warn(warning);
+        return { result: { success: false, warning }, error: null };
+      }
+
+      const total = numericEntries.reduce((sum, [, value]) => sum + value, 0);
+      log.info(
+        `TopoViewer performance metrics (${numericEntries.length} entries, total ${total.toFixed(2)}ms):`
+      );
+      const sortedEntries = [...numericEntries].sort((a, b) => b[1] - a[1]);
+      sortedEntries.slice(0, 8).forEach(([name, value]) => {
+        log.info(`  ${name}: ${value.toFixed(2)}ms`);
+      });
+
+      return { result: { success: true }, error: null };
+    } catch (err) {
+      const error = `Failed to record performance metrics: ${err instanceof Error ? err.message : String(err)}`;
+      log.error(error);
+      return { result: null, error };
+    }
+  }
+
+  private normalizeMetricsPayload(
+    payload: string | undefined,
+    payloadObj: any
+  ): any {
+    if (payloadObj && typeof payloadObj === 'object') {
+      return payloadObj;
+    }
+    if (typeof payload === 'string' && payload.trim()) {
+      try {
+        return JSON.parse(payload);
+      } catch (err) {
+        log.warn(`Failed to parse performance metrics payload: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return undefined;
+  }
+
   private async handleViewportSaveEditEndpoint(
     payload: string | undefined,
     _payloadObj: any,
@@ -1742,15 +1849,16 @@ topology:
       const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
       const result = {
         annotations: annotations.freeTextAnnotations || [],
+        freeShapeAnnotations: annotations.freeShapeAnnotations || [],
         groupStyles: annotations.groupStyleAnnotations || []
       };
       log.info(
-        `Loaded ${annotations.freeTextAnnotations?.length || 0} annotations and ${annotations.groupStyleAnnotations?.length || 0} group styles`
+        `Loaded ${annotations.freeTextAnnotations?.length || 0} text annotations, ${annotations.freeShapeAnnotations?.length || 0} shape annotations, and ${annotations.groupStyleAnnotations?.length || 0} group styles`
       );
       return { result, error: null };
     } catch (err) {
       log.error(`Error loading annotations: ${JSON.stringify(err, null, 2)}`);
-      return { result: { annotations: [], groupStyles: [] }, error: null };
+      return { result: { annotations: [], freeShapeAnnotations: [], groupStyles: [] }, error: null };
     }
   }
 
@@ -1762,16 +1870,19 @@ topology:
     try {
       const data = payloadObj;
       const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      // Preserve existing values when not provided in the payload
+      // This allows individual managers (freeText, freeShapes, groupStyle) to save independently
       await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-        freeTextAnnotations: data.annotations,
-        groupStyleAnnotations: data.groupStyles,
+        freeTextAnnotations: data.annotations !== undefined ? data.annotations : existing.freeTextAnnotations,
+        freeShapeAnnotations: data.freeShapeAnnotations !== undefined ? data.freeShapeAnnotations : existing.freeShapeAnnotations,
+        groupStyleAnnotations: data.groupStyles !== undefined ? data.groupStyles : existing.groupStyleAnnotations,
         cloudNodeAnnotations: existing.cloudNodeAnnotations,
         nodeAnnotations: existing.nodeAnnotations,
         // Preserve viewer settings to avoid accidental loss when other managers save
         viewerSettings: (existing as any).viewerSettings
       });
       log.info(
-        `Saved ${data.annotations?.length || 0} annotations and ${data.groupStyles?.length || 0} group styles`
+        `Saved ${data.annotations?.length || 0} text annotations, ${data.freeShapeAnnotations?.length || 0} shape annotations, and ${data.groupStyles?.length || 0} group styles`
       );
       return { result: { success: true }, error: null };
     } catch (err) {
@@ -1996,8 +2107,8 @@ topology:
     _panel: vscode.WebviewPanel
   ): Promise<{ result: unknown; error: string | null }> {
     try {
-      await refreshDockerImages(this.context);
-      const dockerImages = (this.context.globalState.get<string[]>('dockerImages') || []) as string[];
+      await utils.refreshDockerImages();
+      const dockerImages = utils.getDockerImages();
       log.info(`Docker images refreshed, found ${dockerImages.length} images`);
       return { result: { success: true, dockerImages }, error: null };
     } catch (err) {
@@ -2529,28 +2640,223 @@ topology:
         return;
       }
 
-      const yamlContent = await this.getYamlContentViewMode();
-      const elements = await this.adaptor.clabYamlToCytoscapeElements(
-        yamlContent,
-        labs,
-        this.lastYamlFilePath
-      );
+      await this.ensureViewModeCache(labs);
 
-    const edgeUpdates = elements.filter(el => el.group === 'edges');
-    if (!edgeUpdates.length) {
-      this.logDebug('refreshLinkStates: no edge updates to send');
-      return;
-    }
+      const edgeUpdates = this.buildEdgeUpdatesFromCache(labs);
+      if (!edgeUpdates.length) {
+        this.logDebug('refreshLinkStates: no edge updates to send');
+        return;
+      }
 
-    this.logDebug(`refreshLinkStates: posting ${edgeUpdates.length} edge updates to webview`);
-    this.currentPanel.webview.postMessage({
-      type: 'updateTopology',
-      data: edgeUpdates,
-    });
+      this.logDebug(`refreshLinkStates: posting ${edgeUpdates.length} edge updates to webview`);
+      this.currentPanel.webview.postMessage({
+        type: 'updateTopology',
+        data: edgeUpdates,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       log.warn(`Failed to refresh link states from inspect data: ${message}`);
     }
+  }
+
+  private async ensureViewModeCache(
+    labs: Record<string, ClabLabTreeNode> | undefined
+  ): Promise<void> {
+    if (!this.isViewMode) {
+      return;
+    }
+
+    const yamlMtimeMs = await this.getYamlMtimeMs();
+    const cache = this.viewModeCache;
+    const needsReload =
+      !cache ||
+      cache.elements.length === 0 ||
+      (yamlMtimeMs !== undefined && cache.yamlMtimeMs !== yamlMtimeMs);
+
+    if (!needsReload) {
+      return;
+    }
+
+    const yamlContent = await this.getYamlContentViewMode();
+    const elements = await this.adaptor.clabYamlToCytoscapeElements(
+      yamlContent,
+      labs,
+      this.lastYamlFilePath
+    );
+    await this.updateViewModeCache(yamlContent, elements);
+  }
+
+  private buildEdgeUpdatesFromCache(labs: Record<string, ClabLabTreeNode>): CyElement[] {
+    const cache = this.viewModeCache;
+    if (!cache || cache.elements.length === 0) {
+      return [];
+    }
+
+    const updates: CyElement[] = [];
+    const topology = cache.parsedTopology?.topology;
+
+    for (const el of cache.elements) {
+      if (el.group !== 'edges') {
+        continue;
+      }
+      const updated = this.refreshEdgeWithLatestData(el, labs, topology);
+      if (updated) {
+        updates.push(updated);
+      }
+    }
+
+    return updates;
+  }
+
+  private refreshEdgeWithLatestData(
+    edge: CyElement,
+    labs: Record<string, ClabLabTreeNode>,
+    topology?: ClabTopology['topology']
+  ): CyElement | null {
+    if (edge.group !== 'edges') {
+      return null;
+    }
+
+    const data = { ...edge.data };
+    const extraData = { ...(data.extraData || {}) };
+
+    const sourceIfaceName = this.normalizeInterfaceName(extraData.clabSourcePort, data.sourceEndpoint);
+    const targetIfaceName = this.normalizeInterfaceName(extraData.clabTargetPort, data.targetEndpoint);
+
+    const sourceIface = findInterfaceNode(
+      labs,
+      extraData.clabSourceLongName ?? '',
+      sourceIfaceName,
+      this.currentLabName
+    );
+    const targetIface = findInterfaceNode(
+      labs,
+      extraData.clabTargetLongName ?? '',
+      targetIfaceName,
+      this.currentLabName
+    );
+
+    const sourceState = this.applyInterfaceDetails(extraData, 'Source', sourceIface);
+    const targetState = this.applyInterfaceDetails(extraData, 'Target', targetIface);
+
+    data.extraData = extraData;
+
+    const sourceNodeForClass = this.pickNodeId(extraData.yamlSourceNodeId, data.source);
+    const targetNodeForClass = this.pickNodeId(extraData.yamlTargetNodeId, data.target);
+
+    const stateClass =
+      topology && sourceNodeForClass && targetNodeForClass
+        ? this.adaptor.computeEdgeClassFromStates(
+          topology,
+          sourceNodeForClass,
+          targetNodeForClass,
+          sourceState,
+          targetState
+        )
+        : undefined;
+
+    const mergedClasses = this.mergeLinkStateClasses(edge.classes, stateClass);
+
+    edge.data = data;
+    if (mergedClasses !== undefined) {
+      edge.classes = mergedClasses;
+    }
+
+    return edge;
+  }
+
+  private applyInterfaceDetails(
+    extraData: Record<string, any>,
+    prefix: 'Source' | 'Target',
+    iface: ClabInterfaceTreeNode | undefined
+  ): string | undefined {
+    const stateKey = prefix === 'Source' ? 'clabSourceInterfaceState' : 'clabTargetInterfaceState';
+    const macKey = prefix === 'Source' ? 'clabSourceMacAddress' : 'clabTargetMacAddress';
+    const mtuKey = prefix === 'Source' ? 'clabSourceMtu' : 'clabTargetMtu';
+    const typeKey = prefix === 'Source' ? 'clabSourceType' : 'clabTargetType';
+    const statsKey = prefix === 'Source' ? 'clabSourceStats' : 'clabTargetStats';
+
+    if (!iface) {
+      delete extraData[statsKey];
+      return typeof extraData[stateKey] === 'string' ? extraData[stateKey] : undefined;
+    }
+
+    extraData[stateKey] = iface.state || '';
+    extraData[macKey] = iface.mac ?? '';
+    extraData[mtuKey] = iface.mtu ?? '';
+    extraData[typeKey] = iface.type ?? '';
+
+    const stats = this.extractInterfaceStatsForEdge(iface.stats);
+    if (stats) {
+      extraData[statsKey] = stats;
+    } else {
+      delete extraData[statsKey];
+    }
+
+    return iface.state;
+  }
+
+  private extractInterfaceStatsForEdge(stats?: ClabInterfaceStats): Record<string, number> | undefined {
+    if (!stats) {
+      return undefined;
+    }
+
+    const result: Record<string, number> = {};
+    const keys: Array<keyof ClabInterfaceStats> = [
+      'rxBps',
+      'rxPps',
+      'rxBytes',
+      'rxPackets',
+      'txBps',
+      'txPps',
+      'txBytes',
+      'txPackets',
+      'statsIntervalSeconds',
+    ];
+
+    for (const key of keys) {
+      const value = stats[key];
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        result[key] = value;
+      }
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
+  }
+
+  private normalizeInterfaceName(value: unknown, fallback: unknown): string {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+    if (typeof fallback === 'string' && fallback.trim()) {
+      return fallback;
+    }
+    return '';
+  }
+
+  private pickNodeId(primary: unknown, fallback: unknown): string {
+    if (typeof primary === 'string' && primary.trim()) {
+      return primary;
+    }
+    if (typeof fallback === 'string' && fallback.trim()) {
+      return fallback;
+    }
+    return '';
+  }
+
+  private mergeLinkStateClasses(existing: string | undefined, stateClass: string | undefined): string | undefined {
+    if (!stateClass) {
+      return existing;
+    }
+
+    const tokens = (existing ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter(token => token !== 'link-up' && token !== 'link-down');
+
+    tokens.unshift(stateClass);
+
+    return tokens.join(' ');
   }
 
 

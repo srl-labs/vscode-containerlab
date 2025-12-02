@@ -1,11 +1,11 @@
 import * as vscode from "vscode"
-import * as os from "os";
-import { outputChannel } from "../extension";
-import * as utils from "../helpers/utils";
+import { outputChannel, dockerClient, username } from "../extension";
+import * as utils from "../utils/index";
 import { ClabInterfaceTreeNode } from "../treeView/common";
-import { installEdgeshark } from "./edgeshark";
+import { genPacketflixURI } from "../utils/packetflix";
+import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, ImagePullPolicy, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
 
-let sessionHostname: string = "";
+export { getHostname, setSessionHostname } from "../utils/packetflix";
 
 /**
  * Begin packet capture on an interface.
@@ -35,158 +35,38 @@ export async function captureInterface(
 }
 
 
-// Build the packetflix:ws: URI
-async function handleMultiSelection(
-  selected: ClabInterfaceTreeNode[],
+async function buildPacketflixUri(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[],
   forVNC?: boolean
 ): Promise<[string, string] | undefined> {
-  // Check if they are from the same container
-  const uniqueContainers = new Set(selected.map(i => i.parentName));
-  if (uniqueContainers.size > 1) {
-    // from different containers => spawn multiple capture sessions individually
-    outputChannel.debug("Edgeshark multi selection => multiple containers => launching individually");
-    for (const nd of selected) {
-      if (forVNC) {
-        await captureEdgesharkVNC(nd); // re-call for single in VNC mode
-      } else {
-        await captureInterfaceWithPacketflix(nd); // re-call for single in external mode
-      }
-    }
+  if (!node) {
+    vscode.window.showErrorMessage("No interface to capture found.");
     return undefined;
   }
 
-  // All from same container => build multi-interface edgeshark link
-  return await captureMultipleEdgeshark(selected);
-}
-
-async function genPacketflixURI(node: ClabInterfaceTreeNode,
-  allSelectedNodes?: ClabInterfaceTreeNode[],  // [CHANGED]
-  forVNC?: boolean
-) {
-  if (!node) {
-    return vscode.window.showErrorMessage("No interface to capture found.");
-  }
-  outputChannel.debug(`captureInterfaceWithPacketflix() called for node=${node.parentName} if=${node.name}`);
-
-  // Ensure Edgeshark is running/available
-  const edgesharkReady = await ensureEdgesharkAvailable();
-  if (!edgesharkReady) {
-    return;
-  }
-
-  // If user multi‐selected items, we capture them all.
   const selected = allSelectedNodes && allSelectedNodes.length > 0
     ? allSelectedNodes
     : [node];
 
-  // If multiple selected
   if (selected.length > 1) {
-    return await handleMultiSelection(selected, forVNC);
-  }
-
-  // [ORIGINAL SINGLE-INTERFACE EDGESHARK LOGIC]
-  outputChannel.debug(`captureInterfaceWithPacketflix() single mode for node=${node.parentName}/${node.name}`);
-
-  // For VNC capture, use 127.0.0.1 which will be adjusted later
-  const hostname = forVNC ? "127.0.0.1" : await getHostname();
-  if (!hostname) {
-    return vscode.window.showErrorMessage(
-      "No known hostname/IP address to connect to for packet capture."
-    );
-  }
-
-  // If it's an IPv6 literal, bracket it. e.g. ::1 => [::1]
-  const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-
-  const config = vscode.workspace.getConfiguration("containerlab");
-  const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
-
-  const containerStr = encodeURIComponent(`{"network-interfaces":["${node.name}"],"name":"${node.parentName}","type":"docker"}`)
-
-  const uri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${node.name}`
-
-  vscode.window.showInformationMessage(
-    `Starting edgeshark capture on ${node.parentName}/${node.name}...`
-  );
-
-  outputChannel.debug(`single-edgeShark => ${uri.toString()}`);
-
-  return [uri, bracketed]
-}
-
-// Ensure Edgeshark API is up; optionally prompt to start it
-async function ensureEdgesharkAvailable(): Promise<boolean> {
-  // - make a simple API call to get version of packetflix
-  let edgesharkOk = false;
-  try {
-    const res = await fetch("http://127.0.0.1:5001/version");
-    edgesharkOk = res.ok;
-  } catch {
-    // Port is probably closed, edgeshark not running
-  }
-  if (edgesharkOk) return true;
-
-  const selectedOpt = await vscode.window.showInformationMessage(
-    "Capture: Edgeshark is not running. Would you like to start it?",
-    { modal: false },
-    "Yes"
-  );
-  if (selectedOpt === "Yes") {
-    await installEdgeshark();
-
-    const maxRetries = 30;
-    const delayMs = 1000;
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const res = await fetch("http://127.0.0.1:5001/version");
-        if (res.ok) {
-          return true;
+    const uniqueContainers = new Set(selected.map(i => i.parentName));
+    if (uniqueContainers.size > 1) {
+      outputChannel.debug("Edgeshark multi selection => multiple containers => launching individually");
+      for (const nd of selected) {
+        if (forVNC) {
+          await captureEdgesharkVNC(nd);
+        } else {
+          await captureInterfaceWithPacketflix(nd);
         }
-      } catch {
-        // wait and retry
       }
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      return undefined;
     }
-
-    vscode.window.showErrorMessage("Edgeshark did not start in time. Please try again.");
-    return false;
   }
-  return false;
+
+  return await genPacketflixURI(selected, forVNC);
 }
 
-// Capture multiple interfaces with Edgeshark
-async function captureMultipleEdgeshark(nodes: ClabInterfaceTreeNode[]): Promise<[string, string]> {
-  const base = nodes[0];
-  const ifNames = nodes.map(n => n.name);
-  outputChannel.debug(`multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
-
-  // We optionally store "netns" in node if needed.
-  const netnsVal = (base as any).netns || 4026532270; // example if you track netns
-  const containerObj = {
-    netns: netnsVal,
-    "network-interfaces": ifNames,
-    name: base.parentName,
-    type: "docker",
-    prefix: ""
-  };
-
-  const containerStr = encodeURIComponent(JSON.stringify(containerObj));
-  const nifParam = encodeURIComponent(ifNames.join("/"));
-
-  const hostname = await getHostname();
-  const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-  const config = vscode.workspace.getConfiguration("containerlab");
-  const packetflixPort = config.get<number>("remote.packetflixPort", 5001);
-
-  const packetflixUri = `packetflix:ws://${bracketed}:${packetflixPort}/capture?container=${containerStr}&nif=${nifParam}`;
-
-  vscode.window.showInformationMessage(
-    `Starting multi-interface edgeshark on ${base.parentName} for: ${ifNames.join(", ")}`
-  );
-  outputChannel.debug(`multi-edgeShark => ${packetflixUri}`);
-
-  return [packetflixUri, bracketed]
-}
 
 /**
  * Start capture on an interface using edgeshark/packetflix.
@@ -197,7 +77,7 @@ export async function captureInterfaceWithPacketflix(
   allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
 ) {
 
-  const packetflixUri = await genPacketflixURI(node, allSelectedNodes)
+  const packetflixUri = await buildPacketflixUri(node, allSelectedNodes)
   if (!packetflixUri) {
     return
   }
@@ -223,16 +103,42 @@ function isDarkModeEnabled(themeSetting?: string): boolean {
 
 async function getEdgesharkNetwork(): Promise<string> {
   try {
-    const psOut = await utils.runWithSudo(`docker ps --filter "name=edgeshark" --format "{{.Names}}"`, 'List edgeshark containers', outputChannel, 'docker', true) as string;
-    const firstName = (psOut || '').split(/\r?\n/).find(Boolean)?.trim() || '';
-    if (firstName) {
-      const netsOut = await utils.runWithSudo(`docker inspect ${firstName} --format '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}'`, 'Inspect edgeshark networks', outputChannel, 'docker', true) as string;
-      const networkId = (netsOut || '').trim().split(/\s+/)[0] || '';
-      if (networkId) {
-        const nameOut = await utils.runWithSudo(`docker network inspect ${networkId} --format '{{.Name}}'`, 'Inspect network name', outputChannel, 'docker', true) as string;
-        const netName = (nameOut || '').trim();
-        if (netName) return `--network ${netName}`;
-      }
+    if (!dockerClient) {
+      outputChannel.debug("getEdgesharkNetwork() failed: docker client unavailable.")
+      return "";
+    }
+    // List containers using edgeshark as name filter
+    const containers = await dockerClient.listContainers({
+      filters: { name: ['edgeshark'] }
+    });
+
+    if (containers.length === 0) {
+      return "";
+    }
+
+    // get info of the 0th ctr
+    const container = dockerClient.getContainer(containers[0].Id);
+    const containerInfo = await container.inspect();
+
+    const networks = containerInfo.NetworkSettings.Networks || {};
+    const networkIds = Object.values(networks).map((net: any) => net.NetworkID).filter(Boolean);
+
+    if (networkIds.length === 0) {
+      return "";
+    }
+
+    const networkId = networkIds[0];
+    if (!networkId) {
+      return "";
+    }
+
+    // Get network name from network ID
+    const network = dockerClient.getNetwork(networkId);
+    const networkInfo = await network.inspect();
+    const netName = networkInfo.Name;
+
+    if (netName) {
+      return `--network ${netName}`;
     }
   } catch {
     // ignore
@@ -242,14 +148,15 @@ async function getEdgesharkNetwork(): Promise<string> {
 
 async function getVolumeMount(nodeName: string): Promise<string> {
   try {
-    const out = await utils.runWithSudo(
-      `docker inspect ${nodeName} --format '{{index .Config.Labels "clab-node-lab-dir"}}'`,
-      'Inspect lab dir label',
-      outputChannel,
-      'docker',
-      true
-    ) as string;
-    const labDir = (out || '').trim();
+    if (!dockerClient) {
+      outputChannel.debug("getVolumeMount() failed: docker client unavailable.")
+      return "";
+    }
+
+    const container = dockerClient.getContainer(nodeName);
+    const containerInfo = await container.inspect();
+    const labDir = containerInfo.Config.Labels?.['clab-node-lab-dir'];
+
     if (labDir && labDir !== '<no value>') {
       const pathParts = labDir.split('/')
       pathParts.pop()
@@ -273,38 +180,102 @@ function adjustPacketflixHost(uri: string, edgesharkNetwork: string): string {
   return uri
 }
 
-// Capture using Edgeshark + Wireshark via VNC in a webview
-export async function captureEdgesharkVNC(
-  node: ClabInterfaceTreeNode,
-  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
-) {
+const VOLUME_MOUNT_REGEX = /-v\s+"?([^"]+)"?/;
 
-  const packetflixUri = await genPacketflixURI(node, allSelectedNodes, true)
+function buildVolumeBinds(volumeMount?: string): string[] {
+  if (!volumeMount) {
+    return [];
+  }
+  const match = VOLUME_MOUNT_REGEX.exec(volumeMount);
+  return match ? [match[1]] : [];
+}
+
+function buildWiresharkEnvVars(packetflixLink: string, themeSetting?: string): string[] {
+  const env = [`PACKETFLIX_LINK=${packetflixLink}`];
+  if (isDarkModeEnabled(themeSetting)) {
+    env.push('DARK_MODE=1');
+  }
+  return env;
+}
+
+type WiresharkContainerOptions = {
+  dockerImage: string;
+  dockerPullPolicy: ImagePullPolicy.Always | ImagePullPolicy.Missing | ImagePullPolicy.Never;
+  edgesharkNetwork: string;
+  volumeMount?: string;
+  packetflixUri: string;
+  themeSetting?: string;
+  ctrName: string;
+  port: number;
+};
+
+async function startWiresharkContainer(options: WiresharkContainerOptions): Promise<string | undefined> {
+  if (!dockerClient) {
+    outputChannel.debug("captureEdgesharkVNC() failed: docker client unavailable.")
+    vscode.window.showErrorMessage("Unable to start capture: Docker client unavailable")
+    return undefined;
+  }
+
+  try {
+    await utils.checkAndPullDockerImage(options.dockerImage, options.dockerPullPolicy);
+
+    const networkName = options.edgesharkNetwork.replace('--network ', '').trim();
+    const volumeBinds = buildVolumeBinds(options.volumeMount);
+    const env = buildWiresharkEnvVars(options.packetflixUri, options.themeSetting);
+
+    const container = await dockerClient.createContainer({
+      Image: options.dockerImage,
+      name: options.ctrName,
+      Env: env,
+      HostConfig: {
+        AutoRemove: true,
+        PortBindings: {
+          '5800/tcp': [{ HostIp: '127.0.0.1', HostPort: options.port.toString() }]
+        },
+        NetworkMode: networkName || 'bridge',
+        Binds: volumeBinds.length > 0 ? volumeBinds : undefined
+      }
+    });
+    await container.start();
+    outputChannel.info(`Started Wireshark VNC container: ${container.id}`);
+    return container.id;
+  } catch (err: any) {
+    vscode.window.showErrorMessage(`Starting Wireshark: ${err.message || String(err)}`);
+    return undefined;
+  }
+}
+
+// Capture using Edgeshark + Wireshark via VNC in a webview
+export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelectedNodes?: ClabInterfaceTreeNode[]) {
+
+  // Handle settings
+  const wsConfig = vscode.workspace.getConfiguration("containerlab");
+  const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE);
+  const dockerPullPolicy = wsConfig.get<ImagePullPolicy.Always | ImagePullPolicy.Missing | ImagePullPolicy.Never>("capture.wireshark.pullPolicy", DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY);
+  const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme");
+  const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground");
+
+  const packetflixUri = await buildPacketflixUri(node, allSelectedNodes, true)
   if (!packetflixUri) {
     return
   }
-
-  const wsConfig = vscode.workspace.getConfiguration("containerlab")
-  const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
-  const dockerPullPolicy = wsConfig.get<string>("capture.wireshark.pullPolicy", "always")
-  const extraDockerArgs = wsConfig.get<string>("capture.wireshark.extraDockerArgs")
-  const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme")
-  const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground")
-
-  const darkModeSetting = isDarkModeEnabled(wiresharkThemeSetting) ? "-e DARK_MODE=1" : ""
   const edgesharkNetwork = await getEdgesharkNetwork()
   const volumeMount = await getVolumeMount(node.parentName)
   const modifiedPacketflixUri = adjustPacketflixHost(packetflixUri[0], edgesharkNetwork)
 
   const port = await utils.getFreePort()
-  const ctrName = utils.sanitize(`clab_vsc_ws-${node.parentName}_${node.name}-${Date.now()}`)
-  let containerId = '';
-  try {
-    const command = `docker run -d --rm --pull ${dockerPullPolicy} -p 127.0.0.1:${port}:5800 ${edgesharkNetwork} ${volumeMount} ${darkModeSetting} -e PACKETFLIX_LINK="${modifiedPacketflixUri}" ${extraDockerArgs || ''} --name ${ctrName} ${dockerImage}`;
-    const out = await utils.runWithSudo(command, 'Start Wireshark VNC', outputChannel, 'docker', true, true) as string;
-    containerId = (out || '').trim().split(/\s+/)[0] || '';
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Starting Wireshark: ${err.message || String(err)}`);
+  const ctrName = utils.sanitize(`${WIRESHARK_VNC_CTR_NAME_PREFIX}-${username}-${node.parentName}_${node.name}-${Date.now()}`)
+  const containerId = await startWiresharkContainer({
+    dockerImage,
+    dockerPullPolicy,
+    edgesharkNetwork,
+    volumeMount,
+    packetflixUri: modifiedPacketflixUri,
+    themeSetting: wiresharkThemeSetting,
+    ctrName,
+    port
+  });
+  if (!containerId) {
     return;
   }
 
@@ -322,8 +293,22 @@ export async function captureEdgesharkVNC(
     }
   );
 
-  panel.onDidDispose(() => {
-    void utils.runWithSudo(`docker rm -f ${containerId}`, 'Remove Wireshark container', outputChannel, 'docker').catch(() => undefined);
+  panel.onDidDispose(async () => {
+    try {
+      if (!dockerClient) {
+        outputChannel.debug("captureEdgesharkVNC() VNC webview dispose failed: docker client unavailable.")
+        return;
+      }
+      if (!containerId) {
+        outputChannel.debug("captureEdgesharkVNC() VNC webview dispose failed: nil container ID.")
+        return;
+      }
+      const container = dockerClient.getContainer(containerId);
+      await container.stop();
+      outputChannel.info(`Stopped Wireshark VNC container: ${containerId}`);
+    } catch {
+      // ignore
+    }
   })
 
   const iframeUrl = externalUri;
@@ -555,179 +540,68 @@ async function runVncReadinessLoop(
     return
   }
 
-  await tryPostMessage(panel, { type: 'vnc-progress', attempt: 0, maxAttempts })
+  await utils.tryPostMessage(panel, { type: 'vnc-progress', attempt: 0, maxAttempts })
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (isDisposed() || token.cancelled) {
       return
     }
 
-    const ready = await isHttpEndpointReady(localUrl)
+    const ready = await utils.isHttpEndpointReady(localUrl)
     if (isDisposed() || token.cancelled) {
       return
     }
 
     if (ready) {
-      await tryPostMessage(panel, { type: 'vnc-ready', url: iframeUrl })
+      await utils.tryPostMessage(panel, { type: 'vnc-ready', url: iframeUrl })
       return
     }
 
-    await tryPostMessage(panel, { type: 'vnc-progress', attempt, maxAttempts })
-    await delay(delayMs)
+    await utils.tryPostMessage(panel, { type: 'vnc-progress', attempt, maxAttempts })
+    await utils.delay(delayMs)
   }
 
   if (!isDisposed() && !token.cancelled) {
-    await tryPostMessage(panel, { type: 'vnc-timeout', url: iframeUrl })
+    await utils.tryPostMessage(panel, { type: 'vnc-timeout', url: iframeUrl })
   }
 }
-
-async function tryPostMessage(panel: vscode.WebviewPanel, message: unknown): Promise<void> {
-  try {
-    await panel.webview.postMessage(message)
-  } catch {
-    // The panel might already be disposed; ignore errors
-  }
-}
-
-async function isHttpEndpointReady(url: string, timeoutMs = 4000): Promise<boolean> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const response = await fetch(url, { method: 'GET', signal: controller.signal })
-    return response.ok
-  } catch {
-    return false
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 
 export async function killAllWiresharkVNCCtrs() {
-  const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", "ghcr.io/kaelemc/wireshark-vnc-docker:latest")
+  const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE)
   try {
-    const idsOut = await utils.runWithSudo(
-      `docker ps --filter "name=clab_vsc_ws-" --filter "ancestor=${dockerImage}" --format "{{.ID}}"`,
-      'List Wireshark VNC containers',
-      outputChannel,
-      'docker',
-      true
-    ) as string;
-    const ids = (idsOut || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    if (ids.length > 0) {
-      await utils.runWithSudo(`docker rm -f ${ids.join(' ')}`, 'Remove Wireshark VNC containers', outputChannel, 'docker');
+    if (!dockerClient) {
+      outputChannel.debug("killAllWiresharkVNCCtrs() failed: docker client unavailable.")
+    }
+
+    const ctrNamePrefix = `${WIRESHARK_VNC_CTR_NAME_PREFIX}-${username}`;
+
+    // List containers which have that name + use the configured image
+    const containers = await dockerClient.listContainers({
+      filters: {
+        name: [ctrNamePrefix],
+        ancestor: [dockerImage]
+      }
+    });
+
+    if (containers.length > 0) {
+      // equivalent of docker rm -f for each container
+      await Promise.all(
+        containers.map(async (containerInfo: any) => {
+          try {
+            const container = dockerClient.getContainer(containerInfo.Id);
+            await container.remove(
+              {
+                force: true
+              }
+            );
+            outputChannel.info(`Removed Wireshark VNC container: ${containerInfo.Id}`);
+          } catch (err) {
+            outputChannel.warn(`Failed to remove container ${containerInfo.Id}: ${err}`);
+          }
+        })
+      );
     }
   } catch (err: any) {
-    vscode.window.showErrorMessage(`Killing Wireshark container: ${err.message || String(err)}`);
+    vscode.window.showErrorMessage(`Failed to remove Wireshark VNC containers: ${err.message}`);
   }
-}
-
-/**
- * If a user calls the "Set session hostname" command, we store it in-memory here,
- * overriding the auto-detected or config-based hostname until the user closes VS Code.
- */
-export async function setSessionHostname(): Promise<boolean> {
-  const opts: vscode.InputBoxOptions = {
-    title: `Configure hostname for Containerlab remote (this session only)`,
-    placeHolder: `IPv4, IPv6 or DNS resolvable hostname of the system where containerlab is running`,
-    prompt: "This will persist for only this session of VS Code.",
-    validateInput: (input: string): string | undefined => {
-      if (input.trim().length === 0) {
-        return "Input should not be empty";
-      }
-      return undefined;
-    }
-  };
-
-  const val = await vscode.window.showInputBox(opts);
-  if (!val) {
-    return false;
-  }
-  sessionHostname = val.trim();
-  vscode.window.showInformationMessage(`Session hostname is set to: ${sessionHostname}`);
-  return true;
-}
-
-function resolveOrbstackIPv4(): string | undefined {
-  try {
-    const nets = os.networkInterfaces();
-    const eth0 = nets["eth0"] ?? [];
-    const v4 = (eth0 as any[]).find(
-      (n: any) => (n.family === "IPv4" || n.family === 4) && !n.internal
-    );
-    return v4?.address as string | undefined;
-  } catch (e: any) {
-    outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`);
-    return undefined;
-  }
-}
-
-/**
- * Determine the hostname (or IP) to use for packet capture based on environment:
- *
- * - If a global setting "containerlab.remote.hostname" is set, that value is used.
- * - If in a WSL environment (or SSH in WSL), always return "localhost".
- * - If in an Orbstack environment (regardless of SSH), always use the IPv4 address from "ip -4 add show eth0".
- * - If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.
- * - Otherwise, if a session hostname was set, use it.
- * - Otherwise, default to "localhost".
- */
-export async function getHostname(): Promise<string> {
-  // 1. Global configuration takes highest priority.
-  const cfgHost = vscode.workspace
-    .getConfiguration("containerlab")
-    .get<string>("remote.hostname", "");
-  if (cfgHost) {
-    outputChannel.debug(
-      `Using containerlab.remote.hostname from settings: ${cfgHost}`
-    );
-    return cfgHost;
-  }
-
-  // 2. If in a WSL environment, always use "localhost".
-  if (vscode.env.remoteName === "wsl") {
-    outputChannel.debug("Detected WSL environment; using 'localhost'");
-    return "localhost";
-  }
-
-  // 3. If in an Orbstack environment (whether SSH or not), always use IPv4.
-  if (utils.isOrbstack()) {
-    const v4 = resolveOrbstackIPv4();
-    if (v4) {
-      outputChannel.debug(`(Orbstack) Using IPv4 from networkInterfaces: ${v4}`);
-      return v4;
-    }
-    outputChannel.debug("(Orbstack) Could not determine IPv4 from networkInterfaces");
-  }
-
-  // 4. If in an SSH remote session (and not Orbstack), use the remote IP from SSH_CONNECTION.
-  if (vscode.env.remoteName === "ssh-remote") {
-    const sshConnection = process.env.SSH_CONNECTION;
-    outputChannel.debug(`(SSH non-Orb) SSH_CONNECTION: ${sshConnection}`);
-    if (sshConnection) {
-      const parts = sshConnection.split(" ");
-      if (parts.length >= 3) {
-        const remoteIp = parts[2];
-        outputChannel.debug(
-          `(SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`
-        );
-        return remoteIp;
-      }
-    }
-  }
-
-  // 5. If a session hostname was manually set, use it.
-  if (sessionHostname) {
-    outputChannel.debug(`Using sessionHostname: ${sessionHostname}`);
-    return sessionHostname;
-  }
-
-  // 6. Fallback: default to "localhost".
-  outputChannel.debug("No suitable hostname found; defaulting to 'localhost'");
-  return "localhost";
 }

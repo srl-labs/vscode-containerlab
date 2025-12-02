@@ -235,6 +235,14 @@
         "title": "Stop"
       },
       {
+        "command": "containerlab.node.pause",
+        "title": "Pause"
+      },
+      {
+        "command": "containerlab.node.unpause",
+        "title": "Unpause"
+      },
+      {
         "command": "containerlab.node.save",
         "title": "Save config"
       },
@@ -831,6 +839,16 @@
           "group": "nodeNavigation@3"
         },
         {
+          "command": "containerlab.node.pause",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@4"
+        },
+        {
+          "command": "containerlab.node.unpause",
+          "when": "viewItem == containerlabContainer",
+          "group": "nodeNavigation@5"
+        },
+        {
           "command": "containerlab.node.save",
           "when": "viewItem == containerlabContainer",
           "group": "nodeNavigationSaveCfg@4"
@@ -1126,225 +1144,251 @@
         "command": "containerlab.lab.graph.topoViewer"
       }
     ],
-    "configuration": {
-      "title": "Containerlab",
-      "properties": {
-        "containerlab.sudoEnabledByDefault": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether to prepend 'sudo' to all containerlab commands by default."
-        },
-        "containerlab.refreshInterval": {
-          "type": "number",
-          "default": 5000,
-          "description": "Refresh interval (in milliseconds) for the Containerlab Explorer."
-        },
-        "containerlab.node.execCommandMapping": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+    "configuration": [
+      {
+        "title": "General",
+        "order": 1,
+        "properties": {
+          "containerlab.showWelcomePage": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the welcome page when the extension activates."
           },
-          "default": {},
-          "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
-        },
-        "containerlab.node.sshUserMapping": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+          "containerlab.skipUpdateCheck": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Skip checking for containerlab updates during activation."
           },
-          "default": {},
-          "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
-        },
-        "containerlab.remote.hostname": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Hostname or IP address for **Edgeshark packet capture** connections. Can be either DNS resolvable hostname, or an IPv4/6 address. This setting tells Edgeshark where to connect for capturing packets.\n\n**Note:** A configured hostname for *this session of VS Code* takes precedence. (Command palette: **Containerlab: Configure session hostname**)"
-        },
-        "containerlab.remote.packetflixPort": {
-          "type": "number",
-          "default": 5001,
-          "markdownDescription": "Port for the **Packetflix WebSocket endpoint** used by Edgeshark packet capture. This is where Edgeshark connects to stream captured packets."
-        },
-        "containerlab.drawioDefaultTheme": {
-          "type": "string",
-          "enum": [
-            "nokia_modern",
-            "nokia",
-            "grafana"
-          ],
-          "default": "nokia_modern",
-          "description": "Default theme to use when generating DrawIO graphs."
-        },
-        "containerlab.runtime": {
-          "type": "string",
-          "enum": [
-            "docker",
-            "podman",
-            "ignite"
-          ],
-          "default": "docker",
-          "description": "Set container runtime used by containerlab."
-        },
-        "containerlab.skipCleanupWarning": {
-          "type": "boolean",
-          "default": false,
-          "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
-        },
-        "containerlab.deploy.extraArgs": {
-          "type": "string",
-          "default": "",
-          "description": "Additional command-line options appended to all 'containerlab deploy' and 'containerlab redeploy' commands."
-        },
-        "containerlab.destroy.extraArgs": {
-          "type": "string",
-          "default": "",
-          "description": "Additional command-line options appended to all 'containerlab destroy' commands."
-        },
-        "containerlab.showWelcomePage": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show the welcome page when the extension activates."
-        },
-        "containerlab.skipInstallationCheck": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Skip checking for the containerlab binary during activation to silence the install prompt. When enabled, the extension will not activate on systems without containerlab on PATH."
-        },
-        "containerlab.node.telnetPort": {
-          "type": "number",
-          "default": 5000,
-          "description": "Port to connect when telnetting to the node with 'docker exec -it <node> telnet 127.0.0.1 <port>'"
-        },
-        "containerlab.extras.fcli.extraDockerArgs": {
-          "type": "string",
-          "default": "",
-          "description": "Additional docker (or podman) arguments to append to the fcli command"
-        },
-        "containerlab.capture.preferredAction": {
-          "type": "string",
-          "default": "Wireshark VNC",
-          "enum": [
-            "Edgeshark",
-            "Wireshark VNC"
-          ],
-          "description": "The preferred capture method when using the capture interface quick action on the interface tree item"
-        },
-        "containerlab.capture.wireshark.dockerImage": {
-          "type": "string",
-          "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
-          "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"
-        },
-        "containerlab.capture.wireshark.pullPolicy": {
-          "type": "string",
-          "default": "always",
-          "enum": [
-            "always",
-            "missing",
-            "never"
-          ],
-          "description": "The pull policy of the Wireshark docker image"
-        },
-        "containerlab.capture.wireshark.extraDockerArgs": {
-          "type": "string",
-          "default": "-e HTTP_PROXY=\"\" -e http_proxy=\"\"",
-          "description": "Extra arguments to pass to the run command for the wireshark VNC container. Useful for things like bind mounts etc."
-        },
-        "containerlab.capture.wireshark.theme": {
-          "type": "string",
-          "default": "Follow VS Code theme",
-          "enum": [
-            "Follow VS Code theme",
-            "Dark",
-            "Light"
-          ],
-          "description": "The theme, or colour scheme of the wireshark application."
-        },
-        "containerlab.capture.wireshark.stayOpenInBackground": {
-          "type": "boolean",
-          "default": "true",
-          "description": "Keep Wireshark VNC sessions alive, even when the capture tab is not active. Enabling this will consume more memory on both the client and remote containerlab host system."
-        },
-        "containerlab.edgeshark.extraEnvironmentVars": {
-          "type": "string",
-          "default": "HTTP_PROXY=, http_proxy=",
-          "description": "Comma-separated environment variables to inject into edgeshark containers (e.g., 'HTTP_PROXY=, http_proxy=, NO_PROXY=localhost'). Each variable will be added to the environment section of both gostwire and packetflix services."
-        },
-        "containerlab.gotty.port": {
-          "type": "number",
-          "default": 8080,
-          "description": "Port for GoTTY web terminal."
-        },
-        "containerlab.editor.customNodes": {
-          "type": "array",
-          "default": [
-            {
-              "name": "SRLinux Latest",
-              "kind": "nokia_srlinux",
-              "type": "ixrd1",
-              "image": "ghcr.io/nokia/srlinux:latest",
-              "icon": "router",
-              "baseName": "srl",
-              "interfacePattern": "e1-{n}",
-              "setDefault": true
-            },
-            {
-              "name": "Network Multitool",
-              "kind": "linux",
-              "image": "ghcr.io/srl-labs/network-multitool:latest",
-              "icon": "client",
-              "baseName": "client",
-              "interfacePattern": "eth{n}",
-              "setDefault": false
-            }
-          ],
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "kind": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              },
-              "image": {
-                "type": "string"
-              },
-              "icon": {
-                "type": "string"
-              },
-              "baseName": {
-                "type": "string"
-              },
-              "interfacePattern": {
-                "type": "string"
-              },
-              "setDefault": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "name",
-              "kind"
+          "containerlab.binaryPath": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "The absolute file path to the Containerlab binary."
+          },
+          "containerlab.skipCleanupWarning": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, skip the warning popup for cleanup commands (redeploy/destroy cleanup)."
+          },
+          "containerlab.deploy.extraArgs": {
+            "type": "string",
+            "default": "",
+            "description": "Additional command-line options appended to all 'containerlab deploy' and 'containerlab redeploy' commands."
+          },
+          "containerlab.destroy.extraArgs": {
+            "type": "string",
+            "default": "",
+            "description": "Additional command-line options appended to all 'containerlab destroy' commands."
+          },
+          "containerlab.drawioDefaultTheme": {
+            "type": "string",
+            "enum": [
+              "nokia_modern",
+              "nokia",
+              "grafana"
             ],
-            "additionalProperties": true
+            "default": "nokia_modern",
+            "description": "Default theme to use when generating DrawIO graphs."
           },
-          "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
-        },
-        "containerlab.editor.updateLinkEndpointsOnKindChange": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "When enabled, changing a node's kind updates connected link endpoints to match the new kind's interface pattern."
-        },
-        "containerlab.editor.lockLabByDefault": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Lock the lab canvas by default to prevent accidental modifications. Disable to start new sessions unlocked."
+          "containerlab.gotty.port": {
+            "type": "number",
+            "default": 8080,
+            "description": "Port for GoTTY web terminal."
+          },
+          "containerlab.runtime": {
+            "type": "string",
+            "default": "docker",
+            "description": "Container runtime to use (docker, podman)."
+          },
+          "containerlab.refreshMode": {
+            "type": "string",
+            "enum": [
+              "events",
+              "polling"
+            ],
+            "default": "events",
+            "markdownDescription": "How to refresh lab data. `events` uses real-time containerlab events. `polling` uses periodic `containerlab inspect` calls."
+          },
+          "containerlab.pollInterval": {
+            "type": "number",
+            "default": 5000,
+            "minimum": 1000,
+            "markdownDescription": "Polling interval in milliseconds when using `polling` refresh mode."
+          },
+          "containerlab.enableInterfaceStats": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Enable interface statistics (RX/TX bytes, packets, etc.) in the tree view. Disable to reduce resource usage."
+          }
+        }
+      },
+      {
+        "title": "TopoViewer",
+        "order": 2,
+        "properties": {
+          "containerlab.editor.customNodes": {
+            "type": "array",
+            "default": [
+              {
+                "name": "SRLinux Latest",
+                "kind": "nokia_srlinux",
+                "type": "ixrd1",
+                "image": "ghcr.io/nokia/srlinux:latest",
+                "icon": "router",
+                "baseName": "srl",
+                "interfacePattern": "e1-{n}",
+                "setDefault": true
+              },
+              {
+                "name": "Network Multitool",
+                "kind": "linux",
+                "image": "ghcr.io/srl-labs/network-multitool:latest",
+                "icon": "client",
+                "baseName": "client",
+                "interfacePattern": "eth{n}",
+                "setDefault": false
+              }
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string"
+                },
+                "baseName": {
+                  "type": "string"
+                },
+                "interfacePattern": {
+                  "type": "string"
+                },
+                "setDefault": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "kind"
+              ],
+              "additionalProperties": true
+            },
+            "markdownDescription": "Custom node templates available in the TopoViewer add-node menu. Can store full node configurations including startup-config, binds, env vars, etc."
+          },
+          "containerlab.editor.updateLinkEndpointsOnKindChange": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "When enabled, changing a node's kind updates connected link endpoints to match the new kind's interface pattern."
+          },
+          "containerlab.editor.lockLabByDefault": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Lock the lab canvas by default to prevent accidental modifications. Disable to start new sessions unlocked."
+          }
+        }
+      },
+      {
+        "title": "Node actions",
+        "order": 2,
+        "properties": {
+          "containerlab.node.execCommandMapping": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "markdownDescription": "Change the default exec action for node when using the 'attach' command. Enter in the mapping between the kind and command.\n\nFor example: `{\"nokia_srlinux\": \"sr_cli\"}` means that `docker exec -it <container> sr_cli` will be executed if `<container>` is the `nokia_srlinux` kind."
+          },
+          "containerlab.node.sshUserMapping": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "markdownDescription": "Custom SSH users for different node kinds. Enter the mapping between the kind and SSH username.\n\nFor example: `{\"nokia_srlinux\": \"clab\"}` means that `ssh clab@<container>` will be used if `<container>` is the `nokia_srlinux` kind."
+          },
+          "containerlab.node.telnetPort": {
+            "type": "number",
+            "default": 5000,
+            "description": "Port to connect when telnetting to the node with 'docker exec -it <node> telnet 127.0.0.1 <port>'"
+          },
+          "containerlab.extras.fcli.extraDockerArgs": {
+            "type": "string",
+            "default": "",
+            "description": "Additional docker (or podman) arguments to append to the fcli command"
+          }
+        }
+      },
+      {
+        "title": "Packet Capture",
+        "order": 4,
+        "properties": {
+          "containerlab.capture.remoteHostname": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Hostname or IP address for **Edgeshark packet capture** connections. Can be either DNS resolvable hostname, or an IPv4/6 address. This setting tells Edgeshark where to connect for capturing packets.\n\n**Note:** A configured hostname for *this session of VS Code* takes precedence. (Command palette: **Containerlab: Configure session hostname**)"
+          },
+          "containerlab.capture.packetflixPort": {
+            "type": "number",
+            "default": 5001,
+            "markdownDescription": "Port for the **Packetflix WebSocket endpoint** used by Edgeshark packet capture. This is where Edgeshark connects to stream captured packets."
+          },
+          "containerlab.capture.preferredAction": {
+            "type": "string",
+            "default": "Wireshark VNC",
+            "enum": [
+              "Edgeshark",
+              "Wireshark VNC"
+            ],
+            "description": "The preferred capture method when using the capture interface quick action on the interface tree item"
+          },
+          "containerlab.capture.wireshark.dockerImage": {
+            "type": "string",
+            "default": "ghcr.io/kaelemc/wireshark-vnc-docker:latest",
+            "description": "The docker image to use for Wireshark/Edgeshark VNC capture. Requires full image name + tag"
+          },
+          "containerlab.capture.wireshark.pullPolicy": {
+            "type": "string",
+            "default": "always",
+            "enum": [
+              "always",
+              "missing",
+              "never"
+            ],
+            "description": "The pull policy of the Wireshark docker image"
+          },
+          "containerlab.capture.wireshark.theme": {
+            "type": "string",
+            "default": "Follow VS Code theme",
+            "enum": [
+              "Follow VS Code theme",
+              "Dark",
+              "Light"
+            ],
+            "description": "The theme, or colour scheme of the wireshark application."
+          },
+          "containerlab.capture.wireshark.stayOpenInBackground": {
+            "type": "boolean",
+            "default": "true",
+            "description": "Keep Wireshark VNC sessions alive, even when the capture tab is not active. Enabling this will consume more memory on both the client and remote containerlab host system."
+          },
+          "containerlab.capture.edgeshark.extraEnvironmentVars": {
+            "type": "string",
+            "default": "HTTP_PROXY=, http_proxy=",
+            "description": "Comma-separated environment variables to inject into edgeshark containers (e.g., 'HTTP_PROXY=, http_proxy=, NO_PROXY=localhost'). Each variable will be added to the environment section of both gostwire and packetflix services."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "compile": "tsc -p .",
@@ -1371,6 +1415,7 @@
     "@types/cytoscape": "^3.31.0",
     "@types/cytoscape-cxtmenu": "^3.4.5",
     "@types/cytoscape-edgehandles": "^4.0.5",
+    "@types/dockerode": "^3.3.47",
     "@types/dompurify": "^3.2.0",
     "@types/leaflet": "^1.9.21",
     "@types/markdown-it": "^14.1.2",
@@ -1395,6 +1440,7 @@
     "cytoscape-leaf": "^1.2.4",
     "cytoscape-popper": "^4.0.1",
     "cytoscape-svg": "^0.4.0",
+    "dockerode": "^4.0.9",
     "dompurify": "^3.3.0",
     "esbuild": "^0.27.0",
     "esbuild-loader": "^4.4.0",
@@ -1418,6 +1464,7 @@
     "tippy.js": "^6.3.7",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0",
+    "uplot": "^1.6.32",
     "webpack-cli": "^6.0.1",
     "yaml": "^2.8.1"
   }

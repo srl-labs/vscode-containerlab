@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as utils from '../helpers/utils';
+import * as utils from '../utils/index';
 import { spawn } from 'child_process';
 import { outputChannel } from '../extension';
 import * as fs from 'fs';
@@ -8,22 +8,29 @@ import * as path from 'path';
 
 /**
  * Run a shell command in a named VS Code terminal.
- * If that terminal already exists, we send a Ctrl+C first.
+ * @param command The command to execute
+ * @param terminalName The name for the terminal
+ * @param reuseOnly If true, just focus existing terminal without sending command again.
+ *                  If false (default), reuses existing terminal with Ctrl+C and resends command.
  */
-export function execCommandInTerminal(command: string, terminalName: string) {
-    let terminal: vscode.Terminal | undefined;
+export function execCommandInTerminal(command: string, terminalName: string, reuseOnly: boolean = false) {
     for (const term of vscode.window.terminals) {
         if (term.name === terminalName) {
-            terminal = term;
-            // Send Ctrl+C & enter to stop any previous command
+            if (reuseOnly) {
+                // Terminal already exists - just focus it
+                term.show();
+                return;
+            }
+            // Send Ctrl+C & enter to stop any previous command, then resend
             term.sendText("\x03\r");
-            break;
+            term.sendText(command);
+            term.show();
+            return;
         }
     }
-    if (!terminal) {
-        terminal = vscode.window.createTerminal({ name: terminalName });
-    }
 
+    // Terminal doesn't exist - create new one
+    const terminal = vscode.window.createTerminal({ name: terminalName });
     terminal.sendText(command);
     terminal.show();
 }
@@ -121,7 +128,6 @@ export type CommandFailureHandler = (error: unknown) => Promise<void>;
 export class Command {
     protected command: string;
     protected useSpinner: boolean;
-    protected useSudo: boolean;
     protected spinnerMsg?: SpinnerMsg;
     protected terminalName?: string;
     protected onSuccessCallback?: () => Promise<void>;
@@ -132,13 +138,11 @@ export class Command {
         this.useSpinner = options.useSpinner || false;
         this.spinnerMsg = options.spinnerMsg;
         this.terminalName = options.terminalName;
-        this.useSudo = utils.getConfig('sudoEnabledByDefault');
     }
 
     protected execute(args?: string[]): Promise<void> {
         let cmd: string[] = [];
 
-        if (this.useSudo) { cmd.push("sudo"); }
         cmd.push(this.command);
         if (args) { cmd.push(...args); }
 
@@ -230,7 +234,7 @@ export class Command {
 
             await vscode.commands.executeCommand("containerlab.refresh");
         } catch (err: any) {
-            const command = this.useSudo ? cmd[2] : cmd[1];
+            const command = cmd[1];
             const failMsg = this.spinnerMsg?.failMsg ? `${this.spinnerMsg.failMsg}. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
             if (viewOutputBtn === "View logs") { outputChannel.show(); }

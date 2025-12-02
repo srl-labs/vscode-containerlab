@@ -1,6 +1,7 @@
 import { VscodeMessageSender } from './managerVscodeWebview';
 import { ManagerGroupStyle } from './managerGroupStyle';
 import { ManagerFreeText } from './managerFreeText';
+import { ManagerFreeShapes } from './managerFreeShapes';
 import loadCytoStyle from './managerCytoscapeBaseStyles';
 import { isSpecialEndpoint } from '../utilities/specialNodes';
 import { log } from '../logging/logger';
@@ -28,6 +29,7 @@ export class CopyPasteManager {
   private messageSender: VscodeMessageSender;
   private groupStyleManager: ManagerGroupStyle;
   private freeTextManager: ManagerFreeText;
+  private freeShapesManager: ManagerFreeShapes | null = null;
   private pasteCounter: number = 0;
   private lastPasteCenter: { x: number; y: number } | null = null;
 
@@ -43,6 +45,14 @@ export class CopyPasteManager {
     this.freeTextManager = freeTextManager;
     this.pasteCounter = 0;
     this.lastPasteCenter = null;
+  }
+
+  /**
+   * Sets the free shapes manager for copy/paste operations.
+   * Called after initialization since freeShapesManager may be created later.
+   */
+  public setFreeShapesManager(manager: ManagerFreeShapes): void {
+    this.freeShapesManager = manager;
   }
 
   /**
@@ -99,6 +109,9 @@ export class CopyPasteManager {
         const allAnnotations = this.freeTextManager.getAnnotations();
         return allAnnotations.find(annotation => annotation.id === node.id());
       }).filter(Boolean),
+      freeShapeAnnotations: nodes.filter('[topoViewerRole = "freeShape"]').map((node: any) => {
+        return node.data('freeShapeData');
+      }).filter(Boolean),
       cloudNodeAnnotations: [],
       nodeAnnotations: []
     };
@@ -125,10 +138,17 @@ export class CopyPasteManager {
     const added = this.cy.add(newElements);
     this.postProcess(added, idMap, data.annotations);
 
-    this.pasteAnnotations(data.annotations, data.originalCenter);
+    const pastedAnnotationIds = this.pasteAnnotations(data.annotations, data.originalCenter);
 
     this.cy.$(':selected').unselect();
     added.select();
+    // Also select pasted annotation nodes (freeText, freeShapes)
+    pastedAnnotationIds.forEach(id => {
+      const node = this.cy.$id(id);
+      if (node && node.length > 0) {
+        node.select();
+      }
+    });
     this.pasteCounter++;
     return added;
   }
@@ -145,7 +165,7 @@ export class CopyPasteManager {
     const newElements: any[] = [];
 
     elements.forEach(el => {
-      if (el.group === 'nodes' && el.data.topoViewerRole !== 'freeText') {
+      if (el.group === 'nodes' && el.data.topoViewerRole !== 'freeText' && el.data.topoViewerRole !== 'freeShape') {
         const { newNode, newId, nodeName } = this.createNode(el, usedIds, usedNames);
         idMap.set(el.data.id, newId);
         usedIds.add(newId);
@@ -315,7 +335,10 @@ export class CopyPasteManager {
    * @param annotations - The annotations to apply to the new elements.
    */
   private postProcess(added: any, idMap: Map<string, string>, annotations: TopologyAnnotations): void {
-    loadCytoStyle(this.cy).catch((error) => {
+    loadCytoStyle(this.cy).then(() => {
+      // After styles are reloaded, reapply shape-specific styles to prevent dimension reset
+      this.freeShapesManager?.reapplyAllShapeStyles();
+    }).catch((error) => {
       log.error(`Failed to load cytoscape styles during paste operation: ${error}`);
     });
 
@@ -379,15 +402,17 @@ export class CopyPasteManager {
    * Handle annotation pasting directly with managers
    * @param annotations - The annotations to paste.
    * @param originalCenter - The original center position for calculating deltas.
+   * @returns Array of IDs of pasted annotation nodes.
    */
-  private pasteAnnotations(annotations: TopologyAnnotations, originalCenter: { x: number; y: number }): void {
+  private pasteAnnotations(annotations: TopologyAnnotations, originalCenter: { x: number; y: number }): string[] {
+    const pastedIds: string[] = [];
     const delta = this._getPasteDelta(originalCenter);
-    if (!delta) return;
+    if (!delta) return pastedIds;
     const { deltaX, deltaY } = delta;
 
     // Handle free text annotations with position adjustment
-    annotations.freeTextAnnotations?.forEach(annotation => {
-      const newId = `freeText_${Date.now()}_${this.pasteCounter}`;
+    annotations.freeTextAnnotations?.forEach((annotation, index) => {
+      const newId = `freeText_${Date.now()}_${this.pasteCounter}_${index}`;
       const newAnnotation = {
         ...annotation,
         id: newId,
@@ -397,11 +422,37 @@ export class CopyPasteManager {
         }
       };
       this.freeTextManager.addFreeTextAnnotation(newAnnotation);
+      pastedIds.push(newId);
     });
+
+    // Handle free shape annotations with position adjustment
+    if (this.freeShapesManager) {
+      annotations.freeShapeAnnotations?.forEach((annotation, index) => {
+        const newId = `freeShape_${Date.now()}_${this.pasteCounter}_${index}`;
+        const newAnnotation = {
+          ...annotation,
+          id: newId,
+          position: {
+            x: annotation.position.x + deltaX,
+            y: annotation.position.y + deltaY
+          }
+        };
+        // For lines, also adjust the end position
+        if (annotation.shapeType === 'line' && annotation.endPosition) {
+          newAnnotation.endPosition = {
+            x: annotation.endPosition.x + deltaX,
+            y: annotation.endPosition.y + deltaY
+          };
+        }
+        this.freeShapesManager!.addFreeShapeAnnotation(newAnnotation);
+        pastedIds.push(newId);
+      });
+    }
 
     // Group style annotations are handled in postProcess
     // Future special annotation handling can be added here:
     // annotations.cloudNodeAnnotations?.forEach(...)
     // annotations.nodeAnnotations?.forEach(...)
+    return pastedIds;
   }
 }

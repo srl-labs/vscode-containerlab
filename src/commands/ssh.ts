@@ -29,7 +29,7 @@ export function sshToNode(node: ClabContainerTreeNode | undefined): void {
 
   const container = node.name || node.cID || "Container";
 
-  execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${container}`);
+  execCommandInTerminal(`ssh ${sshUser}@${sshTarget}`, `SSH - ${container}`, true);
 }
 
 export function sshToLab(node: ClabLabTreeNode | undefined): void {

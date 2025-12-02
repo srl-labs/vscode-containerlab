@@ -78,17 +78,22 @@
   --info: var(--vscode-charts-blue);
   --diff-add: var(--vscode-diffEditor-insertedTextBorder, var(--vscode-charts-green));
   --diff-add-bg: var(--vscode-diffEditor-insertedTextBackground);
-  --diff-add-line-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground));
+  --diff-add-line-bg: var(
+    --vscode-diffEditor-insertedLineBackground,
+    var(--vscode-diffEditor-insertedTextBackground)
+  );
   --diff-remove: var(--vscode-diffEditor-removedTextBorder, var(--vscode-charts-red));
   --diff-remove-bg: var(--vscode-diffEditor-removedTextBackground);
-  --diff-remove-line-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground));
+  --diff-remove-line-bg: var(
+    --vscode-diffEditor-removedLineBackground,
+    var(--vscode-diffEditor-removedTextBackground)
+  );
   --diff-line-number: var(--vscode-editorLineNumber-foreground);
   /* Navbar height for viewport offset */
   --navbar-height: 4.5rem;
 }
 
 @layer base {
-
   html,
   body {
     height: 100%;
@@ -105,7 +110,6 @@
 
 /* Custom component classes using Tailwind */
 @layer components {
-
   /* Ensure filterable dropdown menus don't propagate scroll to parents */
   .filterable-dropdown-menu {
     overscroll-behavior: contain;
@@ -119,6 +123,7 @@
     padding: 0.5rem 1rem;
     font-weight: 500;
     border-radius: 0.375rem;
+    border: 1px solid transparent;
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-duration: 150ms;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,13 +133,17 @@
   }
 
   .btn:hover {
-    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+    background-color: var(
+      --vscode-button-secondaryHoverBackground,
+      var(--vscode-button-hoverBackground)
+    );
     cursor: pointer;
   }
 
   .btn-primary {
     background-color: var(--accent);
     color: var(--vscode-button-foreground);
+    border-color: transparent;
   }
 
   .btn-primary:hover {
@@ -147,7 +156,10 @@
   }
 
   .btn-secondary:hover {
-    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-secondaryBackground));
+    background-color: var(
+      --vscode-button-secondaryHoverBackground,
+      var(--vscode-button-secondaryBackground)
+    );
   }
 
   .btn-outlined {
@@ -157,7 +169,19 @@
   }
 
   .btn-outlined:hover {
-    background-color: var(--bg-hover);
+    background-color: var(--vscode-button-hoverBackground);
+    color: var(--vscode-button-foreground);
+  }
+
+  /* Apply button state when there are unsaved changes */
+  .btn-has-changes {
+    background-color: var(--accent);
+    color: var(--vscode-button-foreground);
+    border-color: var(--accent);
+  }
+
+  .btn-has-changes:hover {
+    background-color: var(--vscode-button-hoverBackground);
   }
 
   .btn-danger {
@@ -168,7 +192,7 @@
 
   .btn-danger:hover {
     background-color: var(--error);
-    color: var(--color-vscode-button-fg)
+    color: var(--color-vscode-button-fg);
   }
 
   .btn-small {
@@ -212,22 +236,88 @@
     font-size: 0.875rem;
   }
 
+  /* Window-style title bar for editor panels */
+  .panel-heading.panel-title-bar,
+  .panel-title-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background-color: var(--vscode-titleBar-activeBackground) !important;
+    color: var(--vscode-titleBar-activeForeground) !important;
+    border-bottom: 1px solid var(--vscode-panel-border) !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    cursor: grab !important;
+    user-select: none !important;
+    min-height: 2.5rem !important;
+  }
+
+  .panel-title-bar:active {
+    cursor: grabbing !important;
+  }
+
+  .panel-title {
+    flex: 1 !important;
+    font-weight: 600 !important;
+  }
+
+  .panel-close-btn {
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    color: var(--vscode-titleBar-activeForeground) !important;
+    cursor: pointer !important;
+    padding: 0.25rem !important;
+    border-radius: 0.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background-color 0.15s ease !important;
+    font-size: 0.875rem !important;
+    opacity: 1 !important;
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    flex-shrink: 0 !important;
+    visibility: visible !important;
+  }
+
+  .panel-close-btn i {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+  }
+
+  .panel-close-btn:hover {
+    background-color: var(--vscode-toolbar-hoverBackground) !important;
+    opacity: 1 !important;
+  }
+
+  .panel-close-btn:active {
+    background-color: var(--vscode-toolbar-activeBackground) !important;
+  }
+
+  .panel-close-btn:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   .panel-block {
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
   }
 
   /*only the footer (last direct child of .panel) removes it */
-  .panel>.panel-block:last-child {
+  .panel > .panel-block:last-child {
     border-bottom: 0;
   }
 
   /* Dropdown styles */
   .dropdown-menu {
-    background-color: var(--vscode-dropdown-background,
-        var(--vscode-editor-background));
-    border: 1px solid var(--vscode-dropdown-border,
-        var(--vscode-editor-foreground));
+    background-color: var(--vscode-dropdown-background, var(--vscode-editor-background));
+    border: 1px solid var(--vscode-dropdown-border, var(--vscode-editor-foreground));
     position: absolute;
     z-index: 50;
     margin-top: 0.25rem;
@@ -243,20 +333,16 @@
     border-radius: 0.25rem;
     display: inline-flex;
     align-items: center;
-    background-color: var(--vscode-dropdown-background,
-        var(--vscode-editor-background));
-    color: var(--vscode-dropdown-foreground,
-        var(--text-primary));
+    background-color: var(--vscode-dropdown-background, var(--vscode-editor-background));
+    color: var(--vscode-dropdown-foreground, var(--text-primary));
   }
 
   .dropdown-button:hover {
-    background-color: var(--vscode-list-hoverBackground,
-        var(--bg-hover));
+    background-color: var(--vscode-list-hoverBackground, var(--bg-hover));
   }
 
   .dropdown-item {
-    color: var(--vscode-dropdown-foreground,
-        var(--text-primary));
+    color: var(--vscode-dropdown-foreground, var(--text-primary));
     display: block;
     padding: 0.5rem 1rem;
     font-size: var(--vscode-font-size);
@@ -264,12 +350,11 @@
   }
 
   .dropdown-item:hover {
-    background-color: var(--vscode-list-hoverBackground,
-        var(--bg-hover));
+    background-color: var(--vscode-list-hoverBackground, var(--bg-hover));
   }
 
   /* Tippy.js theme for add node menu */
-  .tippy-box[data-theme~='dropdown-menu'] {
+  .tippy-box[data-theme~="dropdown-menu"] {
     background-color: var(--vscode-dropdown-background) !important;
     color: var(--vscode-dropdown-foreground) !important;
     border: 1px solid var(--vscode-dropdown-border) !important;
@@ -280,16 +365,16 @@
     font-size: var(--vscode-font-size, 13px);
   }
 
-  .tippy-box[data-theme~='dropdown-menu'] .tippy-content {
+  .tippy-box[data-theme~="dropdown-menu"] .tippy-content {
     padding: 0;
     background: transparent !important;
   }
 
-  .tippy-box[data-theme~='dropdown-menu'] .tippy-arrow {
+  .tippy-box[data-theme~="dropdown-menu"] .tippy-arrow {
     color: var(--vscode-dropdown-background) !important;
   }
 
-  .tippy-box[data-theme~='dropdown-menu'] .tippy-backdrop {
+  .tippy-box[data-theme~="dropdown-menu"] .tippy-backdrop {
     background-color: var(--vscode-dropdown-background) !important;
   }
 
@@ -335,13 +420,16 @@
   .add-node-delete-btn {
     opacity: 0;
     transition: opacity 0.15s ease;
-    padding: 0.25rem 0.5rem;
-    font-size: 1.125rem;
-    line-height: 1;
+    padding: 0.375rem 0.5rem;
+    font-size: 1rem;
+    line-height: 1.25;
     border-radius: 0.25rem;
     background: transparent;
     border: none;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .add-node-default-btn {
@@ -404,7 +492,9 @@
     border-radius: 0.375rem;
     background-color: var(--vscode-input-background);
     overflow: visible;
-    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      border-color 0.12s ease,
+      box-shadow 0.12s ease;
   }
 
   .slot-field-shell:focus-within {
@@ -504,7 +594,10 @@
     top: calc(100% + 0.25rem);
     min-width: 14rem;
     padding: 0.25rem 0;
-    background-color: var(--vscode-menu-background, var(--vscode-dropdown-background, var(--vscode-editorWidget-background)));
+    background-color: var(
+      --vscode-menu-background,
+      var(--vscode-dropdown-background, var(--vscode-editorWidget-background))
+    );
     color: var(--vscode-menu-foreground, var(--vscode-foreground));
     border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
     border-radius: 0.375rem;
@@ -524,7 +617,9 @@
     font-size: 0.875rem;
     cursor: pointer;
     gap: 0.5rem;
-    transition: background-color 0.1s ease, color 0.1s ease;
+    transition:
+      background-color 0.1s ease,
+      color 0.1s ease;
   }
 
   .navbar-menu-option span {
@@ -627,7 +722,11 @@
     overflow: hidden;
     opacity: 0;
     transition: opacity 180ms ease-in-out;
-    background-color: color-mix(in srgb, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1)) 70%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1)) 70%,
+      transparent
+    );
     border-bottom: 1px solid var(--vscode-tab-border, transparent);
   }
 
@@ -649,22 +748,26 @@
   }
 
   .navbar-loading-indicator.is-active.is-deploy .navbar-loading-indicator__bar {
-    background-image: linear-gradient(90deg,
-        transparent 0%,
-        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
-        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
-        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
-        transparent 100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
+      transparent 100%
+    );
     animation: navbar-progress-sweep 1.15s linear infinite;
   }
 
   .navbar-loading-indicator.is-active.is-destroy .navbar-loading-indicator__bar {
-    background-image: linear-gradient(90deg,
-        transparent 0%,
-        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
-        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
-        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
-        transparent 100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
+      transparent 100%
+    );
     animation: navbar-progress-sweep 1.15s linear infinite;
   }
 
@@ -688,7 +791,7 @@
   }
 
   button.processing::after {
-    content: '';
+    content: "";
     pointer-events: none;
     position: absolute;
     inset: 4px;
@@ -700,10 +803,13 @@
 
   button.processing.processing--deploy {
     color: var(--vscode-button-foreground);
-    background-color: color-mix(in srgb,
-        var(--vscode-testing-iconPassed, #73c991) 40%,
-        var(--vscode-button-background, rgba(0, 0, 0, 0)));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconPassed, #73c991) 40%,
+      var(--vscode-button-background, rgba(0, 0, 0, 0))
+    );
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
       0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent);
   }
 
@@ -716,10 +822,13 @@
 
   button.processing.processing--destroy {
     color: var(--vscode-button-foreground);
-    background-color: color-mix(in srgb,
-        var(--vscode-testing-iconFailed, #f14c4c) 40%,
-        var(--vscode-button-background, rgba(0, 0, 0, 0)));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconFailed, #f14c4c) 40%,
+      var(--vscode-button-background, rgba(0, 0, 0, 0))
+    );
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
       0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 25%, transparent);
   }
 
@@ -765,7 +874,7 @@
     margin-right: -0.5rem;
   }
 
-  .columns>* {
+  .columns > * {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
@@ -845,7 +954,7 @@
   }
 
   .vscode-checkbox:checked::after {
-    content: '✓';
+    content: "✓";
     position: absolute;
     top: 50%;
     left: 50%;
@@ -1004,7 +1113,10 @@
     border-radius: 4px;
     padding: 2px 6px;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .tab-scroll-btn:hover {
@@ -1115,11 +1227,118 @@
   .cxtmenu-item:hover {
     background-color: var(--vscode-list-hoverBackground);
   }
+
+  /* Window Manager Styles */
+  .wm-window {
+    position: absolute;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wm-dragging {
+    user-select: none;
+    cursor: grabbing !important;
+  }
+
+  .wm-dragging * {
+    cursor: grabbing !important;
+  }
+
+  .wm-resizing {
+    user-select: none;
+  }
+
+  /* Resize handles */
+  .wm-resize-handle {
+    position: absolute;
+    z-index: 10;
+  }
+
+  /* North */
+  .wm-resize-n {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: n-resize;
+  }
+
+  /* South */
+  .wm-resize-s {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: s-resize;
+  }
+
+  /* East */
+  .wm-resize-e {
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: e-resize;
+  }
+
+  /* West */
+  .wm-resize-w {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: w-resize;
+  }
+
+  /* Northeast */
+  .wm-resize-ne {
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: ne-resize;
+  }
+
+  /* Northwest */
+  .wm-resize-nw {
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: nw-resize;
+  }
+
+  /* Southeast */
+  .wm-resize-se {
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    cursor: se-resize;
+  }
+
+  /* Southwest */
+  .wm-resize-sw {
+    bottom: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    cursor: sw-resize;
+  }
+
+  /* Visual feedback for resize handles on hover */
+  .wm-window:hover .wm-resize-handle {
+    background-color: transparent;
+  }
+
+  .wm-resize-handle:hover {
+    background-color: var(--vscode-focusBorder, rgba(0, 122, 204, 0.3));
+  }
 }
 
 /* Custom utility classes */
 @layer utilities {
-
   /* Text utilities */
   .has-text-weight-normal {
     font-weight: 400;
@@ -1265,7 +1484,10 @@
     );
     opacity: 0.3;
     pointer-events: none;
-    transition: opacity 120ms ease, transform 120ms ease, background-image 120ms ease;
+    transition:
+      opacity 120ms ease,
+      transform 120ms ease,
+      background-image 120ms ease;
   }
 
   .free-text-overlay-scrollbar-visible {
@@ -1312,7 +1534,7 @@
   }
 
   .free-text-markdown code {
-    font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-family: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     border-radius: 0;
   }
 
@@ -1384,7 +1606,7 @@
   }
 
   .free-text-overlay-resize::before {
-    content: '';
+    content: "";
     width: 8px;
     height: 8px;
     border-right: 2px solid rgba(255, 255, 255, 0.9);
@@ -1421,13 +1643,80 @@
   }
 
   .free-text-overlay-rotate::before {
-    content: '\21bb';
+    content: "\21bb";
     color: rgba(255, 255, 255, 0.9);
     font-size: 12px;
     line-height: 1;
   }
 
   .free-text-overlay-rotate-visible {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+
+  .free-shape-overlay-resize {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: se-resize;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-shape-overlay-resize::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(255, 255, 255, 0.9);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.9);
+    transform: rotate(45deg);
+    display: block;
+  }
+
+  .free-shape-overlay-resize-visible {
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+
+  .free-shape-overlay-rotate {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(0, 0, 0, 0.55);
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: grab;
+    transition: opacity 150ms ease;
+    z-index: var(--z-999, 999);
+  }
+
+  .free-shape-overlay-rotate:active {
+    cursor: grabbing;
+  }
+
+  .free-shape-overlay-rotate::before {
+    content: '\21bb';
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .free-shape-overlay-rotate-visible {
     opacity: 0.9;
     pointer-events: auto;
   }

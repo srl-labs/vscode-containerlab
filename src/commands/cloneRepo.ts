@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
-import { runWithSudo } from "../helpers/utils";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
 import { outputChannel } from "../extension";
+import { runCommand } from "../utils/utils";
 
 export async function cloneRepoFromUrl(repoUrl?: string) {
   if (!repoUrl) {
@@ -30,8 +30,14 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
   outputChannel.info(`git clone ${repoUrl} ${dest}`);
 
   try {
-    const out = await runWithSudo(`git clone ${repoUrl} "${dest}"`, 'Git clone', outputChannel, 'generic', true, true) as string;
-    if (out) outputChannel.info(out);
+    const command = `git clone ${repoUrl} "${dest}"`;
+    await runCommand(
+      command,
+      'Clone repository',
+      outputChannel,
+      false,
+      false
+    );
     vscode.window.showInformationMessage(`Repository cloned to ${dest}`);
     vscode.commands.executeCommand('containerlab.refresh');
   } catch (error: any) {
