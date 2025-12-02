@@ -1,37 +1,25 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-
 import * as fs from 'fs';
-import { promises as fsPromises } from 'fs';
 import * as YAML from 'yaml';
 
 import { log } from '../../webview/platform/logging/logger';
-
 import { generateWebviewHtml, EditorTemplateParams, ViewerTemplateParams, TemplateMode } from '../html/HtmlGenerator';
 import { TopoViewerAdaptorClab } from '../services/TopologyAdapter';
 import { ClabTopology, CyElement } from '../../shared/types/topoViewerType';
-import { resolveNodeConfig } from '../../webview/core/nodeConfig';
 import { ClabLabTreeNode } from "../../../treeView/common";
 import { runningLabsProvider } from "../../../extension";
 import * as utils from "../../../utils/index";
-
 import { validateYamlContent } from '../services/YamlValidator';
-import { saveViewport } from '../services/SaveViewport';
-import { annotationsManager } from '../services/AnnotationsFile';
 import { perfMark, perfMeasure, perfSummary } from '../../shared/utilities/PerformanceMonitor';
 import { sleep } from '../../shared/utilities/AsyncUtils';
-import { iconManager } from '../services/IconManager';
 import { nodeCommandService } from '../services/NodeCommandService';
 import { LinkStateManager, ViewModeCache } from '../services/LinkStateManager';
-import { yamlSettingsManager } from '../services/YamlSettingsManager';
-import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
 import { labLifecycleService } from '../services/LabLifecycleService';
-import { simpleEndpointHandlers } from '../services/SimpleEndpointHandlers';
 import { splitViewManager } from '../services/SplitViewManager';
 import { deploymentStateChecker } from '../services/DeploymentStateChecker';
-
-// Common configuration section key used throughout this module
-const CONFIG_SECTION = 'containerlab.editor';
+import { editorEndpointHandlers, EndpointHandlerContext } from '../services/EditorEndpointHandlers';
+import { panelManager } from '../services/PanelManager';
 
 interface WebviewMessage {
   type?: string;
@@ -83,35 +71,35 @@ export class TopoViewerEditor {
       _panel: vscode.WebviewPanel
     ) => Promise<{ result: unknown; error: string | null }>
   > = {
-      'topo-viewport-save': this.handleViewportSaveEndpoint.bind(this),
-      'lab-settings-get': this.handleLabSettingsGetEndpoint.bind(this),
-      'lab-settings-update': this.handleLabSettingsUpdateEndpoint.bind(this),
-      'topo-editor-get-node-config': this.handleGetNodeConfigEndpoint.bind(this),
-      'show-error-message': this.handleShowErrorMessageEndpoint.bind(this),
-      'topo-editor-viewport-save': this.handleViewportSaveEditEndpoint.bind(this),
-      'topo-editor-viewport-save-suppress-notification':
-        this.handleViewportSaveSuppressNotificationEndpoint.bind(this),
-      'topo-editor-undo': this.handleUndoEndpoint.bind(this),
-      'topo-editor-show-vscode-message': this.handleShowVscodeMessageEndpoint.bind(this),
+      'topo-viewport-save': (p) => editorEndpointHandlers.handleViewportSaveEndpoint(p, this.getHandlerContext()),
+      'lab-settings-get': () => editorEndpointHandlers.handleLabSettingsGetEndpoint(this.getHandlerContext()),
+      'lab-settings-update': (p, o) => editorEndpointHandlers.handleLabSettingsUpdateEndpoint(p, o, this.getHandlerContext()),
+      'topo-editor-get-node-config': (_p, o) => editorEndpointHandlers.handleGetNodeConfigEndpoint(o, this.getHandlerContext()),
+      'show-error-message': (p) => editorEndpointHandlers.handleShowErrorMessageEndpoint(p),
+      'topo-editor-viewport-save': (p) => editorEndpointHandlers.handleViewportSaveEditEndpoint(p, this.getHandlerContext()),
+      'topo-editor-viewport-save-suppress-notification': (p) =>
+        editorEndpointHandlers.handleViewportSaveSuppressNotificationEndpoint(p, this.getHandlerContext()),
+      'topo-editor-undo': () => editorEndpointHandlers.handleUndoEndpoint(this.getHandlerContext()),
+      'topo-editor-show-vscode-message': (p) => editorEndpointHandlers.handleShowVscodeMessageEndpoint(p),
       'topo-switch-mode': this.handleSwitchModeEndpoint.bind(this),
-      'open-external': this.handleOpenExternalEndpoint.bind(this),
-      'topo-editor-load-annotations': this.handleLoadAnnotationsEndpoint.bind(this),
-      'topo-editor-save-annotations': this.handleSaveAnnotationsEndpoint.bind(this),
-      'topo-editor-load-viewer-settings': this.handleLoadViewerSettingsEndpoint.bind(this),
-      'topo-editor-save-viewer-settings': this.handleSaveViewerSettingsEndpoint.bind(this),
-      'topo-editor-save-custom-node': this.handleSaveCustomNodeEndpoint.bind(this),
-      'topo-editor-delete-custom-node': this.handleDeleteCustomNodeEndpoint.bind(this),
-      'topo-editor-set-default-custom-node': this.handleSetDefaultCustomNodeEndpoint.bind(this),
-      'refresh-docker-images': this.handleRefreshDockerImagesEndpoint.bind(this),
-      'topo-editor-upload-icon': this.handleUploadIconEndpoint.bind(this),
-      'topo-editor-delete-icon': this.handleDeleteIconEndpoint.bind(this),
-      showError: this.handleShowErrorEndpoint.bind(this),
-      'performance-metrics': this.handlePerformanceMetricsEndpoint.bind(this),
-      'topo-toggle-split-view': this.handleToggleSplitViewEndpoint.bind(this),
-      copyElements: this.handleCopyElementsEndpoint.bind(this),
-      getCopiedElements: this.handleGetCopiedElementsEndpoint.bind(this),
-      'topo-debug-log': this.handleDebugLogEndpoint.bind(this),
-      'topo-editor-open-link': this.handleOpenExternalLinkEndpoint.bind(this)
+      'open-external': (p) => editorEndpointHandlers.handleOpenExternalEndpoint(p),
+      'topo-editor-load-annotations': () => editorEndpointHandlers.handleLoadAnnotationsEndpoint(this.getHandlerContext()),
+      'topo-editor-save-annotations': (_p, o) => editorEndpointHandlers.handleSaveAnnotationsEndpoint(o, this.getHandlerContext()),
+      'topo-editor-load-viewer-settings': () => editorEndpointHandlers.handleLoadViewerSettingsEndpoint(this.getHandlerContext()),
+      'topo-editor-save-viewer-settings': (_p, o) => editorEndpointHandlers.handleSaveViewerSettingsEndpoint(o, this.getHandlerContext()),
+      'topo-editor-save-custom-node': (_p, o) => editorEndpointHandlers.handleSaveCustomNodeEndpoint(o),
+      'topo-editor-delete-custom-node': (_p, o) => editorEndpointHandlers.handleDeleteCustomNodeEndpoint(o),
+      'topo-editor-set-default-custom-node': (_p, o) => editorEndpointHandlers.handleSetDefaultCustomNodeEndpoint(o),
+      'refresh-docker-images': () => editorEndpointHandlers.handleRefreshDockerImagesEndpoint(),
+      'topo-editor-upload-icon': () => editorEndpointHandlers.handleUploadIconEndpoint(),
+      'topo-editor-delete-icon': (_p, o) => editorEndpointHandlers.handleDeleteIconEndpoint(o),
+      showError: (_p, o) => editorEndpointHandlers.handleShowErrorEndpoint(o),
+      'performance-metrics': (p, o) => editorEndpointHandlers.handlePerformanceMetricsEndpoint(p, o),
+      'topo-toggle-split-view': () => editorEndpointHandlers.handleToggleSplitViewEndpoint(this.getHandlerContext()),
+      copyElements: (_p, o) => editorEndpointHandlers.handleCopyElementsEndpoint(this.context, o),
+      getCopiedElements: (_p, _o, panel) => editorEndpointHandlers.handleGetCopiedElementsEndpoint(this.context, panel),
+      'topo-debug-log': (_p, o) => editorEndpointHandlers.handleDebugLogEndpoint(o),
+      'topo-editor-open-link': (p) => editorEndpointHandlers.handleOpenExternalLinkEndpoint(p)
     };
 
   constructor(context: vscode.ExtensionContext) {
@@ -126,37 +114,32 @@ export class TopoViewerEditor {
     context.subscriptions.push(this.dockerImagesSubscription);
   }
 
+  private getHandlerContext(): EndpointHandlerContext {
+    return {
+      lastYamlFilePath: this.lastYamlFilePath,
+      currentLabName: this.currentLabName,
+      adaptor: this.adaptor,
+      context: this.context,
+      currentPanel: this.currentPanel,
+      isInternalUpdate: this.isInternalUpdate,
+      setInternalUpdate: (v: boolean) => { this.isInternalUpdate = v; },
+      updateCachedYaml: () => this.updateCachedYamlFromCurrentDoc(),
+      postMessage: (msg: any) => { if (this.currentPanel) this.currentPanel.webview.postMessage(msg); }
+    };
+  }
+
   private logDebug(message: string): void {
     log.debug(message);
   }
 
   private buildDefaultLabYaml(labName: string, savedPath?: string): string {
     const saved = savedPath ? ` # saved as ${savedPath}` : '';
-    return `name: ${labName}${saved}
-
-topology:
-  nodes:
-    srl1:
-      kind: nokia_srlinux
-      type: ixr-d2l
-      image: ghcr.io/nokia/srlinux:latest
-
-    srl2:
-      kind: nokia_srlinux
-      type: ixr-d2l
-      image: ghcr.io/nokia/srlinux:latest
-
-  links:
-    # inter-switch link
-    - endpoints: [ srl1:e1-1, srl2:e1-1 ]
-    - endpoints: [ srl1:e1-2, srl2:e1-2 ]
-`;
+    return `name: ${labName}${saved}\n\ntopology:\n  nodes:\n    srl1:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n    srl2:\n      kind: nokia_srlinux\n      type: ixr-d2l\n      image: ghcr.io/nokia/srlinux:latest\n\n  links:\n    - endpoints: [ srl1:e1-1, srl2:e1-1 ]\n    - endpoints: [ srl1:e1-2, srl2:e1-2 ]\n`;
   }
 
   private async validateYaml(yamlContent: string): Promise<boolean> {
     return validateYamlContent(this.context, yamlContent);
   }
-
   private setupFileWatcher(): void {
     if (this.fileWatcher) {
       this.fileWatcher.dispose();
@@ -210,7 +193,6 @@ topology:
       });
     }
   }
-
   private async handleManualSave(): Promise<void> {
     this.logDebug('handleManualSave: start');
     // Read the current file content
@@ -232,7 +214,6 @@ topology:
     // Content has changed, proceed with normal update
     await this.triggerUpdate(true);
   }
-
   private async triggerUpdate(sendSaveAck: boolean): Promise<void> {
     this.logDebug(`triggerUpdate: invoked (sendSaveAck=${sendSaveAck})`);
     if (this.isUpdating) {
@@ -275,7 +256,6 @@ topology:
       await this.triggerUpdate(nextSaveAck);
     }
   }
-
   /**
    * Creates the directory (if needed) and writes out the YAML template
    * to a file path, ensuring it ends with '.clab.yml'.
@@ -676,66 +656,20 @@ topology:
     }
   }
 
-  private escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+  private getTemplateParamsContext() {
+    return {
+      deploymentState: this.deploymentState,
+      lastYamlFilePath: this.lastYamlFilePath,
+      currentClabTopo: this.adaptor.currentClabTopo
+    };
   }
 
   private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
-    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-    const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
-    return {
-      deploymentState: this.deploymentState,
-      viewerMode: 'viewer',
-      currentLabPath: this.lastYamlFilePath,
-      lockLabByDefault
-    };
+    return panelManager.getViewerTemplateParams(this.getTemplateParamsContext());
   }
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
-    await utils.refreshDockerImages();
-    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-    const lockLabByDefault = config.get<boolean>('lockLabByDefault', true);
-    const legacyIfacePatternMapping = customNodeConfigManager.getLegacyInterfacePatternMapping(config);
-    const updateLinkEndpointsOnKindChange = config.get<boolean>(
-      'updateLinkEndpointsOnKindChange',
-      true
-    );
-    const rawCustomNodes = config.get<unknown>('customNodes', []);
-    const normalizedCustomNodes = Array.isArray(rawCustomNodes) ? rawCustomNodes : [];
-    const customNodes = await customNodeConfigManager.ensureCustomNodeInterfacePatterns(
-      config,
-      normalizedCustomNodes,
-      legacyIfacePatternMapping
-    );
-    const ifacePatternMapping = customNodeConfigManager.buildInterfacePatternMapping(
-      customNodes,
-      legacyIfacePatternMapping
-    );
-    const { defaultNode, defaultKind, defaultType } = customNodeConfigManager.getDefaultCustomNode(customNodes);
-    const imageMapping = customNodeConfigManager.buildImageMapping(customNodes);
-    const dockerImages = utils.getDockerImages();
-    const customIcons = await iconManager.loadCustomIcons();
-    return {
-      imageMapping,
-      ifacePatternMapping,
-      defaultKind,
-      defaultType,
-      updateLinkEndpointsOnKindChange,
-      dockerImages,
-      customNodes,
-      defaultNode,
-      currentLabPath: this.lastYamlFilePath,
-      topologyDefaults: this.adaptor.currentClabTopo?.topology?.defaults || {},
-      topologyKinds: this.adaptor.currentClabTopo?.topology?.kinds || {},
-      topologyGroups: this.adaptor.currentClabTopo?.topology?.groups || {},
-      lockLabByDefault,
-      customIcons
-    };
+    return panelManager.getEditorTemplateParams(this.getTemplateParamsContext());
   }
 
   private async notifyWebviewModeChanged(): Promise<void> {
@@ -761,35 +695,21 @@ topology:
       }
     });
   }
-
   public async postLifecycleStatus(payload: {
     commandType: 'deploy' | 'destroy' | 'redeploy';
     status: 'success' | 'error';
     errorMessage?: string;
   }): Promise<void> {
     const panel = this.currentPanel;
-    if (!panel) {
-      this.logDebug('postLifecycleStatus: aborted (no panel)');
-      return;
-    }
-
+    if (!panel) { this.logDebug('postLifecycleStatus: aborted (no panel)'); return; }
     try {
-      await panel.webview.postMessage({
-        type: 'lab-lifecycle-status',
-        data: payload
-      });
+      await panel.webview.postMessage({ type: 'lab-lifecycle-status', data: payload });
     } catch (error) {
-      log.error(
-        `postLifecycleStatus failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+      log.error(`postLifecycleStatus failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-
   private async updateCachedYamlFromCurrentDoc(): Promise<void> {
-    if (!this.currentLabName) {
-      return;
-    }
-
+    if (!this.currentLabName) return;
     const doc = this.adaptor.currentClabDoc;
     if (!doc) {
       return;
@@ -848,115 +768,19 @@ topology:
   }
 
   private normalizeFileUri(fileUri: vscode.Uri): vscode.Uri {
-    if (this.lastYamlFilePath && fileUri.fsPath !== this.lastYamlFilePath) {
-      const corrected = vscode.Uri.file(this.lastYamlFilePath);
-      log.info(`Using corrected file path: ${corrected.fsPath}`);
-      return corrected;
-    }
-    return fileUri;
+    return panelManager.normalizeFileUri(fileUri, this.lastYamlFilePath);
   }
 
   private revealIfPanelExists(column: vscode.ViewColumn | undefined): boolean {
-    if (!this.currentPanel) return false;
-    this.currentPanel.reveal(column);
-    return true;
+    return panelManager.revealIfPanelExists(this.currentPanel, column);
   }
 
   private initPanel(labName: string, column: vscode.ViewColumn | undefined): vscode.WebviewPanel {
-    const panel = vscode.window.createWebviewPanel(
-      this.viewType,
-      labName,
-      column || vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(this.context.extensionUri, 'topoViewerData', labName),
-          vscode.Uri.joinPath(this.context.extensionUri, 'dist'),
-          vscode.Uri.joinPath(this.context.extensionUri, 'schema'),
-        ],
-        retainContextWhenHidden: true,
-      }
-    );
-    const iconUri = vscode.Uri.joinPath(
-      this.context.extensionUri,
-      'resources',
-      'containerlab.png'
-    );
-    panel.iconPath = iconUri;
-    return panel;
+    return panelManager.createPanel(this.context, this.viewType, labName, column);
   }
 
   private setInitialLoadingContent(panel: vscode.WebviewPanel, labName: string): void {
-    panel.webview.html = this.buildInitialLoadingHtml(labName);
-  }
-
-  private buildInitialLoadingHtml(labName: string): string {
-    const safeLabName = this.escapeHtml(labName || 'Topology');
-    return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${safeLabName} – Loading TopoViewer</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-      }
-      body {
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: var(--vscode-editor-background, #1e1e1e);
-        color: var(--vscode-editor-foreground, #cccccc);
-        font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-      }
-      .container {
-        text-align: center;
-        max-width: 420px;
-        padding: 2rem;
-      }
-      .spinner {
-        width: 48px;
-        height: 48px;
-        border: 4px solid rgba(128, 128, 128, 0.25);
-        border-top-color: var(--vscode-progressBar-background, #007acc);
-        border-radius: 50%;
-        margin: 0 auto 1.5rem;
-        animation: spin 0.8s linear infinite;
-      }
-      h1 {
-        font-size: 1.2rem;
-        margin: 0 0 0.75rem;
-        font-weight: 600;
-      }
-      p {
-        margin: 0;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        color: var(--vscode-descriptionForeground, inherit);
-      }
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="spinner" role="presentation" aria-hidden="true"></div>
-      <h1>Loading TopoViewer…</h1>
-      <p>Preparing topology data for <strong>${safeLabName}</strong>. This may take a moment on busy systems.</p>
-    </div>
-  </body>
-</html>`;
+    panelManager.setInitialLoadingContent(panel, labName);
   }
 
   private async initializePanelData(fileUri: vscode.Uri, labName: string): Promise<void> {
@@ -1176,31 +1000,6 @@ topology:
     });
   }
 
-  private async updateLabSettings(settings: any): Promise<{ success: boolean; yamlContent?: string; error?: string }> {
-    try {
-      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-      const doc = YAML.parseDocument(yamlContent, { keepCstNodes: true } as any);
-      const { hadPrefix, hadMgmt } = yamlSettingsManager.applyExistingSettings(doc, settings);
-      let updatedYaml = doc.toString();
-      updatedYaml = yamlSettingsManager.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
-      this.isInternalUpdate = true;
-      await fsPromises.writeFile(this.lastYamlFilePath, updatedYaml, 'utf8');
-      if (this.currentPanel) {
-        this.currentPanel.webview.postMessage({
-          type: 'yaml-content-updated',
-          yamlContent: updatedYaml,
-        });
-      }
-      this.isInternalUpdate = false;
-      return { success: true, yamlContent: updatedYaml };
-    } catch (err) {
-      this.isInternalUpdate = false;
-      log.error(`Error updating lab settings: ${err}`);
-      vscode.window.showErrorMessage(`Failed to update lab settings: ${err}`);
-      return { success: false, error: String(err) };
-    }
-  }
-
   private async handleGeneralEndpoint(
     endpointName: string,
     payload: string | undefined,
@@ -1214,203 +1013,6 @@ topology:
       return { result: null, error };
     }
     return handler(payload, payloadObj, panel);
-  }
-
-  private async handleViewportSaveEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      await saveViewport({ yamlFilePath: this.lastYamlFilePath, payload: payload as string, mode: 'view' });
-      const result = 'Saved viewport positions successfully.';
-      log.info(result);
-      return { result, error: null };
-    } catch (err) {
-      log.error(`Error executing endpoint "topo-viewport-save": ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error: null };
-    }
-  }
-
-  private async handleLabSettingsGetEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-      const parsed = YAML.parse(yamlContent) as any;
-      const settings = { name: parsed.name, prefix: parsed.prefix, mgmt: parsed.mgmt };
-      log.info('Lab settings retrieved successfully');
-      return { result: { success: true, settings }, error: null };
-    } catch (err) {
-      log.error(`Error getting lab settings: ${err}`);
-      return { result: { success: false, error: String(err) }, error: null };
-    }
-  }
-
-  private async handleLabSettingsUpdateEndpoint(
-    payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    const settings = typeof payload === 'string' ? JSON.parse(payload) : payloadObj;
-    const res = await this.updateLabSettings(settings);
-    return {
-      result: res.success ? { success: true, yamlContent: res.yamlContent } : { success: false, error: res.error },
-      error: null
-    };
-  }
-
-  private async handleGetNodeConfigEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const nodeName = typeof payloadObj === 'string' ? payloadObj : payloadObj?.node || payloadObj?.nodeName;
-      if (!nodeName) {
-        throw new Error('Node name is required');
-      }
-      if (!this.lastYamlFilePath) {
-        throw new Error('No lab YAML file loaded');
-      }
-      const yamlContent = await fsPromises.readFile(this.lastYamlFilePath, 'utf8');
-      const topo = YAML.parse(yamlContent) as any;
-      this.adaptor.currentClabTopo = topo;
-      const nodeObj = topo.topology?.nodes?.[nodeName] || {};
-      const mergedNode = resolveNodeConfig(topo as any, nodeObj || {});
-      const nodePropKeys = new Set(Object.keys(nodeObj || {}));
-      const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
-      log.info(`Node config retrieved for ${nodeName}`);
-      return { result: { ...mergedNode, inherited: inheritedProps }, error: null };
-    } catch (err) {
-      const error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
-      log.error(error);
-      return { result: null, error };
-    }
-  }
-
-  private async handleShowErrorMessageEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleShowErrorMessageEndpoint(payload);
-  }
-
-  private async handlePerformanceMetricsEndpoint(
-    payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handlePerformanceMetricsEndpoint(payload, payloadObj);
-  }
-
-  private async handleViewportSaveEditEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      await saveViewport({
-        adaptor: this.adaptor,
-        yamlFilePath: this.lastYamlFilePath,
-        payload: payload as string,
-        mode: 'edit',
-        setInternalUpdate: v => {
-          this.isInternalUpdate = v;
-        }
-      });
-      await this.updateCachedYamlFromCurrentDoc();
-      const result = 'Saved topology with preserved comments!';
-      log.info(result);
-      return { result, error: null };
-    } catch (err) {
-      log.error(`Error executing endpoint "topo-editor-viewport-save": ${JSON.stringify(err, null, 2)}`);
-      this.isInternalUpdate = false;
-      return { result: null, error: null };
-    }
-  }
-
-  private async handleViewportSaveSuppressNotificationEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      await saveViewport({
-        adaptor: this.adaptor,
-        yamlFilePath: this.lastYamlFilePath,
-        payload: payload as string,
-        mode: 'edit',
-        setInternalUpdate: v => {
-          this.isInternalUpdate = v;
-        }
-      });
-      await this.updateCachedYamlFromCurrentDoc();
-      return { result: null, error: null };
-    } catch (err) {
-      const result = 'Error executing endpoint "topo-editor-viewport-save-suppress-notification".';
-      log.error(
-        `Error executing endpoint "topo-editor-viewport-save-suppress-notification": ${JSON.stringify(err, null, 2)}`
-      );
-      this.isInternalUpdate = false;
-      return { result, error: null };
-    }
-  }
-
-  private async handleUndoEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const document = await vscode.workspace.openTextDocument(this.lastYamlFilePath);
-      const currentActiveEditor = vscode.window.activeTextEditor;
-      const existingEditor = vscode.window.visibleTextEditors.find(
-        editor => editor.document.uri.fsPath === document.uri.fsPath
-      );
-      if (existingEditor) {
-        await vscode.window.showTextDocument(document, {
-          viewColumn: existingEditor.viewColumn,
-          preview: false,
-          preserveFocus: false
-        });
-      } else {
-        const targetColumn = vscode.ViewColumn.Beside;
-        await vscode.window.showTextDocument(document, {
-          viewColumn: targetColumn,
-          preview: false,
-          preserveFocus: false
-        });
-      }
-      await sleep(50);
-      await vscode.commands.executeCommand('undo');
-      await document.save();
-      if (currentActiveEditor && !existingEditor) {
-        await vscode.window.showTextDocument(currentActiveEditor.document, {
-          viewColumn: currentActiveEditor.viewColumn,
-          preview: false,
-          preserveFocus: false
-        });
-      }
-      const result = 'Undo operation completed successfully';
-      log.info('Undo operation executed on YAML file');
-      return { result, error: null };
-    } catch (err) {
-      const result = 'Error executing undo operation';
-      log.error(`Error executing undo operation: ${JSON.stringify(err, null, 2)}`);
-      return { result, error: null };
-    }
-  }
-
-  private async handleShowVscodeMessageEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleShowVscodeMessageEndpoint(payload);
   }
 
   private async handleSwitchModeEndpoint(
@@ -1468,252 +1070,6 @@ topology:
       log.debug(`Mode switch completed, flag cleared`);
       this.logDebug('handleSwitchModeEndpoint: completed');
       await sleep(100);
-    }
-  }
-
-  private async handleOpenExternalEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleOpenExternalEndpoint(payload);
-  }
-
-  private async handleOpenExternalLinkEndpoint(
-    payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleOpenExternalLinkEndpoint(payload);
-  }
-
-  private async handleLoadAnnotationsEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-      const result = {
-        annotations: annotations.freeTextAnnotations || [],
-        freeShapeAnnotations: annotations.freeShapeAnnotations || [],
-        groupStyles: annotations.groupStyleAnnotations || []
-      };
-      log.info(
-        `Loaded ${annotations.freeTextAnnotations?.length || 0} text annotations, ${annotations.freeShapeAnnotations?.length || 0} shape annotations, and ${annotations.groupStyleAnnotations?.length || 0} group styles`
-      );
-      return { result, error: null };
-    } catch (err) {
-      log.error(`Error loading annotations: ${JSON.stringify(err, null, 2)}`);
-      return { result: { annotations: [], freeShapeAnnotations: [], groupStyles: [] }, error: null };
-    }
-  }
-
-  private async handleSaveAnnotationsEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const data = payloadObj;
-      const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-      // Preserve existing values when not provided in the payload
-      // This allows individual managers (freeText, freeShapes, groupStyle) to save independently
-      await annotationsManager.saveAnnotations(this.lastYamlFilePath, {
-        freeTextAnnotations: data.annotations !== undefined ? data.annotations : existing.freeTextAnnotations,
-        freeShapeAnnotations: data.freeShapeAnnotations !== undefined ? data.freeShapeAnnotations : existing.freeShapeAnnotations,
-        groupStyleAnnotations: data.groupStyles !== undefined ? data.groupStyles : existing.groupStyleAnnotations,
-        cloudNodeAnnotations: existing.cloudNodeAnnotations,
-        nodeAnnotations: existing.nodeAnnotations,
-        // Preserve viewer settings to avoid accidental loss when other managers save
-        viewerSettings: (existing as any).viewerSettings
-      });
-      log.info(
-        `Saved ${data.annotations?.length || 0} text annotations, ${data.freeShapeAnnotations?.length || 0} shape annotations, and ${data.groupStyles?.length || 0} group styles`
-      );
-      return { result: { success: true }, error: null };
-    } catch (err) {
-      const error = `Error saving annotations: ${err}`;
-      log.error(`Error saving annotations: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
-  }
-
-  private async handleLoadViewerSettingsEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-      const viewerSettings = (annotations as any).viewerSettings || {};
-      return { result: { viewerSettings }, error: null };
-    } catch (err) {
-      log.error(`Error loading viewer settings: ${JSON.stringify(err, null, 2)}`);
-      return { result: { viewerSettings: {} }, error: null };
-    }
-  }
-
-  private async handleSaveViewerSettingsEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const data = payloadObj;
-      const existing = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
-      const merged = {
-        ...existing,
-        viewerSettings: {
-          ...(existing as any).viewerSettings,
-          ...(data?.viewerSettings || {})
-        }
-      } as any;
-      await annotationsManager.saveAnnotations(this.lastYamlFilePath, merged);
-      log.info('Saved viewer settings');
-      return { result: { success: true }, error: null };
-    } catch (err) {
-      const error = `Error saving viewer settings: ${err}`;
-      log.error(`Error saving viewer settings: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
-  }
-
-  private async handleSaveCustomNodeEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return customNodeConfigManager.saveCustomNode(payloadObj);
-  }
-
-  private async handleSetDefaultCustomNodeEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    const data = payloadObj as { name?: string };
-    return customNodeConfigManager.setDefaultCustomNode(data?.name || '');
-  }
-
-  private async handleDeleteCustomNodeEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return customNodeConfigManager.deleteCustomNode(payloadObj?.name || '');
-  }
-
-  private async handleShowErrorEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleShowErrorEndpoint(payloadObj);
-  }
-
-  private async handleToggleSplitViewEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    const isOpen = await splitViewManager.toggleSplitView(this.lastYamlFilePath, this.currentPanel);
-    log.info(`Split view toggled: ${isOpen ? 'opened' : 'closed'}`);
-    return { result: { splitViewOpen: isOpen }, error: null };
-  }
-
-  private async handleCopyElementsEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleCopyElementsEndpoint(this.context, payloadObj);
-  }
-
-  private async handleGetCopiedElementsEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleGetCopiedElementsEndpoint(this.context, panel);
-  }
-
-  private async handleDebugLogEndpoint(
-    _payload: string | undefined,
-    payloadObj: any
-  ): Promise<{ result: unknown; error: string | null }> {
-    return simpleEndpointHandlers.handleDebugLogEndpoint(payloadObj);
-  }
-
-  private async handleRefreshDockerImagesEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      await utils.refreshDockerImages();
-      const dockerImages = utils.getDockerImages();
-      log.info(`Docker images refreshed, found ${dockerImages.length} images`);
-      return { result: { success: true, dockerImages }, error: null };
-    } catch (err) {
-      const error = `Error refreshing docker images: ${err}`;
-      log.error(`Error refreshing docker images: ${JSON.stringify(err, null, 2)}`);
-      return { result: null, error };
-    }
-  }
-
-  private async handleUploadIconEndpoint(
-    _payload: string | undefined,
-    _payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const uploadSource = await iconManager.promptIconUploadSource();
-      if (!uploadSource) {
-        return { result: { cancelled: true }, error: null };
-      }
-
-      const selection = await vscode.window.showOpenDialog(
-        iconManager.getIconPickerOptions(uploadSource)
-      );
-      if (!selection || selection.length === 0) {
-        return { result: { cancelled: true }, error: null };
-      }
-
-      const { name } = await iconManager.importCustomIcon(selection[0]);
-      const customIcons = await iconManager.loadCustomIcons();
-      void vscode.window.showInformationMessage(`Added custom icon "${name}".`);
-      return { result: { success: true, customIcons, lastAddedIcon: name }, error: null };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error(`Failed to import custom icon: ${message}`);
-      void vscode.window.showErrorMessage(`Failed to add custom icon: ${message}`);
-      return { result: null, error: message };
-    }
-  }
-
-  private async handleDeleteIconEndpoint(
-    _payload: string | undefined,
-    payloadObj: any,
-    _panel: vscode.WebviewPanel
-  ): Promise<{ result: unknown; error: string | null }> {
-    try {
-      const iconName = typeof payloadObj?.iconName === 'string' ? payloadObj.iconName.trim() : '';
-      if (!iconName) {
-        throw new Error('Icon name is required.');
-      }
-      const removed = await iconManager.deleteCustomIcon(iconName);
-      if (!removed) {
-        throw new Error(`Custom icon "${iconName}" was not found.`);
-      }
-      const customIcons = await iconManager.loadCustomIcons();
-      void vscode.window.showInformationMessage(`Deleted custom icon "${iconName}".`);
-      return { result: { success: true, customIcons, deletedIcon: iconName }, error: null };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error(`Failed to delete custom icon: ${message}`);
-      void vscode.window.showErrorMessage(`Failed to delete custom icon: ${message}`);
-      return { result: null, error: message };
     }
   }
 
@@ -1838,19 +1194,11 @@ topology:
       (newName: string) => { this.currentLabName = newName; }
     );
   }
-
-  /**
-   * Opens the specified file (usually the created YAML template) in a split editor.
-   *
-   * @param filePath - The absolute path to the file.
-   */
+  /** Opens the specified file in a split editor. */
   public async openTemplateFile(filePath: string): Promise<void> {
     await splitViewManager.openTemplateFile(filePath, this.currentPanel);
   }
-
-  /**
-   * Toggle the split view with YAML editor
-   */
+  /** Toggle the split view with YAML editor. */
   public async toggleSplitView(): Promise<void> {
     await splitViewManager.toggleSplitView(this.lastYamlFilePath, this.currentPanel);
   }

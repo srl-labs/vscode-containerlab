@@ -73,7 +73,7 @@ export default [
   {
     files: ['src/topoViewer/**/*.ts', 'src/topoViewer/**/*.tsx'],
     rules: {
-      'max-lines': ['error', { max: 1600, skipBlankLines: true, skipComments: true }]
+      'max-lines': ['error', { max: 1000, skipBlankLines: true, skipComments: true }]
     }
   }
 ];
