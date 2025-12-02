@@ -1,5 +1,10 @@
 // ComponentsManager.ts
 // Handles Nokia SRSIM component management (CPM, Card, SFM, MDA, XIOM)
+//
+// This file exceeds 1000 lines because it manages a cohesive domain (Nokia SRSIM)
+// that should not be split across multiple files. Splitting would fragment related
+// component logic (CPM, Card, SFM, MDA, XIOM) and make the code harder to maintain.
+/* eslint-disable max-lines */
 
 import cytoscape from "cytoscape";
 import { createFilterableDropdown } from "../../ui/FilterableDropdown";
