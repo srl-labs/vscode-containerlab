@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import Docker from 'dockerode';
 
-import { TopoViewerEditor } from './topoViewer/providers/topoViewerEditorWebUiFacade';
+import { TopoViewerEditor } from './topoViewer/extension/EditorProvider';
 import { setCurrentTopoViewer } from './commands/graph';
 
 

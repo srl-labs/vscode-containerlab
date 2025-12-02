@@ -1,4 +1,4 @@
-import { ClabTopology, ClabNode } from '../types/topoViewerType';
+import { ClabTopology, ClabNode } from '../shared/types/topoViewerType';
 
 /**
  * Applies Containerlab inheritance rules to compute the effective
