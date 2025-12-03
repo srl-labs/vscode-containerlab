@@ -5,7 +5,7 @@
   "icon": "resources/containerlab.png",
   "description": "Manages containerlab topologies in VS Code",
   "author": "SRL Labs",
-  "version": "0.20.2",
+  "version": "0.21.0",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
     "vscode": "^1.99.0"
@@ -1412,11 +1412,9 @@
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/chai": "^5.2.3",
-    "@types/cytoscape": "^3.31.0",
     "@types/cytoscape-cxtmenu": "^3.4.5",
     "@types/cytoscape-edgehandles": "^4.0.5",
     "@types/dockerode": "^3.3.47",
-    "@types/dompurify": "^3.2.0",
     "@types/leaflet": "^1.9.21",
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-emoji": "^3.0.1",
@@ -1424,8 +1422,8 @@
     "@types/node": "^24.10.1",
     "@types/sinon": "^21.0.0",
     "@types/vscode": "^1.99.0",
-    "@typescript-eslint/eslint-plugin": "^8.47.0",
-    "@typescript-eslint/parser": "^8.47.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
     "@vscode/vsce": "^3.7.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
@@ -1458,14 +1456,14 @@
     "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
     "postcss-loader": "^8.2.0",
-    "prettier": "^3.6.2",
+    "prettier": "^3.7.4",
     "sinon": "^21.0.0",
     "tailwindcss": "^4.1.17",
     "tippy.js": "^6.3.7",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.47.0",
+    "typescript-eslint": "^8.48.1",
     "uplot": "^1.6.32",
     "webpack-cli": "^6.0.1",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.2"
   }
 }
