@@ -23,7 +23,7 @@ function getDeploymentDisplay(state: DeploymentState): { text: string; className
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onZoomToFit, onToggleLayout }) => {
-  const { state } = useTopoViewer();
+  const { state, toggleLock } = useTopoViewer();
   const deploymentDisplay = getDeploymentDisplay(state.deploymentState);
 
   return (
@@ -51,6 +51,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onZoomToFit, onToggleLayout }) =
 
       {/* Center: Buttons */}
       <div className="navbar-buttons">
+        {/* Lock/Unlock toggle - only show in edit mode */}
+        {state.mode === 'edit' && (
+          <NavButton
+            icon={state.isLocked ? 'fa-lock' : 'fa-lock-open'}
+            title={state.isLocked ? 'Unlock for Editing' : 'Lock Editing'}
+            onClick={toggleLock}
+            active={!state.isLocked}
+          />
+        )}
         <NavButton
           icon="fa-expand"
           title="Fit to Viewport"

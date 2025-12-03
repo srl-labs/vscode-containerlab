@@ -186,6 +186,15 @@
     background-color: var(--vscode-button-hoverBackground);
   }
 
+  .btn-icon.active {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+  }
+
+  .btn-icon.active:hover {
+    background-color: var(--vscode-button-hoverBackground);
+  }
+
   .btn-icon i {
     font-size: 1.25rem;
   }
