@@ -28,7 +28,6 @@ declare global {
     viewportSelectLinkLabelMode?: (mode: string) => void;
     viewportCloseLinkLabelMenu?: () => void;
     viewportButtonsCaptureViewportAsSvg?: () => void;
-    viewportButtonsUndo?: () => void;
     showPanelAbout?: () => void;
     // group manager bindings
     orphaningNode?: (..._args: any[]) => void;

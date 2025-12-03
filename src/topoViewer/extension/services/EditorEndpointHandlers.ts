@@ -11,7 +11,6 @@ import { customNodeConfigManager } from './CustomNodeConfigManager';
 import { simpleEndpointHandlers } from './SimpleEndpointHandlers';
 import { splitViewManager } from './SplitViewManager';
 import { resolveNodeConfig } from '../../webview/core/nodeConfig';
-import { sleep } from '../../shared/utilities/AsyncUtils';
 import { TopoViewerAdaptorClab } from './TopologyAdapter';
 import * as utils from '../../../utils/index';
 
@@ -342,51 +341,6 @@ class EditorEndpointHandlers {
       const error = `Failed to get node config: ${err instanceof Error ? err.message : String(err)}`;
       log.error(error);
       return { result: null, error };
-    }
-  }
-
-  // ============================================================================
-  // Undo Handler
-  // ============================================================================
-
-  async handleUndoEndpoint(ctx: EndpointHandlerContext): Promise<EndpointResult> {
-    try {
-      const document = await vscode.workspace.openTextDocument(ctx.lastYamlFilePath);
-      const currentActiveEditor = vscode.window.activeTextEditor;
-      const existingEditor = vscode.window.visibleTextEditors.find(
-        editor => editor.document.uri.fsPath === document.uri.fsPath
-      );
-      if (existingEditor) {
-        await vscode.window.showTextDocument(document, {
-          viewColumn: existingEditor.viewColumn,
-          preview: false,
-          preserveFocus: false
-        });
-      } else {
-        const targetColumn = vscode.ViewColumn.Beside;
-        await vscode.window.showTextDocument(document, {
-          viewColumn: targetColumn,
-          preview: false,
-          preserveFocus: false
-        });
-      }
-      await sleep(50);
-      await vscode.commands.executeCommand('undo');
-      await document.save();
-      if (currentActiveEditor && !existingEditor) {
-        await vscode.window.showTextDocument(currentActiveEditor.document, {
-          viewColumn: currentActiveEditor.viewColumn,
-          preview: false,
-          preserveFocus: false
-        });
-      }
-      const result = 'Undo operation completed successfully';
-      log.info('Undo operation executed on YAML file');
-      return { result, error: null };
-    } catch (err) {
-      const result = 'Error executing undo operation';
-      log.error(`Error executing undo operation: ${JSON.stringify(err, null, 2)}`);
-      return { result, error: null };
     }
   }
 

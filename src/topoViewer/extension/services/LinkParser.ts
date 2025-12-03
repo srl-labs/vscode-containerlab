@@ -4,6 +4,20 @@
  * Constants and utilities for parsing containerlab link endpoints.
  */
 
+// Import shared constants from LinkTypes to avoid duplication
+import {
+  STR_HOST,
+  STR_MGMT_NET,
+  PREFIX_MACVLAN,
+  PREFIX_VXLAN,
+  PREFIX_VXLAN_STITCH,
+  PREFIX_DUMMY,
+  splitEndpointLike,
+} from '../../shared/utilities/LinkTypes';
+
+// Re-export imported constants for consumers that import from LinkParser
+export { STR_HOST, STR_MGMT_NET, PREFIX_MACVLAN, PREFIX_VXLAN, PREFIX_VXLAN_STITCH, PREFIX_DUMMY };
+
 export const TYPES = {
   HOST: 'host',
   MGMT_NET: 'mgmt-net',
@@ -17,15 +31,9 @@ export const TYPES = {
 
 export type SpecialNodeType = typeof TYPES[keyof typeof TYPES];
 
-export const PREFIX_MACVLAN = 'macvlan:';
-export const PREFIX_VXLAN = 'vxlan:';
-export const PREFIX_VXLAN_STITCH = 'vxlan-stitch:';
-export const PREFIX_DUMMY = 'dummy';
-export const STR_HOST = 'host';
-export const STR_MGMT_NET = 'mgmt-net';
 export const NODE_KIND_BRIDGE = TYPES.BRIDGE;
 export const NODE_KIND_OVS_BRIDGE = TYPES.OVS_BRIDGE;
-export const SINGLE_ENDPOINT_TYPES = [STR_HOST, STR_MGMT_NET, TYPES.MACVLAN, TYPES.DUMMY, TYPES.VXLAN, TYPES.VXLAN_STITCH];
+export const SINGLE_ENDPOINT_TYPES: string[] = [STR_HOST, STR_MGMT_NET, TYPES.MACVLAN, TYPES.DUMMY, TYPES.VXLAN, TYPES.VXLAN_STITCH];
 
 export type DummyContext = { dummyCounter: number; dummyLinkMap: Map<any, string> };
 
@@ -42,6 +50,7 @@ export interface NormalizedLink {
 
 /**
  * Splits an endpoint string into node and interface components.
+ * Delegates to splitEndpointLike from LinkTypes for consistent behavior.
  *
  * Example:
  * - "Spine-01:e1-1" => { node: "Spine-01", iface: "e1-1" }
@@ -51,29 +60,7 @@ export interface NormalizedLink {
 export function splitEndpoint(
   endpoint: string | { node: string; interface?: string }
 ): EndpointParts {
-  if (typeof endpoint === 'string') {
-    // Special handling for macvlan endpoints
-    if (
-      endpoint.startsWith(PREFIX_MACVLAN) ||
-      endpoint.startsWith(PREFIX_VXLAN) ||
-      endpoint.startsWith(PREFIX_VXLAN_STITCH) ||
-      endpoint.startsWith(PREFIX_DUMMY)
-    ) {
-      return { node: endpoint, iface: '' };
-    }
-
-    const parts = endpoint.split(':');
-    if (parts.length === 2) {
-      return { node: parts[0], iface: parts[1] };
-    }
-    return { node: endpoint, iface: '' };
-  }
-
-  if (endpoint && typeof endpoint === 'object') {
-    return { node: endpoint.node, iface: endpoint.interface ?? '' };
-  }
-
-  return { node: '', iface: '' };
+  return splitEndpointLike(endpoint);
 }
 
 /**

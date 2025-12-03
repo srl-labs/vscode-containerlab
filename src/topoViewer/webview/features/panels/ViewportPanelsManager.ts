@@ -6,7 +6,6 @@ import { createFilterableDropdown } from "../../ui/FilterableDropdown";
 import { log } from "../../platform/logging/logger";
 import { isSpecialNodeOrBridge } from "../../../shared/utilities/SpecialNodes";
 import { LinkEditorManager } from "./LinkEditorManager";
-import { NodeEditorManager } from "./NodeEditorManager";
 
 /**
  * ManagerViewportPanels handles the UI panels associated with the Cytoscape viewport.
@@ -15,7 +14,6 @@ import { NodeEditorManager } from "./NodeEditorManager";
 export class ManagerViewportPanels {
   private saveManager: ManagerSaveTopo;
   private cy: cytoscape.Core;
-  private nodeEditorManager: NodeEditorManager;
   private linkEditorManager: LinkEditorManager;
   private isPanel01Cy = false;
   public nodeClicked: boolean = false;
@@ -234,9 +232,6 @@ export class ManagerViewportPanels {
   constructor(saveManager: ManagerSaveTopo, cy: cytoscape.Core) {
     this.saveManager = saveManager;
     this.cy = cy;
-    this.nodeEditorManager = new NodeEditorManager(saveManager, cy, (flag) =>
-      this.setNodeClicked(flag)
-    );
     this.linkEditorManager = new LinkEditorManager(saveManager, cy, (flag) =>
       this.setEdgeClicked(flag)
     );
@@ -296,18 +291,6 @@ export class ManagerViewportPanels {
       this.nodeClicked = false;
       this.edgeClicked = false;
     });
-  }
-
-  /**
-   * Displays the node editor panel for the provided node.
-   * Removes any overlay panels, updates editor fields with the node's data,
-   * and fetches additional configuration from a JSON schema.
-   *
-   * @param node - The Cytoscape node for which to show the editor.
-   * @returns A promise that resolves when the panel is configured.
-   */
-  public async panelNodeEditor(node: cytoscape.NodeSingular): Promise<void> {
-    return this.nodeEditorManager.panelNodeEditor(node);
   }
 
   /**

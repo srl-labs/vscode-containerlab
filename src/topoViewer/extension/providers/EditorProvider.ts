@@ -79,7 +79,6 @@ export class TopoViewerEditor {
       'topo-editor-viewport-save': (p) => editorEndpointHandlers.handleViewportSaveEditEndpoint(p, this.getHandlerContext()),
       'topo-editor-viewport-save-suppress-notification': (p) =>
         editorEndpointHandlers.handleViewportSaveSuppressNotificationEndpoint(p, this.getHandlerContext()),
-      'topo-editor-undo': () => editorEndpointHandlers.handleUndoEndpoint(this.getHandlerContext()),
       'topo-editor-show-vscode-message': (p) => editorEndpointHandlers.handleShowVscodeMessageEndpoint(p),
       'topo-switch-mode': this.handleSwitchModeEndpoint.bind(this),
       'open-external': (p) => editorEndpointHandlers.handleOpenExternalEndpoint(p),

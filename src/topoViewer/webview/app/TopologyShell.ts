@@ -16,7 +16,6 @@ import loadCytoStyle from "../features/canvas/BaseStyles";
 import { VscodeMessageSender } from "../platform/messaging/VscodeMessaging";
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from "../features/canvas/FetchAndLoad";
 import { ManagerSaveTopo } from "../core/SaveManager";
-import { ManagerUndo } from "../core/UndoManager";
 import { ManagerAddContainerlabNode } from "../features/nodes/AddNodeManager";
 import { ManagerViewportPanels } from "../features/panels/ViewportPanelsManager";
 import { ManagerUnifiedFloatingPanel } from "../features/panels/UnifiedFloatingPanel";
@@ -70,7 +69,6 @@ export default class TopologyWebviewController {
 
   public messageSender!: VscodeMessageSender;
   public saveManager!: ManagerSaveTopo;
-  public undoManager!: ManagerUndo;
   public addNodeManager!: ManagerAddContainerlabNode;
   public viewportPanels?: ManagerViewportPanels;
   public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
@@ -392,7 +390,6 @@ export default class TopologyWebviewController {
     // eslint-disable-next-line sonarjs/constructor-for-side-effects
     new ManagerShortcutDisplay();
     this.saveManager = new ManagerSaveTopo(this.messageSender);
-    this.undoManager = new ManagerUndo(this.messageSender);
     this.addNodeManager = new ManagerAddContainerlabNode();
     this.labSettingsManager = new ManagerLabSettings(this.messageSender);
     this.labSettingsManager.init();
@@ -545,8 +542,6 @@ export default class TopologyWebviewController {
         this.viewportPanels?.panelNetworkEditor(node);
       } else if (this.nodeEditor) {
         this.nodeEditor.open(node);
-      } else {
-        this.viewportPanels?.panelNodeEditor(node);
       }
     });
     this.cy.on("dblclick", "edge", (event) => {
@@ -592,7 +587,6 @@ export default class TopologyWebviewController {
     window.viewportButtonsZoomToFit = () => this.zoomToFitManager.viewportButtonsZoomToFit(this.cy);
     window.viewportButtonsCaptureViewportAsSvg = () =>
       this.captureViewportManager.viewportButtonsCaptureViewportAsSvg();
-    window.viewportButtonsUndo = () => this.undoManager.viewportButtonsUndo();
     (window as any).viewportDrawerGridLineWidthChange = (value: string | number) => {
       const n = typeof value === "number" ? value : parseFloat(String(value));
       if (!Number.isNaN(n)) {
