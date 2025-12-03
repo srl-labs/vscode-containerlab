@@ -194,6 +194,12 @@
         "category": "Containerlab"
       },
       {
+        "command": "containerlab.lab.graph.reactTopoViewer",
+        "title": "Graph (TopoViewer React)",
+        "icon": "$(graph-line)",
+        "category": "Containerlab"
+      },
+      {
         "command": "containerlab.editor.topoViewerEditor",
         "title": "New topology file",
         "icon": "$(new-file)",
@@ -639,6 +645,11 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@1"
+        },
+        {
+          "command": "containerlab.lab.graph.reactTopoViewer",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "group": "graph@2"
         }
       ],
       "explorer/context": [
@@ -681,6 +692,11 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@1"
+        },
+        {
+          "command": "containerlab.lab.graph.reactTopoViewer",
+          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
+          "group": "graph@2"
         }
       ],
       "view/item/context": [
@@ -827,6 +843,11 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "viewItem =~ /containerlabLab/",
           "group": "graph@1"
+        },
+        {
+          "command": "containerlab.lab.graph.reactTopoViewer",
+          "when": "viewItem =~ /containerlabLab/",
+          "group": "graph@2"
         },
         {
           "command": "containerlab.node.start",
@@ -1412,6 +1433,8 @@
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/chai": "^5.2.3",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "@types/cytoscape-cxtmenu": "^3.4.5",
     "@types/cytoscape-edgehandles": "^4.0.5",
     "@types/dockerode": "^3.3.47",
@@ -1455,6 +1478,8 @@
     "mochawesome": "^7.1.4",
     "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "postcss-loader": "^8.2.0",
     "prettier": "^3.7.4",
     "sinon": "^21.0.0",

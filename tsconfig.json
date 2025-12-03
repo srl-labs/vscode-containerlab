@@ -2,6 +2,7 @@
   "compilerOptions": {
     "alwaysStrict": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
     "lib": ["ES2024", "dom"],
     "module": "commonjs",
     "noFallthroughCasesInSwitch": true,

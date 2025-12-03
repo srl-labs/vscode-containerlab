@@ -190,6 +190,10 @@ function graphTopoViewer(node: c.ClabLabTreeNode) {
   return cmd.graphTopoviewer(node, extensionContext);
 }
 
+function graphReactTopoViewer(node: c.ClabLabTreeNode) {
+  return cmd.graphReactTopoviewer(node, extensionContext);
+}
+
 async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
   const ctx = extensionContext;
   if (!ctx) {
@@ -387,6 +391,7 @@ function registerCommands(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.viewLogs', showOutputChannel));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.manageImpairments', manageImpairments));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', graphTopoViewer));
+  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.reactTopoViewer', graphReactTopoViewer));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor.open', openTopoViewerEditorCommand));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', createTopoViewerTemplateFileCommand));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(extensionContext)));

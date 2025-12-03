@@ -5,6 +5,7 @@ import { ClabCommand } from "./clabCommand";
 import { ClabLabTreeNode } from "../treeView/common";
 
 import { TopoViewer } from "../topoViewer";
+import { ReactTopoViewer, ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
 
 
@@ -280,4 +281,53 @@ export async function notifyCurrentTopoViewerOfCommandFailure(
 ): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : String(error);
   await postLifecycleStatus(commandType, 'error', errorMessage);
+}
+
+/**
+ * Graph Lab (React TopoViewer) - New React-based implementation
+ */
+let currentReactTopoViewer: ReactTopoViewer | undefined;
+
+export async function graphReactTopoviewer(node?: ClabLabTreeNode, context?: vscode.ExtensionContext) {
+  // Get node if not provided
+  node = await getSelectedLabNode(node);
+
+  const labInfo = resolveLabInfo(node);
+  if (!labInfo) {
+    return;
+  }
+  const { labPath, isViewMode } = labInfo;
+
+  if (!context) {
+    vscode.window.showErrorMessage('Extension context not available');
+    return;
+  }
+
+  // Derive the lab name
+  const labName =
+    node?.name ||
+    (labPath
+      ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '')
+      : 'Unknown Lab');
+
+  // Use the provider to create/get the viewer
+  const provider = ReactTopoViewerProvider.getInstance(context);
+  const viewer = await provider.openViewer(labPath, labName, isViewMode);
+
+  currentReactTopoViewer = viewer;
+
+  // Set context for any UI state
+  vscode.commands.executeCommand('setContext', 'isReactTopoviewerActive', true);
+
+  // Handle disposal
+  if (viewer.currentPanel) {
+    viewer.currentPanel.onDidDispose(() => {
+      currentReactTopoViewer = undefined;
+      vscode.commands.executeCommand('setContext', 'isReactTopoviewerActive', false);
+    });
+  }
+}
+
+export function getCurrentReactTopoViewer(): ReactTopoViewer | undefined {
+  return currentReactTopoViewer;
 }
