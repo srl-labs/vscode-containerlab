@@ -2064,12 +2064,12 @@ class TopologyWebviewController {
     // uPlot uses th elements for labels, with a marker span followed by text
     const legendLabels = containerEl.querySelectorAll('.u-legend .u-series th');
     legendLabels.forEach((label, index) => {
-      // index 0 is empty (time series), 1 is RX, 2 is TX, 3 is RX PPS, 4 is TX PPS
+      // index 0 is empty (time series), 1 is RX bps, 2 is TX bps, 3 is RX PPS, 4 is TX PPS
       if (index === 1 || index === 2) {
         // Find and preserve the marker element (clone before clearing)
         const marker = label.querySelector('.u-marker');
         const markerClone = marker?.cloneNode(true);
-        const prefix = index === 1 ? 'RX' : 'TX';
+        const prefix = index === 1 ? '↓ RX' : '↑ TX';
         // Clear the th and re-add marker + text
         label.innerHTML = '';
         if (markerClone) {
@@ -2182,32 +2182,34 @@ class TopologyWebviewController {
     return [
       {},
       {
-        label: `RX ${unitLabel}`,
-        stroke: "#4ec9b0",
+        label: `↓ RX ${unitLabel}`,
+        stroke: "#4caf50",  // Green for incoming
         width: 2,
         scale: "bps",
         value: formatValue
       },
       {
-        label: `TX ${unitLabel}`,
-        stroke: "#569cd6",
+        label: `↑ TX ${unitLabel}`,
+        stroke: "#ff9800",  // Orange for outgoing
         width: 2,
         scale: "bps",
         value: formatValue
       },
       {
-        label: "RX PPS",
-        stroke: "#b5cea8",
+        label: "↓ RX PPS",
+        stroke: "#26a69a",  // Teal for incoming packets (distinct from green bps)
         width: 2,
         scale: "pps",
-        value: formatValue
+        value: formatValue,
+        dash: [5, 3]  // Dashed line to distinguish from bps
       },
       {
-        label: "TX PPS",
-        stroke: "#9cdcfe",
+        label: "↑ TX PPS",
+        stroke: "#ab47bc",  // Purple for outgoing packets (distinct from orange bps)
         width: 2,
         scale: "pps",
-        value: formatValue
+        value: formatValue,
+        dash: [5, 3]  // Dashed line to distinguish from bps
       }
     ];
   }
