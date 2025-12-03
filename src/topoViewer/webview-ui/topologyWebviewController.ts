@@ -2006,7 +2006,10 @@ class TopologyWebviewController {
     const currentUnit = (containerEl as any).__uplot_unit__ as string | undefined;
     const unitChanged = newUnit && currentUnit && newUnit !== currentUnit;
 
+    // Save series visibility state before destroying
+    let seriesVisibility: boolean[] | undefined;
     if (graphInstance && unitChanged) {
+      seriesVisibility = graphInstance.series.map(s => s.show !== false);
       graphInstance.destroy();
       graphInstance = undefined;
       (containerEl as any).__uplot_instance__ = undefined;
@@ -2014,6 +2017,14 @@ class TopologyWebviewController {
 
     if (!graphInstance) {
       graphInstance = this.createGraphInstance(containerEl, data, panelElement, endpoint);
+      // Restore series visibility state after recreation
+      if (seriesVisibility && graphInstance) {
+        seriesVisibility.forEach((visible, idx) => {
+          if (idx > 0 && !visible) { // Skip index 0 (x-axis)
+            graphInstance!.setSeries(idx, { show: false });
+          }
+        });
+      }
     } else if (data) {
       graphInstance.setData(data);
     }
@@ -2141,13 +2152,11 @@ class TopologyWebviewController {
   private currentBpsUnit: { divisor: number; label: string; shortLabel: string } = { divisor: 1000, label: "Kbps", shortLabel: "Kbps" };
 
   private prepareGraphData(history: { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] }): number[][] {
-    // Use recent values (last 10 points) to determine unit, so it adapts when traffic changes
-    const recentCount = Math.min(10, history.rxBps.length);
-    const recentRxBps = history.rxBps.slice(-recentCount);
-    const recentTxBps = history.txBps.slice(-recentCount);
-    const maxRecentBps = Math.max(...recentRxBps, ...recentTxBps, 1);
+    // Use max of entire visible history to determine unit
+    // This keeps the unit stable as long as high values are visible in the graph
+    const maxBps = Math.max(...history.rxBps, ...history.txBps, 1);
 
-    this.currentBpsUnit = this.determineBpsUnit(maxRecentBps);
+    this.currentBpsUnit = this.determineBpsUnit(maxBps);
     const { divisor } = this.currentBpsUnit;
 
     const rxScaled = history.rxBps.map(v => v / divisor);
@@ -2265,12 +2274,10 @@ class TopologyWebviewController {
         x: {},
         bps: {
           auto: true,
-          range: (_self, dataMin, dataMax) => {
-            // Set minimum range to make lines visible even with small values
-            const minRange = 10; // 10 units minimum (adapts to current unit)
-            const actualMax = Math.max(dataMax, minRange);
-            const pad = (actualMax - dataMin) * 0.1;
-            return [0, actualMax + pad];
+          range: (_self, _dataMin, dataMax) => {
+            // Add 20% padding above max value, with small minimum to avoid flat line at zero
+            const pad = Math.max(dataMax * 0.2, 0.1);
+            return [0, dataMax + pad];
           }
         },
         pps: {
