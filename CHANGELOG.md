@@ -1,4 +1,13 @@
 # Change Log
+## [0.21.0] - 2025-12-03
+- Events, with clab 0.72.0 the extension does not poll anymore, everything is streamed from clab
+- TopoViewer/editor:
+  - Show interface stats/histogram in link properties
+  - Alligned Panel style to have a window look
+  - Shapes, you can now freely add shapes, like rectangles and arrows
+  - Text and shapes are now rotateable
+- Several Fixes
+
 ## [0.20.0] - 2025-11-17
 - TopoViewer/editor:
   - Custom Icon Support
