@@ -78,5 +78,13 @@ export default [
     rules: {
       'max-lines': ['error', { max: 1000, skipBlankLines: true, skipComments: true }]
     }
+  },
+
+  /* ---------- reactTopoViewer: max-lines limit ---------- */
+  {
+    files: ['src/reactTopoViewer/**/*.ts', 'src/reactTopoViewer/**/*.tsx'],
+    rules: {
+      'max-lines': ['error', { max: 1000, skipBlankLines: true, skipComments: true }]
+    }
   }
 ];

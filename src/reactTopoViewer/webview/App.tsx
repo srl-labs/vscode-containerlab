@@ -1,142 +1,93 @@
 /**
  * React TopoViewer Main Application Component
  */
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { useTopoViewer } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
-import { CytoscapeCanvas, CytoscapeCanvasRef } from './components/canvas/CytoscapeCanvas';
+import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
+import { useContextMenu } from './hooks/useContextMenu';
+import {
+  useCytoscapeInstance,
+  useSelectionData,
+  useNavbarActions,
+  useContextMenuHandlers
+} from './hooks/useAppState';
 
-interface NodeData {
-  id: string;
-  label?: string;
-  name?: string;
-  kind?: string;
-  state?: string;
-  image?: string;
-  mgmtIpv4?: string;
-  mgmtIpv6?: string;
-  fqdn?: string;
-  [key: string]: unknown;
+/**
+ * Loading state component
+ */
+function LoadingState(): React.JSX.Element {
+  return (
+    <div className="loading-container">
+      <div className="loading-spinner"></div>
+      <p>Loading topology...</p>
+    </div>
+  );
 }
 
-interface LinkData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
-  [key: string]: unknown;
+/**
+ * Error state component
+ */
+function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Element {
+  return (
+    <div className="error-container">
+      <div className="error-icon">⚠️</div>
+      <h2 className="text-lg font-semibold">Error Loading Topology</h2>
+      <p className="text-secondary">{message}</p>
+    </div>
+  );
 }
 
 export const App: React.FC = () => {
   const { state, isLoading, error, selectNode, selectEdge } = useTopoViewer();
-  const cytoscapeRef = useRef<CytoscapeCanvasRef>(null);
-  const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(null);
-  const [selectedLinkData, setSelectedLinkData] = useState<LinkData | null>(null);
 
-  // Zoom to fit handler
-  const handleZoomToFit = useCallback(() => {
-    cytoscapeRef.current?.fit();
-  }, []);
+  // Cytoscape instance management
+  const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
 
-  // Run layout handler
-  const handleToggleLayout = useCallback(() => {
-    cytoscapeRef.current?.runLayout('cose');
-  }, []);
+  // Selection data
+  const { selectedNodeData, selectedLinkData } = useSelectionData(
+    cytoscapeRef,
+    state.selectedNode,
+    state.selectedEdge
+  );
 
-  // Get element data when selection changes
-  useEffect(() => {
-    const cy = cytoscapeRef.current?.getCy();
-    if (!cy) return;
+  // Navbar actions
+  const { handleZoomToFit, handleToggleLayout } = useNavbarActions(cytoscapeRef);
 
-    if (state.selectedNode) {
-      const node = cy.getElementById(state.selectedNode);
-      if (node.length > 0) {
-        setSelectedNodeData(node.data() as NodeData);
-      }
-    } else {
-      setSelectedNodeData(null);
-    }
+  // Context menu handlers
+  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge });
 
-    if (state.selectedEdge) {
-      const edge = cy.getElementById(state.selectedEdge);
-      if (edge.length > 0) {
-        const data = edge.data();
-        setSelectedLinkData({
-          id: data.id,
-          source: data.source,
-          target: data.target,
-          sourceEndpoint: data.sourceEndpoint || data.sourceInterface,
-          targetEndpoint: data.targetEndpoint || data.targetInterface,
-          ...data
-        } as LinkData);
-      }
-    } else {
-      setSelectedLinkData(null);
-    }
-  }, [state.selectedNode, state.selectedEdge]);
+  // Set up context menus
+  useContextMenu(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onEditNode: menuHandlers.handleEditNode,
+    onDeleteNode: menuHandlers.handleDeleteNode,
+    onEditLink: menuHandlers.handleEditLink,
+    onDeleteLink: menuHandlers.handleDeleteLink,
+    onShowNodeProperties: menuHandlers.handleShowNodeProperties,
+    onShowLinkProperties: menuHandlers.handleShowLinkProperties
+  });
 
-  // Close node panel handler
-  const handleCloseNodePanel = useCallback(() => {
-    selectNode(null);
-  }, [selectNode]);
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
 
-  // Close link panel handler
-  const handleCloseLinkPanel = useCallback(() => {
-    selectEdge(null);
-  }, [selectEdge]);
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading topology...</p>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="error-container">
-        <div className="error-icon">⚠️</div>
-        <h2 className="text-lg font-semibold">Error Loading Topology</h2>
-        <p className="text-secondary">{error}</p>
-      </div>
-    );
-  }
-
-  // Main application
   return (
     <div className="topoviewer-app">
-      {/* Navbar */}
-      <Navbar
-        onZoomToFit={handleZoomToFit}
-        onToggleLayout={handleToggleLayout}
-      />
-
-      {/* Main Canvas Area */}
+      <Navbar onZoomToFit={handleZoomToFit} onToggleLayout={handleToggleLayout} />
       <main className="topoviewer-main">
-        <CytoscapeCanvas
-          ref={cytoscapeRef}
-          elements={state.elements}
-        />
-
-        {/* Node Info Panel */}
+        <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
         <NodeInfoPanel
           isVisible={!!state.selectedNode}
           nodeData={selectedNodeData}
-          onClose={handleCloseNodePanel}
+          onClose={menuHandlers.handleCloseNodePanel}
         />
-
-        {/* Link Info Panel */}
         <LinkInfoPanel
           isVisible={!!state.selectedEdge}
           linkData={selectedLinkData}
-          onClose={handleCloseLinkPanel}
+          onClose={menuHandlers.handleCloseLinkPanel}
         />
       </main>
     </div>

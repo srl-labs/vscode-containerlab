@@ -28,6 +28,21 @@ const DATA_NAME = 'data(name)';
 const SELECTION_COLOR = 'var(--vscode-focusBorder, #007ACC)';
 
 /**
+ * Check if elements have preset positions (from annotations file)
+ * Returns true if all nodes have non-zero positions
+ */
+function hasPresetPositions(elements: CyElement[]): boolean {
+  const nodes = elements.filter(el => el.group === 'nodes');
+  if (nodes.length === 0) return false;
+
+  // Check if all nodes have valid positions
+  return nodes.every(node => {
+    const pos = node.position;
+    return pos && (pos.x !== 0 || pos.y !== 0);
+  });
+}
+
+/**
  * Role to SVG node type mapping
  */
 const ROLE_SVG_MAP: Record<string, NodeType> = {
@@ -279,7 +294,7 @@ function getLayoutOptions(layoutName: string): cytoscape.LayoutOptions {
 /**
  * Create cytoscape ref methods
  */
-function createRefMethods(cyRef: React.MutableRefObject<Core | null>): CytoscapeCanvasRef {
+function createRefMethods(cyRef: React.RefObject<Core | null>): CytoscapeCanvasRef {
   return {
     fit: () => cyRef.current?.fit(undefined, 50),
     runLayout: (layoutName: string) => {
@@ -292,10 +307,28 @@ function createRefMethods(cyRef: React.MutableRefObject<Core | null>): Cytoscape
 }
 
 /**
+ * Update cytoscape elements and apply layout
+ */
+function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
+  const usePresetLayout = hasPresetPositions(elements);
+  cy.batch(() => {
+    cy.elements().remove();
+    cy.add(elements);
+  });
+
+  if (!usePresetLayout) {
+    cy.layout(getLayoutOptions('cose')).run();
+  } else {
+    cy.fit(undefined, 50);
+  }
+}
+
+/**
  * Handle cytoscape ready event
  */
-function handleCytoscapeReady(cy: Core): void {
+function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
   log.info(`[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`);
+  log.info(`[CytoscapeCanvas] Using preset layout: ${usePresetLayout}`);
 
   // Check if canvas was created
   const container = cy.container();
@@ -316,8 +349,11 @@ function handleCytoscapeReady(cy: Core): void {
     log.info(`[CytoscapeCanvas] First node - pos: (${pos.x}, ${pos.y}), bbox: w=${bb.w}, h=${bb.h}`);
   }
 
-  // Run layout after initialization
-  cy.layout(getLayoutOptions('cose')).run();
+  // Only run layout if no preset positions
+  if (!usePresetLayout) {
+    log.info('[CytoscapeCanvas] No preset positions, running COSE layout');
+    cy.layout(getLayoutOptions('cose')).run();
+  }
 
   // Fit after layout completes
   setTimeout(() => {
@@ -326,7 +362,7 @@ function handleCytoscapeReady(cy: Core): void {
     const extent = cy.extent();
     log.info(`[CytoscapeCanvas] After fit - zoom: ${cy.zoom()}, pan: (${cy.pan().x}, ${cy.pan().y})`);
     log.info(`[CytoscapeCanvas] Extent: x1=${extent.x1}, y1=${extent.y1}, x2=${extent.x2}, y2=${extent.y2}`);
-  }, 600);
+  }, usePresetLayout ? 100 : 600);
 }
 
 export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasProps>(
@@ -354,11 +390,15 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
         return () => clearTimeout(timeoutId);
       }
 
+      // Check if elements have preset positions from annotations
+      const usePresetLayout = hasPresetPositions(elements);
+      log.info(`[CytoscapeCanvas] Preset positions detected: ${usePresetLayout}`);
+
       const cy = cytoscape({
         container: container,
         elements: elements,
         style: cytoscapeStyles,
-        layout: { name: 'preset' }, // Use preset first, then run layout
+        layout: { name: 'preset' }, // Use preset first, then run layout if needed
         minZoom: 0.1,
         maxZoom: 3,
         wheelSensitivity: 0.2
@@ -367,7 +407,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       cyRef.current = cy;
       setupEventHandlers(cy, selectNode, selectEdge);
 
-      cy.ready(() => handleCytoscapeReady(cy));
+      cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
 
       return () => {
         cy.destroy();
@@ -384,12 +424,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     useEffect(() => {
       const cy = cyRef.current;
       if (!cy || !elements.length) return;
-
-      cy.batch(() => {
-        cy.elements().remove();
-        cy.add(elements);
-      });
-      cy.layout(getLayoutOptions('cose')).run();
+      updateCytoscapeElements(cy, elements);
     }, [elements]);
 
     return (
