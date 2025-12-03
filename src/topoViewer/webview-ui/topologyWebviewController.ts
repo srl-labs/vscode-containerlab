@@ -1974,70 +1974,97 @@ class TopologyWebviewController {
   }
 
   private initOrUpdateGraph(endpoint: "a" | "b", endpointKey: string, stats: InterfaceStatsPayload | undefined, panelElement?: HTMLElement): void {
-    const context = panelElement || document;
-    const containerEl = context.querySelector(`#panel-link-endpoint-${endpoint}-graph`) as HTMLElement | null || document.getElementById(`panel-link-endpoint-${endpoint}-graph`);
+    const containerEl = this.getGraphContainer(endpoint, panelElement);
     if (!containerEl) {
       return;
     }
 
-    // Get or create graph instance stored on the container element
-    let graphInstance = (containerEl as any).__uplot_instance__;
+    const { data, newUnit } = this.prepareStatsData(endpointKey, stats);
+    const graphInstance = this.ensureGraphInstance(containerEl, data, newUnit, panelElement, endpoint);
 
-    // Initialize graph with empty data if it doesn't exist yet
-    if (!graphInstance) {
-      // Use parent container's bounding rect to get actual available space
-      const rect = containerEl.getBoundingClientRect();
-      const width = rect.width || 500;
-      // Reduce height to leave room for legend (subtract ~60px for legend space)
-      const height = (rect.height || 400) - 60;
-      const emptyData: uPlot.AlignedData = [[], [], [], [], []] as unknown as uPlot.AlignedData;
-      const opts = this.createGraphOptions(width, height);
-      graphInstance = new uPlot(opts, emptyData, containerEl);
-
-      // Store graph instance on the container element
-      (containerEl as any).__uplot_instance__ = graphInstance;
-
-      // Also store in the old location for backward compatibility (if no panel element specified)
-      if (!panelElement) {
-        this.linkGraphs[endpoint] = graphInstance;
-      }
-
-      // Set up resize observer for this specific panel
-      this.setupPanelGraphResizeObserver(panelElement, endpoint, containerEl, graphInstance);
-    }
-
-    // Update with actual data if stats are available
-    if (stats) {
-      const history = this.updateStatsHistory(endpointKey, stats);
-      const data = this.prepareGraphData(history);
-      graphInstance?.setData(data);
-
-      // Update axis label and legend to reflect current unit
+    if (graphInstance) {
       this.updateGraphUnitLabels(graphInstance, containerEl);
     }
   }
 
+  private getGraphContainer(endpoint: "a" | "b", panelElement?: HTMLElement): HTMLElement | null {
+    const context = panelElement || document;
+    return context.querySelector(`#panel-link-endpoint-${endpoint}-graph`) as HTMLElement | null
+      || document.getElementById(`panel-link-endpoint-${endpoint}-graph`);
+  }
+
+  private prepareStatsData(endpointKey: string, stats: InterfaceStatsPayload | undefined): { data: uPlot.AlignedData | undefined; newUnit: string | undefined } {
+    if (!stats) {
+      return { data: undefined, newUnit: undefined };
+    }
+    const history = this.updateStatsHistory(endpointKey, stats);
+    return { data: this.prepareGraphData(history) as uPlot.AlignedData, newUnit: this.currentBpsUnit.label };
+  }
+
+  private ensureGraphInstance(containerEl: HTMLElement, data: uPlot.AlignedData | undefined, newUnit: string | undefined, panelElement: HTMLElement | undefined, endpoint: "a" | "b"): uPlot | undefined {
+    let graphInstance = (containerEl as any).__uplot_instance__ as uPlot | undefined;
+    const currentUnit = (containerEl as any).__uplot_unit__ as string | undefined;
+    const unitChanged = newUnit && currentUnit && newUnit !== currentUnit;
+
+    if (graphInstance && unitChanged) {
+      graphInstance.destroy();
+      graphInstance = undefined;
+      (containerEl as any).__uplot_instance__ = undefined;
+    }
+
+    if (!graphInstance) {
+      graphInstance = this.createGraphInstance(containerEl, data, panelElement, endpoint);
+    } else if (data) {
+      graphInstance.setData(data);
+    }
+
+    return graphInstance;
+  }
+
+  private createGraphInstance(containerEl: HTMLElement, data: uPlot.AlignedData | undefined, panelElement: HTMLElement | undefined, endpoint: "a" | "b"): uPlot {
+    const rect = containerEl.getBoundingClientRect();
+    const width = rect.width || 500;
+    const height = (rect.height || 400) - 60;
+    const emptyData: uPlot.AlignedData = [[], [], [], [], []] as unknown as uPlot.AlignedData;
+    const opts = this.createGraphOptions(width, height);
+    const graphInstance = new uPlot(opts, data || emptyData, containerEl);
+
+    (containerEl as any).__uplot_instance__ = graphInstance;
+    (containerEl as any).__uplot_unit__ = this.currentBpsUnit.label;
+
+    if (!panelElement) {
+      this.linkGraphs[endpoint] = graphInstance;
+    }
+
+    this.setupPanelGraphResizeObserver(panelElement, endpoint, containerEl, graphInstance);
+    return graphInstance;
+  }
+
   /**
-   * Updates the graph's axis label and legend labels to reflect the current bps unit.
+   * Updates the legend labels to reflect the current bps unit.
+   * Note: Axis label is set correctly when graph is created/recreated.
    */
   private updateGraphUnitLabels(graphInstance: uPlot, containerEl: HTMLElement): void {
     if (!graphInstance) return;
 
     const unitLabel = this.currentBpsUnit.label;
 
-    // Update the Y-axis label (left axis, index 1)
-    const axisLabel = containerEl.querySelector('.u-axis.u-off1 .u-label') as HTMLElement | null;
-    if (axisLabel) {
-      axisLabel.textContent = unitLabel;
-    }
-
     // Update legend labels for RX and TX series
-    const legendLabels = containerEl.querySelectorAll('.u-legend .u-series td.u-label');
+    // uPlot uses th elements for labels, with a marker span followed by text
+    const legendLabels = containerEl.querySelectorAll('.u-legend .u-series th');
     legendLabels.forEach((label, index) => {
-      if (index === 1) {
-        label.textContent = `RX ${unitLabel}`;
-      } else if (index === 2) {
-        label.textContent = `TX ${unitLabel}`;
+      // index 0 is empty (time series), 1 is RX, 2 is TX, 3 is RX PPS, 4 is TX PPS
+      if (index === 1 || index === 2) {
+        // Find and preserve the marker element (clone before clearing)
+        const marker = label.querySelector('.u-marker');
+        const markerClone = marker?.cloneNode(true);
+        const prefix = index === 1 ? 'RX' : 'TX';
+        // Clear the th and re-add marker + text
+        label.innerHTML = '';
+        if (markerClone) {
+          label.appendChild(markerClone);
+        }
+        label.appendChild(document.createTextNode(` ${prefix} ${unitLabel}`));
       }
     });
   }
@@ -2114,14 +2141,13 @@ class TopologyWebviewController {
   private currentBpsUnit: { divisor: number; label: string; shortLabel: string } = { divisor: 1000, label: "Kbps", shortLabel: "Kbps" };
 
   private prepareGraphData(history: { timestamps: number[]; rxBps: number[]; rxPps: number[]; txBps: number[]; txPps: number[] }): number[][] {
-    // Find max value to determine the best unit
-    const maxBps = Math.max(
-      ...history.rxBps,
-      ...history.txBps,
-      1 // Avoid 0 for empty arrays
-    );
+    // Use recent values (last 10 points) to determine unit, so it adapts when traffic changes
+    const recentCount = Math.min(10, history.rxBps.length);
+    const recentRxBps = history.rxBps.slice(-recentCount);
+    const recentTxBps = history.txBps.slice(-recentCount);
+    const maxRecentBps = Math.max(...recentRxBps, ...recentTxBps, 1);
 
-    this.currentBpsUnit = this.determineBpsUnit(maxBps);
+    this.currentBpsUnit = this.determineBpsUnit(maxRecentBps);
     const { divisor } = this.currentBpsUnit;
 
     const rxScaled = history.rxBps.map(v => v / divisor);
