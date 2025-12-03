@@ -240,15 +240,6 @@ class PanelManager {
     }
   }
 
-
-  handleInitialLoadError(e: unknown, isViewMode: boolean): void {
-    if (!isViewMode) {
-      vscode.window.showErrorMessage(`Failed to load topology: ${(e as Error).message}`);
-    } else {
-      log.warn(`Failed to load topology in view mode, continuing: ${(e as Error).message}`);
-    }
-  }
-
   // ============================================================================
   // YAML Loading
   // ============================================================================

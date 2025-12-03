@@ -1,6 +1,6 @@
 import { log } from '../../platform/logging/logger';
 import * as YAML from 'yaml';
-import { VscodeMessageSender } from '../../core/VscodeMessaging';
+import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 
 interface LabSettings {
   name?: string;

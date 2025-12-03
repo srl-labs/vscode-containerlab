@@ -8,17 +8,17 @@ import {
   zoomToFitManager,
   labelEndpointManager,
   getGroupManager,
-} from '../../../src/topoViewer/core/managerRegistry';
+} from '../../../src/topoViewer/webview/core/managerRegistry';
 import {
   layoutAlgoManager as layoutAlgoManager2,
   zoomToFitManager as zoomToFitManager2,
   labelEndpointManager as labelEndpointManager2,
-} from '../../../src/topoViewer/core/managerRegistry';
-import { ManagerLayoutAlgo } from '../../../src/topoViewer/webview-ui/managerLayoutAlgo';
-import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
-import { ManagerZoomToFit } from '../../../src/topoViewer/webview-ui/managerZoomToFit';
-import { ManagerLabelEndpoint } from '../../../src/topoViewer/webview-ui/managerLabelEndpoint';
-import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
+} from '../../../src/topoViewer/webview/core/managerRegistry';
+import { ManagerLayoutAlgo } from '../../../src/topoViewer/webview/features/canvas/LayoutAlgorithms';
+import { ManagerGroupManagement } from '../../../src/topoViewer/webview/features/groups/GroupManager';
+import { ManagerZoomToFit } from '../../../src/topoViewer/webview/features/canvas/ZoomToFit';
+import { ManagerLabelEndpoint } from '../../../src/topoViewer/webview/features/canvas/LinkLabelManager';
+import { ManagerGroupStyle } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
 
 // Ensure window is defined for modules that expect it
 (globalThis as any).window = globalThis;

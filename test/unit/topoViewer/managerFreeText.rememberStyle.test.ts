@@ -2,7 +2,7 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerFreeText } from '../../../src/topoViewer/webview-ui/managerFreeText';
+import { ManagerFreeText } from '../../../src/topoViewer/webview/features/annotations/FreeTextManager';
 
 // ensure window is available
 (globalThis as any).window = globalThis;
@@ -27,8 +27,9 @@ describe('ManagerFreeText remember style', () => {
     });
 
     const mgrAny = mgr as any;
+    const modal = mgrAny.modalController as any;
     let passedAnnotation: any;
-    mgrAny.promptForTextWithFormatting = async (_title: string, annotation: any) => {
+    modal.promptForTextWithFormatting = async (_title: string, annotation: any) => {
       passedAnnotation = annotation;
       return { ...annotation, text: 'Second' };
     };

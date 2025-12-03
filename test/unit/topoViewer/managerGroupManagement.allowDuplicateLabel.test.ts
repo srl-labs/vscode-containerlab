@@ -2,8 +2,8 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
-import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
+import { ManagerGroupManagement } from '../../../src/topoViewer/webview/features/groups/GroupManager';
+import { ManagerGroupStyle } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
 
 (globalThis as any).window = globalThis;
 

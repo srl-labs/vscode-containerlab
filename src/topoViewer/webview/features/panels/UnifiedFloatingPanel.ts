@@ -45,7 +45,7 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
   { type: 'bridge', label: 'Bridge', addDivider: true },
   { type: 'ovs-bridge', label: 'OVS bridge' }
 ];
-import { VscodeMessageSender } from '../../core/VscodeMessaging';
+import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import cytoscape from 'cytoscape';
 import { ManagerAddContainerlabNode } from '../nodes/AddNodeManager';
 import { ManagerNodeEditor } from '../node-editor/NodeEditorManager';

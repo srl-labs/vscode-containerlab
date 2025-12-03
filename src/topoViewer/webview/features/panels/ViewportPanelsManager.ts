@@ -533,6 +533,41 @@ export class ManagerViewportPanels {
   }
 
   /**
+   * Persists edits from the network panel back into the Cytoscape graph.
+   * Recreates the node when the identifier changes to ensure edges stay consistent.
+   */
+  private async updateNetworkFromEditor(node: cytoscape.NodeSingular): Promise<void> {
+    const targetNode = this.ensureSingleNode(node);
+    const currentData = targetNode.data() || {};
+    const inputs = this.getNetworkEditorInputs();
+    const ids = this.buildNetworkIdentifiers(
+      currentData,
+      inputs.networkType,
+      inputs.interfaceName,
+      inputs.label,
+      inputs.remote,
+      inputs.vni,
+      inputs.udpPort
+    );
+    const extendedData = this.buildNetworkExtendedData(inputs, currentData.extraData || {});
+    const shouldRecreate = ids.newId !== ids.oldId;
+
+    if (shouldRecreate) {
+      this.recreateNetworkNode(targetNode, currentData, ids, inputs.networkType, extendedData);
+    } else {
+      this.applyNetworkDataSameId(
+        targetNode,
+        currentData,
+        ids.displayName,
+        inputs.networkType,
+        extendedData
+      );
+    }
+
+    this.resetNetworkEditorInitialValues();
+  }
+
+  /**
    * Sets up the network editor OK (save) button.
    */
   private setupNetworkOkButton(

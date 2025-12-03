@@ -3,7 +3,7 @@
  * Coordinates between overlay rendering, modal UI, and annotation persistence.
  */
 import cytoscape from 'cytoscape';
-import { VscodeMessageSender } from '../../core/VscodeMessaging';
+import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topoViewerGraph';
 import { log } from '../../platform/logging/logger';
 import type { ManagerGroupStyle } from '../groups/GroupStyleManager';

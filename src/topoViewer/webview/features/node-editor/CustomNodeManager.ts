@@ -1,7 +1,7 @@
 // file: managerCustomNode.ts
 
 import { log } from "../../platform/logging/logger";
-import type { VscodeMessageSender } from "../../core/VscodeMessaging";
+import type { VscodeMessageSender } from "../../platform/messaging/VscodeMessaging";
 import type { NodeProperties } from "./TabContentManager";
 
 // Element IDs

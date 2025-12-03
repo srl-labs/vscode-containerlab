@@ -4,8 +4,8 @@
     "rootDir": "..",
     "outDir": "../out/test",
     "resolveJsonModule": true,
-    "typeRoots": ["../src/topoViewer/types", "../node_modules/@types"]
+    "typeRoots": ["../src/topoViewer/webview/types", "../node_modules/@types"]
   },
-  "include": ["**/*.ts", "../src/topoViewer/types/**/*.d.ts", "../src/topoViewer/webview-ui/types.d.ts"],
+  "include": ["**/*.ts", "../src/topoViewer/webview/types/**/*.d.ts"],
   "exclude": []
 }

@@ -16,6 +16,8 @@ describe('logger (webview)', () => {
     '..',
     'src',
     'topoViewer',
+    'webview',
+    'platform',
     'logging',
     'logger'
   );
@@ -42,7 +44,7 @@ describe('logger (webview)', () => {
     };
     vm.runInNewContext(code, sandbox, { filename: resolved });
 
-    const { log } = sandbox.exports as typeof import('../../../../src/topoViewer/logging/logger');
+    const { log } = sandbox.exports as typeof import('../../../../src/topoViewer/webview/platform/logging/logger');
     log.error('boom');
 
     expect(postMessage.calledOnce).to.be.true;
@@ -68,7 +70,7 @@ describe('logger (webview)', () => {
     };
     vm.runInNewContext(code, sandbox, { filename: resolved });
 
-    const { log } = sandbox.exports as typeof import('../../../../src/topoViewer/logging/logger');
+    const { log } = sandbox.exports as typeof import('../../../../src/topoViewer/webview/platform/logging/logger');
     log.info({ a: 1 });
 
     const arg = postMessage.firstCall.args[0];

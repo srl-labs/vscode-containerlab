@@ -11,6 +11,14 @@
 // Declaration for environments where `require` may not exist.
 declare const require: any;
 
+/* eslint-disable no-unused-vars */
+declare global {
+  interface Window {
+    vscode?: { postMessage(data: unknown): void };
+  }
+}
+/* eslint-enable no-unused-vars */
+
 // Attempt to create a VS Code log output channel. This will only succeed in
 // the extension host where the `vscode` module is available. In a webview
 // context `window` is defined, so we skip this step entirely.

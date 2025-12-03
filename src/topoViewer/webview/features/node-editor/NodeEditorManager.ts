@@ -4,7 +4,7 @@ import cytoscape from "cytoscape";
 import { log } from "../../platform/logging/logger";
 import { createFilterableDropdown } from "../../ui/FilterableDropdown";
 import { ManagerSaveTopo } from "../../core/SaveManager";
-import { VscodeMessageSender } from "../../core/VscodeMessaging";
+import { VscodeMessageSender } from "../../platform/messaging/VscodeMessaging";
 import {
   applyIconColorToNode,
   extractNodeIcons

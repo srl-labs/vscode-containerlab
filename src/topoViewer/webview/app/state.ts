@@ -1,5 +1,5 @@
-import type { TopoViewerState } from './shared/types/topoViewerState';
-import type { LinkLabelMode } from './shared/types/linkLabelMode';
+import type { TopoViewerState } from '../types/topoViewerState';
+import type { LinkLabelMode } from '../types/linkLabelMode';
 
 const DEFAULT_LINK_LABEL_MODE: LinkLabelMode = 'show-all';
 

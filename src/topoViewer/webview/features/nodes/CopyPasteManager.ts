@@ -1,4 +1,4 @@
-import { VscodeMessageSender } from '../../core/VscodeMessaging';
+import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import { ManagerGroupStyle } from '../groups/GroupStyleManager';
 import { ManagerFreeText } from '../annotations/FreeTextManager';
 import { ManagerFreeShapes } from '../annotations/FreeShapesManager';

@@ -2,9 +2,9 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { CopyPasteManager } from '../../../src/topoViewer/webview-ui/managerCopyPaste';
-import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
-import { ManagerFreeText } from '../../../src/topoViewer/webview-ui/managerFreeText';
+import { CopyPasteManager } from '../../../src/topoViewer/webview/features/nodes/CopyPasteManager';
+import { ManagerGroupStyle } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
+import { ManagerFreeText } from '../../../src/topoViewer/webview/features/annotations/FreeTextManager';
 
 (globalThis as any).window = globalThis;
 

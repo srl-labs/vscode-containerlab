@@ -9,7 +9,7 @@ import { full as markdownItEmoji } from 'markdown-it-emoji';
 import hljs from 'highlight.js';
 import { FreeTextAnnotation } from '../../../shared/types/topoViewerGraph';
 import { log } from '../../platform/logging/logger';
-import { VscodeMessageSender } from '../../core/VscodeMessaging';
+import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import {
   MIN_FREE_TEXT_WIDTH,
   MIN_FREE_TEXT_HEIGHT,
@@ -580,7 +580,7 @@ export class FreeTextOverlayManager {
   private positionAnnotationOverlay(
     node: cytoscape.NodeSingular,
     entry: OverlayEntry,
-    annotation: FreeTextAnnotation,
+    _annotation: FreeTextAnnotation,
     rotation: number
   ): void {
     const renderedPosition = node.renderedPosition();

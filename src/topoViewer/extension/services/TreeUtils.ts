@@ -1,4 +1,4 @@
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../treeView/common';
+import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 
 export function findContainerNode(
   labs: Record<string, ClabLabTreeNode> | undefined,
@@ -13,7 +13,8 @@ export function findContainerNode(
     : Object.values(labs);
   for (const lab of labValues) {
     const container = lab.containers?.find(
-      c => c.name === name || c.name_short === name || c.label === name
+      (c: ClabContainerTreeNode) =>
+        c.name === name || c.name_short === name || c.label === name
     );
     if (container) {
       return container;
@@ -33,6 +34,7 @@ export function findInterfaceNode(
     return undefined;
   }
   return container.interfaces.find(
-    i => i.name === intf || i.alias === intf || i.label === intf
+    (i: ClabInterfaceTreeNode) =>
+      i.name === intf || i.alias === intf || i.label === intf
   );
 }

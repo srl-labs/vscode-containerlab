@@ -1,7 +1,7 @@
 /* eslint-disable */
-import type { ManagerLayoutAlgo } from '../../cytoscape/LayoutAlgorithms';
-import type { ManagerGroupManagement } from '../../groups/GroupManager';
-import type { TopologyWebviewController } from '../../TopologyController';
+import type { ManagerLayoutAlgo } from '../features/canvas/LayoutAlgorithms';
+import type { ManagerGroupManagement } from '../features/groups/GroupManager';
+import type TopologyWebviewController from '../app/TopologyShell';
 
 declare global {
   interface LayoutManager extends ManagerLayoutAlgo {}

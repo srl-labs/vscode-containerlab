@@ -1,5 +1,5 @@
 import cytoscape from 'cytoscape';
-import { VscodeMessageSender } from '../../core/VscodeMessaging';
+import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import { log } from '../../platform/logging/logger';
 import type { GroupStyleAnnotation, FreeTextAnnotation } from '../../../shared/types/topoViewerGraph';
 import type { ManagerFreeText } from '../annotations/FreeTextManager';

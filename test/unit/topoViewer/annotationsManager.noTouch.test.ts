@@ -17,7 +17,7 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { annotationsManager } from '../../../src/topoViewer/utilities/annotationsManager';
+import { annotationsManager } from '../../../src/topoViewer/extension/services/AnnotationsFile';
 
 describe('AnnotationsManager saveAnnotations', () => {
   after(() => {
