@@ -15,22 +15,22 @@ import "uplot/dist/uPlot.min.css";
 import loadCytoStyle from "../features/canvas/BaseStyles";
 import { VscodeMessageSender } from "../platform/messaging/VscodeMessaging";
 import { fetchAndLoadData, fetchAndLoadDataEnvironment } from "../features/canvas/FetchAndLoad";
-import { ManagerSaveTopo } from "../core/SaveManager";
-import { ManagerAddContainerlabNode } from "../features/nodes/AddNodeManager";
-import { ManagerViewportPanels } from "../features/panels/ViewportPanelsManager";
-import { ManagerUnifiedFloatingPanel } from "../features/panels/UnifiedFloatingPanel";
-import { ManagerFreeText } from "../features/annotations/FreeTextManager";
-import { ManagerFreeShapes } from "../features/annotations/FreeShapesManager";
-import { ManagerNodeEditor } from "../features/node-editor/NodeEditorManager";
-import { ManagerGroupStyle } from "../features/groups/GroupStyleManager";
+import { SaveManager } from "../core/SaveManager";
+import { AddNodeManager } from "../features/nodes/AddNodeManager";
+import { ViewportPanelsManager } from "../features/panels/ViewportPanelsManager";
+import { UnifiedFloatingPanelManager } from "../features/panels/UnifiedFloatingPanelManager";
+import { FreeTextManager } from "../features/annotations/FreeTextManager";
+import { FreeShapesManager } from "../features/annotations/FreeShapesManager";
+import { NodeEditorManager } from "../features/node-editor/NodeEditorManager";
+import { GroupStyleManager } from "../features/groups/GroupStyleManager";
 import { CopyPasteManager } from "../features/nodes/CopyPasteManager";
-import { ManagerLabSettings } from "../features/panels/LabSettingsManager";
+import { LabSettingsManager } from "../features/panels/LabSettingsManager";
 import { viewportButtonsCaptureViewportAsSvg } from "../ui/UiHandlers";
-import type { ManagerGroupManagement } from "../features/groups/GroupManager";
-import type { ManagerLayoutAlgo } from "../features/canvas/LayoutAlgorithms";
-import type { ManagerZoomToFit } from "../features/canvas/ZoomToFit";
-import type { ManagerLabelEndpoint } from "../features/canvas/LinkLabelManager";
-import { ManagerShortcutDisplay } from "../ui/ShortcutDisplay";
+import type { GroupManager } from "../features/groups/GroupManager";
+import type { LayoutManager } from "../features/canvas/LayoutManager";
+import type { ZoomToFitManager } from "../features/canvas/ZoomToFitManager";
+import type { LinkLabelManager } from "../features/canvas/LinkLabelManager";
+import { ShortcutDisplayManager } from "../ui/ShortcutDisplayManager";
 import {
   layoutAlgoManager as layoutAlgoManagerSingleton,
   getGroupManager,
@@ -43,7 +43,7 @@ import { perfMark, perfMeasure } from "../../shared/utilities/PerformanceMonitor
 import { registerCyEventHandlers } from "../features/canvas/EventHandlers";
 import { PerformanceMonitor } from "../../shared/utilities/PerformanceMonitor";
 import { debounce } from "../../shared/utilities/AsyncUtils";
-import { ManagerGridGuide } from "../features/canvas/GridGuide";
+import { GridGuideManager } from "../features/canvas/GridGuideManager";
 import topoViewerState from "./state";
 
 // Extracted managers
@@ -68,23 +68,23 @@ export default class TopologyWebviewController {
   private isViewportDrawerClabEditorChecked: boolean = true;
 
   public messageSender!: VscodeMessageSender;
-  public saveManager!: ManagerSaveTopo;
-  public addNodeManager!: ManagerAddContainerlabNode;
-  public viewportPanels?: ManagerViewportPanels;
-  public unifiedFloatingPanel: ManagerUnifiedFloatingPanel | null = null;
-  public nodeEditor?: ManagerNodeEditor;
-  public groupManager!: ManagerGroupManagement;
-  public groupStyleManager!: ManagerGroupStyle;
-  public layoutAlgoManager!: ManagerLayoutAlgo;
-  public zoomToFitManager!: ManagerZoomToFit;
-  public labelEndpointManager!: ManagerLabelEndpoint;
-  public dummyLinksManager!: import("../features/canvas/DummyLinks").ManagerDummyLinks;
-  public freeTextManager?: ManagerFreeText;
-  public freeShapesManager?: ManagerFreeShapes;
+  public saveManager!: SaveManager;
+  public addNodeManager!: AddNodeManager;
+  public viewportPanels?: ViewportPanelsManager;
+  public unifiedFloatingPanel: UnifiedFloatingPanelManager | null = null;
+  public nodeEditor?: NodeEditorManager;
+  public groupManager!: GroupManager;
+  public groupStyleManager!: GroupStyleManager;
+  public layoutAlgoManager!: LayoutManager;
+  public zoomToFitManager!: ZoomToFitManager;
+  public labelEndpointManager!: LinkLabelManager;
+  public dummyLinksManager!: import("../features/canvas/DummyLinksManager").DummyLinksManager;
+  public freeTextManager?: FreeTextManager;
+  public freeShapesManager?: FreeShapesManager;
   public copyPasteManager!: CopyPasteManager;
   public captureViewportManager!: { viewportButtonsCaptureViewportAsSvg: () => void };
-  public labSettingsManager?: ManagerLabSettings;
-  public gridManager!: ManagerGridGuide;
+  public labSettingsManager?: LabSettingsManager;
+  public gridManager!: GridGuideManager;
 
   // Extracted managers
   private contextMenuManager!: ContextMenuManager;
@@ -274,7 +274,14 @@ export default class TopologyWebviewController {
   }
 
   private shouldSkipAutoSaveForTarget(target: cytoscape.Singular | undefined): boolean {
-    if (!target || !target.isNode()) {
+    if (!target) {
+      return true;
+    }
+    // Allow edges to trigger auto-save (for link deletion)
+    if (target.isEdge()) {
+      return false;
+    }
+    if (!target.isNode()) {
       return true;
     }
     return target.data("topoViewerRole") === "freeText";
@@ -370,7 +377,7 @@ export default class TopologyWebviewController {
     this.cy.on("tap", (event) => {
       log.debug(`Cytoscape event: ${event.type}`);
     });
-    this.gridManager = new ManagerGridGuide(this.cy);
+    this.gridManager = new GridGuideManager(this.cy);
     this.gridManager.initialize(theme as "light" | "dark");
     (window as any).updateTopoGridTheme = (newTheme: "light" | "dark") => {
       this.gridManager.updateTheme(newTheme);
@@ -388,14 +395,14 @@ export default class TopologyWebviewController {
 
   private setupManagers(mode: "edit" | "view"): void {
     // eslint-disable-next-line sonarjs/constructor-for-side-effects
-    new ManagerShortcutDisplay();
-    this.saveManager = new ManagerSaveTopo(this.messageSender);
-    this.addNodeManager = new ManagerAddContainerlabNode();
-    this.labSettingsManager = new ManagerLabSettings(this.messageSender);
+    new ShortcutDisplayManager();
+    this.saveManager = new SaveManager(this.messageSender);
+    this.addNodeManager = new AddNodeManager();
+    this.labSettingsManager = new LabSettingsManager(this.messageSender);
     this.labSettingsManager.init();
-    this.freeTextManager = new ManagerFreeText(this.cy, this.messageSender);
-    this.freeShapesManager = new ManagerFreeShapes(this.cy, this.messageSender);
-    this.groupStyleManager = new ManagerGroupStyle(
+    this.freeTextManager = new FreeTextManager(this.cy, this.messageSender);
+    this.freeShapesManager = new FreeShapesManager(this.cy, this.messageSender);
+    this.groupStyleManager = new GroupStyleManager(
       this.cy,
       this.messageSender,
       this.freeTextManager
@@ -409,11 +416,11 @@ export default class TopologyWebviewController {
     );
     this.copyPasteManager.setFreeShapesManager(this.freeShapesManager);
     if (mode === "edit") {
-      this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+      this.viewportPanels = new ViewportPanelsManager(this.saveManager, this.cy);
       (window as any).viewportPanels = this.viewportPanels;
-      this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
+      this.nodeEditor = new NodeEditorManager(this.cy, this.saveManager);
     }
-    this.unifiedFloatingPanel = new ManagerUnifiedFloatingPanel(
+    this.unifiedFloatingPanel = new UnifiedFloatingPanelManager(
       this.cy,
       this.messageSender,
       this.addNodeManager,
@@ -718,11 +725,11 @@ export default class TopologyWebviewController {
     await this.registerEvents(mode);
     if (mode === "edit") {
       if (!this.viewportPanels) {
-        this.viewportPanels = new ManagerViewportPanels(this.saveManager, this.cy);
+        this.viewportPanels = new ViewportPanelsManager(this.saveManager, this.cy);
         (window as any).viewportPanels = this.viewportPanels;
       }
       if (!this.nodeEditor) {
-        this.nodeEditor = new ManagerNodeEditor(this.cy, this.saveManager);
+        this.nodeEditor = new NodeEditorManager(this.cy, this.saveManager);
       }
       this.setupAutoSave();
     } else {

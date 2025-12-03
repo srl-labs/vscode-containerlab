@@ -232,7 +232,9 @@ export function createNodeAnnotation(
   aliasIfaceByAlias: Map<string, Set<string>>,
   nodeById: Map<string, any>,
 ): NodeAnnotation {
-  const rawId = String(node?.data?.id || '');
+  // Use name (current node name) instead of id (original Cytoscape element id)
+  // This ensures annotations follow node renames
+  const rawId = String(node?.data?.name || node?.data?.id || '');
   let annId = rawId;
   const nodeAnnotation: NodeAnnotation = { id: annId, icon: node.data.topoViewerRole };
   applyNodeIconColor(nodeAnnotation, node);
@@ -255,10 +257,13 @@ export function createNodeAnnotation(
  * Creates a cloud node annotation from a payload cloud node element
  */
 export function createCloudNodeAnnotation(cloudNode: any): CloudNodeAnnotation {
+  // Use name (current node name) instead of id (original Cytoscape element id)
+  // This ensures annotations follow node renames
+  const annId = cloudNode.data.name || cloudNode.data.id;
   const cloudNodeAnnotation: CloudNodeAnnotation = {
-    id: cloudNode.data.id,
+    id: annId,
     type: cloudNode.data.extraData?.kind || STR_HOST,
-    label: cloudNode.data.name || cloudNode.data.id,
+    label: annId,
     position: {
       x: cloudNode.position?.x || 0,
       y: cloudNode.position?.y || 0,

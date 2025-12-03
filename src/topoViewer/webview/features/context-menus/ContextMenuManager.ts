@@ -3,11 +3,11 @@
 
 import type cytoscape from "cytoscape";
 import { loadExtension } from "../canvas/CytoscapeFactory";
-import type { ManagerViewportPanels } from "../panels/ViewportPanelsManager";
-import type { ManagerNodeEditor } from "../node-editor/NodeEditorManager";
-import type { ManagerGroupManagement } from "../groups/GroupManager";
-import type { ManagerFreeText } from "../annotations/FreeTextManager";
-import type { ManagerFreeShapes } from "../annotations/FreeShapesManager";
+import type { ViewportPanelsManager } from "../panels/ViewportPanelsManager";
+import type { NodeEditorManager } from "../node-editor/NodeEditorManager";
+import type { GroupManager } from "../groups/GroupManager";
+import type { FreeTextManager } from "../annotations/FreeTextManager";
+import type { FreeShapesManager } from "../annotations/FreeShapesManager";
 import type { VscodeMessageSender } from "../../platform/messaging/VscodeMessaging";
 
 // UI constants for context menus
@@ -19,11 +19,11 @@ export const UI_OPEN_EVENT = "cxttap";
 
 export interface ContextMenuDependencies {
   cy: cytoscape.Core;
-  getViewportPanels: () => ManagerViewportPanels | undefined;
-  getNodeEditor: () => ManagerNodeEditor | undefined;
-  getGroupManager: () => ManagerGroupManagement;
-  getFreeTextManager: () => ManagerFreeText | undefined;
-  getFreeShapesManager: () => ManagerFreeShapes | undefined;
+  getViewportPanels: () => ViewportPanelsManager | undefined;
+  getNodeEditor: () => NodeEditorManager | undefined;
+  getGroupManager: () => GroupManager;
+  getFreeTextManager: () => FreeTextManager | undefined;
+  getFreeShapesManager: () => FreeShapesManager | undefined;
   getMessageSender: () => VscodeMessageSender;
   isLocked: () => boolean;
   getCurrentMode: () => "edit" | "view";

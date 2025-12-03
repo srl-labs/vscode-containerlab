@@ -3,7 +3,7 @@
 import cytoscape from "cytoscape";
 import { log } from "../../platform/logging/logger";
 import { createFilterableDropdown } from "../../ui/FilterableDropdown";
-import { ManagerSaveTopo } from "../../core/SaveManager";
+import { SaveManager } from "../../core/SaveManager";
 import { VscodeMessageSender } from "../../platform/messaging/VscodeMessaging";
 import { applyIconColorToNode } from "../canvas/BaseStyles";
 import { DEFAULT_INTERFACE_PATTERN } from "../../ui/InterfacePatternUtils";
@@ -57,11 +57,11 @@ import {
 } from "./NodeEditorConstants";
 
 /**
- * ManagerNodeEditor handles the node editor with tabs for all Containerlab properties
+ * NodeEditorManager handles the node editor with tabs for all Containerlab properties
  */
-export class ManagerNodeEditor {
+export class NodeEditorManager {
   private cy: cytoscape.Core;
-  private saveManager: ManagerSaveTopo;
+  private saveManager: SaveManager;
   private currentNode: cytoscape.NodeSingular | null = null;
   private panel: HTMLElement | null = null;
   private messageSender: VscodeMessageSender;
@@ -81,7 +81,7 @@ export class ManagerNodeEditor {
   private iconSelectionManager: IconSelectionManager;
   private changeTrackingManager: ChangeTrackingManager;
 
-  constructor(cy: cytoscape.Core, saveManager: ManagerSaveTopo) {
+  constructor(cy: cytoscape.Core, saveManager: SaveManager) {
     this.cy = cy;
     this.saveManager = saveManager;
     this.messageSender = saveManager.getMessageSender();

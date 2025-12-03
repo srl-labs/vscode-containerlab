@@ -21,7 +21,7 @@ type CustomNodeTemplate = {
 /**
  * Adds new Containerlab nodes into the Cytoscape canvas.
  */
-export class ManagerAddContainerlabNode {
+export class AddNodeManager {
   private static nodeCounter: number = 0;
 
   public viewportButtonsAddContainerlabNode(
@@ -41,7 +41,7 @@ export class ManagerAddContainerlabNode {
   }
 
   private initializeNodeCounter(cy: cytoscape.Core): void {
-    if (ManagerAddContainerlabNode.nodeCounter !== 0) {
+    if (AddNodeManager.nodeCounter !== 0) {
       return;
     }
     const existingNodeIds = cy.nodes().map(node => node.id());
@@ -50,12 +50,12 @@ export class ManagerAddContainerlabNode {
       .map(id => parseInt(id.replace('nodeId-', ''), 10))
       .filter(num => !isNaN(num))
       .reduce((max, current) => Math.max(max, current), 0);
-    ManagerAddContainerlabNode.nodeCounter = maxId;
+    AddNodeManager.nodeCounter = maxId;
   }
 
   private generateNodeId(): string {
-    ManagerAddContainerlabNode.nodeCounter++;
-    return `nodeId-${ManagerAddContainerlabNode.nodeCounter}`;
+    AddNodeManager.nodeCounter++;
+    return `nodeId-${AddNodeManager.nodeCounter}`;
   }
 
   private generateNodeName(

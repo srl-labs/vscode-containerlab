@@ -41,7 +41,7 @@ export function determineSpecialNode(node: string, iface: string): { id: string;
   if (node.startsWith(PREFIX_MACVLAN)) return { id: node, type: 'macvlan', label: node };
   if (node.startsWith(PREFIX_VXLAN_STITCH)) return { id: node, type: TYPES.VXLAN_STITCH, label: node };
   if (node.startsWith('vxlan:')) return { id: node, type: 'vxlan', label: node };
-  if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: 'dummy' };
+  if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: node };
   return null;
 }
 

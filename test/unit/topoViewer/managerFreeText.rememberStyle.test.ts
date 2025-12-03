@@ -2,7 +2,7 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerFreeText } from '../../../src/topoViewer/webview/features/annotations/FreeTextManager';
+import { FreeTextManager } from '../../../src/topoViewer/webview/features/annotations/FreeTextManager';
 
 // ensure window is available
 (globalThis as any).window = globalThis;
@@ -11,7 +11,7 @@ describe('ManagerFreeText remember style', () => {
   it('applies last used style to new free text', async () => {
     const cy = cytoscape({ headless: true });
     const messageSender = { sendMessageToVscodeEndpointPost: async () => ({}) } as any;
-    const mgr = new ManagerFreeText(cy, messageSender);
+    const mgr = new FreeTextManager(cy, messageSender);
 
     mgr.addFreeTextAnnotation({
       id: 'freeText_1',

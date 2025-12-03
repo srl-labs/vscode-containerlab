@@ -42,7 +42,7 @@ function loadCytoStyle(cy: cytoscape.Core, theme?: 'light' | 'dark'): void {
  * here so other classes (e.g. `TopologyWebviewController`) can access and modify
  * them directly.
  */
-export class ManagerLayoutAlgo {
+export class LayoutManager {
   /** Flag indicating if the map overlay has been initialised. */
   public isGeoMapInitialized = false;
   /** Reference to the Leaflet map instance created by the Cytoscape plugin. */

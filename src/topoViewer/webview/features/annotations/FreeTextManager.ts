@@ -6,7 +6,7 @@ import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topoViewerGraph';
 import { log } from '../../platform/logging/logger';
-import type { ManagerGroupStyle } from '../groups/GroupStyleManager';
+import type { GroupStyleManager } from '../groups/GroupStyleManager';
 import { FreeTextOverlayManager, OverlayManagerCallbacks } from './FreeTextOverlayManager';
 import { FreeTextModalController, ModalControllerCallbacks } from './FreeTextModalController';
 import {
@@ -22,10 +22,10 @@ import {
 /**
  * Manages free text annotations in the Cytoscape viewport
  */
-export class ManagerFreeText {
+export class FreeTextManager {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
-  private groupStyleManager?: ManagerGroupStyle;
+  private groupStyleManager?: GroupStyleManager;
   private annotations: Map<string, FreeTextAnnotation> = new Map();
   private annotationNodes: Map<string, cytoscape.NodeSingular> = new Map();
 
@@ -62,7 +62,7 @@ export class ManagerFreeText {
     return Boolean((window as any)?.topologyLocked);
   }
 
-  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, groupStyleManager?: ManagerGroupStyle) {
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, groupStyleManager?: GroupStyleManager) {
     this.cy = cy;
     this.messageSender = messageSender;
     this.groupStyleManager = groupStyleManager;
@@ -154,7 +154,7 @@ export class ManagerFreeText {
     this.overlayManager.clearAnnotationOverlays();
   }
 
-  public setGroupStyleManager(manager: ManagerGroupStyle): void {
+  public setGroupStyleManager(manager: GroupStyleManager): void {
     this.groupStyleManager = manager;
   }
 
@@ -724,7 +724,7 @@ export class ManagerFreeText {
       clearTimeout(this.saveTimeout);
     }
     const elapsed = now - this.saveBurstStart;
-    const delay = elapsed >= ManagerFreeText.SAVE_MAX_WAIT_MS ? 0 : ManagerFreeText.SAVE_DEBOUNCE_MS;
+    const delay = elapsed >= FreeTextManager.SAVE_MAX_WAIT_MS ? 0 : FreeTextManager.SAVE_DEBOUNCE_MS;
     this.saveTimeout = setTimeout(() => {
       this.saveTimeout = null;
       this.saveBurstStart = null;

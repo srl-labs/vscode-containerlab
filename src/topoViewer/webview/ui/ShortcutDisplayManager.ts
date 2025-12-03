@@ -4,7 +4,7 @@ import { log } from '../platform/logging/logger';
  * Manager for displaying keyboard and mouse shortcuts.
  * Handles toggling, event listening, and displaying input events.
  */
-export class ManagerShortcutDisplay {
+export class ShortcutDisplayManager {
   private shortcutEnabled: boolean = false;
   private displayContainer: HTMLElement | null = null;
   private toggleButton: HTMLElement | null = null;

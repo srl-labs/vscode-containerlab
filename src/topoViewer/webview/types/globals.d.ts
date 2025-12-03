@@ -1,14 +1,14 @@
 /* eslint-disable */
-import type { ManagerLayoutAlgo } from '../features/canvas/LayoutAlgorithms';
-import type { ManagerGroupManagement } from '../features/groups/GroupManager';
-import type TopologyWebviewController from '../app/TopologyShell';
+import type { LayoutManager as LayoutManagerClass } from '../features/canvas/LayoutManager';
+import type { GroupManager } from '../features/groups/GroupManager';
+import type TopologyWebviewController from '../app/TopologyWebviewController';
 
 declare global {
-  interface LayoutManager extends ManagerLayoutAlgo {}
+  interface LayoutManager extends LayoutManagerClass {}
 
   interface GlobalState {
     layoutManager?: LayoutManager;
-    groupManager?: ManagerGroupManagement;
+    groupManager?: GroupManager;
     // layout control functions
     layoutAlgoChange?: (..._args: any[]) => void;
     viewportButtonsLayoutAlgo?: (..._args: any[]) => void;

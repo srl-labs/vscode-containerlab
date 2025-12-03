@@ -11,7 +11,7 @@ import { updateNodePosition, handleGeoData } from '../features/nodes/NodeUtils';
 /**
  * Handles saving topology data from the Cytoscape viewport.
  */
-export class ManagerSaveTopo {
+export class SaveManager {
   private messageSender: VscodeMessageSender;
 
   constructor(messageSender: VscodeMessageSender) {

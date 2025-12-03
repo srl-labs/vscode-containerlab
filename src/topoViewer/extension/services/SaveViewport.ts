@@ -115,6 +115,146 @@ async function saveAnnotationsFromPayload(payloadParsed: any[], yamlFilePath: st
   await annotationsManager.saveAnnotations(yamlFilePath, annotations);
 }
 
+/**
+ * Checks if a node is a bridge alias node (has extYamlNodeId pointing to a different node).
+ */
+function isBridgeAliasForRename(el: any): boolean {
+  if (el.group !== 'nodes') return false;
+  const kind = el.data?.extraData?.kind;
+  if (kind !== 'bridge' && kind !== 'ovs-bridge') return false;
+  const extYamlNodeId = typeof el.data?.extraData?.extYamlNodeId === 'string'
+    ? el.data.extraData.extYamlNodeId.trim()
+    : '';
+  return extYamlNodeId.length > 0 && extYamlNodeId !== el.data?.id;
+}
+
+/**
+ * Collects bridge renames by comparing node IDs with their extYamlNodeId.
+ * Handles both:
+ * - Alias nodes: ID format "originalNodeName:interface"
+ * - Cloud nodes: ID format "originalNodeName" (no colon)
+ */
+function collectBridgeRenames(payloadParsed: any[]): Map<string, string> {
+  const renames = new Map<string, string>();
+
+  for (const el of payloadParsed) {
+    if (!isBridgeAliasForRename(el)) continue;
+
+    const extYamlNodeId = String(el.data?.extraData?.extYamlNodeId || '').trim();
+    if (!extYamlNodeId) continue;
+
+    const nodeId = String(el.data?.id || '');
+    if (!nodeId) continue;
+
+    // Check if this is an alias node (ID format: "nodeName:interface")
+    const colonIndex = nodeId.indexOf(':');
+    let originalNodeName: string;
+
+    if (colonIndex > 0) {
+      // Alias node - extract original name from before the colon
+      originalNodeName = nodeId.substring(0, colonIndex);
+    } else {
+      // Cloud node - the ID itself is the original name
+      originalNodeName = nodeId;
+    }
+
+    // If extYamlNodeId differs from original, it's a rename
+    if (originalNodeName !== extYamlNodeId && !renames.has(originalNodeName)) {
+      renames.set(originalNodeName, extYamlNodeId);
+    }
+  }
+
+  return renames;
+}
+
+/**
+ * Applies bridge renames to the YAML document.
+ * Also records renames in updatedKeys even if YAML doesn't have the old key,
+ * so that subsequent operations follow the rename chain correctly.
+ */
+function applyBridgeRenames(
+  yamlNodes: YAML.YAMLMap,
+  bridgeRenames: Map<string, string>,
+  updatedKeys: Map<string, string>,
+): void {
+  for (const [oldKey, newKey] of bridgeRenames) {
+    // Skip if already renamed by another operation
+    if (updatedKeys.has(oldKey)) continue;
+
+    // Always record the rename in updatedKeys so that subsequent operations
+    // (like updateNodeYaml and synthesizeMissingNodes) follow the rename chain.
+    // This is critical for subsequent saves where YAML already has the new key.
+    updatedKeys.set(oldKey, newKey);
+
+    const nodeMap = yamlNodes.get(oldKey, true) as YAML.YAMLMap | undefined;
+    if (!nodeMap) continue;
+
+    // Rename the YAML entry
+    yamlNodes.set(newKey, nodeMap);
+    yamlNodes.delete(oldKey);
+  }
+}
+
+/**
+ * Checks if an element should be included when building YAML node keys.
+ */
+function shouldIncludeInYamlKeys(el: any): boolean {
+  if (el.group !== 'nodes') return false;
+  if (el.data.topoViewerRole === 'group') return false;
+  if (el.data.topoViewerRole === 'freeText') return false;
+  if (el.data.topoViewerRole === 'freeShape') return false;
+  if (isSpecialEndpoint(el.data.id)) return false;
+  return true;
+}
+
+/**
+ * Extracts the YAML key from an element's data.
+ */
+function extractYamlKey(el: any): string {
+  const extra = (el.data?.extraData) || {};
+  const extYamlNodeId = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
+  if (extYamlNodeId) return extYamlNodeId;
+  return (el.data?.name && String(el.data.name)) || String(el.data?.id || '');
+}
+
+/**
+ * Follows the rename chain to get the current key name.
+ */
+function followRenameChain(key: string, updatedKeys: Map<string, string>): string {
+  let current = key;
+  while (updatedKeys.has(current)) {
+    current = updatedKeys.get(current)!;
+  }
+  return current;
+}
+
+/**
+ * Builds the set of YAML node keys that should exist after the update.
+ * Include keys from both writable nodes AND alias nodes (which reference YAML nodes via extYamlNodeId).
+ * Follows rename chain to get the current key name.
+ */
+function buildPayloadNodeYamlKeys(payloadParsed: any[], updatedKeys: Map<string, string>): Set<string> {
+  const keys = new Set<string>();
+  for (const el of payloadParsed) {
+    if (!shouldIncludeInYamlKeys(el)) continue;
+    const key = followRenameChain(extractYamlKey(el), updatedKeys);
+    if (key) keys.add(key);
+  }
+  return keys;
+}
+
+/**
+ * Removes YAML nodes that are no longer present in the payload.
+ */
+function removeDeletedNodes(yamlNodes: YAML.YAMLMap, payloadNodeYamlKeys: Set<string>): void {
+  for (const item of [...yamlNodes.items]) {
+    const keyStr = String(item.key);
+    if (!payloadNodeYamlKeys.has(keyStr)) {
+      yamlNodes.delete(item.key);
+    }
+  }
+}
+
 function updateYamlNodes(
   payloadParsed: any[],
   doc: YAML.Document.Parsed,
@@ -123,29 +263,18 @@ function updateYamlNodes(
   updatedKeys: Map<string, string>,
   idOverride: Map<string, string>,
 ): void {
+  // First, detect and apply bridge renames from alias nodes.
+  // This handles the case where the user renames a bridge through an alias node,
+  // and there's no separate base bridge node in the payload to perform the rename.
+  const bridgeRenames = collectBridgeRenames(payloadParsed);
+  applyBridgeRenames(yamlNodes, bridgeRenames, updatedKeys);
+
   payloadParsed.filter(isWritableNode).forEach(el =>
     updateNodeYaml(el, doc, yamlNodes, topoObj, updatedKeys, idOverride),
   );
 
-  // Build the set of YAML node keys that should exist after this update.
-  // Prefer explicit YAML key overrides (extYamlNodeId), else fall back to node "name", then id.
-  const payloadNodeYamlKeys = new Set(
-    payloadParsed
-      .filter(isWritableNode)
-      .map(el => {
-        const extra = (el.data?.extraData) || {};
-        const overrideKey = typeof extra.extYamlNodeId === 'string' && extra.extYamlNodeId.trim() ? extra.extYamlNodeId.trim() : '';
-        if (overrideKey) return overrideKey;
-        const preferred = (el.data?.name && String(el.data.name)) || String(el.data?.id || '');
-        return preferred;
-      }),
-  );
-  for (const item of [...yamlNodes.items]) {
-    const keyStr = String(item.key);
-    if (!payloadNodeYamlKeys.has(keyStr)) {
-      yamlNodes.delete(item.key);
-    }
-  }
+  const payloadNodeYamlKeys = buildPayloadNodeYamlKeys(payloadParsed, updatedKeys);
+  removeDeletedNodes(yamlNodes, payloadNodeYamlKeys);
 }
 
 interface MissingNodeSpec {
@@ -157,9 +286,10 @@ function synthesizeMissingNodes(
   payloadParsed: any[],
   doc: YAML.Document.Parsed,
   yamlNodes: YAML.YAMLMap,
+  renamedKeys: Map<string, string>,
 ): void {
   const existingKeys = collectExistingNodeKeys(yamlNodes);
-  const missingSpecs = collectMissingNodeSpecs(payloadParsed, existingKeys);
+  const missingSpecs = collectMissingNodeSpecs(payloadParsed, existingKeys, renamedKeys);
 
   missingSpecs.forEach(spec => {
     const nodeYaml = createYamlNodeFromSpec(doc, spec.extraData);
@@ -182,15 +312,25 @@ function collectExistingNodeKeys(yamlNodes: YAML.YAMLMap): Set<string> {
   return existingKeys;
 }
 
-function collectMissingNodeSpecs(payloadParsed: any[], existingKeys: Set<string>): MissingNodeSpec[] {
+function collectMissingNodeSpecs(
+  payloadParsed: any[],
+  existingKeys: Set<string>,
+  renamedKeys: Map<string, string>,
+): MissingNodeSpec[] {
   const specs: MissingNodeSpec[] = [];
   payloadParsed.filter(isWritableNode).forEach(el => {
     const extraData = el?.data?.extraData || {};
-    const nodeId = String(el?.data?.id || '');
     const overrideKey = typeof extraData.extYamlNodeId === 'string' ? extraData.extYamlNodeId.trim() : '';
 
-    addSpecIfMissing(nodeId, extraData, specs, existingKeys);
-    addSpecIfMissing(overrideKey, extraData, specs, existingKeys);
+    // If extYamlNodeId is set, use it as the authoritative YAML key.
+    // Don't use 'name' as it might be the alias/label (visual name), not the YAML key.
+    if (overrideKey) {
+      addSpecIfMissing(overrideKey, extraData, specs, existingKeys, renamedKeys);
+    } else {
+      // No extYamlNodeId - use name or id as the YAML key
+      const nodeKey = (el?.data?.name && String(el.data.name)) || String(el?.data?.id || '');
+      addSpecIfMissing(nodeKey, extraData, specs, existingKeys, renamedKeys);
+    }
   });
 
   return specs;
@@ -200,9 +340,14 @@ function addSpecIfMissing(
   candidateId: string,
   extraData: any,
   specs: MissingNodeSpec[],
-  existingKeys: Set<string>
+  existingKeys: Set<string>,
+  renamedKeys: Map<string, string>,
 ): void {
   if (!candidateId || existingKeys.has(candidateId)) {
+    return;
+  }
+  // Skip keys that were just renamed (the old key no longer exists but shouldn't be recreated)
+  if (renamedKeys.has(candidateId)) {
     return;
   }
   existingKeys.add(candidateId);
@@ -229,14 +374,39 @@ function createYamlNodeFromSpec(doc: YAML.Document.Parsed, extraData: any): YAML
   return nodeYaml;
 }
 
+/**
+ * Checks if an element is an alias node (ID format: nodeName:interface).
+ * Alias nodes have their ID containing a colon separating the YAML node name and interface.
+ */
+function isAliasNodeId(nodeId: string): boolean {
+  // Alias IDs have format "nodeName:interface" where both parts are non-empty
+  // Skip special prefixes like "host:", "mgmt-net:", "macvlan:", "vxlan:", etc.
+  if (isSpecialEndpoint(nodeId)) return false;
+  const colonIndex = nodeId.indexOf(':');
+  return colonIndex > 0 && colonIndex < nodeId.length - 1;
+}
+
 function isWritableNode(el: any): boolean {
-  return (
-    el.group === 'nodes' &&
-    el.data.topoViewerRole !== 'group' &&
-    el.data.topoViewerRole !== 'freeText' &&
-    el.data.topoViewerRole !== 'freeShape' &&
-    !isSpecialEndpoint(el.data.id)
-  );
+  if (el.group !== 'nodes') return false;
+  if (el.data.topoViewerRole === 'group') return false;
+  if (el.data.topoViewerRole === 'freeText') return false;
+  if (el.data.topoViewerRole === 'freeShape') return false;
+  if (isSpecialEndpoint(el.data.id)) return false;
+
+  // Alias nodes (visual representations of YAML nodes) should not modify YAML directly.
+  // They have extYamlNodeId pointing to a different node id AND their ID has alias format (nodeName:interface).
+  // Cloud nodes that have been renamed also have extYamlNodeId != id, but they ARE writable.
+  const extraData = el.data?.extraData || {};
+  const extYamlNodeId = typeof extraData.extYamlNodeId === 'string' ? extraData.extYamlNodeId.trim() : '';
+  if (extYamlNodeId && extYamlNodeId !== el.data.id) {
+    // Only exclude if this is truly an alias node (has alias ID format)
+    if (isAliasNodeId(el.data.id)) {
+      return false;
+    }
+    // Cloud nodes with extYamlNodeId set (renamed) are still writable
+  }
+
+  return true;
 }
 
 function getOrCreateNodeMap(nodeId: string, yamlNodes: YAML.YAMLMap): YAML.YAMLMap {
@@ -258,7 +428,12 @@ function updateNodeYaml(
   idOverride: Map<string, string>,
 ): void {
   const nodeId: string = element.data.id;
-  const initialKey = idOverride.get(nodeId) || nodeId;
+  let initialKey = idOverride.get(nodeId) || nodeId;
+  // If this key was already renamed by a previous node (e.g., base bridge renamed before alias),
+  // follow the rename chain to get the current key
+  while (updatedKeys.has(initialKey)) {
+    initialKey = updatedKeys.get(initialKey)!;
+  }
   const nodeMap = getOrCreateNodeMap(initialKey, yamlNodes);
   const extraData = element.data.extraData || {};
 
@@ -290,7 +465,11 @@ function updateNodeYaml(
   applyExtraProps(doc, nodeMap, extraData, inherit);
 
   // Prefer explicit YAML node name override if provided
-  const desiredYamlKey = (typeof extraData.extYamlNodeId === 'string' && extraData.extYamlNodeId.trim()) ? extraData.extYamlNodeId.trim() : element.data.name;
+  let desiredYamlKey = (typeof extraData.extYamlNodeId === 'string' && extraData.extYamlNodeId.trim()) ? extraData.extYamlNodeId.trim() : element.data.name;
+  // If the desired key was renamed, follow the rename chain
+  while (updatedKeys.has(desiredYamlKey)) {
+    desiredYamlKey = updatedKeys.get(desiredYamlKey)!;
+  }
   if (initialKey !== desiredYamlKey) {
     yamlNodes.set(desiredYamlKey, nodeMap);
     yamlNodes.delete(initialKey);
@@ -964,7 +1143,7 @@ export async function saveViewport({
   const topoObj = doc.toJS() as ClabTopology;
   const idOverride = buildNodeIdOverrideMap(payloadParsed);
   updateYamlNodes(payloadParsed, doc, yamlNodes, topoObj, updatedKeys, idOverride);
-  synthesizeMissingNodes(payloadParsed, doc, yamlNodes);
+  synthesizeMissingNodes(payloadParsed, doc, yamlNodes, updatedKeys);
   updateYamlLinks(payloadParsed, doc, updatedKeys);
 
   await saveAnnotationsFromPayload(payloadParsed, yamlFilePath);

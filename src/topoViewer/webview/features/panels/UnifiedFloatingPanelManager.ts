@@ -35,20 +35,20 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
 
 import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import cytoscape from 'cytoscape';
-import { ManagerAddContainerlabNode } from '../nodes/AddNodeManager';
-import { ManagerNodeEditor } from '../node-editor/NodeEditorManager';
+import { AddNodeManager } from '../nodes/AddNodeManager';
+import { NodeEditorManager } from '../node-editor/NodeEditorManager';
 import { getGroupManager } from '../../core/managerRegistry';
 import { LabLifecycleManager } from './LabLifecycleManager';
 import { CustomNodeMenuManager } from './CustomNodeMenuManager';
 
 /**
- * ManagerUnifiedFloatingPanel handles the unified floating action panel
+ * UnifiedFloatingPanelManager handles the unified floating action panel
  * that combines lab deployment/destruction with editor actions
  */
-export class ManagerUnifiedFloatingPanel {
+export class UnifiedFloatingPanelManager {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
-  private addNodeManager: ManagerAddContainerlabNode;
+  private addNodeManager: AddNodeManager;
   private lifecycleManager: LabLifecycleManager;
   private customNodeMenuManager: CustomNodeMenuManager;
   private addNodeMenuTippy: any = null;
@@ -69,7 +69,7 @@ export class ManagerUnifiedFloatingPanel {
   private lockBtn: HTMLButtonElement | null = null;
   private collapseBtn: HTMLButtonElement | null = null;
 
-  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: ManagerAddContainerlabNode, nodeEditor?: ManagerNodeEditor) {
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, addNodeManager: AddNodeManager, nodeEditor?: NodeEditorManager) {
     this.cy = cy;
     this.messageSender = messageSender;
     this.addNodeManager = addNodeManager;
@@ -775,7 +775,7 @@ export class ManagerUnifiedFloatingPanel {
     }, 100);
   }
 
-  public setNodeEditor(nodeEditor: ManagerNodeEditor | null): void {
+  public setNodeEditor(nodeEditor: NodeEditorManager | null): void {
     this.customNodeMenuManager.setNodeEditor(nodeEditor);
   }
 

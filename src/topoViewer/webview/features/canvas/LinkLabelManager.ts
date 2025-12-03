@@ -15,7 +15,7 @@ const LINK_LABEL_MENU_ID = 'viewport-link-label-menu';
 /**
  * Manages link label visibility and highlighting behaviour for edges.
  */
-export class ManagerLabelEndpoint {
+export class LinkLabelManager {
   private cy: cytoscape.Core | null = null;
   private currentMode: LinkLabelMode = topoViewerState.linkLabelMode;
   private readonly selectionHandler: () => void;

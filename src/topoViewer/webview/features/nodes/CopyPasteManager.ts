@@ -1,7 +1,7 @@
 import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
-import { ManagerGroupStyle } from '../groups/GroupStyleManager';
-import { ManagerFreeText } from '../annotations/FreeTextManager';
-import { ManagerFreeShapes } from '../annotations/FreeShapesManager';
+import { GroupStyleManager } from '../groups/GroupStyleManager';
+import { FreeTextManager } from '../annotations/FreeTextManager';
+import { FreeShapesManager } from '../annotations/FreeShapesManager';
 import loadCytoStyle from '../canvas/BaseStyles';
 import { isSpecialEndpoint } from '../../../shared/utilities/LinkTypes';
 import { log } from '../../platform/logging/logger';
@@ -27,17 +27,17 @@ interface CopyData {
 export class CopyPasteManager {
   private cy: any;
   private messageSender: VscodeMessageSender;
-  private groupStyleManager: ManagerGroupStyle;
-  private freeTextManager: ManagerFreeText;
-  private freeShapesManager: ManagerFreeShapes | null = null;
+  private groupStyleManager: GroupStyleManager;
+  private freeTextManager: FreeTextManager;
+  private freeShapesManager: FreeShapesManager | null = null;
   private pasteCounter: number = 0;
   private lastPasteCenter: { x: number; y: number } | null = null;
 
   constructor(
     cy: any,
     messageSender: VscodeMessageSender,
-    groupStyleManager: ManagerGroupStyle,
-    freeTextManager: ManagerFreeText
+    groupStyleManager: GroupStyleManager,
+    freeTextManager: FreeTextManager
   ) {
     this.cy = cy;
     this.messageSender = messageSender;
@@ -51,7 +51,7 @@ export class CopyPasteManager {
    * Sets the free shapes manager for copy/paste operations.
    * Called after initialization since freeShapesManager may be created later.
    */
-  public setFreeShapesManager(manager: ManagerFreeShapes): void {
+  public setFreeShapesManager(manager: FreeShapesManager): void {
     this.freeShapesManager = manager;
   }
 

@@ -14,11 +14,11 @@ import {
   zoomToFitManager as zoomToFitManager2,
   labelEndpointManager as labelEndpointManager2,
 } from '../../../src/topoViewer/webview/core/managerRegistry';
-import { ManagerLayoutAlgo } from '../../../src/topoViewer/webview/features/canvas/LayoutAlgorithms';
-import { ManagerGroupManagement } from '../../../src/topoViewer/webview/features/groups/GroupManager';
-import { ManagerZoomToFit } from '../../../src/topoViewer/webview/features/canvas/ZoomToFit';
-import { ManagerLabelEndpoint } from '../../../src/topoViewer/webview/features/canvas/LinkLabelManager';
-import { ManagerGroupStyle } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
+import { LayoutManager } from '../../../src/topoViewer/webview/features/canvas/LayoutManager';
+import { GroupManager } from '../../../src/topoViewer/webview/features/groups/GroupManager';
+import { ZoomToFitManager } from '../../../src/topoViewer/webview/features/canvas/ZoomToFitManager';
+import { LinkLabelManager } from '../../../src/topoViewer/webview/features/canvas/LinkLabelManager';
+import { GroupStyleManager } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
 
 // Ensure window is defined for modules that expect it
 (globalThis as any).window = globalThis;
@@ -26,24 +26,24 @@ import { ManagerGroupStyle } from '../../../src/topoViewer/webview/features/grou
 describe('manager registry', () => {
   it('exports singleton layout manager', () => {
     expect(layoutAlgoManager).to.equal(layoutAlgoManager2);
-    expect(layoutAlgoManager).to.be.instanceOf(ManagerLayoutAlgo);
+    expect(layoutAlgoManager).to.be.instanceOf(LayoutManager);
   });
 
   it('provides singleton group manager', () => {
     const cy = cytoscape({ headless: true });
     const sender = { sendMessageToVscodeEndpointPost: async () => ({}) } as any;
-    const gsm = new ManagerGroupStyle(cy, sender);
+    const gsm = new GroupStyleManager(cy, sender);
     const gm1 = getGroupManager(cy, gsm, 'view');
     const gm2 = getGroupManager(cy, gsm, 'edit');
     expect(gm1).to.equal(gm2);
-    expect(gm1).to.be.instanceOf(ManagerGroupManagement);
+    expect(gm1).to.be.instanceOf(GroupManager);
   });
 
   it('exports singleton auxiliary managers', () => {
     expect(zoomToFitManager).to.equal(zoomToFitManager2);
-    expect(zoomToFitManager).to.be.instanceOf(ManagerZoomToFit);
+    expect(zoomToFitManager).to.be.instanceOf(ZoomToFitManager);
 
     expect(labelEndpointManager).to.equal(labelEndpointManager2);
-    expect(labelEndpointManager).to.be.instanceOf(ManagerLabelEndpoint);
+    expect(labelEndpointManager).to.be.instanceOf(LinkLabelManager);
   });
 });

@@ -20,7 +20,7 @@ export type Theme = 'light' | 'dark';
 const LIGHT_GRID_RGBA = 'rgba(204,204,204,0.58)';
 const DARK_GRID_RGBA = 'rgba(102,102,102,0.58)';
 
-export class ManagerGridGuide {
+export class GridGuideManager {
   private cy: cytoscape.Core;
   // Overlay state
   private overlayCanvas: HTMLCanvasElement | null = null;

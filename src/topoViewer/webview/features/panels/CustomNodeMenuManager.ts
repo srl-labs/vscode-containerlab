@@ -1,7 +1,7 @@
 import cytoscape from 'cytoscape';
 import { log } from '../../platform/logging/logger';
 import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
-import { ManagerNodeEditor } from '../node-editor/NodeEditorManager';
+import { NodeEditorManager } from '../node-editor/NodeEditorManager';
 
 // Constants for custom node editor
 const TEMP_CUSTOM_ID = 'temp-custom-node' as const;
@@ -29,12 +29,12 @@ export interface CustomNodeMenuCallbacks {
 export class CustomNodeMenuManager {
   private messageSender: VscodeMessageSender;
   private callbacks: CustomNodeMenuCallbacks;
-  private nodeEditor: ManagerNodeEditor | null = null;
+  private nodeEditor: NodeEditorManager | null = null;
 
   constructor(
     messageSender: VscodeMessageSender,
     callbacks: CustomNodeMenuCallbacks,
-    nodeEditor?: ManagerNodeEditor
+    nodeEditor?: NodeEditorManager
   ) {
     this.messageSender = messageSender;
     this.callbacks = callbacks;
@@ -44,7 +44,7 @@ export class CustomNodeMenuManager {
   /**
    * Set the node editor reference
    */
-  public setNodeEditor(nodeEditor: ManagerNodeEditor | null): void {
+  public setNodeEditor(nodeEditor: NodeEditorManager | null): void {
     this.nodeEditor = nodeEditor;
   }
 

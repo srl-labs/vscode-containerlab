@@ -55,7 +55,7 @@ interface OverlayRotateState {
   startAngle: number;
 }
 
-export class ManagerFreeShapes {
+export class FreeShapesManager {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
   private annotations: Map<string, FreeShapeAnnotation> = new Map();
@@ -1029,7 +1029,7 @@ export class ManagerFreeShapes {
     }
     this.saveTimeout = setTimeout(() => {
       this.saveAnnotations();
-    }, ManagerFreeShapes.SAVE_DEBOUNCE_MS);
+    }, FreeShapesManager.SAVE_DEBOUNCE_MS);
   }
 
   private async saveAnnotations(): Promise<void> {

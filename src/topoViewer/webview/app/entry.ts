@@ -4,7 +4,7 @@ import { initializeGlobalHandlers } from '../ui/UiHandlers';
 import { windowManager, WindowManager, ManagedWindow } from '../platform/windowing/WindowManager';
 import { panelManager, PanelManager, defaultPanelConfigs, initializeDefaultPanels } from '../platform/windowing/PanelManager';
 
-import('./TopologyShell').then(() => {
+import('./TopologyWebviewController').then(() => {
   initializeGlobalHandlers();
 });
 
@@ -31,10 +31,10 @@ window.PanelManager = PanelManager;
 window.defaultPanelConfigs = defaultPanelConfigs;
 window.initializeDefaultPanels = initializeDefaultPanels;
 
-export { default as TopologyWebviewController } from './TopologyShell';
+export { default as TopologyWebviewController } from './TopologyWebviewController';
 export * from '../platform/messaging/VscodeMessaging';
-export { ManagerLayoutAlgo } from '../features/canvas/LayoutAlgorithms';
-export { ManagerGroupManagement } from '../features/groups/GroupManager';
+export { LayoutManager } from '../features/canvas/LayoutManager';
+export { GroupManager } from '../features/groups/GroupManager';
 export * from '../features/canvas/SvgGenerator';
 export * from '../ui/UiHandlers';
 export { windowManager, WindowManager, ManagedWindow } from '../platform/windowing/WindowManager';

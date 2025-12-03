@@ -22,7 +22,7 @@ interface LabSettings {
 /**
  * Manager responsible for handling lab settings panel operations
  */
-export class ManagerLabSettings {
+export class LabSettingsManager {
   private currentSettings: LabSettings = {};
   private messageSender: VscodeMessageSender;
 
@@ -36,7 +36,7 @@ export class ManagerLabSettings {
   public init(): void {
     this.setupEventListeners();
     this.loadCurrentSettings();
-    log.info('[ManagerLabSettings] Initialized');
+    log.info('[LabSettingsManager] Initialized');
   }
 
   /**
@@ -91,10 +91,10 @@ export class ManagerLabSettings {
 
       if (response && response.settings) {
         this.currentSettings = response.settings;
-        log.info('[ManagerLabSettings] Loaded current settings');
+        log.info('[LabSettingsManager] Loaded current settings');
       }
     } catch {
-      log.error('[ManagerLabSettings] Error loading settings from backend');
+      log.error('[LabSettingsManager] Error loading settings from backend');
     }
   }
 
@@ -110,7 +110,7 @@ export class ManagerLabSettings {
       (window as any).showLabSettingsPanel(this.currentSettings);
     }
 
-    log.info('[ManagerLabSettings] Showing lab settings panel');
+    log.info('[LabSettingsManager] Showing lab settings panel');
   }
 
   /**
@@ -135,7 +135,7 @@ export class ManagerLabSettings {
    * Handle apply settings from the panel
    */
   private async handleApplySettings(settings: LabSettings): Promise<void> {
-    log.info('[ManagerLabSettings] Applying settings');
+    log.info('[LabSettingsManager] Applying settings');
 
     try {
       // Send settings to backend to update YAML
@@ -147,7 +147,7 @@ export class ManagerLabSettings {
       if (response && response.success) {
         // Update stored settings
         this.currentSettings = settings;
-        log.info('[ManagerLabSettings] Settings applied successfully');
+        log.info('[LabSettingsManager] Settings applied successfully');
 
         // Update the YAML editor if we have the content
         if (response.yamlContent && (window as any).yamlEditor) {
@@ -157,7 +157,7 @@ export class ManagerLabSettings {
         throw new Error(response?.error || 'Failed to update settings');
       }
     } catch (error) {
-      log.error('[ManagerLabSettings] Error applying settings');
+      log.error('[LabSettingsManager] Error applying settings');
       // Show error to user
       const errorMessage = `Failed to apply lab settings: ${String(error)}`;
       await this.messageSender.sendMessageToVscodeEndpointPost(
@@ -181,7 +181,7 @@ export class ManagerLabSettings {
         mgmt: parsed.mgmt
       };
     } catch {
-      log.error('[ManagerLabSettings] Error extracting settings');
+      log.error('[LabSettingsManager] Error extracting settings');
       return {};
     }
   }
@@ -222,11 +222,11 @@ export class ManagerLabSettings {
 
       return doc.toString();
     } catch {
-      log.error('[ManagerLabSettings] Error updating YAML');
+      log.error('[LabSettingsManager] Error updating YAML');
       return yamlContent;
     }
   }
 }
 
 // Export for use in other modules
-export default ManagerLabSettings;
+export default LabSettingsManager;

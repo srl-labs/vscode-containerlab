@@ -3,11 +3,11 @@
 
 import type cytoscape from "cytoscape";
 import { FilterUtils } from "../../../../helpers/filterUtils";
-import type { ManagerSaveTopo } from "../../core/SaveManager";
+import type { SaveManager } from "../../core/SaveManager";
 
 export interface BulkLinkDependencies {
   cy: cytoscape.Core;
-  getSaveManager: () => ManagerSaveTopo;
+  getSaveManager: () => SaveManager;
   // eslint-disable-next-line no-unused-vars
   getNextEndpoint: (nodeId: string) => string;
   // eslint-disable-next-line no-unused-vars

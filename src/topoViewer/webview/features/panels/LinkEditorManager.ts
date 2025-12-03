@@ -1,5 +1,5 @@
 import cytoscape from "cytoscape";
-import { ManagerSaveTopo } from "../../core/SaveManager";
+import { SaveManager } from "../../core/SaveManager";
 import { log } from "../../platform/logging/logger";
 import { isSpecialNodeOrBridge } from "../../../shared/utilities/LinkTypes";
 
@@ -9,7 +9,7 @@ type RenderErrors = (errors: string[]) => void;
 /* eslint-enable no-unused-vars */
 
 export class LinkEditorManager {
-  private saveManager: ManagerSaveTopo;
+  private saveManager: SaveManager;
   private cy: cytoscape.Core;
   private setEdgeClicked: BooleanSetter;
 
@@ -52,7 +52,7 @@ export class LinkEditorManager {
   ] as const;
 
   constructor(
-    saveManager: ManagerSaveTopo,
+    saveManager: SaveManager,
     cy: cytoscape.Core,
     setEdgeClicked: BooleanSetter
   ) {

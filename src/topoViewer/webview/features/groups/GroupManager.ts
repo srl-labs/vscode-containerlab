@@ -8,7 +8,7 @@ const LABEL_BUTTON_TEXT_ID = `${PANEL_EL_PREFIX}label-dropdown-button-text` as c
 const CLASS_EMPTY_GROUP = 'empty-group' as const;
 const DEFAULT_LABEL_POS = 'top-center' as const;
 import type { ParentNodeData, ParentNodeExtraData, GroupStyleAnnotation } from '../../../shared/types/topoViewerGraph';
-import type { ManagerGroupStyle } from './GroupStyleManager';
+import type { GroupStyleManager } from './GroupStyleManager';
 import { GROUP_LABEL_POSITIONS } from './LabelPositions';
 
 // Declarations for globals provided elsewhere
@@ -66,13 +66,13 @@ interface ParentEditorInputs {
 // CSS class for Apply button with pending changes
 const CLASS_HAS_CHANGES = 'btn-has-changes' as const;
 
-export class ManagerGroupManagement {
+export class GroupManager {
   private cy: cytoscape.Core;
-  private groupStyleManager: ManagerGroupStyle;
+  private groupStyleManager: GroupStyleManager;
   private initialValues: Record<string, string> | null = null;
 
   /* eslint-disable no-unused-vars */
-  constructor(cy: cytoscape.Core, groupStyleManager: ManagerGroupStyle, _mode: 'edit' | 'view' = 'view') {
+  constructor(cy: cytoscape.Core, groupStyleManager: GroupStyleManager, _mode: 'edit' | 'view' = 'view') {
     /* eslint-enable no-unused-vars */
     this.cy = cy;
     this.groupStyleManager = groupStyleManager;

@@ -2,8 +2,8 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerGroupManagement } from '../../../src/topoViewer/webview/features/groups/GroupManager';
-import { ManagerGroupStyle } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
+import { GroupManager } from '../../../src/topoViewer/webview/features/groups/GroupManager';
+import { GroupStyleManager } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
 
 (globalThis as any).window = globalThis;
 
@@ -18,8 +18,8 @@ describe('ManagerGroupManagement duplicate group labels', () => {
       } } }
     ]});
     const messageSender = { sendMessageToVscodeEndpointPost: async () => ({}) } as any;
-    const styleManager = new ManagerGroupStyle(cy, messageSender);
-    const mgr = new ManagerGroupManagement(cy, styleManager, 'edit');
+    const styleManager = new GroupStyleManager(cy, messageSender);
+    const mgr = new GroupManager(cy, styleManager, 'edit');
 
     const elements: Record<string, any> = {
       'panel-node-editor-parent-graph-group-id': { textContent: 'group2:1' },

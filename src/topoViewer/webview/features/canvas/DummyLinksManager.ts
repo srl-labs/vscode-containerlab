@@ -13,7 +13,7 @@ const DUMMY_TOGGLE_BUTTON_ID = 'viewport-dummy-links-toggle';
  * Dummy links connect nodes to synthetic "dummy" endpoints and can be hidden
  * without affecting the underlying YAML topology data.
  */
-export class ManagerDummyLinks {
+export class DummyLinksManager {
   private cy: cytoscape.Core | null = null;
   private visible: boolean = topoViewerState.dummyLinksVisible;
 

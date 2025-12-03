@@ -3,19 +3,19 @@
 
 import type cytoscape from "cytoscape";
 import { log } from "../../platform/logging/logger";
-import type { ManagerGroupManagement } from "../groups/GroupManager";
+import type { GroupManager } from "../groups/GroupManager";
 import type { CopyPasteManager } from "../nodes/CopyPasteManager";
-import type { ManagerFreeText } from "../annotations/FreeTextManager";
-import type { ManagerFreeShapes } from "../annotations/FreeShapesManager";
-import type { ManagerSaveTopo } from "../../core/SaveManager";
+import type { FreeTextManager } from "../annotations/FreeTextManager";
+import type { FreeShapesManager } from "../annotations/FreeShapesManager";
+import type { SaveManager } from "../../core/SaveManager";
 
 export interface KeyboardManagerDependencies {
   cy: cytoscape.Core;
-  getGroupManager: () => ManagerGroupManagement;
+  getGroupManager: () => GroupManager;
   getCopyPasteManager: () => CopyPasteManager;
-  getFreeTextManager: () => ManagerFreeText | undefined;
-  getFreeShapesManager: () => ManagerFreeShapes | undefined;
-  getSaveManager: () => ManagerSaveTopo;
+  getFreeTextManager: () => FreeTextManager | undefined;
+  getFreeShapesManager: () => FreeShapesManager | undefined;
+  getSaveManager: () => SaveManager;
   isLocked: () => boolean;
   isEditorMode: () => boolean;
   getCurrentMode: () => "edit" | "view";

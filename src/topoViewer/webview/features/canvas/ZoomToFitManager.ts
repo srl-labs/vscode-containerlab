@@ -5,7 +5,7 @@ import topoViewerState from '../../app/state';
 /**
  * Provides functionality to zoom and fit the Cytoscape viewport across modes.
  */
-export class ManagerZoomToFit {
+export class ZoomToFitManager {
   public viewportButtonsZoomToFit(cy: cytoscape.Core): void {
     const initialZoom = cy.zoom();
     log.info(`Initial zoom level is "${initialZoom}".`);

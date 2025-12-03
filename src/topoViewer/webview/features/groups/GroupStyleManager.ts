@@ -2,19 +2,19 @@ import cytoscape from 'cytoscape';
 import { VscodeMessageSender } from '../../platform/messaging/VscodeMessaging';
 import { log } from '../../platform/logging/logger';
 import type { GroupStyleAnnotation, FreeTextAnnotation } from '../../../shared/types/topoViewerGraph';
-import type { ManagerFreeText } from '../annotations/FreeTextManager';
+import type { FreeTextManager } from '../annotations/FreeTextManager';
 import { debounce } from '../../../shared/utilities/AsyncUtils';
 
-export class ManagerGroupStyle {
+export class GroupStyleManager {
   private cy: cytoscape.Core;
   private messageSender: VscodeMessageSender;
-  private freeTextManager?: ManagerFreeText;
+  private freeTextManager?: FreeTextManager;
   private groupStyles: Map<string, GroupStyleAnnotation> = new Map();
   private saveDebounced: () => void;
   private loadInProgress = false;
   private loadTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, freeTextManager?: ManagerFreeText) {
+  constructor(cy: cytoscape.Core, messageSender: VscodeMessageSender, freeTextManager?: FreeTextManager) {
     this.cy = cy;
     this.messageSender = messageSender;
     this.freeTextManager = freeTextManager;
@@ -23,7 +23,7 @@ export class ManagerGroupStyle {
     }, 300);
   }
 
-  public setFreeTextManager(manager: ManagerFreeText): void {
+  public setFreeTextManager(manager: FreeTextManager): void {
     this.freeTextManager = manager;
   }
 
