@@ -1,6 +1,5 @@
 import { CloudNodeAnnotation, NodeAnnotation } from '../../shared/types/topoViewerGraph';
-import { isSpecialEndpoint } from '../../shared/utilities/SpecialNodes';
-import { STR_HOST } from '../../shared/utilities/LinkTypes';
+import { isSpecialEndpoint, STR_HOST } from '../../shared/utilities/LinkTypes';
 
 // Common node kinds
 export const KIND_BRIDGE = 'bridge' as const;

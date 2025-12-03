@@ -862,15 +862,3 @@ export class ManagerGroupManagement {
     log.info(`Created empty group ${groupId}`);
   }
 }
-
-/**
- * @deprecated Use {@link ManagerGroupManagement} instead.
- * Retained for backwards compatibility and will be removed in a future release.
- */
-export class ManagerGroupManagemetn extends ManagerGroupManagement {
-  constructor(...args: ConstructorParameters<typeof ManagerGroupManagement>) {
-    // Warn at runtime when deprecated alias is used
-    log.warn('ManagerGroupManagemetn is deprecated. Use ManagerGroupManagement instead.');
-    super(...args);
-  }
-}

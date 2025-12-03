@@ -35,10 +35,6 @@ export { default as TopologyWebviewController } from './TopologyShell';
 export * from '../platform/messaging/VscodeMessaging';
 export { ManagerLayoutAlgo } from '../features/canvas/LayoutAlgorithms';
 export { ManagerGroupManagement } from '../features/groups/GroupManager';
-/**
- * @deprecated Use ManagerGroupManagement instead.
- */
-export { ManagerGroupManagemetn } from '../features/groups/GroupManager';
 export * from '../features/canvas/SvgGenerator';
 export * from '../ui/UiHandlers';
 export { windowManager, WindowManager, ManagedWindow } from '../platform/windowing/WindowManager';

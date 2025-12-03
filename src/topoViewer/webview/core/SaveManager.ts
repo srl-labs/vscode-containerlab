@@ -5,7 +5,7 @@ import loadCytoStyle from '../features/canvas/BaseStyles';
 import { VscodeMessageSender } from '../platform/messaging/VscodeMessaging';
 import { log } from '../platform/logging/logger';
 import topoViewerState from '../app/state';
-import { isSpecialEndpoint } from '../../shared/utilities/SpecialNodes';
+import { isSpecialEndpoint } from '../../shared/utilities/LinkTypes';
 import { updateNodePosition, handleGeoData } from '../features/nodes/NodeUtils';
 
 /**

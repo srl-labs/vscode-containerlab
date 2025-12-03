@@ -1,7 +1,7 @@
 import cytoscape from "cytoscape";
 import { ManagerSaveTopo } from "../../core/SaveManager";
 import { log } from "../../platform/logging/logger";
-import { isSpecialNodeOrBridge } from "../../../shared/utilities/SpecialNodes";
+import { isSpecialNodeOrBridge } from "../../../shared/utilities/LinkTypes";
 
 /* eslint-disable no-unused-vars */
 type BooleanSetter = (flag: boolean) => void;

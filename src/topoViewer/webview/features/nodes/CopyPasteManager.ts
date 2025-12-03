@@ -3,7 +3,7 @@ import { ManagerGroupStyle } from '../groups/GroupStyleManager';
 import { ManagerFreeText } from '../annotations/FreeTextManager';
 import { ManagerFreeShapes } from '../annotations/FreeShapesManager';
 import loadCytoStyle from '../canvas/BaseStyles';
-import { isSpecialEndpoint } from '../../../shared/utilities/SpecialNodes';
+import { isSpecialEndpoint } from '../../../shared/utilities/LinkTypes';
 import { log } from '../../platform/logging/logger';
 import { TopologyAnnotations } from '../../../shared/types/topoViewerGraph';
 import { getUniqueId } from '../../ui/IdUtils';

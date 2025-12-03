@@ -1,7 +1,7 @@
 import * as YAML from 'yaml';
 
-import { isSpecialEndpoint } from '../../shared/utilities/SpecialNodes';
 import {
+  isSpecialEndpoint,
   STR_HOST,
   STR_MGMT_NET,
   PREFIX_MACVLAN,

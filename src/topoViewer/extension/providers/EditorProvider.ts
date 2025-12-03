@@ -19,7 +19,7 @@ import { labLifecycleService } from '../services/LabLifecycleService';
 import { splitViewManager } from '../services/SplitViewManager';
 import { deploymentStateChecker } from '../services/DeploymentStateChecker';
 import { editorEndpointHandlers, EndpointHandlerContext } from '../services/EditorEndpointHandlers';
-import { panelManager } from '../services/PanelManager';
+import { webviewTabManager } from '../services/WebviewTabManager';
 
 interface WebviewMessage {
   type?: string;
@@ -664,11 +664,11 @@ export class TopoViewerEditor {
   }
 
   private getViewerTemplateParams(): Partial<ViewerTemplateParams> {
-    return panelManager.getViewerTemplateParams(this.getTemplateParamsContext());
+    return webviewTabManager.getViewerTemplateParams(this.getTemplateParamsContext());
   }
 
   private async getEditorTemplateParams(): Promise<Partial<EditorTemplateParams>> {
-    return panelManager.getEditorTemplateParams(this.getTemplateParamsContext());
+    return webviewTabManager.getEditorTemplateParams(this.getTemplateParamsContext());
   }
 
   private async notifyWebviewModeChanged(): Promise<void> {
@@ -767,19 +767,19 @@ export class TopoViewerEditor {
   }
 
   private normalizeFileUri(fileUri: vscode.Uri): vscode.Uri {
-    return panelManager.normalizeFileUri(fileUri, this.lastYamlFilePath);
+    return webviewTabManager.normalizeFileUri(fileUri, this.lastYamlFilePath);
   }
 
   private revealIfPanelExists(column: vscode.ViewColumn | undefined): boolean {
-    return panelManager.revealIfPanelExists(this.currentPanel, column);
+    return webviewTabManager.revealIfPanelExists(this.currentPanel, column);
   }
 
   private initPanel(labName: string, column: vscode.ViewColumn | undefined): vscode.WebviewPanel {
-    return panelManager.createPanel(this.context, this.viewType, labName, column);
+    return webviewTabManager.createPanel(this.context, this.viewType, labName, column);
   }
 
   private setInitialLoadingContent(panel: vscode.WebviewPanel, labName: string): void {
-    panelManager.setInitialLoadingContent(panel, labName);
+    webviewTabManager.setInitialLoadingContent(panel, labName);
   }
 
   private async initializePanelData(fileUri: vscode.Uri, labName: string): Promise<void> {

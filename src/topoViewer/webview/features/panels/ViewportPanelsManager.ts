@@ -4,7 +4,7 @@ import cytoscape from "cytoscape";
 import { ManagerSaveTopo } from "../../core/SaveManager";
 import { createFilterableDropdown } from "../../ui/FilterableDropdown";
 import { log } from "../../platform/logging/logger";
-import { isSpecialNodeOrBridge } from "../../../shared/utilities/SpecialNodes";
+import { isSpecialNodeOrBridge } from "../../../shared/utilities/LinkTypes";
 import { LinkEditorManager } from "./LinkEditorManager";
 
 /**

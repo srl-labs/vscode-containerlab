@@ -1,4 +1,4 @@
-import { isSpecialEndpoint } from '../../shared/utilities/SpecialNodes';
+import { isSpecialEndpoint } from '../../shared/utilities/LinkTypes';
 
 export function generateDummyId(baseName: string, usedIds: Set<string>): string {
   const re = /^(dummy)(\d*)$/;

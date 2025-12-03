@@ -7,8 +7,7 @@ import { resolveNodeConfig } from '../../webview/core/nodeConfig';
 import { ClabTopology } from '../../shared/types/topoViewerType';
 import { annotationsManager } from './AnnotationsFile';
 import { NodeAnnotation } from '../../shared/types/topoViewerGraph';
-import { isSpecialEndpoint } from '../../shared/utilities/SpecialNodes';
-import { STR_HOST, STR_MGMT_NET, HOSTY_TYPES, VX_TYPES } from '../../shared/utilities/LinkTypes';
+import { isSpecialEndpoint, STR_HOST, STR_MGMT_NET, HOSTY_TYPES, VX_TYPES } from '../../shared/utilities/LinkTypes';
 import { sleep } from '../../shared/utilities/AsyncUtils';
 
 // Import from extracted modules

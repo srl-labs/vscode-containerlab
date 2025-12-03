@@ -4,7 +4,7 @@
 import type cytoscape from "cytoscape";
 import { loadExtension } from "../canvas/CytoscapeFactory";
 import { log } from "../../platform/logging/logger";
-import { isSpecialNodeOrBridge, isSpecialEndpoint } from "../../../shared/utilities/SpecialNodes";
+import { isSpecialNodeOrBridge, isSpecialEndpoint } from "../../../shared/utilities/LinkTypes";
 import {
   DEFAULT_INTERFACE_PATTERN,
   generateInterfaceName,

@@ -43,10 +43,13 @@ export interface PanelInitContext {
 /* eslint-enable no-unused-vars */
 
 /**
- * Manages panel creation, initialization, and template parameter generation
+ * Manages VS Code webview tab creation, initialization, and template parameter generation
  * for the TopoViewer Editor.
+ *
+ * Note: This is NOT the same as webview/platform/windowing/PanelManager which manages
+ * floating windows INSIDE the webview. This class manages the VS Code webview tab container.
  */
-class PanelManager {
+class WebviewTabManager {
   // ============================================================================
   // HTML Utilities
   // ============================================================================
@@ -338,4 +341,4 @@ class PanelManager {
   }
 }
 
-export const panelManager = new PanelManager();
+export const webviewTabManager = new WebviewTabManager();
