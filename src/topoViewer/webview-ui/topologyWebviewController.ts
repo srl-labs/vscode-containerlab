@@ -2219,11 +2219,15 @@ class TopologyWebviewController {
       padding: [12, 12, 12, 0],
       cursor: {
         show: true,
-        x: false,
+        x: true,  // Show vertical cursor line
         y: false,
         points: {
-          show: false
-        }
+          show: true,  // Show points at cursor position
+          size: 8,
+          fill: "#ffffff"
+        },
+        lock: true,  // Keep cursor visible when mouse leaves
+        drag: { x: false, y: false }  // Disable drag-to-zoom
       },
       series: this.createGraphSeries(),
       axes: [
