@@ -221,7 +221,19 @@ function applyElementsIncrementally(cy: cytoscape.Core, elements: any[]): void {
       }
     });
 
-    const toRemove = cy.elements().filter((ele) => !seenIds.has(ele.id()));
+    // Don't remove freeText/freeShape nodes - they are managed separately by their managers
+    // and are not included in the JSON data. Removing them would trigger their 'remove'
+    // event handlers which would delete them from the annotations file.
+    const toRemove = cy.elements().filter((ele) => {
+      if (seenIds.has(ele.id())) {
+        return false;
+      }
+      const role = ele.data('topoViewerRole');
+      if (role === 'freeText' || role === 'freeShape') {
+        return false;
+      }
+      return true;
+    });
     if (toRemove.length > 0) {
       toRemove.remove();
     }
