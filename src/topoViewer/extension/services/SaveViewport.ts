@@ -801,8 +801,7 @@ function yamlStructurallyEqual(doc: YAML.Document.Parsed, existingYaml: string):
 async function writeYamlFile(
   doc: YAML.Document.Parsed,
   yamlFilePath: string,
-  setInternalUpdate?: (_arg: boolean) => void, // eslint-disable-line no-unused-vars
-): Promise<void> {
+  setInternalUpdate?: (_arg: boolean) => void,): Promise<void> {
   const updatedYamlString = doc.toString();
   const existingYaml = await fs.promises.readFile(yamlFilePath, 'utf8').catch(() => '');
   if (yamlStructurallyEqual(doc, existingYaml)) {
@@ -1111,8 +1110,7 @@ export interface SaveViewportParams {
   yamlFilePath: string;
   payload: string;
   adaptor?: TopoViewerAdaptorClab;
-  setInternalUpdate?: (_arg: boolean) => void; // eslint-disable-line no-unused-vars
-}
+  setInternalUpdate?: (_arg: boolean) => void;}
 
 export async function saveViewport({
   mode,

@@ -4,7 +4,6 @@ const ATTR_ARIA_DISABLED = 'aria-disabled';
 const CLASS_DIMMED = 'opacity-60';
 const CLASS_NO_POINTER = 'pointer-events-none';
 
-// eslint-disable-next-line no-unused-vars
 type NodeIconDeleteHandler = (iconName: string) => void | Promise<void>;
 
 export interface NodeIconOptionRendererOptions {

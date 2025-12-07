@@ -17,7 +17,6 @@ import * as utils from '../../../utils/index';
 /**
  * Context interface for endpoint handlers that need access to EditorProvider state
  */
-/* eslint-disable no-unused-vars */
 export interface EndpointHandlerContext {
   lastYamlFilePath: string;
   currentLabName: string;
@@ -29,8 +28,6 @@ export interface EndpointHandlerContext {
   updateCachedYaml: () => Promise<void>;
   postMessage: (_msg: unknown) => void;
 }
-/* eslint-enable no-unused-vars */
-
 type EndpointResult = { result: unknown; error: string | null };
 
 /**

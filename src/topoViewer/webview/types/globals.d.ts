@@ -1,4 +1,3 @@
-/* eslint-disable */
 import type { LayoutManager as LayoutManagerClass } from '../features/canvas/LayoutManager';
 import type { GroupManager } from '../features/groups/GroupManager';
 import type TopologyWebviewController from '../app/TopologyWebviewController';

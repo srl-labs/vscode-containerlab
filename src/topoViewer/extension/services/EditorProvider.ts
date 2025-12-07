@@ -61,8 +61,6 @@ export class TopoViewerEditor {
   private dockerImagesSubscription: vscode.Disposable | undefined;
   private viewModeCache: ViewModeCache | undefined;
   private linkStateManager: LinkStateManager;
-  /* eslint-disable no-unused-vars */
-
   private readonly generalEndpointHandlers: Record<
     string,
     (
@@ -1072,7 +1070,6 @@ export class TopoViewerEditor {
     }
   }
 
-  /* eslint-enable no-unused-vars */
   private async handleNodeEndpoint(endpointName: string, payloadObj: any): Promise<{ result: unknown; error: string | null }> {
     nodeCommandService.setYamlFilePath(this.lastYamlFilePath);
     return nodeCommandService.handleNodeEndpoint(endpointName, payloadObj);

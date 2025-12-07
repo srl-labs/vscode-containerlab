@@ -12,12 +12,8 @@ import type { GroupStyleManager } from './GroupStyleManager';
 import { GROUP_LABEL_POSITIONS } from './LabelPositions';
 
 // Declarations for globals provided elsewhere
-/* eslint-disable no-unused-vars */
 declare function acquireVsCodeApi(): any;
 declare function sendMessageToVscodeEndpointPost(endpoint: string, data: any): Promise<any>;
-/* eslint-enable no-unused-vars */
-
-
 interface NodeOptions {
   group: 'nodes';
   data: ParentNodeData | any;
@@ -71,9 +67,7 @@ export class GroupManager {
   private groupStyleManager: GroupStyleManager;
   private initialValues: Record<string, string> | null = null;
 
-  /* eslint-disable no-unused-vars */
   constructor(cy: cytoscape.Core, groupStyleManager: GroupStyleManager, _mode: 'edit' | 'view' = 'view') {
-    /* eslint-enable no-unused-vars */
     this.cy = cy;
     this.groupStyleManager = groupStyleManager;
     // Mode parameter kept for backwards compatibility but not used currently

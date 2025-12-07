@@ -11,7 +11,6 @@
  * - VSCode theme integration
  */
 
-/* eslint-disable no-unused-vars */
 export interface WindowConfig {
   id: string;
   title?: string;
@@ -32,8 +31,6 @@ export interface WindowConfig {
   onResize?: (win: ManagedWindow, width: number, height: number) => void;
   onClose?: (win: ManagedWindow) => void;
 }
-/* eslint-enable no-unused-vars */
-
 interface WindowState {
   x: number;
   y: number;

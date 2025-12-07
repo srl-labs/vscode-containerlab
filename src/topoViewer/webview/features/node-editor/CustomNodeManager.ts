@@ -21,7 +21,6 @@ const ID_EDIT_CUSTOM_NODE = "edit-custom-node" as const;
 /**
  * Interface for form utilities needed from the parent manager
  */
-/* eslint-disable no-unused-vars */
 export interface CustomNodeFormUtilities {
   getInputValue: (id: string) => string;
   setInputValue: (id: string, value: string | number) => void;
@@ -36,8 +35,6 @@ export interface CustomNodeContext {
   getMessageSender: () => VscodeMessageSender;
   closeEditor: () => void;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * CustomNodeManager handles custom node template creation and editing:
  * - Building custom node payloads

@@ -164,7 +164,6 @@ export interface NodeProperties {
 /**
  * Interface for form utilities needed from the parent manager
  */
-/* eslint-disable no-unused-vars */
 export interface FormUtilities {
   setInputValue: (id: string, value: string | number) => void;
   getInputValue: (id: string) => string;
@@ -172,8 +171,6 @@ export interface FormUtilities {
   getCheckboxValue: (id: string) => boolean;
   markFieldInheritance: (fieldId: string, inherited: boolean) => void;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * TabContentManager handles loading and collecting node properties for each tab
  */

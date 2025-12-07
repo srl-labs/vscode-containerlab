@@ -77,21 +77,16 @@ interface OverlayRotateState {
   centerY: number;
 }
 
-// eslint-disable-next-line no-unused-vars
 type PointerDownHandler = (event: PointerEvent) => void;
 
 /**
  * Callback interface for overlay manager to notify parent of changes
  */
 export interface OverlayManagerCallbacks {
-  // eslint-disable-next-line no-unused-vars
   getAnnotation: (id: string) => FreeTextAnnotation | undefined;
-  // eslint-disable-next-line no-unused-vars
   getNode: (id: string) => cytoscape.NodeSingular | undefined;
   isLabLocked: () => boolean;
-  // eslint-disable-next-line no-unused-vars
   onAnnotationResized: (id: string, width: number, height: number) => void;
-  // eslint-disable-next-line no-unused-vars
   onAnnotationRotated: (id: string, rotation: number) => void;
   onSaveRequested: () => void;
 }

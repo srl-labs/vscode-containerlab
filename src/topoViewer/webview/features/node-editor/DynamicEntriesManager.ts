@@ -64,13 +64,10 @@ const ALL_CONTAINERS = [
 /**
  * Interface for component entry handlers
  */
-/* eslint-disable no-unused-vars */
 export interface ComponentEntryHandlers {
   addComponentEntry: (prefill?: any, options?: { slotType?: "cpm" | "card" }) => void;
   addIntegratedMdaEntry: () => void;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * DynamicEntriesManager handles dynamic form entries:
  * - Adding/removing entries for arrays (binds, ports, etc.)

@@ -13,7 +13,6 @@ const DEFAULT_KIND_SR = 'nokia_srlinux' as const;
  * Callbacks for UI updates that the parent component can provide
  */
 export interface CustomNodeMenuCallbacks {
-  // eslint-disable-next-line no-unused-vars
   showError: (message: string) => Promise<void>;
   refreshAddNodeMenu: () => void;
 }
@@ -53,7 +52,6 @@ export class CustomNodeMenuManager {
    */
   public handleAddNodeTemplate(
     template: any,
-    // eslint-disable-next-line no-unused-vars
     addNodeAtCenter: (template?: any) => void
   ): void {
     addNodeAtCenter(template);
@@ -200,9 +198,7 @@ export class CustomNodeMenuManager {
     allItems: { element: HTMLElement; label: string; isDefault?: boolean }[],
     node: any,
     instance: any,
-    // eslint-disable-next-line no-unused-vars
     onAddNodeTemplate: (node: any) => void,
-    // eslint-disable-next-line no-unused-vars
     refocusFilterInput: (instance: any) => void
   ): void {
     const item = document.createElement('div');

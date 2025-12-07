@@ -19,14 +19,11 @@ const CN_BINDS = "node-binds-container" as const;
 /**
  * Interface for validation utilities needed from the parent manager
  */
-/* eslint-disable no-unused-vars */
 export interface ValidationUtilities {
   getInputValue: (id: string) => string;
   collectDynamicEntries: (containerName: string) => string[];
   getPanel: () => HTMLElement | null;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * ValidationManager handles all form validation:
  * - IPv4/IPv6 address validation

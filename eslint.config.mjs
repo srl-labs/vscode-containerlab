@@ -52,6 +52,9 @@ export default [
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
       ...sonarjs.configs.recommended.rules,
+      // Use TypeScript's noUnused* diagnostics instead of duplicating in ESLint
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
       // disallow any trailing whitespace
 
       'no-trailing-spaces': ['error', {

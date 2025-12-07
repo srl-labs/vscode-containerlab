@@ -26,15 +26,12 @@ const ICON_PREVIEW_DEFAULT_SIZE = 100;
 /**
  * Interface for icon editor utilities needed from the parent manager
  */
-/* eslint-disable no-unused-vars */
 export interface IconEditorUtilities {
   getNodeIconOptions: () => string[];
   getCurrentIconValue: () => string;
   handleIconUpload: () => Promise<void>;
   normalizeIconColor: (raw: string, fallback: string | null) => string | null;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * IconEditorManager handles the icon customization modal:
  * - Color picker and hex input
@@ -51,16 +48,12 @@ export class IconEditorManager {
   private currentIconCornerRadius: number = DEFAULT_ICON_CORNER_RADIUS;
 
   // Callbacks for state changes
-  /* eslint-disable no-unused-vars */
   private onColorChange: ((color: string | null) => void) | null = null;
   private onCornerRadiusChange: ((radius: number) => void) | null = null;
-  /* eslint-enable no-unused-vars */
-
   constructor(utilities: IconEditorUtilities) {
     this.utilities = utilities;
   }
 
-  /* eslint-disable no-unused-vars */
   public setCallbacks(
     onColorChange: (color: string | null) => void,
     onCornerRadiusChange: (radius: number) => void
@@ -68,8 +61,6 @@ export class IconEditorManager {
     this.onColorChange = onColorChange;
     this.onCornerRadiusChange = onCornerRadiusChange;
   }
-  /* eslint-enable no-unused-vars */
-
   public setCurrentIconColor(color: string | null): void {
     this.currentIconColor = color;
   }

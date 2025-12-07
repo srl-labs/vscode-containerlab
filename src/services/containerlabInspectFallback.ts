@@ -339,7 +339,6 @@ export function getInterfaceSnapshot(_containerShortId: string, containerName: s
 /**
  * Get interface version (always 0 for fallback since we don't track versions)
  */
-// eslint-disable-next-line no-unused-vars
 export function getInterfaceVersion(_containerShortId: string): number {
     return 0;
 }

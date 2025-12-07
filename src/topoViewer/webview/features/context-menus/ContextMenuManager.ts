@@ -28,15 +28,10 @@ export interface ContextMenuDependencies {
   isLocked: () => boolean;
   getCurrentMode: () => "edit" | "view";
   showLockedMessage: () => void;
-  // eslint-disable-next-line no-unused-vars
   startEdgeCreationFromNode: (node: cytoscape.NodeSingular) => Promise<void>;
-  // eslint-disable-next-line no-unused-vars
   showNodePropertiesPanel: (node: cytoscape.Singular) => void;
-  // eslint-disable-next-line no-unused-vars
   showLinkPropertiesPanel: (edge: cytoscape.Singular) => void;
-  // eslint-disable-next-line no-unused-vars
   isNetworkNode: (nodeId: string) => boolean;
-  // eslint-disable-next-line no-unused-vars
   setSuppressViewerCanvasClose: (value: boolean) => void;
 }
 
@@ -215,7 +210,6 @@ export class ContextMenuManager {
   private createNodeMenuItem(
     icon: string,
     label: string,
-    // eslint-disable-next-line no-unused-vars
     action: (node: cytoscape.NodeSingular) => void | Promise<void>
   ): any {
     return {

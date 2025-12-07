@@ -27,7 +27,6 @@ export interface TemplateParamsContext {
 // Panel Initialization Context
 // ============================================================================
 
-/* eslint-disable no-unused-vars */
 export interface PanelInitContext {
   isViewMode: boolean;
   lastYamlFilePath: string;
@@ -40,8 +39,6 @@ export interface PanelInitContext {
   buildDefaultLabYaml: (_n: string) => string;
   setInternalUpdate: (_v: boolean) => void;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * Manages VS Code webview tab creation, initialization, and template parameter generation
  * for the TopoViewer Editor.

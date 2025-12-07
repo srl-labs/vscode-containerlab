@@ -46,7 +46,6 @@ export interface ShapeModalElements {
   okBtn: HTMLButtonElement;
 }
 
-// eslint-disable-next-line no-unused-vars
 type ShapeResolve = (annotation: FreeShapeAnnotation | null) => void;
 
 /**
@@ -54,7 +53,6 @@ type ShapeResolve = (annotation: FreeShapeAnnotation | null) => void;
  */
 export class FreeShapesModal {
   private initialValues: Record<string, string> | null = null;
-  // eslint-disable-next-line no-unused-vars
   private onApplyCallback: ((annotation: FreeShapeAnnotation) => void) | null = null;
 
   /**
@@ -64,7 +62,6 @@ export class FreeShapesModal {
   public async promptForShape(
     title: string,
     annotation: FreeShapeAnnotation,
-    // eslint-disable-next-line no-unused-vars
     onApply?: (annotation: FreeShapeAnnotation) => void
   ): Promise<FreeShapeAnnotation | null> {
     this.onApplyCallback = onApply ?? null;

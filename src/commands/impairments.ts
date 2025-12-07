@@ -39,8 +39,7 @@ async function promptImpairment(
   impairment: string,
   title: string,
   placeHolder: string,
-  validator: (_input: string) => string | undefined // eslint-disable-line no-unused-vars
-): Promise<void> {
+  validator: (_input: string) => string | undefined): Promise<void> {
   if (!node || !(node instanceof ClabInterfaceTreeNode)) {
     vscode.window.showErrorMessage(`No interface selected to set ${impairment} for.`);
     return;

@@ -15,7 +15,6 @@ export type LifecycleMode = 'deploy' | 'destroy' | 'redeploy';
  * Callbacks for UI updates that the parent component can provide
  */
 export interface LabLifecycleCallbacks {
-  // eslint-disable-next-line no-unused-vars
   showError: (message: string) => Promise<void>;
 }
 

@@ -47,15 +47,12 @@ const PH_SEARCH_TYPE = "Search for type..." as const;
 /**
  * Interface for input/output utility functions needed by ComponentsManager
  */
-/* eslint-disable no-unused-vars */
 export interface ComponentsManagerUtilities {
   getInputValue: (id: string) => string;
   setInputValue: (id: string, value: string | number) => void;
   extractIndex: (id: string, re: RegExp) => number | null;
   switchToTab: (name: string) => void;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * ComponentsManager handles all Nokia SRSIM component functionality:
  * - CPM (Control Processing Module) slots A/B

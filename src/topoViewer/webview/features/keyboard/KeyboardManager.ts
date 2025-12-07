@@ -22,7 +22,6 @@ export interface KeyboardManagerDependencies {
   showLockedMessage: () => void;
 }
 
-// eslint-disable-next-line no-unused-vars
 type KeyHandler = (event: KeyboardEvent) => void;
 
 export class KeyboardManager {

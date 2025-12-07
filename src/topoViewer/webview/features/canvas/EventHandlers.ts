@@ -7,11 +7,8 @@ import type cytoscape from 'cytoscape';
  */
 export interface CyEventHandlerOptions {
   cy: cytoscape.Core;
-  // eslint-disable-next-line no-unused-vars
   onCanvasClick?: (event: cytoscape.EventObject) => void;
-  // eslint-disable-next-line no-unused-vars
   onNodeClick?: (event: cytoscape.EventObject) => void | Promise<void>;
-  // eslint-disable-next-line no-unused-vars
   onEdgeClick?: (event: cytoscape.EventObject) => void | Promise<void>;
 }
 

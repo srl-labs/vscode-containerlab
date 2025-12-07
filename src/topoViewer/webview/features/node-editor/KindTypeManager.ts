@@ -15,7 +15,6 @@ import {
   TYPE_UNSUPPORTED_WARNING_TEXT
 } from "./NodeEditorConstants";
 
-/* eslint-disable no-unused-vars */
 export interface KindTypeUtilities {
   getInputValue: (id: string) => string;
   setInputValue: (id: string, value: string | number) => void;
@@ -23,8 +22,6 @@ export interface KindTypeUtilities {
   updateComponentMode: (reload?: boolean) => void;
   getExistingNodeTypeValue: () => string | undefined;
 }
-/* eslint-enable no-unused-vars */
-
 export interface KindTypeCallbacks {
   onSchemaLoaded?: () => void;
 }
@@ -250,8 +247,7 @@ export class KindTypeManager {
 
 
   public async populateKindsFromSchema(
-    onSchemaExtracted?: (schema: any) => void // eslint-disable-line no-unused-vars
-  ): Promise<void> {
+    onSchemaExtracted?: (schema: any) => void): Promise<void> {
     try {
       const url = this.getSchemaUrl();
       if (!url) return;
@@ -379,8 +375,7 @@ export class KindTypeManager {
   public setupKindAndTypeFields(
     extraData: Record<string, any>,
     actualInherited: string[],
-    markFieldInheritance: (fieldId: string, inherited: boolean) => void // eslint-disable-line no-unused-vars
-  ): void {
+    markFieldInheritance: (fieldId: string, inherited: boolean) => void): void {
     const desiredKind = extraData.kind || (window as any).defaultKind || "nokia_srlinux";
     const kindInitial =
       this.schemaKinds.length > 0 && this.schemaKinds.includes(desiredKind)

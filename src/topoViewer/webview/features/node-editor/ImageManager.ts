@@ -25,13 +25,10 @@ const PH_VERSION_EXAMPLE = "e.g., latest" as const;
 /**
  * Interface for form utilities needed from the parent manager
  */
-/* eslint-disable no-unused-vars */
 export interface ImageFormUtilities {
   markFieldInheritance: (fieldId: string, inherited: boolean) => void;
   computeActualInheritedProps: (extraData: any) => string[];
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * ImageManager handles Docker image selection:
  * - Parsing docker images into base images and versions

@@ -37,20 +37,14 @@ export interface ModeSwitchPayload {
 
 export interface ModeManagerDependencies {
   getCurrentMode: () => "edit" | "view";
-  // eslint-disable-next-line no-unused-vars
   setCurrentMode: (mode: "edit" | "view") => void;
-  // eslint-disable-next-line no-unused-vars
   setIsViewportDrawerClabEditorChecked: (checked: boolean) => void;
-  // eslint-disable-next-line no-unused-vars
   applyLockState: (locked: boolean) => void;
-  // eslint-disable-next-line no-unused-vars
   setLabLocked: (locked: boolean) => void;
   getLabLocked: () => boolean;
   fetchAndLoadData: () => Promise<void>;
   isInitialGraphLoaded: () => boolean;
-  // eslint-disable-next-line no-unused-vars
   setInitialGraphLoaded: (loaded: boolean) => void;
-  // eslint-disable-next-line no-unused-vars
   ensureModeResources: (mode: "edit" | "view") => Promise<void>;
   clearEdgeLinkStates: () => void;
   initializeContextMenu: () => Promise<void>;

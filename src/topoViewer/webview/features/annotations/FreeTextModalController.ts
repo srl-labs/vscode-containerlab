@@ -81,14 +81,12 @@ export interface FormattingState {
   alignment: TextAlignment;
 }
 
-// eslint-disable-next-line no-unused-vars
 export type FreeTextResolve = (value: FreeTextAnnotation | null) => void;
 
 /**
  * Callback interface for modal controller to notify parent of changes
  */
 export interface ModalControllerCallbacks {
-  // eslint-disable-next-line no-unused-vars
   onAnnotationUpdated: (annotation: FreeTextAnnotation) => void;
   onSaveRequested: () => void;
 }

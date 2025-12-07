@@ -4,9 +4,7 @@ interface DropdownState {
   lastSelected: string;
 }
 
-type OptionRenderer = (option: string) => HTMLElement | string; // eslint-disable-line no-unused-vars
-
-export interface FilterableDropdownConfig {
+type OptionRenderer = (option: string) => HTMLElement | string;export interface FilterableDropdownConfig {
   menuClassName?: string;
   renderOption?: OptionRenderer;
   dropdownWidth?: number;
@@ -59,8 +57,7 @@ function commitInput(
   options: string[],
   allowFreeText: boolean,
   state: DropdownState,
-  onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-): void {
+  onSelect: (selected: string) => void,): void {
   const typed = filterInput.value;
   if (allowFreeText) {
     if (typed !== state.lastSelected) {
@@ -88,8 +85,7 @@ function populateOptions(
   filterInput: HTMLInputElement,
   filteredOptions: string[],
   state: DropdownState,
-  onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-  renderOption?: OptionRenderer,
+  onSelect: (selected: string) => void,renderOption?: OptionRenderer,
 ): void {
   dropdownMenu.innerHTML = '';
 
@@ -172,8 +168,7 @@ function createFilterInputHandler(
   dropdownMenu: HTMLElement,
   options: string[],
   state: DropdownState,
-  onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-  show: () => void,
+  onSelect: (selected: string) => void,show: () => void,
   renderOption?: OptionRenderer,
 ): () => void {
   return () => {
@@ -197,8 +192,7 @@ function createArrowHandler(
   dropdownMenu: HTMLElement,
   show: () => void,
   hide: () => void,
-): (e: MouseEvent) => void { // eslint-disable-line no-unused-vars
-  return e => {
+): (e: MouseEvent) => void {return e => {
     e.stopPropagation();
     if (dropdownMenu.classList.contains('hidden')) {
       show();
@@ -282,8 +276,7 @@ function commitFromItems(
   dropdownMenu: HTMLElement,
   allowFreeText: boolean,
   state: DropdownState,
-  onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-): void {
+  onSelect: (selected: string) => void,): void {
   if (currentIndex >= 0 && items[currentIndex]) {
     const selectedValue = items[currentIndex].textContent || '';
     filterInput.value = selectedValue;
@@ -302,8 +295,7 @@ function attachKeyboardNavigation(
   dropdownMenu: HTMLElement,
   allowFreeText: boolean,
   state: DropdownState,
-  onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-): void {
+  onSelect: (selected: string) => void,): void {
   filterInput.addEventListener('keydown', e => {
     const items = dropdownMenu.querySelectorAll('.dropdown-item') as NodeListOf<HTMLElement>;
     let currentIndex = getCurrentIndex(items);
@@ -342,8 +334,7 @@ export function createFilterableDropdown(
   containerId: string,
   options: string[],
   currentValue: string,
-  onSelect: (selected: string) => void, // eslint-disable-line no-unused-vars
-  placeholder: string = 'Type to filter...',
+  onSelect: (selected: string) => void,placeholder: string = 'Type to filter...',
   allowFreeText: boolean = false,
   config: FilterableDropdownConfig = {},
 ): void {

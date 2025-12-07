@@ -24,7 +24,6 @@ interface PendingRequest {
   owner: VscodeMessageSender;
 }
 
-// eslint-disable-next-line no-unused-vars
 type SharedMessageHandler = (event: MessageEvent) => void;
 
 let sharedMessageHandler: SharedMessageHandler | null = null;
@@ -73,7 +72,6 @@ const cleanupMessageHandler = (): void => {
   }
 };
 
-/* eslint-disable no-unused-vars */
 export interface LoggerLike {
   warn: (...args: any[]) => void;
 }

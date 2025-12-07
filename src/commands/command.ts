@@ -122,7 +122,6 @@ export type SpinnerMsg = {
 /**
  * A base command class which can be derived to build specific commmand classes (ie. Docker, Clab)
  */
-/* eslint-disable-next-line no-unused-vars */
 export type CommandFailureHandler = (error: unknown) => Promise<void>;
 
 export class Command {

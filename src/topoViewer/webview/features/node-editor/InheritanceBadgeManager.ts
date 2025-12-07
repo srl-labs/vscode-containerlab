@@ -29,13 +29,10 @@ export interface FieldMapping {
 /**
  * Interface for node data access
  */
-/* eslint-disable no-unused-vars */
 export interface NodeDataAccessor {
   getCurrentNodeData: () => any;
   setCurrentNodeData: (extraData: any) => void;
 }
-/* eslint-enable no-unused-vars */
-
 /**
  * InheritanceBadgeManager handles inheritance badges in the UI:
  * - Marking fields as inherited

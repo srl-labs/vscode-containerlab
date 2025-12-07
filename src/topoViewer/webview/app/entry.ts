@@ -9,7 +9,6 @@ import('./TopologyWebviewController').then(() => {
 });
 
 // Expose window manager globally for use in HTML templates
-/* eslint-disable no-unused-vars */
 declare global {
   interface Window {
     windowManager: typeof windowManager;
@@ -21,8 +20,6 @@ declare global {
     initializeDefaultPanels: typeof initializeDefaultPanels;
   }
 }
-/* eslint-enable no-unused-vars */
-
 window.windowManager = windowManager;
 window.WindowManager = WindowManager;
 window.ManagedWindow = ManagedWindow;

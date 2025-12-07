@@ -13,7 +13,6 @@ export class DeploymentStateChecker {
   async checkDeploymentState(
     labName: string,
     topoFilePath: string | undefined,
-    // eslint-disable-next-line no-unused-vars
     updateLabName?: (newLabName: string) => void
   ): Promise<DeploymentState> {
     try {

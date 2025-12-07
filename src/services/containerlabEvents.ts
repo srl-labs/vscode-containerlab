@@ -216,7 +216,6 @@ let resolveInitialLoad: (() => void) | null = null;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-/* eslint-disable-next-line no-unused-vars */
 type RejectInitialLoad = (error: Error) => void;
 let rejectInitialLoad: RejectInitialLoad | null = null;
 
@@ -226,7 +225,6 @@ const interfacesByContainer = new Map<string, Map<string, InterfaceRecord>>();
 const interfaceVersions = new Map<string, number>();
 const nodeSnapshots = new Map<string, NodeSnapshot>();
 type DataListener = () => void;
-/* eslint-disable-next-line no-unused-vars */
 type ContainerStateChangedListener = (containerShortId: string, newState: string) => void;
 const dataListeners = new Set<DataListener>();
 const containerStateChangedListeners = new Set<ContainerStateChangedListener>();

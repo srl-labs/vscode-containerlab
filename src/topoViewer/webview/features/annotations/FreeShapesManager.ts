@@ -610,7 +610,6 @@ export class FreeShapesManager {
     annotationId: string,
     className: string,
     ariaLabel: string,
-    // eslint-disable-next-line no-unused-vars
     onPointerDown: (event: PointerEvent) => void,
     isActiveCheck: () => boolean
   ): HTMLButtonElement {

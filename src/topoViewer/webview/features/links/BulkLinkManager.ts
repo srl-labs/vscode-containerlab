@@ -8,9 +8,7 @@ import type { SaveManager } from "../../core/SaveManager";
 export interface BulkLinkDependencies {
   cy: cytoscape.Core;
   getSaveManager: () => SaveManager;
-  // eslint-disable-next-line no-unused-vars
   getNextEndpoint: (nodeId: string) => string;
-  // eslint-disable-next-line no-unused-vars
   isNetworkNode: (nodeId: string) => boolean;
 }
 
