@@ -20,6 +20,8 @@ export interface SpecialNodeInfo {
 
 /**
  * Initializes special nodes from the topology nodes (bridges).
+ * These are added to the specialNodes map for edge styling purposes (stub-link class),
+ * but they will be skipped in addCloudNodes() since they're already created by addNodeElements().
  */
 export function initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, SpecialNodeInfo> {
   const specialNodes = new Map<string, SpecialNodeInfo>();
@@ -161,69 +163,110 @@ export function collectSpecialNodes(
 }
 
 /**
+ * Checks if a special node should be skipped (already created by addNodeElements).
+ */
+function shouldSkipCloudNode(
+  nodeId: string,
+  nodeInfo: SpecialNodeInfo,
+  yamlNodeIds?: Set<string>
+): boolean {
+  const isBridgeType = nodeInfo.type === NODE_KIND_BRIDGE || nodeInfo.type === NODE_KIND_OVS_BRIDGE;
+  return isBridgeType && (yamlNodeIds?.has(nodeId) ?? false);
+}
+
+/**
+ * Resolves position and parent from cloud node annotations.
+ */
+function resolveCloudNodePlacement(
+  nodeId: string,
+  annotations: any
+): { position: { x: number; y: number }; parent?: string } {
+  let position = { x: 0, y: 0 };
+  let parent: string | undefined;
+  const cloudAnns = annotations?.cloudNodeAnnotations;
+  if (!cloudAnns) return { position, parent };
+
+  const saved = cloudAnns.find((cn: any) => cn.id === nodeId);
+  if (saved?.position) position = saved.position;
+  if (saved?.group && saved?.level) parent = `${saved.group}:${saved.level}`;
+  return { position, parent };
+}
+
+/**
+ * Creates a cloud node element.
+ */
+function createCloudNodeElement(
+  nodeId: string,
+  nodeInfo: SpecialNodeInfo,
+  position: { x: number; y: number },
+  parent: string | undefined,
+  extraProps: any
+): CyElement {
+  return {
+    group: 'nodes',
+    data: {
+      id: nodeId,
+      weight: '30',
+      name: nodeInfo.label,
+      parent,
+      topoViewerRole: 'cloud',
+      lat: '',
+      lng: '',
+      extraData: {
+        clabServerUsername: '',
+        fqdn: '',
+        group: '',
+        id: nodeId,
+        image: '',
+        index: '999',
+        kind: nodeInfo.type,
+        type: nodeInfo.type,
+        labdir: '',
+        labels: {},
+        longname: nodeId,
+        macAddress: '',
+        mgmtIntf: '',
+        mgmtIpv4AddressLength: 0,
+        mgmtIpv4Address: '',
+        mgmtIpv6Address: '',
+        mgmtIpv6AddressLength: 0,
+        mgmtNet: '',
+        name: nodeInfo.label,
+        shortname: nodeInfo.label,
+        state: '',
+        weight: '3',
+        ...extraProps,
+      },
+    },
+    position,
+    removed: false,
+    selected: false,
+    selectable: true,
+    locked: false,
+    grabbed: false,
+    grabbable: true,
+    classes: 'special-endpoint',
+  };
+}
+
+/**
  * Adds cloud nodes (special nodes) to the elements array.
+ * Note: Bridge/ovs-bridge nodes defined in YAML are skipped here since they're
+ * already created by addNodeElements(). They're only in specialNodes for edge styling.
  */
 export function addCloudNodes(
   specialNodes: Map<string, SpecialNodeInfo>,
   specialNodeProps: Map<string, any>,
   opts: { annotations?: any },
-  elements: CyElement[]
+  elements: CyElement[],
+  yamlNodeIds?: Set<string>
 ): void {
   for (const [nodeId, nodeInfo] of specialNodes) {
-    let position = { x: 0, y: 0 };
-    let parent: string | undefined;
-    if (opts.annotations?.cloudNodeAnnotations) {
-      const savedCloudNode = opts.annotations.cloudNodeAnnotations.find((cn: any) => cn.id === nodeId);
-      if (savedCloudNode) {
-        if (savedCloudNode.position) position = savedCloudNode.position;
-        if (savedCloudNode.group && savedCloudNode.level) parent = `${savedCloudNode.group}:${savedCloudNode.level}`;
-      }
-    }
-    const cloudNodeEl: CyElement = {
-      group: 'nodes',
-      data: {
-        id: nodeId,
-        weight: '30',
-        name: nodeInfo.label,
-        parent,
-        topoViewerRole: 'cloud',
-        lat: '',
-        lng: '',
-        extraData: {
-          clabServerUsername: '',
-          fqdn: '',
-          group: '',
-          id: nodeId,
-          image: '',
-          index: '999',
-          kind: nodeInfo.type,
-          type: nodeInfo.type,
-          labdir: '',
-          labels: {},
-          longname: nodeId,
-          macAddress: '',
-          mgmtIntf: '',
-          mgmtIpv4AddressLength: 0,
-          mgmtIpv4Address: '',
-          mgmtIpv6Address: '',
-          mgmtIpv6AddressLength: 0,
-          mgmtNet: '',
-          name: nodeInfo.label,
-          shortname: nodeInfo.label,
-          state: '',
-          weight: '3',
-          ...(specialNodeProps.get(nodeId) || {}),
-        },
-      },
-      position,
-      removed: false,
-      selected: false,
-      selectable: true,
-      locked: false,
-      grabbed: false,
-      grabbable: true,
-      classes: 'special-endpoint',
-    };
+    if (shouldSkipCloudNode(nodeId, nodeInfo, yamlNodeIds)) continue;
+
+    const { position, parent } = resolveCloudNodePlacement(nodeId, opts.annotations);
+    const extraProps = specialNodeProps.get(nodeId) || {};
+    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, parent, extraProps);
     elements.push(cloudNodeEl);
   }
 }

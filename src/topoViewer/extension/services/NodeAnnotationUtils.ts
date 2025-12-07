@@ -370,7 +370,11 @@ function maybeRecordAliasAnn(
 }
 
 /**
- * Collects alias annotations from edges
+ * Collects alias annotations from edges.
+ * NOTE: We no longer automatically create alias annotations for bridge nodes.
+ * By default, a bridge should appear as a single node regardless of how many
+ * interfaces are connected. Alias annotations are only preserved if they
+ * already exist (i.e., were explicitly created by user action).
  */
 export function collectAliasAnnotationsFromEdges(
   payloadParsed: any[],
@@ -381,8 +385,16 @@ export function collectAliasAnnotationsFromEdges(
   for (const el of payloadParsed) {
     if (el.group !== 'edges') continue;
     const d = el.data || {};
-    maybeRecordAliasAnn(nodeById, prevNodeById, out, d.source, d.sourceEndpoint, d.sourceName);
-    maybeRecordAliasAnn(nodeById, prevNodeById, out, d.target, d.targetEndpoint, d.targetName);
+    // Only preserve existing alias annotations, don't create new ones automatically
+    // This ensures bridges appear as single nodes by default
+    const srcAnnId = `${d.source}:${d.sourceEndpoint || ''}`;
+    const tgtAnnId = `${d.target}:${d.targetEndpoint || ''}`;
+    if (prevNodeById.has(srcAnnId)) {
+      maybeRecordAliasAnn(nodeById, prevNodeById, out, d.source, d.sourceEndpoint, d.sourceName);
+    }
+    if (prevNodeById.has(tgtAnnId)) {
+      maybeRecordAliasAnn(nodeById, prevNodeById, out, d.target, d.targetEndpoint, d.targetName);
+    }
   }
   return Array.from(out.values());
 }

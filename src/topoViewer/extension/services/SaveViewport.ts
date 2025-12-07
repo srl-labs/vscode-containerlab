@@ -386,26 +386,32 @@ function isAliasNodeId(nodeId: string): boolean {
   return colonIndex > 0 && colonIndex < nodeId.length - 1;
 }
 
-function isWritableNode(el: any): boolean {
-  if (el.group !== 'nodes') return false;
-  if (el.data.topoViewerRole === 'group') return false;
-  if (el.data.topoViewerRole === 'freeText') return false;
-  if (el.data.topoViewerRole === 'freeShape') return false;
-  if (isSpecialEndpoint(el.data.id)) return false;
+function isExcludedByRole(el: any): boolean {
+  const role = el.data.topoViewerRole;
+  return role === 'group' || role === 'freeText' || role === 'freeShape';
+}
 
-  // Alias nodes (visual representations of YAML nodes) should not modify YAML directly.
-  // They have extYamlNodeId pointing to a different node id AND their ID has alias format (nodeName:interface).
-  // Cloud nodes that have been renamed also have extYamlNodeId != id, but they ARE writable.
+function isBridgeAliasNode(el: any): boolean {
+  const extraData = el.data?.extraData || {};
+  const kind = typeof extraData.kind === 'string' ? extraData.kind : '';
+  const isBridgeKind = kind === 'bridge' || kind === 'ovs-bridge';
+  // Bridge/ovs-bridge nodes with alias-like IDs should not be writable
+  return isBridgeKind && isAliasNodeId(el.data.id);
+}
+
+function isExtYamlAliasNode(el: any): boolean {
   const extraData = el.data?.extraData || {};
   const extYamlNodeId = typeof extraData.extYamlNodeId === 'string' ? extraData.extYamlNodeId.trim() : '';
-  if (extYamlNodeId && extYamlNodeId !== el.data.id) {
-    // Only exclude if this is truly an alias node (has alias ID format)
-    if (isAliasNodeId(el.data.id)) {
-      return false;
-    }
-    // Cloud nodes with extYamlNodeId set (renamed) are still writable
-  }
+  // Alias nodes have extYamlNodeId pointing to a different node id AND have alias ID format
+  return extYamlNodeId !== '' && extYamlNodeId !== el.data.id && isAliasNodeId(el.data.id);
+}
 
+function isWritableNode(el: any): boolean {
+  if (el.group !== 'nodes') return false;
+  if (isExcludedByRole(el)) return false;
+  if (isSpecialEndpoint(el.data.id)) return false;
+  if (isBridgeAliasNode(el)) return false;
+  if (isExtYamlAliasNode(el)) return false;
   return true;
 }
 

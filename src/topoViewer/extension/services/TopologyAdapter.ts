@@ -303,7 +303,9 @@ export class TopoViewerAdaptorClab {
     // Collect and add special nodes (host, mgmt-net, macvlan, etc.)
     const ctx: DummyContext = { dummyCounter: 0, dummyLinkMap: new Map<any, string>() };
     const { specialNodes, specialNodeProps } = collectSpecialNodes(parsed, ctx);
-    addCloudNodes(specialNodes, specialNodeProps, opts, elements);
+    // Pass YAML node IDs so addCloudNodes can skip bridge nodes already created by addNodeElements
+    const yamlNodeIds = new Set(Object.keys(parsed.topology?.nodes || {}));
+    addCloudNodes(specialNodes, specialNodeProps, opts, elements, yamlNodeIds);
 
     // Add edge elements
     addEdgeElements(parsed, opts, fullPrefix, clabName, specialNodes, ctx, elements);
