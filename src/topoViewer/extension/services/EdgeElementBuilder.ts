@@ -144,7 +144,7 @@ export function validateSpecialLink(linkType: string, linkObj: any): string[] {
   if ([TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as any)) {
     if (!linkObj.remote) errors.push('missing-remote');
     if (linkObj.vni === undefined || linkObj.vni === '') errors.push('missing-vni');
-    if (linkObj['udp-port'] === undefined || linkObj['udp-port'] === '') errors.push('missing-udp-port');
+    if (linkObj['dst-port'] === undefined || linkObj['dst-port'] === '') errors.push('missing-dst-port');
   }
   return errors;
 }
@@ -334,10 +334,11 @@ export function extractExtLinkProps(linkObj: any): any {
     mode: extMode = '',
     remote: extRemote = '',
     vni: extVni = '',
-    ['udp-port']: extUdpPort = '',
+    ['dst-port']: extDstPort = '',
+    ['src-port']: extSrcPort = '',
   } = linkObj ?? {};
 
-  return { extType, extMtu, extVars, extLabels, extHostInterface, extMode, extRemote, extVni, extUdpPort };
+  return { extType, extMtu, extVars, extLabels, extHostInterface, extMode, extRemote, extVni, extDstPort, extSrcPort };
 }
 
 /**

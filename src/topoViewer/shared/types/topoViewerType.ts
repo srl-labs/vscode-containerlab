@@ -37,7 +37,8 @@ export interface ClabLink {
     mode?: string;
     remote?: string;
     vni?: number | string;
-    'udp-port'?: number | string;
+    'dst-port'?: number | string;
+    'src-port'?: number | string;
 }
 
 /**

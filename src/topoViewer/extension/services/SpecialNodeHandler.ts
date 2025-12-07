@@ -98,7 +98,8 @@ export function assignVxlanProps(linkType: string, linkObj: any, baseProps: any)
   if (![TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as any)) return;
   if (linkObj?.remote !== undefined) baseProps.extRemote = linkObj.remote;
   if (linkObj?.vni !== undefined) baseProps.extVni = linkObj.vni;
-  if (linkObj?.['udp-port'] !== undefined) baseProps.extUdpPort = linkObj['udp-port'];
+  if (linkObj?.['dst-port'] !== undefined) baseProps.extDstPort = linkObj['dst-port'];
+  if (linkObj?.['src-port'] !== undefined) baseProps.extSrcPort = linkObj['src-port'];
 }
 
 /**
@@ -175,21 +176,23 @@ function shouldSkipCloudNode(
 }
 
 /**
- * Resolves position and parent from cloud node annotations.
+ * Resolves position, parent, and label from cloud node annotations.
  */
 function resolveCloudNodePlacement(
   nodeId: string,
   annotations: any
-): { position: { x: number; y: number }; parent?: string } {
+): { position: { x: number; y: number }; parent?: string; label?: string } {
   let position = { x: 0, y: 0 };
   let parent: string | undefined;
+  let label: string | undefined;
   const cloudAnns = annotations?.cloudNodeAnnotations;
-  if (!cloudAnns) return { position, parent };
+  if (!cloudAnns) return { position, parent, label };
 
   const saved = cloudAnns.find((cn: any) => cn.id === nodeId);
   if (saved?.position) position = saved.position;
   if (saved?.group && saved?.level) parent = `${saved.group}:${saved.level}`;
-  return { position, parent };
+  if (saved?.label) label = saved.label;
+  return { position, parent, label };
 }
 
 /**
@@ -200,14 +203,17 @@ function createCloudNodeElement(
   nodeInfo: SpecialNodeInfo,
   position: { x: number; y: number },
   parent: string | undefined,
-  extraProps: any
+  extraProps: any,
+  savedLabel?: string
 ): CyElement {
+  // Use saved label from annotations if available, otherwise use nodeInfo.label
+  const displayLabel = savedLabel || nodeInfo.label;
   return {
     group: 'nodes',
     data: {
       id: nodeId,
       weight: '30',
-      name: nodeInfo.label,
+      name: displayLabel,
       parent,
       topoViewerRole: 'cloud',
       lat: '',
@@ -231,8 +237,8 @@ function createCloudNodeElement(
         mgmtIpv6Address: '',
         mgmtIpv6AddressLength: 0,
         mgmtNet: '',
-        name: nodeInfo.label,
-        shortname: nodeInfo.label,
+        name: displayLabel,
+        shortname: displayLabel,
         state: '',
         weight: '3',
         ...extraProps,
@@ -264,9 +270,9 @@ export function addCloudNodes(
   for (const [nodeId, nodeInfo] of specialNodes) {
     if (shouldSkipCloudNode(nodeId, nodeInfo, yamlNodeIds)) continue;
 
-    const { position, parent } = resolveCloudNodePlacement(nodeId, opts.annotations);
+    const { position, parent, label } = resolveCloudNodePlacement(nodeId, opts.annotations);
     const extraProps = specialNodeProps.get(nodeId) || {};
-    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, parent, extraProps);
+    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, parent, extraProps, label);
     elements.push(cloudNodeEl);
   }
 }

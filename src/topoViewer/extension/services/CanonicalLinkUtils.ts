@@ -38,7 +38,8 @@ export type CanonicalLinkKey = {
   hostIface?: string;
   mode?: string;
   vni?: string | number;
-  udpPort?: string | number;
+  dstPort?: string | number;
+  srcPort?: string | number;
 };
 
 /**

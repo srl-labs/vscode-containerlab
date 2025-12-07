@@ -381,8 +381,8 @@ export class AddNodeManager {
 
     const remote = `remote${nextId}`;
     const vni = 1000 + nextId;
-    const udpPort = 4789;
-    const nodeId = `${networkType}:auto${nextId}-${remote}/${vni}/${udpPort}`;
+    const dstPort = 4789;
+    const nodeId = `${networkType}:auto${nextId}-${remote}/${vni}/${dstPort}/`;
 
     const extraData: NodeExtraData = {
       kind: networkType,
@@ -390,7 +390,7 @@ export class AddNodeManager {
       image: '',
       extRemote: remote,
       extVni: vni,
-      extUdpPort: udpPort
+      extDstPort: dstPort
     };
 
     return {

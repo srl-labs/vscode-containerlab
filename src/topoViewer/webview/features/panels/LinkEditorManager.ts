@@ -653,7 +653,7 @@ export class LinkEditorManager {
       "missing-host-interface": "Host Interface is required for this type",
       "missing-remote": "Remote (VTEP IP) is required",
       "missing-vni": "VNI is required",
-      "missing-udp-port": "UDP Port is required",
+      "missing-dst-port": "Destination Port is required",
       "invalid-veth-endpoints": "veth requires two endpoints with node and interface",
       "invalid-endpoint": "Endpoint with node and interface is required"
     };

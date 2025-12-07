@@ -279,7 +279,8 @@ export class EdgeCreationManager {
     if (["vxlan", "vxlan-stitch"].includes(networkType)) {
       assignIf("extRemote", extra.extRemote);
       assignIf("extVni", extra.extVni);
-      assignIf("extUdpPort", extra.extUdpPort);
+      assignIf("extDstPort", extra.extDstPort);
+      assignIf("extSrcPort", extra.extSrcPort);
     }
     return extData;
   }

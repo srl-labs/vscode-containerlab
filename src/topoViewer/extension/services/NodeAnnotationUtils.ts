@@ -257,13 +257,22 @@ export function createNodeAnnotation(
  * Creates a cloud node annotation from a payload cloud node element
  */
 export function createCloudNodeAnnotation(cloudNode: any): CloudNodeAnnotation {
-  // Use name (current node name) instead of id (original Cytoscape element id)
-  // This ensures annotations follow node renames
-  const annId = cloudNode.data.name || cloudNode.data.id;
+  const kind = cloudNode.data.extraData?.kind || STR_HOST;
+  const isVxlanType = kind === 'vxlan' || kind === 'vxlan-stitch';
+
+  // For VXLAN types, always use the id (which encodes tunnel parameters)
+  // For other types (host, mgmt-net, macvlan, dummy), use name for backwards compat
+  const annId = isVxlanType
+    ? cloudNode.data.id
+    : (cloudNode.data.name || cloudNode.data.id);
+
+  // Label is the display name - use name if set, otherwise fall back to id
+  const label = cloudNode.data.name || cloudNode.data.id;
+
   const cloudNodeAnnotation: CloudNodeAnnotation = {
     id: annId,
-    type: cloudNode.data.extraData?.kind || STR_HOST,
-    label: annId,
+    type: kind,
+    label: label,
     position: {
       x: cloudNode.position?.x || 0,
       y: cloudNode.position?.y || 0,

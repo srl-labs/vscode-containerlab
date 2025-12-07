@@ -63,30 +63,37 @@ export function splitEndpoint(
   return splitEndpointLike(endpoint);
 }
 
+const HOSTY_SINGLE_TYPES = ['host', 'mgmt-net', 'macvlan'];
+const VX_SINGLE_TYPES = ['vxlan', 'vxlan-stitch'];
+
+function buildHostyId(t: string, linkObj: any): string {
+  return `${t}:${linkObj?.['host-interface'] ?? ''}`;
+}
+
+function buildVxlanId(t: string, linkObj: any): string {
+  const remote = linkObj?.remote ?? '';
+  const vni = linkObj?.vni ?? '';
+  const dstPort = linkObj?.['dst-port'] ?? '';
+  const srcPort = linkObj?.['src-port'] ?? '';
+  return `${t}:${remote}/${vni}/${dstPort}/${srcPort}`;
+}
+
+function buildDummyId(linkObj: any, ctx: DummyContext): string {
+  const cached = ctx.dummyLinkMap.get(linkObj);
+  if (cached) return cached;
+  ctx.dummyCounter += 1;
+  const dummyId = `dummy${ctx.dummyCounter}`;
+  ctx.dummyLinkMap.set(linkObj, dummyId);
+  return dummyId;
+}
+
 /**
  * Normalizes a single-endpoint type to a special node ID.
  */
 export function normalizeSingleTypeToSpecialId(t: string, linkObj: any, ctx: DummyContext): string {
-  if (['host', 'mgmt-net', 'macvlan'].includes(t)) {
-    return `${t}:${linkObj?.['host-interface'] ?? ''}`;
-  }
-
-  if (t === 'vxlan' || t === 'vxlan-stitch') {
-    const remote = linkObj?.remote ?? '';
-    const vni = linkObj?.vni ?? '';
-    const udp = linkObj?.['udp-port'] ?? '';
-    return `${t}:${remote}/${vni}/${udp}`;
-  }
-
-  if (t === 'dummy') {
-    const cached = ctx.dummyLinkMap.get(linkObj);
-    if (cached) return cached;
-    ctx.dummyCounter += 1;
-    const dummyId = `dummy${ctx.dummyCounter}`;
-    ctx.dummyLinkMap.set(linkObj, dummyId);
-    return dummyId;
-  }
-
+  if (HOSTY_SINGLE_TYPES.includes(t)) return buildHostyId(t, linkObj);
+  if (VX_SINGLE_TYPES.includes(t)) return buildVxlanId(t, linkObj);
+  if (t === 'dummy') return buildDummyId(linkObj, ctx);
   return '';
 }
 

@@ -48,7 +48,8 @@ export interface NodeExtraData {
   extHostInterface?: string;
   extRemote?: string;
   extVni?: number;
-  extUdpPort?: number;
+  extDstPort?: number;
+  extSrcPort?: number;
 
   // Advanced properties
   memory?: string;

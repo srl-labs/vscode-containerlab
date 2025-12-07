@@ -36,11 +36,13 @@ export class ViewportPanelsManager {
 
   private static readonly ID_NETWORK_REMOTE = "panel-network-remote" as const;
   private static readonly ID_NETWORK_VNI = "panel-network-vni" as const;
-  private static readonly ID_NETWORK_UDP_PORT = "panel-network-udp-port" as const;
+  private static readonly ID_NETWORK_DST_PORT = "panel-network-dst-port" as const;
+  private static readonly ID_NETWORK_SRC_PORT = "panel-network-src-port" as const;
   private static readonly VXLAN_INPUT_IDS = [
     ViewportPanelsManager.ID_NETWORK_REMOTE,
     ViewportPanelsManager.ID_NETWORK_VNI,
-    ViewportPanelsManager.ID_NETWORK_UDP_PORT
+    ViewportPanelsManager.ID_NETWORK_DST_PORT,
+    ViewportPanelsManager.ID_NETWORK_SRC_PORT
   ] as const;
 
   private static readonly ID_NETWORK_TYPE_DROPDOWN =
@@ -352,14 +354,8 @@ export class ViewportPanelsManager {
         label: ViewportPanelsManager.LABEL_HOST_INTERFACE,
         placeholder: "Parent interface (e.g., eth0)"
       },
-      [ViewportPanelsManager.TYPE_VXLAN]: {
-        label: ViewportPanelsManager.LABEL_INTERFACE,
-        placeholder: "VXLAN interface name"
-      },
-      [ViewportPanelsManager.TYPE_VXLAN_STITCH]: {
-        label: ViewportPanelsManager.LABEL_INTERFACE,
-        placeholder: "VXLAN interface name"
-      }
+      [ViewportPanelsManager.TYPE_VXLAN]: { showInterface: false },
+      [ViewportPanelsManager.TYPE_VXLAN_STITCH]: { showInterface: false }
     };
     return { ...base, ...(map[networkType] || {}) };
   }
@@ -386,8 +382,9 @@ export class ViewportPanelsManager {
     ) as HTMLInputElement | null;
     const labelGroup = labelInput?.closest(".form-group") as HTMLElement | null;
     if (labelGroup) {
-      const show = ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any);
-      labelGroup.style.display = show
+      const showForBridge = ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any);
+      const showForVxlan = (ViewportPanelsManager.VX_TYPES as readonly string[]).includes(networkType);
+      labelGroup.style.display = (showForBridge || showForVxlan)
         ? ViewportPanelsManager.DISPLAY_BLOCK
         : ViewportPanelsManager.DISPLAY_NONE;
     }
@@ -465,7 +462,8 @@ export class ViewportPanelsManager {
     if (modeSelect) modeSelect.value = extraData.extMode || ViewportPanelsManager.TYPE_BRIDGE;
     this.setInputValue(ViewportPanelsManager.ID_NETWORK_REMOTE, extraData.extRemote);
     this.setInputValue(ViewportPanelsManager.ID_NETWORK_VNI, extraData.extVni);
-    this.setInputValue(ViewportPanelsManager.ID_NETWORK_UDP_PORT, extraData.extUdpPort);
+    this.setInputValue(ViewportPanelsManager.ID_NETWORK_DST_PORT, extraData.extDstPort);
+    this.setInputValue(ViewportPanelsManager.ID_NETWORK_SRC_PORT, extraData.extSrcPort);
 
     this.loadNetworkDynamicEntries("vars", extraData.extVars || extraFallback.extVars);
     this.loadNetworkDynamicEntries("labels", extraData.extLabels || extraFallback.extLabels);
@@ -530,7 +528,8 @@ export class ViewportPanelsManager {
       inputs.label,
       inputs.remote,
       inputs.vni,
-      inputs.udpPort
+      inputs.dstPort,
+      inputs.srcPort
     );
     const extendedData = this.buildNetworkExtendedData(inputs, currentData.extraData || {});
     const shouldRecreate = ids.newId !== ids.oldId;
@@ -677,7 +676,7 @@ export class ViewportPanelsManager {
     const fields = [
       { id: ViewportPanelsManager.ID_NETWORK_REMOTE, msg: "Remote IP is required" },
       { id: ViewportPanelsManager.ID_NETWORK_VNI, msg: "VNI is required" },
-      { id: ViewportPanelsManager.ID_NETWORK_UDP_PORT, msg: "UDP Port is required" }
+      { id: ViewportPanelsManager.ID_NETWORK_DST_PORT, msg: "Destination Port is required" }
     ];
     const errors: string[] = [];
     fields.forEach(({ id, msg }) => {
@@ -726,8 +725,11 @@ export class ViewportPanelsManager {
     const vniInput = document.getElementById(
       ViewportPanelsManager.ID_NETWORK_VNI
     ) as HTMLInputElement | null;
-    const udpPortInput = document.getElementById(
-      ViewportPanelsManager.ID_NETWORK_UDP_PORT
+    const dstPortInput = document.getElementById(
+      ViewportPanelsManager.ID_NETWORK_DST_PORT
+    ) as HTMLInputElement | null;
+    const srcPortInput = document.getElementById(
+      ViewportPanelsManager.ID_NETWORK_SRC_PORT
     ) as HTMLInputElement | null;
 
     return {
@@ -736,7 +738,8 @@ export class ViewportPanelsManager {
       label: labelInput?.value || "",
       remote: remoteInput?.value || "",
       vni: vniInput?.value || "",
-      udpPort: udpPortInput?.value || ""
+      dstPort: dstPortInput?.value || "",
+      srcPort: srcPortInput?.value || ""
     };
   }
 
@@ -834,7 +837,9 @@ export class ViewportPanelsManager {
       ViewportPanelsManager.ID_NETWORK_LABEL
     ) as HTMLInputElement | null;
     if (!input) return;
-    if (ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any)) {
+    const isBridgeType = ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any);
+    const isVxlanType = (ViewportPanelsManager.VX_TYPES as readonly string[]).includes(networkType);
+    if (isBridgeType || isVxlanType) {
       const currentName = (nodeData && typeof nodeData.name === "string" && nodeData.name) || "";
       input.value = currentName;
     } else {
@@ -900,12 +905,64 @@ export class ViewportPanelsManager {
       vni: (
         document.getElementById(ViewportPanelsManager.ID_NETWORK_VNI) as HTMLInputElement | null
       )?.value,
-      udpPort: (
+      dstPort: (
         document.getElementById(
-          ViewportPanelsManager.ID_NETWORK_UDP_PORT
+          ViewportPanelsManager.ID_NETWORK_DST_PORT
+        ) as HTMLInputElement | null
+      )?.value,
+      srcPort: (
+        document.getElementById(
+          ViewportPanelsManager.ID_NETWORK_SRC_PORT
         ) as HTMLInputElement | null
       )?.value
     };
+  }
+
+  private computeNewNetworkId(
+    networkType: string,
+    oldId: string,
+    interfaceName: string,
+    remote?: string,
+    vni?: string,
+    dstPort?: string,
+    srcPort?: string
+  ): string {
+    const isBridgeType = ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any);
+    const isDummyType = networkType === ViewportPanelsManager.TYPE_DUMMY;
+    const isVxType = (ViewportPanelsManager.VX_TYPES as readonly string[]).includes(networkType);
+
+    if (isBridgeType) return oldId;
+    if (isDummyType) {
+      return oldId.startsWith(ViewportPanelsManager.TYPE_DUMMY)
+        ? oldId
+        : this.generateUniqueDummyId();
+    }
+    if (isVxType) {
+      return `${networkType}:${remote ?? ""}/${vni ?? ""}/${dstPort ?? ""}/${srcPort ?? ""}`;
+    }
+    return `${networkType}:${interfaceName}`;
+  }
+
+  private computeDisplayName(
+    networkType: string,
+    label: string | undefined,
+    interfaceName: string,
+    oldName: string,
+    newId: string
+  ): string {
+    const isBridgeType = ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any);
+    const isVxlanType = (ViewportPanelsManager.VX_TYPES as readonly string[]).includes(networkType);
+    const isDummyType = networkType === ViewportPanelsManager.TYPE_DUMMY;
+    if (isBridgeType) {
+      const trimmedLabel = (label && label.trim()) || "";
+      return trimmedLabel || interfaceName || oldName || newId;
+    }
+    if (isVxlanType) {
+      const trimmedLabel = (label && label.trim()) || "";
+      return trimmedLabel || oldName || newId;
+    }
+    if (isDummyType) return ViewportPanelsManager.TYPE_DUMMY;
+    return newId;
   }
 
   private buildNetworkIdentifiers(
@@ -915,35 +972,13 @@ export class ViewportPanelsManager {
     label?: string,
     remote?: string,
     vni?: string,
-    udpPort?: string
+    dstPort?: string,
+    srcPort?: string
   ) {
     const oldId = currentData.id as string;
     const oldName = currentData.name as string;
-    const isBridgeType = ViewportPanelsManager.BRIDGE_TYPES.includes(networkType as any);
-    const isDummyType = networkType === ViewportPanelsManager.TYPE_DUMMY;
-    let newId = "";
-    if (isBridgeType) {
-      // Preserve existing ID for bridge nodes to support alias visuals;
-      // Interface field maps to YAML id via extYamlNodeId and becomes display name.
-      newId = oldId;
-    } else if (isDummyType) {
-      newId = oldId.startsWith(ViewportPanelsManager.TYPE_DUMMY)
-        ? oldId
-        : this.generateUniqueDummyId();
-    } else if ((ViewportPanelsManager.VX_TYPES as readonly string[]).includes(networkType)) {
-      newId = `${networkType}:${remote ?? ""}/${vni ?? ""}/${udpPort ?? ""}`;
-    } else {
-      newId = `${networkType}:${interfaceName}`;
-    }
-    let displayName: string;
-    if (isBridgeType) {
-      const trimmedLabel = (label && label.trim()) || "";
-      displayName = trimmedLabel || interfaceName || oldName || newId;
-    } else if (isDummyType) {
-      displayName = ViewportPanelsManager.TYPE_DUMMY;
-    } else {
-      displayName = newId;
-    }
+    const newId = this.computeNewNetworkId(networkType, oldId, interfaceName, remote, vni, dstPort, srcPort);
+    const displayName = this.computeDisplayName(networkType, label, interfaceName, oldName, newId);
     return { oldId, oldName, newId, displayName };
   }
 
@@ -974,7 +1009,8 @@ export class ViewportPanelsManager {
     if ((ViewportPanelsManager.VX_TYPES as readonly string[]).includes(inputs.networkType)) {
       if (inputs.remote) target.extRemote = inputs.remote;
       if (inputs.vni) target.extVni = Number(inputs.vni);
-      if (inputs.udpPort) target.extUdpPort = Number(inputs.udpPort);
+      if (inputs.dstPort) target.extDstPort = Number(inputs.dstPort);
+      if (inputs.srcPort) target.extSrcPort = Number(inputs.srcPort);
     }
   }
 
@@ -1100,7 +1136,7 @@ export class ViewportPanelsManager {
       copy("extHostInterface");
     if (networkType === "macvlan") copy("extMode");
     if ((ViewportPanelsManager.VX_TYPES as readonly string[]).includes(networkType)) {
-      ["extRemote", "extVni", "extUdpPort"].forEach(copy);
+      ["extRemote", "extVni", "extDstPort", "extSrcPort"].forEach(copy);
     }
   }
 

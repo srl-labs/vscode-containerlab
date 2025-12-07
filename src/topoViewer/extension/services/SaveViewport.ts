@@ -46,7 +46,8 @@ const KEY_HOST_INTERFACE = 'host-interface';
 const KEY_MODE = 'mode';
 const KEY_REMOTE = 'remote';
 const KEY_VNI = 'vni';
-const KEY_UDP_PORT = 'udp-port';
+const KEY_DST_PORT = 'dst-port';
+const KEY_SRC_PORT = 'src-port';
 const KEY_MTU = 'mtu';
 const KEY_VARS = 'vars';
 const KEY_LABELS = 'labels';
@@ -57,7 +58,8 @@ const BRIEF_REMOVE_KEYS = [
   KEY_MODE,
   KEY_REMOTE,
   KEY_VNI,
-  KEY_UDP_PORT,
+  KEY_DST_PORT,
+  KEY_SRC_PORT,
   KEY_MTU,
   KEY_VARS,
   KEY_LABELS,
@@ -67,7 +69,8 @@ const VETH_REMOVE_KEYS = [
   KEY_MODE,
   KEY_REMOTE,
   KEY_VNI,
-  KEY_UDP_PORT,
+  KEY_DST_PORT,
+  KEY_SRC_PORT,
 ] as const;
 
 function buildEndpointMap(doc: YAML.Document.Parsed, ep: CanonicalEndpoint): YAML.YAMLMap {
@@ -828,7 +831,7 @@ function determineChosenType(payloadKey: CanonicalLinkKey, extra: any): Canonica
 }
 
 function hasExtendedProperties(extra: any): boolean {
-  const keys = ['extMtu', 'extSourceMac', 'extTargetMac', 'extMac', 'extHostInterface', 'extRemote', 'extVni', 'extUdpPort', 'extMode'];
+  const keys = ['extMtu', 'extSourceMac', 'extTargetMac', 'extMac', 'extHostInterface', 'extRemote', 'extVni', 'extDstPort', 'extSrcPort', 'extMode'];
   if (keys.some(k => extra[k] !== undefined && extra[k] !== null && extra[k] !== '')) return true;
   if (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) return true;
   if (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0) return true;
@@ -958,9 +961,10 @@ function applyVxlanOptions(
   if (VX_TYPES.has(chosenType)) {
     setOrDelete(doc, map, KEY_REMOTE, extra.extRemote);
     setOrDelete(doc, map, KEY_VNI, extra.extVni !== '' ? extra.extVni : undefined);
-    setOrDelete(doc, map, KEY_UDP_PORT, extra.extUdpPort !== '' ? extra.extUdpPort : undefined);
+    setOrDelete(doc, map, KEY_DST_PORT, extra.extDstPort !== '' ? extra.extDstPort : undefined);
+    setOrDelete(doc, map, KEY_SRC_PORT, extra.extSrcPort !== '' ? extra.extSrcPort : undefined);
   } else {
-    removeKeys(map, [KEY_REMOTE, KEY_VNI, KEY_UDP_PORT]);
+    removeKeys(map, [KEY_REMOTE, KEY_VNI, KEY_DST_PORT, KEY_SRC_PORT]);
   }
 }
 
@@ -984,7 +988,7 @@ function applyExtendedFormat(
     chosenType === STR_MGMT_NET || chosenType === STR_HOST || chosenType === TYPE_MACVLAN;
   const requiresVx = chosenType === TYPE_VXLAN || chosenType === TYPE_VXLAN_STITCH;
   if ((requiresHost && !extra.extHostInterface) ||
-      (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))) {
+      (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extDstPort === undefined))) {
     log.warn(`Skipping write for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
     return false;
   }
@@ -1032,7 +1036,7 @@ function validateRequiredFields(
   const needsHostInterface = requiresHost && !data.source.includes(':') && !data.target.includes(':');
   if (
     (needsHostInterface && !extra.extHostInterface) ||
-    (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extUdpPort === undefined))
+    (requiresVx && (!extra.extRemote || extra.extVni === undefined || extra.extDstPort === undefined))
   ) {
     log.warn(`Skipping creation for link ${payloadKeyStr} due to missing required fields for type ${chosenType}`);
     return false;
