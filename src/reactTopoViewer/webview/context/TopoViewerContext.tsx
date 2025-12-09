@@ -59,36 +59,72 @@ type TopoViewerAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
   | { type: 'TOGGLE_DUMMY_LINKS' }
-  | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> };
+  | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
+  | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
+  | { type: 'REMOVE_EDGE'; payload: string };
 
 /**
  * Reducer function
  */
-function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
-  switch (action.type) {
-    case 'SET_ELEMENTS':
-      return { ...state, elements: action.payload };
-    case 'SET_MODE':
-      return { ...state, mode: action.payload };
-    case 'SET_DEPLOYMENT_STATE':
-      return { ...state, deploymentState: action.payload };
-    case 'SELECT_NODE':
-      return { ...state, selectedNode: action.payload, selectedEdge: null };
-    case 'SELECT_EDGE':
-      return { ...state, selectedEdge: action.payload, selectedNode: null };
-    case 'TOGGLE_LOCK':
-      return { ...state, isLocked: !state.isLocked };
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
-    case 'SET_LINK_LABEL_MODE':
-      return { ...state, linkLabelMode: action.payload };
-    case 'TOGGLE_DUMMY_LINKS':
-      return { ...state, showDummyLinks: !state.showDummyLinks };
-    case 'SET_INITIAL_DATA':
-      return { ...state, ...action.payload };
-    default:
-      return state;
+type ReducerHandlers = {
+  [K in TopoViewerAction['type']]?: (
+    state: TopoViewerState,
+    action: Extract<TopoViewerAction, { type: K }>
+  ) => TopoViewerState;
+};
+
+const reducerHandlers: ReducerHandlers = {
+  SET_ELEMENTS: (state, action) => ({ ...state, elements: action.payload }),
+  SET_MODE: (state, action) => ({ ...state, mode: action.payload }),
+  SET_DEPLOYMENT_STATE: (state, action) => ({ ...state, deploymentState: action.payload }),
+  SELECT_NODE: (state, action) => ({ ...state, selectedNode: action.payload, selectedEdge: null }),
+  SELECT_EDGE: (state, action) => ({ ...state, selectedEdge: action.payload, selectedNode: null }),
+  TOGGLE_LOCK: (state) => ({ ...state, isLocked: !state.isLocked }),
+  SET_LOADING: (state, action) => ({ ...state, isLoading: action.payload }),
+  SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
+  TOGGLE_DUMMY_LINKS: (state) => ({ ...state, showDummyLinks: !state.showDummyLinks }),
+  SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
+  REMOVE_NODE_AND_EDGES: (state, action) => {
+    const nodeId = action.payload;
+    const filteredElements = state.elements.filter(el => {
+      const data = el.data || {};
+      if (el.group === 'nodes') {
+        return (data as any).id !== nodeId;
+      }
+      if (el.group === 'edges') {
+        const source = (data as any).source;
+        const target = (data as any).target;
+        return source !== nodeId && target !== nodeId;
+      }
+      return true;
+    });
+    const selectedEdgeStillExists = state.selectedEdge
+      ? filteredElements.some(el => el.group === 'edges' && (el.data as any)?.id === state.selectedEdge)
+      : false;
+    return {
+      ...state,
+      elements: filteredElements,
+      selectedNode: state.selectedNode === nodeId ? null : state.selectedNode,
+      selectedEdge: selectedEdgeStillExists ? state.selectedEdge : null
+    };
+  },
+  REMOVE_EDGE: (state, action) => {
+    const edgeId = action.payload;
+    const filteredElements = state.elements.filter(el => !(el.group === 'edges' && (el.data as any)?.id === edgeId));
+    return {
+      ...state,
+      elements: filteredElements,
+      selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge
+    };
   }
+};
+
+function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
+  const handler = reducerHandlers[action.type];
+  if (handler) {
+    return handler(state, action as never);
+  }
+  return state;
 }
 
 /**
@@ -106,6 +142,8 @@ interface TopoViewerContextValue {
   setLoading: (loading: boolean) => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
+  removeNodeAndEdges: (nodeId: string) => void;
+  removeEdge: (edgeId: string) => void;
 }
 
 /**
@@ -140,22 +178,59 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
 /**
  * Handle incoming extension messages
  */
+type ExtensionMessage = { type?: string; data?: Record<string, unknown>; action?: string; nodeId?: string; edgeId?: string };
+
+function handlePanelAction(message: ExtensionMessage, dispatch: React.Dispatch<TopoViewerAction>): void {
+  const action = message.action;
+  const nodeId = message.nodeId as string | undefined;
+  const edgeId = message.edgeId as string | undefined;
+  if (!action) return;
+
+  if (action === 'delete-node' && nodeId) {
+    dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
+    return;
+  }
+  if (action === 'delete-link' && edgeId) {
+    dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
+    return;
+  }
+
+  const nodeSelectActions = new Set(['node-info', 'edit-node', 'start-link']);
+  const edgeSelectActions = new Set(['link-info', 'edit-link']);
+
+  if (nodeSelectActions.has(action) && nodeId) {
+    dispatch({ type: 'SELECT_NODE', payload: nodeId });
+    return;
+  }
+  if (edgeSelectActions.has(action) && edgeId) {
+    dispatch({ type: 'SELECT_EDGE', payload: edgeId });
+  }
+}
+
 function handleExtensionMessage(
-  message: { type?: string; data?: Record<string, unknown> },
+  message: ExtensionMessage,
   dispatch: React.Dispatch<TopoViewerAction>
 ): void {
   if (!message.type) return;
 
-  if (message.type === 'topology-data' && message.data?.elements) {
-    dispatch({ type: 'SET_ELEMENTS', payload: message.data.elements as CyElement[] });
-  } else if (message.type === 'topo-mode-changed') {
-    if (message.data?.mode) {
-      dispatch({ type: 'SET_MODE', payload: message.data.mode === 'viewer' ? 'view' : 'edit' });
-    }
-    if (message.data?.deploymentState) {
-      dispatch({ type: 'SET_DEPLOYMENT_STATE', payload: message.data.deploymentState as DeploymentState });
-    }
-  }
+  const handlers: Record<string, () => void> = {
+    'topology-data': () => {
+      if (message.data?.elements) {
+        dispatch({ type: 'SET_ELEMENTS', payload: message.data.elements as CyElement[] });
+      }
+    },
+    'topo-mode-changed': () => {
+      if (message.data?.mode) {
+        dispatch({ type: 'SET_MODE', payload: message.data.mode === 'viewer' ? 'view' : 'edit' });
+      }
+      if (message.data?.deploymentState) {
+        dispatch({ type: 'SET_DEPLOYMENT_STATE', payload: message.data.deploymentState as DeploymentState });
+      }
+    },
+    'panel-action': () => handlePanelAction(message, dispatch)
+  };
+
+  handlers[message.type]?.();
 }
 
 /**
@@ -190,7 +265,25 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
   }, [dispatch]);
 
-  return { selectNode, selectEdge, toggleLock, setMode, setLoading, setLinkLabelMode, toggleDummyLinks };
+  const removeNodeAndEdges = useCallback((nodeId: string) => {
+    dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
+  }, [dispatch]);
+
+  const removeEdge = useCallback((edgeId: string) => {
+    dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
+  }, [dispatch]);
+
+  return {
+    selectNode,
+    selectEdge,
+    toggleLock,
+    setMode,
+    setLoading,
+    setLinkLabelMode,
+    toggleDummyLinks,
+    removeNodeAndEdges,
+    removeEdge
+  };
 }
 
 /**

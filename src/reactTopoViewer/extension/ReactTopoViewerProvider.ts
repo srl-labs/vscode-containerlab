@@ -3,6 +3,7 @@ import * as fs from 'fs';
 
 import { log } from '../../topoViewer/webview/platform/logging/logger';
 import { TopoViewerAdaptorClab } from '../../topoViewer/extension/services/TopologyAdapter';
+import { CyElement } from '../../topoViewer/shared/types/topoViewerType';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
 import { deploymentStateChecker } from '../../topoViewer/extension/services/DeploymentStateChecker';
@@ -84,6 +85,7 @@ export class ReactTopoViewer {
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private isInternalUpdate = false;
+  private lastTopologyElements: CyElement[] = [];
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -179,6 +181,7 @@ export class ReactTopoViewer {
    */
   private async loadTopologyData(): Promise<unknown> {
     if (!this.lastYamlFilePath) {
+      this.lastTopologyElements = [];
       return null;
     }
 
@@ -189,6 +192,7 @@ export class ReactTopoViewer {
         this.cacheClabTreeDataToTopoviewer,
         this.lastYamlFilePath
       );
+      this.lastTopologyElements = elements;
       return {
         elements,
         labName: this.currentLabName,
@@ -196,6 +200,7 @@ export class ReactTopoViewer {
         deploymentState: this.deploymentState
       };
     } catch (err) {
+      this.lastTopologyElements = [];
       log.error(`Error loading topology data: ${err}`);
       return null;
     }
@@ -264,6 +269,108 @@ export class ReactTopoViewer {
     return '';
   }
 
+  private getNodeIdFromMessage(message: WebviewMessage): string | undefined {
+    const payload = (message.payload as any) || message;
+    const nodeId = (payload as any)?.nodeId ?? (payload as any)?.id;
+    return typeof nodeId === 'string' ? nodeId : undefined;
+  }
+
+  private getEdgeIdFromMessage(message: WebviewMessage): string | undefined {
+    const payload = (message.payload as any) || message;
+    const edgeId = (payload as any)?.edgeId ?? (payload as any)?.id;
+    return typeof edgeId === 'string' ? edgeId : undefined;
+  }
+
+  private findCachedNode(nodeId: string | undefined): CyElement | undefined {
+    if (!nodeId) return undefined;
+    return this.lastTopologyElements.find(el => el.group === 'nodes' && (el.data as any)?.id === nodeId);
+  }
+
+  private findCachedEdge(edgeId: string | undefined): CyElement | undefined {
+    if (!edgeId) return undefined;
+    return this.lastTopologyElements.find(el => el.group === 'edges' && (el.data as any)?.id === edgeId);
+  }
+
+  private postPanelAction(panel: vscode.WebviewPanel, action: string, data: Record<string, unknown>): void {
+    panel.webview.postMessage({
+      type: 'panel-action',
+      action,
+      ...data
+    });
+  }
+
+  private handleNodePanelAction(
+    panel: vscode.WebviewPanel,
+    message: WebviewMessage,
+    action: 'node-info' | 'edit-node'
+  ): void {
+    const nodeId = this.getNodeIdFromMessage(message);
+    if (!nodeId) return;
+    const node = this.findCachedNode(nodeId);
+    this.postPanelAction(panel, action, { nodeId, nodeData: node?.data });
+  }
+
+  private async handleDeleteNode(panel: vscode.WebviewPanel, message: WebviewMessage): Promise<void> {
+    const nodeId = this.getNodeIdFromMessage(message);
+    if (!nodeId) return;
+    await this.removeNodeFromAnnotations(nodeId);
+    this.lastTopologyElements = this.lastTopologyElements.filter(el => {
+      const data = el.data || {};
+      if (el.group === 'nodes') return (data as any)?.id !== nodeId;
+      if (el.group === 'edges') {
+        const source = (data as any)?.source;
+        const target = (data as any)?.target;
+        return source !== nodeId && target !== nodeId;
+      }
+      return true;
+    });
+    this.postPanelAction(panel, 'delete-node', { nodeId });
+  }
+
+  private handleStartLink(panel: vscode.WebviewPanel, message: WebviewMessage): void {
+    const nodeId = this.getNodeIdFromMessage(message);
+    if (!nodeId) return;
+    this.postPanelAction(panel, 'start-link', { nodeId });
+  }
+
+  private handleLinkPanelAction(
+    panel: vscode.WebviewPanel,
+    message: WebviewMessage,
+    action: 'link-info' | 'edit-link'
+  ): void {
+    const edgeId = this.getEdgeIdFromMessage(message);
+    if (!edgeId) return;
+    const edge = this.findCachedEdge(edgeId);
+    this.postPanelAction(panel, action, { edgeId, edgeData: edge?.data });
+  }
+
+  private handleDeleteLink(panel: vscode.WebviewPanel, message: WebviewMessage): void {
+    const edgeId = this.getEdgeIdFromMessage(message);
+    if (!edgeId) return;
+    this.lastTopologyElements = this.lastTopologyElements.filter(
+      el => !(el.group === 'edges' && (el.data as any)?.id === edgeId)
+    );
+    this.postPanelAction(panel, 'delete-link', { edgeId });
+  }
+
+  private async removeNodeFromAnnotations(nodeId: string): Promise<void> {
+    if (!this.lastYamlFilePath) {
+      return;
+    }
+    try {
+      const annotationsManager = new AnnotationsManager();
+      const annotations = annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const existing = annotations.nodeAnnotations || [];
+      const updatedNodes = existing.filter(n => n.id !== nodeId);
+      if (updatedNodes.length !== existing.length) {
+        annotations.nodeAnnotations = updatedNodes;
+        annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
+      }
+    } catch (err) {
+      log.warn(`[ReactTopoViewer] Failed to prune annotations for node ${nodeId}: ${err}`);
+    }
+  }
+
   private async handleNodeCommand(command: string, message: WebviewMessage): Promise<boolean> {
     nodeCommandService.setYamlFilePath(this.lastYamlFilePath);
     const { result, error } = await nodeCommandService.handleNodeEndpoint(command, this.getNodeNamePayload(message));
@@ -308,6 +415,48 @@ export class ReactTopoViewer {
     return true;
   }
 
+  private async handlePanelCommand(
+    command: string,
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<boolean> {
+    switch (command) {
+      case 'panel-node-info':
+        this.handleNodePanelAction(panel, message, 'node-info');
+        return true;
+      case 'panel-edit-node':
+        this.handleNodePanelAction(panel, message, 'edit-node');
+        return true;
+      case 'panel-delete-node':
+        await this.handleDeleteNode(panel, message);
+        return true;
+      case 'panel-start-link':
+        this.handleStartLink(panel, message);
+        return true;
+      case 'panel-link-info':
+        this.handleLinkPanelAction(panel, message, 'link-info');
+        return true;
+      case 'panel-edit-link':
+        this.handleLinkPanelAction(panel, message, 'edit-link');
+        return true;
+      case 'panel-delete-link':
+        this.handleDeleteLink(panel, message);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private handleNavbarUtilityCommand(command: string, message: WebviewMessage): boolean {
+    const payload = (message.payload as any) || message;
+    if (command === 'nav-geo-controls') {
+      const mode = (payload as any)?.geoMode;
+      log.info(`[ReactTopoViewer] Geo controls mode: ${mode ?? 'unknown'}`);
+      return true;
+    }
+    return false;
+  }
+
   private handlePlaceholderCommand(command: string): boolean {
     if (command === 'nav-layout-toggle') {
       log.info('[ReactTopoViewer] Layout toggle requested from navbar');
@@ -328,14 +477,7 @@ export class ReactTopoViewer {
       'panel-add-group': 'Group creation is not available in the React TopoViewer yet.',
       'panel-add-text': 'Text annotations are not available in the React TopoViewer yet.',
       'panel-add-shapes': 'Shape annotations are not available in the React TopoViewer yet.',
-      'panel-add-bulk-link': 'Bulk link creation is not available in the React TopoViewer yet.',
-      'panel-edit-node': 'Node editing is not available in the React TopoViewer yet.',
-      'panel-delete-node': 'Node deletion is not available in the React TopoViewer yet.',
-      'panel-start-link': 'Link creation is not available in the React TopoViewer yet.',
-      'panel-node-info': 'Node properties panel is not available in the React TopoViewer yet.',
-      'panel-link-info': 'Link properties panel is not available in the React TopoViewer yet.',
-      'panel-edit-link': 'Link editing is not available in the React TopoViewer yet.',
-      'panel-delete-link': 'Link deletion is not available in the React TopoViewer yet.'
+      'panel-add-bulk-link': 'Bulk link creation is not available in the React TopoViewer yet.'
     };
 
     const placeholderMessage = placeholderMessages[command];
@@ -374,6 +516,15 @@ export class ReactTopoViewer {
 
     if (command === 'toggle-lock-state') {
       return this.handleLockState(message);
+    }
+
+    const panelHandled = await this.handlePanelCommand(command, message, panel);
+    if (panelHandled) {
+      return true;
+    }
+
+    if (this.handleNavbarUtilityCommand(command, message)) {
+      return true;
     }
 
     return this.handlePlaceholderCommand(command);

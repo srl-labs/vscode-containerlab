@@ -4,16 +4,49 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useTopoViewer, DeploymentState, LinkLabelMode } from '../../context/TopoViewerContext';
+import { LayoutOption } from '../../hooks/useAppState';
 
 interface NavbarProps {
   onZoomToFit?: () => void;
   onToggleLayout?: () => void;
+  layout: LayoutOption;
+  onLayoutChange: (layout: LayoutOption) => void;
+  geoMode: 'pan' | 'edit';
+  onGeoModeChange: (mode: 'pan' | 'edit') => void;
+  isGeoLayout: boolean;
   onLabSettings?: () => void;
   onToggleSplit?: () => void;
   onFindNode?: () => void;
   onCaptureViewport?: () => void;
   onShowShortcuts?: () => void;
   onShowAbout?: () => void;
+}
+
+function useDropdown(): {
+  isOpen: boolean;
+  toggle: () => void;
+  close: () => void;
+  ref: React.RefObject<HTMLDivElement>;
+} {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return {
+    isOpen,
+    toggle: () => setIsOpen(prev => !prev),
+    close: () => setIsOpen(false),
+    ref
+  };
 }
 
 /**
@@ -32,6 +65,13 @@ function getDeploymentDisplay(state: DeploymentState): { text: string; className
 export const Navbar: React.FC<NavbarProps> = ({
   onZoomToFit,
   onToggleLayout,
+  layout,
+  onLayoutChange,
+  gridSettings,
+  onGridSettingsChange,
+  geoMode,
+  onGeoModeChange,
+  isGeoLayout,
   onLabSettings,
   onToggleSplit,
   onFindNode,
@@ -42,24 +82,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { state, setLinkLabelMode, toggleDummyLinks } = useTopoViewer();
   const deploymentDisplay = getDeploymentDisplay(state.deploymentState);
 
-  // Local state for dropdown menu
-  const [linkLabelMenuOpen, setLinkLabelMenuOpen] = useState(false);
-  const linkLabelMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (linkLabelMenuRef.current && !linkLabelMenuRef.current.contains(event.target as Node)) {
-        setLinkLabelMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const linkDropdown = useDropdown();
+  const layoutDropdown = useDropdown();
 
   const handleLinkLabelModeChange = (mode: LinkLabelMode) => {
     setLinkLabelMode(mode);
-    setLinkLabelMenuOpen(false);
+    linkDropdown.close();
+  };
+
+  const handleLayoutSelect = (nextLayout: LayoutOption) => {
+    onLayoutChange(nextLayout);
+    onToggleLayout?.();
+    layoutDropdown.close();
   };
 
   return (
@@ -109,11 +143,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         />
 
         {/* Layout Manager */}
-        <NavButton
-          icon="fa-circle-nodes"
-          title="Layout Manager"
-          onClick={onToggleLayout}
-        />
+        <div className="relative inline-block" ref={layoutDropdown.ref}>
+          <NavButton
+            icon="fa-circle-nodes"
+            title={`Layout: ${getLayoutLabel(layout)}`}
+            onClick={layoutDropdown.toggle}
+            active={layoutDropdown.isOpen}
+          />
+          {layoutDropdown.isOpen && (
+            <LayoutMenu
+              currentLayout={layout}
+              onSelect={handleLayoutSelect}
+            />
+          )}
+        </div>
 
         {/* Find Node */}
         <NavButton
@@ -123,14 +166,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         />
 
         {/* Link Labels Dropdown */}
-        <div className="relative inline-block" ref={linkLabelMenuRef}>
+        <div className="relative inline-block" ref={linkDropdown.ref}>
           <NavButton
             icon="fa-tag"
             title="Link Labels"
-            onClick={() => setLinkLabelMenuOpen(!linkLabelMenuOpen)}
-            active={linkLabelMenuOpen}
+            onClick={linkDropdown.toggle}
+            active={linkDropdown.isOpen}
           />
-          {linkLabelMenuOpen && (
+          {linkDropdown.isOpen && (
             <LinkLabelMenu
               currentMode={state.linkLabelMode}
               showDummyLinks={state.showDummyLinks}
@@ -164,6 +207,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right: Status */}
       <div className="flex items-center gap-2">
+        {isGeoLayout && (
+          <GeoModeToggle
+            mode={geoMode}
+            onChange={onGeoModeChange}
+          />
+        )}
         <span className={`deployment-status ${deploymentDisplay.className}`}>
           {deploymentDisplay.text}
         </span>
@@ -234,6 +283,72 @@ const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
     </div>
   );
 };
+
+const LAYOUT_OPTIONS: { value: LayoutOption; label: string }[] = [
+  { value: 'preset', label: 'Preset' },
+  { value: 'cose', label: 'Force-Directed (COSE)' },
+  { value: 'cola', label: 'Cola' },
+  { value: 'radial', label: 'Radial' },
+  { value: 'hierarchical', label: 'Hierarchical' },
+  { value: 'geo', label: 'Geo Map' }
+];
+
+function getLayoutLabel(option: LayoutOption): string {
+  const match = LAYOUT_OPTIONS.find(o => o.value === option);
+  return match ? match.label : option;
+}
+
+interface LayoutMenuProps {
+  currentLayout: LayoutOption;
+  onSelect: (layout: LayoutOption) => void;
+}
+
+const LayoutMenu: React.FC<LayoutMenuProps> = ({ currentLayout, onSelect }) => (
+  <div className="navbar-menu" role="menu">
+    {LAYOUT_OPTIONS.map(({ value, label }) => (
+      <button
+        key={value}
+        type="button"
+        className="navbar-menu-option"
+        onClick={() => onSelect(value)}
+        role="menuitemradio"
+        aria-checked={currentLayout === value}
+      >
+        <span>{label}</span>
+        {currentLayout === value && (
+          <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+        )}
+      </button>
+    ))}
+  </div>
+);
+
+interface GeoModeToggleProps {
+  mode: 'pan' | 'edit';
+  onChange: (mode: 'pan' | 'edit') => void;
+}
+
+const GeoModeToggle: React.FC<GeoModeToggleProps> = ({ mode, onChange }) => (
+  <div className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--vscode-panel-border,#3c3c3c)] bg-[var(--vscode-editor-background,#1e1e1e)]">
+    <span className="text-xs text-[var(--text-secondary,#9ca3af)]">Geo mode</span>
+    <div className="inline-flex rounded overflow-hidden border border-[var(--vscode-panel-border,#3c3c3c)]">
+      <button
+        type="button"
+        className={`px-2 py-1 text-xs ${mode === 'pan' ? 'bg-[var(--accent,#3b82f6)] text-white' : 'bg-transparent text-[var(--text-secondary,#9ca3af)]'}`}
+        onClick={() => onChange('pan')}
+      >
+        Pan
+      </button>
+      <button
+        type="button"
+        className={`px-2 py-1 text-xs ${mode === 'edit' ? 'bg-[var(--accent,#3b82f6)] text-white' : 'bg-transparent text-[var(--text-secondary,#9ca3af)]'}`}
+        onClick={() => onChange('edit')}
+      >
+        Edit
+      </button>
+    </div>
+  </div>
+);
 
 /**
  * Navbar Button Component

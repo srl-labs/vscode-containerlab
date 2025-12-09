@@ -4,6 +4,8 @@
  */
 import React, { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import cytoscape, { Core } from 'cytoscape';
+import cola from 'cytoscape-cola';
+import gridGuide from 'cytoscape-grid-guide';
 import { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { log } from '../../utils/logger';
@@ -20,6 +22,23 @@ export interface CytoscapeCanvasRef {
   fit: () => void;
   runLayout: (layoutName: string) => void;
   getCy: () => Core | null;
+}
+
+let colaRegistered = false;
+let gridGuideRegistered = false;
+
+function ensureColaRegistered(): void {
+  if (!colaRegistered) {
+    cytoscape.use(cola);
+    colaRegistered = true;
+  }
+}
+
+function ensureGridGuideRegistered(): void {
+  if (!gridGuideRegistered) {
+    cytoscape.use(gridGuide);
+    gridGuideRegistered = true;
+  }
 }
 
 // Style constants to avoid duplication
@@ -283,7 +302,23 @@ function getLayoutOptions(layoutName: string): cytoscape.LayoutOptions {
     },
     grid: { name: 'grid', animate: true, animationDuration: 300 },
     circle: { name: 'circle', animate: true, animationDuration: 300 },
-    concentric: { name: 'concentric', animate: true, animationDuration: 300 }
+    concentric: { name: 'concentric', animate: true, animationDuration: 300 },
+    preset: { name: 'preset', animate: false },
+    cola: {
+      name: 'cola',
+      animate: true,
+      maxSimulationTime: 1500,
+      fit: true,
+      edgeLength: 120,
+      nodeSpacing: 12
+    },
+    breadthfirst: {
+      name: 'breadthfirst',
+      directed: true,
+      animate: true,
+      animationDuration: 400,
+      spacingFactor: 0.8
+    }
   };
   return layouts[layoutName] || layouts.cose;
 }
@@ -295,6 +330,9 @@ function createRefMethods(cyRef: React.RefObject<Core | null>): CytoscapeCanvasR
   return {
     fit: () => cyRef.current?.fit(undefined, 50),
     runLayout: (layoutName: string) => {
+      if (layoutName === 'cola') {
+        ensureColaRegistered();
+      }
       if (cyRef.current) {
         cyRef.current.layout(getLayoutOptions(layoutName)).run();
       }
@@ -374,6 +412,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     // Initialize Cytoscape
     const initCytoscape = useCallback(() => {
       if (!containerRef.current) return;
+      ensureGridGuideRegistered();
 
       const container = containerRef.current;
       const rect = container.getBoundingClientRect();
@@ -420,7 +459,11 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     // Update elements when they change
     useEffect(() => {
       const cy = cyRef.current;
-      if (!cy || !elements.length) return;
+      if (!cy) return;
+      if (!elements.length) {
+        cy.elements().remove();
+        return;
+      }
       updateCytoscapeElements(cy, elements);
     }, [elements]);
 

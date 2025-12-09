@@ -14,7 +14,8 @@ import {
   useCytoscapeInstance,
   useSelectionData,
   useNavbarActions,
-  useContextMenuHandlers
+  useContextMenuHandlers,
+  useLayoutControls
 } from './hooks/useAppState';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 
@@ -43,7 +44,7 @@ function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Eleme
   );
 }
 
-function useNavbarCommandCallbacks(runLayout: () => void) {
+function useNavbarCommandCallbacks() {
   const onLabSettings = React.useCallback(() => sendCommandToExtension('nav-open-lab-settings'), []);
   const onToggleSplit = React.useCallback(() => sendCommandToExtension('topo-toggle-split-view'), []);
   const onFindNode = React.useCallback(() => sendCommandToExtension('nav-find-node'), []);
@@ -51,9 +52,8 @@ function useNavbarCommandCallbacks(runLayout: () => void) {
   const onShowShortcuts = React.useCallback(() => sendCommandToExtension('nav-show-shortcuts'), []);
   const onShowAbout = React.useCallback(() => sendCommandToExtension('nav-show-about'), []);
   const onLayoutToggle = React.useCallback(() => {
-    runLayout();
     sendCommandToExtension('nav-layout-toggle');
-  }, [runLayout]);
+  }, []);
 
   return {
     onLabSettings,
@@ -97,10 +97,11 @@ function useFloatingPanelCommands() {
 }
 
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
+  const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
 
   // Selection data
   const { selectedNodeData, selectedLinkData } = useSelectionData(
@@ -110,11 +111,16 @@ export const App: React.FC = () => {
   );
 
   // Navbar actions
-  const { handleZoomToFit, handleToggleLayout } = useNavbarActions(cytoscapeRef);
-  const navbarCommands = useNavbarCommandCallbacks(handleToggleLayout);
+  const { handleZoomToFit } = useNavbarActions(cytoscapeRef);
+  const navbarCommands = useNavbarCommandCallbacks();
 
   // Context menu handlers
-  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge });
+  const menuHandlers = useContextMenuHandlers(cytoscapeRef, {
+    selectNode,
+    selectEdge,
+    removeNodeAndEdges,
+    removeEdge
+  });
 
   const floatingPanelCommands = useFloatingPanelCommands();
 
@@ -149,6 +155,11 @@ export const App: React.FC = () => {
       <Navbar
         onZoomToFit={handleZoomToFit}
         onToggleLayout={navbarCommands.onLayoutToggle}
+        layout={layoutControls.layout}
+        onLayoutChange={layoutControls.setLayout}
+        geoMode={layoutControls.geoMode}
+        onGeoModeChange={layoutControls.setGeoMode}
+        isGeoLayout={layoutControls.isGeoLayout}
         onLabSettings={navbarCommands.onLabSettings}
         onToggleSplit={navbarCommands.onToggleSplit}
         onFindNode={navbarCommands.onFindNode}
