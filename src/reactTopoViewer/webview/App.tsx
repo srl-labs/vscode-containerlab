@@ -8,9 +8,12 @@ import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel, NodeEditorData } from './components/panels/node-editor';
+import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { useContextMenu } from './hooks/useContextMenu';
 import { useNodeDragging } from './hooks/useNodeDragging';
+import { useEdgeCreation } from './hooks/useEdgeCreation';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import {
   useCytoscapeInstance,
   useSelectionData,
@@ -140,6 +143,46 @@ function useNodeEditorHandlers(editNode: (id: string | null) => void) {
   return { handleClose, handleSave, handleApply };
 }
 
+/**
+ * Converts raw link data to editor format
+ */
+function convertToLinkEditorData(rawData: Record<string, unknown> | null): LinkEditorData | null {
+  if (!rawData) return null;
+  return {
+    id: rawData.id as string || '',
+    source: rawData.source as string || '',
+    target: rawData.target as string || '',
+    sourceEndpoint: rawData.sourceEndpoint as string || '',
+    targetEndpoint: rawData.targetEndpoint as string || '',
+    type: rawData.linkType as string || 'veth',
+    sourceMac: (rawData.endpointA as Record<string, unknown>)?.mac as string || '',
+    targetMac: (rawData.endpointB as Record<string, unknown>)?.mac as string || '',
+    mtu: rawData.mtu as number | undefined,
+    vars: (rawData.vars as Record<string, string>) || {},
+    labels: (rawData.labels as Record<string, string>) || {}
+  };
+}
+
+/**
+ * Hook for link editor handlers
+ */
+function useLinkEditorHandlers(editEdge: (id: string | null) => void) {
+  const handleClose = React.useCallback(() => {
+    editEdge(null);
+  }, [editEdge]);
+
+  const handleSave = React.useCallback((data: LinkEditorData) => {
+    sendCommandToExtension('save-link-editor', { linkData: data });
+    editEdge(null);
+  }, [editEdge]);
+
+  const handleApply = React.useCallback((data: LinkEditorData) => {
+    sendCommandToExtension('apply-link-editor', { linkData: data });
+  }, []);
+
+  return { handleClose, handleSave, handleApply };
+}
+
 export const App: React.FC = () => {
   const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
 
@@ -153,7 +196,9 @@ export const App: React.FC = () => {
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge);
   const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
+  const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge);
   const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
+  const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
 
   // Navbar actions
   const { handleZoomToFit } = useNavbarActions(cytoscapeRef);
@@ -163,6 +208,27 @@ export const App: React.FC = () => {
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();
   const nodeEditorHandlers = useNodeEditorHandlers(editNode);
+  const linkEditorHandlers = useLinkEditorHandlers(editEdge);
+
+  // Edge creation handler
+  const handleEdgeCreated = React.useCallback((sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
+    sendCommandToExtension('create-link', { linkData: edgeData });
+    // Optionally open the link editor for the new edge
+    editEdge(edgeData.id);
+  }, [editEdge]);
+
+  // Set up edge creation via edgehandles
+  const { startEdgeCreation } = useEdgeCreation(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onEdgeCreated: handleEdgeCreated
+  });
+
+  // Override the context menu handler to use the edgehandles start function
+  const handleCreateLinkFromNode = React.useCallback((nodeId: string) => {
+    startEdgeCreation(nodeId);
+    sendCommandToExtension('panel-start-link', { nodeId });
+  }, [startEdgeCreation]);
 
   // Set up context menus
   useContextMenu(cyInstance, {
@@ -170,7 +236,7 @@ export const App: React.FC = () => {
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
     onDeleteNode: menuHandlers.handleDeleteNode,
-    onCreateLinkFromNode: menuHandlers.handleCreateLinkFromNode,
+    onCreateLinkFromNode: handleCreateLinkFromNode,
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: menuHandlers.handleDeleteLink,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
@@ -182,6 +248,24 @@ export const App: React.FC = () => {
 
   // Set up node dragging based on lock state
   useNodeDragging(cyInstance, { mode: state.mode, isLocked: state.isLocked, onLockedDrag: handleLockedDrag });
+
+  // Handle deselect all callback
+  const handleDeselectAll = React.useCallback(() => {
+    selectNode(null);
+    selectEdge(null);
+    editNode(null);
+    editEdge(null);
+  }, [selectNode, selectEdge, editNode, editEdge]);
+
+  // Set up keyboard shortcuts
+  useKeyboardShortcuts({
+    mode: state.mode,
+    selectedNode: state.selectedNode,
+    selectedEdge: state.selectedEdge,
+    onDeleteNode: menuHandlers.handleDeleteNode,
+    onDeleteEdge: menuHandlers.handleDeleteLink,
+    onDeselectAll: handleDeselectAll
+  });
 
   React.useEffect(() => {
     sendCommandToExtension('toggle-lock-state', { isLocked: state.isLocked });
@@ -227,6 +311,13 @@ export const App: React.FC = () => {
           onClose={nodeEditorHandlers.handleClose}
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
+        />
+        <LinkEditorPanel
+          isVisible={!!state.editingEdge}
+          linkData={editingLinkData}
+          onClose={linkEditorHandlers.handleClose}
+          onSave={linkEditorHandlers.handleSave}
+          onApply={linkEditorHandlers.handleApply}
         />
         <FloatingActionPanel
           ref={floatingPanelRef}
