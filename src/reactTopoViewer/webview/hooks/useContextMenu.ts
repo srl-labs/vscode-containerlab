@@ -60,7 +60,9 @@ const MENU_STYLE = {
   maxSpotlightRadius: 32,
   itemTextShadowColor: 'transparent',
   zIndex: 9999,
-  atMouse: false
+  atMouse: false,
+  openMenuEvents: 'cxttapstart cxttap',
+  outsideMenuCancel: 10
 };
 
 /**

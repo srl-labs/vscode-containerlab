@@ -165,8 +165,9 @@
   .navbar-buttons {
     display: flex;
     flex-direction: row;
-    justify-content: center;
+    justify-content: flex-end;
     gap: 0.25rem;
+    margin-left: auto;
   }
 
   .btn-icon {

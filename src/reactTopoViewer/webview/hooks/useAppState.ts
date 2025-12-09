@@ -120,8 +120,137 @@ function normalizeLayoutName(option: LayoutOption): string {
   return option;
 }
 
+const GRID_SPACING = 14;
+const GRID_COLOR = 'rgba(204,204,204,0.58)';
+const GRID_LINE_WIDTH = 0.5;
+
+function normalizeContainerPosition(container: HTMLElement): void {
+  if (window.getComputedStyle(container).position === 'static') {
+    container.style.position = 'relative';
+  }
+}
+
+function createGridCanvas(container: HTMLElement): HTMLCanvasElement | null {
+  const canvas = document.createElement('canvas');
+  canvas.classList.add('react-topoviewer-grid-overlay');
+  canvas.style.position = 'absolute';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.pointerEvents = 'none';
+  canvas.style.zIndex = '0';
+  container.appendChild(canvas);
+  return canvas;
+}
+
+function resizeGridCanvas(canvas: HTMLCanvasElement, container: HTMLElement): { width: number; height: number; ratio: number } {
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  const ratio = window.devicePixelRatio || 1;
+  const targetWidth = Math.max(1, Math.round(width * ratio));
+  const targetHeight = Math.max(1, Math.round(height * ratio));
+  if (canvas.width !== targetWidth) canvas.width = targetWidth;
+  if (canvas.height !== targetHeight) canvas.height = targetHeight;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  return { width, height, ratio };
+}
+
+function drawGridOverlay(
+  cy: Core,
+  container: HTMLElement,
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D
+): void {
+  const { width, height, ratio } = resizeGridCanvas(canvas, container);
+  if (width === 0 || height === 0) return;
+
+  ctx.save();
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const zoom = cy.zoom();
+  const spacing = Math.max(1, GRID_SPACING * zoom);
+  const pan = cy.pan();
+  const offsetX = ((pan.x % spacing) + spacing) % spacing;
+  const offsetY = ((pan.y % spacing) + spacing) % spacing;
+
+  ctx.beginPath();
+  for (let x = offsetX; x <= width + spacing; x += spacing) {
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+  }
+  for (let y = offsetY; y <= height + spacing; y += spacing) {
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+  }
+  ctx.strokeStyle = GRID_COLOR;
+  ctx.lineWidth = GRID_LINE_WIDTH;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function createGridRedraw(drawFn: () => void): () => void {
+  let pending = false;
+  return () => {
+    if (pending) return;
+    pending = true;
+    window.requestAnimationFrame(() => {
+      pending = false;
+      drawFn();
+    });
+  };
+}
+
+function ensureGridOverlay(cy: Core | null): void {
+  if (!cy) return;
+  const cyAny = cy as any;
+  if (cyAny.__reactGridOverlay) return;
+
+  const container = cy.container() as HTMLElement | null;
+  if (!container) return;
+  normalizeContainerPosition(container);
+
+  const canvas = createGridCanvas(container);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    if (canvas.parentElement) canvas.parentElement.removeChild(canvas);
+    log.warn('[GridGuide] Unable to acquire grid overlay context');
+    return;
+  }
+
+  const draw = () => drawGridOverlay(cy, container, canvas, ctx);
+  const requestRedraw = createGridRedraw(draw);
+  const handleResize = () => requestRedraw();
+
+  cy.on('pan', requestRedraw);
+  cy.on('zoom', requestRedraw);
+  cy.on('render', requestRedraw);
+  cy.on('resize', handleResize);
+  window.addEventListener('resize', handleResize, { passive: true });
+  requestRedraw();
+
+  const cleanup = () => {
+    cy.off('pan', requestRedraw);
+    cy.off('zoom', requestRedraw);
+    cy.off('render', requestRedraw);
+    cy.off('resize', handleResize);
+    window.removeEventListener('resize', handleResize);
+    if (canvas.parentElement) {
+      canvas.parentElement.removeChild(canvas);
+    }
+    cyAny.__reactGridOverlay = undefined;
+  };
+
+  cy.one('destroy', cleanup);
+  cyAny.__reactGridOverlay = { cleanup };
+}
+
 function applyGridSettings(cy: Core | null): void {
   if (!cy) return;
+  ensureGridOverlay(cy);
   const cyAny = cy as any;
   if (typeof cyAny.gridGuide !== 'function') {
     log.warn('[GridGuide] gridGuide extension unavailable on Cytoscape instance');
@@ -129,14 +258,18 @@ function applyGridSettings(cy: Core | null): void {
   }
   try {
     cyAny.gridGuide({
-      drawGrid: true,
-      gridSpacing: 40,
-      gridColor: 'rgba(140,140,140,0.28)',
-      lineWidth: 1.5,
+      drawGrid: false,
+      gridSpacing: GRID_SPACING,
+      gridColor: GRID_COLOR,
+      lineWidth: GRID_LINE_WIDTH,
       snapToGridOnRelease: true,
-      snapToGridDuringDrag: true,
+      snapToGridDuringDrag: false,
+      snapToAlignmentLocationOnRelease: true,
+      snapToAlignmentLocationDuringDrag: false,
       snapToGridCenter: true,
-      panGrid: true
+      panGrid: true,
+      zoomDash: true,
+      guidelinesStackOrder: 4
     });
   } catch (err) {
     log.warn(`[GridGuide] Failed to apply grid settings: ${err}`);

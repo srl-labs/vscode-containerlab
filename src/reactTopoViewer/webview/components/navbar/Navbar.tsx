@@ -3,7 +3,7 @@
  * Complete implementation matching legacy features
  */
 import React, { useState, useRef, useEffect } from 'react';
-import { useTopoViewer, DeploymentState, LinkLabelMode } from '../../context/TopoViewerContext';
+import { useTopoViewer, LinkLabelMode } from '../../context/TopoViewerContext';
 import { LayoutOption } from '../../hooks/useAppState';
 
 interface NavbarProps {
@@ -49,19 +49,6 @@ function useDropdown(): {
   };
 }
 
-/**
- * Get deployment status display
- */
-function getDeploymentDisplay(state: DeploymentState): { text: string; className: string } {
-  if (state === 'deployed') {
-    return { text: 'Deployed', className: 'deployed' };
-  }
-  if (state === 'undeployed') {
-    return { text: 'Undeployed', className: 'undeployed' };
-  }
-  return { text: 'Unknown', className: '' };
-}
-
 export const Navbar: React.FC<NavbarProps> = ({
   onZoomToFit,
   onToggleLayout,
@@ -80,7 +67,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onShowAbout
 }) => {
   const { state, setLinkLabelMode, toggleDummyLinks } = useTopoViewer();
-  const deploymentDisplay = getDeploymentDisplay(state.deploymentState);
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();
@@ -203,19 +189,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="About TopoViewer"
           onClick={onShowAbout}
         />
-      </div>
 
-      {/* Right: Status */}
-      <div className="flex items-center gap-2">
+        {/* Geo mode toggle (when applicable) */}
         {isGeoLayout && (
           <GeoModeToggle
             mode={geoMode}
             onChange={onGeoModeChange}
           />
         )}
-        <span className={`deployment-status ${deploymentDisplay.className}`}>
-          {deploymentDisplay.text}
-        </span>
       </div>
 
       {/* Loading Indicator */}

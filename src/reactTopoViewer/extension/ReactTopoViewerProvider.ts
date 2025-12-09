@@ -547,7 +547,7 @@ export class ReactTopoViewer {
 
     try {
       const annotationsManager = new AnnotationsManager();
-      const annotations = annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
 
       // Update positions for each node
       for (const posData of positions) {

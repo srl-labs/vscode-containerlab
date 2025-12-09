@@ -400,6 +400,35 @@ function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
   }, usePresetLayout ? 100 : 600);
 }
 
+function createCustomWheelHandler(cyRef: React.RefObject<Core | null>): (event: WheelEvent) => void {
+  return (event: WheelEvent) => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    event.preventDefault();
+    let step = event.deltaY;
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      step *= 100;
+    } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      step *= window.innerHeight;
+    }
+    const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
+    const sensitivity = isTrackpad ? 0.002 : 0.0002;
+    const factor = Math.pow(10, -step * sensitivity);
+    const newZoom = cy.zoom() * factor;
+    cy.zoom({
+      level: newZoom,
+      renderedPosition: { x: event.offsetX, y: event.offsetY }
+    });
+  };
+}
+
+function attachCustomWheelZoom(cyRef: React.RefObject<Core | null>, container: HTMLElement | null): () => void {
+  if (!container) return () => {};
+  const handler = createCustomWheelHandler(cyRef);
+  container.addEventListener('wheel', handler, { passive: false });
+  return () => container.removeEventListener('wheel', handler);
+}
+
 export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasProps>(
   ({ elements }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -435,17 +464,27 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
         elements: elements,
         style: cytoscapeStyles,
         layout: { name: 'preset' }, // Use preset first, then run layout if needed
-        minZoom: 0.1,
-        maxZoom: 3,
-        wheelSensitivity: 0.2
+        boxSelectionEnabled: true,
+        selectionType: 'additive',
+        wheelSensitivity: 0,
+        textureOnViewport: true,
+        hideEdgesOnViewport: false,
+        hideLabelsOnViewport: false,
+        pixelRatio: 'auto',
+        motionBlur: false,
+        motionBlurOpacity: 0.2
       });
 
       cyRef.current = cy;
+      cy.userZoomingEnabled(false);
+      const detachWheel = attachCustomWheelZoom(cyRef, container);
+
       setupEventHandlers(cy, selectNode, selectEdge);
 
       cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
 
       return () => {
+        detachWheel();
         cy.destroy();
         cyRef.current = null;
       };
