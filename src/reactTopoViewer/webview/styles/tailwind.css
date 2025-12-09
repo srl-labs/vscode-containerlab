@@ -276,6 +276,123 @@
     background-color: var(--vscode-toolbar-hoverBackground);
   }
 
+  /* Window-style title bar for editor panels */
+  .panel-heading,
+  .panel-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--vscode-titleBar-activeBackground);
+    color: var(--vscode-titleBar-activeForeground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: grab;
+    user-select: none;
+    min-height: 2.5rem;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+  }
+
+  .panel-title-bar:active {
+    cursor: grabbing;
+  }
+
+  .panel-title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  /* Panel tab navigation */
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .panel-tabs:not(.panel-tabs--with-arrows) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  .panel-tabs .panel-tab-button {
+    flex: 0 0 auto;
+  }
+
+  /* Scrollable Tab Bar with Arrow Buttons */
+  .panel-tabs--with-arrows {
+    align-items: center;
+    gap: 4px;
+  }
+
+  .panel-tabs--with-arrows .tab-scroll-viewport {
+    position: relative;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .panel-tabs--with-arrows .tab-strip {
+    display: flex;
+    width: max-content;
+    gap: 0;
+  }
+
+  .panel-tabs--with-arrows .tab-scroll-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-scroll-btn {
+    appearance: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .tab-scroll-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .tab-scroll-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .panel-tab-button {
+    padding: 0.5rem 1rem;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: 500;
+    background-color: transparent;
+    color: var(--vscode-foreground);
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .panel-tab-button:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+
+  .panel-tab-button:focus {
+    outline: none;
+  }
+
+  .panel-tab-button.tab-active {
+    border-bottom-color: var(--vscode-activityBarBadge-background, var(--accent));
+    color: var(--vscode-activityBarBadge-background, var(--accent));
+    background-color: var(--vscode-tab-activeBackground);
+  }
+
   /* Button styles */
   .btn {
     display: inline-flex;
