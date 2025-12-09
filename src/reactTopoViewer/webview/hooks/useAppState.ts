@@ -5,6 +5,7 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { Core } from 'cytoscape';
 import { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
+import { sendCommandToExtension } from '../utils/extensionMessaging';
 
 export interface NodeData {
   id: string;
@@ -110,16 +111,14 @@ export function useNavbarActions(cytoscapeRef: React.RefObject<CytoscapeCanvasRe
 }
 
 interface SelectionCallbacks {
-  /* eslint-disable no-unused-vars */
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
-  /* eslint-enable no-unused-vars */
 }
 
-/* eslint-disable no-unused-vars */
 interface ContextMenuHandlersResult {
   handleEditNode: (nodeId: string) => void;
   handleDeleteNode: (nodeId: string) => void;
+  handleCreateLinkFromNode: (nodeId: string) => void;
   handleEditLink: (edgeId: string) => void;
   handleDeleteLink: (edgeId: string) => void;
   handleShowNodeProperties: (nodeId: string) => void;
@@ -127,7 +126,6 @@ interface ContextMenuHandlersResult {
   handleCloseNodePanel: () => void;
   handleCloseLinkPanel: () => void;
 }
-/* eslint-enable no-unused-vars */
 
 /**
  * Hook for context menu handlers
@@ -138,14 +136,34 @@ export function useContextMenuHandlers(
 ): ContextMenuHandlersResult {
   const { selectNode, selectEdge } = callbacks;
 
-  const handleEditNode = useCallback((nodeId: string) => selectNode(nodeId), [selectNode]);
-  const handleShowNodeProperties = useCallback((nodeId: string) => selectNode(nodeId), [selectNode]);
-  const handleShowLinkProperties = useCallback((edgeId: string) => selectEdge(edgeId), [selectEdge]);
-  const handleEditLink = useCallback((edgeId: string) => selectEdge(edgeId), [selectEdge]);
+  const handleEditNode = useCallback((nodeId: string) => {
+    sendCommandToExtension('panel-edit-node', { nodeId });
+    selectNode(nodeId);
+  }, [selectNode]);
+
+  const handleCreateLinkFromNode = useCallback((nodeId: string) => {
+    sendCommandToExtension('panel-start-link', { nodeId });
+  }, []);
+
+  const handleShowNodeProperties = useCallback((nodeId: string) => {
+    sendCommandToExtension('panel-node-info', { nodeId });
+    selectNode(nodeId);
+  }, [selectNode]);
+
+  const handleShowLinkProperties = useCallback((edgeId: string) => {
+    sendCommandToExtension('panel-link-info', { edgeId });
+    selectEdge(edgeId);
+  }, [selectEdge]);
+
+  const handleEditLink = useCallback((edgeId: string) => {
+    sendCommandToExtension('panel-edit-link', { edgeId });
+    selectEdge(edgeId);
+  }, [selectEdge]);
   const handleCloseNodePanel = useCallback(() => selectNode(null), [selectNode]);
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
+    sendCommandToExtension('panel-delete-node', { nodeId });
     const cy = cytoscapeRef.current?.getCy();
     if (cy) {
       cy.getElementById(nodeId).remove();
@@ -154,6 +172,7 @@ export function useContextMenuHandlers(
   }, [selectNode, cytoscapeRef]);
 
   const handleDeleteLink = useCallback((edgeId: string) => {
+    sendCommandToExtension('panel-delete-link', { edgeId });
     const cy = cytoscapeRef.current?.getCy();
     if (cy) {
       cy.getElementById(edgeId).remove();
@@ -164,6 +183,7 @@ export function useContextMenuHandlers(
   return {
     handleEditNode,
     handleDeleteNode,
+    handleCreateLinkFromNode,
     handleEditLink,
     handleDeleteLink,
     handleShowNodeProperties,

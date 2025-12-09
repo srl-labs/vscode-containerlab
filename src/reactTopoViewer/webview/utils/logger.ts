@@ -3,13 +3,11 @@
  * Posts log messages to the extension host via VS Code API
  */
 
-/* eslint-disable no-unused-vars */
 declare global {
   interface Window {
     vscode?: { postMessage(data: unknown): void };
   }
 }
-/* eslint-enable no-unused-vars */
 
 type LogLevel = 'info' | 'debug' | 'warn' | 'error';
 

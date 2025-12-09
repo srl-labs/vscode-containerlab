@@ -185,7 +185,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 interface LinkLabelMenuProps {
   currentMode: LinkLabelMode;
   showDummyLinks: boolean;
-  /* eslint-disable-next-line no-unused-vars */
   onModeChange: (mode: LinkLabelMode) => void;
   onToggleDummyLinks: () => void;
 }

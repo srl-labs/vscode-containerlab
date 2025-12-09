@@ -268,7 +268,6 @@ const PanelContent: React.FC<PanelContentProps> = ({
 interface PanelButtonProps {
   icon: string;
   tooltip: string;
-  /* eslint-disable-next-line no-unused-vars */
   onClick?: (e: React.MouseEvent) => void;
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';

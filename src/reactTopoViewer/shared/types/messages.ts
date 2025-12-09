@@ -99,10 +99,8 @@ export interface EdgeData {
  * VS Code API interface exposed to webview
  */
 export interface VSCodeAPI {
-  // eslint-disable-next-line no-unused-vars
   postMessage(msg: unknown): void;
   getState(): unknown;
-  // eslint-disable-next-line no-unused-vars
   setState(newState: unknown): void;
 }
 

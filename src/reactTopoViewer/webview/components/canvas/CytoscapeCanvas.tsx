@@ -18,7 +18,6 @@ interface CytoscapeCanvasProps {
  */
 export interface CytoscapeCanvasRef {
   fit: () => void;
-  // eslint-disable-next-line no-unused-vars
   runLayout: (layoutName: string) => void;
   getCy: () => Core | null;
 }
@@ -248,13 +247,11 @@ const cytoscapeStyles: cytoscape.StylesheetCSS[] = [
 /**
  * Setup Cytoscape event handlers
  */
-/* eslint-disable no-unused-vars */
 function setupEventHandlers(
   cy: Core,
   selectNode: (nodeId: string | null) => void,
   selectEdge: (edgeId: string | null) => void
 ): void {
-/* eslint-enable no-unused-vars */
   cy.on('tap', 'node', (evt) => {
     selectNode(evt.target.id());
   });

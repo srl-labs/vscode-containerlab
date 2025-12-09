@@ -7,6 +7,9 @@ import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
 import { deploymentStateChecker } from '../../topoViewer/extension/services/DeploymentStateChecker';
 import { AnnotationsManager } from '../../topoViewer/extension/services/AnnotationsFile';
+import { labLifecycleService } from '../../topoViewer/extension/services/LabLifecycleService';
+import { nodeCommandService } from '../../topoViewer/extension/services/NodeCommandService';
+import { editorEndpointHandlers, EndpointHandlerContext } from '../../topoViewer/extension/services/EditorEndpointHandlers';
 
 // Create output channel for React TopoViewer logs
 let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
@@ -44,12 +47,27 @@ interface WebviewMessage {
   type?: string;
   requestId?: string;
   endpointName?: string;
-  payload?: string;
+  payload?: unknown;
   command?: string;
   level?: string;
   message?: string;
   positions?: NodePositionData[];
 }
+
+const NODE_COMMANDS = new Set([
+  'clab-node-connect-ssh',
+  'clab-node-attach-shell',
+  'clab-node-view-logs'
+]);
+
+const LIFECYCLE_COMMANDS = new Set([
+  'deployLab',
+  'destroyLab',
+  'deployLabCleanup',
+  'destroyLabCleanup',
+  'redeployLab',
+  'redeployLabCleanup'
+]);
 
 /**
  * React TopoViewer class that manages the webview panel
@@ -65,6 +83,7 @@ export class ReactTopoViewer {
   public isViewMode: boolean = false;
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
+  private isInternalUpdate = false;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -217,6 +236,150 @@ export class ReactTopoViewer {
   }
 
   /**
+   * Build endpoint handler context used by shared handlers
+   */
+  private getHandlerContext(panel: vscode.WebviewPanel): EndpointHandlerContext {
+    return {
+      lastYamlFilePath: this.lastYamlFilePath,
+      currentLabName: this.currentLabName,
+      adaptor: this.adaptor,
+      context: this.context,
+      currentPanel: panel,
+      isInternalUpdate: this.isInternalUpdate,
+      setInternalUpdate: (v: boolean) => { this.isInternalUpdate = v; },
+      updateCachedYaml: async () => Promise.resolve(),
+      postMessage: (msg: unknown) => panel.webview.postMessage(msg)
+    };
+  }
+
+  /**
+   * Extract node name payload from incoming message
+   */
+  private getNodeNamePayload(message: WebviewMessage): string {
+    const raw = (message as any).nodeName ?? message.payload;
+    if (typeof raw === 'string') return raw;
+    if (raw && typeof raw === 'object' && typeof (raw as any).nodeName === 'string') {
+      return (raw as any).nodeName;
+    }
+    return '';
+  }
+
+  private async handleNodeCommand(command: string, message: WebviewMessage): Promise<boolean> {
+    nodeCommandService.setYamlFilePath(this.lastYamlFilePath);
+    const { result, error } = await nodeCommandService.handleNodeEndpoint(command, this.getNodeNamePayload(message));
+    if (error) log.error(`[ReactTopoViewer] ${error}`);
+    else if (result) log.info(`[ReactTopoViewer] ${result}`);
+    return true;
+  }
+
+  private async handleLifecycleCommand(command: string): Promise<void> {
+    if (!this.lastYamlFilePath) {
+      log.warn(`[ReactTopoViewer] Cannot run ${command}: no YAML path available`);
+      return;
+    }
+    const { result, error } = await labLifecycleService.handleLabLifecycleEndpoint(command, this.lastYamlFilePath);
+    if (error) {
+      log.error(`[ReactTopoViewer] ${error}`);
+    } else if (result) {
+      log.info(`[ReactTopoViewer] ${result}`);
+    }
+  }
+
+  private async handleSplitViewCommand(panel: vscode.WebviewPanel): Promise<boolean> {
+    const { error } = await editorEndpointHandlers.handleToggleSplitViewEndpoint(this.getHandlerContext(panel));
+    if (error) {
+      log.error(`[ReactTopoViewer] Failed to toggle split view: ${error}`);
+    } else {
+      log.info('[ReactTopoViewer] Split view toggle requested');
+    }
+    return true;
+  }
+
+  private handleLockState(message: WebviewMessage): boolean {
+    const payload = message.payload as { isLocked?: boolean } | undefined;
+    const locked = (message as { isLocked?: boolean }).isLocked ?? payload?.isLocked;
+    let stateLabel = 'unknown';
+    if (locked === true) {
+      stateLabel = 'locked';
+    } else if (locked === false) {
+      stateLabel = 'unlocked';
+    }
+    log.info(`[ReactTopoViewer] Lock state changed: ${stateLabel}`);
+    return true;
+  }
+
+  private handlePlaceholderCommand(command: string): boolean {
+    if (command === 'nav-layout-toggle') {
+      log.info('[ReactTopoViewer] Layout toggle requested from navbar');
+      return true;
+    }
+
+    const placeholderMessages: Record<string, string> = {
+      'nav-open-lab-settings': 'Lab settings UI is not available in the React TopoViewer yet.',
+      'nav-show-shortcuts': 'Keyboard shortcuts panel is not available in the React TopoViewer yet.',
+      'nav-show-about': 'About panel is not available in the React TopoViewer yet.',
+      'nav-find-node': 'Topology overview/search is coming soon in the React TopoViewer.',
+      'nav-topology-overview': 'Topology overview/search is coming soon in the React TopoViewer.',
+      'nav-capture-svg': 'SVG capture will be available in a future React TopoViewer update.',
+      'nav-grid-settings': 'Grid settings are not implemented yet in the React TopoViewer.',
+      'nav-geo-controls': 'Geo controls are not implemented yet in the React TopoViewer.',
+      'panel-add-node': 'Node creation is not available in the React TopoViewer yet.',
+      'panel-add-network': 'Network creation is not available in the React TopoViewer yet.',
+      'panel-add-group': 'Group creation is not available in the React TopoViewer yet.',
+      'panel-add-text': 'Text annotations are not available in the React TopoViewer yet.',
+      'panel-add-shapes': 'Shape annotations are not available in the React TopoViewer yet.',
+      'panel-add-bulk-link': 'Bulk link creation is not available in the React TopoViewer yet.',
+      'panel-edit-node': 'Node editing is not available in the React TopoViewer yet.',
+      'panel-delete-node': 'Node deletion is not available in the React TopoViewer yet.',
+      'panel-start-link': 'Link creation is not available in the React TopoViewer yet.',
+      'panel-node-info': 'Node properties panel is not available in the React TopoViewer yet.',
+      'panel-link-info': 'Link properties panel is not available in the React TopoViewer yet.',
+      'panel-edit-link': 'Link editing is not available in the React TopoViewer yet.',
+      'panel-delete-link': 'Link deletion is not available in the React TopoViewer yet.'
+    };
+
+    const placeholderMessage = placeholderMessages[command];
+    if (placeholderMessage) {
+      void vscode.window.showInformationMessage(placeholderMessage);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Handle fire-and-forget command messages from the webview
+   */
+  private async handleCommandMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
+    const { command } = message;
+    if (!command) return false;
+
+    if (command === 'save-node-positions' && message.positions) {
+      await this.handleSaveNodePositions(message.positions);
+      return true;
+    }
+
+    if (NODE_COMMANDS.has(command)) {
+      return this.handleNodeCommand(command, message);
+    }
+
+    if (LIFECYCLE_COMMANDS.has(command)) {
+      await this.handleLifecycleCommand(command);
+      return true;
+    }
+
+    if (command === 'topo-toggle-split-view') {
+      return this.handleSplitViewCommand(panel);
+    }
+
+    if (command === 'toggle-lock-state') {
+      return this.handleLockState(message);
+    }
+
+    return this.handlePlaceholderCommand(command);
+  }
+
+  /**
    * Handle messages from the webview
    */
   private async handleWebviewMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
@@ -229,9 +392,7 @@ export class ReactTopoViewer {
       return;
     }
 
-    // Handle save-node-positions command
-    if (message.command === 'save-node-positions' && message.positions) {
-      await this.handleSaveNodePositions(message.positions);
+    if (await this.handleCommandMessage(message, panel)) {
       return;
     }
 

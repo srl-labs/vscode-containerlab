@@ -10,7 +10,6 @@ import { log } from '../utils/logger';
  * VS Code API interface for posting messages
  */
 declare const vscode: {
-  // eslint-disable-next-line no-unused-vars
   postMessage: (msg: unknown) => void;
 };
 

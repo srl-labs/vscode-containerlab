@@ -18,7 +18,6 @@ if (!cxtmenuRegistered && typeof cytoscape === 'function') {
  * VS Code API interface
  */
 declare const vscode: {
-  // eslint-disable-next-line no-unused-vars
   postMessage: (msg: unknown) => void;
 };
 
@@ -27,7 +26,6 @@ declare const vscode: {
  */
 interface MenuItem {
   content: string;
-  /* eslint-disable-next-line no-unused-vars */
   select: (ele: cytoscape.NodeSingular | cytoscape.EdgeSingular) => void;
   enabled?: boolean;
 }
@@ -38,14 +36,13 @@ interface MenuItem {
 export interface ContextMenuOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
-  /* eslint-disable no-unused-vars */
   onEditNode?: (nodeId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
+  onCreateLinkFromNode?: (nodeId: string) => void;
   onEditLink?: (edgeId: string) => void;
   onDeleteLink?: (edgeId: string) => void;
   onShowNodeProperties?: (nodeId: string) => void;
   onShowLinkProperties?: (edgeId: string) => void;
-  /* eslint-enable no-unused-vars */
 }
 
 /**
@@ -117,7 +114,7 @@ function buildNodeEditMenuItems(options: ContextMenuOptions): MenuItem[] {
       content: faIcon('fa-link', 'Link'),
       select: (ele) => {
         log.info(`[ContextMenu] Add link from: ${ele.id()}`);
-        // Edge creation will be implemented in Phase 6
+        options.onCreateLinkFromNode?.(ele.id());
       }
     }
   ];
@@ -218,7 +215,6 @@ function buildEdgeViewMenuItems(options: ContextMenuOptions): MenuItem[] {
 type CxtmenuInstance = { destroy: () => void };
 
 /** Cytoscape with cxtmenu extension */
-/* eslint-disable-next-line no-unused-vars */
 type CyWithCxtmenu = Core & { cxtmenu: (cfg: unknown) => CxtmenuInstance };
 
 /**

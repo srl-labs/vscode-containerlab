@@ -7,6 +7,7 @@ import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
+import { FloatingActionPanel } from './components/panels/FloatingActionPanel';
 import { useContextMenu } from './hooks/useContextMenu';
 import { useNodeDragging } from './hooks/useNodeDragging';
 import {
@@ -15,6 +16,7 @@ import {
   useNavbarActions,
   useContextMenuHandlers
 } from './hooks/useAppState';
+import { sendCommandToExtension } from './utils/extensionMessaging';
 
 /**
  * Loading state component
@@ -41,6 +43,59 @@ function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Eleme
   );
 }
 
+function useNavbarCommandCallbacks(runLayout: () => void) {
+  const onLabSettings = React.useCallback(() => sendCommandToExtension('nav-open-lab-settings'), []);
+  const onToggleSplit = React.useCallback(() => sendCommandToExtension('topo-toggle-split-view'), []);
+  const onFindNode = React.useCallback(() => sendCommandToExtension('nav-find-node'), []);
+  const onCaptureSvg = React.useCallback(() => sendCommandToExtension('nav-capture-svg'), []);
+  const onShowShortcuts = React.useCallback(() => sendCommandToExtension('nav-show-shortcuts'), []);
+  const onShowAbout = React.useCallback(() => sendCommandToExtension('nav-show-about'), []);
+  const onLayoutToggle = React.useCallback(() => {
+    runLayout();
+    sendCommandToExtension('nav-layout-toggle');
+  }, [runLayout]);
+
+  return {
+    onLabSettings,
+    onToggleSplit,
+    onFindNode,
+    onCaptureSvg,
+    onShowShortcuts,
+    onShowAbout,
+    onLayoutToggle
+  };
+}
+
+function useFloatingPanelCommands() {
+  const onDeploy = React.useCallback(() => sendCommandToExtension('deployLab'), []);
+  const onDeployCleanup = React.useCallback(() => sendCommandToExtension('deployLabCleanup'), []);
+  const onDestroy = React.useCallback(() => sendCommandToExtension('destroyLab'), []);
+  const onDestroyCleanup = React.useCallback(() => sendCommandToExtension('destroyLabCleanup'), []);
+  const onRedeploy = React.useCallback(() => sendCommandToExtension('redeployLab'), []);
+  const onRedeployCleanup = React.useCallback(() => sendCommandToExtension('redeployLabCleanup'), []);
+  const onAddNode = React.useCallback(() => sendCommandToExtension('panel-add-node'), []);
+  const onAddNetwork = React.useCallback(() => sendCommandToExtension('panel-add-network'), []);
+  const onAddGroup = React.useCallback(() => sendCommandToExtension('panel-add-group'), []);
+  const onAddText = React.useCallback(() => sendCommandToExtension('panel-add-text'), []);
+  const onAddShapes = React.useCallback(() => sendCommandToExtension('panel-add-shapes'), []);
+  const onAddBulkLink = React.useCallback(() => sendCommandToExtension('panel-add-bulk-link'), []);
+
+  return {
+    onDeploy,
+    onDeployCleanup,
+    onDestroy,
+    onDestroyCleanup,
+    onRedeploy,
+    onRedeployCleanup,
+    onAddNode,
+    onAddNetwork,
+    onAddGroup,
+    onAddText,
+    onAddShapes,
+    onAddBulkLink
+  };
+}
+
 export const App: React.FC = () => {
   const { state, initLoading, error, selectNode, selectEdge } = useTopoViewer();
 
@@ -56,9 +111,12 @@ export const App: React.FC = () => {
 
   // Navbar actions
   const { handleZoomToFit, handleToggleLayout } = useNavbarActions(cytoscapeRef);
+  const navbarCommands = useNavbarCommandCallbacks(handleToggleLayout);
 
   // Context menu handlers
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge });
+
+  const floatingPanelCommands = useFloatingPanelCommands();
 
   // Set up context menus
   useContextMenu(cyInstance, {
@@ -66,6 +124,7 @@ export const App: React.FC = () => {
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
     onDeleteNode: menuHandlers.handleDeleteNode,
+    onCreateLinkFromNode: menuHandlers.handleCreateLinkFromNode,
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: menuHandlers.handleDeleteLink,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
@@ -78,12 +137,25 @@ export const App: React.FC = () => {
     isLocked: state.isLocked
   });
 
+  React.useEffect(() => {
+    sendCommandToExtension('toggle-lock-state', { isLocked: state.isLocked });
+  }, [state.isLocked]);
+
   if (initLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
   return (
     <div className="topoviewer-app">
-      <Navbar onZoomToFit={handleZoomToFit} onToggleLayout={handleToggleLayout} />
+      <Navbar
+        onZoomToFit={handleZoomToFit}
+        onToggleLayout={navbarCommands.onLayoutToggle}
+        onLabSettings={navbarCommands.onLabSettings}
+        onToggleSplit={navbarCommands.onToggleSplit}
+        onFindNode={navbarCommands.onFindNode}
+        onCaptureViewport={navbarCommands.onCaptureSvg}
+        onShowShortcuts={navbarCommands.onShowShortcuts}
+        onShowAbout={navbarCommands.onShowAbout}
+      />
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
         <NodeInfoPanel
@@ -95,6 +167,20 @@ export const App: React.FC = () => {
           isVisible={!!state.selectedEdge}
           linkData={selectedLinkData}
           onClose={menuHandlers.handleCloseLinkPanel}
+        />
+        <FloatingActionPanel
+          onDeploy={floatingPanelCommands.onDeploy}
+          onDestroy={floatingPanelCommands.onDestroy}
+          onDeployCleanup={floatingPanelCommands.onDeployCleanup}
+          onDestroyCleanup={floatingPanelCommands.onDestroyCleanup}
+          onRedeploy={floatingPanelCommands.onRedeploy}
+          onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
+          onAddNode={floatingPanelCommands.onAddNode}
+          onAddNetwork={floatingPanelCommands.onAddNetwork}
+          onAddGroup={floatingPanelCommands.onAddGroup}
+          onAddText={floatingPanelCommands.onAddText}
+          onAddShapes={floatingPanelCommands.onAddShapes}
+          onAddBulkLink={floatingPanelCommands.onAddBulkLink}
         />
       </main>
     </div>

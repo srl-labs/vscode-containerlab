@@ -99,7 +99,6 @@ interface TopoViewerContextValue {
   dispatch: React.Dispatch<TopoViewerAction>;
   initLoading: boolean;
   error: string | null;
-  /* eslint-disable no-unused-vars */
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
   toggleLock: () => void;
@@ -107,7 +106,6 @@ interface TopoViewerContextValue {
   setLoading: (loading: boolean) => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
-  /* eslint-enable no-unused-vars */
 }
 
 /**
