@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 
-import { log } from '../../topoViewer/webview/platform/logging/logger';
-import { TopoViewerAdaptorClab } from '../../topoViewer/extension/services/TopologyAdapter';
-import { CyElement } from '../../topoViewer/shared/types/topoViewerType';
+import { log } from './services/logger';
+import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
+import { CyElement } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
-import { deploymentStateChecker } from '../../topoViewer/extension/services/DeploymentStateChecker';
-import { AnnotationsManager } from '../../topoViewer/extension/services/AnnotationsFile';
-import { labLifecycleService } from '../../topoViewer/extension/services/LabLifecycleService';
-import { nodeCommandService } from '../../topoViewer/extension/services/NodeCommandService';
-import { editorEndpointHandlers, EndpointHandlerContext } from '../../topoViewer/extension/services/EditorEndpointHandlers';
+import { deploymentStateChecker } from './services/DeploymentStateChecker';
+import { AnnotationsManager } from './services/AnnotationsManager';
+import { labLifecycleService } from './services/LabLifecycleService';
+import { nodeCommandService } from './services/NodeCommandService';
+import { splitViewManager } from './services/SplitViewManager';
 
 // Create output channel for React TopoViewer logs
 let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
@@ -241,23 +241,6 @@ export class ReactTopoViewer {
   }
 
   /**
-   * Build endpoint handler context used by shared handlers
-   */
-  private getHandlerContext(panel: vscode.WebviewPanel): EndpointHandlerContext {
-    return {
-      lastYamlFilePath: this.lastYamlFilePath,
-      currentLabName: this.currentLabName,
-      adaptor: this.adaptor,
-      context: this.context,
-      currentPanel: panel,
-      isInternalUpdate: this.isInternalUpdate,
-      setInternalUpdate: (v: boolean) => { this.isInternalUpdate = v; },
-      updateCachedYaml: async () => Promise.resolve(),
-      postMessage: (msg: unknown) => panel.webview.postMessage(msg)
-    };
-  }
-
-  /**
    * Extract node name payload from incoming message
    */
   private getNodeNamePayload(message: WebviewMessage): string {
@@ -393,11 +376,11 @@ export class ReactTopoViewer {
   }
 
   private async handleSplitViewCommand(panel: vscode.WebviewPanel): Promise<boolean> {
-    const { error } = await editorEndpointHandlers.handleToggleSplitViewEndpoint(this.getHandlerContext(panel));
-    if (error) {
+    try {
+      const isOpen = await splitViewManager.toggleSplitView(this.lastYamlFilePath, panel);
+      log.info(`[ReactTopoViewer] Split view toggled: ${isOpen ? 'opened' : 'closed'}`);
+    } catch (error) {
       log.error(`[ReactTopoViewer] Failed to toggle split view: ${error}`);
-    } else {
-      log.info('[ReactTopoViewer] Split view toggle requested');
     }
     return true;
   }

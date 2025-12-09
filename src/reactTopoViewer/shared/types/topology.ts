@@ -1,0 +1,212 @@
+/**
+ * Topology-related type definitions for React TopoViewer.
+ * These types define the structure for Containerlab topologies and Cytoscape elements.
+ */
+
+// ============================================================================
+// Containerlab YAML Types
+// ============================================================================
+
+/**
+ * Represents a Containerlab node definition as specified in the YAML configuration.
+ */
+export interface ClabNode {
+  [key: string]: unknown;
+  kind?: string;
+  image?: string;
+  type?: string;
+  group?: string;
+  labels?: Record<string, unknown>;
+}
+
+/**
+ * Represents a Containerlab link endpoint in map format.
+ */
+export interface ClabLinkEndpointMap {
+  node: string;
+  interface?: string;
+  mac?: string;
+}
+
+/**
+ * Represents a Containerlab link definition as specified in the YAML configuration.
+ */
+export interface ClabLink {
+  endpoints?: (string | ClabLinkEndpointMap)[];
+  endpoint?: ClabLinkEndpointMap;
+  type?: 'veth' | 'host' | 'mgmt-net' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | string;
+  mtu?: number | string;
+  vars?: unknown;
+  labels?: unknown;
+  'host-interface'?: string;
+  mode?: string;
+  remote?: string;
+  vni?: number | string;
+  'dst-port'?: number | string;
+  'src-port'?: number | string;
+}
+
+/**
+ * Represents the main Containerlab topology structure as defined in the YAML configuration.
+ */
+export interface ClabTopology {
+  name?: string;
+  prefix?: string;
+  topology?: {
+    defaults?: ClabNode;
+    kinds?: Record<string, ClabNode>;
+    groups?: Record<string, ClabNode>;
+    nodes?: Record<string, ClabNode>;
+    links?: ClabLink[];
+  };
+}
+
+// ============================================================================
+// Cytoscape Element Types
+// ============================================================================
+
+/**
+ * Represents a single Cytoscape element, either a node or an edge.
+ */
+export interface CyElement {
+  group: 'nodes' | 'edges';
+  data: Record<string, unknown>;
+  position?: { x: number; y: number };
+  removed?: boolean;
+  selected?: boolean;
+  selectable?: boolean;
+  locked?: boolean;
+  grabbed?: boolean;
+  grabbable?: boolean;
+  classes?: string;
+}
+
+/**
+ * Represents the overall Cytoscape topology as an array of elements.
+ */
+export type CytoTopology = CyElement[];
+
+// ============================================================================
+// Annotation Types
+// ============================================================================
+
+/**
+ * Free text annotation for canvas text overlays.
+ */
+export interface FreeTextAnnotation {
+  id: string;
+  text: string;
+  position: { x: number; y: number };
+  fontSize?: number;
+  fontColor?: string;
+  backgroundColor?: string;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
+  textAlign?: 'left' | 'center' | 'right';
+  fontFamily?: string;
+  rotation?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+  roundedBackground?: boolean;
+}
+
+/**
+ * Free shape annotation for canvas shapes.
+ */
+export interface FreeShapeAnnotation {
+  id: string;
+  shapeType: 'rectangle' | 'circle' | 'line';
+  position: { x: number; y: number };
+  width?: number;
+  height?: number;
+  endPosition?: { x: number; y: number };
+  fillColor?: string;
+  fillOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  rotation?: number;
+  zIndex?: number;
+  lineStartArrow?: boolean;
+  lineEndArrow?: boolean;
+  lineArrowSize?: number;
+  cornerRadius?: number;
+}
+
+/**
+ * Group style annotation for Cytoscape group nodes.
+ */
+export interface GroupStyleAnnotation {
+  id: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: 'solid' | 'dotted' | 'dashed' | 'double';
+  borderRadius?: number;
+  color?: string;
+  labelPosition?: string;
+}
+
+/**
+ * Cloud node annotation for external network endpoints.
+ */
+export interface CloudNodeAnnotation {
+  id: string;
+  type: 'host' | 'mgmt-net' | 'macvlan';
+  label: string;
+  position: { x: number; y: number };
+  group?: string;
+  level?: string;
+}
+
+/**
+ * Node annotation for position, icon, and other visual settings.
+ */
+export interface NodeAnnotation {
+  id: string;
+  label?: string;
+  copyFrom?: string;
+  yamlNodeId?: string;
+  yamlInterface?: string;
+  position?: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  groupLabelPos?: string;
+  group?: string;
+  level?: string;
+}
+
+/**
+ * Alias endpoint annotation for mapping YAML nodes to visual aliases.
+ */
+export interface AliasEndpointAnnotation {
+  yamlNodeId: string;
+  interface: string;
+  aliasNodeId: string;
+}
+
+/**
+ * Container for all topology annotations.
+ */
+export interface TopologyAnnotations {
+  freeTextAnnotations?: FreeTextAnnotation[];
+  freeShapeAnnotations?: FreeShapeAnnotation[];
+  groupStyleAnnotations?: GroupStyleAnnotation[];
+  cloudNodeAnnotations?: CloudNodeAnnotation[];
+  nodeAnnotations?: NodeAnnotation[];
+  aliasEndpointAnnotations?: AliasEndpointAnnotation[];
+  viewerSettings?: {
+    gridLineWidth?: number;
+  };
+}
+
+// ============================================================================
+// Deployment State
+// ============================================================================
+
+export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
