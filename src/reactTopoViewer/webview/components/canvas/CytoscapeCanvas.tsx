@@ -272,10 +272,21 @@ function setupEventHandlers(
   selectEdge: (edgeId: string | null) => void
 ): void {
   cy.on('tap', 'node', (evt) => {
+    const originalEvent = evt.originalEvent as MouseEvent;
+    // If shift is held, let Cytoscape handle multi-selection
+    // Don't update React single-selection state
+    if (originalEvent?.shiftKey) {
+      return;
+    }
     selectNode(evt.target.id());
   });
 
   cy.on('tap', 'edge', (evt) => {
+    const originalEvent = evt.originalEvent as MouseEvent;
+    // If shift is held, let Cytoscape handle multi-selection
+    if (originalEvent?.shiftKey) {
+      return;
+    }
     selectEdge(evt.target.id());
   });
 
@@ -429,6 +440,42 @@ function attachCustomWheelZoom(cyRef: React.RefObject<Core | null>, container: H
   return () => container.removeEventListener('wheel', handler);
 }
 
+/**
+ * Create Cytoscape configuration options
+ */
+function createCytoscapeConfig(container: HTMLElement, elements: CyElement[]): cytoscape.CytoscapeOptions {
+  return {
+    container: container,
+    elements: elements,
+    style: cytoscapeStyles,
+    layout: { name: 'preset' },
+    boxSelectionEnabled: true,
+    selectionType: 'additive',
+    wheelSensitivity: 0,
+    textureOnViewport: true,
+    hideEdgesOnViewport: false,
+    hideLabelsOnViewport: false,
+    pixelRatio: 'auto',
+    motionBlur: false,
+    motionBlurOpacity: 0.2
+  };
+}
+
+/**
+ * Hook for updating elements when they change
+ */
+function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements: CyElement[]): void {
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    if (!elements.length) {
+      cy.elements().remove();
+      return;
+    }
+    updateCytoscapeElements(cy, elements);
+  }, [cyRef, elements]);
+}
+
 export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasProps>(
   ({ elements }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -459,21 +506,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       const usePresetLayout = hasPresetPositions(elements);
       log.info(`[CytoscapeCanvas] Preset positions detected: ${usePresetLayout}`);
 
-      const cy = cytoscape({
-        container: container,
-        elements: elements,
-        style: cytoscapeStyles,
-        layout: { name: 'preset' }, // Use preset first, then run layout if needed
-        boxSelectionEnabled: true,
-        selectionType: 'additive',
-        wheelSensitivity: 0,
-        textureOnViewport: true,
-        hideEdgesOnViewport: false,
-        hideLabelsOnViewport: false,
-        pixelRatio: 'auto',
-        motionBlur: false,
-        motionBlurOpacity: 0.2
-      });
+      const cy = cytoscape(createCytoscapeConfig(container, elements));
 
       cyRef.current = cy;
       cy.userZoomingEnabled(false);
@@ -496,15 +529,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     }, [initCytoscape]);
 
     // Update elements when they change
-    useEffect(() => {
-      const cy = cyRef.current;
-      if (!cy) return;
-      if (!elements.length) {
-        cy.elements().remove();
-        return;
-      }
-      updateCytoscapeElements(cy, elements);
-    }, [elements]);
+    useElementsUpdate(cyRef, elements);
 
     return (
       <div

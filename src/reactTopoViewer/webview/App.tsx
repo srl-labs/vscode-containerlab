@@ -262,6 +262,7 @@ export const App: React.FC = () => {
     mode: state.mode,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
+    cyInstance,
     onDeleteNode: menuHandlers.handleDeleteNode,
     onDeleteEdge: menuHandlers.handleDeleteLink,
     onDeselectAll: handleDeselectAll
