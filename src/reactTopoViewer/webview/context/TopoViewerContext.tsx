@@ -38,6 +38,8 @@ export interface TopoViewerState {
   deploymentState: DeploymentState;
   selectedNode: string | null;
   selectedEdge: string | null;
+  editingNode: string | null;
+  editingEdge: string | null;
   isLocked: boolean;
   isLoading: boolean;
   linkLabelMode: LinkLabelMode;
@@ -56,6 +58,8 @@ const initialState: TopoViewerState = {
   deploymentState: 'unknown',
   selectedNode: null,
   selectedEdge: null,
+  editingNode: null,
+  editingEdge: null,
   isLocked: true,
   isLoading: false,
   linkLabelMode: 'show-all',
@@ -73,6 +77,8 @@ type TopoViewerAction =
   | { type: 'SET_DEPLOYMENT_STATE'; payload: DeploymentState }
   | { type: 'SELECT_NODE'; payload: string | null }
   | { type: 'SELECT_EDGE'; payload: string | null }
+  | { type: 'EDIT_NODE'; payload: string | null }
+  | { type: 'EDIT_EDGE'; payload: string | null }
   | { type: 'TOGGLE_LOCK' }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
@@ -97,6 +103,8 @@ const reducerHandlers: ReducerHandlers = {
   SET_DEPLOYMENT_STATE: (state, action) => ({ ...state, deploymentState: action.payload }),
   SELECT_NODE: (state, action) => ({ ...state, selectedNode: action.payload, selectedEdge: null }),
   SELECT_EDGE: (state, action) => ({ ...state, selectedEdge: action.payload, selectedNode: null }),
+  EDIT_NODE: (state, action) => ({ ...state, editingNode: action.payload, editingEdge: null }),
+  EDIT_EDGE: (state, action) => ({ ...state, editingEdge: action.payload, editingNode: null }),
   TOGGLE_LOCK: (state) => ({ ...state, isLocked: !state.isLocked }),
   SET_LOADING: (state, action) => ({ ...state, isLoading: action.payload }),
   SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
@@ -155,6 +163,8 @@ interface TopoViewerContextValue {
   error: string | null;
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
+  editNode: (nodeId: string | null) => void;
+  editEdge: (edgeId: string | null) => void;
   toggleLock: () => void;
   setMode: (mode: 'edit' | 'view') => void;
   setLoading: (loading: boolean) => void;
@@ -215,8 +225,18 @@ function handlePanelAction(message: ExtensionMessage, dispatch: React.Dispatch<T
     return;
   }
 
-  const nodeSelectActions = new Set(['node-info', 'edit-node', 'start-link']);
-  const edgeSelectActions = new Set(['link-info', 'edit-link']);
+  // Edit actions trigger the editor panel
+  if (action === 'edit-node' && nodeId) {
+    dispatch({ type: 'EDIT_NODE', payload: nodeId });
+    return;
+  }
+  if (action === 'edit-link' && edgeId) {
+    dispatch({ type: 'EDIT_EDGE', payload: edgeId });
+    return;
+  }
+
+  const nodeSelectActions = new Set(['node-info', 'start-link']);
+  const edgeSelectActions = new Set(['link-info']);
 
   if (nodeSelectActions.has(action) && nodeId) {
     dispatch({ type: 'SELECT_NODE', payload: nodeId });
@@ -265,6 +285,14 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'SELECT_EDGE', payload: edgeId });
   }, [dispatch]);
 
+  const editNode = useCallback((nodeId: string | null) => {
+    dispatch({ type: 'EDIT_NODE', payload: nodeId });
+  }, [dispatch]);
+
+  const editEdge = useCallback((edgeId: string | null) => {
+    dispatch({ type: 'EDIT_EDGE', payload: edgeId });
+  }, [dispatch]);
+
   const toggleLock = useCallback(() => {
     dispatch({ type: 'TOGGLE_LOCK' });
   }, [dispatch]);
@@ -296,6 +324,8 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
   return {
     selectNode,
     selectEdge,
+    editNode,
+    editEdge,
     toggleLock,
     setMode,
     setLoading,

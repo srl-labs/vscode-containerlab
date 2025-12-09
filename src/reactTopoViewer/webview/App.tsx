@@ -7,6 +7,7 @@ import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
+import { NodeEditorPanel, NodeEditorData } from './components/panels/node-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { useContextMenu } from './hooks/useContextMenu';
 import { useNodeDragging } from './hooks/useNodeDragging';
@@ -102,8 +103,45 @@ function useFloatingPanelCommands() {
   };
 }
 
+/**
+ * Converts raw node data to editor format
+ */
+function convertToEditorData(rawData: Record<string, unknown> | null): NodeEditorData | null {
+  if (!rawData) return null;
+  const extra = (rawData.extraData as Record<string, unknown>) || {};
+  return {
+    id: rawData.id as string || '',
+    name: rawData.name as string || rawData.id as string || '',
+    kind: extra.kind as string || '',
+    type: extra.type as string || '',
+    image: extra.image as string || '',
+    icon: rawData.topoViewerRole as string || '',
+    labels: (extra.labels as Record<string, string>) || {}
+  };
+}
+
+/**
+ * Hook for node editor handlers
+ */
+function useNodeEditorHandlers(editNode: (id: string | null) => void) {
+  const handleClose = React.useCallback(() => {
+    editNode(null);
+  }, [editNode]);
+
+  const handleSave = React.useCallback((data: NodeEditorData) => {
+    sendCommandToExtension('save-node-editor', { nodeData: data });
+    editNode(null);
+  }, [editNode]);
+
+  const handleApply = React.useCallback((data: NodeEditorData) => {
+    sendCommandToExtension('apply-node-editor', { nodeData: data });
+  }, []);
+
+  return { handleClose, handleSave, handleApply };
+}
+
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -112,26 +150,19 @@ export const App: React.FC = () => {
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
-  // Selection data
-  const { selectedNodeData, selectedLinkData } = useSelectionData(
-    cytoscapeRef,
-    state.selectedNode,
-    state.selectedEdge
-  );
+  // Selection and editing data
+  const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge);
+  const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
+  const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
 
   // Navbar actions
   const { handleZoomToFit } = useNavbarActions(cytoscapeRef);
   const navbarCommands = useNavbarCommandCallbacks();
 
   // Context menu handlers
-  const menuHandlers = useContextMenuHandlers(cytoscapeRef, {
-    selectNode,
-    selectEdge,
-    removeNodeAndEdges,
-    removeEdge
-  });
-
+  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();
+  const nodeEditorHandlers = useNodeEditorHandlers(editNode);
 
   // Set up context menus
   useContextMenu(cyInstance, {
@@ -147,16 +178,10 @@ export const App: React.FC = () => {
   });
 
   // Callback for when user tries to drag a locked node
-  const handleLockedDrag = React.useCallback(() => {
-    floatingPanelRef.current?.triggerShake();
-  }, []);
+  const handleLockedDrag = React.useCallback(() => floatingPanelRef.current?.triggerShake(), []);
 
   // Set up node dragging based on lock state
-  useNodeDragging(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onLockedDrag: handleLockedDrag
-  });
+  useNodeDragging(cyInstance, { mode: state.mode, isLocked: state.isLocked, onLockedDrag: handleLockedDrag });
 
   React.useEffect(() => {
     sendCommandToExtension('toggle-lock-state', { isLocked: state.isLocked });
@@ -195,6 +220,13 @@ export const App: React.FC = () => {
           isVisible={!!state.selectedEdge}
           linkData={selectedLinkData}
           onClose={menuHandlers.handleCloseLinkPanel}
+        />
+        <NodeEditorPanel
+          isVisible={!!state.editingNode}
+          nodeData={editingNodeData}
+          onClose={nodeEditorHandlers.handleClose}
+          onSave={nodeEditorHandlers.handleSave}
+          onApply={nodeEditorHandlers.handleApply}
         />
         <FloatingActionPanel
           ref={floatingPanelRef}

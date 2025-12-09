@@ -395,6 +395,8 @@ export function useLayoutControls(
 interface SelectionCallbacks {
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  editNode: (id: string | null) => void;
+  editEdge: (id: string | null) => void;
   removeNodeAndEdges: (id: string) => void;
   removeEdge: (id: string) => void;
 }
@@ -418,12 +420,12 @@ export function useContextMenuHandlers(
   cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
   callbacks: SelectionCallbacks
 ): ContextMenuHandlersResult {
-  const { selectNode, selectEdge, removeNodeAndEdges, removeEdge } = callbacks;
+  const { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge } = callbacks;
 
   const handleEditNode = useCallback((nodeId: string) => {
     sendCommandToExtension('panel-edit-node', { nodeId });
-    selectNode(nodeId);
-  }, [selectNode]);
+    editNode(nodeId);
+  }, [editNode]);
 
   const handleCreateLinkFromNode = useCallback((nodeId: string) => {
     sendCommandToExtension('panel-start-link', { nodeId });
@@ -441,8 +443,8 @@ export function useContextMenuHandlers(
 
   const handleEditLink = useCallback((edgeId: string) => {
     sendCommandToExtension('panel-edit-link', { edgeId });
-    selectEdge(edgeId);
-  }, [selectEdge]);
+    editEdge(edgeId);
+  }, [editEdge]);
   const handleCloseNodePanel = useCallback(() => selectNode(null), [selectNode]);
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
 
