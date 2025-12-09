@@ -157,6 +157,8 @@ export const App: React.FC = () => {
         onToggleLayout={navbarCommands.onLayoutToggle}
         layout={layoutControls.layout}
         onLayoutChange={layoutControls.setLayout}
+        gridLineWidth={layoutControls.gridLineWidth}
+        onGridLineWidthChange={layoutControls.setGridLineWidth}
         geoMode={layoutControls.geoMode}
         onGeoModeChange={layoutControls.setGeoMode}
         isGeoLayout={layoutControls.isGeoLayout}

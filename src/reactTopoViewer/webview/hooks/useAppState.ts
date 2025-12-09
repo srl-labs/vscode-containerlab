@@ -9,6 +9,7 @@ import { sendCommandToExtension } from '../utils/extensionMessaging';
 import { log } from '../utils/logger';
 
 export type LayoutOption = 'preset' | 'cola' | 'radial' | 'hierarchical' | 'cose' | 'geo';
+export const DEFAULT_GRID_LINE_WIDTH = 0.5;
 
 export interface NodeData {
   id: string;
@@ -122,7 +123,40 @@ function normalizeLayoutName(option: LayoutOption): string {
 
 const GRID_SPACING = 14;
 const GRID_COLOR = 'rgba(204,204,204,0.58)';
-const GRID_LINE_WIDTH = 0.5;
+const GRID_LINE_WIDTH_MIN = 0.00001;
+const GRID_LINE_WIDTH_MAX = 2;
+const GRID_LINE_WIDTH_STORAGE_KEY = 'react-topoviewer-grid-line-width';
+
+function clampLineWidth(width: number): number {
+  const w = Number(width);
+  if (!Number.isFinite(w)) return DEFAULT_GRID_LINE_WIDTH;
+  return Math.min(GRID_LINE_WIDTH_MAX, Math.max(GRID_LINE_WIDTH_MIN, w));
+}
+
+function getStoredGridLineWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(GRID_LINE_WIDTH_STORAGE_KEY);
+    if (raw) {
+      return clampLineWidth(parseFloat(raw));
+    }
+  } catch {
+    /* ignore storage errors */
+  }
+  return DEFAULT_GRID_LINE_WIDTH;
+}
+
+function storeGridLineWidth(width: number): void {
+  try {
+    window.localStorage.setItem(GRID_LINE_WIDTH_STORAGE_KEY, String(clampLineWidth(width)));
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
+type GridOverlayHandle = {
+  cleanup: () => void;
+  setLineWidth: (width: number) => void;
+};
 
 function normalizeContainerPosition(container: HTMLElement): void {
   if (window.getComputedStyle(container).position === 'static') {
@@ -161,7 +195,8 @@ function drawGridOverlay(
   cy: Core,
   container: HTMLElement,
   canvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D
+  ctx: CanvasRenderingContext2D,
+  overlayState: { lineWidth: number }
 ): void {
   const { width, height, ratio } = resizeGridCanvas(canvas, container);
   if (width === 0 || height === 0) return;
@@ -186,7 +221,7 @@ function drawGridOverlay(
     ctx.lineTo(width, y);
   }
   ctx.strokeStyle = GRID_COLOR;
-  ctx.lineWidth = GRID_LINE_WIDTH;
+  ctx.lineWidth = overlayState.lineWidth;
   ctx.stroke();
   ctx.restore();
 }
@@ -203,25 +238,30 @@ function createGridRedraw(drawFn: () => void): () => void {
   };
 }
 
-function ensureGridOverlay(cy: Core | null): void {
-  if (!cy) return;
+function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandle | null {
+  if (!cy) return null;
   const cyAny = cy as any;
-  if (cyAny.__reactGridOverlay) return;
+  const existing = cyAny.__reactGridOverlay as GridOverlayHandle | undefined;
+  if (existing) {
+    existing.setLineWidth(lineWidth);
+    return existing;
+  }
 
   const container = cy.container() as HTMLElement | null;
-  if (!container) return;
+  if (!container) return null;
   normalizeContainerPosition(container);
 
   const canvas = createGridCanvas(container);
-  if (!canvas) return;
+  if (!canvas) return null;
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     if (canvas.parentElement) canvas.parentElement.removeChild(canvas);
     log.warn('[GridGuide] Unable to acquire grid overlay context');
-    return;
+    return null;
   }
 
-  const draw = () => drawGridOverlay(cy, container, canvas, ctx);
+  const overlayState = { lineWidth };
+  const draw = () => drawGridOverlay(cy, container, canvas, ctx, overlayState);
   const requestRedraw = createGridRedraw(draw);
   const handleResize = () => requestRedraw();
 
@@ -245,12 +285,20 @@ function ensureGridOverlay(cy: Core | null): void {
   };
 
   cy.one('destroy', cleanup);
-  cyAny.__reactGridOverlay = { cleanup };
+  const handle: GridOverlayHandle = {
+    cleanup,
+    setLineWidth: (width: number) => {
+      overlayState.lineWidth = clampLineWidth(width);
+      requestRedraw();
+    }
+  };
+  cyAny.__reactGridOverlay = handle;
+  return handle;
 }
 
-function applyGridSettings(cy: Core | null): void {
+function applyGridSettings(cy: Core | null, lineWidth: number): void {
   if (!cy) return;
-  ensureGridOverlay(cy);
+  const overlayHandle = ensureGridOverlay(cy, lineWidth);
   const cyAny = cy as any;
   if (typeof cyAny.gridGuide !== 'function') {
     log.warn('[GridGuide] gridGuide extension unavailable on Cytoscape instance');
@@ -261,7 +309,7 @@ function applyGridSettings(cy: Core | null): void {
       drawGrid: false,
       gridSpacing: GRID_SPACING,
       gridColor: GRID_COLOR,
-      lineWidth: GRID_LINE_WIDTH,
+      lineWidth,
       snapToGridOnRelease: true,
       snapToGridDuringDrag: false,
       snapToAlignmentLocationOnRelease: true,
@@ -271,6 +319,7 @@ function applyGridSettings(cy: Core | null): void {
       zoomDash: true,
       guidelinesStackOrder: 4
     });
+    overlayHandle?.setLineWidth(lineWidth);
   } catch (err) {
     log.warn(`[GridGuide] Failed to apply grid settings: ${err}`);
   }
@@ -285,12 +334,22 @@ export function useLayoutControls(
   geoMode: 'pan' | 'edit';
   setGeoMode: (mode: 'pan' | 'edit') => void;
   isGeoLayout: boolean;
+  gridLineWidth: number;
+  setGridLineWidth: (width: number) => void;
 } {
   const [layout, setLayoutState] = useState<LayoutOption>('preset');
   const [geoMode, setGeoModeState] = useState<'pan' | 'edit'>('pan');
+  const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
 
   useEffect(() => {
-    applyGridSettings(cyInstance);
+    applyGridSettings(cyInstance, gridLineWidth);
+  }, [cyInstance, gridLineWidth]);
+
+  const setGridLineWidth = useCallback((width: number) => {
+    const clamped = clampLineWidth(width);
+    setGridLineWidthState(clamped);
+    storeGridLineWidth(clamped);
+    applyGridSettings(cyInstance, clamped);
   }, [cyInstance]);
 
   const setGeoMode = useCallback((mode: 'pan' | 'edit') => {
@@ -327,7 +386,9 @@ export function useLayoutControls(
     setLayout,
     geoMode,
     setGeoMode,
-    isGeoLayout: layout === 'geo'
+    isGeoLayout: layout === 'geo',
+    gridLineWidth,
+    setGridLineWidth
   };
 }
 

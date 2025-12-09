@@ -386,6 +386,39 @@
     z-index: 100;
   }
 
+  .grid-menu {
+    min-width: 14rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .grid-line-slider {
+    width: 100%;
+    accent-color: var(--vscode-focusBorder, #0e639c);
+    margin: 0.5rem 0 0.25rem 0;
+  }
+
+  .grid-line-display {
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
+    border-radius: 0.25rem;
+    background: var(--bg-secondary, var(--vscode-sideBar-background));
+    color: var(--vscode-menu-foreground, var(--text-primary));
+  }
+
+  .grid-reset-button {
+    border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
+    border-radius: 0.35rem;
+    justify-content: center;
+    font-weight: 600;
+    background: var(--vscode-button-secondaryBackground, rgba(255, 255, 255, 0.06));
+  }
+
+  .grid-reset-button:hover {
+    background: var(--vscode-button-hoverBackground, rgba(64, 166, 255, 0.18));
+  }
+
   .navbar-menu-option {
     width: 100%;
     display: flex;

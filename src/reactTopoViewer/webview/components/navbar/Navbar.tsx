@@ -4,13 +4,15 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useTopoViewer, LinkLabelMode } from '../../context/TopoViewerContext';
-import { LayoutOption } from '../../hooks/useAppState';
+import { LayoutOption, DEFAULT_GRID_LINE_WIDTH } from '../../hooks/useAppState';
 
 interface NavbarProps {
   onZoomToFit?: () => void;
   onToggleLayout?: () => void;
   layout: LayoutOption;
   onLayoutChange: (layout: LayoutOption) => void;
+  gridLineWidth: number;
+  onGridLineWidthChange: (width: number) => void;
   geoMode: 'pan' | 'edit';
   onGeoModeChange: (mode: 'pan' | 'edit') => void;
   isGeoLayout: boolean;
@@ -54,8 +56,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleLayout,
   layout,
   onLayoutChange,
-  gridSettings,
-  onGridSettingsChange,
+  gridLineWidth,
+  onGridLineWidthChange,
   geoMode,
   onGeoModeChange,
   isGeoLayout,
@@ -70,6 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();
+  const gridDropdown = useDropdown();
 
   const handleLinkLabelModeChange = (mode: LinkLabelMode) => {
     setLinkLabelMode(mode);
@@ -140,6 +143,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             <LayoutMenu
               currentLayout={layout}
               onSelect={handleLayoutSelect}
+            />
+          )}
+        </div>
+
+        {/* Grid line width */}
+        <div className="relative inline-block" ref={gridDropdown.ref}>
+          <NavButton
+            icon="fa-border-all"
+            title="Grid line width"
+            onClick={gridDropdown.toggle}
+            active={gridDropdown.isOpen}
+          />
+          {gridDropdown.isOpen && (
+            <GridSettingsMenu
+              value={gridLineWidth}
+              onChange={onGridLineWidthChange}
             />
           )}
         </div>
@@ -303,6 +322,44 @@ const LayoutMenu: React.FC<LayoutMenuProps> = ({ currentLayout, onSelect }) => (
     ))}
   </div>
 );
+
+interface GridSettingsMenuProps {
+  value: number;
+  onChange: (width: number) => void;
+}
+
+const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({ value, onChange }) => {
+  const handleChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
+    const next = parseFloat(evt.target.value);
+    onChange(Number.isFinite(next) ? next : DEFAULT_GRID_LINE_WIDTH);
+  };
+  const handleReset = () => onChange(DEFAULT_GRID_LINE_WIDTH);
+  return (
+    <div className="navbar-menu grid-menu" role="menu">
+      <div className="flex items-center gap-2 mb-2">
+        <label className="text-2xs font-semibold text-default uppercase tracking-wide">Grid line width</label>
+        <span className="grid-line-display">{value.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min="0.00001"
+        max="2"
+        step="0.05"
+        value={value}
+        onChange={handleChange}
+        className="grid-line-slider"
+        aria-label="Grid line width"
+      />
+      <button
+        type="button"
+        className="navbar-menu-option grid-reset-button mt-2"
+        onClick={handleReset}
+      >
+        Reset to {DEFAULT_GRID_LINE_WIDTH}
+      </button>
+    </div>
+  );
+};
 
 interface GeoModeToggleProps {
   mode: 'pan' | 'edit';
