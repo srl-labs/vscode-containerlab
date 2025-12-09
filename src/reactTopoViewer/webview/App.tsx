@@ -7,7 +7,7 @@ import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
-import { FloatingActionPanel } from './components/panels/FloatingActionPanel';
+import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { useContextMenu } from './hooks/useContextMenu';
 import { useNodeDragging } from './hooks/useNodeDragging';
 import {
@@ -73,11 +73,17 @@ function useFloatingPanelCommands() {
   const onDestroyCleanup = React.useCallback(() => sendCommandToExtension('destroyLabCleanup'), []);
   const onRedeploy = React.useCallback(() => sendCommandToExtension('redeployLab'), []);
   const onRedeployCleanup = React.useCallback(() => sendCommandToExtension('redeployLabCleanup'), []);
-  const onAddNode = React.useCallback(() => sendCommandToExtension('panel-add-node'), []);
-  const onAddNetwork = React.useCallback(() => sendCommandToExtension('panel-add-network'), []);
+  const onAddNode = React.useCallback((kind?: string) => {
+    sendCommandToExtension('panel-add-node', { kind });
+  }, []);
+  const onAddNetwork = React.useCallback((networkType?: string) => {
+    sendCommandToExtension('panel-add-network', { networkType: networkType || 'host' });
+  }, []);
   const onAddGroup = React.useCallback(() => sendCommandToExtension('panel-add-group'), []);
   const onAddText = React.useCallback(() => sendCommandToExtension('panel-add-text'), []);
-  const onAddShapes = React.useCallback(() => sendCommandToExtension('panel-add-shapes'), []);
+  const onAddShapes = React.useCallback((shapeType?: string) => {
+    sendCommandToExtension('panel-add-shapes', { shapeType: shapeType || 'rectangle' });
+  }, []);
   const onAddBulkLink = React.useCallback(() => sendCommandToExtension('panel-add-bulk-link'), []);
 
   return {
@@ -102,6 +108,9 @@ export const App: React.FC = () => {
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
+
+  // Ref for FloatingActionPanel to trigger shake animation
+  const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
   // Selection data
   const { selectedNodeData, selectedLinkData } = useSelectionData(
@@ -137,10 +146,16 @@ export const App: React.FC = () => {
     onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
 
+  // Callback for when user tries to drag a locked node
+  const handleLockedDrag = React.useCallback(() => {
+    floatingPanelRef.current?.triggerShake();
+  }, []);
+
   // Set up node dragging based on lock state
   useNodeDragging(cyInstance, {
     mode: state.mode,
-    isLocked: state.isLocked
+    isLocked: state.isLocked,
+    onLockedDrag: handleLockedDrag
   });
 
   React.useEffect(() => {
@@ -182,6 +197,7 @@ export const App: React.FC = () => {
           onClose={menuHandlers.handleCloseLinkPanel}
         />
         <FloatingActionPanel
+          ref={floatingPanelRef}
           onDeploy={floatingPanelCommands.onDeploy}
           onDestroy={floatingPanelCommands.onDestroy}
           onDeployCleanup={floatingPanelCommands.onDeployCleanup}

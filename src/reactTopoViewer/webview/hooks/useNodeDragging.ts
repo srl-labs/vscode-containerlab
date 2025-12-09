@@ -28,6 +28,7 @@ export interface NodeDraggingOptions {
   isLocked: boolean;
   mode: 'edit' | 'view';
   onPositionChange?: () => void;
+  onLockedDrag?: () => void;
 }
 
 /**
@@ -85,55 +86,53 @@ function isDraggableNode(node: NodeSingular): boolean {
   return role !== 'group' && role !== 'freeText' && role !== 'freeShape';
 }
 
+/** Hook to apply lock state to nodes */
+function useLockState(cy: Core | null, isLocked: boolean): void {
+  useEffect(() => {
+    if (!cy) return;
+    if (isLocked) { lockNodes(cy); } else { unlockNodes(cy); }
+  }, [cy, isLocked]);
+}
+
+/** Hook for drag completion event handling */
+function useDragFreeHandler(cy: Core | null, mode: 'edit' | 'view', onPositionChange?: () => void): void {
+  const handleDragFree = useCallback((event: EventObject) => {
+    const node = event.target as NodeSingular;
+    if (!isDraggableNode(node)) return;
+
+    const position = getNodePosition(node);
+    log.info(`[NodeDragging] Node ${position.id} dragged to (${position.position.x}, ${position.position.y})`);
+
+    if (mode === 'edit') { sendPositionsToExtension([position]); }
+    onPositionChange?.();
+  }, [mode, onPositionChange]);
+
+  useEffect(() => {
+    if (!cy) return;
+    cy.on('dragfree', 'node', handleDragFree);
+    log.info('[NodeDragging] Drag event handlers registered');
+    return () => { cy.off('dragfree', 'node', handleDragFree); };
+  }, [cy, handleDragFree]);
+}
+
+/** Hook for detecting locked node grab attempts */
+function useLockedGrabHandler(cy: Core | null, isLocked: boolean, onLockedDrag?: () => void): void {
+  const handleLockedGrab = useCallback(() => { onLockedDrag?.(); }, [onLockedDrag]);
+
+  useEffect(() => {
+    if (!cy || !isLocked) return;
+    cy.on('tapstart', 'node', handleLockedGrab);
+    return () => { cy.off('tapstart', 'node', handleLockedGrab); };
+  }, [cy, isLocked, handleLockedGrab]);
+}
+
 /**
  * Hook to manage node dragging based on lock state
  */
 export function useNodeDragging(cy: Core | null, options: NodeDraggingOptions): void {
-  const { isLocked, mode, onPositionChange } = options;
+  const { isLocked, mode, onPositionChange, onLockedDrag } = options;
 
-  // Handle drag completion - save positions
-  const handleDragFree = useCallback((event: EventObject) => {
-    const node = event.target as NodeSingular;
-
-    // Only save for regular nodes
-    if (!isDraggableNode(node)) return;
-
-    // Get the dragged node's new position
-    const position = getNodePosition(node);
-    log.info(`[NodeDragging] Node ${position.id} dragged to (${position.position.x}, ${position.position.y})`);
-
-    // In edit mode, send position to extension for saving
-    if (mode === 'edit') {
-      sendPositionsToExtension([position]);
-    }
-
-    // Notify parent of position change
-    onPositionChange?.();
-  }, [mode, onPositionChange]);
-
-  // Apply lock state when it changes
-  useEffect(() => {
-    if (!cy) return;
-
-    if (isLocked) {
-      lockNodes(cy);
-    } else {
-      unlockNodes(cy);
-    }
-  }, [cy, isLocked]);
-
-  // Set up drag event handlers
-  useEffect(() => {
-    if (!cy) return;
-
-    // Register dragfree handler for position saving
-    cy.on('dragfree', 'node', handleDragFree);
-
-    log.info('[NodeDragging] Drag event handlers registered');
-
-    return () => {
-      cy.off('dragfree', 'node', handleDragFree);
-      log.info('[NodeDragging] Drag event handlers removed');
-    };
-  }, [cy, handleDragFree]);
+  useLockState(cy, isLocked);
+  useDragFreeHandler(cy, mode, onPositionChange);
+  useLockedGrabHandler(cy, isLocked, onLockedDrag);
 }
