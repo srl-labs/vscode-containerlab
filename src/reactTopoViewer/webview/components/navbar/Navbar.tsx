@@ -1,12 +1,19 @@
 /**
  * Navbar Component for React TopoViewer
+ * Complete implementation matching legacy features
  */
-import React from 'react';
-import { useTopoViewer, DeploymentState } from '../../context/TopoViewerContext';
+import React, { useState, useRef, useEffect } from 'react';
+import { useTopoViewer, DeploymentState, LinkLabelMode } from '../../context/TopoViewerContext';
 
 interface NavbarProps {
   onZoomToFit?: () => void;
   onToggleLayout?: () => void;
+  onLabSettings?: () => void;
+  onToggleSplit?: () => void;
+  onFindNode?: () => void;
+  onCaptureViewport?: () => void;
+  onShowShortcuts?: () => void;
+  onShowAbout?: () => void;
 }
 
 /**
@@ -14,17 +21,46 @@ interface NavbarProps {
  */
 function getDeploymentDisplay(state: DeploymentState): { text: string; className: string } {
   if (state === 'deployed') {
-    return { text: '🟢 Deployed', className: 'deployed' };
+    return { text: 'Deployed', className: 'deployed' };
   }
   if (state === 'undeployed') {
-    return { text: '⚪ Undeployed', className: 'undeployed' };
+    return { text: 'Undeployed', className: 'undeployed' };
   }
-  return { text: '❓ Unknown', className: '' };
+  return { text: 'Unknown', className: '' };
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onZoomToFit, onToggleLayout }) => {
-  const { state, toggleLock } = useTopoViewer();
+export const Navbar: React.FC<NavbarProps> = ({
+  onZoomToFit,
+  onToggleLayout,
+  onLabSettings,
+  onToggleSplit,
+  onFindNode,
+  onCaptureViewport,
+  onShowShortcuts,
+  onShowAbout
+}) => {
+  const { state, setLinkLabelMode, toggleDummyLinks } = useTopoViewer();
   const deploymentDisplay = getDeploymentDisplay(state.deploymentState);
+
+  // Local state for dropdown menu
+  const [linkLabelMenuOpen, setLinkLabelMenuOpen] = useState(false);
+  const linkLabelMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (linkLabelMenuRef.current && !linkLabelMenuRef.current.contains(event.target as Node)) {
+        setLinkLabelMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLinkLabelModeChange = (mode: LinkLabelMode) => {
+    setLinkLabelMode(mode);
+    setLinkLabelMenuOpen(false);
+  };
 
   return (
     <nav className="navbar" role="navigation" aria-label="main navigation">
@@ -51,34 +87,78 @@ export const Navbar: React.FC<NavbarProps> = ({ onZoomToFit, onToggleLayout }) =
 
       {/* Center: Buttons */}
       <div className="navbar-buttons">
-        {/* Lock/Unlock toggle - only show in edit mode */}
-        {state.mode === 'edit' && (
-          <NavButton
-            icon={state.isLocked ? 'fa-lock' : 'fa-lock-open'}
-            title={state.isLocked ? 'Unlock for Editing' : 'Lock Editing'}
-            onClick={toggleLock}
-            active={!state.isLocked}
-          />
-        )}
+        {/* Lab Settings */}
+        <NavButton
+          icon="fa-gear"
+          title="Lab Settings"
+          onClick={onLabSettings}
+        />
+
+        {/* Fit to Viewport */}
         <NavButton
           icon="fa-expand"
           title="Fit to Viewport"
           onClick={onZoomToFit}
         />
+
+        {/* Toggle YAML Split View */}
+        <NavButton
+          icon="fa-columns"
+          title="Toggle YAML Split View"
+          onClick={onToggleSplit}
+        />
+
+        {/* Layout Manager */}
         <NavButton
           icon="fa-circle-nodes"
           title="Layout Manager"
           onClick={onToggleLayout}
         />
+
+        {/* Find Node */}
+        <NavButton
+          icon="fa-binoculars"
+          title="Find Node"
+          onClick={onFindNode}
+        />
+
+        {/* Link Labels Dropdown */}
+        <div className="relative inline-block" ref={linkLabelMenuRef}>
+          <NavButton
+            icon="fa-tag"
+            title="Link Labels"
+            onClick={() => setLinkLabelMenuOpen(!linkLabelMenuOpen)}
+            active={linkLabelMenuOpen}
+          />
+          {linkLabelMenuOpen && (
+            <LinkLabelMenu
+              currentMode={state.linkLabelMode}
+              showDummyLinks={state.showDummyLinks}
+              onModeChange={handleLinkLabelModeChange}
+              onToggleDummyLinks={toggleDummyLinks}
+            />
+          )}
+        </div>
+
+        {/* Capture Viewport */}
+        <NavButton
+          icon="fa-camera"
+          title="Capture Viewport as SVG"
+          onClick={onCaptureViewport}
+        />
+
+        {/* Shortcuts */}
         <NavButton
           icon="fa-keyboard"
           title="Shortcuts"
-          onClick={() => { /* placeholder for shortcuts modal */ }}
+          onClick={onShowShortcuts}
         />
+
+        {/* About */}
         <NavButton
           icon="fa-circle-info"
           title="About TopoViewer"
-          onClick={() => { /* placeholder for about panel */ }}
+          onClick={onShowAbout}
         />
       </div>
 
@@ -88,7 +168,71 @@ export const Navbar: React.FC<NavbarProps> = ({ onZoomToFit, onToggleLayout }) =
           {deploymentDisplay.text}
         </span>
       </div>
+
+      {/* Loading Indicator */}
+      {state.isLoading && (
+        <div className="navbar-loading-indicator" role="presentation" aria-hidden="true">
+          <div className="navbar-loading-indicator__bar"></div>
+        </div>
+      )}
     </nav>
+  );
+};
+
+/**
+ * Link Label Menu Component
+ */
+interface LinkLabelMenuProps {
+  currentMode: LinkLabelMode;
+  showDummyLinks: boolean;
+  /* eslint-disable-next-line no-unused-vars */
+  onModeChange: (mode: LinkLabelMode) => void;
+  onToggleDummyLinks: () => void;
+}
+
+const LINK_LABEL_MODES: { value: LinkLabelMode; label: string }[] = [
+  { value: 'show-all', label: 'Show Labels' },
+  { value: 'on-select', label: 'Show Link Labels on Select' },
+  { value: 'hide', label: 'No Labels' }
+];
+
+const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
+  currentMode,
+  showDummyLinks,
+  onModeChange,
+  onToggleDummyLinks
+}) => {
+  return (
+    <div className="navbar-menu" role="menu">
+      {LINK_LABEL_MODES.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          className="navbar-menu-option"
+          onClick={() => onModeChange(value)}
+          role="menuitemradio"
+          aria-checked={currentMode === value}
+        >
+          <span>{label}</span>
+          {currentMode === value && (
+            <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+          )}
+        </button>
+      ))}
+      <hr className="my-1 border-t border-default" />
+      <button
+        type="button"
+        className="navbar-menu-option"
+        onClick={onToggleDummyLinks}
+        role="menuitemcheckbox"
+        aria-checked={showDummyLinks}
+      >
+        <span>Show Dummy Links</span>
+        {showDummyLinks && (
+          <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+        )}
+      </button>
+    </div>
   );
 };
 
@@ -100,14 +244,16 @@ interface NavButtonProps {
   title: string;
   onClick?: () => void;
   active?: boolean;
+  disabled?: boolean;
 }
 
-const NavButton: React.FC<NavButtonProps> = ({ icon, title, onClick, active }) => {
+const NavButton: React.FC<NavButtonProps> = ({ icon, title, onClick, active, disabled }) => {
   return (
     <button
-      className={`btn-icon ${active ? 'active' : ''}`}
+      className={`btn-icon ${active ? 'active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       title={title}
       onClick={onClick}
+      disabled={disabled}
     >
       <span className="inline-flex items-center justify-center text-xl">
         <i className={`fas ${icon}`}></i>
@@ -117,7 +263,7 @@ const NavButton: React.FC<NavButtonProps> = ({ icon, title, onClick, active }) =
 };
 
 /**
- * Containerlab Logo SVG Component
+ * Containerlab Logo SVG Component (simplified version)
  */
 const ContainerlabLogo: React.FC<{ className?: string }> = ({ className }) => (
   <svg

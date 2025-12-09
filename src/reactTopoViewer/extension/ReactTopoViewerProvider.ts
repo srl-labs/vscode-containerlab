@@ -6,6 +6,7 @@ import { TopoViewerAdaptorClab } from '../../topoViewer/extension/services/Topol
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
 import { deploymentStateChecker } from '../../topoViewer/extension/services/DeploymentStateChecker';
+import { AnnotationsManager } from '../../topoViewer/extension/services/AnnotationsFile';
 
 // Create output channel for React TopoViewer logs
 let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
@@ -29,6 +30,14 @@ function logToChannel(level: string, message: string, fileLine?: string): void {
 }
 
 /**
+ * Node position data from webview
+ */
+interface NodePositionData {
+  id: string;
+  position: { x: number; y: number };
+}
+
+/**
  * Message interface for webview communication
  */
 interface WebviewMessage {
@@ -39,6 +48,7 @@ interface WebviewMessage {
   command?: string;
   level?: string;
   message?: string;
+  positions?: NodePositionData[];
 }
 
 /**
@@ -219,9 +229,53 @@ export class ReactTopoViewer {
       return;
     }
 
+    // Handle save-node-positions command
+    if (message.command === 'save-node-positions' && message.positions) {
+      await this.handleSaveNodePositions(message.positions);
+      return;
+    }
+
     // Handle POST messages
     if (message.type === 'POST' && message.requestId && message.endpointName) {
       await this.handlePostMessage(message, panel);
+    }
+  }
+
+  /**
+   * Save node positions to annotations file
+   */
+  private async handleSaveNodePositions(positions: NodePositionData[]): Promise<void> {
+    if (!this.lastYamlFilePath) {
+      log.warn('[ReactTopoViewer] Cannot save positions: no YAML file path');
+      return;
+    }
+
+    try {
+      const annotationsManager = new AnnotationsManager();
+      const annotations = annotationsManager.loadAnnotations(this.lastYamlFilePath);
+
+      // Update positions for each node
+      for (const posData of positions) {
+        const existingNode = annotations.nodeAnnotations?.find(n => n.id === posData.id);
+        if (existingNode) {
+          existingNode.position = posData.position;
+        } else {
+          // Create new node annotation
+          if (!annotations.nodeAnnotations) {
+            annotations.nodeAnnotations = [];
+          }
+          annotations.nodeAnnotations.push({
+            id: posData.id,
+            position: posData.position
+          });
+        }
+      }
+
+      // Save annotations
+      annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
+      log.info(`[ReactTopoViewer] Saved ${positions.length} node positions`);
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to save node positions: ${err}`);
     }
   }
 

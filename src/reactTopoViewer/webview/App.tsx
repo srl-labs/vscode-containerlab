@@ -8,6 +8,7 @@ import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { useContextMenu } from './hooks/useContextMenu';
+import { useNodeDragging } from './hooks/useNodeDragging';
 import {
   useCytoscapeInstance,
   useSelectionData,
@@ -41,7 +42,7 @@ function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Eleme
 }
 
 export const App: React.FC = () => {
-  const { state, isLoading, error, selectNode, selectEdge } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -71,7 +72,13 @@ export const App: React.FC = () => {
     onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
 
-  if (isLoading) return <LoadingState />;
+  // Set up node dragging based on lock state
+  useNodeDragging(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked
+  });
+
+  if (initLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
   return (
