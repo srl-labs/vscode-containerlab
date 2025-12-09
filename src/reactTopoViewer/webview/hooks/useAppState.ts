@@ -296,7 +296,7 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
   return handle;
 }
 
-function applyGridSettings(cy: Core | null, lineWidth: number): void {
+function applyGridSettings(cy: Core | null, lineWidth: number, enableSnapping = true): void {
   if (!cy) return;
   const overlayHandle = ensureGridOverlay(cy, lineWidth);
   const cyAny = cy as any;
@@ -310,11 +310,11 @@ function applyGridSettings(cy: Core | null, lineWidth: number): void {
       gridSpacing: GRID_SPACING,
       gridColor: GRID_COLOR,
       lineWidth,
-      snapToGridOnRelease: true,
+      snapToGridOnRelease: enableSnapping,
       snapToGridDuringDrag: false,
-      snapToAlignmentLocationOnRelease: true,
+      snapToAlignmentLocationOnRelease: enableSnapping,
       snapToAlignmentLocationDuringDrag: false,
-      snapToGridCenter: true,
+      snapToGridCenter: enableSnapping,
       panGrid: true,
       zoomDash: true,
       guidelinesStackOrder: 4
@@ -340,16 +340,28 @@ export function useLayoutControls(
   const [layout, setLayoutState] = useState<LayoutOption>('preset');
   const [geoMode, setGeoModeState] = useState<'pan' | 'edit'>('pan');
   const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
+  const snappingEnabledRef = useRef(false);
 
   useEffect(() => {
-    applyGridSettings(cyInstance, gridLineWidth);
+    if (!cyInstance) return;
+    // Initially apply grid settings with snapping DISABLED to prevent
+    // nodes from snapping to grid on initial load (preset positions should be respected)
+    applyGridSettings(cyInstance, gridLineWidth, false);
+
+    // Enable snapping after a short delay to allow preset layout to settle
+    const timer = setTimeout(() => {
+      applyGridSettings(cyInstance, gridLineWidth, true);
+      snappingEnabledRef.current = true;
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [cyInstance, gridLineWidth]);
 
   const setGridLineWidth = useCallback((width: number) => {
     const clamped = clampLineWidth(width);
     setGridLineWidthState(clamped);
     storeGridLineWidth(clamped);
-    applyGridSettings(cyInstance, clamped);
+    applyGridSettings(cyInstance, clamped, snappingEnabledRef.current);
   }, [cyInstance]);
 
   const setGeoMode = useCallback((mode: 'pan' | 'edit') => {

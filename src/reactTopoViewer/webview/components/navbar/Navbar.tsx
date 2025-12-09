@@ -22,6 +22,11 @@ interface NavbarProps {
   onCaptureViewport?: () => void;
   onShowShortcuts?: () => void;
   onShowAbout?: () => void;
+  /** Undo/Redo props */
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 function useDropdown(): {
@@ -66,7 +71,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onFindNode,
   onCaptureViewport,
   onShowShortcuts,
-  onShowAbout
+  onShowAbout,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo
 }) => {
   const { state, setLinkLabelMode, toggleDummyLinks } = useTopoViewer();
 
@@ -116,6 +125,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Lab Settings"
           onClick={onLabSettings}
         />
+
+        {/* Undo - only show in edit mode */}
+        {state.mode === 'edit' && (
+          <NavButton
+            icon="fa-rotate-left"
+            title="Undo (Ctrl+Z)"
+            onClick={onUndo}
+            disabled={!canUndo}
+          />
+        )}
+
+        {/* Redo - only show in edit mode */}
+        {state.mode === 'edit' && (
+          <NavButton
+            icon="fa-rotate-right"
+            title="Redo (Ctrl+Y)"
+            onClick={onRedo}
+            disabled={!canRedo}
+          />
+        )}
 
         {/* Fit to Viewport */}
         <NavButton

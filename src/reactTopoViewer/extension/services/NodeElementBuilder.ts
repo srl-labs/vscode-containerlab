@@ -264,7 +264,7 @@ export function addNodeElements(
 ): void {
   const topology = parsed.topology!;
   if (!topology.nodes) return;
-  const nodeAnnotations = (opts.annotations as { nodeAnnotations?: Array<{ id: string; groupLabelPos?: string }> })?.nodeAnnotations;
+  const nodeAnnotations = (opts.annotations as { nodeAnnotations?: Array<{ id: string; groupLabelPos?: string; position?: { x: number; y: number } }> })?.nodeAnnotations;
   let nodeIndex = 0;
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
     const nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName) as Record<string, unknown> | undefined;

@@ -14,6 +14,7 @@ import { useContextMenu } from './hooks/useContextMenu';
 import { useNodeDragging } from './hooks/useNodeDragging';
 import { useEdgeCreation } from './hooks/useEdgeCreation';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useUndoRedo, NodePositionEntry } from './hooks/useUndoRedo';
 import {
   useCytoscapeInstance,
   useSelectionData,
@@ -190,6 +191,12 @@ export const App: React.FC = () => {
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
 
+  // Undo/Redo for node position changes
+  const undoRedo = useUndoRedo({
+    cy: cyInstance,
+    enabled: state.mode === 'edit'
+  });
+
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
@@ -246,8 +253,18 @@ export const App: React.FC = () => {
   // Callback for when user tries to drag a locked node
   const handleLockedDrag = React.useCallback(() => floatingPanelRef.current?.triggerShake(), []);
 
+  // Callback for when a node move is complete (for undo/redo)
+  const handleMoveComplete = React.useCallback((nodeIds: string[], beforePositions: NodePositionEntry[]) => {
+    undoRedo.recordMove(nodeIds, beforePositions);
+  }, [undoRedo]);
+
   // Set up node dragging based on lock state
-  useNodeDragging(cyInstance, { mode: state.mode, isLocked: state.isLocked, onLockedDrag: handleLockedDrag });
+  useNodeDragging(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedDrag: handleLockedDrag,
+    onMoveComplete: handleMoveComplete
+  });
 
   // Handle deselect all callback
   const handleDeselectAll = React.useCallback(() => {
@@ -265,7 +282,11 @@ export const App: React.FC = () => {
     cyInstance,
     onDeleteNode: menuHandlers.handleDeleteNode,
     onDeleteEdge: menuHandlers.handleDeleteLink,
-    onDeselectAll: handleDeselectAll
+    onDeselectAll: handleDeselectAll,
+    onUndo: undoRedo.undo,
+    onRedo: undoRedo.redo,
+    canUndo: undoRedo.canUndo,
+    canRedo: undoRedo.canRedo
   });
 
   React.useEffect(() => {
@@ -293,6 +314,10 @@ export const App: React.FC = () => {
         onCaptureViewport={navbarCommands.onCaptureSvg}
         onShowShortcuts={navbarCommands.onShowShortcuts}
         onShowAbout={navbarCommands.onShowAbout}
+        canUndo={undoRedo.canUndo}
+        canRedo={undoRedo.canRedo}
+        onUndo={undoRedo.undo}
+        onRedo={undoRedo.redo}
       />
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />

@@ -7,7 +7,7 @@ import { CyElement } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
-import { AnnotationsManager } from './services/AnnotationsManager';
+import { annotationsManager } from './services/AnnotationsManager';
 import { labLifecycleService } from './services/LabLifecycleService';
 import { nodeCommandService } from './services/NodeCommandService';
 import { splitViewManager } from './services/SplitViewManager';
@@ -370,7 +370,6 @@ export class ReactTopoViewer {
       return;
     }
     try {
-      const annotationsManager = new AnnotationsManager();
       const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
       const existing = annotations.nodeAnnotations || [];
       const updatedNodes = existing.filter((n: { id: string }) => n.id !== nodeId);
@@ -575,7 +574,6 @@ export class ReactTopoViewer {
     }
 
     try {
-      const annotationsManager = new AnnotationsManager();
       const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
 
       // Update positions for each node
@@ -596,7 +594,7 @@ export class ReactTopoViewer {
       }
 
       // Save annotations
-      annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
+      await annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
       log.info(`[ReactTopoViewer] Saved ${positions.length} node positions`);
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to save node positions: ${err}`);
