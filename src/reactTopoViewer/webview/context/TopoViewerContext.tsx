@@ -15,6 +15,20 @@ export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
 export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
 
 /**
+ * Custom node template from configuration
+ */
+export interface CustomNodeTemplate {
+  name: string;
+  kind: string;
+  type?: string;
+  image?: string;
+  icon?: string;
+  baseName?: string;
+  interfacePattern?: string;
+  setDefault?: boolean;
+}
+
+/**
  * TopoViewer State Interface
  */
 export interface TopoViewerState {
@@ -28,6 +42,8 @@ export interface TopoViewerState {
   isLoading: boolean;
   linkLabelMode: LinkLabelMode;
   showDummyLinks: boolean;
+  customNodes: CustomNodeTemplate[];
+  defaultNode: string;
 }
 
 /**
@@ -43,7 +59,9 @@ const initialState: TopoViewerState = {
   isLocked: true,
   isLoading: false,
   linkLabelMode: 'show-all',
-  showDummyLinks: true
+  showDummyLinks: true,
+  customNodes: [],
+  defaultNode: ''
 };
 
 /**
@@ -171,7 +189,9 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
     elements: (obj.elements as CyElement[]) || [],
     labName: (obj.labName as string) || '',
     mode: (obj.mode as 'edit' | 'view') || 'edit',
-    deploymentState: (obj.deploymentState as DeploymentState) || 'unknown'
+    deploymentState: (obj.deploymentState as DeploymentState) || 'unknown',
+    customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
+    defaultNode: (obj.defaultNode as string) || ''
   };
 }
 

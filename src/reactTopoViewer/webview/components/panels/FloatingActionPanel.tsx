@@ -2,8 +2,8 @@
  * Floating Action Panel Component for React TopoViewer
  * A draggable panel with deployment controls and editor tools
  */
-import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { useTopoViewer } from '../../context/TopoViewerContext';
+import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
+import { useTopoViewer, CustomNodeTemplate } from '../../context/TopoViewerContext';
 
 /** Network type definitions matching legacy topoViewer */
 interface NetworkTypeDefinition {
@@ -305,6 +305,22 @@ function useLockAwareHandlers(
   );
 }
 
+/** Convert custom node templates to dropdown menu items */
+function buildNodeMenuItems(customNodes: CustomNodeTemplate[]): DropdownMenuItem[] {
+  const items: DropdownMenuItem[] = customNodes.map(node => ({
+    id: node.name,
+    label: node.setDefault ? `${node.name} (default)` : node.name,
+    isDefault: node.setDefault
+  }));
+  // Add "New custom node..." option
+  if (items.length > 0) {
+    items.push({ id: '__new_custom_node__', label: 'New custom node...', addDivider: true });
+  } else {
+    items.push({ id: '__new_custom_node__', label: 'New custom node...' });
+  }
+  return items;
+}
+
 const PanelContent: React.FC<PanelContentProps> = ({
   isViewerMode,
   isLocked,
@@ -323,17 +339,26 @@ const PanelContent: React.FC<PanelContentProps> = ({
   onAddShapes,
   onAddBulkLink
 }) => {
+  const { state } = useTopoViewer();
+
   const handleDeployClick = useCallback(() => {
     if (isViewerMode) { onDestroy?.(); } else { onDeploy?.(); }
   }, [isViewerMode, onDeploy, onDestroy]);
 
   const lockAware = useLockAwareHandlers(isLocked, onLockedClick, {
-    node: onAddNode,
     group: onAddGroup,
     text: onAddText,
     bulkLink: onAddBulkLink
   });
 
+  const nodeMenuItems = useMemo(() => buildNodeMenuItems(state.customNodes), [state.customNodes]);
+  const handleNodeSelect = useCallback((id: string) => {
+    if (id === '__new_custom_node__') {
+      onAddNode?.('__new__');
+    } else {
+      onAddNode?.(id);
+    }
+  }, [onAddNode]);
   const handleNetworkSelect = useCallback((t: string) => onAddNetwork?.(t), [onAddNetwork]);
   const handleShapeSelect = useCallback((t: string) => onAddShapes?.(t), [onAddShapes]);
 
@@ -352,7 +377,16 @@ const PanelContent: React.FC<PanelContentProps> = ({
       {!isViewerMode && <div className="floating-panel-divider" />}
 
       {!isViewerMode && (
-        <PanelButton icon="fa-plus" tooltip="Add Node" onClick={lockAware.node} disabled={isLocked} />
+        <PanelButtonWithDropdown
+          icon="fa-plus"
+          tooltip="Add Node"
+          disabled={isLocked}
+          drawerSide={drawerSide}
+          items={nodeMenuItems}
+          filterPlaceholder="Filter templates..."
+          onSelect={handleNodeSelect}
+          onLockedClick={onLockedClick}
+        />
       )}
       {!isViewerMode && (
         <PanelButtonWithDropdown

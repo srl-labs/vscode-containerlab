@@ -12,6 +12,28 @@ import { labLifecycleService } from './services/LabLifecycleService';
 import { nodeCommandService } from './services/NodeCommandService';
 import { splitViewManager } from './services/SplitViewManager';
 
+/**
+ * Custom node template from configuration
+ */
+interface CustomNodeTemplate {
+  name: string;
+  kind: string;
+  type?: string;
+  image?: string;
+  icon?: string;
+  baseName?: string;
+  interfacePattern?: string;
+  setDefault?: boolean;
+}
+
+/**
+ * Get custom nodes from VS Code configuration
+ */
+function getCustomNodesFromConfig(): CustomNodeTemplate[] {
+  const config = vscode.workspace.getConfiguration('containerlab.editor');
+  return config.get<CustomNodeTemplate[]>('customNodes', []);
+}
+
 // Create output channel for React TopoViewer logs
 let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
 
@@ -193,11 +215,18 @@ export class ReactTopoViewer {
         this.lastYamlFilePath
       );
       this.lastTopologyElements = elements;
+
+      // Get custom nodes from configuration
+      const customNodes = getCustomNodesFromConfig();
+      const defaultNode = customNodes.find(n => n.setDefault)?.name || '';
+
       return {
         elements,
         labName: this.currentLabName,
         mode: this.isViewMode ? 'view' : 'edit',
-        deploymentState: this.deploymentState
+        deploymentState: this.deploymentState,
+        customNodes,
+        defaultNode
       };
     } catch (err) {
       this.lastTopologyElements = [];
@@ -342,12 +371,12 @@ export class ReactTopoViewer {
     }
     try {
       const annotationsManager = new AnnotationsManager();
-      const annotations = annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
       const existing = annotations.nodeAnnotations || [];
-      const updatedNodes = existing.filter(n => n.id !== nodeId);
+      const updatedNodes = existing.filter((n: { id: string }) => n.id !== nodeId);
       if (updatedNodes.length !== existing.length) {
         annotations.nodeAnnotations = updatedNodes;
-        annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
+        await annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
       }
     } catch (err) {
       log.warn(`[ReactTopoViewer] Failed to prune annotations for node ${nodeId}: ${err}`);
