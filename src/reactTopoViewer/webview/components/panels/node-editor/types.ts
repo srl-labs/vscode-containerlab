@@ -10,6 +10,8 @@ export type NodeEditorTabId = 'basic' | 'components' | 'config' | 'runtime' | 'n
 export interface NodeEditorData {
   id: string;
   name: string;
+  /** Whether this is a custom node template (temp-custom-node or edit-custom-node) */
+  isCustomTemplate?: boolean;
   kind?: string;
   type?: string;
   image?: string;

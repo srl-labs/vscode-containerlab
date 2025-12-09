@@ -65,6 +65,21 @@ const TabContent: React.FC<{
   }
 };
 
+/**
+ * Get the appropriate panel title based on node type
+ */
+function getPanelTitle(formData: NodeEditorData | null): string {
+  if (!formData) return 'Node Editor';
+  if (!formData.isCustomTemplate) return 'Node Editor';
+
+  // For custom templates, check if we're creating or editing
+  // edit-custom-node means editing existing, temp-custom-node means creating new
+  if (formData.id === 'edit-custom-node') {
+    return 'Edit Custom Node Template';
+  }
+  return 'Create Custom Node Template';
+}
+
 export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
   isVisible,
   nodeData,
@@ -84,9 +99,11 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
 
   if (!formData) return null;
 
+  const title = getPanelTitle(formData);
+
   return (
     <EditorPanel
-      title="Node Editor"
+      title={title}
       isVisible={isVisible}
       onClose={onClose}
       onApply={handleApply}
