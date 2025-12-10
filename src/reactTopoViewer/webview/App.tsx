@@ -12,6 +12,9 @@ import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel, NodeEditorData } from './components/panels/node-editor';
 import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
+import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
+import { AboutPanel } from './components/panels/AboutPanel';
+import { ShortcutDisplay } from './components/ShortcutDisplay';
 import {
   // Graph hooks
   useContextMenu,
@@ -22,6 +25,7 @@ import {
   useGraphUndoRedoHandlers,
   // UI hooks
   useKeyboardShortcuts,
+  useShortcutDisplay,
   // App state hooks
   useCytoscapeInstance,
   useSelectionData,
@@ -63,8 +67,6 @@ function useNavbarCommandCallbacks() {
   const onToggleSplit = React.useCallback(() => sendCommandToExtension('topo-toggle-split-view'), []);
   const onFindNode = React.useCallback(() => sendCommandToExtension('nav-find-node'), []);
   const onCaptureSvg = React.useCallback(() => sendCommandToExtension('nav-capture-svg'), []);
-  const onShowShortcuts = React.useCallback(() => sendCommandToExtension('nav-show-shortcuts'), []);
-  const onShowAbout = React.useCallback(() => sendCommandToExtension('nav-show-about'), []);
   const onLayoutToggle = React.useCallback(() => {
     sendCommandToExtension('nav-layout-toggle');
   }, []);
@@ -74,9 +76,37 @@ function useNavbarCommandCallbacks() {
     onToggleSplit,
     onFindNode,
     onCaptureSvg,
-    onShowShortcuts,
-    onShowAbout,
     onLayoutToggle
+  };
+}
+
+/**
+ * Hook for managing shortcuts and about panel visibility
+ */
+function usePanelVisibility() {
+  const [showShortcutsPanel, setShowShortcutsPanel] = React.useState(false);
+  const [showAboutPanel, setShowAboutPanel] = React.useState(false);
+
+  const handleShowShortcuts = React.useCallback(() => {
+    setShowAboutPanel(false);
+    setShowShortcutsPanel(prev => !prev);
+  }, []);
+
+  const handleShowAbout = React.useCallback(() => {
+    setShowShortcutsPanel(false);
+    setShowAboutPanel(prev => !prev);
+  }, []);
+
+  const handleCloseShortcuts = React.useCallback(() => setShowShortcutsPanel(false), []);
+  const handleCloseAbout = React.useCallback(() => setShowAboutPanel(false), []);
+
+  return {
+    showShortcutsPanel,
+    showAboutPanel,
+    handleShowShortcuts,
+    handleShowAbout,
+    handleCloseShortcuts,
+    handleCloseAbout
   };
 }
 
@@ -355,6 +385,12 @@ export const App: React.FC = () => {
     canRedo: undoRedo.canRedo
   });
 
+  // Shortcut display hook
+  const shortcutDisplay = useShortcutDisplay();
+
+  // Panel visibility management
+  const panelVisibility = usePanelVisibility();
+
   React.useEffect(() => {
     sendCommandToExtension('toggle-lock-state', { isLocked: state.isLocked });
   }, [state.isLocked]);
@@ -378,8 +414,10 @@ export const App: React.FC = () => {
         onToggleSplit={navbarCommands.onToggleSplit}
         onFindNode={navbarCommands.onFindNode}
         onCaptureViewport={navbarCommands.onCaptureSvg}
-        onShowShortcuts={navbarCommands.onShowShortcuts}
-        onShowAbout={navbarCommands.onShowAbout}
+        onShowShortcuts={panelVisibility.handleShowShortcuts}
+        onShowAbout={panelVisibility.handleShowAbout}
+        shortcutDisplayEnabled={shortcutDisplay.isEnabled}
+        onToggleShortcutDisplay={shortcutDisplay.toggle}
         canUndo={undoRedo.canUndo}
         canRedo={undoRedo.canRedo}
         onUndo={undoRedo.undo}
@@ -426,6 +464,15 @@ export const App: React.FC = () => {
           onAddShapes={floatingPanelCommands.onAddShapes}
           onAddBulkLink={floatingPanelCommands.onAddBulkLink}
         />
+        <ShortcutsPanel
+          isVisible={panelVisibility.showShortcutsPanel}
+          onClose={panelVisibility.handleCloseShortcuts}
+        />
+        <AboutPanel
+          isVisible={panelVisibility.showAboutPanel}
+          onClose={panelVisibility.handleCloseAbout}
+        />
+        <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
       </main>
     </div>
   );

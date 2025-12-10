@@ -23,6 +23,9 @@ interface NavbarProps {
   onCaptureViewport?: () => void;
   onShowShortcuts?: () => void;
   onShowAbout?: () => void;
+  /** Toggle shortcut display props */
+  shortcutDisplayEnabled?: boolean;
+  onToggleShortcutDisplay?: () => void;
   /** Undo/Redo props */
   canUndo?: boolean;
   canRedo?: boolean;
@@ -73,6 +76,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onCaptureViewport,
   onShowShortcuts,
   onShowAbout,
+  shortcutDisplayEnabled = false,
+  onToggleShortcutDisplay,
   canUndo = false,
   canRedo = false,
   onUndo,
@@ -230,6 +235,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-keyboard"
           title="Shortcuts"
           onClick={onShowShortcuts}
+        />
+
+        {/* Toggle Shortcut Display */}
+        <NavButton
+          icon={shortcutDisplayEnabled ? 'fa-eye' : 'fa-eye-slash'}
+          title="Toggle Shortcut Display"
+          onClick={onToggleShortcutDisplay}
+          active={shortcutDisplayEnabled}
         />
 
         {/* About */}
