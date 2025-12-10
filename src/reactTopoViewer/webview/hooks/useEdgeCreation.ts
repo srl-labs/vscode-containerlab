@@ -1,7 +1,7 @@
 /**
  * useEdgeCreation - Hook for edge/link creation via cytoscape-edgehandles
  */
-import { useEffect, useRef, useCallback, RefObject } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import type { Core as CyCore, NodeSingular, EdgeSingular } from 'cytoscape';
 import cytoscape from 'cytoscape';
 import edgehandles from 'cytoscape-edgehandles';
@@ -159,42 +159,41 @@ function getEdgehandlesOptions(cy: CyCore) {
   };
 }
 
+// Scratch key for storing edge creation state on cy instance
+export const EDGE_CREATION_SCRATCH_KEY = '_isCreatingEdge';
+
 /**
- * Setup lifecycle event handlers for edgehandles
+ * Process completed edge creation and notify callback
  */
-function setupLifecycleEvents(
+function processEdgeCreation(
   cy: CyCore,
-  isCreatingEdgeRef: RefObject<boolean>,
+  sourceNode: NodeSingular,
+  targetNode: NodeSingular,
+  addedEdge: EdgeSingular,
   onEdgeCreated?: (sourceId: string, targetId: string, edgeData: EdgeData) => void
 ): void {
-  cy.on('ehstart', () => {
-    isCreatingEdgeRef.current = true;
-    log.debug('[EdgeCreation] Edge creation started');
-  });
+  log.info(`[EdgeCreation] Edge created: ${sourceNode.id()} -> ${targetNode.id()}`);
 
-  cy.on('ehstop ehcancel', () => {
-    isCreatingEdgeRef.current = false;
-    log.debug('[EdgeCreation] Edge creation stopped/cancelled');
-  });
+  if (!onEdgeCreated) return;
 
-  cy.on('ehcomplete', (event, sourceNode: NodeSingular, targetNode: NodeSingular, addedEdge: EdgeSingular) => {
-    log.info(`[EdgeCreation] Edge created: ${sourceNode.id()} -> ${targetNode.id()}`);
+  // Calculate endpoints directly (edgeParams doesn't reliably set data on the edge)
+  const srcEndpoint = getNextEndpoint(cy, sourceNode.id());
+  const tgtEndpoint = getNextEndpoint(cy, targetNode.id());
 
-    if (onEdgeCreated) {
-      const edgeData: EdgeData = {
-        id: addedEdge.id(),
-        source: sourceNode.id(),
-        target: targetNode.id(),
-        sourceEndpoint: addedEdge.data('sourceEndpoint') || '',
-        targetEndpoint: addedEdge.data('targetEndpoint') || ''
-      };
-      onEdgeCreated(sourceNode.id(), targetNode.id(), edgeData);
-    }
+  // Update the edge data with endpoints
+  addedEdge.data('sourceEndpoint', srcEndpoint);
+  addedEdge.data('targetEndpoint', tgtEndpoint);
 
-    setTimeout(() => {
-      isCreatingEdgeRef.current = false;
-    }, 100);
-  });
+  log.info(`[EdgeCreation] Endpoints: ${srcEndpoint} -> ${tgtEndpoint}`);
+
+  const edgeData: EdgeData = {
+    id: addedEdge.id(),
+    source: sourceNode.id(),
+    target: targetNode.id(),
+    sourceEndpoint: srcEndpoint,
+    targetEndpoint: tgtEndpoint
+  };
+  onEdgeCreated(sourceNode.id(), targetNode.id(), edgeData);
 }
 
 // Edgehandles instance type
@@ -204,6 +203,44 @@ type EdgehandlesInstance = {
   start: (node: NodeSingular) => void;
   destroy: () => void;
 };
+
+interface EdgeCreationHandlers {
+  handleStart: () => void;
+  handleStopCancel: () => void;
+  handleComplete: (e: unknown, src: NodeSingular, tgt: NodeSingular, edge: EdgeSingular) => void;
+}
+
+/**
+ * Create lifecycle event handlers for edgehandles
+ */
+function createLifecycleHandlers(
+  cy: CyCore,
+  isCreatingEdgeRef: { current: boolean },
+  onEdgeCreatedRef: { current: EdgeCreationOptions['onEdgeCreated'] }
+): EdgeCreationHandlers {
+  return {
+    handleStart: () => {
+      isCreatingEdgeRef.current = true;
+      cy.scratch(EDGE_CREATION_SCRATCH_KEY, true);
+      log.debug('[EdgeCreation] Edge creation started');
+    },
+    handleStopCancel: () => {
+      setTimeout(() => {
+        isCreatingEdgeRef.current = false;
+        cy.scratch(EDGE_CREATION_SCRATCH_KEY, false);
+        log.debug('[EdgeCreation] Edge creation stopped/cancelled');
+      }, 200);
+    },
+    handleComplete: (_event: unknown, sourceNode: NodeSingular, targetNode: NodeSingular, addedEdge: EdgeSingular) => {
+      processEdgeCreation(cy, sourceNode, targetNode, addedEdge, onEdgeCreatedRef.current);
+      setTimeout(() => {
+        isCreatingEdgeRef.current = false;
+        cy.scratch(EDGE_CREATION_SCRATCH_KEY, false);
+        log.debug('[EdgeCreation] Edge creation flag cleared');
+      }, 200);
+    }
+  };
+}
 
 /**
  * Hook for managing edge creation via edgehandles
@@ -218,6 +255,10 @@ export function useEdgeCreation(
   const ehRef = useRef<EdgehandlesInstance | null>(null);
   const isCreatingEdgeRef = useRef(false);
 
+  // Store onEdgeCreated in a ref to avoid re-initializing edgehandles when callback changes
+  const onEdgeCreatedRef = useRef(options.onEdgeCreated);
+  onEdgeCreatedRef.current = options.onEdgeCreated;
+
   // Initialize edgehandles
   useEffect(() => {
     if (!cyInstance || options.mode !== 'edit') return;
@@ -229,17 +270,23 @@ export function useEdgeCreation(
     ehRef.current = eh;
     eh.enable();
 
-    setupLifecycleEvents(cyInstance, isCreatingEdgeRef, options.onEdgeCreated);
+    const handlers = createLifecycleHandlers(cyInstance, isCreatingEdgeRef, onEdgeCreatedRef);
+    cyInstance.on('ehstart', handlers.handleStart);
+    cyInstance.on('ehstop ehcancel', handlers.handleStopCancel);
+    cyInstance.on('ehcomplete', handlers.handleComplete as unknown as cytoscape.EventHandler);
 
     log.info('[EdgeCreation] Edgehandles initialized');
 
     return () => {
+      cyInstance.off('ehstart', handlers.handleStart);
+      cyInstance.off('ehstop ehcancel', handlers.handleStopCancel);
+      cyInstance.off('ehcomplete', handlers.handleComplete as unknown as cytoscape.EventHandler);
       if (ehRef.current) {
         ehRef.current.destroy();
         ehRef.current = null;
       }
     };
-  }, [cyInstance, options.mode, options.onEdgeCreated]);
+  }, [cyInstance, options.mode]);
 
   // Enable/disable based on mode and lock state
   useEffect(() => {

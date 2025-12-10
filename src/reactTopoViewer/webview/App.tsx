@@ -240,7 +240,7 @@ function useNodeCreationHandlers(
 }
 
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, removeNodeAndEdges, removeEdge } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -273,11 +273,19 @@ export const App: React.FC = () => {
   const linkEditorHandlers = useLinkEditorHandlers(editEdge);
 
   // Edge creation handler
-  const handleEdgeCreated = React.useCallback((sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
+  const handleEdgeCreated = React.useCallback((_sourceId: string, _targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
+    addEdge({
+      group: 'edges',
+      data: {
+        id: edgeData.id,
+        source: edgeData.source,
+        target: edgeData.target,
+        sourceEndpoint: edgeData.sourceEndpoint,
+        targetEndpoint: edgeData.targetEndpoint
+      }
+    });
     sendCommandToExtension('create-link', { linkData: edgeData });
-    // Optionally open the link editor for the new edge
-    editEdge(edgeData.id);
-  }, [editEdge]);
+  }, [addEdge]);
 
   // Set up edge creation via edgehandles
   const { startEdgeCreation } = useEdgeCreation(cyInstance, {

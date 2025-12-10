@@ -263,6 +263,33 @@ const cytoscapeStyles: cytoscape.StylesheetCSS[] = [
   ...cytoscapeStylesBase.slice(4) // edge styles and rest
 ];
 
+// Scratch key for edge creation state (must match useEdgeCreation.ts)
+const EDGE_CREATION_SCRATCH_KEY = '_isCreatingEdge';
+// Scratch key for context menu state (must match useContextMenu.ts)
+const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
+
+/**
+ * Check if edge creation is in progress
+ */
+function isCreatingEdge(cy: Core): boolean {
+  return cy.scratch(EDGE_CREATION_SCRATCH_KEY) === true;
+}
+
+/**
+ * Check if context menu is active
+ */
+function isContextMenuActive(cy: Core): boolean {
+  return cy.scratch(CONTEXT_MENU_SCRATCH_KEY) === true;
+}
+
+/**
+ * Check if event is a right-click (context menu)
+ */
+function isRightClick(evt: cytoscape.EventObject): boolean {
+  const originalEvent = evt.originalEvent as MouseEvent;
+  return originalEvent?.button === 2;
+}
+
 /**
  * Setup Cytoscape event handlers
  */
@@ -272,6 +299,14 @@ function setupEventHandlers(
   selectEdge: (edgeId: string | null) => void
 ): void {
   cy.on('tap', 'node', (evt) => {
+    // Skip selection during edge creation or context menu interaction
+    if (isCreatingEdge(cy) || isContextMenuActive(cy)) {
+      return;
+    }
+    // Skip selection on right-click (context menu)
+    if (isRightClick(evt)) {
+      return;
+    }
     const originalEvent = evt.originalEvent as MouseEvent;
     // If shift is held, let Cytoscape handle multi-selection
     // Don't update React single-selection state
@@ -282,6 +317,14 @@ function setupEventHandlers(
   });
 
   cy.on('tap', 'edge', (evt) => {
+    // Skip selection during edge creation or context menu interaction
+    if (isCreatingEdge(cy) || isContextMenuActive(cy)) {
+      return;
+    }
+    // Skip selection on right-click (context menu)
+    if (isRightClick(evt)) {
+      return;
+    }
     const originalEvent = evt.originalEvent as MouseEvent;
     // If shift is held, let Cytoscape handle multi-selection
     if (originalEvent?.shiftKey) {
@@ -481,19 +524,24 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     const containerRef = useRef<HTMLDivElement>(null);
     const cyRef = useRef<Core | null>(null);
     const { selectNode, selectEdge } = useTopoViewer();
+    const initialElementsRef = useRef<CyElement[] | null>(null);
+
+    if (initialElementsRef.current === null) {
+      initialElementsRef.current = elements;
+    }
 
     // Expose methods via ref
     useImperativeHandle(ref, () => createRefMethods(cyRef), []);
 
     // Initialize Cytoscape
-    const initCytoscape = useCallback(() => {
+    const initCytoscape = useCallback((initialElements: CyElement[]) => {
       if (!containerRef.current) return;
       ensureGridGuideRegistered();
 
       const container = containerRef.current;
       const rect = container.getBoundingClientRect();
       log.info(`[CytoscapeCanvas] Container size: ${rect.width}x${rect.height}`);
-      log.info(`[CytoscapeCanvas] Initializing with ${elements.length} elements`);
+      log.info(`[CytoscapeCanvas] Initializing with ${initialElements.length} elements`);
 
       // If container has no size, wait for layout
       if (rect.width === 0 || rect.height === 0) {
@@ -503,10 +551,10 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       }
 
       // Check if elements have preset positions from annotations
-      const usePresetLayout = hasPresetPositions(elements);
+      const usePresetLayout = hasPresetPositions(initialElements);
       log.info(`[CytoscapeCanvas] Preset positions detected: ${usePresetLayout}`);
 
-      const cy = cytoscape(createCytoscapeConfig(container, elements));
+      const cy = cytoscape(createCytoscapeConfig(container, initialElements));
 
       cyRef.current = cy;
       cy.userZoomingEnabled(false);
@@ -521,10 +569,10 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
         cy.destroy();
         cyRef.current = null;
       };
-    }, [selectNode, selectEdge, elements]);
+    }, [selectNode, selectEdge]);
 
     useEffect(() => {
-      const cleanup = initCytoscape();
+      const cleanup = initCytoscape(initialElementsRef.current ?? []);
       return cleanup;
     }, [initCytoscape]);
 

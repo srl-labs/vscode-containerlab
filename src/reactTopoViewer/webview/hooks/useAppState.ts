@@ -471,12 +471,25 @@ export function useContextMenuHandlers(
   }, [selectNode, removeNodeAndEdges, cytoscapeRef]);
 
   const handleDeleteLink = useCallback((edgeId: string) => {
-    sendCommandToExtension('panel-delete-link', { edgeId });
-    removeEdge(edgeId);
     const cy = cytoscapeRef.current?.getCy();
     if (cy) {
-      cy.getElementById(edgeId).remove();
+      // Get edge data before removing so we can send it to the extension for YAML deletion
+      const edge = cy.getElementById(edgeId);
+      if (edge.length > 0) {
+        const edgeData = edge.data();
+        sendCommandToExtension('panel-delete-link', {
+          edgeId,
+          linkData: {
+            source: edgeData.source,
+            target: edgeData.target,
+            sourceEndpoint: edgeData.sourceEndpoint || '',
+            targetEndpoint: edgeData.targetEndpoint || ''
+          }
+        });
+        edge.remove();
+      }
     }
+    removeEdge(edgeId);
     selectEdge(null);
   }, [selectEdge, removeEdge, cytoscapeRef]);
 

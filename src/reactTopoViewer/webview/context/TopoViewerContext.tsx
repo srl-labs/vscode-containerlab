@@ -85,6 +85,7 @@ type TopoViewerAction =
   | { type: 'TOGGLE_DUMMY_LINKS' }
   | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
   | { type: 'ADD_NODE'; payload: CyElement }
+  | { type: 'ADD_EDGE'; payload: CyElement }
   | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
   | { type: 'REMOVE_EDGE'; payload: string };
 
@@ -115,6 +116,17 @@ const reducerHandlers: ReducerHandlers = {
     ...state,
     elements: [...state.elements, action.payload]
   }),
+  ADD_EDGE: (state, action) => {
+    const edge = action.payload;
+    if (edge.group !== 'edges') return state;
+    const edgeId = (edge.data as any)?.id;
+    const exists = state.elements.some(el => el.group === 'edges' && (el.data as any)?.id === edgeId);
+    if (exists) return state;
+    return {
+      ...state,
+      elements: [...state.elements, edge]
+    };
+  },
   REMOVE_NODE_AND_EDGES: (state, action) => {
     const nodeId = action.payload;
     const filteredElements = state.elements.filter(el => {
@@ -176,6 +188,7 @@ interface TopoViewerContextValue {
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
   addNode: (node: CyElement) => void;
+  addEdge: (edge: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
 }
@@ -241,7 +254,7 @@ function handlePanelAction(message: ExtensionMessage, dispatch: React.Dispatch<T
     return;
   }
 
-  const nodeSelectActions = new Set(['node-info', 'start-link']);
+  const nodeSelectActions = new Set(['node-info']);
   const edgeSelectActions = new Set(['link-info']);
 
   if (nodeSelectActions.has(action) && nodeId) {
@@ -323,6 +336,10 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'ADD_NODE', payload: node });
   }, [dispatch]);
 
+  const addEdge = useCallback((edge: CyElement) => {
+    dispatch({ type: 'ADD_EDGE', payload: edge });
+  }, [dispatch]);
+
   const removeNodeAndEdges = useCallback((nodeId: string) => {
     dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
   }, [dispatch]);
@@ -342,6 +359,7 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setLinkLabelMode,
     toggleDummyLinks,
     addNode,
+    addEdge,
     removeNodeAndEdges,
     removeEdge
   };

@@ -219,6 +219,9 @@ type CxtmenuInstance = { destroy: () => void };
 /** Cytoscape with cxtmenu extension */
 type CyWithCxtmenu = Core & { cxtmenu: (cfg: unknown) => CxtmenuInstance };
 
+// Scratch key for tracking context menu state
+export const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
+
 /**
  * Register node context menu
  */
@@ -285,6 +288,20 @@ export function useContextMenu(cy: Core | null, options: ContextMenuOptions): vo
     const menus: CxtmenuInstance[] = [];
     const cyExt = cy as CyWithCxtmenu;
 
+    // Set up context menu state tracking
+    const handleMenuOpen = () => {
+      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
+    };
+    const handleMenuClose = () => {
+      // Delay clearing the flag to prevent tap events from firing after menu action
+      setTimeout(() => {
+        cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
+      }, 100);
+    };
+
+    cy.on('cxttapstart', handleMenuOpen);
+    cy.on('cxttapend', handleMenuClose);
+
     const nodeMenu = registerNodeMenu(cyExt, getNodeMenuItems());
     if (nodeMenu) menus.push(nodeMenu);
 
@@ -292,6 +309,9 @@ export function useContextMenu(cy: Core | null, options: ContextMenuOptions): vo
     if (edgeMenu) menus.push(edgeMenu);
 
     return () => {
+      cy.off('cxttapstart', handleMenuOpen);
+      cy.off('cxttapend', handleMenuClose);
+      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
       menus.forEach(menu => {
         try {
           menu.destroy();

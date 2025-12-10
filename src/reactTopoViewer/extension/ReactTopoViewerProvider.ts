@@ -382,10 +382,12 @@ export class ReactTopoViewer {
     const edgeId = this.getEdgeIdFromMessage(message);
     if (!edgeId) return;
 
-    // Find the edge data for YAML deletion
+    // Get link data from message (sent by webview) or fall back to cached edge
+    const msgLinkData = (message as unknown as { linkData?: Record<string, unknown> }).linkData;
     const edge = this.findCachedEdge(edgeId);
-    if (edge && !this.isViewMode && saveTopologyService.isInitialized()) {
-      const edgeData = edge.data as Record<string, unknown>;
+    const edgeData = msgLinkData || (edge?.data as Record<string, unknown>);
+
+    if (edgeData && !this.isViewMode && saveTopologyService.isInitialized()) {
       const linkData: LinkSaveData = {
         id: edgeId,
         source: String(edgeData.source || ''),
@@ -393,6 +395,7 @@ export class ReactTopoViewer {
         sourceEndpoint: String(edgeData.sourceEndpoint || ''),
         targetEndpoint: String(edgeData.targetEndpoint || '')
       };
+      log.info(`[ReactTopoViewer] Deleting link: ${linkData.source}:${linkData.sourceEndpoint} <-> ${linkData.target}:${linkData.targetEndpoint}`);
       const result = await saveTopologyService.deleteLink(linkData);
       if (!result.success) {
         log.error(`[ReactTopoViewer] Failed to delete link from YAML: ${result.error}`);
@@ -509,6 +512,8 @@ export class ReactTopoViewer {
       return;
     }
 
+    log.info(`[ReactTopoViewer] Received link data: ${JSON.stringify(msg.linkData)}`);
+
     const linkData: LinkSaveData = {
       id: String(msg.linkData.id || ''),
       source: String(msg.linkData.source || ''),
@@ -517,6 +522,8 @@ export class ReactTopoViewer {
       targetEndpoint: String(msg.linkData.targetEndpoint || ''),
       extraData: msg.linkData.extraData as LinkSaveData['extraData']
     };
+
+    log.info(`[ReactTopoViewer] Creating link with endpoints: ${linkData.source}:${linkData.sourceEndpoint} <-> ${linkData.target}:${linkData.targetEndpoint}`);
 
     const result = await saveTopologyService.addLink(linkData);
     if (result.success) {
