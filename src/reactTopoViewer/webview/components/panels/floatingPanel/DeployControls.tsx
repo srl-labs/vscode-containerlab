@@ -1,0 +1,116 @@
+/**
+ * Deploy button controls and drawer for FloatingActionPanel
+ */
+import React from 'react';
+
+/**
+ * Panel Button Component
+ */
+interface PanelButtonProps {
+  icon: string;
+  tooltip: string;
+  onClick?: (e: React.MouseEvent) => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'danger';
+}
+
+export const PanelButton: React.FC<PanelButtonProps> = ({
+  icon,
+  tooltip,
+  onClick,
+  disabled = false,
+  variant = 'secondary'
+}) => {
+  const getClass = () => {
+    if (disabled) return 'floating-panel-btn disabled';
+    if (variant === 'primary') return 'floating-panel-btn primary';
+    if (variant === 'danger') return 'floating-panel-btn danger';
+    return 'floating-panel-btn';
+  };
+
+  return (
+    <button className={getClass()} title={tooltip} onClick={onClick} disabled={disabled}>
+      <i className={`fas ${icon}`}></i>
+    </button>
+  );
+};
+
+/**
+ * Drawer Button Component
+ */
+interface DrawerButtonProps {
+  icon: string;
+  tooltip: string;
+  onClick?: () => void;
+  variant?: 'default' | 'danger';
+}
+
+export const DrawerButton: React.FC<DrawerButtonProps> = ({
+  icon,
+  tooltip,
+  onClick,
+  variant = 'default'
+}) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick?.();
+  };
+
+  return (
+    <button
+      className={`floating-panel-btn ${variant === 'danger' ? 'danger' : ''}`}
+      title={tooltip}
+      onClick={handleClick}
+    >
+      <i className={`fas ${icon}`}></i>
+    </button>
+  );
+};
+
+/**
+ * Deploy Button Group with hover drawer
+ */
+interface DeployButtonGroupProps {
+  isViewerMode: boolean;
+  drawerSide: 'left' | 'right';
+  onDeployClick: () => void;
+  onDeployCleanup?: () => void;
+  onDestroyCleanup?: () => void;
+  onRedeploy?: () => void;
+  onRedeployCleanup?: () => void;
+}
+
+export const DeployButtonGroup: React.FC<DeployButtonGroupProps> = ({
+  isViewerMode,
+  drawerSide,
+  onDeployClick,
+  onDeployCleanup,
+  onDestroyCleanup,
+  onRedeploy,
+  onRedeployCleanup
+}) => {
+  return (
+    <div className={`deploy-button-group drawer-${drawerSide}`}>
+      <button
+        className="floating-panel-btn primary"
+        title={isViewerMode ? 'Destroy Lab' : 'Deploy Lab'}
+        onClick={onDeployClick}
+      >
+        <i className={`fas ${isViewerMode ? 'fa-stop' : 'fa-play'}`}></i>
+      </button>
+
+      <div className="deploy-drawer">
+        {!isViewerMode && (
+          <DrawerButton icon="fa-broom" tooltip="Deploy (cleanup)" onClick={onDeployCleanup} variant="danger" />
+        )}
+        {isViewerMode && (
+          <>
+            <DrawerButton icon="fa-broom" tooltip="Destroy (cleanup)" onClick={onDestroyCleanup} variant="danger" />
+            <DrawerButton icon="fa-redo" tooltip="Redeploy" onClick={onRedeploy} />
+            <DrawerButton icon="fa-redo" tooltip="Redeploy (cleanup)" onClick={onRedeployCleanup} variant="danger" />
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
