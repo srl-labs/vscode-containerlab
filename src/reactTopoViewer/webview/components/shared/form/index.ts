@@ -9,3 +9,4 @@ export { ColorField } from './ColorField';
 export { DynamicList } from './DynamicList';
 export { KeyValueList } from './KeyValueList';
 export { Section } from './Section';
+export { FilterableDropdown, type FilterableDropdownOption } from './FilterableDropdown';

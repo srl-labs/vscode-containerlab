@@ -18,6 +18,7 @@ export interface NodeEditorData {
   version?: string;
   icon?: string;
   iconColor?: string;
+  iconCornerRadius?: number;
   // Custom node settings
   customName?: string;
   baseName?: string;
