@@ -4,7 +4,8 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useTopoViewer, LinkLabelMode } from '../../context/TopoViewerContext';
-import { LayoutOption, DEFAULT_GRID_LINE_WIDTH } from '../../hooks/useAppState';
+import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks';
+import type { LayoutOption } from '../../hooks';
 
 interface NavbarProps {
   onZoomToFit?: () => void;

@@ -5,7 +5,7 @@
 import { useEffect, useCallback } from 'react';
 import cytoscape, { Core } from 'cytoscape';
 import cxtmenu from 'cytoscape-cxtmenu';
-import { log } from '../utils/logger';
+import { log } from '../../utils/logger';
 
 // Register the extension once
 let cxtmenuRegistered = false;

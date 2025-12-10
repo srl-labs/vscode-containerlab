@@ -4,7 +4,7 @@
  * Schema data is loaded by the extension and passed via window.__SCHEMA_DATA__
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { log } from '../utils/logger';
+import { log } from '../../utils/logger';
 
 // Extend Window to include schema data
 declare global {

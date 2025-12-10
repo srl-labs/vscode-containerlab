@@ -10,8 +10,7 @@ import { TabProps } from './types';
 import { FormField, InputField, CheckboxField, Section, FilterableDropdown } from '../../shared/form';
 import { IconSelectorModal } from '../../shared/IconSelectorModal';
 import { generateEncodedSVG, NodeType } from '../../../utils/SvgGenerator';
-import { useSchema } from '../../../hooks/useSchema';
-import { useDockerImages } from '../../../hooks/useDockerImages';
+import { useSchema, useDockerImages } from '../../../hooks';
 
 const DEFAULT_ICON_COLOR = '#1a73e8';
 

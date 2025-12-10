@@ -4,7 +4,7 @@
 
 import { ClabNode, CyElement, ClabTopology } from '../../shared/types/topology';
 import { ClabLabTreeNode, ClabContainerTreeNode } from '../../../treeView/common';
-import { resolveNodeConfig } from './nodeConfig';
+import { resolveNodeConfig } from './NodeConfig';
 import { findContainerNode } from './TreeUtils';
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkParser';
 import { findDistributedSrosContainer, isDistributedSrosNode } from './DistributedSrosHandler';

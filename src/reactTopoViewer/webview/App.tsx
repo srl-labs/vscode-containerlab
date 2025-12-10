@@ -12,20 +12,24 @@ import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel, NodeEditorData } from './components/panels/node-editor';
 import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
-import { useContextMenu } from './hooks/useContextMenu';
-import { useNodeDragging } from './hooks/useNodeDragging';
-import { useEdgeCreation } from './hooks/useEdgeCreation';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { NodePositionEntry } from './hooks/useUndoRedo';
-import { useGraphUndoRedoHandlers } from './hooks/useGraphUndoRedoHandlers';
-import { useNodeCreation } from './hooks/useNodeCreation';
 import {
+  // Graph hooks
+  useContextMenu,
+  useNodeDragging,
+  useEdgeCreation,
+  useNodeCreation,
+  // State hooks
+  useGraphUndoRedoHandlers,
+  // UI hooks
+  useKeyboardShortcuts,
+  // App state hooks
   useCytoscapeInstance,
   useSelectionData,
   useNavbarActions,
   useContextMenuHandlers,
   useLayoutControls
-} from './hooks/useAppState';
+} from './hooks';
+import type { NodePositionEntry } from './hooks';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 

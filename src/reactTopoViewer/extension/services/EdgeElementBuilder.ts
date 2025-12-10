@@ -5,7 +5,7 @@
 import { log } from './logger';
 import { ClabNode, CyElement, ClabTopology } from '../../shared/types/topology';
 import { ClabLabTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
-import { resolveNodeConfig } from './nodeConfig';
+import { resolveNodeConfig } from './NodeConfig';
 import { findInterfaceNode } from './TreeUtils';
 import {
   TYPES,

@@ -4,8 +4,8 @@
  */
 import React, { useReducer, useCallback, useMemo } from 'react';
 import { Core } from 'cytoscape';
-import { CyElement } from '../../shared/types/messages';
-import { log } from '../utils/logger';
+import { CyElement } from '../../../shared/types/messages';
+import { log } from '../../utils/logger';
 
 /**
  * VS Code API interface for posting messages

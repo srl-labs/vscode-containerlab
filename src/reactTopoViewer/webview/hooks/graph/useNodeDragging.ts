@@ -4,8 +4,8 @@
  */
 import { useEffect, useCallback, useRef } from 'react';
 import { Core, NodeSingular, EventObject } from 'cytoscape';
-import { log } from '../utils/logger';
-import { NodePositionEntry } from './useUndoRedo';
+import { log } from '../../utils/logger';
+import type { NodePositionEntry } from '../state/useUndoRedo';
 
 /**
  * VS Code API interface for posting messages

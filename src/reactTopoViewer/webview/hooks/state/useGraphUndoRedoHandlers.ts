@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { CyElement } from '../../shared/types/messages';
-import { sendCommandToExtension } from '../utils/extensionMessaging';
+import { CyElement } from '../../../shared/types/messages';
+import { sendCommandToExtension } from '../../utils/extensionMessaging';
 import { GraphChange, useUndoRedo } from './useUndoRedo';
 
 interface MenuHandlers {

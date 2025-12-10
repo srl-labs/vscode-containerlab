@@ -5,7 +5,7 @@
  * Updates are received via the 'docker-images-updated' custom event
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { log } from '../utils/logger';
+import { log } from '../../utils/logger';
 
 // Extend Window to include docker images
 declare global {
