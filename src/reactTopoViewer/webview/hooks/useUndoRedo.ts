@@ -4,6 +4,7 @@
  */
 import React, { useReducer, useCallback, useMemo } from 'react';
 import { Core } from 'cytoscape';
+import { CyElement } from '../../shared/types/messages';
 import { log } from '../utils/logger';
 
 /**
@@ -24,13 +25,33 @@ export interface NodePositionEntry {
 /**
  * Represents a single undo/redo action
  */
-export interface UndoRedoAction {
+type GraphEntity = 'node' | 'edge';
+type GraphChangeKind = 'add' | 'delete' | 'update';
+
+export interface GraphChange {
+  entity: GraphEntity;
+  kind: GraphChangeKind;
+  before?: CyElement;
+  after?: CyElement;
+}
+
+export interface UndoRedoActionMove {
   type: 'move';
   /** Positions before the action (for undo) */
   before: NodePositionEntry[];
   /** Positions after the action (for redo) */
   after: NodePositionEntry[];
 }
+
+export interface UndoRedoActionGraph {
+  type: 'graph';
+  /** Graph changes to apply on undo */
+  before: GraphChange[];
+  /** Graph changes to apply on redo */
+  after: GraphChange[];
+}
+
+export type UndoRedoAction = UndoRedoActionMove | UndoRedoActionGraph;
 
 /**
  * State shape for the undo/redo system
@@ -134,6 +155,8 @@ export interface UseUndoRedoOptions {
   cy: Core | null;
   /** Whether undo/redo is enabled (typically only in edit mode) */
   enabled?: boolean;
+  /** Apply graph changes for non-position actions (create/delete/update) */
+  applyGraphChanges?: (changes: GraphChange[]) => void;
 }
 
 /**
@@ -184,7 +207,8 @@ function usePushAction(enabled: boolean, dispatch: React.Dispatch<UndoRedoReduce
   return useCallback((action: UndoRedoAction) => {
     if (!enabled) return;
     dispatch({ type: 'PUSH', action });
-    log.info(`[UndoRedo] Pushed action: ${action.type} for ${action.after.length} node(s)`);
+    const count = action.type === 'move' ? action.after.length : action.after?.length ?? 0;
+    log.info(`[UndoRedo] Pushed action: ${action.type} for ${count} item(s)`);
   }, [enabled, dispatch]);
 }
 
@@ -193,16 +217,22 @@ function useUndoAction(
   canUndo: boolean,
   cy: Core | null,
   past: UndoRedoAction[],
-  dispatch: React.Dispatch<UndoRedoReducerAction>
+  dispatch: React.Dispatch<UndoRedoReducerAction>,
+  applyGraphChanges?: (changes: GraphChange[]) => void
 ) {
   return useCallback(() => {
     if (!canUndo || !cy) return;
     const lastAction = past[past.length - 1];
-    log.info(`[UndoRedo] Undoing ${lastAction.type} for ${lastAction.before.length} node(s)`);
-    applyPositionsToGraph(cy, lastAction.before);
-    sendPositionsToExtension(lastAction.before);
+    if (lastAction.type === 'move') {
+      log.info(`[UndoRedo] Undoing move for ${lastAction.before.length} node(s)`);
+      applyPositionsToGraph(cy, lastAction.before);
+      sendPositionsToExtension(lastAction.before);
+    } else if (lastAction.type === 'graph') {
+      log.info(`[UndoRedo] Undoing graph action with ${lastAction.before.length} change(s)`);
+      applyGraphChanges?.(lastAction.before);
+    }
     dispatch({ type: 'UNDO' });
-  }, [canUndo, cy, past, dispatch]);
+  }, [canUndo, cy, past, dispatch, applyGraphChanges]);
 }
 
 /** Helper hook for redo operation */
@@ -210,22 +240,28 @@ function useRedoAction(
   canRedo: boolean,
   cy: Core | null,
   future: UndoRedoAction[],
-  dispatch: React.Dispatch<UndoRedoReducerAction>
+  dispatch: React.Dispatch<UndoRedoReducerAction>,
+  applyGraphChanges?: (changes: GraphChange[]) => void
 ) {
   return useCallback(() => {
     if (!canRedo || !cy) return;
     const nextAction = future[0];
-    log.info(`[UndoRedo] Redoing ${nextAction.type} for ${nextAction.after.length} node(s)`);
-    applyPositionsToGraph(cy, nextAction.after);
-    sendPositionsToExtension(nextAction.after);
+    if (nextAction.type === 'move') {
+      log.info(`[UndoRedo] Redoing move for ${nextAction.after.length} node(s)`);
+      applyPositionsToGraph(cy, nextAction.after);
+      sendPositionsToExtension(nextAction.after);
+    } else if (nextAction.type === 'graph') {
+      log.info(`[UndoRedo] Redoing graph action with ${nextAction.after.length} change(s)`);
+      applyGraphChanges?.(nextAction.after);
+    }
     dispatch({ type: 'REDO' });
-  }, [canRedo, cy, future, dispatch]);
+  }, [canRedo, cy, future, dispatch, applyGraphChanges]);
 }
 
 /**
  * Hook for managing undo/redo functionality for node positions
  */
-export function useUndoRedo({ cy, enabled = true }: UseUndoRedoOptions): UseUndoRedoReturn {
+export function useUndoRedo({ cy, enabled = true, applyGraphChanges }: UseUndoRedoOptions): UseUndoRedoReturn {
   const [state, dispatch] = useReducer(undoRedoReducer, initialState);
 
   const canUndo = enabled && state.past.length > 0;
@@ -233,8 +269,8 @@ export function useUndoRedo({ cy, enabled = true }: UseUndoRedoOptions): UseUndo
 
   const capturePositions = useCapturePositions(cy);
   const pushAction = usePushAction(enabled, dispatch);
-  const undo = useUndoAction(canUndo, cy, state.past, dispatch);
-  const redo = useRedoAction(canRedo, cy, state.future, dispatch);
+  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges);
+  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges);
 
   const recordMove = useCallback((nodeIds: string[], beforePositions: NodePositionEntry[]) => {
     if (!enabled || !cy) return;

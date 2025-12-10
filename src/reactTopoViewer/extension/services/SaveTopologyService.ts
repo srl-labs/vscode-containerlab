@@ -838,6 +838,31 @@ export class SaveTopologyService {
   private doc: YAML.Document.Parsed | null = null;
   private yamlFilePath: string = '';
   private setInternalUpdate?: (updating: boolean) => void;
+  private batchDepth = 0;
+  private pendingSave = false;
+
+  beginBatch(): void {
+    this.batchDepth += 1;
+  }
+
+  async endBatch(): Promise<SaveResult> {
+    if (this.batchDepth > 0) {
+      this.batchDepth -= 1;
+    }
+    if (this.batchDepth === 0 && this.pendingSave) {
+      this.pendingSave = false;
+      return this.save();
+    }
+    return { success: true };
+  }
+
+  private async saveMaybeDeferred(): Promise<SaveResult> {
+    if (this.batchDepth > 0) {
+      this.pendingSave = true;
+      return { success: true };
+    }
+    return this.save();
+  }
 
   /**
    * Initializes the service with a YAML document
@@ -869,7 +894,7 @@ export class SaveTopologyService {
 
     const result = await addNode(this.doc, nodeData, this.yamlFilePath);
     if (result.success) {
-      await this.save();
+      await this.saveMaybeDeferred();
     }
     return result;
   }
@@ -885,7 +910,7 @@ export class SaveTopologyService {
     const topoObj = this.doc.toJS() as ClabTopology;
     const result = editNode(this.doc, nodeData, topoObj);
     if (result.success) {
-      await this.save();
+      await this.saveMaybeDeferred();
     }
     return result;
   }
@@ -900,7 +925,7 @@ export class SaveTopologyService {
 
     const result = deleteNode(this.doc, nodeId);
     if (result.success) {
-      await this.save();
+      await this.saveMaybeDeferred();
 
       // Also remove from annotations
       await annotationsManager.loadAnnotations(this.yamlFilePath).then(async annotations => {
@@ -923,7 +948,7 @@ export class SaveTopologyService {
 
     const result = addLink(this.doc, linkData);
     if (result.success) {
-      await this.save();
+      await this.saveMaybeDeferred();
     }
     return result;
   }
@@ -938,7 +963,7 @@ export class SaveTopologyService {
 
     const result = editLink(this.doc, linkData);
     if (result.success) {
-      await this.save();
+      await this.saveMaybeDeferred();
     }
     return result;
   }
@@ -953,7 +978,7 @@ export class SaveTopologyService {
 
     const result = deleteLink(this.doc, linkData);
     if (result.success) {
-      await this.save();
+      await this.saveMaybeDeferred();
     }
     return result;
   }

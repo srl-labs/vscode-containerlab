@@ -16,7 +16,8 @@ import { useContextMenu } from './hooks/useContextMenu';
 import { useNodeDragging } from './hooks/useNodeDragging';
 import { useEdgeCreation } from './hooks/useEdgeCreation';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { useUndoRedo, NodePositionEntry } from './hooks/useUndoRedo';
+import { NodePositionEntry } from './hooks/useUndoRedo';
+import { useGraphUndoRedoHandlers } from './hooks/useGraphUndoRedoHandlers';
 import { useNodeCreation } from './hooks/useNodeCreation';
 import {
   useCytoscapeInstance,
@@ -246,12 +247,6 @@ export const App: React.FC = () => {
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
 
-  // Undo/Redo for node position changes
-  const undoRedo = useUndoRedo({
-    cy: cyInstance,
-    enabled: state.mode === 'edit'
-  });
-
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
@@ -272,20 +267,19 @@ export const App: React.FC = () => {
   const nodeEditorHandlers = useNodeEditorHandlers(editNode);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge);
 
-  // Edge creation handler
-  const handleEdgeCreated = React.useCallback((_sourceId: string, _targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
-    addEdge({
-      group: 'edges',
-      data: {
-        id: edgeData.id,
-        source: edgeData.source,
-        target: edgeData.target,
-        sourceEndpoint: edgeData.sourceEndpoint,
-        targetEndpoint: edgeData.targetEndpoint
-      }
-    });
-    sendCommandToExtension('create-link', { linkData: edgeData });
-  }, [addEdge]);
+  const {
+    undoRedo,
+    handleEdgeCreated,
+    handleNodeCreatedCallback,
+    handleDeleteNodeWithUndo,
+    handleDeleteLinkWithUndo
+  } = useGraphUndoRedoHandlers({
+    cyInstance,
+    mode: state.mode,
+    addNode,
+    addEdge,
+    menuHandlers
+  });
 
   // Set up edge creation via edgehandles
   const { startEdgeCreation } = useEdgeCreation(cyInstance, {
@@ -307,17 +301,6 @@ export const App: React.FC = () => {
     defaultNode: state.defaultNode
   };
 
-  // Set up node creation via Shift+Click on canvas - returns createNodeAtPosition
-  const handleNodeCreatedCallback = React.useCallback((
-    nodeId: string,
-    nodeElement: CyElement,
-    position: Position
-  ) => {
-    addNode(nodeElement);
-    sendCommandToExtension('save-node-positions', { positions: [{ id: nodeId, position }] });
-    sendCommandToExtension('create-node', { nodeId, nodeData: nodeElement.data, position });
-  }, [addNode]);
-
   const { createNodeAtPosition } = useNodeCreation(cyInstance, {
     mode: state.mode,
     isLocked: state.isLocked,
@@ -337,10 +320,10 @@ export const App: React.FC = () => {
     mode: state.mode,
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
-    onDeleteNode: menuHandlers.handleDeleteNode,
+    onDeleteNode: handleDeleteNodeWithUndo,
     onCreateLinkFromNode: handleCreateLinkFromNode,
     onEditLink: menuHandlers.handleEditLink,
-    onDeleteLink: menuHandlers.handleDeleteLink,
+    onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
     onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
@@ -375,8 +358,8 @@ export const App: React.FC = () => {
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
     cyInstance,
-    onDeleteNode: menuHandlers.handleDeleteNode,
-    onDeleteEdge: menuHandlers.handleDeleteLink,
+    onDeleteNode: handleDeleteNodeWithUndo,
+    onDeleteEdge: handleDeleteLinkWithUndo,
     onDeselectAll: handleDeselectAll,
     onUndo: undoRedo.undo,
     onRedo: undoRedo.redo,

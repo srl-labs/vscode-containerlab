@@ -835,6 +835,8 @@ export class ReactTopoViewer {
     const { command } = message;
     if (!command) return false;
 
+    if (await this.handleGraphBatchCommand(command)) return true;
+
     // YAML save commands
     if (command === 'create-node') {
       await this.handleCreateNode(message);
@@ -888,6 +890,24 @@ export class ReactTopoViewer {
     }
 
     return this.handlePlaceholderCommand(command);
+  }
+
+  private async handleGraphBatchCommand(command: string): Promise<boolean> {
+    if (command === 'begin-graph-batch') {
+      saveTopologyService.beginBatch();
+      log.info('[ReactTopoViewer] Started graph batch');
+      return true;
+    }
+    if (command === 'end-graph-batch') {
+      const result = await saveTopologyService.endBatch();
+      if (!result.success) {
+        log.error(`[ReactTopoViewer] Failed to flush graph batch: ${result.error}`);
+      } else {
+        log.info('[ReactTopoViewer] Finished graph batch');
+      }
+      return true;
+    }
+    return false;
   }
 
   /**
