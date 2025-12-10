@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 import { log } from './services/logger';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
-import { CyElement } from '../shared/types/topology';
+import { CyElement, ClabTopology } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
@@ -109,10 +109,140 @@ export class ReactTopoViewer {
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private isInternalUpdate = false;
   private lastTopologyElements: CyElement[] = [];
+  private fileWatcher: vscode.FileSystemWatcher | undefined;
+  private saveListener: vscode.Disposable | undefined;
+  private lastYamlContent: string | undefined;
+  private isRefreshingFromFile = false;
+  private queuedRefresh = false;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
+  }
+
+  /**
+  * Dispose file watchers/listeners
+  */
+  private disposeWatchers(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.dispose();
+      this.fileWatcher = undefined;
+    }
+    if (this.saveListener) {
+      this.saveListener.dispose();
+      this.saveListener = undefined;
+    }
+  }
+
+  /**
+   * Set up filesystem watcher for YAML changes outside the webview
+   */
+  private setupFileWatcher(): void {
+    if (!this.lastYamlFilePath) return;
+
+    this.fileWatcher?.dispose();
+    const fileUri = vscode.Uri.file(this.lastYamlFilePath);
+    this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
+
+    this.fileWatcher.onDidChange(() => {
+      void this.handleExternalYamlChange('change');
+    });
+  }
+
+  /**
+   * Set up save listener for in-editor YAML edits
+   */
+  private setupSaveListener(): void {
+    if (!this.lastYamlFilePath) return;
+
+    this.saveListener?.dispose();
+    this.saveListener = vscode.workspace.onDidSaveTextDocument((doc) => {
+      if (doc.uri.fsPath !== this.lastYamlFilePath) return;
+      void this.handleExternalYamlChange('save');
+    });
+  }
+
+  /**
+   * Reload topology data after external YAML edits and push to webview
+   */
+  private async handleExternalYamlChange(trigger: 'change' | 'save'): Promise<void> {
+    if (!this.lastYamlFilePath || !this.currentPanel) return;
+    if (this.isInternalUpdate) {
+      log.debug(`[ReactTopoViewer] Ignoring ${trigger} event during internal update`);
+      return;
+    }
+
+    if (this.isRefreshingFromFile) {
+      this.queuedRefresh = true;
+      return;
+    }
+
+    this.isRefreshingFromFile = true;
+    try {
+      const currentContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+      if (this.lastYamlContent === currentContent) {
+        log.debug(`[ReactTopoViewer] YAML ${trigger} detected but content unchanged, skipping refresh`);
+        return;
+      }
+
+      log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
+      const topologyData = await this.loadTopologyData();
+      if (topologyData) {
+        this.currentPanel.webview.postMessage({
+          type: 'topology-data',
+          data: topologyData
+        });
+      }
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to refresh after YAML ${trigger}: ${err}`);
+    } finally {
+      this.isRefreshingFromFile = false;
+      if (this.queuedRefresh) {
+        this.queuedRefresh = false;
+        void this.handleExternalYamlChange(trigger);
+      }
+    }
+  }
+
+  /**
+   * If a node was renamed in YAML, migrate its annotation (position/icon) to the new id.
+   * Returns true if annotations were updated.
+   */
+  private getIdPrefix(id: string): string {
+    const match = /^([a-zA-Z]+)/.exec(id);
+    return match ? match[1] : id;
+  }
+
+  private async reconcileAnnotationsForRenamedNodes(parsedTopo: ClabTopology | undefined): Promise<boolean> {
+    if (!this.lastYamlFilePath || !parsedTopo?.topology?.nodes) {
+      return false;
+    }
+
+    const yamlNodeIds = new Set(Object.keys(parsedTopo.topology.nodes));
+    try {
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const nodeAnnotations = annotations.nodeAnnotations ?? [];
+      const missingIds = [...yamlNodeIds].filter(id => !nodeAnnotations.some(n => n.id === id));
+      const orphanAnnotations = nodeAnnotations.filter(n => !yamlNodeIds.has(n.id));
+
+      if (missingIds.length === 1 && orphanAnnotations.length > 0) {
+        const newId = missingIds[0];
+        const newPrefix = this.getIdPrefix(newId);
+        const prefixMatches = orphanAnnotations.filter(n => this.getIdPrefix(n.id) === newPrefix);
+        const candidate = prefixMatches[0] || orphanAnnotations[0];
+        if (candidate) {
+          const oldId = candidate.id;
+          candidate.id = newId;
+          await annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
+          log.info(`[ReactTopoViewer] Migrated annotation id from ${oldId} to ${newId} after YAML rename`);
+          return true;
+        }
+      }
+    } catch (err) {
+      log.warn(`[ReactTopoViewer] Failed to reconcile annotations on rename: ${err}`);
+    }
+
+    return false;
   }
 
   /**
@@ -156,6 +286,9 @@ export class ReactTopoViewer {
 
     this.currentPanel = panel;
 
+    this.setupFileWatcher();
+    this.setupSaveListener();
+
     // Check deployment state
     try {
       this.deploymentState = await this.checkDeploymentState(labName, this.lastYamlFilePath);
@@ -187,6 +320,7 @@ export class ReactTopoViewer {
     // Handle disposal
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
+      this.disposeWatchers();
     }, null, context.subscriptions);
 
     // Handle messages from webview
@@ -210,12 +344,22 @@ export class ReactTopoViewer {
 
     try {
       const yamlContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
-      const elements = await this.adaptor.clabYamlToCytoscapeElements(
+      let elements = await this.adaptor.clabYamlToCytoscapeElements(
         yamlContent,
         this.cacheClabTreeDataToTopoviewer,
         this.lastYamlFilePath
       );
+      const annotationsUpdated = await this.reconcileAnnotationsForRenamedNodes(this.adaptor.currentClabTopo);
+      if (annotationsUpdated) {
+        // Rebuild elements to include updated annotations (positions/icons)
+        elements = await this.adaptor.clabYamlToCytoscapeElements(
+          yamlContent,
+          this.cacheClabTreeDataToTopoviewer,
+          this.lastYamlFilePath
+        );
+      }
       this.lastTopologyElements = elements;
+      this.lastYamlContent = yamlContent;
 
       // Initialize SaveTopologyService with the parsed document
       if (this.adaptor.currentClabDoc && !this.isViewMode) {
