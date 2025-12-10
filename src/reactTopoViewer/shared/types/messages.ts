@@ -2,6 +2,10 @@
  * Shared message types between extension and webview
  */
 
+// Re-export CyElement from topology.ts (single source of truth)
+import { CyElement } from './topology';
+export { CyElement };
+
 /**
  * Base message interface for all messages
  */
@@ -58,16 +62,6 @@ export interface ModeChangedMessage extends PushMessage {
     mode: 'editor' | 'viewer';
     deploymentState: 'deployed' | 'undeployed' | 'unknown';
   };
-}
-
-/**
- * Cytoscape element definition
- */
-export interface CyElement {
-  group: 'nodes' | 'edges';
-  data: Record<string, unknown>;
-  position?: { x: number; y: number };
-  classes?: string;
 }
 
 /**
