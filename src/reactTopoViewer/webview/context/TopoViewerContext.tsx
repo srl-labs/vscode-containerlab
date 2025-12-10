@@ -84,6 +84,7 @@ type TopoViewerAction =
   | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
   | { type: 'TOGGLE_DUMMY_LINKS' }
   | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
+  | { type: 'ADD_NODE'; payload: CyElement }
   | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
   | { type: 'REMOVE_EDGE'; payload: string };
 
@@ -110,6 +111,10 @@ const reducerHandlers: ReducerHandlers = {
   SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
   TOGGLE_DUMMY_LINKS: (state) => ({ ...state, showDummyLinks: !state.showDummyLinks }),
   SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
+  ADD_NODE: (state, action) => ({
+    ...state,
+    elements: [...state.elements, action.payload]
+  }),
   REMOVE_NODE_AND_EDGES: (state, action) => {
     const nodeId = action.payload;
     const filteredElements = state.elements.filter(el => {
@@ -170,6 +175,7 @@ interface TopoViewerContextValue {
   setLoading: (loading: boolean) => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
+  addNode: (node: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
 }
@@ -313,6 +319,10 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
   }, [dispatch]);
 
+  const addNode = useCallback((node: CyElement) => {
+    dispatch({ type: 'ADD_NODE', payload: node });
+  }, [dispatch]);
+
   const removeNodeAndEdges = useCallback((nodeId: string) => {
     dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
   }, [dispatch]);
@@ -331,6 +341,7 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setLoading,
     setLinkLabelMode,
     toggleDummyLinks,
+    addNode,
     removeNodeAndEdges,
     removeEdge
   };

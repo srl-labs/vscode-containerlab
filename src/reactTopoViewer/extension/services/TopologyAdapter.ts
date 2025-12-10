@@ -49,7 +49,11 @@ export class TopoViewerAdaptorClab {
     clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined,
     yamlFilePath?: string
   ): Promise<CyElement[]> {
-    const parsed = YAML.parse(yamlContent) as ClabTopology;
+    // Parse as document to preserve structure for editing
+    this.currentClabDoc = YAML.parseDocument(yamlContent);
+    const parsed = this.currentClabDoc.toJS() as ClabTopology;
+    this.currentClabTopo = parsed;
+
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
     annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath);
 
@@ -67,7 +71,11 @@ export class TopoViewerAdaptorClab {
     yamlContent: string,
     yamlFilePath?: string
   ): Promise<CyElement[]> {
-    const parsed = YAML.parse(yamlContent) as ClabTopology;
+    // Parse as document to preserve structure for editing
+    this.currentClabDoc = YAML.parseDocument(yamlContent);
+    const parsed = this.currentClabDoc.toJS() as ClabTopology;
+    this.currentClabTopo = parsed;
+
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
     annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath);
 

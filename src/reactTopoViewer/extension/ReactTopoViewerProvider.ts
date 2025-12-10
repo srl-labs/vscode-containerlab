@@ -11,6 +11,7 @@ import { annotationsManager } from './services/AnnotationsManager';
 import { labLifecycleService } from './services/LabLifecycleService';
 import { nodeCommandService } from './services/NodeCommandService';
 import { splitViewManager } from './services/SplitViewManager';
+import { saveTopologyService, NodeSaveData, LinkSaveData } from './services/SaveTopologyService';
 
 /**
  * Custom node template from configuration
@@ -216,6 +217,15 @@ export class ReactTopoViewer {
       );
       this.lastTopologyElements = elements;
 
+      // Initialize SaveTopologyService with the parsed document
+      if (this.adaptor.currentClabDoc && !this.isViewMode) {
+        saveTopologyService.initialize(
+          this.adaptor.currentClabDoc,
+          this.lastYamlFilePath,
+          (updating: boolean) => { this.isInternalUpdate = updating; }
+        );
+      }
+
       // Get custom nodes from configuration
       const customNodes = getCustomNodesFromConfig();
       const defaultNode = customNodes.find(n => n.setDefault)?.name || '';
@@ -325,7 +335,19 @@ export class ReactTopoViewer {
   private async handleDeleteNode(panel: vscode.WebviewPanel, message: WebviewMessage): Promise<void> {
     const nodeId = this.getNodeIdFromMessage(message);
     if (!nodeId) return;
-    await this.removeNodeFromAnnotations(nodeId);
+
+    // Save to YAML if in edit mode
+    if (!this.isViewMode && saveTopologyService.isInitialized()) {
+      const result = await saveTopologyService.deleteNode(nodeId);
+      if (!result.success) {
+        log.error(`[ReactTopoViewer] Failed to delete node from YAML: ${result.error}`);
+      }
+    } else {
+      // Legacy: just remove from annotations
+      await this.removeNodeFromAnnotations(nodeId);
+    }
+
+    // Update cached elements
     this.lastTopologyElements = this.lastTopologyElements.filter(el => {
       const data = el.data || {};
       if (el.group === 'nodes') return (data as any)?.id !== nodeId;
@@ -356,9 +378,28 @@ export class ReactTopoViewer {
     this.postPanelAction(panel, action, { edgeId, edgeData: edge?.data });
   }
 
-  private handleDeleteLink(panel: vscode.WebviewPanel, message: WebviewMessage): void {
+  private async handleDeleteLink(panel: vscode.WebviewPanel, message: WebviewMessage): Promise<void> {
     const edgeId = this.getEdgeIdFromMessage(message);
     if (!edgeId) return;
+
+    // Find the edge data for YAML deletion
+    const edge = this.findCachedEdge(edgeId);
+    if (edge && !this.isViewMode && saveTopologyService.isInitialized()) {
+      const edgeData = edge.data as Record<string, unknown>;
+      const linkData: LinkSaveData = {
+        id: edgeId,
+        source: String(edgeData.source || ''),
+        target: String(edgeData.target || ''),
+        sourceEndpoint: String(edgeData.sourceEndpoint || ''),
+        targetEndpoint: String(edgeData.targetEndpoint || '')
+      };
+      const result = await saveTopologyService.deleteLink(linkData);
+      if (!result.success) {
+        log.error(`[ReactTopoViewer] Failed to delete link from YAML: ${result.error}`);
+      }
+    }
+
+    // Update cached elements
     this.lastTopologyElements = this.lastTopologyElements.filter(
       el => !(el.group === 'edges' && (el.data as any)?.id === edgeId)
     );
@@ -379,6 +420,142 @@ export class ReactTopoViewer {
       }
     } catch (err) {
       log.warn(`[ReactTopoViewer] Failed to prune annotations for node ${nodeId}: ${err}`);
+    }
+  }
+
+  /**
+   * Handle create-node command from webview
+   */
+  private async handleCreateNode(message: WebviewMessage): Promise<void> {
+    log.info(`[ReactTopoViewer] handleCreateNode called, isViewMode=${this.isViewMode}, isInitialized=${saveTopologyService.isInitialized()}`);
+
+    if (this.isViewMode) {
+      log.warn('[ReactTopoViewer] Cannot create node: in view mode');
+      return;
+    }
+
+    if (!saveTopologyService.isInitialized()) {
+      log.warn('[ReactTopoViewer] Cannot create node: service not initialized');
+      return;
+    }
+
+    // The payload is spread directly on the message, not in a 'payload' property
+    const msg = message as unknown as { nodeId?: string; nodeData?: Record<string, unknown>; position?: { x: number; y: number } };
+    if (!msg.nodeData) {
+      log.warn('[ReactTopoViewer] Cannot create node: no node data provided');
+      return;
+    }
+
+    log.info(`[ReactTopoViewer] Creating node: ${msg.nodeId}`);
+
+    const nodeData: NodeSaveData = {
+      id: msg.nodeId || String(msg.nodeData.id || ''),
+      name: String(msg.nodeData.name || msg.nodeData.id || ''),
+      extraData: msg.nodeData.extraData as NodeSaveData['extraData'],
+      position: msg.position
+    };
+
+    const result = await saveTopologyService.addNode(nodeData);
+    if (result.success) {
+      log.info(`[ReactTopoViewer] Created node: ${nodeData.name}`);
+    } else {
+      log.error(`[ReactTopoViewer] Failed to create node: ${result.error}`);
+    }
+  }
+
+  /**
+   * Handle save-node-editor command from webview
+   */
+  private async handleSaveNodeEditor(message: WebviewMessage): Promise<void> {
+    if (this.isViewMode || !saveTopologyService.isInitialized()) {
+      log.warn('[ReactTopoViewer] Cannot save node: not in edit mode or service not initialized');
+      return;
+    }
+
+    // The payload is spread directly on the message
+    const msg = message as unknown as { nodeData?: Record<string, unknown> };
+    if (!msg.nodeData) {
+      log.warn('[ReactTopoViewer] Cannot save node: no node data provided');
+      return;
+    }
+
+    const nodeData: NodeSaveData = {
+      id: String(msg.nodeData.id || ''),
+      name: String(msg.nodeData.name || msg.nodeData.id || ''),
+      extraData: msg.nodeData.extraData as NodeSaveData['extraData']
+    };
+
+    const result = await saveTopologyService.editNode(nodeData);
+    if (result.success) {
+      log.info(`[ReactTopoViewer] Saved node: ${nodeData.name}`);
+    } else {
+      log.error(`[ReactTopoViewer] Failed to save node: ${result.error}`);
+    }
+  }
+
+  /**
+   * Handle create-link command from webview
+   */
+  private async handleCreateLink(message: WebviewMessage): Promise<void> {
+    if (this.isViewMode || !saveTopologyService.isInitialized()) {
+      log.warn('[ReactTopoViewer] Cannot create link: not in edit mode or service not initialized');
+      return;
+    }
+
+    // The payload is spread directly on the message
+    const msg = message as unknown as { linkData?: Record<string, unknown> };
+    if (!msg.linkData) {
+      log.warn('[ReactTopoViewer] Cannot create link: no link data provided');
+      return;
+    }
+
+    const linkData: LinkSaveData = {
+      id: String(msg.linkData.id || ''),
+      source: String(msg.linkData.source || ''),
+      target: String(msg.linkData.target || ''),
+      sourceEndpoint: String(msg.linkData.sourceEndpoint || ''),
+      targetEndpoint: String(msg.linkData.targetEndpoint || ''),
+      extraData: msg.linkData.extraData as LinkSaveData['extraData']
+    };
+
+    const result = await saveTopologyService.addLink(linkData);
+    if (result.success) {
+      log.info(`[ReactTopoViewer] Created link: ${linkData.source} <-> ${linkData.target}`);
+    } else {
+      log.error(`[ReactTopoViewer] Failed to create link: ${result.error}`);
+    }
+  }
+
+  /**
+   * Handle save-link-editor command from webview
+   */
+  private async handleSaveLinkEditor(message: WebviewMessage): Promise<void> {
+    if (this.isViewMode || !saveTopologyService.isInitialized()) {
+      log.warn('[ReactTopoViewer] Cannot save link: not in edit mode or service not initialized');
+      return;
+    }
+
+    // The payload is spread directly on the message
+    const msg = message as unknown as { linkData?: Record<string, unknown> };
+    if (!msg.linkData) {
+      log.warn('[ReactTopoViewer] Cannot save link: no link data provided');
+      return;
+    }
+
+    const linkData: LinkSaveData = {
+      id: String(msg.linkData.id || ''),
+      source: String(msg.linkData.source || ''),
+      target: String(msg.linkData.target || ''),
+      sourceEndpoint: String(msg.linkData.sourceEndpoint || ''),
+      targetEndpoint: String(msg.linkData.targetEndpoint || ''),
+      extraData: msg.linkData.extraData as LinkSaveData['extraData']
+    };
+
+    const result = await saveTopologyService.editLink(linkData);
+    if (result.success) {
+      log.info(`[ReactTopoViewer] Saved link: ${linkData.source} <-> ${linkData.target}`);
+    } else {
+      log.error(`[ReactTopoViewer] Failed to save link: ${result.error}`);
     }
   }
 
@@ -506,6 +683,27 @@ export class ReactTopoViewer {
   private async handleCommandMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
     const { command } = message;
     if (!command) return false;
+
+    // YAML save commands
+    if (command === 'create-node') {
+      await this.handleCreateNode(message);
+      return true;
+    }
+
+    if (command === 'save-node-editor') {
+      await this.handleSaveNodeEditor(message);
+      return true;
+    }
+
+    if (command === 'create-link') {
+      await this.handleCreateLink(message);
+      return true;
+    }
+
+    if (command === 'save-link-editor') {
+      await this.handleSaveLinkEditor(message);
+      return true;
+    }
 
     if (command === 'save-node-positions' && message.positions) {
       await this.handleSaveNodePositions(message.positions);

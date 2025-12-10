@@ -2,7 +2,9 @@
  * React TopoViewer Main Application Component
  */
 import React from 'react';
-import { useTopoViewer } from './context/TopoViewerContext';
+import type { Core as CyCore } from 'cytoscape';
+import { useTopoViewer, CustomNodeTemplate } from './context/TopoViewerContext';
+import type { CyElement } from '../shared/types/messages';
 import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
@@ -15,6 +17,7 @@ import { useNodeDragging } from './hooks/useNodeDragging';
 import { useEdgeCreation } from './hooks/useEdgeCreation';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useUndoRedo, NodePositionEntry } from './hooks/useUndoRedo';
+import { useNodeCreation } from './hooks/useNodeCreation';
 import {
   useCytoscapeInstance,
   useSelectionData,
@@ -184,8 +187,60 @@ function useLinkEditorHandlers(editEdge: (id: string | null) => void) {
   return { handleClose, handleSave, handleApply };
 }
 
+/** State shape for node creation handlers */
+interface NodeCreationState {
+  isLocked: boolean;
+  customNodes: CustomNodeTemplate[];
+  defaultNode: string;
+}
+
+/** Position type */
+type Position = { x: number; y: number };
+
+/**
+ * Hook for node creation handlers
+ */
+function useNodeCreationHandlers(
+  addNode: (node: CyElement) => void,
+  editNode: (id: string | null) => void,
+  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
+  state: NodeCreationState,
+  cyInstance: CyCore | null,
+  createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void
+) {
+  // Handler for Add Node button from FloatingActionPanel
+  const handleAddNodeFromPanel = React.useCallback((templateName?: string) => {
+    if (!cyInstance) return;
+
+    if (state.isLocked) {
+      floatingPanelRef.current?.triggerShake();
+      return;
+    }
+
+    let template: CustomNodeTemplate | undefined;
+    if (templateName === '__new__') {
+      sendCommandToExtension('panel-add-node', { kind: '__new__' });
+      return;
+    } else if (templateName) {
+      template = state.customNodes.find(n => n.name === templateName);
+    } else if (state.defaultNode) {
+      template = state.customNodes.find(n => n.name === state.defaultNode);
+    }
+
+    const extent = cyInstance.extent();
+    const position: Position = {
+      x: (extent.x1 + extent.x2) / 2,
+      y: (extent.y1 + extent.y2) / 2
+    };
+
+    createNodeAtPosition(position, template);
+  }, [cyInstance, state.isLocked, state.customNodes, state.defaultNode, createNodeAtPosition, floatingPanelRef]);
+
+  return { handleAddNodeFromPanel };
+}
+
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, removeNodeAndEdges, removeEdge } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -236,6 +291,38 @@ export const App: React.FC = () => {
     startEdgeCreation(nodeId);
     sendCommandToExtension('panel-start-link', { nodeId });
   }, [startEdgeCreation]);
+
+  // Get node creation callbacks using the extracted hook
+  const nodeCreationState: NodeCreationState = {
+    isLocked: state.isLocked,
+    customNodes: state.customNodes,
+    defaultNode: state.defaultNode
+  };
+
+  // Set up node creation via Shift+Click on canvas - returns createNodeAtPosition
+  const handleNodeCreatedCallback = React.useCallback((
+    nodeId: string,
+    nodeElement: CyElement,
+    position: Position
+  ) => {
+    addNode(nodeElement);
+    sendCommandToExtension('save-node-positions', { positions: [{ id: nodeId, position }] });
+    sendCommandToExtension('create-node', { nodeId, nodeData: nodeElement.data, position });
+  }, [addNode]);
+
+  const { createNodeAtPosition } = useNodeCreation(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    customNodes: state.customNodes,
+    defaultNode: state.defaultNode,
+    onNodeCreated: handleNodeCreatedCallback,
+    onLockedClick: () => floatingPanelRef.current?.triggerShake()
+  });
+
+  // Now use the extracted handler hook with the createNodeAtPosition function
+  const { handleAddNodeFromPanel } = useNodeCreationHandlers(
+    addNode, editNode, floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition
+  );
 
   // Set up context menus
   useContextMenu(cyInstance, {
@@ -353,7 +440,7 @@ export const App: React.FC = () => {
           onDestroyCleanup={floatingPanelCommands.onDestroyCleanup}
           onRedeploy={floatingPanelCommands.onRedeploy}
           onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
-          onAddNode={floatingPanelCommands.onAddNode}
+          onAddNode={handleAddNodeFromPanel}
           onAddNetwork={floatingPanelCommands.onAddNetwork}
           onAddGroup={floatingPanelCommands.onAddGroup}
           onAddText={floatingPanelCommands.onAddText}
