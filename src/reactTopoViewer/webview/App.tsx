@@ -27,6 +27,7 @@ import {
   useLayoutControls
 } from './hooks/useAppState';
 import { sendCommandToExtension } from './utils/extensionMessaging';
+import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 
 /**
  * Loading state component
@@ -108,23 +109,6 @@ function useFloatingPanelCommands() {
     onAddText,
     onAddShapes,
     onAddBulkLink
-  };
-}
-
-/**
- * Converts raw node data to editor format
- */
-function convertToEditorData(rawData: Record<string, unknown> | null): NodeEditorData | null {
-  if (!rawData) return null;
-  const extra = (rawData.extraData as Record<string, unknown>) || {};
-  return {
-    id: rawData.id as string || '',
-    name: rawData.name as string || rawData.id as string || '',
-    kind: extra.kind as string || '',
-    type: extra.type as string || '',
-    image: extra.image as string || '',
-    icon: rawData.topoViewerRole as string || '',
-    labels: (extra.labels as Record<string, string>) || {}
   };
 }
 

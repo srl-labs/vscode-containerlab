@@ -12,6 +12,7 @@ import { labLifecycleService } from './services/LabLifecycleService';
 import { nodeCommandService } from './services/NodeCommandService';
 import { splitViewManager } from './services/SplitViewManager';
 import { saveTopologyService, NodeSaveData, LinkSaveData } from './services/SaveTopologyService';
+import { convertEditorDataToYaml } from '../shared/utilities/nodeEditorConversions';
 import { getDockerImages, onDockerImagesUpdated } from '../../utils/docker/images';
 
 /**
@@ -753,11 +754,16 @@ export class ReactTopoViewer {
       return;
     }
 
+    // Convert camelCase NodeEditorData to kebab-case extraData format using shared utility
+    const extraData = convertEditorDataToYaml(msg.nodeData);
+
     const nodeData: NodeSaveData = {
       id: String(msg.nodeData.id || ''),
       name: String(msg.nodeData.name || msg.nodeData.id || ''),
-      extraData: msg.nodeData.extraData as NodeSaveData['extraData']
+      extraData
     };
+
+    log.info(`[ReactTopoViewer] Saving node with extraData: ${JSON.stringify(extraData)}`);
 
     const result = await saveTopologyService.editNode(nodeData);
     if (result.success) {
