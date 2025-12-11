@@ -56,23 +56,27 @@ interface RepoCardProps {
   icon: string;
 }
 
-const RepoCard: React.FC<RepoCardProps> = ({ name, description, url, icon }) => (
-  <a
-    href={url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="about-repo-card"
-  >
-    <div className="about-repo-icon">
-      <i className={`fab ${icon}`} aria-hidden="true"></i>
-    </div>
-    <div className="about-repo-info">
-      <span className="about-repo-name">{name}</span>
-      <span className="about-repo-desc">{description}</span>
-    </div>
-    <i className="fas fa-arrow-right about-repo-arrow" aria-hidden="true"></i>
-  </a>
-);
+const RepoCard: React.FC<RepoCardProps> = ({ name, description, url, icon }) => {
+  // Determine icon prefix: brand icons use 'fab', others use 'fas'
+  const iconPrefix = icon === 'fa-github' ? 'fab' : 'fas';
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="about-repo-card"
+    >
+      <div className="about-repo-icon">
+        <i className={`${iconPrefix} ${icon}`} aria-hidden="true"></i>
+      </div>
+      <div className="about-repo-info">
+        <span className="about-repo-name">{name}</span>
+        <span className="about-repo-desc">{description}</span>
+      </div>
+      <i className="fas fa-arrow-right about-repo-arrow" aria-hidden="true"></i>
+    </a>
+  );
+};
 
 /**
  * Animated Containerlab flask logo with bubbles - animates on hover
@@ -275,6 +279,28 @@ export const AboutPanel: React.FC<AboutPanelProps> = ({ isVisible, onClose }) =>
           network labs directly in VS Code.
         </p>
 
+        {/* Documentation Section */}
+        <div className="about-section">
+          <h3 className="about-section-title">
+            <i className="fas fa-book" aria-hidden="true"></i>
+            Documentation
+          </h3>
+          <div className="about-repos">
+            <RepoCard
+              name="Containerlab Docs"
+              description="Full documentation"
+              url="https://containerlab.dev/"
+              icon="fa-book"
+            />
+            <RepoCard
+              name="Extension Docs"
+              description="VS Code extension guide"
+              url="https://containerlab.dev/manual/vsc-extension/"
+              icon="fa-puzzle-piece"
+            />
+          </div>
+        </div>
+
         {/* Team Section */}
         <div className="about-section">
           <h3 className="about-section-title">
@@ -284,7 +310,7 @@ export const AboutPanel: React.FC<AboutPanelProps> = ({ isVisible, onClose }) =>
           <div className="about-authors">
             <AuthorCard
               name="Asad Arafat"
-              role="Original Creator"
+              role="Maintainer (Original Creator)"
               linkedIn="https://www.linkedin.com/in/asadarafat/"
               icon="fa-user-astronaut"
             />
