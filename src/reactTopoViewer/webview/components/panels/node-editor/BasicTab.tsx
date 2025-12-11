@@ -7,10 +7,11 @@
  */
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { TabProps } from './types';
-import { FormField, InputField, CheckboxField, Section, FilterableDropdown } from '../../shared/form';
+import { FormField, InputField, FilterableDropdown } from '../../shared/form';
 import { IconSelectorModal } from '../../shared/IconSelectorModal';
 import { generateEncodedSVG, NodeType } from '../../../utils/SvgGenerator';
 import { useSchema, useDockerImages } from '../../../hooks';
+import { CustomNodeTemplateFields } from './CustomNodeTemplateFields';
 
 const DEFAULT_ICON_COLOR = '#1a73e8';
 
@@ -63,48 +64,6 @@ const NodeNameField: React.FC<TabProps> = ({ data, onChange }) => (
   </FormField>
 );
 
-/**
- * Custom Node Template fields - shown only when editing custom node templates
- */
-const CustomNodeTemplateFields: React.FC<TabProps> = ({ data, onChange }) => (
-  <Section title="Custom Node Template">
-    <div className="space-y-3">
-      <FormField label="Template Name">
-        <InputField
-          id="node-custom-name"
-          value={data.customName || ''}
-          onChange={(value) => onChange({ customName: value })}
-          placeholder="Template name"
-        />
-      </FormField>
-      <FormField label="Base Name (for canvas)">
-        <InputField
-          id="node-base-name"
-          value={data.baseName || ''}
-          onChange={(value) => onChange({ baseName: value })}
-          placeholder="e.g., srl (will become srl1, srl2, etc.)"
-        />
-      </FormField>
-      <CheckboxField
-        id="node-custom-default"
-        label="Set as default"
-        checked={data.isDefaultCustomNode || false}
-        onChange={(checked) => onChange({ isDefaultCustomNode: checked })}
-      />
-      <FormField
-        label="Interface Pattern"
-        tooltip="Use {n} for sequential numbering. Examples: xe-{n}, xe-{n:0} starts at 0, xe-{n:1-4} limits range."
-      >
-        <InputField
-          id="node-interface-pattern"
-          value={data.interfacePattern || ''}
-          onChange={(value) => onChange({ interfacePattern: value })}
-          placeholder="e.g., e1-{n} or Gi0/0/{n:0}"
-        />
-      </FormField>
-    </div>
-  </Section>
-);
 
 /**
  * Kind field with filterable dropdown - options from schema
