@@ -1,8 +1,10 @@
 /**
  * FreeTextFormContent - Sleek, modern form for text annotation editing
+ * Supports markdown rendering in preview
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FreeTextAnnotation } from '../../../../shared/types/topology';
+import { renderMarkdown, MARKDOWN_EMPTY_MESSAGE } from '../../../utils/markdownRenderer';
 
 const FONTS = ['monospace', 'sans-serif', 'serif', 'Arial', 'Helvetica', 'Courier New', 'Times New Roman', 'Georgia'];
 
@@ -146,34 +148,56 @@ const StyleOptions: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
   );
 };
 
-// Live preview
-const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
+// Grid pattern background for preview
+const PREVIEW_GRID_BG = "bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')]";
+
+// Compute preview content style
+function computePreviewStyle(formData: FreeTextAnnotation): React.CSSProperties {
   const isTransparent = isBackgroundTransparent(formData.backgroundColor);
   const isRounded = isBackgroundRounded(formData.roundedBackground);
+  return {
+    fontFamily: formData.fontFamily || 'monospace',
+    fontSize: Math.min(formData.fontSize || 14, 22),
+    fontWeight: formData.fontWeight || 'normal',
+    fontStyle: formData.fontStyle || 'normal',
+    textDecoration: formData.textDecoration || 'none',
+    textAlign: formData.textAlign || 'left',
+    color: formData.fontColor || '#FFFFFF',
+    backgroundColor: formData.backgroundColor || 'transparent',
+    padding: !isTransparent ? '6px 12px' : 0,
+    borderRadius: isRounded ? 6 : 0,
+    transform: `rotate(${formData.rotation || 0}deg)`,
+    maxWidth: '100%',
+    boxShadow: !isTransparent ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
+  };
+}
+
+// Preview header component
+const PreviewHeader: React.FC = () => (
+  <div className="flex items-center justify-between">
+    <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Preview</span>
+    <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">Markdown supported</span>
+  </div>
+);
+
+// Live preview with markdown rendering
+const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
+  const renderedHtml = useMemo(() => renderMarkdown(formData.text || ''), [formData.text]);
+  const isEmpty = !formData.text?.trim();
+  const style = computePreviewStyle(formData);
 
   return (
-    <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[80px] flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')] opacity-50" />
-      <div
-        className="relative z-10 transition-all duration-200"
-        style={{
-          fontFamily: formData.fontFamily || 'monospace',
-          fontSize: Math.min(formData.fontSize || 14, 22),
-          fontWeight: formData.fontWeight || 'normal',
-          fontStyle: formData.fontStyle || 'normal',
-          textDecoration: formData.textDecoration || 'none',
-          textAlign: formData.textAlign || 'left',
-          color: formData.fontColor || '#FFFFFF',
-          backgroundColor: formData.backgroundColor || 'transparent',
-          padding: !isTransparent ? '6px 12px' : 0,
-          borderRadius: isRounded ? 6 : 0,
-          transform: `rotate(${formData.rotation || 0}deg)`,
-          whiteSpace: 'pre-wrap',
-          maxWidth: '100%',
-          boxShadow: !isTransparent ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
-        }}
-      >
-        {formData.text || 'Preview'}
+    <div className="flex flex-col gap-1">
+      <PreviewHeader />
+      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[80px] flex items-center justify-center overflow-hidden">
+        <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
+        <div className="relative z-10 transition-all duration-200 free-text-markdown" style={style}>
+          {isEmpty ? (
+            <span className="opacity-50 italic">{MARKDOWN_EMPTY_MESSAGE}</span>
+          ) : (
+            <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -186,7 +210,7 @@ export const FreeTextFormContent: React.FC<Props> = ({ formData, updateField, is
       className="w-full h-32 px-4 py-3 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] placeholder-[var(--vscode-input-placeholderForeground)] border border-white/10 rounded-xl resize-y focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
       value={formData.text}
       onChange={(e) => updateField('text', e.target.value)}
-      placeholder="Enter your text..."
+      placeholder="Enter your text... (Markdown and fenced code blocks supported)"
       autoFocus
     />
     <Toolbar formData={formData} updateField={updateField} />

@@ -1,14 +1,15 @@
 /**
  * FreeTextLayer - HTML overlay layer for rendering free text annotations
- * Renders text annotations on top of the Cytoscape canvas.
+ * Renders text annotations with markdown support on top of the Cytoscape canvas.
  */
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useMemo } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { renderedToModel, computeAnnotationStyle } from './freeTextLayerHelpers';
 import { useAnnotationDrag } from './useAnnotationDrag';
 import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
+import { renderMarkdown } from '../../utils/markdownRenderer';
 
 // ============================================================================
 // Types
@@ -138,6 +139,19 @@ function getAnnotationCursor(isLocked: boolean, isDragging: boolean): string {
   return 'grab';
 }
 
+/** Get style for inner markdown content */
+function getMarkdownContentStyle(annotation: FreeTextAnnotation): React.CSSProperties {
+  const hasExplicitSize = annotation.width || annotation.height;
+  if (!hasExplicitSize) return {};
+  // Content fills the container with vertical scroll when needed
+  return {
+    width: '100%',
+    height: '100%',
+    overflowX: 'hidden',
+    overflowY: 'auto'
+  };
+}
+
 /** Hook for annotation interaction state */
 function useAnnotationInteractions(
   cy: CyCore,
@@ -208,6 +222,9 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
   const baseStyle = computeAnnotationStyle(annotation, renderedPos, isInteracting, isHovered, isLocked);
   const showHandles = (isHovered || isInteracting) && !isLocked;
 
+  // Memoize rendered markdown to avoid re-rendering on every frame
+  const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
+
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -215,11 +232,13 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
   }, [isLocked, onDoubleClick]);
 
   // Wrapper style that includes extended hover area for handles
+  // Scale is applied here so the entire annotation (including handles) scales with zoom
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
     left: renderedPos.x,
     top: renderedPos.y,
-    transform: `translate(-50%, -50%) rotate(${annotation.rotation || 0}deg)`,
+    transform: `translate(-50%, -50%) rotate(${annotation.rotation || 0}deg) scale(${renderedPos.zoom})`,
+    transformOrigin: 'center center',
     zIndex: annotation.zIndex || 11,
     // Extended padding to capture hover for rotation handle (always present)
     padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
@@ -238,6 +257,8 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
     cursor: getAnnotationCursor(isLocked, isDragging)
   };
 
+  const markdownStyle = getMarkdownContentStyle(annotation);
+
   return (
     <div
       style={wrapperStyle}
@@ -251,8 +272,9 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
         onDoubleClick={handleDoubleClick}
         title={isLocked ? undefined : 'Drag to move, double-click to edit'}
       >
-        {annotation.text}
-        {/* Visible handles */}
+        {/* Markdown content with scrolling when resized */}
+        <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+        {/* Handles inside content div for proper positioning */}
         {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
       </div>
     </div>

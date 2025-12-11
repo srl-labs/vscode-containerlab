@@ -49,14 +49,12 @@ export interface RenderedPosition {
 // Style Computation - Split into smaller functions
 // ============================================================================
 
-function computeBaseStyle(annotation: FreeTextAnnotation, renderedPos: RenderedPosition): React.CSSProperties {
-  const fontSize = (annotation.fontSize || 14) * renderedPos.zoom;
+function computeBaseStyle(annotation: FreeTextAnnotation, _renderedPos: RenderedPosition): React.CSSProperties {
+  // Base font size - scaling is done via transform: scale(zoom) on the wrapper
+  const baseFontSize = annotation.fontSize || 14;
   return {
-    position: 'absolute',
-    left: renderedPos.x,
-    top: renderedPos.y,
-    transform: `translate(-50%, -50%) rotate(${annotation.rotation || 0}deg)`,
-    fontSize: `${fontSize}px`,
+    // Position/transform are handled by the wrapper in FreeTextLayer
+    fontSize: `${baseFontSize}px`,
     fontFamily: annotation.fontFamily || 'monospace',
     fontWeight: annotation.fontWeight || 'normal',
     fontStyle: annotation.fontStyle || 'normal',
@@ -66,12 +64,11 @@ function computeBaseStyle(annotation: FreeTextAnnotation, renderedPos: RenderedP
     userSelect: 'none',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    pointerEvents: 'auto',
-    zIndex: annotation.zIndex || 11
+    pointerEvents: 'auto'
   };
 }
 
-function computeBackgroundStyle(annotation: FreeTextAnnotation, renderedPos: RenderedPosition): React.CSSProperties {
+function computeBackgroundStyle(annotation: FreeTextAnnotation, _renderedPos: RenderedPosition): React.CSSProperties {
   const hasBackground = Boolean(annotation.backgroundColor && annotation.backgroundColor !== 'transparent');
   const style: React.CSSProperties = {
     backgroundColor: hasBackground ? annotation.backgroundColor : 'transparent',
@@ -79,16 +76,19 @@ function computeBackgroundStyle(annotation: FreeTextAnnotation, renderedPos: Ren
     borderRadius: getBorderRadius(hasBackground, annotation.roundedBackground)
   };
 
-  // Apply explicit dimensions if set, otherwise use maxWidth constraint
+  // Apply explicit dimensions if set (base values - scaling is done via transform)
+  // otherwise use maxWidth constraint
   if (annotation.width) {
-    style.width = `${annotation.width * renderedPos.zoom}px`;
+    style.width = `${annotation.width}px`;
   } else {
     style.maxWidth = '300px';
   }
   if (annotation.height) {
-    style.height = `${annotation.height * renderedPos.zoom}px`;
+    style.height = `${annotation.height}px`;
   }
-  // Never use overflow:hidden - it clips the rotation handle which is positioned above
+
+  // Note: overflow is NOT set here to avoid clipping the handles (rotation/resize)
+  // Overflow should be applied to the inner markdown content div instead
 
   return style;
 }
