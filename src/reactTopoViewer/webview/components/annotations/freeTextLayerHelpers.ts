@@ -67,26 +67,36 @@ function computeBaseStyle(annotation: FreeTextAnnotation, renderedPos: RenderedP
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     pointerEvents: 'auto',
-    zIndex: annotation.zIndex || 1000
+    zIndex: annotation.zIndex || 11
   };
 }
 
 function computeBackgroundStyle(annotation: FreeTextAnnotation, renderedPos: RenderedPosition): React.CSSProperties {
   const hasBackground = Boolean(annotation.backgroundColor && annotation.backgroundColor !== 'transparent');
-  return {
+  const style: React.CSSProperties = {
     backgroundColor: hasBackground ? annotation.backgroundColor : 'transparent',
     padding: hasBackground ? '4px 8px' : '2px',
-    borderRadius: getBorderRadius(hasBackground, annotation.roundedBackground),
-    maxWidth: annotation.width ? `${annotation.width * renderedPos.zoom}px` : '300px'
+    borderRadius: getBorderRadius(hasBackground, annotation.roundedBackground)
   };
+
+  // Apply explicit dimensions if set, otherwise use maxWidth constraint
+  if (annotation.width) {
+    style.width = `${annotation.width * renderedPos.zoom}px`;
+  } else {
+    style.maxWidth = '300px';
+  }
+  if (annotation.height) {
+    style.height = `${annotation.height * renderedPos.zoom}px`;
+  }
+  // Never use overflow:hidden - it clips the rotation handle which is positioned above
+
+  return style;
 }
 
-function computeInteractionStyle(isDragging: boolean, isHovered: boolean, isLocked: boolean): React.CSSProperties {
+function computeInteractionStyle(isDragging: boolean): React.CSSProperties {
   return {
-    cursor: getCursorStyle(isLocked, isDragging),
-    outline: isHovered && !isLocked ? '2px solid rgba(100, 180, 255, 0.6)' : 'none',
     boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.3)' : 'none',
-    transition: isDragging ? 'none' : 'box-shadow 0.15s ease, outline 0.15s ease'
+    transition: isDragging ? 'none' : 'box-shadow 0.15s ease'
   };
 }
 
@@ -99,14 +109,14 @@ export function computeAnnotationStyle(
   annotation: FreeTextAnnotation,
   renderedPos: RenderedPosition,
   isDragging: boolean,
-  isHovered: boolean,
-  isLocked: boolean
+  _isHovered: boolean,
+  _isLocked: boolean
 ): React.CSSProperties {
   const hasBackground = Boolean(annotation.backgroundColor && annotation.backgroundColor !== 'transparent');
   return {
     ...computeBaseStyle(annotation, renderedPos),
     ...computeBackgroundStyle(annotation, renderedPos),
-    ...computeInteractionStyle(isDragging, isHovered, isLocked),
+    ...computeInteractionStyle(isDragging),
     ...computeTextShadow(hasBackground)
   };
 }

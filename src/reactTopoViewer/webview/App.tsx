@@ -576,6 +576,8 @@ export const App: React.FC = () => {
           isAddTextMode={freeTextAnnotations.isAddTextMode}
           onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
           onPositionChange={freeTextAnnotations.updatePosition}
+          onRotationChange={freeTextAnnotations.updateRotation}
+          onSizeChange={freeTextAnnotations.updateSize}
           onCanvasClick={freeTextAnnotations.handleCanvasClick}
         />
         <NodeInfoPanel
