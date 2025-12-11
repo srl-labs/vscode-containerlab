@@ -575,6 +575,7 @@ export const App: React.FC = () => {
           isLocked={state.isLocked}
           isAddTextMode={freeTextAnnotations.isAddTextMode}
           onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
+          onAnnotationDelete={freeTextAnnotations.deleteAnnotation}
           onPositionChange={freeTextAnnotations.updatePosition}
           onRotationChange={freeTextAnnotations.updateRotation}
           onSizeChange={freeTextAnnotations.updateSize}

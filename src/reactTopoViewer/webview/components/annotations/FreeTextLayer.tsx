@@ -21,6 +21,7 @@ interface FreeTextLayerProps {
   isLocked: boolean;
   isAddTextMode: boolean;
   onAnnotationDoubleClick: (id: string) => void;
+  onAnnotationDelete: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }) => void;
   onRotationChange: (id: string, rotation: number) => void;
   onSizeChange: (id: string, width: number, height: number) => void;
@@ -31,8 +32,8 @@ interface FreeTextLayerProps {
 // Handle Components
 // ============================================================================
 
-const HANDLE_SIZE = 14;
-const ROTATION_HANDLE_OFFSET = 32;
+const HANDLE_SIZE = 6;
+const ROTATION_HANDLE_OFFSET = 18;
 
 interface RotationHandleProps {
   onMouseDown: (e: React.MouseEvent) => void;
@@ -127,6 +128,7 @@ interface TextAnnotationItemProps {
   cy: CyCore;
   isLocked: boolean;
   onDoubleClick: () => void;
+  onDelete: () => void;
   onPositionChange: (position: { x: number; y: number }) => void;
   onRotationChange: (rotation: number) => void;
   onSizeChange: (width: number, height: number) => void;
@@ -143,14 +145,122 @@ function getAnnotationCursor(isLocked: boolean, isDragging: boolean): string {
 function getMarkdownContentStyle(annotation: FreeTextAnnotation): React.CSSProperties {
   const hasExplicitSize = annotation.width || annotation.height;
   if (!hasExplicitSize) return {};
-  // Content fills the container with vertical scroll when needed
+  return { width: '100%', height: '100%', overflowX: 'hidden', overflowY: 'auto' };
+}
+
+/** Compute wrapper style for annotation positioning */
+function computeWrapperStyle(
+  renderedPos: { x: number; y: number; zoom: number },
+  rotation: number,
+  zIndex: number
+): React.CSSProperties {
   return {
-    width: '100%',
-    height: '100%',
-    overflowX: 'hidden',
-    overflowY: 'auto'
+    position: 'absolute',
+    left: renderedPos.x,
+    top: renderedPos.y,
+    transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${renderedPos.zoom})`,
+    transformOrigin: 'center center',
+    zIndex,
+    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
+    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`,
+    pointerEvents: 'auto'
   };
 }
+
+/** Compute content style for annotation */
+function computeContentStyle(
+  baseStyle: React.CSSProperties,
+  isLocked: boolean,
+  isDragging: boolean
+): React.CSSProperties {
+  return {
+    ...baseStyle,
+    position: 'relative',
+    left: 'auto',
+    top: 'auto',
+    transform: 'none',
+    zIndex: 'auto',
+    cursor: getAnnotationCursor(isLocked, isDragging)
+  };
+}
+
+/** Simple context menu for annotations */
+const AnnotationContextMenu: React.FC<{
+  position: { x: number; y: number };
+  onEdit: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}> = ({ position, onEdit, onDelete, onClose }) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('click', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
+  const menuStyle: React.CSSProperties = {
+    position: 'fixed',
+    left: position.x,
+    top: position.y,
+    zIndex: 10000,
+    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '6px',
+    padding: '4px 0',
+    minWidth: '120px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+    pointerEvents: 'auto'
+  };
+
+  const itemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    width: '100%',
+    padding: '8px 12px',
+    border: 'none',
+    background: 'none',
+    color: 'white',
+    fontSize: '13px',
+    cursor: 'pointer',
+    textAlign: 'left'
+  };
+
+  return (
+    <div ref={menuRef} style={menuStyle}>
+      <button
+        style={itemStyle}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        onClick={() => { onEdit(); onClose(); }}
+      >
+        <i className="fas fa-pen" style={{ width: 16 }} />
+        Edit
+      </button>
+      <button
+        style={itemStyle}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        onClick={() => { onDelete(); onClose(); }}
+      >
+        <i className="fas fa-trash" style={{ width: 16 }} />
+        Delete
+      </button>
+    </div>
+  );
+};
 
 /** Hook for annotation interaction state */
 function useAnnotationInteractions(
@@ -163,33 +273,36 @@ function useAnnotationInteractions(
   contentRef: React.RefObject<HTMLDivElement | null>
 ) {
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
-    cy,
-    modelPosition: annotation.position,
-    isLocked,
-    onPositionChange
+    cy, modelPosition: annotation.position, isLocked, onPositionChange
   });
-
   const { isRotating, handleRotationMouseDown } = useRotationDrag({
-    cy,
-    renderedPos,
-    currentRotation: annotation.rotation || 0,
-    isLocked,
-    onRotationChange
+    cy, renderedPos, currentRotation: annotation.rotation || 0, isLocked, onRotationChange
   });
-
   const { isResizing, handleResizeMouseDown } = useResizeDrag({
-    renderedPos,
-    currentWidth: annotation.width,
-    currentHeight: annotation.height,
-    contentRef,
-    isLocked,
-    onSizeChange
+    renderedPos, currentWidth: annotation.width, currentHeight: annotation.height, contentRef, isLocked, onSizeChange
   });
+  return { isDragging, isRotating, isResizing, renderedPos, handleMouseDown, handleRotationMouseDown, handleResizeMouseDown };
+}
 
-  return {
-    isDragging, isRotating, isResizing,
-    renderedPos, handleMouseDown, handleRotationMouseDown, handleResizeMouseDown
-  };
+/** Hook for annotation click handlers */
+function useAnnotationClickHandlers(isLocked: boolean, onDoubleClick: () => void) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLocked) onDoubleClick();
+  }, [isLocked, onDoubleClick]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLocked) setContextMenu({ x: e.clientX, y: e.clientY });
+  }, [isLocked]);
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  return { contextMenu, handleDoubleClick, handleContextMenu, closeContextMenu };
 }
 
 /** Handles container component - positioned relative to annotation */
@@ -208,76 +321,55 @@ const AnnotationHandles: React.FC<{
 );
 
 const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
-  annotation, cy, isLocked, onDoubleClick, onPositionChange, onRotationChange, onSizeChange
+  annotation, cy, isLocked, onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const interactions = useAnnotationInteractions(
-    cy, annotation, isLocked, onPositionChange, onRotationChange, onSizeChange, contentRef
-  );
+  const interactions = useAnnotationInteractions(cy, annotation, isLocked, onPositionChange, onRotationChange, onSizeChange, contentRef);
   const { isDragging, isRotating, isResizing, renderedPos, handleMouseDown, handleRotationMouseDown, handleResizeMouseDown } = interactions;
+  const { contextMenu, handleDoubleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(isLocked, onDoubleClick);
 
   const isInteracting = isDragging || isRotating || isResizing;
-  const baseStyle = computeAnnotationStyle(annotation, renderedPos, isInteracting, isHovered, isLocked);
   const showHandles = (isHovered || isInteracting) && !isLocked;
-
-  // Memoize rendered markdown to avoid re-rendering on every frame
   const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLocked) onDoubleClick();
-  }, [isLocked, onDoubleClick]);
-
-  // Wrapper style that includes extended hover area for handles
-  // Scale is applied here so the entire annotation (including handles) scales with zoom
-  const wrapperStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: renderedPos.x,
-    top: renderedPos.y,
-    transform: `translate(-50%, -50%) rotate(${annotation.rotation || 0}deg) scale(${renderedPos.zoom})`,
-    transformOrigin: 'center center',
-    zIndex: annotation.zIndex || 11,
-    // Extended padding to capture hover for rotation handle (always present)
-    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
-    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`,
-    pointerEvents: 'auto'
-  };
-
-  // Content style without position (handled by wrapper)
-  const contentStyle: React.CSSProperties = {
-    ...baseStyle,
-    position: 'relative',
-    left: 'auto',
-    top: 'auto',
-    transform: 'none',
-    zIndex: 'auto',
-    cursor: getAnnotationCursor(isLocked, isDragging)
-  };
-
+  const wrapperStyle = computeWrapperStyle(renderedPos, annotation.rotation || 0, annotation.zIndex || 11);
+  const baseStyle = computeAnnotationStyle(annotation, renderedPos, isInteracting, isHovered, isLocked);
+  const contentStyle = computeContentStyle(baseStyle, isLocked, isDragging);
   const markdownStyle = getMarkdownContentStyle(annotation);
 
   return (
-    <div
-      style={wrapperStyle}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <>
       <div
-        ref={contentRef}
-        style={contentStyle}
-        onMouseDown={handleMouseDown}
-        onDoubleClick={handleDoubleClick}
-        title={isLocked ? undefined : 'Drag to move, double-click to edit'}
+        style={wrapperStyle}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Markdown content with scrolling when resized */}
-        <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
-        {/* Handles inside content div for proper positioning */}
-        {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
+        <div
+          ref={contentRef}
+          style={contentStyle}
+          onMouseDown={handleMouseDown}
+          onDoubleClick={handleDoubleClick}
+          onContextMenu={handleContextMenu}
+          title={isLocked ? undefined : 'Drag to move, double-click to edit, right-click for menu'}
+        >
+          {/* Markdown content with scrolling when resized */}
+          <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+          {/* Handles inside content div for proper positioning */}
+          {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
+        </div>
       </div>
-    </div>
+      {/* Context menu */}
+      {contextMenu && (
+        <AnnotationContextMenu
+          position={contextMenu}
+          onEdit={onDoubleClick}
+          onDelete={onDelete}
+          onClose={closeContextMenu}
+        />
+      )}
+    </>
   );
 };
 
@@ -287,7 +379,7 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
 
 export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
   cy, annotations, isLocked, isAddTextMode,
-  onAnnotationDoubleClick, onPositionChange, onRotationChange, onSizeChange, onCanvasClick
+  onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange, onSizeChange, onCanvasClick
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
 
@@ -344,6 +436,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
           cy={cy}
           isLocked={isLocked}
           onDoubleClick={() => onAnnotationDoubleClick(annotation.id)}
+          onDelete={() => onAnnotationDelete(annotation.id)}
           onPositionChange={(pos) => onPositionChange(annotation.id, pos)}
           onRotationChange={(rotation) => onRotationChange(annotation.id, rotation)}
           onSizeChange={(width, height) => onSizeChange(annotation.id, width, height)}
