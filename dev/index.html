@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React TopoViewer - Dev Mode</title>
+  <style>
+    /* VS Code theme CSS variables for standalone dev mode */
+    :root {
+      /* Dark theme (default) */
+      --vscode-editor-background: #1e1e1e;
+      --vscode-editor-foreground: #cccccc;
+      --vscode-sideBar-background: #252526;
+      --vscode-sideBar-foreground: #cccccc;
+      --vscode-panel-background: #1e1e1e;
+      --vscode-panel-border: #3c3c3c;
+      --vscode-button-background: #0e639c;
+      --vscode-button-foreground: #ffffff;
+      --vscode-button-hoverBackground: #1177bb;
+      --vscode-button-secondaryBackground: #3a3d41;
+      --vscode-button-secondaryForeground: #ffffff;
+      --vscode-button-secondaryHoverBackground: #45494e;
+      --vscode-input-background: #3c3c3c;
+      --vscode-input-foreground: #cccccc;
+      --vscode-input-border: #3c3c3c;
+      --vscode-input-placeholderForeground: #a6a6a6;
+      --vscode-dropdown-background: #3c3c3c;
+      --vscode-dropdown-foreground: #f0f0f0;
+      --vscode-dropdown-border: #3c3c3c;
+      --vscode-focusBorder: #007fd4;
+      --vscode-foreground: #cccccc;
+      --vscode-descriptionForeground: #9d9d9d;
+      --vscode-errorForeground: #f48771;
+      --vscode-icon-foreground: #c5c5c5;
+      --vscode-list-hoverBackground: #2a2d2e;
+      --vscode-list-activeSelectionBackground: #094771;
+      --vscode-list-activeSelectionForeground: #ffffff;
+      --vscode-badge-background: #4d4d4d;
+      --vscode-badge-foreground: #ffffff;
+      --vscode-scrollbarSlider-background: rgba(121, 121, 121, 0.4);
+      --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+      --vscode-scrollbarSlider-activeBackground: rgba(191, 191, 191, 0.4);
+      --vscode-statusBar-background: #007acc;
+      --vscode-statusBar-foreground: #ffffff;
+      --vscode-tab-activeBackground: #1e1e1e;
+      --vscode-tab-activeForeground: #ffffff;
+      --vscode-tab-inactiveBackground: #2d2d2d;
+      --vscode-tab-inactiveForeground: #ffffff80;
+      --vscode-textLink-foreground: #3794ff;
+      --vscode-textLink-activeForeground: #3794ff;
+      --vscode-settings-textInputBackground: #292929;
+      --vscode-settings-textInputForeground: #cccccc;
+      --vscode-settings-textInputBorder: transparent;
+    }
+
+    /* Light theme variant (add class 'light' to html for light mode) */
+    html.light {
+      --vscode-editor-background: #ffffff;
+      --vscode-editor-foreground: #333333;
+      --vscode-sideBar-background: #f3f3f3;
+      --vscode-sideBar-foreground: #333333;
+      --vscode-panel-background: #ffffff;
+      --vscode-panel-border: #e7e7e7;
+      --vscode-button-background: #007acc;
+      --vscode-button-foreground: #ffffff;
+      --vscode-button-hoverBackground: #0062a3;
+      --vscode-button-secondaryBackground: #5f6a79;
+      --vscode-button-secondaryForeground: #ffffff;
+      --vscode-button-secondaryHoverBackground: #4c5561;
+      --vscode-input-background: #ffffff;
+      --vscode-input-foreground: #333333;
+      --vscode-input-border: #cecece;
+      --vscode-input-placeholderForeground: #767676;
+      --vscode-dropdown-background: #ffffff;
+      --vscode-dropdown-foreground: #333333;
+      --vscode-dropdown-border: #cecece;
+      --vscode-focusBorder: #0090f1;
+      --vscode-foreground: #333333;
+      --vscode-descriptionForeground: #717171;
+      --vscode-errorForeground: #a1260d;
+      --vscode-icon-foreground: #424242;
+      --vscode-list-hoverBackground: #e8e8e8;
+      --vscode-list-activeSelectionBackground: #0060c0;
+      --vscode-list-activeSelectionForeground: #ffffff;
+      --vscode-badge-background: #c4c4c4;
+      --vscode-badge-foreground: #333333;
+      --vscode-scrollbarSlider-background: rgba(100, 100, 100, 0.4);
+      --vscode-scrollbarSlider-hoverBackground: rgba(100, 100, 100, 0.7);
+      --vscode-scrollbarSlider-activeBackground: rgba(0, 0, 0, 0.6);
+      --vscode-statusBar-background: #007acc;
+      --vscode-statusBar-foreground: #ffffff;
+      --vscode-tab-activeBackground: #ffffff;
+      --vscode-tab-activeForeground: #333333;
+      --vscode-tab-inactiveBackground: #ececec;
+      --vscode-tab-inactiveForeground: #33333380;
+      --vscode-textLink-foreground: #006ab1;
+      --vscode-textLink-activeForeground: #006ab1;
+      --vscode-settings-textInputBackground: #ffffff;
+      --vscode-settings-textInputForeground: #333333;
+      --vscode-settings-textInputBorder: #cecece;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      background-color: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    #root {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Dev mode indicator */
+    .dev-mode-banner {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ff6b00;
+      color: white;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: bold;
+      z-index: 10000;
+      border-radius: 0 0 4px 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Dev Settings Panel */
+    .dev-settings-toggle {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      z-index: 10001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+    }
+    .dev-settings-toggle:hover {
+      background: var(--vscode-button-hoverBackground);
+      transform: scale(1.1);
+    }
+    .dev-settings-panel {
+      position: fixed;
+      bottom: 56px;
+      right: 12px;
+      width: 280px;
+      background: var(--vscode-sideBar-background);
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 8px;
+      padding: 16px;
+      z-index: 10000;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      display: none;
+    }
+    .dev-settings-panel.open {
+      display: block;
+    }
+    .dev-settings-panel h3 {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      border-bottom: 1px solid var(--vscode-panel-border);
+      padding-bottom: 8px;
+    }
+    .dev-settings-section {
+      margin-bottom: 14px;
+    }
+    .dev-settings-section:last-child {
+      margin-bottom: 0;
+    }
+    .dev-settings-label {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .dev-settings-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .dev-settings-btn {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: background 0.15s;
+    }
+    .dev-settings-btn:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+    .dev-settings-btn.active {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+    .dev-settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dev-settings-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: var(--vscode-input-background);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .dev-settings-switch.on {
+      background: var(--vscode-button-background);
+    }
+    .dev-settings-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: left 0.2s;
+    }
+    .dev-settings-switch.on::after {
+      left: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="dev-mode-banner">DEV MODE - Vite HMR Active</div>
+
+  <!-- Settings Toggle Button -->
+  <button class="dev-settings-toggle" onclick="toggleSettingsPanel()" title="Dev Settings">
+    ⚙
+  </button>
+
+  <!-- Settings Panel -->
+  <div class="dev-settings-panel" id="devSettingsPanel">
+    <h3>Dev Settings</h3>
+
+    <div class="dev-settings-section">
+      <div class="dev-settings-label">Topology</div>
+      <div class="dev-settings-buttons">
+        <button class="dev-settings-btn" onclick="loadTopo('sample')">Sample</button>
+        <button class="dev-settings-btn" onclick="loadTopo('empty')">Empty</button>
+        <button class="dev-settings-btn" onclick="loadTopo('large')">Large (25)</button>
+      </div>
+    </div>
+
+    <div class="dev-settings-section">
+      <div class="dev-settings-label">Mode</div>
+      <div class="dev-settings-buttons">
+        <button class="dev-settings-btn active" id="modeEdit" onclick="setMode('edit')">Edit</button>
+        <button class="dev-settings-btn" id="modeView" onclick="setMode('view')">View</button>
+      </div>
+    </div>
+
+    <div class="dev-settings-section">
+      <div class="dev-settings-label">Deployment State</div>
+      <div class="dev-settings-buttons">
+        <button class="dev-settings-btn" onclick="setDeployState('deployed')">Deployed</button>
+        <button class="dev-settings-btn active" id="stateUndeployed" onclick="setDeployState('undeployed')">Undeployed</button>
+        <button class="dev-settings-btn" onclick="setDeployState('unknown')">Unknown</button>
+      </div>
+    </div>
+
+    <div class="dev-settings-section">
+      <div class="dev-settings-row">
+        <div class="dev-settings-label" style="margin-bottom: 0;">Light Theme</div>
+        <div class="dev-settings-switch" id="themeSwitch" onclick="toggleTheme()"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <script>
+    function toggleSettingsPanel() {
+      document.getElementById('devSettingsPanel').classList.toggle('open');
+    }
+
+    function toggleTheme() {
+      const isLight = document.documentElement.classList.toggle('light');
+      document.getElementById('themeSwitch').classList.toggle('on', isLight);
+    }
+
+    function loadTopo(name) {
+      if (window.__DEV__) window.__DEV__.loadTopology(name);
+    }
+
+    function setMode(mode) {
+      if (window.__DEV__) window.__DEV__.setMode(mode);
+      document.getElementById('modeEdit').classList.toggle('active', mode === 'edit');
+      document.getElementById('modeView').classList.toggle('active', mode === 'view');
+    }
+
+    function setDeployState(state) {
+      if (window.__DEV__) window.__DEV__.setDeploymentState(state);
+      document.querySelectorAll('.dev-settings-section:nth-child(3) .dev-settings-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', function(e) {
+      const panel = document.getElementById('devSettingsPanel');
+      const toggle = document.querySelector('.dev-settings-toggle');
+      if (!panel.contains(e.target) && !toggle.contains(e.target)) {
+        panel.classList.remove('open');
+      }
+    });
+  </script>
+  <script type="module" src="./main.tsx"></script>
+</body>
+</html>

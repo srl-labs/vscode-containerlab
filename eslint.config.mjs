@@ -11,10 +11,12 @@ export default [
       '**/*.js',          // ← ignore *all* JavaScript bundles
       'out/**',
       'dist/**',
+      'dist-dev/**',
       'node_modules/**',
       '.vscode-test.mjs',  // VS Code test harness
       'legacy-backup/**',   // Legacy backup files
       'labs/**',            // containerlab lab files
+      'dev/**',             // Vite dev server files
       "src/utils/consts.ts"
     ]
   },

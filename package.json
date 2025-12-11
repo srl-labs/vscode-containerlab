@@ -1415,6 +1415,8 @@
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "build:webview": "webpack --config webpack.config.js",
+    "dev": "vite --config dev/vite.config.ts",
+    "dev:build": "vite build --config dev/vite.config.ts",
     "bundle": "node esbuild.config.js",
     "package": "rm -rf dist && npm run lint && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
@@ -1447,6 +1449,7 @@
     "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",
+    "@vitejs/plugin-react": "^5.1.2",
     "@vscode/vsce": "^3.7.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
@@ -1488,6 +1491,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
     "uplot": "^1.6.32",
+    "vite": "^7.2.7",
     "webpack-cli": "^6.0.1",
     "yaml": "^2.8.2"
   }
