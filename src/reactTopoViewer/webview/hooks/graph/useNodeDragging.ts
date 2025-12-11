@@ -90,6 +90,102 @@ function useLockState(cy: Core | null, isLocked: boolean): void {
   }, [cy, isLocked]);
 }
 
+/** Batching timeout for grouping multi-node drag completions */
+const DRAG_BATCH_TIMEOUT_MS = 50;
+
+/** Pending drag completion entry */
+interface PendingDrag {
+  nodeId: string;
+  before: NodePositionEntry;
+  after: NodePositionEntry;
+}
+
+/** Refs used for drag batching */
+interface DragBatchRefs {
+  dragStartPositions: { current: Map<string, NodePositionEntry> };
+  pendingDrags: { current: PendingDrag[] };
+  batchTimer: { current: ReturnType<typeof setTimeout> | null };
+}
+
+/** Create flush handler for batched drags */
+function createFlushHandler(
+  refs: DragBatchRefs,
+  mode: 'edit' | 'view',
+  onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void
+): () => void {
+  return () => {
+    const pending = refs.pendingDrags.current;
+    if (pending.length === 0) return;
+
+    const nodeIds = pending.map(p => p.nodeId);
+    const beforePositions = pending.map(p => p.before);
+    const afterPositions = pending.map(p => p.after);
+
+    log.info(`[NodeDragging] Flushing batch of ${pending.length} node drag(s)`);
+
+    if (mode === 'edit') {
+      sendPositionsToExtension(afterPositions);
+    }
+
+    if (onMoveComplete) {
+      onMoveComplete(nodeIds, beforePositions);
+    }
+
+    refs.pendingDrags.current = [];
+    refs.batchTimer.current = null;
+  };
+}
+
+/** Create drag start handler */
+function createDragStartHandler(
+  dragStartPositions: { current: Map<string, NodePositionEntry> }
+): (event: EventObject) => void {
+  return (event: EventObject) => {
+    const node = event.target as NodeSingular;
+    if (!isDraggableNode(node)) return;
+
+    const position = getNodePosition(node);
+    dragStartPositions.current.set(node.id(), position);
+    log.info(`[NodeDragging] Drag started for node ${node.id()} at (${position.position.x}, ${position.position.y})`);
+  };
+}
+
+/** Create drag free handler */
+function createDragFreeHandler(
+  refs: DragBatchRefs,
+  flushPendingDrags: () => void,
+  onPositionChange?: () => void
+): (event: EventObject) => void {
+  return (event: EventObject) => {
+    const node = event.target as NodeSingular;
+    if (!isDraggableNode(node)) return;
+
+    const nodeId = node.id();
+    const beforePosition = refs.dragStartPositions.current.get(nodeId);
+    const afterPosition = getNodePosition(node);
+
+    log.info(`[NodeDragging] Node ${nodeId} dragged to (${afterPosition.position.x}, ${afterPosition.position.y})`);
+
+    if (beforePosition) {
+      const positionChanged =
+        beforePosition.position.x !== afterPosition.position.x ||
+        beforePosition.position.y !== afterPosition.position.y;
+
+      if (positionChanged) {
+        refs.pendingDrags.current.push({ nodeId, before: beforePosition, after: afterPosition });
+
+        if (refs.batchTimer.current) {
+          clearTimeout(refs.batchTimer.current);
+        }
+        refs.batchTimer.current = setTimeout(flushPendingDrags, DRAG_BATCH_TIMEOUT_MS);
+      }
+    }
+
+    refs.dragStartPositions.current.delete(nodeId);
+    onPositionChange?.();
+  };
+}
+
 /** Hook for drag start/completion event handling with undo/redo support */
 function useDragHandlers(
   cy: Core | null,
@@ -97,50 +193,36 @@ function useDragHandlers(
   onPositionChange?: () => void,
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void
 ): void {
-  // Store positions at drag start for undo/redo
   const dragStartPositionsRef = useRef<Map<string, NodePositionEntry>>(new Map());
+  const pendingDragCompletionsRef = useRef<PendingDrag[]>([]);
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleDragStart = useCallback((event: EventObject) => {
-    const node = event.target as NodeSingular;
-    if (!isDraggableNode(node)) return;
+  const refs: DragBatchRefs = {
+    dragStartPositions: dragStartPositionsRef,
+    pendingDrags: pendingDragCompletionsRef,
+    batchTimer: batchTimerRef
+  };
 
-    // Capture position at drag start
-    const position = getNodePosition(node);
-    dragStartPositionsRef.current.set(node.id(), position);
-    log.info(`[NodeDragging] Drag started for node ${node.id()} at (${position.position.x}, ${position.position.y})`);
+  const flushPendingDrags = useCallback(
+    () => createFlushHandler(refs, mode, onMoveComplete)(),
+    [mode, onMoveComplete]
+  );
+
+  const handleDragStart = useCallback(
+    createDragStartHandler(dragStartPositionsRef),
+    []
+  );
+
+  const handleDragFree = useCallback(
+    (event: EventObject) => createDragFreeHandler(refs, flushPendingDrags, onPositionChange)(event),
+    [flushPendingDrags, onPositionChange]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
+    };
   }, []);
-
-  const handleDragFree = useCallback((event: EventObject) => {
-    const node = event.target as NodeSingular;
-    if (!isDraggableNode(node)) return;
-
-    const nodeId = node.id();
-    const beforePosition = dragStartPositionsRef.current.get(nodeId);
-    const afterPosition = getNodePosition(node);
-
-    log.info(`[NodeDragging] Node ${nodeId} dragged to (${afterPosition.position.x}, ${afterPosition.position.y})`);
-
-    // Send position to extension for persistence
-    if (mode === 'edit') {
-      sendPositionsToExtension([afterPosition]);
-    }
-
-    // Notify undo/redo system if position actually changed
-    if (beforePosition && onMoveComplete) {
-      const positionChanged =
-        beforePosition.position.x !== afterPosition.position.x ||
-        beforePosition.position.y !== afterPosition.position.y;
-
-      if (positionChanged) {
-        onMoveComplete([nodeId], [beforePosition]);
-      }
-    }
-
-    // Clear the stored position
-    dragStartPositionsRef.current.delete(nodeId);
-
-    onPositionChange?.();
-  }, [mode, onPositionChange, onMoveComplete]);
 
   useEffect(() => {
     if (!cy) return;
