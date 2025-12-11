@@ -322,13 +322,54 @@ export class MessageRouter {
       extraData
     };
 
-    log.info(`[ReactTopoViewer] Saving node with extraData: ${JSON.stringify(extraData)}`);
+    log.info(`[ReactTopoViewer] Saving node - id: "${nodeData.id}", name: "${nodeData.name}"`);
 
     const result = await saveTopologyService.editNode(nodeData);
     if (result.success) {
-      log.info(`[ReactTopoViewer] Saved node: ${nodeData.name}`);
+      const renameInfo = result.renamed ? ` (renamed from ${result.renamed.oldId})` : '';
+      log.info(`[ReactTopoViewer] Saved node: ${nodeData.name}${renameInfo}`);
     } else {
       log.error(`[ReactTopoViewer] Failed to save node: ${result.error}`);
+    }
+  }
+
+  /**
+   * Handle undo/redo of node rename - robustly finds and renames the node
+   */
+  private async handleUndoRenameNode(message: WebviewMessage): Promise<void> {
+    if (this.context.isViewMode || !saveTopologyService.isInitialized()) {
+      log.warn('[ReactTopoViewer] Cannot undo rename: not in edit mode or service not initialized');
+      return;
+    }
+
+    const msg = message as unknown as {
+      currentName?: string;
+      targetName?: string;
+      nodeData?: Record<string, unknown>;
+    };
+
+    if (!msg.currentName || !msg.targetName || !msg.nodeData) {
+      log.warn('[ReactTopoViewer] Cannot undo rename: missing data');
+      return;
+    }
+
+    const { currentName, targetName, nodeData } = msg;
+    log.info(`[ReactTopoViewer] Undo rename: ${currentName} -> ${targetName}`);
+
+    const extraData = convertEditorDataToYaml(nodeData);
+
+    // Use currentName as id (to find the node) and targetName as name (the new name)
+    const saveData: NodeSaveData = {
+      id: currentName,
+      name: targetName,
+      extraData
+    };
+
+    const result = await saveTopologyService.editNode(saveData);
+    if (result.success) {
+      log.info(`[ReactTopoViewer] Undo rename successful: ${currentName} -> ${targetName}`);
+    } else {
+      log.error(`[ReactTopoViewer] Failed to undo rename: ${result.error}`);
     }
   }
 
@@ -561,6 +602,9 @@ export class MessageRouter {
       case 'save-node-editor':
       case 'apply-node-editor':
         await this.handleSaveNodeEditor(message);
+        return true;
+      case 'undo-rename-node':
+        await this.handleUndoRenameNode(message);
         return true;
       case 'create-link':
         await this.handleCreateLink(message);

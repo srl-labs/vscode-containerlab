@@ -2,7 +2,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
-import { GraphChange, useUndoRedo } from './useUndoRedo';
+import { GraphChange, useUndoRedo, UndoRedoActionPropertyEdit } from './useUndoRedo';
 
 interface MenuHandlers {
   handleDeleteNode: (id: string) => void;
@@ -23,6 +23,8 @@ interface GraphUndoRedoResult {
   handleNodeCreatedCallback: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void;
   handleDeleteNodeWithUndo: (nodeId: string) => void;
   handleDeleteLinkWithUndo: (edgeId: string) => void;
+  /** Record a property edit for undo/redo */
+  recordPropertyEdit: (action: Omit<UndoRedoActionPropertyEdit, 'type'>) => void;
 }
 
 function buildNodeElement(cy: CyCore | null, nodeId: string): CyElement | null {
@@ -334,6 +336,59 @@ function createDeleteLinkHandler(
   };
 }
 
+/**
+ * Apply node property edit for undo/redo.
+ * For renames, uses explicit rename command that handles finding the node robustly.
+ */
+function applyNodePropertyEdit(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  isUndo: boolean
+): void {
+  const dataToApply = isUndo ? before : after;
+  const beforeName = before.name as string;
+  const afterName = after.name as string;
+  const isRename = beforeName !== afterName;
+
+  if (isRename) {
+    // For renames, we need to handle the case where YAML doc may be reloaded.
+    // Send both current and target names so extension can find the right node.
+    const currentNodeName = isUndo ? afterName : beforeName;
+    const targetNodeName = isUndo ? beforeName : afterName;
+
+    sendCommandToExtension('undo-rename-node', {
+      currentName: currentNodeName,
+      targetName: targetNodeName,
+      nodeData: dataToApply
+    });
+  } else {
+    sendCommandToExtension('apply-node-editor', { nodeData: dataToApply });
+  }
+}
+
+/**
+ * Apply link property edit for undo/redo.
+ * Uses original endpoint values to find the link by its current state.
+ */
+function applyLinkPropertyEdit(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  isUndo: boolean
+): void {
+  const dataToApply = isUndo ? before : after;
+  // Current link endpoints are from the "other" state (the one we're NOT applying)
+  const currentState = isUndo ? after : before;
+
+  const linkData = {
+    ...dataToApply,
+    originalSource: currentState.source,
+    originalTarget: currentState.target,
+    originalSourceEndpoint: currentState.sourceEndpoint,
+    originalTargetEndpoint: currentState.targetEndpoint,
+  };
+  sendCommandToExtension('apply-link-editor', { linkData });
+}
+
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   const { cyInstance, mode, addNode, addEdge, menuHandlers } = params;
   const isApplyingUndoRedo = React.useRef(false);
@@ -350,10 +405,28 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     }
   }, [cyInstance, addNode, addEdge, menuHandlers]);
 
+  // Handler for applying property edits (node/link editor changes) during undo/redo
+  const applyPropertyEdit = React.useCallback((
+    action: UndoRedoActionPropertyEdit,
+    isUndo: boolean
+  ) => {
+    isApplyingUndoRedo.current = true;
+    try {
+      if (action.entityType === 'node') {
+        applyNodePropertyEdit(action.before, action.after, isUndo);
+      } else {
+        applyLinkPropertyEdit(action.before, action.after, isUndo);
+      }
+    } finally {
+      isApplyingUndoRedo.current = false;
+    }
+  }, []);
+
   const undoRedo = useUndoRedo({
     cy: cyInstance,
     enabled: mode === 'edit',
-    applyGraphChanges
+    applyGraphChanges,
+    applyPropertyEdit
   });
 
   // Create handlers using useMemo with factory functions
@@ -377,7 +450,18 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     [cyInstance, menuHandlers, undoRedo]
   );
 
-  return { undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo };
+  // Function to record a property edit action for undo/redo
+  const recordPropertyEdit = React.useCallback((
+    action: Omit<UndoRedoActionPropertyEdit, 'type'>
+  ) => {
+    if (isApplyingUndoRedo.current) return; // Don't record during undo/redo replay
+    undoRedo.pushAction({
+      type: 'property-edit',
+      ...action
+    });
+  }, [undoRedo]);
+
+  return { undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit };
 }
 
 export function useGraphUndoRedoHandlers(args: UseGraphUndoRedoHandlersParams): GraphUndoRedoResult {

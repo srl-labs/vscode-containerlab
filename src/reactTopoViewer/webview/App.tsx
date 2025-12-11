@@ -147,21 +147,62 @@ function useFloatingPanelCommands() {
 }
 
 /**
- * Hook for node editor handlers
+ * Hook for node editor handlers with undo/redo support
  */
-function useNodeEditorHandlers(editNode: (id: string | null) => void) {
+function useNodeEditorHandlers(
+  editNode: (id: string | null) => void,
+  editingNodeData: NodeEditorData | null,
+  recordPropertyEdit?: (action: { entityType: 'node' | 'link'; entityId: string; before: Record<string, unknown>; after: Record<string, unknown> }) => void
+) {
+  // Store the initial data when editor opens for undo/redo
+  const initialDataRef = React.useRef<NodeEditorData | null>(null);
+
+  // Update initial data ref when editing node changes
+  React.useEffect(() => {
+    if (editingNodeData) {
+      initialDataRef.current = { ...editingNodeData };
+    } else {
+      initialDataRef.current = null;
+    }
+  }, [editingNodeData?.id]); // Only reset when editing a different node
+
   const handleClose = React.useCallback(() => {
+    initialDataRef.current = null;
     editNode(null);
   }, [editNode]);
 
   const handleSave = React.useCallback((data: NodeEditorData) => {
+    // Record for undo/redo if we have initial data
+    if (recordPropertyEdit && initialDataRef.current) {
+      recordPropertyEdit({
+        entityType: 'node',
+        entityId: initialDataRef.current.id,
+        before: initialDataRef.current as unknown as Record<string, unknown>,
+        after: data as unknown as Record<string, unknown>
+      });
+    }
     sendCommandToExtension('save-node-editor', { nodeData: data });
+    initialDataRef.current = null;
     editNode(null);
-  }, [editNode]);
+  }, [editNode, recordPropertyEdit]);
 
   const handleApply = React.useCallback((data: NodeEditorData) => {
+    // Record for undo/redo if we have initial data and data changed
+    if (recordPropertyEdit && initialDataRef.current) {
+      const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
+      if (hasChanges) {
+        recordPropertyEdit({
+          entityType: 'node',
+          entityId: initialDataRef.current.id,
+          before: initialDataRef.current as unknown as Record<string, unknown>,
+          after: data as unknown as Record<string, unknown>
+        });
+        // Update initial data to the new state for subsequent applies
+        initialDataRef.current = { ...data };
+      }
+    }
     sendCommandToExtension('apply-node-editor', { nodeData: data });
-  }, []);
+  }, [recordPropertyEdit]);
 
   return { handleClose, handleSave, handleApply };
 }
@@ -197,21 +238,62 @@ function convertToLinkEditorData(rawData: Record<string, unknown> | null): LinkE
 }
 
 /**
- * Hook for link editor handlers
+ * Hook for link editor handlers with undo/redo support
  */
-function useLinkEditorHandlers(editEdge: (id: string | null) => void) {
+function useLinkEditorHandlers(
+  editEdge: (id: string | null) => void,
+  editingLinkData: LinkEditorData | null,
+  recordPropertyEdit?: (action: { entityType: 'node' | 'link'; entityId: string; before: Record<string, unknown>; after: Record<string, unknown> }) => void
+) {
+  // Store the initial data when editor opens for undo/redo
+  const initialDataRef = React.useRef<LinkEditorData | null>(null);
+
+  // Update initial data ref when editing link changes
+  React.useEffect(() => {
+    if (editingLinkData) {
+      initialDataRef.current = { ...editingLinkData };
+    } else {
+      initialDataRef.current = null;
+    }
+  }, [editingLinkData?.id]); // Only reset when editing a different link
+
   const handleClose = React.useCallback(() => {
+    initialDataRef.current = null;
     editEdge(null);
   }, [editEdge]);
 
   const handleSave = React.useCallback((data: LinkEditorData) => {
+    // Record for undo/redo if we have initial data
+    if (recordPropertyEdit && initialDataRef.current) {
+      recordPropertyEdit({
+        entityType: 'link',
+        entityId: initialDataRef.current.id,
+        before: initialDataRef.current as unknown as Record<string, unknown>,
+        after: data as unknown as Record<string, unknown>
+      });
+    }
     sendCommandToExtension('save-link-editor', { linkData: data });
+    initialDataRef.current = null;
     editEdge(null);
-  }, [editEdge]);
+  }, [editEdge, recordPropertyEdit]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
+    // Record for undo/redo if we have initial data and data changed
+    if (recordPropertyEdit && initialDataRef.current) {
+      const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
+      if (hasChanges) {
+        recordPropertyEdit({
+          entityType: 'link',
+          entityId: initialDataRef.current.id,
+          before: initialDataRef.current as unknown as Record<string, unknown>,
+          after: data as unknown as Record<string, unknown>
+        });
+        // Update initial data to the new state for subsequent applies
+        initialDataRef.current = { ...data };
+      }
+    }
     sendCommandToExtension('apply-link-editor', { linkData: data });
-  }, []);
+  }, [recordPropertyEdit]);
 
   return { handleClose, handleSave, handleApply };
 }
@@ -292,15 +374,14 @@ export const App: React.FC = () => {
   // Context menu handlers
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();
-  const nodeEditorHandlers = useNodeEditorHandlers(editNode);
-  const linkEditorHandlers = useLinkEditorHandlers(editEdge);
 
   const {
     undoRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
     handleDeleteNodeWithUndo,
-    handleDeleteLinkWithUndo
+    handleDeleteLinkWithUndo,
+    recordPropertyEdit
   } = useGraphUndoRedoHandlers({
     cyInstance,
     mode: state.mode,
@@ -308,6 +389,10 @@ export const App: React.FC = () => {
     addEdge,
     menuHandlers
   });
+
+  // Editor handlers with undo/redo support
+  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit);
+  const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
 
   // Set up edge creation via edgehandles
   const { startEdgeCreation } = useEdgeCreation(cyInstance, {

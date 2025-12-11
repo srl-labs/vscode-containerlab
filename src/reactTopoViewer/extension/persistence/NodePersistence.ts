@@ -321,6 +321,41 @@ function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: s
 }
 
 /**
+ * Find or create a node for editing. Returns the node map and any early exit result.
+ */
+function findNodeForEdit(
+  nodesMap: YAML.YAMLMap,
+  originalId: string,
+  newName: string,
+  isRename: boolean
+): { nodeMap: YAML.YAMLMap | null; earlyResult: SaveResult | null } {
+  const nodeMap = nodesMap.get(originalId, true) as YAML.YAMLMap | undefined;
+
+  if (nodeMap) {
+    return { nodeMap, earlyResult: null };
+  }
+
+  // Node doesn't exist with originalId
+  // For renames (undo/redo), check if target already exists (rename may have already happened)
+  if (isRename && nodesMap.has(newName)) {
+    log.info(`[SaveTopology] Node "${originalId}" not found, but "${newName}" exists - rename may already be applied`);
+    return { nodeMap: null, earlyResult: { success: true } };
+  }
+
+  // Node truly doesn't exist - fail for renames, create for simple edits
+  if (isRename) {
+    return { nodeMap: null, earlyResult: { success: false, error: `Cannot rename: source node "${originalId}" not found` } };
+  }
+
+  // For non-rename edits, create a new node
+  const newNodeMap = new YAML.YAMLMap();
+  newNodeMap.flow = false;
+  nodesMap.set(newName, newNodeMap);
+  log.warn(`[SaveTopology] Node "${originalId}" not found, creating new node "${newName}"`);
+  return { nodeMap: newNodeMap, earlyResult: null };
+}
+
+/**
  * Updates an existing node in the topology
  */
 export function editNode(
@@ -334,7 +369,6 @@ export function editNode(
       return { success: false, error: ERROR_NODES_NOT_MAP };
     }
 
-    // Use the original ID to find the existing node
     const originalId = nodeData.id;
     const newName = nodeData.name || nodeData.id;
 
@@ -342,42 +376,30 @@ export function editNode(
       return { success: false, error: 'Node must have an id' };
     }
 
-    // Check if the original node exists
-    let nodeMap = nodesMap.get(originalId, true) as YAML.YAMLMap | undefined;
-    if (!nodeMap) {
-      // Node doesn't exist with originalId - this shouldn't happen in normal edit flow
-      // But we handle it gracefully by creating a new node with the target name
-      nodeMap = new YAML.YAMLMap();
-      nodeMap.flow = false;
-      nodesMap.set(newName, nodeMap);
-      log.warn(`[SaveTopology] Node "${originalId}" not found, creating new node "${newName}"`);
+    const isRename = newName !== originalId;
+    const { nodeMap, earlyResult } = findNodeForEdit(nodesMap, originalId, newName, isRename);
+
+    if (earlyResult) {
+      return earlyResult;
     }
 
-    // Get inherited configuration
+    if (!nodeMap) {
+      return { success: false, error: 'Failed to find or create node' };
+    }
+
     const inheritedConfig = resolveInheritedConfig(topoObj, nodeData.extraData?.group, nodeData.extraData?.kind);
 
-    // Check if this is a rename operation
-    const isRename = newName !== originalId;
-
     if (isRename) {
-      // Check if target name already exists (would cause conflict)
       if (nodesMap.has(newName)) {
         return { success: false, error: `Cannot rename: node "${newName}" already exists` };
       }
 
-      // Update the node properties first
       updateNodeYaml(doc, nodeMap, nodeData, inheritedConfig);
-
-      // Rename the node in the map: add with new name, delete old
       nodesMap.set(newName, nodeMap);
       nodesMap.delete(originalId);
-
-      // Update all links that reference this node
       updateLinksForRename(doc, originalId, newName);
-
       log.info(`[SaveTopology] Renamed node: ${originalId} -> ${newName}`);
     } else {
-      // Just update the node properties
       updateNodeYaml(doc, nodeMap, nodeData, inheritedConfig);
       log.info(`[SaveTopology] Updated node: ${originalId}`);
     }
