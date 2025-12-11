@@ -197,7 +197,8 @@ export class ReactTopoViewer {
       isViewMode: this.isViewMode,
       lastTopologyElements: this.lastTopologyElements,
       updateCachedElements: (elements) => { this.lastTopologyElements = elements; },
-      loadTopologyData: () => this.loadTopologyData()
+      loadTopologyData: () => this.loadTopologyData(),
+      extensionContext: context
     });
 
     this.initializeWatchers(panel);

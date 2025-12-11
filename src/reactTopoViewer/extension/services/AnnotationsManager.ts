@@ -15,6 +15,10 @@ import { TopologyAnnotations } from '../../shared/types/topology';
 export class AnnotationsManager {
   private cache: Map<string, { data: TopologyAnnotations; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 1000; // 1 second cache TTL
+  /** Per-file save queues to prevent concurrent writes */
+  private saveQueues: Map<string, Promise<void>> = new Map();
+  /** Per-file modification locks to serialize read-modify-write operations */
+  private modificationLocks: Map<string, Promise<void>> = new Map();
 
   /**
    * Get the annotations file path for a given YAML file.
@@ -27,16 +31,62 @@ export class AnnotationsManager {
   }
 
   /**
-   * Load annotations from the annotations file with caching.
+   * Atomically modify annotations with a serialized read-modify-write operation.
+   * This prevents race conditions when multiple operations try to modify annotations concurrently.
+   * @param yamlFilePath Path to the YAML file
+   * @param modifier Function that receives current annotations and returns modified annotations
    */
-  async loadAnnotations(yamlFilePath: string): Promise<TopologyAnnotations> {
+  async modifyAnnotations(
+    yamlFilePath: string,
+    modifier: (annotations: TopologyAnnotations) => TopologyAnnotations
+  ): Promise<void> {
     const annotationsPath = this.getAnnotationsFilePath(yamlFilePath);
 
-    // Check cache first
-    const cached = this.cache.get(annotationsPath);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      log.debug(`Using cached annotations for ${annotationsPath}`);
-      return cached.data;
+    // Acquire modification lock for this file
+    const currentLock = this.modificationLocks.get(annotationsPath) || Promise.resolve();
+    let releaseLock: () => void;
+    const newLock = new Promise<void>(resolve => {
+      releaseLock = resolve;
+    });
+    this.modificationLocks.set(annotationsPath, currentLock.then(() => newLock));
+
+    // Wait for previous modification to complete
+    await currentLock;
+
+    try {
+      // Load fresh data (skip cache since we're modifying)
+      const annotations = await this.loadAnnotations(yamlFilePath, true);
+      // Apply modification
+      const modified = modifier(annotations);
+      // Save the result
+      await this.saveAnnotations(yamlFilePath, modified);
+    } finally {
+      // Release the lock
+      releaseLock!();
+    }
+  }
+
+  /**
+   * Load annotations from the annotations file with caching.
+   * Waits for any pending saves to complete first.
+   * @param skipCache If true, bypasses cache (use for read-modify-write operations)
+   */
+  async loadAnnotations(yamlFilePath: string, skipCache = false): Promise<TopologyAnnotations> {
+    const annotationsPath = this.getAnnotationsFilePath(yamlFilePath);
+
+    // Wait for any pending save to complete first
+    const pendingSave = this.saveQueues.get(annotationsPath);
+    if (pendingSave) {
+      await pendingSave;
+    }
+
+    // Check cache first (unless skipping cache for modification operations)
+    if (!skipCache) {
+      const cached = this.cache.get(annotationsPath);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+        log.debug(`Using cached annotations for ${annotationsPath}`);
+        return cached.data;
+      }
     }
 
     try {
@@ -65,45 +115,55 @@ export class AnnotationsManager {
   }
 
   /**
-   * Save annotations to the annotations file.
+   * Save annotations to the annotations file (queued to prevent concurrent writes).
    */
   async saveAnnotations(yamlFilePath: string, annotations: TopologyAnnotations): Promise<void> {
     const annotationsPath = this.getAnnotationsFilePath(yamlFilePath);
-    this.cache.delete(annotationsPath);
 
-    try {
-      const shouldSave = this.shouldSaveAnnotations(annotations);
-      if (shouldSave) {
-        const content = JSON.stringify(annotations, null, 2);
-        let shouldWrite = true;
+    // Queue saves per file to prevent concurrent writes
+    const currentQueue = this.saveQueues.get(annotationsPath) || Promise.resolve();
+    const newQueue = currentQueue.then(async () => {
+      this.cache.delete(annotationsPath);
 
-        try {
-          const existing = await fs.promises.readFile(annotationsPath, 'utf8');
-          if (existing === content) {
-            shouldWrite = false;
-            log.debug(`Annotations unchanged, skipping save for ${annotationsPath}`);
+      try {
+        const shouldSave = this.shouldSaveAnnotations(annotations);
+        if (shouldSave) {
+          const content = JSON.stringify(annotations, null, 2);
+          let shouldWrite = true;
+
+          try {
+            const existing = await fs.promises.readFile(annotationsPath, 'utf8');
+            if (existing === content) {
+              shouldWrite = false;
+              log.debug(`Annotations unchanged, skipping save for ${annotationsPath}`);
+            }
+          } catch {
+            // File might not exist, so we need to write
           }
-        } catch {
-          // File might not exist, so we need to write
-        }
 
-        if (shouldWrite) {
-          await fs.promises.writeFile(annotationsPath, content, 'utf8');
-          log.info(`Saved annotations to ${annotationsPath}`);
+          if (shouldWrite) {
+            await fs.promises.writeFile(annotationsPath, content, 'utf8');
+            log.info(`Saved annotations to ${annotationsPath}`);
+          }
+        } else {
+          // Delete the file if no annotations exist
+          try {
+            await fs.promises.unlink(annotationsPath);
+            log.info(`Removed empty annotations file ${annotationsPath}`);
+          } catch {
+            // File may not exist, which is fine
+          }
         }
-      } else {
-        // Delete the file if no annotations exist
-        try {
-          await fs.promises.unlink(annotationsPath);
-          log.info(`Removed empty annotations file ${annotationsPath}`);
-        } catch {
-          // File may not exist, which is fine
-        }
+      } catch (error) {
+        log.error(`Failed to save annotations to ${annotationsPath}: ${error}`);
+        throw error;
       }
-    } catch (error) {
-      log.error(`Failed to save annotations to ${annotationsPath}: ${error}`);
-      throw error;
-    }
+    }).catch(err => {
+      log.error(`Annotations save queue error: ${err}`);
+    });
+
+    this.saveQueues.set(annotationsPath, newQueue);
+    return newQueue;
   }
 
   /**

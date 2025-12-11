@@ -21,6 +21,14 @@ interface KeyboardShortcutsOptions {
   canUndo?: boolean;
   /** Whether redo is available */
   canRedo?: boolean;
+  /** Copy handler (Ctrl+C) */
+  onCopy?: () => void;
+  /** Paste handler (Ctrl+V) */
+  onPaste?: () => void;
+  /** Cut handler (Ctrl+X) */
+  onCut?: () => void;
+  /** Duplicate handler (Ctrl+D) */
+  onDuplicate?: () => void;
 }
 
 /**
@@ -72,6 +80,92 @@ function handleRedo(
 
   log.info('[Keyboard] Redo');
   onRedo();
+  event.preventDefault();
+  return true;
+}
+
+/**
+ * Handle Ctrl+C: Copy
+ */
+function handleCopy(
+  event: KeyboardEvent,
+  cyInstance: Core | null,
+  onCopy?: () => void
+): boolean {
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  if (event.key !== 'c') return false;
+  if (!onCopy) return false;
+
+  // Only copy if there's a selection
+  if (!cyInstance || cyInstance.$(':selected').empty()) return false;
+
+  log.info('[Keyboard] Copy');
+  onCopy();
+  event.preventDefault();
+  return true;
+}
+
+/**
+ * Handle Ctrl+V: Paste
+ */
+function handlePaste(
+  event: KeyboardEvent,
+  mode: 'edit' | 'view',
+  onPaste?: () => void
+): boolean {
+  if (mode !== 'edit') return false;
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  if (event.key !== 'v') return false;
+  if (!onPaste) return false;
+
+  log.info('[Keyboard] Paste');
+  onPaste();
+  event.preventDefault();
+  return true;
+}
+
+/**
+ * Handle Ctrl+X: Cut
+ */
+function handleCut(
+  event: KeyboardEvent,
+  mode: 'edit' | 'view',
+  cyInstance: Core | null,
+  onCut?: () => void
+): boolean {
+  if (mode !== 'edit') return false;
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  if (event.key !== 'x') return false;
+  if (!onCut) return false;
+
+  // Only cut if there's a selection
+  if (!cyInstance || cyInstance.$(':selected').empty()) return false;
+
+  log.info('[Keyboard] Cut');
+  onCut();
+  event.preventDefault();
+  return true;
+}
+
+/**
+ * Handle Ctrl+D: Duplicate
+ */
+function handleDuplicate(
+  event: KeyboardEvent,
+  mode: 'edit' | 'view',
+  cyInstance: Core | null,
+  onDuplicate?: () => void
+): boolean {
+  if (mode !== 'edit') return false;
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  if (event.key !== 'd') return false;
+  if (!onDuplicate) return false;
+
+  // Only duplicate if there's a selection
+  if (!cyInstance || cyInstance.$(':selected').empty()) return false;
+
+  log.info('[Keyboard] Duplicate');
+  onDuplicate();
   event.preventDefault();
   return true;
 }
@@ -158,7 +252,11 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     onUndo,
     onRedo,
     canUndo = false,
-    canRedo = false
+    canRedo = false,
+    onCopy,
+    onPaste,
+    onCut,
+    onDuplicate
   } = options;
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -167,10 +265,16 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     // Undo/Redo must be checked before other shortcuts
     if (handleUndo(event, mode, canUndo, onUndo)) return;
     if (handleRedo(event, mode, canRedo, onRedo)) return;
+    // Copy/Paste/Cut/Duplicate
+    if (handleCopy(event, cyInstance, onCopy)) return;
+    if (handlePaste(event, mode, onPaste)) return;
+    if (handleCut(event, mode, cyInstance, onCut)) return;
+    if (handleDuplicate(event, mode, cyInstance, onDuplicate)) return;
+    // Other shortcuts
     if (handleSelectAll(event, cyInstance)) return;
     if (handleDelete(event, mode, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge)) return;
     handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll);
-  }, [mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll, onUndo, onRedo, canUndo, canRedo]);
+  }, [mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll, onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

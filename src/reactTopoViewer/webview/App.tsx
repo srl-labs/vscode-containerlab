@@ -20,6 +20,7 @@ import {
   useNodeDragging,
   useEdgeCreation,
   useNodeCreation,
+  useCopyPaste,
   // State hooks
   useGraphUndoRedoHandlers,
   useCustomTemplateEditor,
@@ -34,7 +35,7 @@ import {
   useContextMenuHandlers,
   useLayoutControls
 } from './hooks';
-import type { NodePositionEntry } from './hooks';
+import type { NodePositionEntry, GraphChangeEntry } from './hooks';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 import type { NodeEditorData } from './components/panels/node-editor/types';
@@ -406,6 +407,22 @@ export const App: React.FC = () => {
   const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
 
+  // Copy/paste handler - records graph changes for undo/redo
+  const recordGraphChanges = React.useCallback((before: GraphChangeEntry[], after: GraphChangeEntry[]) => {
+    undoRedo.pushAction({
+      type: 'graph',
+      before,
+      after
+    });
+  }, [undoRedo]);
+
+  // Set up copy/paste functionality
+  const copyPaste = useCopyPaste(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    recordGraphChanges
+  });
+
   // Custom template editor data and handlers
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
@@ -493,7 +510,11 @@ export const App: React.FC = () => {
     onUndo: undoRedo.undo,
     onRedo: undoRedo.redo,
     canUndo: undoRedo.canUndo,
-    canRedo: undoRedo.canRedo
+    canRedo: undoRedo.canRedo,
+    onCopy: copyPaste.handleCopy,
+    onPaste: copyPaste.handlePaste,
+    onCut: copyPaste.handleCut,
+    onDuplicate: copyPaste.handleDuplicate
   });
 
   // Shortcut display hook

@@ -80,6 +80,7 @@ export interface MessageRouterContext {
   lastTopologyElements: CyElement[];
   updateCachedElements: (elements: CyElement[]) => void;
   loadTopologyData: () => Promise<unknown>;
+  extensionContext?: vscode.ExtensionContext;
 }
 
 /**
@@ -605,6 +606,44 @@ export class MessageRouter {
   }
 
   /**
+   * Handle clipboard commands (copy/paste)
+   */
+  private async handleClipboardCommand(
+    command: string,
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<boolean> {
+    const ctx = this.context.extensionContext;
+    if (!ctx) {
+      log.warn('[ReactTopoViewer] Cannot handle clipboard: no extension context');
+      return false;
+    }
+
+    if (command === 'copyElements') {
+      // Store clipboard data in VS Code global state
+      const payload = (message as Record<string, unknown>).payload;
+      if (!payload) {
+        log.warn('[ReactTopoViewer] copyElements: no payload provided');
+        return true;
+      }
+      await ctx.globalState.update('topoClipboard', payload);
+      log.info(`[ReactTopoViewer] Elements copied to clipboard: ${JSON.stringify(payload).slice(0, 100)}...`);
+      return true;
+    }
+
+    if (command === 'getCopiedElements') {
+      // Retrieve clipboard data and send to webview
+      const clipboard = ctx.globalState.get('topoClipboard') || null;
+      log.info(`[ReactTopoViewer] getCopiedElements: clipboard has data=${!!clipboard}`);
+      panel.webview.postMessage({ type: 'copiedElements', data: clipboard });
+      log.info('[ReactTopoViewer] Clipboard sent to webview');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Handle editor save/apply commands (both node and link editors)
    * Returns true if the command was handled, false otherwise
    */
@@ -752,6 +791,8 @@ export class MessageRouter {
     if (!command) return false;
 
     if (await this.handleGraphBatchCommand(command)) return true;
+
+    if (await this.handleClipboardCommand(command, message, panel)) return true;
 
     if (await this.handleEditorCommand(command, message)) return true;
 

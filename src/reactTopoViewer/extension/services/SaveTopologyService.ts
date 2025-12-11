@@ -45,6 +45,8 @@ export class SaveTopologyService {
   private setInternalUpdate?: (updating: boolean) => void;
   private batchDepth = 0;
   private pendingSave = false;
+  /** Save queue to prevent concurrent writes */
+  private saveQueue: Promise<SaveResult> = Promise.resolve({ success: true });
 
   /**
    * Begin a batch operation (defers saves until endBatch)
@@ -138,14 +140,15 @@ export class SaveTopologyService {
    * Renames a node's annotations from old ID to new ID
    */
   private async renameNodeAnnotations(oldId: string, newId: string): Promise<void> {
-    const annotations = await annotationsManager.loadAnnotations(this.yamlFilePath);
-    if (annotations.nodeAnnotations) {
-      const nodeAnnotation = annotations.nodeAnnotations.find(n => n.id === oldId);
-      if (nodeAnnotation) {
-        nodeAnnotation.id = newId;
-        await annotationsManager.saveAnnotations(this.yamlFilePath, annotations);
+    await annotationsManager.modifyAnnotations(this.yamlFilePath, annotations => {
+      if (annotations.nodeAnnotations) {
+        const nodeAnnotation = annotations.nodeAnnotations.find(n => n.id === oldId);
+        if (nodeAnnotation) {
+          nodeAnnotation.id = newId;
+        }
       }
-    }
+      return annotations;
+    });
   }
 
   /**
@@ -170,11 +173,12 @@ export class SaveTopologyService {
    * Removes a node's annotations
    */
   private async removeNodeAnnotations(nodeId: string): Promise<void> {
-    const annotations = await annotationsManager.loadAnnotations(this.yamlFilePath);
-    if (annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = annotations.nodeAnnotations.filter(n => n.id !== nodeId);
-      await annotationsManager.saveAnnotations(this.yamlFilePath, annotations);
-    }
+    await annotationsManager.modifyAnnotations(this.yamlFilePath, annotations => {
+      if (annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = annotations.nodeAnnotations.filter(n => n.id !== nodeId);
+      }
+      return annotations;
+    });
   }
 
   /**
@@ -223,13 +227,20 @@ export class SaveTopologyService {
   }
 
   /**
-   * Saves the current document to disk
+   * Saves the current document to disk (queued to prevent concurrent writes)
    */
   async save(): Promise<SaveResult> {
     if (!this.doc) {
       return { success: false, error: ERROR_SERVICE_NOT_INIT };
     }
-    return writeYamlFile(this.doc, this.yamlFilePath, this.setInternalUpdate);
+    // Queue saves to prevent concurrent writes that corrupt the file
+    this.saveQueue = this.saveQueue.then(async () => {
+      if (!this.doc) {
+        return { success: false, error: ERROR_SERVICE_NOT_INIT };
+      }
+      return writeYamlFile(this.doc, this.yamlFilePath, this.setInternalUpdate);
+    }).catch(() => ({ success: false, error: 'Save queue error' }));
+    return this.saveQueue;
   }
 
   /**
