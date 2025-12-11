@@ -21,15 +21,17 @@ const TABS: TabDefinition[] = [
 ];
 
 /**
- * Custom hook to manage link editor form state
+ * Custom hook to manage link editor form state with change tracking
  */
 function useLinkEditorForm(linkData: LinkEditorData | null) {
   const [activeTab, setActiveTab] = useState<LinkEditorTabId>('basic');
   const [formData, setFormData] = useState<LinkEditorData | null>(null);
+  const [initialData, setInitialData] = useState<string | null>(null);
 
   useEffect(() => {
     if (linkData) {
       setFormData({ ...linkData });
+      setInitialData(JSON.stringify(linkData));
       setActiveTab('basic');
     }
   }, [linkData]);
@@ -38,7 +40,19 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
     setFormData(prev => prev ? { ...prev, ...updates } : null);
   }, []);
 
-  return { activeTab, setActiveTab, formData, handleChange };
+  // Reset initial data after apply (to track further changes from the applied state)
+  const resetInitialData = useCallback(() => {
+    if (formData) {
+      setInitialData(JSON.stringify(formData));
+    }
+  }, [formData]);
+
+  // Check if form has changes compared to initial state
+  const hasChanges = formData && initialData
+    ? JSON.stringify(formData) !== initialData
+    : false;
+
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData };
 }
 
 /**
@@ -92,7 +106,7 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   onSave,
   onApply
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange } = useLinkEditorForm(linkData);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData } = useLinkEditorForm(linkData);
 
   const validationErrors = useMemo(() => {
     if (!formData) return [];
@@ -102,8 +116,9 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   const handleApply = useCallback(() => {
     if (formData && validationErrors.length === 0) {
       onApply(formData);
+      resetInitialData(); // Reset tracking after apply
     }
-  }, [formData, validationErrors, onApply]);
+  }, [formData, validationErrors, onApply, resetInitialData]);
 
   const handleSave = useCallback(() => {
     if (formData && validationErrors.length === 0) {
@@ -128,6 +143,7 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
       onTabChange={(id) => setActiveTab(id as LinkEditorTabId)}
       storageKey="link-editor"
       width={400}
+      hasChanges={hasChanges}
     >
       <ValidationBanner errors={validationErrors} />
       <TabContent

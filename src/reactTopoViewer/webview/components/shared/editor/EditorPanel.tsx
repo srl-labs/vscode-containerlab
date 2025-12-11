@@ -19,6 +19,8 @@ interface EditorPanelProps {
   activeTab?: string;
   onTabChange?: (tabId: string) => void;
   storageKey?: string;
+  /** When true, highlights the Apply button to indicate unsaved changes */
+  hasChanges?: boolean;
 }
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
@@ -33,7 +35,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   tabs,
   activeTab,
   onTabChange,
-  storageKey
+  storageKey,
+  hasChanges = false
 }) => (
   <BasePanel
     title={title}
@@ -46,6 +49,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     onPrimaryClick={onSave}
     secondaryLabel="Apply"
     primaryLabel="OK"
+    hasChanges={hasChanges}
   >
     {tabs && activeTab && onTabChange && (
       <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />

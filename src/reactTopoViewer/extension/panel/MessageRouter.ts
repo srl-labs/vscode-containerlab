@@ -531,6 +531,31 @@ export class MessageRouter {
   }
 
   /**
+   * Handle editor save/apply commands (both node and link editors)
+   * Returns true if the command was handled, false otherwise
+   */
+  private async handleEditorCommand(command: string, message: WebviewMessage): Promise<boolean> {
+    switch (command) {
+      case 'create-node':
+        await this.handleCreateNode(message);
+        return true;
+      case 'save-node-editor':
+      case 'apply-node-editor':
+        await this.handleSaveNodeEditor(message);
+        return true;
+      case 'create-link':
+        await this.handleCreateLink(message);
+        return true;
+      case 'save-link-editor':
+      case 'apply-link-editor':
+        await this.handleSaveLinkEditor(message);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /**
    * Handle fire-and-forget command messages from the webview
    */
   private async handleCommandMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
@@ -539,26 +564,7 @@ export class MessageRouter {
 
     if (await this.handleGraphBatchCommand(command)) return true;
 
-    // YAML save commands
-    if (command === 'create-node') {
-      await this.handleCreateNode(message);
-      return true;
-    }
-
-    if (command === 'save-node-editor') {
-      await this.handleSaveNodeEditor(message);
-      return true;
-    }
-
-    if (command === 'create-link') {
-      await this.handleCreateLink(message);
-      return true;
-    }
-
-    if (command === 'save-link-editor') {
-      await this.handleSaveLinkEditor(message);
-      return true;
-    }
+    if (await this.handleEditorCommand(command, message)) return true;
 
     if (command === 'save-node-positions' && message.positions) {
       await this.handleSaveNodePositions(message.positions);

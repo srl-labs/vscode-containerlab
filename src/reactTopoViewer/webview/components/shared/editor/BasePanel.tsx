@@ -26,6 +26,8 @@ interface BasePanelProps {
   onSecondaryClick: () => void;
   primaryLabel?: string;
   secondaryLabel?: string;
+  // Change tracking - highlights secondary (Apply) button when true
+  hasChanges?: boolean;
   // Panel options
   width?: number;
   initialPosition?: { x: number; y: number };
@@ -154,6 +156,7 @@ export const BasePanel: React.FC<BasePanelProps> = ({
   onSecondaryClick,
   primaryLabel = 'OK',
   secondaryLabel = 'Apply',
+  hasChanges = false,
   width = DEFAULT_WIDTH,
   initialPosition = DEFAULT_POSITION,
   storageKey,
@@ -217,8 +220,9 @@ export const BasePanel: React.FC<BasePanelProps> = ({
         >
           <button
             type="button"
-            className="btn btn-secondary btn-small"
+            className={`btn btn-small ${hasChanges ? 'btn-has-changes' : 'btn-secondary'}`}
             onClick={onSecondaryClick}
+            title="Apply changes without closing"
           >
             {secondaryLabel}
           </button>
@@ -226,6 +230,7 @@ export const BasePanel: React.FC<BasePanelProps> = ({
             type="button"
             className="btn btn-primary btn-small"
             onClick={onPrimaryClick}
+            title="Apply changes and close"
           >
             {primaryLabel}
           </button>

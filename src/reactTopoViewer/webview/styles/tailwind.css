@@ -422,6 +422,32 @@
     background-color: var(--accent-hover);
   }
 
+  .btn-secondary {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: 1px solid var(--vscode-button-secondaryBackground);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+  }
+
+  /* Apply button state when there are unsaved changes */
+  .btn-has-changes {
+    background-color: var(--accent);
+    color: var(--vscode-button-foreground);
+    border-color: var(--accent);
+  }
+
+  .btn-has-changes:hover {
+    background-color: var(--vscode-button-hoverBackground);
+  }
+
+  .btn-small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
   /* Input styles */
   .input-field {
     background-color: var(--vscode-input-background);

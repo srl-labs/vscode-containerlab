@@ -27,15 +27,17 @@ const TABS: TabDefinition[] = [
 ];
 
 /**
- * Custom hook to manage node editor form state
+ * Custom hook to manage node editor form state with change tracking
  */
 function useNodeEditorForm(nodeData: NodeEditorData | null) {
   const [activeTab, setActiveTab] = useState<NodeEditorTabId>('basic');
   const [formData, setFormData] = useState<NodeEditorData | null>(null);
+  const [initialData, setInitialData] = useState<string | null>(null);
 
   useEffect(() => {
     if (nodeData) {
       setFormData({ ...nodeData });
+      setInitialData(JSON.stringify(nodeData));
       setActiveTab('basic');
     }
   }, [nodeData]);
@@ -44,7 +46,19 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
     setFormData(prev => prev ? { ...prev, ...updates } : null);
   }, []);
 
-  return { activeTab, setActiveTab, formData, handleChange };
+  // Reset initial data after apply (to track further changes from the applied state)
+  const resetInitialData = useCallback(() => {
+    if (formData) {
+      setInitialData(JSON.stringify(formData));
+    }
+  }, [formData]);
+
+  // Check if form has changes compared to initial state
+  const hasChanges = formData && initialData
+    ? JSON.stringify(formData) !== initialData
+    : false;
+
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData };
 }
 
 /**
@@ -87,11 +101,14 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
   onSave,
   onApply
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange } = useNodeEditorForm(nodeData);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData } = useNodeEditorForm(nodeData);
 
   const handleApply = useCallback(() => {
-    if (formData) onApply(formData);
-  }, [formData, onApply]);
+    if (formData) {
+      onApply(formData);
+      resetInitialData(); // Reset tracking after apply
+    }
+  }, [formData, onApply, resetInitialData]);
 
   const handleSave = useCallback(() => {
     if (formData) onSave(formData);
@@ -113,6 +130,7 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
       onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
       storageKey="node-editor"
       width={420}
+      hasChanges={hasChanges}
     >
       <TabContent activeTab={activeTab} formData={formData} onChange={handleChange} />
     </EditorPanel>
