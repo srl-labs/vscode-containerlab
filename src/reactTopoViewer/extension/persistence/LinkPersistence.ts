@@ -33,6 +33,11 @@ export interface LinkSaveData {
     extLabels?: Record<string, unknown>;
     [key: string]: unknown;
   };
+  // Original values for finding the link when endpoints change
+  originalSource?: string;
+  originalTarget?: string;
+  originalSourceEndpoint?: string;
+  originalTargetEndpoint?: string;
 }
 
 /** Link types that use single endpoint format */
@@ -293,6 +298,22 @@ export function addLink(doc: YAML.Document.Parsed, linkData: LinkSaveData): Save
 }
 
 /**
+ * Gets the lookup key for finding an existing link
+ * Uses original values if provided (for when endpoints have changed)
+ */
+function getLookupKey(linkData: LinkSaveData): string {
+  const source = linkData.originalSource || linkData.source;
+  const target = linkData.originalTarget || linkData.target;
+  const sourceEndpoint = linkData.originalSourceEndpoint ?? linkData.sourceEndpoint;
+  const targetEndpoint = linkData.originalTargetEndpoint ?? linkData.targetEndpoint;
+
+  const src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
+  const dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+
+  return [src, dst].toSorted().join('|');
+}
+
+/**
  * Updates an existing link in the topology
  */
 export function editLink(doc: YAML.Document.Parsed, linkData: LinkSaveData): SaveResult {
@@ -302,30 +323,34 @@ export function editLink(doc: YAML.Document.Parsed, linkData: LinkSaveData): Sav
       return { success: false, error: ERROR_LINKS_NOT_SEQ };
     }
 
-    const targetKey = getLinkKey(linkData);
+    // Use original values to find the existing link (if endpoints were changed)
+    const lookupKey = getLookupKey(linkData);
     let found = false;
+
+    log.info(`[SaveTopology] Looking for link with key: ${lookupKey}`);
 
     for (let i = 0; i < linksSeq.items.length; i++) {
       const item = linksSeq.items[i];
       if (!YAML.isMap(item)) continue;
 
       const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
-      if (existingKey === targetKey) {
-        // Replace with updated link
+      if (existingKey === lookupKey) {
+        // Replace with updated link (using the new values)
         const updatedLink = hasExtendedProperties(linkData)
           ? createExtendedLink(doc, linkData)
           : createBriefLink(doc, linkData);
         linksSeq.items[i] = updatedLink;
         found = true;
+        log.info(`[SaveTopology] Found and updated link at index ${i}`);
         break;
       }
     }
 
     if (!found) {
-      return { success: false, error: 'Link not found' };
+      return { success: false, error: `Link not found (lookup key: ${lookupKey})` };
     }
 
-    log.info(`[SaveTopology] Updated link: ${linkData.source} <-> ${linkData.target}`);
+    log.info(`[SaveTopology] Updated link: ${linkData.source}:${linkData.sourceEndpoint} <-> ${linkData.target}:${linkData.targetEndpoint}`);
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

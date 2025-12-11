@@ -125,8 +125,27 @@ export class SaveTopologyService {
     const result = editNodeInDoc(this.doc, nodeData, topoObj);
     if (result.success) {
       await this.saveMaybeDeferred();
+
+      // If node was renamed, update annotations
+      if (result.renamed) {
+        await this.renameNodeAnnotations(result.renamed.oldId, result.renamed.newId);
+      }
     }
     return result;
+  }
+
+  /**
+   * Renames a node's annotations from old ID to new ID
+   */
+  private async renameNodeAnnotations(oldId: string, newId: string): Promise<void> {
+    const annotations = await annotationsManager.loadAnnotations(this.yamlFilePath);
+    if (annotations.nodeAnnotations) {
+      const nodeAnnotation = annotations.nodeAnnotations.find(n => n.id === oldId);
+      if (nodeAnnotation) {
+        nodeAnnotation.id = newId;
+        await annotationsManager.saveAnnotations(this.yamlFilePath, annotations);
+      }
+    }
   }
 
   /**

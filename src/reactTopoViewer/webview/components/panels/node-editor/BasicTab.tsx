@@ -310,7 +310,10 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const color = data.iconColor || DEFAULT_ICON_COLOR;
-  const icon = data.icon || 'pe';
+  // Don't apply default for dropdown value - show actual value (or empty)
+  // Only use fallback for preview image rendering
+  const icon = data.icon || '';
+  const previewIcon = icon || 'pe';
 
   const handleIconSave = useCallback((newIcon: string, newColor: string | null, cornerRadius: number) => {
     onChange({
@@ -332,7 +335,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
       <FormField label="Icon">
         <div className="flex gap-2 items-start">
           <img
-            src={getIconSrc(icon, color)}
+            src={getIconSrc(previewIcon, color)}
             alt="Icon preview"
             className="h-9 w-9 rounded"
             style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 36) }}
@@ -365,7 +368,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleIconSave}
-        initialIcon={icon}
+        initialIcon={previewIcon}
         initialColor={data.iconColor}
         initialCornerRadius={data.iconCornerRadius || 0}
       />

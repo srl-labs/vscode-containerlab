@@ -377,14 +377,33 @@ export class MessageRouter {
       return;
     }
 
+    // Convert link editor data to the format expected by LinkPersistence
+    // The webview sends: type, mtu, sourceMac, targetMac, vars, labels at the top level
+    // LinkPersistence expects: extType, extMtu, extSourceMac, etc. in extraData
+    const extraData: LinkSaveData['extraData'] = {
+      extType: msg.linkData.type as string | undefined,
+      extMtu: msg.linkData.mtu as string | number | undefined,
+      extSourceMac: msg.linkData.sourceMac as string | undefined,
+      extTargetMac: msg.linkData.targetMac as string | undefined,
+      extVars: msg.linkData.vars as Record<string, unknown> | undefined,
+      extLabels: msg.linkData.labels as Record<string, unknown> | undefined,
+    };
+
     const linkData: LinkSaveData = {
       id: String(msg.linkData.id || ''),
       source: String(msg.linkData.source || ''),
       target: String(msg.linkData.target || ''),
       sourceEndpoint: String(msg.linkData.sourceEndpoint || ''),
       targetEndpoint: String(msg.linkData.targetEndpoint || ''),
-      extraData: msg.linkData.extraData as LinkSaveData['extraData']
+      extraData,
+      // Pass original values for finding the link when endpoints change
+      originalSource: msg.linkData.originalSource as string | undefined,
+      originalTarget: msg.linkData.originalTarget as string | undefined,
+      originalSourceEndpoint: msg.linkData.originalSourceEndpoint as string | undefined,
+      originalTargetEndpoint: msg.linkData.originalTargetEndpoint as string | undefined,
     };
+
+    log.info(`[ReactTopoViewer] Saving link with extraData: ${JSON.stringify(extraData)}`);
 
     const result = await saveTopologyService.editLink(linkData);
     if (result.success) {

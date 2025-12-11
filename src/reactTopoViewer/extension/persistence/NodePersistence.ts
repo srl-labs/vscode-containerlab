@@ -269,6 +269,58 @@ export async function addNode(
 }
 
 /**
+ * Updates endpoint references in a link when a node is renamed
+ */
+function updateEndpointReferences(ep: unknown, oldId: string, newId: string): void {
+  if (YAML.isScalar(ep)) {
+    const str = String(ep.value);
+    // Format: "nodeName:interface" or just "nodeName"
+    if (str === oldId) {
+      ep.value = newId;
+    } else if (str.startsWith(`${oldId}:`)) {
+      ep.value = `${newId}:${str.slice(oldId.length + 1)}`;
+    }
+  } else if (YAML.isMap(ep)) {
+    const epMap = ep as YAML.YAMLMap;
+    if (epMap.get('node') === oldId) {
+      epMap.set('node', newId);
+    }
+  }
+}
+
+/**
+ * Updates all link references when a node is renamed
+ */
+function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: string): void {
+  const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+  if (!linksSeq || !YAML.isSeq(linksSeq)) {
+    return;
+  }
+
+  for (const item of linksSeq.items) {
+    if (!YAML.isMap(item)) continue;
+    const linkMap = item as YAML.YAMLMap;
+
+    // Check endpoints array
+    const endpoints = linkMap.get('endpoints', true);
+    if (YAML.isSeq(endpoints)) {
+      for (const ep of endpoints.items) {
+        updateEndpointReferences(ep, oldId, newId);
+      }
+    }
+
+    // Check single endpoint (less common)
+    const endpoint = linkMap.get('endpoint', true);
+    if (YAML.isMap(endpoint)) {
+      const epMap = endpoint as YAML.YAMLMap;
+      if (epMap.get('node') === oldId) {
+        epMap.set('node', newId);
+      }
+    }
+  }
+}
+
+/**
  * Updates an existing node in the topology
  */
 export function editNode(
@@ -282,27 +334,55 @@ export function editNode(
       return { success: false, error: ERROR_NODES_NOT_MAP };
     }
 
-    const nodeId = nodeData.name || nodeData.id;
-    if (!nodeId) {
-      return { success: false, error: 'Node must have a name or id' };
+    // Use the original ID to find the existing node
+    const originalId = nodeData.id;
+    const newName = nodeData.name || nodeData.id;
+
+    if (!originalId) {
+      return { success: false, error: 'Node must have an id' };
     }
 
-    let nodeMap = nodesMap.get(nodeId, true) as YAML.YAMLMap | undefined;
+    // Check if the original node exists
+    let nodeMap = nodesMap.get(originalId, true) as YAML.YAMLMap | undefined;
     if (!nodeMap) {
-      // Node doesn't exist, create it
+      // Node doesn't exist with originalId - this shouldn't happen in normal edit flow
+      // But we handle it gracefully by creating a new node with the target name
       nodeMap = new YAML.YAMLMap();
       nodeMap.flow = false;
-      nodesMap.set(nodeId, nodeMap);
+      nodesMap.set(newName, nodeMap);
+      log.warn(`[SaveTopology] Node "${originalId}" not found, creating new node "${newName}"`);
     }
 
     // Get inherited configuration
     const inheritedConfig = resolveInheritedConfig(topoObj, nodeData.extraData?.group, nodeData.extraData?.kind);
 
-    // Update the node
-    updateNodeYaml(doc, nodeMap, nodeData, inheritedConfig);
+    // Check if this is a rename operation
+    const isRename = newName !== originalId;
 
-    log.info(`[SaveTopology] Updated node: ${nodeId}`);
-    return { success: true };
+    if (isRename) {
+      // Check if target name already exists (would cause conflict)
+      if (nodesMap.has(newName)) {
+        return { success: false, error: `Cannot rename: node "${newName}" already exists` };
+      }
+
+      // Update the node properties first
+      updateNodeYaml(doc, nodeMap, nodeData, inheritedConfig);
+
+      // Rename the node in the map: add with new name, delete old
+      nodesMap.set(newName, nodeMap);
+      nodesMap.delete(originalId);
+
+      // Update all links that reference this node
+      updateLinksForRename(doc, originalId, newName);
+
+      log.info(`[SaveTopology] Renamed node: ${originalId} -> ${newName}`);
+    } else {
+      // Just update the node properties
+      updateNodeYaml(doc, nodeMap, nodeData, inheritedConfig);
+      log.info(`[SaveTopology] Updated node: ${originalId}`);
+    }
+
+    return { success: true, renamed: isRename ? { oldId: originalId, newId: newName } : undefined };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message };

@@ -29,6 +29,11 @@ export interface LinkEditorData {
   mtu?: number | string;
   vars?: Record<string, string>;
   labels?: Record<string, string>;
+  // Original values for finding the link when endpoints change
+  originalSource?: string;
+  originalTarget?: string;
+  originalSourceEndpoint?: string;
+  originalTargetEndpoint?: string;
 }
 
 /**

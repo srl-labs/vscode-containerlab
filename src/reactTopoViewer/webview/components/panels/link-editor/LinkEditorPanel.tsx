@@ -41,9 +41,19 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
   }, []);
 
   // Reset initial data after apply (to track further changes from the applied state)
-  const resetInitialData = useCallback(() => {
+  // Also update the original values to the current values so subsequent saves work
+  const resetAfterApply = useCallback(() => {
     if (formData) {
-      setInitialData(JSON.stringify(formData));
+      // Update original values to current values (the link in YAML now has these)
+      const updatedFormData: LinkEditorData = {
+        ...formData,
+        originalSource: formData.source,
+        originalTarget: formData.target,
+        originalSourceEndpoint: formData.sourceEndpoint,
+        originalTargetEndpoint: formData.targetEndpoint,
+      };
+      setFormData(updatedFormData);
+      setInitialData(JSON.stringify(updatedFormData));
     }
   }, [formData]);
 
@@ -52,7 +62,7 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
     ? JSON.stringify(formData) !== initialData
     : false;
 
-  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData };
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply };
 }
 
 /**
@@ -106,7 +116,7 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   onSave,
   onApply
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData } = useLinkEditorForm(linkData);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply } = useLinkEditorForm(linkData);
 
   const validationErrors = useMemo(() => {
     if (!formData) return [];
@@ -116,9 +126,9 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   const handleApply = useCallback(() => {
     if (formData && validationErrors.length === 0) {
       onApply(formData);
-      resetInitialData(); // Reset tracking after apply
+      resetAfterApply(); // Reset tracking and update original values after apply
     }
-  }, [formData, validationErrors, onApply, resetInitialData]);
+  }, [formData, validationErrors, onApply, resetAfterApply]);
 
   const handleSave = useCallback(() => {
     if (formData && validationErrors.length === 0) {

@@ -10,6 +10,8 @@ import { log } from '../services/logger';
 export interface SaveResult {
   success: boolean;
   error?: string;
+  /** If a node was renamed, contains the old and new IDs */
+  renamed?: { oldId: string; newId: string };
 }
 
 /**
