@@ -131,7 +131,7 @@ export function useDockerImages(): UseDockerImagesResult {
     getVersionsForImage,
     parseImageString,
     combineImageVersion,
-    isLoaded: dockerImages.length > 0 || window.__DOCKER_IMAGES__ !== undefined,
+    isLoaded: dockerImages.length > 0 || typeof window.__DOCKER_IMAGES__ !== 'undefined',
     hasImages: baseImages.length > 0
   };
 }
