@@ -14,6 +14,9 @@ export * from './ui';
 // Data fetching
 export * from './data';
 
+// Annotations
+export * from './annotations';
+
 // Root-level hooks
 export {
   useCytoscapeInstance,

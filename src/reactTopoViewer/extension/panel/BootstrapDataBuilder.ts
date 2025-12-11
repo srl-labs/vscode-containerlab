@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { CyElement } from '../../shared/types/topology';
+import { CyElement, FreeTextAnnotation } from '../../shared/types/topology';
 import { getDockerImages } from '../../../utils/docker/images';
 import { getCustomNodesFromConfig, loadSchemaData, CustomNodeTemplate, SchemaData } from './SchemaParser';
 
@@ -19,6 +19,7 @@ export interface BootstrapData {
   defaultNode: string;
   schemaData: SchemaData;
   dockerImages: string[];
+  freeTextAnnotations: FreeTextAnnotation[];
 }
 
 /**
@@ -30,13 +31,14 @@ export interface BootstrapDataInput {
   isViewMode: boolean;
   deploymentState: 'deployed' | 'undeployed' | 'unknown';
   extensionUri: vscode.Uri;
+  freeTextAnnotations?: FreeTextAnnotation[];
 }
 
 /**
  * Assembles bootstrap data for the webview from various sources
  */
 export async function buildBootstrapData(input: BootstrapDataInput): Promise<BootstrapData> {
-  const { elements, labName, isViewMode, deploymentState, extensionUri } = input;
+  const { elements, labName, isViewMode, deploymentState, extensionUri, freeTextAnnotations = [] } = input;
 
   // Get custom nodes from VS Code configuration
   const customNodes = getCustomNodesFromConfig();
@@ -56,6 +58,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     customNodes,
     defaultNode,
     schemaData,
-    dockerImages
+    dockerImages,
+    freeTextAnnotations
   };
 }

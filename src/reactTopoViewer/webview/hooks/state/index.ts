@@ -8,6 +8,7 @@ export type {
   GraphChange,
   UndoRedoActionMove,
   UndoRedoActionGraph,
+  UndoRedoActionAnnotation,
   UndoRedoAction,
   UseUndoRedoOptions,
   UseUndoRedoReturn

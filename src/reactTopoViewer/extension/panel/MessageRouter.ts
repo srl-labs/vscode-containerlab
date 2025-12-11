@@ -573,7 +573,6 @@ export class MessageRouter {
       'panel-add-node': 'Node creation is not available in the React TopoViewer yet.',
       'panel-add-network': 'Network creation is not available in the React TopoViewer yet.',
       'panel-add-group': 'Group creation is not available in the React TopoViewer yet.',
-      'panel-add-text': 'Text annotations are not available in the React TopoViewer yet.',
       'panel-add-shapes': 'Shape annotations are not available in the React TopoViewer yet.',
       'panel-add-bulk-link': 'Bulk link creation is not available in the React TopoViewer yet.'
     };
@@ -798,10 +797,7 @@ export class MessageRouter {
 
     if (await this.handleCustomNodeCommand(command, message, panel)) return true;
 
-    if (command === 'save-node-positions' && message.positions) {
-      await this.handleSaveNodePositions(message.positions);
-      return true;
-    }
+    if (await this.handleAnnotationCommand(command, message)) return true;
 
     if (NODE_COMMANDS.has(command)) {
       return this.handleNodeCommand(command, message);
@@ -830,6 +826,25 @@ export class MessageRouter {
     }
 
     return this.handlePlaceholderCommand(command);
+  }
+
+  /**
+   * Handle annotation-related commands
+   */
+  private async handleAnnotationCommand(command: string, message: WebviewMessage): Promise<boolean> {
+    if (command === 'save-node-positions' && message.positions) {
+      await this.handleSaveNodePositions(message.positions);
+      return true;
+    }
+    if (command === 'save-free-text-annotations') {
+      await this.handleSaveFreeTextAnnotations(message);
+      return true;
+    }
+    if (command === 'panel-add-text') {
+      log.info('[ReactTopoViewer] Add text mode requested');
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -863,6 +878,30 @@ export class MessageRouter {
       log.info(`[ReactTopoViewer] Saved ${positions.length} node positions`);
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to save node positions: ${err}`);
+    }
+  }
+
+  /**
+   * Save free text annotations to annotations file
+   */
+  private async handleSaveFreeTextAnnotations(message: WebviewMessage): Promise<void> {
+    if (!this.context.yamlFilePath) {
+      log.warn('[ReactTopoViewer] Cannot save free text annotations: no YAML file path');
+      return;
+    }
+
+    try {
+      const payload = message as unknown as { annotations?: unknown[] };
+      const freeTextAnnotations = payload.annotations || [];
+
+      await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {
+        annotations.freeTextAnnotations = freeTextAnnotations as typeof annotations.freeTextAnnotations;
+        return annotations;
+      });
+
+      log.info(`[ReactTopoViewer] Saved ${freeTextAnnotations.length} free text annotations`);
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to save free text annotations: ${err}`);
     }
   }
 

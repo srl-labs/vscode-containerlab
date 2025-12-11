@@ -448,6 +448,30 @@
     font-size: 0.875rem;
   }
 
+  .btn-outlined {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background-color: transparent;
+  }
+
+  .btn-outlined:hover {
+    background-color: var(--vscode-button-hoverBackground);
+    color: var(--vscode-button-foreground);
+  }
+
+  /* Form styles */
+  .form-group {
+    padding-bottom: 0.5rem;
+  }
+
+  .vscode-label {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: 600;
+    color: var(--vscode-foreground);
+    display: block;
+  }
+
   /* Input styles */
   .input-field {
     background-color: var(--vscode-input-background);

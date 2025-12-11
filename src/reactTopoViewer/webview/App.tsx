@@ -14,6 +14,8 @@ import { FloatingActionPanel, FloatingActionPanelHandle } from './components/pan
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
+import { FreeTextLayer } from './components/annotations';
+import { FreeTextEditorPanel } from './components/panels/free-text-editor';
 import {
   // Graph hooks
   useContextMenu,
@@ -24,6 +26,8 @@ import {
   // State hooks
   useGraphUndoRedoHandlers,
   useCustomTemplateEditor,
+  // Annotation hooks
+  useAppFreeTextAnnotations,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
@@ -523,6 +527,14 @@ export const App: React.FC = () => {
   // Panel visibility management
   const panelVisibility = usePanelVisibility();
 
+  // Free text annotations - using consolidated hook
+  const freeTextAnnotations = useAppFreeTextAnnotations({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+  });
+
   React.useEffect(() => {
     sendCommandToExtension('toggle-lock-state', { isLocked: state.isLocked });
   }, [state.isLocked]);
@@ -557,6 +569,15 @@ export const App: React.FC = () => {
       />
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
+        <FreeTextLayer
+          cy={cyInstance}
+          annotations={freeTextAnnotations.annotations}
+          isLocked={state.isLocked}
+          isAddTextMode={freeTextAnnotations.isAddTextMode}
+          onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
+          onPositionChange={freeTextAnnotations.updatePosition}
+          onCanvasClick={freeTextAnnotations.handleCanvasClick}
+        />
         <NodeInfoPanel
           isVisible={!!state.selectedNode}
           nodeData={selectedNodeData}
@@ -600,7 +621,7 @@ export const App: React.FC = () => {
           onAddNode={handleAddNodeFromPanel}
           onAddNetwork={floatingPanelCommands.onAddNetwork}
           onAddGroup={floatingPanelCommands.onAddGroup}
-          onAddText={floatingPanelCommands.onAddText}
+          onAddText={freeTextAnnotations.handleAddText}
           onAddShapes={floatingPanelCommands.onAddShapes}
           onAddBulkLink={floatingPanelCommands.onAddBulkLink}
           onEditCustomNode={customNodeCommands.onEditCustomNode}
@@ -614,6 +635,13 @@ export const App: React.FC = () => {
         <AboutPanel
           isVisible={panelVisibility.showAboutPanel}
           onClose={panelVisibility.handleCloseAbout}
+        />
+        <FreeTextEditorPanel
+          isVisible={!!freeTextAnnotations.editingAnnotation}
+          annotation={freeTextAnnotations.editingAnnotation}
+          onSave={freeTextAnnotations.saveAnnotation}
+          onClose={freeTextAnnotations.closeEditor}
+          onDelete={freeTextAnnotations.deleteAnnotation}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
       </main>

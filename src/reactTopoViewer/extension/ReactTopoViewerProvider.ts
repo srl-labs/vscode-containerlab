@@ -261,13 +261,18 @@ export class ReactTopoViewer {
         );
       }
 
+      // Load free text annotations
+      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const freeTextAnnotations = annotations.freeTextAnnotations || [];
+
       // Build and return bootstrap data for the webview
       return buildBootstrapData({
         elements,
         labName: this.currentLabName,
         isViewMode: this.isViewMode,
         deploymentState: this.deploymentState,
-        extensionUri: this.context.extensionUri
+        extensionUri: this.context.extensionUri,
+        freeTextAnnotations
       });
     } catch (err) {
       this.lastTopologyElements = [];
