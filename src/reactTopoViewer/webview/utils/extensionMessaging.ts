@@ -30,3 +30,38 @@ export function sendCommandToExtension(command: string, payload?: Record<string,
   vscodeApi.postMessage(message);
   log.debug(`[ExtensionMessaging] Sent command: ${command}`);
 }
+
+/**
+ * Send delete custom node command to the extension.
+ */
+export function sendDeleteCustomNode(nodeName: string): void {
+  sendCommandToExtension('delete-custom-node', { name: nodeName });
+}
+
+/**
+ * Send set default custom node command to the extension.
+ */
+export function sendSetDefaultCustomNode(nodeName: string): void {
+  sendCommandToExtension('set-default-custom-node', { name: nodeName });
+}
+
+/**
+ * Save custom node template data to the extension.
+ */
+export interface SaveCustomNodeData {
+  name: string;
+  oldName?: string;  // If editing, the original name
+  kind: string;
+  type?: string;
+  image?: string;
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  baseName?: string;
+  interfacePattern?: string;
+  setDefault?: boolean;
+}
+
+export function sendSaveCustomNode(data: SaveCustomNodeData): void {
+  sendCommandToExtension('save-custom-node', data);
+}

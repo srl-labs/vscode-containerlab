@@ -4,12 +4,11 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { useTopoViewer, CustomNodeTemplate } from './context/TopoViewerContext';
-import type { CyElement } from '../shared/types/messages';
 import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
-import { NodeEditorPanel, NodeEditorData } from './components/panels/node-editor';
+import { NodeEditorPanel } from './components/panels/node-editor';
 import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
@@ -23,9 +22,11 @@ import {
   useNodeCreation,
   // State hooks
   useGraphUndoRedoHandlers,
+  useCustomTemplateEditor,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
+  useCustomNodeCommands,
   // App state hooks
   useCytoscapeInstance,
   useSelectionData,
@@ -36,6 +37,7 @@ import {
 import type { NodePositionEntry } from './hooks';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
+import type { NodeEditorData } from './components/panels/node-editor/types';
 
 /**
  * Loading state component
@@ -110,39 +112,46 @@ function usePanelVisibility() {
   };
 }
 
+/** Command constants to avoid duplicate strings */
+const CMD_PANEL_ADD_NODE = 'panel-add-node';
+
+/** Hook for deployment-related callbacks */
+function useDeploymentCommands() {
+  return {
+    onDeploy: React.useCallback(() => sendCommandToExtension('deployLab'), []),
+    onDeployCleanup: React.useCallback(() => sendCommandToExtension('deployLabCleanup'), []),
+    onDestroy: React.useCallback(() => sendCommandToExtension('destroyLab'), []),
+    onDestroyCleanup: React.useCallback(() => sendCommandToExtension('destroyLabCleanup'), []),
+    onRedeploy: React.useCallback(() => sendCommandToExtension('redeployLab'), []),
+    onRedeployCleanup: React.useCallback(() => sendCommandToExtension('redeployLabCleanup'), [])
+  };
+}
+
+/** Hook for editor panel callbacks */
+function useEditorPanelCommands() {
+  return {
+    onAddNode: React.useCallback((kind?: string) => {
+      sendCommandToExtension(CMD_PANEL_ADD_NODE, { kind });
+    }, []),
+    onAddNetwork: React.useCallback((networkType?: string) => {
+      sendCommandToExtension('panel-add-network', { networkType: networkType || 'host' });
+    }, []),
+    onAddGroup: React.useCallback(() => sendCommandToExtension('panel-add-group'), []),
+    onAddText: React.useCallback(() => sendCommandToExtension('panel-add-text'), []),
+    onAddShapes: React.useCallback((shapeType?: string) => {
+      sendCommandToExtension('panel-add-shapes', { shapeType: shapeType || 'rectangle' });
+    }, []),
+    onAddBulkLink: React.useCallback(() => sendCommandToExtension('panel-add-bulk-link'), [])
+  };
+}
+
 function useFloatingPanelCommands() {
-  const onDeploy = React.useCallback(() => sendCommandToExtension('deployLab'), []);
-  const onDeployCleanup = React.useCallback(() => sendCommandToExtension('deployLabCleanup'), []);
-  const onDestroy = React.useCallback(() => sendCommandToExtension('destroyLab'), []);
-  const onDestroyCleanup = React.useCallback(() => sendCommandToExtension('destroyLabCleanup'), []);
-  const onRedeploy = React.useCallback(() => sendCommandToExtension('redeployLab'), []);
-  const onRedeployCleanup = React.useCallback(() => sendCommandToExtension('redeployLabCleanup'), []);
-  const onAddNode = React.useCallback((kind?: string) => {
-    sendCommandToExtension('panel-add-node', { kind });
-  }, []);
-  const onAddNetwork = React.useCallback((networkType?: string) => {
-    sendCommandToExtension('panel-add-network', { networkType: networkType || 'host' });
-  }, []);
-  const onAddGroup = React.useCallback(() => sendCommandToExtension('panel-add-group'), []);
-  const onAddText = React.useCallback(() => sendCommandToExtension('panel-add-text'), []);
-  const onAddShapes = React.useCallback((shapeType?: string) => {
-    sendCommandToExtension('panel-add-shapes', { shapeType: shapeType || 'rectangle' });
-  }, []);
-  const onAddBulkLink = React.useCallback(() => sendCommandToExtension('panel-add-bulk-link'), []);
+  const deploymentCommands = useDeploymentCommands();
+  const editorCommands = useEditorPanelCommands();
 
   return {
-    onDeploy,
-    onDeployCleanup,
-    onDestroy,
-    onDestroyCleanup,
-    onRedeploy,
-    onRedeployCleanup,
-    onAddNode,
-    onAddNetwork,
-    onAddGroup,
-    onAddText,
-    onAddShapes,
-    onAddBulkLink
+    ...deploymentCommands,
+    ...editorCommands
   };
 }
 
@@ -312,15 +321,20 @@ type Position = { x: number; y: number };
  * Hook for node creation handlers
  */
 function useNodeCreationHandlers(
-  addNode: (node: CyElement) => void,
-  editNode: (id: string | null) => void,
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
   state: NodeCreationState,
   cyInstance: CyCore | null,
-  createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void
+  createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
+  onNewCustomNode: () => void
 ) {
   // Handler for Add Node button from FloatingActionPanel
   const handleAddNodeFromPanel = React.useCallback((templateName?: string) => {
+    // Handle "New Custom Node" action
+    if (templateName === '__new__') {
+      onNewCustomNode();
+      return;
+    }
+
     if (!cyInstance) return;
 
     if (state.isLocked) {
@@ -329,10 +343,7 @@ function useNodeCreationHandlers(
     }
 
     let template: CustomNodeTemplate | undefined;
-    if (templateName === '__new__') {
-      sendCommandToExtension('panel-add-node', { kind: '__new__' });
-      return;
-    } else if (templateName) {
+    if (templateName) {
       template = state.customNodes.find(n => n.name === templateName);
     } else if (state.defaultNode) {
       template = state.customNodes.find(n => n.name === state.defaultNode);
@@ -345,13 +356,13 @@ function useNodeCreationHandlers(
     };
 
     createNodeAtPosition(position, template);
-  }, [cyInstance, state.isLocked, state.customNodes, state.defaultNode, createNodeAtPosition, floatingPanelRef]);
+  }, [cyInstance, state.isLocked, state.customNodes, state.defaultNode, createNodeAtPosition, floatingPanelRef, onNewCustomNode]);
 
   return { handleAddNodeFromPanel };
 }
 
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -374,6 +385,7 @@ export const App: React.FC = () => {
   // Context menu handlers
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();
+  const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
   const {
     undoRedo,
@@ -393,6 +405,10 @@ export const App: React.FC = () => {
   // Editor handlers with undo/redo support
   const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
+
+  // Custom template editor data and handlers
+  const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
+    useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
 
   // Set up edge creation via edgehandles
   const { startEdgeCreation } = useEdgeCreation(cyInstance, {
@@ -425,7 +441,7 @@ export const App: React.FC = () => {
 
   // Now use the extracted handler hook with the createNodeAtPosition function
   const { handleAddNodeFromPanel } = useNodeCreationHandlers(
-    addNode, editNode, floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition
+    floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition, customNodeCommands.onNewCustomNode
   );
 
   // Set up context menus
@@ -537,6 +553,14 @@ export const App: React.FC = () => {
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
         />
+        {/* Custom Node Template Editor */}
+        <NodeEditorPanel
+          isVisible={!!state.editingCustomTemplate}
+          nodeData={customTemplateEditorData}
+          onClose={customTemplateHandlers.handleClose}
+          onSave={customTemplateHandlers.handleSave}
+          onApply={customTemplateHandlers.handleApply}
+        />
         <LinkEditorPanel
           isVisible={!!state.editingEdge}
           linkData={editingLinkData}
@@ -558,6 +582,9 @@ export const App: React.FC = () => {
           onAddText={floatingPanelCommands.onAddText}
           onAddShapes={floatingPanelCommands.onAddShapes}
           onAddBulkLink={floatingPanelCommands.onAddBulkLink}
+          onEditCustomNode={customNodeCommands.onEditCustomNode}
+          onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
+          onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
         />
         <ShortcutsPanel
           isVisible={panelVisibility.showShortcutsPanel}

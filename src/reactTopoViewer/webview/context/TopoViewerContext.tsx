@@ -29,6 +29,27 @@ export interface CustomNodeTemplate {
 }
 
 /**
+ * Custom template editor data - used when editing custom node templates
+ * (not a node in the graph)
+ */
+export interface CustomTemplateEditorData {
+  id: string;  // 'temp-custom-node' for new, 'edit-custom-node' for editing
+  isCustomTemplate: true;
+  customName: string;
+  kind: string;
+  type?: string;
+  image?: string;
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  baseName?: string;
+  interfacePattern?: string;
+  isDefaultCustomNode?: boolean;
+  /** When editing, track the original name to find and update it */
+  originalName?: string;
+}
+
+/**
  * TopoViewer State Interface
  */
 export interface TopoViewerState {
@@ -46,6 +67,8 @@ export interface TopoViewerState {
   showDummyLinks: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
+  /** Custom template being edited (not a graph node) */
+  editingCustomTemplate: CustomTemplateEditorData | null;
 }
 
 /**
@@ -65,7 +88,8 @@ const initialState: TopoViewerState = {
   linkLabelMode: 'show-all',
   showDummyLinks: true,
   customNodes: [],
-  defaultNode: ''
+  defaultNode: '',
+  editingCustomTemplate: null
 };
 
 /**
@@ -87,7 +111,9 @@ type TopoViewerAction =
   | { type: 'ADD_NODE'; payload: CyElement }
   | { type: 'ADD_EDGE'; payload: CyElement }
   | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
-  | { type: 'REMOVE_EDGE'; payload: string };
+  | { type: 'REMOVE_EDGE'; payload: string }
+  | { type: 'SET_CUSTOM_NODES'; payload: { customNodes: CustomNodeTemplate[]; defaultNode: string } }
+  | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null };
 
 /**
  * Reducer function
@@ -159,7 +185,21 @@ const reducerHandlers: ReducerHandlers = {
       elements: filteredElements,
       selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge
     };
-  }
+  },
+  SET_CUSTOM_NODES: (state, action) => ({
+    ...state,
+    customNodes: action.payload.customNodes,
+    defaultNode: action.payload.defaultNode
+  }),
+  EDIT_CUSTOM_TEMPLATE: (state, action) => ({
+    ...state,
+    editingCustomTemplate: action.payload,
+    // Clear other editing states when opening custom template editor
+    editingNode: action.payload ? null : state.editingNode,
+    editingEdge: action.payload ? null : state.editingEdge,
+    selectedNode: action.payload ? null : state.selectedNode,
+    selectedEdge: action.payload ? null : state.selectedEdge
+  })
 };
 
 function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
@@ -191,6 +231,8 @@ interface TopoViewerContextValue {
   addEdge: (edge: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
+  setCustomNodes: (customNodes: CustomNodeTemplate[], defaultNode: string) => void;
+  editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
 }
 
 /**
@@ -286,82 +328,103 @@ function handleExtensionMessage(
         dispatch({ type: 'SET_DEPLOYMENT_STATE', payload: message.data.deploymentState as DeploymentState });
       }
     },
-    'panel-action': () => handlePanelAction(message, dispatch)
+    'panel-action': () => handlePanelAction(message, dispatch),
+    'custom-nodes-updated': () => {
+      const customNodes = (message as unknown as { customNodes?: CustomNodeTemplate[] }).customNodes;
+      const defaultNode = (message as unknown as { defaultNode?: string }).defaultNode;
+      if (customNodes !== undefined) {
+        dispatch({
+          type: 'SET_CUSTOM_NODES',
+          payload: { customNodes, defaultNode: defaultNode || '' }
+        });
+      }
+    }
   };
 
   handlers[message.type]?.();
 }
 
 /**
- * Custom hook for action creators
+ * Custom hook for selection-related action creators
+ */
+function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
+  return {
+    selectNode: useCallback((nodeId: string | null) => {
+      dispatch({ type: 'SELECT_NODE', payload: nodeId });
+    }, [dispatch]),
+    selectEdge: useCallback((edgeId: string | null) => {
+      dispatch({ type: 'SELECT_EDGE', payload: edgeId });
+    }, [dispatch]),
+    editNode: useCallback((nodeId: string | null) => {
+      dispatch({ type: 'EDIT_NODE', payload: nodeId });
+    }, [dispatch]),
+    editEdge: useCallback((edgeId: string | null) => {
+      dispatch({ type: 'EDIT_EDGE', payload: edgeId });
+    }, [dispatch])
+  };
+}
+
+/**
+ * Custom hook for graph element action creators
+ */
+function useGraphElementActions(dispatch: React.Dispatch<TopoViewerAction>) {
+  return {
+    addNode: useCallback((node: CyElement) => {
+      dispatch({ type: 'ADD_NODE', payload: node });
+    }, [dispatch]),
+    addEdge: useCallback((edge: CyElement) => {
+      dispatch({ type: 'ADD_EDGE', payload: edge });
+    }, [dispatch]),
+    removeNodeAndEdges: useCallback((nodeId: string) => {
+      dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
+    }, [dispatch]),
+    removeEdge: useCallback((edgeId: string) => {
+      dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
+    }, [dispatch])
+  };
+}
+
+/**
+ * Custom hook for UI state action creators
+ */
+function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
+  return {
+    toggleLock: useCallback(() => {
+      dispatch({ type: 'TOGGLE_LOCK' });
+    }, [dispatch]),
+    setMode: useCallback((mode: 'edit' | 'view') => {
+      dispatch({ type: 'SET_MODE', payload: mode });
+    }, [dispatch]),
+    setLoading: useCallback((loading: boolean) => {
+      dispatch({ type: 'SET_LOADING', payload: loading });
+    }, [dispatch]),
+    setLinkLabelMode: useCallback((mode: LinkLabelMode) => {
+      dispatch({ type: 'SET_LINK_LABEL_MODE', payload: mode });
+    }, [dispatch]),
+    toggleDummyLinks: useCallback(() => {
+      dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
+    }, [dispatch]),
+    setCustomNodes: useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
+      dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
+    }, [dispatch]),
+    editCustomTemplate: useCallback((data: CustomTemplateEditorData | null) => {
+      dispatch({ type: 'EDIT_CUSTOM_TEMPLATE', payload: data });
+    }, [dispatch])
+  };
+}
+
+/**
+ * Custom hook for action creators - combines all action hooks
  */
 function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  const selectNode = useCallback((nodeId: string | null) => {
-    dispatch({ type: 'SELECT_NODE', payload: nodeId });
-  }, [dispatch]);
-
-  const selectEdge = useCallback((edgeId: string | null) => {
-    dispatch({ type: 'SELECT_EDGE', payload: edgeId });
-  }, [dispatch]);
-
-  const editNode = useCallback((nodeId: string | null) => {
-    dispatch({ type: 'EDIT_NODE', payload: nodeId });
-  }, [dispatch]);
-
-  const editEdge = useCallback((edgeId: string | null) => {
-    dispatch({ type: 'EDIT_EDGE', payload: edgeId });
-  }, [dispatch]);
-
-  const toggleLock = useCallback(() => {
-    dispatch({ type: 'TOGGLE_LOCK' });
-  }, [dispatch]);
-
-  const setMode = useCallback((mode: 'edit' | 'view') => {
-    dispatch({ type: 'SET_MODE', payload: mode });
-  }, [dispatch]);
-
-  const setLoading = useCallback((loading: boolean) => {
-    dispatch({ type: 'SET_LOADING', payload: loading });
-  }, [dispatch]);
-
-  const setLinkLabelMode = useCallback((mode: LinkLabelMode) => {
-    dispatch({ type: 'SET_LINK_LABEL_MODE', payload: mode });
-  }, [dispatch]);
-
-  const toggleDummyLinks = useCallback(() => {
-    dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
-  }, [dispatch]);
-
-  const addNode = useCallback((node: CyElement) => {
-    dispatch({ type: 'ADD_NODE', payload: node });
-  }, [dispatch]);
-
-  const addEdge = useCallback((edge: CyElement) => {
-    dispatch({ type: 'ADD_EDGE', payload: edge });
-  }, [dispatch]);
-
-  const removeNodeAndEdges = useCallback((nodeId: string) => {
-    dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
-  }, [dispatch]);
-
-  const removeEdge = useCallback((edgeId: string) => {
-    dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
-  }, [dispatch]);
+  const selectionActions = useSelectionActions(dispatch);
+  const graphElementActions = useGraphElementActions(dispatch);
+  const uiStateActions = useUIStateActions(dispatch);
 
   return {
-    selectNode,
-    selectEdge,
-    editNode,
-    editEdge,
-    toggleLock,
-    setMode,
-    setLoading,
-    setLinkLabelMode,
-    toggleDummyLinks,
-    addNode,
-    addEdge,
-    removeNodeAndEdges,
-    removeEdge
+    ...selectionActions,
+    ...graphElementActions,
+    ...uiStateActions
   };
 }
 

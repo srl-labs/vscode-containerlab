@@ -12,6 +12,8 @@ export interface DropdownMenuItem {
   icon?: string;
   isDefault?: boolean;
   addDivider?: boolean;
+  /** For custom node items - enables action buttons */
+  isCustomNode?: boolean;
 }
 
 /**
@@ -84,6 +86,71 @@ export function buildItemClass(item: DropdownMenuItem, isFocused: boolean): stri
 }
 
 /**
+ * Custom node action callbacks
+ */
+export interface CustomNodeActions {
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onSetDefault?: (id: string) => void;
+}
+
+/** Shared button style for action buttons */
+const ACTION_BUTTON_STYLE: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '2px 4px',
+  opacity: 0.6
+};
+
+/**
+ * Custom node action buttons component
+ */
+interface CustomNodeActionButtonsProps {
+  itemId: string;
+  isDefault?: boolean;
+  actions: CustomNodeActions;
+}
+
+const CustomNodeActionButtons: React.FC<CustomNodeActionButtonsProps> = ({ itemId, isDefault, actions }) => {
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    actions.onEdit?.(itemId);
+  }, [actions, itemId]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    actions.onDelete?.(itemId);
+  }, [actions, itemId]);
+
+  const handleSetDefaultClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isDefault) {
+      actions.onSetDefault?.(itemId);
+    }
+  }, [actions, itemId, isDefault]);
+
+  return (
+    <div className="floating-panel-dropdown-item-actions" style={{ display: 'flex', gap: '2px' }}>
+      <button
+        className={`add-node-default-btn${isDefault ? ' is-default' : ''}`}
+        title={isDefault ? 'Default node' : 'Set as default node'}
+        onClick={handleSetDefaultClick}
+        style={{ ...ACTION_BUTTON_STYLE, cursor: isDefault ? 'default' : 'pointer', opacity: isDefault ? 1 : 0.6 }}
+      >
+        {isDefault ? '★' : '☆'}
+      </button>
+      <button className="add-node-edit-btn" title="Edit custom node" onClick={handleEditClick} style={ACTION_BUTTON_STYLE}>
+        ✎
+      </button>
+      <button className="add-node-delete-btn" title="Delete custom node" onClick={handleDeleteClick} style={ACTION_BUTTON_STYLE}>
+        ×
+      </button>
+    </div>
+  );
+};
+
+/**
  * Dropdown menu item component
  */
 interface DropdownItemProps {
@@ -91,18 +158,34 @@ interface DropdownItemProps {
   index: number;
   focusedIndex: number;
   onSelect: (id: string) => void;
+  customNodeActions?: CustomNodeActions;
 }
 
-export const DropdownItem: React.FC<DropdownItemProps> = ({ item, index, focusedIndex, onSelect }) => (
+export const DropdownItem: React.FC<DropdownItemProps> = ({
+  item,
+  index,
+  focusedIndex,
+  onSelect,
+  customNodeActions
+}) => (
   <React.Fragment>
     {item.addDivider && index > 0 && <div className="floating-panel-dropdown-divider" />}
-    <button
+    <div
       className={buildItemClass(item, focusedIndex === index)}
-      onClick={() => onSelect(item.id)}
+      style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
     >
-      {item.icon && <i className={`fas ${item.icon}`}></i>}
-      <span>{item.label}</span>
-    </button>
+      <button
+        className="floating-panel-dropdown-item-label"
+        onClick={() => onSelect(item.id)}
+        style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
+      >
+        {item.icon && <i className={`fas ${item.icon}`} style={{ marginRight: '6px' }}></i>}
+        <span>{item.label}</span>
+      </button>
+      {item.isCustomNode && customNodeActions && (
+        <CustomNodeActionButtons itemId={item.id} isDefault={item.isDefault} actions={customNodeActions} />
+      )}
+    </div>
   </React.Fragment>
 );
 
@@ -161,6 +244,8 @@ interface PanelButtonWithDropdownProps {
   filterPlaceholder?: string;
   onSelect: (itemId: string) => void;
   onLockedClick?: () => void;
+  /** Optional actions for custom node items */
+  customNodeActions?: CustomNodeActions;
 }
 
 export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = ({
@@ -171,7 +256,8 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   items,
   filterPlaceholder = 'Filter...',
   onSelect,
-  onLockedClick
+  onLockedClick,
+  customNodeActions
 }) => {
   const {
     isOpen, filter, focusedIndex,
@@ -239,6 +325,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
               index={index}
               focusedIndex={focusedIndex}
               onSelect={handleSelect}
+              customNodeActions={customNodeActions}
             />
           ))}
           {filteredItems.length === 0 && (

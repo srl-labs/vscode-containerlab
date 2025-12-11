@@ -12,7 +12,7 @@ import {
   buildLockButtonClass
 } from './usePanelPosition';
 import { PanelButton, DeployButtonGroup } from './DeployControls';
-import { PanelButtonWithDropdown, DropdownMenuItem } from './DropdownMenu';
+import { PanelButtonWithDropdown, DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
 
 /** Network type definitions matching legacy topoViewer */
 interface NetworkTypeDefinition {
@@ -59,6 +59,10 @@ interface FloatingActionPanelProps {
   onAddText?: () => void;
   onAddShapes?: (shapeType?: string) => void;
   onAddBulkLink?: () => void;
+  /** Custom node template actions */
+  onEditCustomNode?: (nodeName: string) => void;
+  onDeleteCustomNode?: (nodeName: string) => void;
+  onSetDefaultCustomNode?: (nodeName: string) => void;
 }
 
 /** Imperative handle for FloatingActionPanel */
@@ -100,8 +104,9 @@ function useLockAwareHandler(
 function buildNodeMenuItems(customNodes: CustomNodeTemplate[]): DropdownMenuItem[] {
   const items: DropdownMenuItem[] = customNodes.map(node => ({
     id: node.name,
-    label: node.setDefault ? `${node.name} (default)` : node.name,
-    isDefault: node.setDefault
+    label: node.name,
+    isDefault: node.setDefault,
+    isCustomNode: true
   }));
   if (items.length > 0) {
     items.push({ id: '__new_custom_node__', label: 'New custom node...', addDivider: true });
@@ -189,6 +194,20 @@ interface PanelContentProps extends FloatingActionPanelProps {
   onLockedClick?: () => void;
 }
 
+/** Build custom node action callbacks */
+function buildCustomNodeActions(
+  onEdit?: (nodeName: string) => void,
+  onDelete?: (nodeName: string) => void,
+  onSetDefault?: (nodeName: string) => void
+): CustomNodeActions | undefined {
+  if (!onEdit && !onDelete && !onSetDefault) return undefined;
+  return {
+    onEdit,
+    onDelete,
+    onSetDefault
+  };
+}
+
 const PanelContent: React.FC<PanelContentProps> = ({
   isViewerMode,
   isLocked,
@@ -205,7 +224,10 @@ const PanelContent: React.FC<PanelContentProps> = ({
   onAddGroup,
   onAddText,
   onAddShapes,
-  onAddBulkLink
+  onAddBulkLink,
+  onEditCustomNode,
+  onDeleteCustomNode,
+  onSetDefaultCustomNode
 }) => {
   const { state } = useTopoViewer();
 
@@ -216,6 +238,10 @@ const PanelContent: React.FC<PanelContentProps> = ({
   const createLockAwareHandler = useLockAwareHandler(isLocked, onLockedClick);
 
   const nodeMenuItems = useMemo(() => buildNodeMenuItems(state.customNodes), [state.customNodes]);
+  const customNodeActions = useMemo(
+    () => buildCustomNodeActions(onEditCustomNode, onDeleteCustomNode, onSetDefaultCustomNode),
+    [onEditCustomNode, onDeleteCustomNode, onSetDefaultCustomNode]
+  );
   const handleNodeSelect = useCallback((id: string) => {
     if (id === '__new_custom_node__') {
       onAddNode?.('__new__');
@@ -250,6 +276,7 @@ const PanelContent: React.FC<PanelContentProps> = ({
           filterPlaceholder="Filter templates..."
           onSelect={handleNodeSelect}
           onLockedClick={onLockedClick}
+          customNodeActions={customNodeActions}
         />
       )}
       {!isViewerMode && (

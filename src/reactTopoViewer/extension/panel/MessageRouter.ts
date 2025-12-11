@@ -11,6 +11,7 @@ import { saveTopologyService, NodeSaveData, LinkSaveData } from '../services/Sav
 import { annotationsManager } from '../services/AnnotationsManager';
 import { convertEditorDataToYaml } from '../../shared/utilities/nodeEditorConversions';
 import { CyElement } from '../../shared/types/topology';
+import { customNodeConfigManager } from '../../../topoViewer/extension/services/CustomNodeConfigManager';
 
 // Create output channel for React TopoViewer logs
 let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
@@ -618,6 +619,90 @@ export class MessageRouter {
     }
   }
 
+  /** Message type constant for custom nodes update */
+  private static readonly CUSTOM_NODES_UPDATED_TYPE = 'custom-nodes-updated';
+
+  /** Send custom nodes updated message to webview */
+  private sendCustomNodesUpdate(
+    panel: vscode.WebviewPanel,
+    result: { customNodes: unknown[]; defaultNode: string }
+  ): void {
+    panel.webview.postMessage({
+      type: MessageRouter.CUSTOM_NODES_UPDATED_TYPE,
+      customNodes: result.customNodes,
+      defaultNode: result.defaultNode
+    });
+  }
+
+  /**
+   * Handle custom node template operations (delete, set-default, save)
+   * Returns true if the command was handled, false otherwise
+   */
+  private async handleCustomNodeCommand(
+    command: string,
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<boolean> {
+    const payload = message.payload as Record<string, unknown> | undefined;
+    const nodeName = (payload?.name ?? (message as Record<string, unknown>).name) as string | undefined;
+
+    if (command === 'delete-custom-node') {
+      await this.handleDeleteCustomNode(nodeName, panel);
+      return true;
+    }
+    if (command === 'set-default-custom-node') {
+      await this.handleSetDefaultCustomNode(nodeName, panel);
+      return true;
+    }
+    if (command === 'save-custom-node') {
+      await this.handleSaveCustomNode(payload, panel);
+      return true;
+    }
+    return false;
+  }
+
+  private async handleDeleteCustomNode(nodeName: string | undefined, panel: vscode.WebviewPanel): Promise<void> {
+    if (!nodeName) {
+      log.warn('[ReactTopoViewer] Cannot delete custom node: no name provided');
+      return;
+    }
+    const result = await customNodeConfigManager.deleteCustomNode(nodeName);
+    if (result.error) {
+      log.error(`[ReactTopoViewer] Failed to delete custom node: ${result.error}`);
+    } else {
+      this.sendCustomNodesUpdate(panel, result.result as { customNodes: unknown[]; defaultNode: string });
+      log.info(`[ReactTopoViewer] Deleted custom node: ${nodeName}`);
+    }
+  }
+
+  private async handleSetDefaultCustomNode(nodeName: string | undefined, panel: vscode.WebviewPanel): Promise<void> {
+    if (!nodeName) {
+      log.warn('[ReactTopoViewer] Cannot set default custom node: no name provided');
+      return;
+    }
+    const result = await customNodeConfigManager.setDefaultCustomNode(nodeName);
+    if (result.error) {
+      log.error(`[ReactTopoViewer] Failed to set default custom node: ${result.error}`);
+    } else {
+      this.sendCustomNodesUpdate(panel, result.result as { customNodes: unknown[]; defaultNode: string });
+      log.info(`[ReactTopoViewer] Set default custom node: ${nodeName}`);
+    }
+  }
+
+  private async handleSaveCustomNode(payload: Record<string, unknown> | undefined, panel: vscode.WebviewPanel): Promise<void> {
+    if (!payload?.name) {
+      log.warn('[ReactTopoViewer] Cannot save custom node: no name provided');
+      return;
+    }
+    const result = await customNodeConfigManager.saveCustomNode(payload);
+    if (result.error) {
+      log.error(`[ReactTopoViewer] Failed to save custom node: ${result.error}`);
+    } else {
+      this.sendCustomNodesUpdate(panel, result.result as { customNodes: unknown[]; defaultNode: string });
+      log.info(`[ReactTopoViewer] Saved custom node: ${payload.name}`);
+    }
+  }
+
   /**
    * Handle fire-and-forget command messages from the webview
    */
@@ -628,6 +713,8 @@ export class MessageRouter {
     if (await this.handleGraphBatchCommand(command)) return true;
 
     if (await this.handleEditorCommand(command, message)) return true;
+
+    if (await this.handleCustomNodeCommand(command, message, panel)) return true;
 
     if (command === 'save-node-positions' && message.positions) {
       await this.handleSaveNodePositions(message.positions);
