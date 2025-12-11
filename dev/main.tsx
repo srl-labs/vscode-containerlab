@@ -8,15 +8,50 @@ import { createRoot } from 'react-dom/client';
 import { App } from '@webview/App';
 import { TopoViewerProvider } from '@webview/context/TopoViewerContext';
 import '@webview/styles/tailwind.css';
-import { buildInitialData, sampleElements, emptyElements, generateLargeTopology } from './mockData';
+import {
+  buildInitialData,
+  sampleElements,
+  emptyElements,
+  generateLargeTopology,
+  generateYamlFromElements
+} from './mockData';
+
+// ============================================================================
+// Dev Mode State
+// ============================================================================
+
+interface DevState {
+  splitViewOpen: boolean;
+  currentElements: typeof sampleElements;
+  currentAnnotations: {
+    freeTextAnnotations: unknown[];
+    nodeAnnotations: unknown[];
+  };
+  clipboard: unknown | null;
+}
+
+const devState: DevState = {
+  splitViewOpen: false,
+  currentElements: sampleElements,
+  currentAnnotations: {
+    freeTextAnnotations: [],
+    nodeAnnotations: []
+  },
+  clipboard: null
+};
 
 // ============================================================================
 // VS Code API Mock
 // ============================================================================
 
 interface MockMessage {
-  type: string;
+  type?: string;
+  command?: string;
   data?: unknown;
+  positions?: unknown;
+  annotations?: unknown;
+  nodeId?: string;
+  edgeId?: string;
   [key: string]: unknown;
 }
 
@@ -42,8 +77,11 @@ const vscodeApiMock = {
  * Simulate extension responses for certain messages
  */
 function handleMockExtensionResponse(message: MockMessage) {
+  // Messages can use either 'type' or 'command' field
+  const messageType = (message.command || message.type) as string;
+
   // Add artificial delays to simulate real extension behavior
-  switch (message.type) {
+  switch (messageType) {
     case 'deployLab':
       console.log('%c[Mock Extension]', 'color: #FF9800;', 'Simulating deploy...');
       setTimeout(() => {
@@ -73,26 +111,224 @@ function handleMockExtensionResponse(message: MockMessage) {
     case 'apply-link-editor':
       console.log('%c[Mock Extension]', 'color: #FF9800;', 'Link editor data:', message);
       break;
+
+    case 'copyElements': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Copying elements to clipboard:', message);
+      // Store the copy data for later paste
+      devState.clipboard = message.payload;
+      break;
+    }
+
+    case 'getCopiedElements': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Paste requested, clipboard:', devState.clipboard);
+      if (devState.clipboard) {
+        // Send the clipboard data back to the webview asynchronously
+        // (simulates real extension behavior where message comes on next tick)
+        setTimeout(() => {
+          window.postMessage({
+            type: 'copiedElements',
+            data: devState.clipboard  // Note: listener expects 'data', not 'payload'
+          }, '*');
+          console.log('%c[Mock Extension]', 'color: #FF9800;', 'Sent copiedElements message');
+        }, 0);
+      } else {
+        console.log('%c[Mock Extension]', 'color: #FF9800;', 'Clipboard is empty');
+      }
+      break;
+    }
+
+    case 'create-node': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Creating node:', message);
+      const { nodeId, nodeData, position } = message as { nodeId: string; nodeData: Record<string, unknown>; position: { x: number; y: number } };
+      if (nodeId && nodeData) {
+        // Add new node to elements
+        devState.currentElements.push({
+          group: 'nodes',
+          data: { id: nodeId, ...nodeData },
+          position: position || { x: 100, y: 100 }
+        });
+        // Add to node annotations
+        (devState.currentAnnotations.nodeAnnotations as Array<{ id: string; position: { x: number; y: number } }>).push({
+          id: nodeId,
+          position: position || { x: 100, y: 100 }
+        });
+        updateSplitViewContent();
+      }
+      break;
+    }
+
+    case 'create-link': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Creating link:', message);
+      const { linkData } = message as { linkData: { id: string; source: string; target: string; sourceEndpoint?: string; targetEndpoint?: string } };
+      if (linkData) {
+        devState.currentElements.push({
+          group: 'edges',
+          data: {
+            id: linkData.id,
+            source: linkData.source,
+            target: linkData.target,
+            sourceEndpoint: linkData.sourceEndpoint || 'eth1',
+            targetEndpoint: linkData.targetEndpoint || 'eth1'
+          }
+        });
+        updateSplitViewContent();
+      }
+      break;
+    }
+
+    case 'panel-delete-node': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Deleting node:', message);
+      const nodeId = message.nodeId as string;
+      if (nodeId) {
+        // Remove node and its connected edges from elements
+        devState.currentElements = devState.currentElements.filter(el => {
+          if (el.group === 'nodes' && el.data.id === nodeId) return false;
+          if (el.group === 'edges' && (el.data.source === nodeId || el.data.target === nodeId)) return false;
+          return true;
+        });
+        // Remove from node annotations
+        devState.currentAnnotations.nodeAnnotations = (devState.currentAnnotations.nodeAnnotations as Array<{ id: string }>)
+          .filter(a => a.id !== nodeId);
+        updateSplitViewContent();
+      }
+      break;
+    }
+
+    case 'panel-delete-link': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Deleting link:', message);
+      const edgeId = message.edgeId as string;
+      if (edgeId) {
+        devState.currentElements = devState.currentElements.filter(el =>
+          !(el.group === 'edges' && el.data.id === edgeId)
+        );
+        updateSplitViewContent();
+      }
+      break;
+    }
+
+    case 'topo-toggle-split-view':
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Toggling split view...');
+      toggleSplitViewPanel();
+      break;
+
+    case 'save-free-text-annotations':
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving annotations:', message);
+      // Update stored annotations and refresh split view
+      if (message.annotations) {
+        devState.currentAnnotations.freeTextAnnotations = message.annotations as unknown[];
+        updateSplitViewContent();
+      }
+      break;
+
+    case 'save-node-positions':
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving node positions:', message);
+      // Update node positions in current elements and annotations
+      // positions is an array of {id, position} objects
+      if (message.positions && Array.isArray(message.positions)) {
+        const positionsArray = message.positions as Array<{ id: string; position: { x: number; y: number } }>;
+
+        // Update element positions for YAML
+        devState.currentElements = devState.currentElements.map(el => {
+          if (el.group === 'nodes') {
+            const posData = positionsArray.find(p => p.id === el.data.id);
+            if (posData) {
+              return { ...el, position: posData.position };
+            }
+          }
+          return el;
+        });
+
+        // Update node annotations (merge with existing)
+        const existingAnnotations = devState.currentAnnotations.nodeAnnotations as Array<{ id: string; position?: { x: number; y: number } }>;
+        for (const posData of positionsArray) {
+          const existing = existingAnnotations.find(a => a.id === posData.id);
+          if (existing) {
+            existing.position = posData.position;
+          } else {
+            existingAnnotations.push({ id: posData.id, position: posData.position });
+          }
+        }
+        updateSplitViewContent();
+      }
+      break;
   }
 }
 
-// Install mock VS Code API on window
+// ============================================================================
+// Split View Panel
+// ============================================================================
+
+function toggleSplitViewPanel() {
+  devState.splitViewOpen = !devState.splitViewOpen;
+  const panel = document.getElementById('splitViewPanel');
+  const mainContent = document.getElementById('root');
+
+  if (devState.splitViewOpen) {
+    updateSplitViewContent();
+    panel?.classList.add('open');
+    mainContent?.classList.add('split-view-active');
+    console.log('%c[Dev] Split view opened', 'color: #2196F3;');
+  } else {
+    panel?.classList.remove('open');
+    mainContent?.classList.remove('split-view-active');
+    console.log('%c[Dev] Split view closed', 'color: #2196F3;');
+  }
+
+  // Update button state
+  updateSplitViewButton();
+}
+
+function updateSplitViewContent() {
+  if (!devState.splitViewOpen) return;
+
+  // Update YAML content
+  const yaml = generateYamlFromElements(devState.currentElements);
+  const yamlContent = document.getElementById('yamlContent');
+  if (yamlContent) {
+    yamlContent.textContent = yaml;
+  }
+
+  // Update annotations JSON
+  const annotationsContent = document.getElementById('annotationsContent');
+  if (annotationsContent) {
+    const annotationsData = {
+      freeTextAnnotations: devState.currentAnnotations.freeTextAnnotations,
+      freeShapeAnnotations: [],
+      groupStyleAnnotations: [],
+      cloudNodeAnnotations: [],
+      nodeAnnotations: devState.currentAnnotations.nodeAnnotations
+    };
+    annotationsContent.textContent = JSON.stringify(annotationsData, null, 2);
+  }
+}
+
+function updateSplitViewButton() {
+  const btn = document.getElementById('splitViewBtn');
+  if (btn) {
+    btn.classList.toggle('active', devState.splitViewOpen);
+  }
+}
+
+// Extend window with dev mode utilities only
+// Note: vscode, __SCHEMA_DATA__, __DOCKER_IMAGES__ are already declared in webview code
 declare global {
   interface Window {
-    vscode: typeof vscodeApiMock;
+    // __INITIAL_DATA__ specific type for dev mode
     __INITIAL_DATA__: ReturnType<typeof buildInitialData>;
-    __SCHEMA_DATA__: unknown;
-    __DOCKER_IMAGES__: string[];
-    // Dev mode utilities
+    // Dev mode utilities (only exists in dev mode)
     __DEV__: {
       loadTopology: (name: 'sample' | 'empty' | 'large') => void;
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
+      toggleSplitView: () => void;
+      getYaml: () => string;
+      getAnnotationsJson: () => string;
     };
   }
 }
 
-window.vscode = vscodeApiMock;
+// Cast vscode mock to the type expected by webview code
+(window as { vscode?: { postMessage(data: unknown): void } }).vscode = vscodeApiMock;
 
 // ============================================================================
 // Initial Data Setup
@@ -100,12 +336,13 @@ window.vscode = vscodeApiMock;
 
 const initialData = buildInitialData({
   mode: 'edit',
-  deploymentState: 'undeployed',
+  deploymentState: 'undeployed'
 });
 
 window.__INITIAL_DATA__ = initialData;
-window.__SCHEMA_DATA__ = initialData.schemaData;
-window.__DOCKER_IMAGES__ = initialData.dockerImages || [];
+// Cast to expected types - these are declared in webview code
+(window as { __SCHEMA_DATA__?: unknown }).__SCHEMA_DATA__ = initialData.schemaData;
+(window as { __DOCKER_IMAGES__?: string[] }).__DOCKER_IMAGES__ = initialData.dockerImages || [];
 
 // ============================================================================
 // Dev Utilities (accessible from browser console)
@@ -129,10 +366,15 @@ window.__DEV__ = {
       default:
         elements = sampleElements;
     }
+    devState.currentElements = elements;
+    // Reset annotations when loading new topology
+    devState.currentAnnotations = { freeTextAnnotations: [], nodeAnnotations: [] };
     window.postMessage({
       type: 'topology-data',
       data: { elements }
     }, '*');
+    // Update split view if open
+    updateSplitViewContent();
     console.log(`%c[Dev] Loaded ${name} topology with ${elements.length} elements`, 'color: #2196F3;');
   },
 
@@ -159,6 +401,34 @@ window.__DEV__ = {
     }, '*');
     console.log(`%c[Dev] Set deployment state to ${state}`, 'color: #2196F3;');
   },
+
+  /**
+   * Toggle split view panel
+   * Usage: __DEV__.toggleSplitView()
+   */
+  toggleSplitView: () => {
+    toggleSplitViewPanel();
+  },
+
+  /**
+   * Get current topology as YAML
+   * Usage: __DEV__.getYaml()
+   */
+  getYaml: () => {
+    const yaml = generateYamlFromElements(devState.currentElements);
+    console.log(yaml);
+    return yaml;
+  },
+
+  /**
+   * Get current annotations as JSON
+   * Usage: __DEV__.getAnnotationsJson()
+   */
+  getAnnotationsJson: () => {
+    const json = JSON.stringify(devState.currentAnnotations, null, 2);
+    console.log(json);
+    return json;
+  }
 };
 
 // ============================================================================
@@ -170,6 +440,9 @@ console.log('Available dev utilities:');
 console.log('  __DEV__.loadTopology("sample" | "empty" | "large")');
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');
+console.log('  __DEV__.toggleSplitView()     - Toggle split view (clab.yml + annotations)');
+console.log('  __DEV__.getYaml()             - Get current topology as YAML');
+console.log('  __DEV__.getAnnotationsJson()  - Get current annotations as JSON');
 
 const container = document.getElementById('root');
 if (!container) {

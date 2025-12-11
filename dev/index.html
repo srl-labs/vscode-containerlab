@@ -249,6 +249,83 @@
     .dev-settings-switch.on::after {
       left: 18px;
     }
+
+    /* Split View Panel */
+    #splitViewPanel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 0;
+      height: 100%;
+      background: var(--vscode-sideBar-background);
+      border-left: 1px solid var(--vscode-panel-border);
+      z-index: 9999;
+      overflow: hidden;
+      transition: width 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    #splitViewPanel.open {
+      width: 40%;
+    }
+    .split-view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--vscode-tab-activeBackground);
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+    .split-view-header span {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--vscode-foreground);
+    }
+    .split-view-close {
+      background: none;
+      border: none;
+      color: var(--vscode-foreground);
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+    .split-view-close:hover {
+      opacity: 1;
+    }
+    .split-view-content {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+    }
+    .split-view-section-label {
+      padding: 8px 12px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--vscode-descriptionForeground);
+      background: var(--vscode-editor-background);
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+    .split-view-code {
+      margin: 0;
+      padding: 12px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+    }
+    #root.split-view-active {
+      width: 60%;
+      transition: width 0.3s ease;
+    }
+    #root {
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -290,10 +367,31 @@
     </div>
 
     <div class="dev-settings-section">
+      <div class="dev-settings-label">Split View</div>
+      <div class="dev-settings-buttons">
+        <button class="dev-settings-btn" id="splitViewBtn" onclick="toggleSplitView()">Toggle YAML + Annotations</button>
+      </div>
+    </div>
+
+    <div class="dev-settings-section">
       <div class="dev-settings-row">
         <div class="dev-settings-label" style="margin-bottom: 0;">Light Theme</div>
         <div class="dev-settings-switch" id="themeSwitch" onclick="toggleTheme()"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Split View Panel -->
+  <div id="splitViewPanel">
+    <div class="split-view-header">
+      <span>dev-topology.clab.yml</span>
+      <button class="split-view-close" onclick="toggleSplitView()" title="Close">&times;</button>
+    </div>
+    <div class="split-view-content">
+      <div class="split-view-section-label">dev-topology.clab.yml</div>
+      <pre class="split-view-code" id="yamlContent"># Loading...</pre>
+      <div class="split-view-section-label">dev-topology.clab.yml.annotations.json</div>
+      <pre class="split-view-code" id="annotationsContent">{}</pre>
     </div>
   </div>
 
@@ -325,6 +423,10 @@
         btn.classList.remove('active');
       });
       event.target.classList.add('active');
+    }
+
+    function toggleSplitView() {
+      if (window.__DEV__) window.__DEV__.toggleSplitView();
     }
 
     // Close panel when clicking outside

@@ -3,7 +3,7 @@
  * This provides sample topology data without needing the VS Code extension.
  */
 
-import type { CyElement } from '@shared/types/topology';
+import type { CyElement, FreeTextAnnotation, TopologyAnnotations } from '@shared/types/topology';
 import type { TopoViewerState, CustomNodeTemplate } from '@webview/context/TopoViewerContext';
 
 /**
@@ -189,7 +189,10 @@ export function buildInitialData(options: {
   mode?: 'edit' | 'view';
   deploymentState?: 'deployed' | 'undeployed' | 'unknown';
   elements?: CyElement[];
-} = {}): Partial<TopoViewerState> & { schemaData?: unknown; dockerImages?: string[] } {
+} = {}): Partial<TopoViewerState> & {
+  schemaData?: unknown;
+  dockerImages?: string[];
+} {
   return {
     elements: options.elements || sampleElements,
     labName: 'dev-topology',
@@ -265,4 +268,118 @@ export function generateLargeTopology(nodeCount: number): CyElement[] {
   }
 
   return elements;
+}
+
+/**
+ * Sample free text annotations for development
+ */
+export const sampleFreeTextAnnotations: FreeTextAnnotation[] = [
+  {
+    id: 'freeText_dev_1',
+    text: '## Spine Layer\nData center spine switches',
+    position: { x: 200, y: 30 },
+    fontSize: 14,
+    fontColor: '#FFFFFF',
+    backgroundColor: '#3b82f6',
+    fontWeight: 'bold',
+    fontStyle: 'normal',
+    textDecoration: 'none',
+    textAlign: 'center',
+    fontFamily: 'monospace',
+    rotation: 0,
+    roundedBackground: true
+  },
+  {
+    id: 'freeText_dev_2',
+    text: '### Leaf Layer\nTop-of-rack switches',
+    position: { x: 200, y: 180 },
+    fontSize: 12,
+    fontColor: '#FFFFFF',
+    backgroundColor: '#22c55e',
+    fontWeight: 'normal',
+    fontStyle: 'normal',
+    textDecoration: 'none',
+    textAlign: 'center',
+    fontFamily: 'monospace',
+    rotation: 0,
+    roundedBackground: true
+  },
+  {
+    id: 'freeText_dev_3',
+    text: 'Client endpoints',
+    position: { x: 200, y: 340 },
+    fontSize: 11,
+    fontColor: '#9ca3af',
+    backgroundColor: 'transparent',
+    fontWeight: 'normal',
+    fontStyle: 'italic',
+    textDecoration: 'none',
+    textAlign: 'center',
+    fontFamily: 'sans-serif',
+    rotation: 0,
+    roundedBackground: false
+  }
+];
+
+/**
+ * Sample complete annotations object for development
+ */
+export const sampleAnnotations: TopologyAnnotations = {
+  freeTextAnnotations: sampleFreeTextAnnotations,
+  freeShapeAnnotations: [],
+  groupStyleAnnotations: [],
+  cloudNodeAnnotations: [],
+  nodeAnnotations: sampleElements
+    .filter(el => el.group === 'nodes')
+    .map(el => ({
+      id: el.data.id as string,
+      position: el.position,
+      interfacePattern: (el.data.kind as string)?.includes('srlinux') ? 'e1-{n}' : 'eth{n}'
+    }))
+};
+
+/**
+ * Generate YAML content from Cytoscape elements
+ * This creates a containerlab-compatible YAML representation
+ */
+export function generateYamlFromElements(elements: CyElement[], labName = 'dev-topology'): string {
+  const nodes = elements.filter(el => el.group === 'nodes');
+  const edges = elements.filter(el => el.group === 'edges');
+
+  // Build nodes section
+  const nodesYaml = nodes.map(node => {
+    const data = node.data;
+    const lines = [`    ${data.id}:`];
+    if (data.kind) lines.push(`      kind: ${data.kind}`);
+    if (data.type) lines.push(`      type: ${data.type}`);
+    if (data.image) lines.push(`      image: ${data.image}`);
+    return lines.join('\n');
+  }).join('\n');
+
+  // Build links section
+  const linksYaml = edges.map(edge => {
+    const data = edge.data;
+    const srcEp = data.sourceEndpoint || 'eth1';
+    const tgtEp = data.targetEndpoint || 'eth1';
+    return `    - endpoints: ["${data.source}:${srcEp}", "${data.target}:${tgtEp}"]`;
+  }).join('\n');
+
+  return `# Containerlab Topology
+# Generated from mock data for development
+name: ${labName}
+
+topology:
+  nodes:
+${nodesYaml}
+
+  links:
+${linksYaml}
+`;
+}
+
+/**
+ * Generate mock annotations JSON content
+ */
+export function generateAnnotationsJson(annotations: TopologyAnnotations): string {
+  return JSON.stringify(annotations, null, 2);
 }
