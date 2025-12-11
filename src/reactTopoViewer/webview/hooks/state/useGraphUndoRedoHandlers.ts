@@ -93,9 +93,12 @@ function addNodeWithPersistence(cy: CyCore | null, addNode: (n: CyElement) => vo
   const exists = cy?.getElementById(id)?.nonempty();
   if (!exists) {
     addNode(element);
+    // create-node already saves position via addNode -> saveNodePosition
     sendCommandToExtension('create-node', { nodeId: id, nodeData: element.data, position: pos });
+  } else {
+    // Only save position if node already exists (undo/redo case)
+    sendCommandToExtension('save-node-positions', { positions: [{ id, position: pos }] });
   }
-  sendCommandToExtension('save-node-positions', { positions: [{ id, position: pos }] });
 }
 
 function addEdgeWithPersistence(cy: CyCore | null, addEdge: (e: CyElement) => void, element: CyElement): void {
@@ -282,7 +285,8 @@ function createNodeCreatedHandler(
 ) {
   return (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => {
     addNode(nodeElement);
-    sendCommandToExtension('save-node-positions', { positions: [{ id: nodeId, position }] });
+    // Note: create-node already saves position via addNode -> saveNodePosition
+    // Don't send save-node-positions here to avoid race condition / file corruption
     sendCommandToExtension('create-node', { nodeId, nodeData: nodeElement.data, position });
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({

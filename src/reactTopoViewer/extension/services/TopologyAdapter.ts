@@ -13,7 +13,9 @@ import {
   computeFullPrefix,
   addNodeElements,
   addGroupNodes,
+  InterfacePatternMigration,
 } from './NodeElementBuilder';
+import { migrateInterfacePatterns } from '../persistence/NodePersistence';
 import {
   collectSpecialNodes,
   addCloudNodes,
@@ -57,11 +59,20 @@ export class TopoViewerAdaptorClab {
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
     annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath);
 
-    return this.buildCytoscapeElements(parsed, {
+    const { elements, migrations } = this.buildCytoscapeElements(parsed, {
       includeContainerData: true,
       clabTreeData: clabTreeDataToTopoviewer,
       annotations: annotations as Record<string, unknown>
     });
+
+    // Migrate interface patterns to annotations for nodes that don't have them
+    if (yamlFilePath && migrations.length > 0) {
+      migrateInterfacePatterns(yamlFilePath, migrations).catch(err => {
+        log.warn(`[TopologyAdapter] Failed to migrate interface patterns: ${err}`);
+      });
+    }
+
+    return elements;
   }
 
   /**
@@ -79,10 +90,19 @@ export class TopoViewerAdaptorClab {
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
     annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath);
 
-    return this.buildCytoscapeElements(parsed, {
+    const { elements, migrations } = this.buildCytoscapeElements(parsed, {
       includeContainerData: false,
       annotations: annotations as Record<string, unknown>
     });
+
+    // Migrate interface patterns to annotations for nodes that don't have them
+    if (yamlFilePath && migrations.length > 0) {
+      migrateInterfacePatterns(yamlFilePath, migrations).catch(err => {
+        log.warn(`[TopologyAdapter] Failed to migrate interface patterns: ${err}`);
+      });
+    }
+
+    return elements;
   }
 
   /**
@@ -204,11 +224,11 @@ export class TopoViewerAdaptorClab {
   private buildCytoscapeElements(
     parsed: ClabTopology,
     opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: Record<string, unknown> }
-  ): CyElement[] {
+  ): { elements: CyElement[]; migrations: InterfacePatternMigration[] } {
     const elements: CyElement[] = [];
     if (!parsed.topology) {
       log.warn("Parsed YAML does not contain 'topology' object.");
-      return elements;
+      return { elements, migrations: [] };
     }
 
     this.currentIsPresetLayout = isPresetLayout(parsed, opts.annotations);
@@ -218,8 +238,8 @@ export class TopoViewerAdaptorClab {
     const fullPrefix = computeFullPrefix(parsed, clabName);
     const parentMap = new Map<string, string | undefined>();
 
-    // Add node elements
-    addNodeElements(parsed, opts, fullPrefix, clabName, parentMap, elements);
+    // Add node elements and collect migrations
+    const migrations = addNodeElements(parsed, opts, fullPrefix, clabName, parentMap, elements);
 
     // Add group nodes
     addGroupNodes(parentMap, elements);
@@ -243,6 +263,6 @@ export class TopoViewerAdaptorClab {
     hideBaseBridgeNodesWithAliases(opts.annotations, elements, this.loggedUnmappedBaseBridges);
 
     log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
-    return elements;
+    return { elements, migrations };
   }
 }

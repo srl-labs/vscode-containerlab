@@ -8,11 +8,22 @@ import { resolveNodeConfig } from './NodeConfig';
 import { findContainerNode } from './TreeUtils';
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkParser';
 import { findDistributedSrosContainer, isDistributedSrosNode } from './DistributedSrosHandler';
+import { DEFAULT_INTERFACE_PATTERNS } from '../../../topoViewer/shared/constants/interfacePatterns';
 
 export interface NodeBuildOptions {
   includeContainerData: boolean;
   clabTreeData?: Record<string, ClabLabTreeNode>;
   annotations?: Record<string, unknown>;
+}
+
+/**
+ * Build interface pattern mapping from built-in defaults only.
+ * Custom template patterns are NOT included here - they're only applied
+ * when a node is explicitly created from that template (stored in annotation).
+ * This avoids conflicts when multiple templates use the same kind.
+ */
+function buildInterfacePatternMapping(): Record<string, string> {
+  return { ...DEFAULT_INTERFACE_PATTERNS };
 }
 
 /**
@@ -138,6 +149,69 @@ export function getNodeLatLng(nodeAnn: Record<string, unknown> | undefined): { l
 }
 
 /**
+ * Compute the long name for a node
+ */
+function computeLongname(
+  containerName: string | undefined,
+  fullPrefix: string,
+  nodeName: string
+): string {
+  if (containerName) return containerName;
+  return fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName;
+}
+
+/**
+ * Build container-dependent data for extraData
+ */
+function buildContainerFields(
+  includeContainerData: boolean,
+  containerData: ClabContainerTreeNode | null
+): { mgmtIpv4Address: string; mgmtIpv6Address: string; state: string } {
+  if (!includeContainerData) {
+    return { mgmtIpv4Address: '', mgmtIpv6Address: '', state: '' };
+  }
+  return {
+    mgmtIpv4Address: `${containerData?.IPv4Address}`,
+    mgmtIpv6Address: `${containerData?.IPv6Address}`,
+    state: `${containerData?.state}`,
+  };
+}
+
+/** Result of resolving interface pattern for a node */
+interface InterfacePatternResult {
+  pattern: string | undefined;
+  /** True if pattern was resolved from kind mapping (needs migration to annotations) */
+  needsMigration: boolean;
+}
+
+/**
+ * Resolve interface pattern for a node.
+ * Priority: annotation > kind-based mapping
+ * Returns the pattern and whether it needs to be migrated to annotations
+ */
+function resolveInterfacePattern(
+  nodeAnn: Record<string, unknown> | undefined,
+  kind: string,
+  interfacePatternMapping: Record<string, string>
+): InterfacePatternResult {
+  // First check if the annotation has an interface pattern (node-specific)
+  const annPattern = nodeAnn?.interfacePattern;
+  if (typeof annPattern === 'string' && annPattern) {
+    return { pattern: annPattern, needsMigration: false };
+  }
+  // Fall back to kind-based mapping - this needs migration
+  const kindPattern = interfacePatternMapping[kind];
+  return { pattern: kindPattern, needsMigration: Boolean(kindPattern) };
+}
+
+/** Result of creating node extraData */
+interface NodeExtraDataResult {
+  extraData: Record<string, unknown>;
+  /** If set, this node's interfacePattern needs to be migrated to annotations */
+  migrationPattern?: string;
+}
+
+/**
  * Creates the extraData object for a node element.
  */
 export function createNodeExtraData(params: {
@@ -150,12 +224,20 @@ export function createNodeExtraData(params: {
   containerData: ClabContainerTreeNode | null;
   cleanedLabels: Record<string, unknown>;
   includeContainerData: boolean;
-}): Record<string, unknown> {
+  interfacePatternMapping: Record<string, string>;
+  nodeAnn?: Record<string, unknown>;
+}): NodeExtraDataResult {
   const {
     mergedNode, inheritedProps, nodeName, clabName, nodeIndex,
-    fullPrefix, containerData, cleanedLabels, includeContainerData
+    fullPrefix, containerData, cleanedLabels, includeContainerData,
+    interfacePatternMapping, nodeAnn
   } = params;
-  return {
+
+  const kind = mergedNode.kind ?? '';
+  const { pattern: interfacePattern, needsMigration } = resolveInterfacePattern(nodeAnn, kind, interfacePatternMapping);
+  const containerFields = buildContainerFields(includeContainerData, containerData);
+
+  const extraData = {
     ...mergedNode,
     inherited: inheritedProps,
     clabServerUsername: 'asad',
@@ -164,23 +246,37 @@ export function createNodeExtraData(params: {
     id: nodeName,
     image: mergedNode.image ?? '',
     index: nodeIndex.toString(),
-    kind: mergedNode.kind ?? '',
+    kind,
     type: mergedNode.type ?? '',
     labdir: fullPrefix ? `${fullPrefix}/` : '',
     labels: cleanedLabels,
-    longname: containerData?.name ?? (fullPrefix ? `${fullPrefix}-${nodeName}` : nodeName),
+    longname: computeLongname(containerData?.name, fullPrefix, nodeName),
     macAddress: '',
     mgmtIntf: '',
     mgmtIpv4AddressLength: 0,
-    mgmtIpv4Address: includeContainerData ? `${containerData?.IPv4Address}` : '',
-    mgmtIpv6Address: includeContainerData ? `${containerData?.IPv6Address}` : '',
+    mgmtIpv4Address: containerFields.mgmtIpv4Address,
+    mgmtIpv6Address: containerFields.mgmtIpv6Address,
     mgmtIpv6AddressLength: 0,
     mgmtNet: '',
     name: nodeName,
     shortname: nodeName,
-    state: includeContainerData ? `${containerData?.state}` : '',
+    state: containerFields.state,
     weight: '3',
+    ...(interfacePattern && { interfacePattern }),
   };
+
+  return {
+    extraData,
+    migrationPattern: needsMigration ? interfacePattern : undefined
+  };
+}
+
+/** Result of building a node element */
+interface NodeElementResult {
+  element: CyElement;
+  parentId: string | undefined;
+  /** If set, this node's interfacePattern needs to be migrated to annotations */
+  migrationPattern?: string;
 }
 
 /**
@@ -195,8 +291,9 @@ export function buildNodeElement(params: {
   clabName: string;
   nodeAnn: Record<string, unknown> | undefined;
   nodeIndex: number;
-}): { element: CyElement; parentId: string | undefined } {
-  const { parsed, nodeName, nodeObj, opts, fullPrefix, clabName, nodeAnn, nodeIndex } = params;
+  interfacePatternMapping: Record<string, string>;
+}): NodeElementResult {
+  const { parsed, nodeName, nodeObj, opts, fullPrefix, clabName, nodeAnn, nodeIndex, interfacePatternMapping } = params;
   const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
   const nodePropKeys = new Set(Object.keys(nodeObj || {}));
   const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
@@ -206,7 +303,7 @@ export function buildNodeElement(params: {
   const pos = nodeAnn?.position as { x: number; y: number } | undefined;
   const position = pos ? { x: pos.x, y: pos.y } : { x: 0, y: 0 };
   const { lat, lng } = getNodeLatLng(nodeAnn);
-  const extraData = createNodeExtraData({
+  const { extraData, migrationPattern } = createNodeExtraData({
     mergedNode,
     inheritedProps,
     nodeName,
@@ -216,6 +313,8 @@ export function buildNodeElement(params: {
     containerData,
     cleanedLabels,
     includeContainerData: opts.includeContainerData,
+    interfacePatternMapping,
+    nodeAnn,
   });
 
   const labels = mergedNode.labels as Record<string, unknown> | undefined;
@@ -248,11 +347,18 @@ export function buildNodeElement(params: {
     classes: '',
   };
 
-  return { element, parentId };
+  return { element, parentId, migrationPattern };
+}
+
+/** Interface pattern migration entry */
+export interface InterfacePatternMigration {
+  nodeId: string;
+  interfacePattern: string;
 }
 
 /**
  * Adds node elements to the elements array.
+ * Returns list of nodes that need interfacePattern migrated to annotations.
  */
 export function addNodeElements(
   parsed: ClabTopology,
@@ -261,14 +367,16 @@ export function addNodeElements(
   clabName: string,
   parentMap: Map<string, string | undefined>,
   elements: CyElement[]
-): void {
+): InterfacePatternMigration[] {
+  const migrations: InterfacePatternMigration[] = [];
   const topology = parsed.topology!;
-  if (!topology.nodes) return;
+  if (!topology.nodes) return migrations;
   const nodeAnnotations = (opts.annotations as { nodeAnnotations?: Array<{ id: string; groupLabelPos?: string; position?: { x: number; y: number } }> })?.nodeAnnotations;
+  const interfacePatternMapping = buildInterfacePatternMapping();
   let nodeIndex = 0;
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
     const nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName) as Record<string, unknown> | undefined;
-    const { element, parentId } = buildNodeElement({
+    const { element, parentId, migrationPattern } = buildNodeElement({
       parsed,
       nodeName,
       nodeObj,
@@ -277,13 +385,19 @@ export function addNodeElements(
       clabName,
       nodeAnn,
       nodeIndex,
+      interfacePatternMapping,
     });
     if (parentId && !parentMap.has(parentId)) {
       parentMap.set(parentId, nodeAnn?.groupLabelPos as string | undefined);
     }
     elements.push(element);
+    // Track migrations for nodes that need interfacePattern written to annotations
+    if (migrationPattern) {
+      migrations.push({ nodeId: nodeName, interfacePattern: migrationPattern });
+    }
     nodeIndex++;
   }
+  return migrations;
 }
 
 /**

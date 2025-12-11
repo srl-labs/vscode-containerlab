@@ -288,10 +288,23 @@ export class MessageRouter {
 
     log.info(`[ReactTopoViewer] Creating node: ${msg.nodeId}`);
 
+    // Extract icon data from top level of nodeData (set by custom node templates)
+    const iconData = {
+      topoViewerRole: msg.nodeData.topoViewerRole as string | undefined,
+      iconColor: msg.nodeData.iconColor as string | undefined,
+      iconCornerRadius: msg.nodeData.iconCornerRadius as number | undefined
+    };
+
     const nodeData: NodeSaveData = {
       id: msg.nodeId || String(msg.nodeData.id || ''),
       name: String(msg.nodeData.name || msg.nodeData.id || ''),
-      extraData: msg.nodeData.extraData as NodeSaveData['extraData'],
+      extraData: {
+        ...(msg.nodeData.extraData as NodeSaveData['extraData']),
+        // Include icon data in extraData for persistence
+        ...(iconData.topoViewerRole && { topoViewerRole: iconData.topoViewerRole }),
+        ...(iconData.iconColor && { iconColor: iconData.iconColor }),
+        ...(iconData.iconCornerRadius !== undefined && { iconCornerRadius: iconData.iconCornerRadius })
+      },
       position: msg.position
     };
 
@@ -643,8 +656,10 @@ export class MessageRouter {
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<boolean> {
-    const payload = message.payload as Record<string, unknown> | undefined;
-    const nodeName = (payload?.name ?? (message as Record<string, unknown>).name) as string | undefined;
+    // Extract payload from message - sendCommandToExtension spreads data directly onto message
+    // so we cast and access properties directly
+    const msgData = message as Record<string, unknown>;
+    const nodeName = msgData.name as string | undefined;
 
     if (command === 'delete-custom-node') {
       await this.handleDeleteCustomNode(nodeName, panel);
@@ -655,7 +670,7 @@ export class MessageRouter {
       return true;
     }
     if (command === 'save-custom-node') {
-      await this.handleSaveCustomNode(payload, panel);
+      await this.handleSaveCustomNode(msgData, panel);
       return true;
     }
     return false;
@@ -689,12 +704,38 @@ export class MessageRouter {
     }
   }
 
-  private async handleSaveCustomNode(payload: Record<string, unknown> | undefined, panel: vscode.WebviewPanel): Promise<void> {
-    if (!payload?.name) {
+  /**
+   * Sanitize custom node payload for saving
+   * Removes command property and converts empty strings to undefined for optional fields
+   */
+  private sanitizeCustomNodePayload(payload: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = {};
+    const optionalStringFields = ['type', 'image', 'icon', 'iconColor', 'baseName', 'interfacePattern'];
+
+    for (const [key, value] of Object.entries(payload)) {
+      // Skip the command property - it's not part of the custom node data
+      if (key === 'command') continue;
+
+      // Convert empty strings to undefined for optional fields
+      if (optionalStringFields.includes(key) && value === '') {
+        continue; // Skip empty optional fields
+      }
+
+      sanitized[key] = value;
+    }
+
+    return sanitized;
+  }
+
+  private async handleSaveCustomNode(payload: Record<string, unknown>, panel: vscode.WebviewPanel): Promise<void> {
+    if (!payload.name || typeof payload.name !== 'string') {
       log.warn('[ReactTopoViewer] Cannot save custom node: no name provided');
       return;
     }
-    const result = await customNodeConfigManager.saveCustomNode(payload);
+
+    const sanitizedPayload = this.sanitizeCustomNodePayload(payload);
+    // Type assertion is safe because we verified name exists and sanitizeCustomNodePayload preserves it
+    const result = await customNodeConfigManager.saveCustomNode(sanitizedPayload as { name: string; [key: string]: unknown });
     if (result.error) {
       log.error(`[ReactTopoViewer] Failed to save custom node: ${result.error}`);
     } else {

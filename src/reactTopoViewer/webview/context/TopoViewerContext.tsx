@@ -23,6 +23,8 @@ export interface CustomNodeTemplate {
   type?: string;
   image?: string;
   icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
   baseName?: string;
   interfacePattern?: string;
   setDefault?: boolean;

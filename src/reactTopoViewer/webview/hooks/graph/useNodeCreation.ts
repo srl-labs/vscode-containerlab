@@ -6,6 +6,7 @@ import type { Core, EventObject } from 'cytoscape';
 import { log } from '../../utils/logger';
 import { CyElement } from '../../../shared/types/messages';
 import { CustomNodeTemplate } from '../../context/TopoViewerContext';
+import { getUniqueId } from '../../../shared/utilities/idUtils';
 
 interface NodeCreationOptions {
   mode: 'edit' | 'view';
@@ -68,6 +69,7 @@ function generateNodeId(): string {
 
 /**
  * Generate a unique node name based on template or default
+ * Uses getUniqueId to match legacy behavior (srl → srl1, srl2, etc.)
  */
 function generateNodeName(cy: Core, defaultName: string, template?: CustomNodeTemplate): string {
   if (!template?.baseName) {
@@ -75,15 +77,7 @@ function generateNodeName(cy: Core, defaultName: string, template?: CustomNodeTe
   }
 
   const usedNames = new Set<string>(cy.nodes().map(node => node.data('name')));
-  let counter = 1;
-  let candidate = template.baseName;
-
-  while (usedNames.has(candidate)) {
-    candidate = `${template.baseName}${counter}`;
-    counter++;
-  }
-
-  return candidate;
+  return getUniqueId(template.baseName, usedNames, false);
 }
 
 /**
@@ -143,7 +137,12 @@ function createNodeData(
     extraData.type = type;
   }
 
-  return {
+  // Include interfacePattern in extraData for edge creation
+  if (template?.interfacePattern) {
+    extraData.interfacePattern = template.interfacePattern;
+  }
+
+  const nodeData: NodeData = {
     id: nodeId,
     editor: 'true',
     weight: '30',
@@ -155,6 +154,16 @@ function createNodeData(
     containerDockerExtraAttribute: { state: '', status: '' },
     extraData
   };
+
+  // Add icon styling properties if provided
+  if (template?.iconColor) {
+    (nodeData as Record<string, unknown>).iconColor = template.iconColor;
+  }
+  if (template?.iconCornerRadius !== undefined) {
+    (nodeData as Record<string, unknown>).iconCornerRadius = template.iconCornerRadius;
+  }
+
+  return nodeData;
 }
 
 /**

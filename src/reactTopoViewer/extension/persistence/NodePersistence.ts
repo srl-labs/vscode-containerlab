@@ -168,16 +168,48 @@ export function resolveInheritedConfig(
   return result;
 }
 
+/** Node annotation data that can be saved to annotations file */
+export interface NodeAnnotationData {
+  icon?: string;
+  iconColor?: string;
+  iconCornerRadius?: number;
+  /** Interface pattern for link creation - tracks template inheritance */
+  interfacePattern?: string;
+}
+
+/** Apply annotation data to an annotation object */
+function applyAnnotationData(
+  annotation: { icon?: string; iconColor?: string; iconCornerRadius?: number; interfacePattern?: string },
+  data?: NodeAnnotationData
+): void {
+  if (!data) return;
+  if (data.icon) annotation.icon = data.icon;
+  if (data.iconColor) annotation.iconColor = data.iconColor;
+  if (data.iconCornerRadius !== undefined) annotation.iconCornerRadius = data.iconCornerRadius;
+  if (data.interfacePattern) annotation.interfacePattern = data.interfacePattern;
+}
+
+/** Build annotation properties for spread */
+function buildAnnotationProps(data?: NodeAnnotationData): Record<string, unknown> {
+  if (!data) return {};
+  return {
+    ...(data.icon && { icon: data.icon }),
+    ...(data.iconColor && { iconColor: data.iconColor }),
+    ...(data.iconCornerRadius !== undefined && { iconCornerRadius: data.iconCornerRadius }),
+    ...(data.interfacePattern && { interfacePattern: data.interfacePattern })
+  };
+}
+
 /**
- * Saves a node's position to the annotations file
+ * Saves a node's position and optional annotation data to the annotations file
  */
 export async function saveNodePosition(
   yamlFilePath: string,
   nodeId: string,
-  position: { x: number; y: number }
+  position: { x: number; y: number },
+  annotationData?: NodeAnnotationData
 ): Promise<void> {
   const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
-
   if (!annotations.nodeAnnotations) {
     annotations.nodeAnnotations = [];
   }
@@ -185,11 +217,49 @@ export async function saveNodePosition(
   const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
   if (existing) {
     existing.position = position;
+    applyAnnotationData(existing, annotationData);
   } else {
-    annotations.nodeAnnotations.push({ id: nodeId, position });
+    annotations.nodeAnnotations.push({ id: nodeId, position, ...buildAnnotationProps(annotationData) });
   }
 
   await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+}
+
+/**
+ * Migrates interface patterns to annotations for nodes that don't have them.
+ * This persists the kind-based fallback patterns so they survive reloads.
+ */
+export async function migrateInterfacePatterns(
+  yamlFilePath: string,
+  migrations: Array<{ nodeId: string; interfacePattern: string }>
+): Promise<void> {
+  if (migrations.length === 0) return;
+
+  const annotations = await annotationsManager.loadAnnotations(yamlFilePath);
+  if (!annotations.nodeAnnotations) {
+    annotations.nodeAnnotations = [];
+  }
+
+  let modified = false;
+  for (const { nodeId, interfacePattern } of migrations) {
+    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    if (existing) {
+      // Only update if not already set
+      if (!existing.interfacePattern) {
+        existing.interfacePattern = interfacePattern;
+        modified = true;
+      }
+    } else {
+      // Create new annotation with just the interface pattern
+      annotations.nodeAnnotations.push({ id: nodeId, interfacePattern });
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+    log.info(`[NodePersistence] Migrated interface patterns for ${migrations.length} nodes`);
+  }
 }
 
 /**
@@ -255,9 +325,17 @@ export async function addNode(
     const nodeYaml = createNodeYaml(doc, nodeData);
     nodesMap.set(nodeId, nodeYaml);
 
-    // Save position to annotations if provided
+    // Save position and annotation data to annotations if provided
     if (nodeData.position) {
-      await saveNodePosition(yamlFilePath, nodeId, nodeData.position);
+      // Extract annotation data from extraData if available
+      // interfacePattern is saved to track template inheritance
+      const annotationData: NodeAnnotationData | undefined = nodeData.extraData ? {
+        icon: nodeData.extraData.topoViewerRole as string | undefined,
+        iconColor: nodeData.extraData.iconColor as string | undefined,
+        iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
+        interfacePattern: nodeData.extraData.interfacePattern as string | undefined
+      } : undefined;
+      await saveNodePosition(yamlFilePath, nodeId, nodeData.position, annotationData);
     }
 
     log.info(`[SaveTopology] Added node: ${nodeId}`);
