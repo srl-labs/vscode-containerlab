@@ -11,7 +11,8 @@ import {
   saveAnnotationToList,
   updateAnnotationInList,
   updateAnnotationPosition,
-  updateAnnotationRotation
+  updateAnnotationRotation,
+  duplicateAnnotations
 } from './freeTextHelpers';
 
 export interface UseFreeTextStateReturn {
@@ -23,6 +24,15 @@ export interface UseFreeTextStateReturn {
   setIsAddTextMode: React.Dispatch<React.SetStateAction<boolean>>;
   lastStyleRef: React.RefObject<Partial<FreeTextAnnotation>>;
   saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void;
+  /** Immediate save without debounce - use for paste operations */
+  saveAnnotationsImmediate: (annotations: FreeTextAnnotation[]) => void;
+  /** IDs of currently selected annotations */
+  selectedAnnotationIds: Set<string>;
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** Clipboard for copied annotations */
+  clipboardRef: React.RefObject<FreeTextAnnotation[]>;
+  /** Paste counter for offset calculation */
+  pasteCounterRef: React.RefObject<number>;
 }
 
 /**
@@ -32,9 +42,12 @@ export function useFreeTextState(): UseFreeTextStateReturn {
   const [annotations, setAnnotations] = useState<FreeTextAnnotation[]>([]);
   const [editingAnnotation, setEditingAnnotation] = useState<FreeTextAnnotation | null>(null);
   const [isAddTextMode, setIsAddTextMode] = useState(false);
+  const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<Set<string>>(new Set());
 
   const lastStyleRef = useRef<Partial<FreeTextAnnotation>>({});
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clipboardRef = useRef<FreeTextAnnotation[]>([]);
+  const pasteCounterRef = useRef<number>(0);
 
   const saveAnnotationsToExtension = useCallback((updatedAnnotations: FreeTextAnnotation[]) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -42,6 +55,13 @@ export function useFreeTextState(): UseFreeTextStateReturn {
       sendCommandToExtension('save-free-text-annotations', { annotations: updatedAnnotations });
       log.info(`[FreeText] Saved ${updatedAnnotations.length} annotations`);
     }, SAVE_DEBOUNCE_MS);
+  }, []);
+
+  // Immediate save without debounce - used for paste to avoid race with topology refresh
+  const saveAnnotationsImmediate = useCallback((updatedAnnotations: FreeTextAnnotation[]) => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    sendCommandToExtension('save-free-text-annotations', { annotations: updatedAnnotations });
+    log.info(`[FreeText] Saved ${updatedAnnotations.length} annotations (immediate)`);
   }, []);
 
   useEffect(() => {
@@ -58,7 +78,12 @@ export function useFreeTextState(): UseFreeTextStateReturn {
     isAddTextMode,
     setIsAddTextMode,
     lastStyleRef,
-    saveAnnotationsToExtension
+    saveAnnotationsToExtension,
+    saveAnnotationsImmediate,
+    selectedAnnotationIds,
+    setSelectedAnnotationIds,
+    clipboardRef,
+    pasteCounterRef
   };
 }
 
@@ -79,6 +104,28 @@ export interface UseFreeTextActionsReturn {
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
   loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
+  /** Select a single annotation (clears existing selection) */
+  selectAnnotation: (id: string) => void;
+  /** Toggle annotation selection (Ctrl+click behavior) */
+  toggleAnnotationSelection: (id: string) => void;
+  /** Clear all annotation selection */
+  clearAnnotationSelection: () => void;
+  /** Delete all selected annotations */
+  deleteSelectedAnnotations: () => void;
+  /** Get selected annotations */
+  getSelectedAnnotations: () => FreeTextAnnotation[];
+  /** Box select multiple annotations (adds to existing selection) */
+  boxSelectAnnotations: (ids: string[]) => void;
+  /** Copy selected annotations to clipboard */
+  copySelectedAnnotations: () => void;
+  /** Paste annotations from clipboard */
+  pasteAnnotations: () => void;
+  /** Cut selected annotations (copy and delete) */
+  cutSelectedAnnotations: () => void;
+  /** Duplicate selected annotations */
+  duplicateSelectedAnnotations: () => void;
+  /** Check if clipboard has annotations */
+  hasClipboardContent: () => boolean;
 }
 
 // Hook for mode toggle actions
@@ -178,20 +225,272 @@ function useAnnotationUpdates(
   return { updatePosition, updateSize, updateRotation };
 }
 
+// Hook for basic selection operations (select, toggle, clear)
+function useBasicSelection(
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>
+) {
+  const selectAnnotation = useCallback((id: string) => {
+    setSelectedAnnotationIds(new Set([id]));
+    log.info(`[FreeText] Selected annotation: ${id}`);
+  }, [setSelectedAnnotationIds]);
+
+  const toggleAnnotationSelection = useCallback((id: string) => {
+    setSelectedAnnotationIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        log.info(`[FreeText] Deselected annotation: ${id}`);
+      } else {
+        next.add(id);
+        log.info(`[FreeText] Added annotation to selection: ${id}`);
+      }
+      return next;
+    });
+  }, [setSelectedAnnotationIds]);
+
+  const clearAnnotationSelection = useCallback(() => {
+    setSelectedAnnotationIds(new Set());
+    log.info('[FreeText] Cleared annotation selection');
+  }, [setSelectedAnnotationIds]);
+
+  return { selectAnnotation, toggleAnnotationSelection, clearAnnotationSelection };
+}
+
+// Hook for box selection of annotations
+function useBoxSelection(
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>
+) {
+  return useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    setSelectedAnnotationIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => next.add(id));
+      return next;
+    });
+    log.info(`[FreeText] Box selected ${ids.length} annotations`);
+  }, [setSelectedAnnotationIds]);
+}
+
+// Hook for deleting selected annotations
+function useDeleteSelected(
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
+  selectedAnnotationIds: Set<string>,
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+  saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void
+) {
+  return useCallback(() => {
+    if (selectedAnnotationIds.size === 0) return;
+    setAnnotations(prev => {
+      const updated = prev.filter(a => !selectedAnnotationIds.has(a.id));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    log.info(`[FreeText] Deleted ${selectedAnnotationIds.size} selected annotations`);
+    setSelectedAnnotationIds(new Set());
+  }, [selectedAnnotationIds, setAnnotations, saveAnnotationsToExtension, setSelectedAnnotationIds]);
+}
+
+// Hook for getting selected annotations
+function useGetSelected(
+  annotations: FreeTextAnnotation[],
+  selectedAnnotationIds: Set<string>
+) {
+  return useCallback(() => {
+    return annotations.filter(a => selectedAnnotationIds.has(a.id));
+  }, [annotations, selectedAnnotationIds]);
+}
+
+// Hook for annotation selection operations
+function useAnnotationSelection(
+  annotations: FreeTextAnnotation[],
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
+  selectedAnnotationIds: Set<string>,
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+  saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void
+) {
+  const basicSelection = useBasicSelection(setSelectedAnnotationIds);
+  const boxSelectAnnotations = useBoxSelection(setSelectedAnnotationIds);
+  const deleteSelectedAnnotations = useDeleteSelected(setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, saveAnnotationsToExtension);
+  const getSelectedAnnotations = useGetSelected(annotations, selectedAnnotationIds);
+
+  return {
+    ...basicSelection,
+    boxSelectAnnotations,
+    deleteSelectedAnnotations,
+    getSelectedAnnotations
+  };
+}
+
+// Helper to get selected annotations
+function getSelected(annotations: FreeTextAnnotation[], ids: Set<string>): FreeTextAnnotation[] {
+  return annotations.filter(a => ids.has(a.id));
+}
+
+// Hook for copy operation
+function useCopyAnnotations(
+  annotations: FreeTextAnnotation[],
+  selectedAnnotationIds: Set<string>,
+  clipboardRef: React.RefObject<FreeTextAnnotation[]>,
+  pasteCounterRef: React.RefObject<number>
+) {
+  return useCallback(() => {
+    const selected = getSelected(annotations, selectedAnnotationIds);
+    if (selected.length === 0) return;
+    clipboardRef.current = selected;
+    pasteCounterRef.current = 0;
+    log.info(`[FreeText] Copied ${selected.length} annotations to clipboard`);
+  }, [annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef]);
+}
+
+// Hook for paste operation - uses immediate save to avoid race with topology refresh
+function usePasteAnnotations(
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+  clipboardRef: React.RefObject<FreeTextAnnotation[]>,
+  pasteCounterRef: React.RefObject<number>,
+  saveAnnotationsImmediate: (annotations: FreeTextAnnotation[]) => void
+) {
+  return useCallback(() => {
+    if (!clipboardRef.current || clipboardRef.current.length === 0) return;
+    const duplicated = duplicateAnnotations(clipboardRef.current, pasteCounterRef.current);
+    pasteCounterRef.current++;
+    setAnnotations(prev => {
+      const updated = [...prev, ...duplicated];
+      // Use immediate save to avoid race with topology-data refresh from graph paste
+      saveAnnotationsImmediate(updated);
+      return updated;
+    });
+    setSelectedAnnotationIds(new Set(duplicated.map(a => a.id)));
+    log.info(`[FreeText] Pasted ${duplicated.length} annotations`);
+  }, [clipboardRef, pasteCounterRef, setAnnotations, saveAnnotationsImmediate, setSelectedAnnotationIds]);
+}
+
+// Hook for cut operation
+function useCutAnnotations(
+  annotations: FreeTextAnnotation[],
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
+  selectedAnnotationIds: Set<string>,
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+  clipboardRef: React.RefObject<FreeTextAnnotation[]>,
+  pasteCounterRef: React.RefObject<number>,
+  saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void
+) {
+  return useCallback(() => {
+    const selected = getSelected(annotations, selectedAnnotationIds);
+    if (selected.length === 0) return;
+    clipboardRef.current = selected;
+    pasteCounterRef.current = 0;
+    setAnnotations(prev => {
+      const updated = prev.filter(a => !selectedAnnotationIds.has(a.id));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    setSelectedAnnotationIds(new Set());
+    log.info(`[FreeText] Cut ${selected.length} annotations`);
+  }, [annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef, setAnnotations, saveAnnotationsToExtension, setSelectedAnnotationIds]);
+}
+
+// Hook for duplicate operation
+function useDuplicateAnnotations(
+  annotations: FreeTextAnnotation[],
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
+  selectedAnnotationIds: Set<string>,
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+  saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void
+) {
+  return useCallback(() => {
+    const selected = getSelected(annotations, selectedAnnotationIds);
+    if (selected.length === 0) return;
+    const duplicated = duplicateAnnotations(selected, 0);
+    setAnnotations(prev => {
+      const updated = [...prev, ...duplicated];
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    setSelectedAnnotationIds(new Set(duplicated.map(a => a.id)));
+    log.info(`[FreeText] Duplicated ${duplicated.length} annotations`);
+  }, [annotations, selectedAnnotationIds, setAnnotations, saveAnnotationsToExtension, setSelectedAnnotationIds]);
+}
+
+// Hook for checking clipboard content
+function useHasClipboardContent(clipboardRef: React.RefObject<FreeTextAnnotation[]>) {
+  return useCallback(() => {
+    return clipboardRef.current && clipboardRef.current.length > 0;
+  }, [clipboardRef]);
+}
+
+// Aggregate hook for copy/paste operations
+function useAnnotationCopyPaste(
+  annotations: FreeTextAnnotation[],
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
+  selectedAnnotationIds: Set<string>,
+  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+  clipboardRef: React.RefObject<FreeTextAnnotation[]>,
+  pasteCounterRef: React.RefObject<number>,
+  saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void,
+  saveAnnotationsImmediate: (annotations: FreeTextAnnotation[]) => void
+) {
+  const copySelectedAnnotations = useCopyAnnotations(annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef);
+  // Use immediate save for paste to avoid race with topology-data refresh
+  const pasteAnnotations = usePasteAnnotations(setAnnotations, setSelectedAnnotationIds, clipboardRef, pasteCounterRef, saveAnnotationsImmediate);
+  const cutSelectedAnnotations = useCutAnnotations(annotations, setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, clipboardRef, pasteCounterRef, saveAnnotationsToExtension);
+  const duplicateSelectedAnnotations = useDuplicateAnnotations(annotations, setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, saveAnnotationsToExtension);
+  const hasClipboardContent = useHasClipboardContent(clipboardRef);
+
+  return {
+    copySelectedAnnotations,
+    pasteAnnotations,
+    cutSelectedAnnotations,
+    duplicateSelectedAnnotations,
+    hasClipboardContent
+  };
+}
+
 /**
  * Hook for annotation CRUD actions
  */
 export function useFreeTextActions(options: UseFreeTextActionsOptions): UseFreeTextActionsReturn {
   const { state, mode, isLocked, onLockedAction } = options;
-  const { setAnnotations, setEditingAnnotation, setIsAddTextMode, lastStyleRef, saveAnnotationsToExtension } = state;
+  const {
+    annotations,
+    setAnnotations,
+    setEditingAnnotation,
+    setIsAddTextMode,
+    lastStyleRef,
+    saveAnnotationsToExtension,
+    saveAnnotationsImmediate,
+    selectedAnnotationIds,
+    setSelectedAnnotationIds,
+    clipboardRef,
+    pasteCounterRef
+  } = state;
 
   const modeActions = useModeActions(mode, isLocked, onLockedAction, setIsAddTextMode);
   const crudActions = useAnnotationCrud(setAnnotations, setEditingAnnotation, lastStyleRef, saveAnnotationsToExtension);
   const updateActions = useAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
+  const selectionActions = useAnnotationSelection(
+    annotations,
+    setAnnotations,
+    selectedAnnotationIds,
+    setSelectedAnnotationIds,
+    saveAnnotationsToExtension
+  );
+  const copyPasteActions = useAnnotationCopyPaste(
+    annotations,
+    setAnnotations,
+    selectedAnnotationIds,
+    setSelectedAnnotationIds,
+    clipboardRef,
+    pasteCounterRef,
+    saveAnnotationsToExtension,
+    saveAnnotationsImmediate
+  );
 
   return {
     ...modeActions,
     ...crudActions,
-    ...updateActions
+    ...updateActions,
+    ...selectionActions,
+    ...copyPasteActions
   };
 }

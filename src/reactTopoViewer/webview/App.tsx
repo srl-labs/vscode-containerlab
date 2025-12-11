@@ -28,6 +28,8 @@ import {
   useCustomTemplateEditor,
   // Annotation hooks
   useAppFreeTextAnnotations,
+  useAnnotationGroupMove,
+  useAnnotationBackgroundClear,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
@@ -502,7 +504,37 @@ export const App: React.FC = () => {
     editEdge(null);
   }, [selectNode, selectEdge, editNode, editEdge]);
 
-  // Set up keyboard shortcuts
+  // Shortcut display hook
+  const shortcutDisplay = useShortcutDisplay();
+
+  // Panel visibility management
+  const panelVisibility = usePanelVisibility();
+
+  // Free text annotations - using consolidated hook
+  const freeTextAnnotations = useAppFreeTextAnnotations({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+  });
+
+  // Enable synchronized movement of annotations with nodes during drag
+  useAnnotationGroupMove({
+    cy: cyInstance,
+    annotations: freeTextAnnotations.annotations,
+    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
+    onPositionChange: freeTextAnnotations.updatePosition,
+    isLocked: state.isLocked
+  });
+
+  // Clear annotation selection when clicking on canvas background
+  useAnnotationBackgroundClear({
+    cy: cyInstance,
+    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
+    onClearSelection: freeTextAnnotations.clearAnnotationSelection
+  });
+
+  // Set up keyboard shortcuts (must be after freeTextAnnotations is defined)
   useKeyboardShortcuts({
     mode: state.mode,
     selectedNode: state.selectedNode,
@@ -518,21 +550,15 @@ export const App: React.FC = () => {
     onCopy: copyPaste.handleCopy,
     onPaste: copyPaste.handlePaste,
     onCut: copyPaste.handleCut,
-    onDuplicate: copyPaste.handleDuplicate
-  });
-
-  // Shortcut display hook
-  const shortcutDisplay = useShortcutDisplay();
-
-  // Panel visibility management
-  const panelVisibility = usePanelVisibility();
-
-  // Free text annotations - using consolidated hook
-  const freeTextAnnotations = useAppFreeTextAnnotations({
-    cyInstance,
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+    onDuplicate: copyPaste.handleDuplicate,
+    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
+    onCopyAnnotations: freeTextAnnotations.copySelectedAnnotations,
+    onPasteAnnotations: freeTextAnnotations.pasteAnnotations,
+    onCutAnnotations: freeTextAnnotations.cutSelectedAnnotations,
+    onDuplicateAnnotations: freeTextAnnotations.duplicateSelectedAnnotations,
+    onDeleteAnnotations: freeTextAnnotations.deleteSelectedAnnotations,
+    onClearAnnotationSelection: freeTextAnnotations.clearAnnotationSelection,
+    hasAnnotationClipboard: freeTextAnnotations.hasClipboardContent
   });
 
   React.useEffect(() => {
@@ -580,6 +606,10 @@ export const App: React.FC = () => {
           onRotationChange={freeTextAnnotations.updateRotation}
           onSizeChange={freeTextAnnotations.updateSize}
           onCanvasClick={freeTextAnnotations.handleCanvasClick}
+          selectedAnnotationIds={freeTextAnnotations.selectedAnnotationIds}
+          onAnnotationSelect={freeTextAnnotations.selectAnnotation}
+          onAnnotationToggleSelect={freeTextAnnotations.toggleAnnotationSelection}
+          onAnnotationBoxSelect={freeTextAnnotations.boxSelectAnnotations}
         />
         <NodeInfoPanel
           isVisible={!!state.selectedNode}

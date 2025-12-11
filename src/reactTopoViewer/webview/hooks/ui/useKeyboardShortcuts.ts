@@ -29,6 +29,22 @@ interface KeyboardShortcutsOptions {
   onCut?: () => void;
   /** Duplicate handler (Ctrl+D) */
   onDuplicate?: () => void;
+  /** Selected annotation IDs */
+  selectedAnnotationIds?: Set<string>;
+  /** Copy annotations handler */
+  onCopyAnnotations?: () => void;
+  /** Paste annotations handler */
+  onPasteAnnotations?: () => void;
+  /** Cut annotations handler */
+  onCutAnnotations?: () => void;
+  /** Duplicate annotations handler */
+  onDuplicateAnnotations?: () => void;
+  /** Delete selected annotations handler */
+  onDeleteAnnotations?: () => void;
+  /** Clear annotation selection */
+  onClearAnnotationSelection?: () => void;
+  /** Check if annotation clipboard has content */
+  hasAnnotationClipboard?: () => boolean;
 }
 
 /**
@@ -85,89 +101,149 @@ function handleRedo(
 }
 
 /**
- * Handle Ctrl+C: Copy
+ * Handle Ctrl+C: Copy (nodes/edges and/or annotations)
  */
 function handleCopy(
   event: KeyboardEvent,
   cyInstance: Core | null,
-  onCopy?: () => void
+  onCopy?: () => void,
+  selectedAnnotationIds?: Set<string>,
+  onCopyAnnotations?: () => void
 ): boolean {
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key !== 'c') return false;
-  if (!onCopy) return false;
 
-  // Only copy if there's a selection
-  if (!cyInstance || cyInstance.$(':selected').empty()) return false;
+  let handled = false;
 
-  log.info('[Keyboard] Copy');
-  onCopy();
-  event.preventDefault();
-  return true;
+  // Copy annotations if any are selected
+  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onCopyAnnotations) {
+    log.info('[Keyboard] Copy annotations');
+    onCopyAnnotations();
+    handled = true;
+  }
+
+  // Also copy graph elements if any are selected
+  if (onCopy && cyInstance && !cyInstance.$(':selected').empty()) {
+    log.info('[Keyboard] Copy graph elements');
+    onCopy();
+    handled = true;
+  }
+
+  if (handled) {
+    event.preventDefault();
+  }
+  return handled;
 }
 
 /**
- * Handle Ctrl+V: Paste
+ * Handle Ctrl+V: Paste (nodes/edges and/or annotations)
  */
 function handlePaste(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
-  onPaste?: () => void
+  onPaste?: () => void,
+  onPasteAnnotations?: () => void,
+  hasAnnotationClipboard?: () => boolean,
+  hasGraphClipboard?: () => boolean
 ): boolean {
   if (mode !== 'edit') return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key !== 'v') return false;
-  if (!onPaste) return false;
 
-  log.info('[Keyboard] Paste');
-  onPaste();
-  event.preventDefault();
-  return true;
+  let handled = false;
+
+  // Paste annotations if clipboard has any
+  if (onPasteAnnotations && hasAnnotationClipboard && hasAnnotationClipboard()) {
+    log.info('[Keyboard] Paste annotations');
+    onPasteAnnotations();
+    handled = true;
+  }
+
+  // Also paste graph elements if clipboard has any
+  if (onPaste && (!hasGraphClipboard || hasGraphClipboard())) {
+    log.info('[Keyboard] Paste graph elements');
+    onPaste();
+    handled = true;
+  }
+
+  if (handled) {
+    event.preventDefault();
+  }
+  return handled;
 }
 
 /**
- * Handle Ctrl+X: Cut
+ * Handle Ctrl+X: Cut (nodes/edges and/or annotations)
  */
 function handleCut(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
   cyInstance: Core | null,
-  onCut?: () => void
+  onCut?: () => void,
+  selectedAnnotationIds?: Set<string>,
+  onCutAnnotations?: () => void
 ): boolean {
   if (mode !== 'edit') return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key !== 'x') return false;
-  if (!onCut) return false;
 
-  // Only cut if there's a selection
-  if (!cyInstance || cyInstance.$(':selected').empty()) return false;
+  let handled = false;
 
-  log.info('[Keyboard] Cut');
-  onCut();
-  event.preventDefault();
-  return true;
+  // Cut annotations if any are selected
+  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onCutAnnotations) {
+    log.info('[Keyboard] Cut annotations');
+    onCutAnnotations();
+    handled = true;
+  }
+
+  // Also cut graph elements if any are selected
+  if (onCut && cyInstance && !cyInstance.$(':selected').empty()) {
+    log.info('[Keyboard] Cut graph elements');
+    onCut();
+    handled = true;
+  }
+
+  if (handled) {
+    event.preventDefault();
+  }
+  return handled;
 }
 
 /**
- * Handle Ctrl+D: Duplicate
+ * Handle Ctrl+D: Duplicate (nodes/edges and/or annotations)
  */
 function handleDuplicate(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
   cyInstance: Core | null,
-  onDuplicate?: () => void
+  onDuplicate?: () => void,
+  selectedAnnotationIds?: Set<string>,
+  onDuplicateAnnotations?: () => void
 ): boolean {
   if (mode !== 'edit') return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key !== 'd') return false;
-  if (!onDuplicate) return false;
 
-  // Only duplicate if there's a selection
-  if (!cyInstance || cyInstance.$(':selected').empty()) return false;
+  let handled = false;
 
-  log.info('[Keyboard] Duplicate');
-  onDuplicate();
-  event.preventDefault();
-  return true;
+  // Duplicate annotations if any are selected
+  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onDuplicateAnnotations) {
+    log.info('[Keyboard] Duplicate annotations');
+    onDuplicateAnnotations();
+    handled = true;
+  }
+
+  // Also duplicate graph elements if any are selected
+  if (onDuplicate && cyInstance && !cyInstance.$(':selected').empty()) {
+    log.info('[Keyboard] Duplicate graph elements');
+    onDuplicate();
+    handled = true;
+  }
+
+  if (handled) {
+    event.preventDefault();
+  }
+  return handled;
 }
 
 /**
@@ -184,7 +260,7 @@ function handleSelectAll(event: KeyboardEvent, cyInstance: Core | null): boolean
 }
 
 /**
- * Handle Delete/Backspace: Delete selected element
+ * Handle Delete/Backspace: Delete selected element (nodes/edges and/or annotations)
  */
 function handleDelete(
   event: KeyboardEvent,
@@ -192,25 +268,40 @@ function handleDelete(
   selectedNode: string | null,
   selectedEdge: string | null,
   onDeleteNode: (nodeId: string) => void,
-  onDeleteEdge: (edgeId: string) => void
+  onDeleteEdge: (edgeId: string) => void,
+  selectedAnnotationIds?: Set<string>,
+  onDeleteAnnotations?: () => void
 ): boolean {
   if (event.key !== 'Delete' && event.key !== 'Backspace') return false;
   if (mode !== 'edit') return false;
 
+  let handled = false;
+
+  // Delete annotations if any are selected
+  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onDeleteAnnotations) {
+    log.info(`[Keyboard] Deleting ${selectedAnnotationIds.size} annotations`);
+    onDeleteAnnotations();
+    handled = true;
+  }
+
+  // Also delete selected node
   if (selectedNode) {
     log.info(`[Keyboard] Deleting node: ${selectedNode}`);
     onDeleteNode(selectedNode);
-    event.preventDefault();
-    return true;
+    handled = true;
   }
 
+  // Also delete selected edge
   if (selectedEdge) {
     log.info(`[Keyboard] Deleting edge: ${selectedEdge}`);
     onDeleteEdge(selectedEdge);
-    event.preventDefault();
-    return true;
+    handled = true;
   }
-  return false;
+
+  if (handled) {
+    event.preventDefault();
+  }
+  return handled;
 }
 
 /**
@@ -221,9 +312,19 @@ function handleEscape(
   cyInstance: Core | null,
   selectedNode: string | null,
   selectedEdge: string | null,
-  onDeselectAll: () => void
+  onDeselectAll: () => void,
+  selectedAnnotationIds?: Set<string>,
+  onClearAnnotationSelection?: () => void
 ): boolean {
   if (event.key !== 'Escape') return false;
+
+  // Clear annotation selection
+  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onClearAnnotationSelection) {
+    log.debug('[Keyboard] Clearing annotation selection');
+    onClearAnnotationSelection();
+    event.preventDefault();
+    return true;
+  }
 
   if (cyInstance) {
     cyInstance.elements().unselect();
@@ -256,7 +357,15 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     onCopy,
     onPaste,
     onCut,
-    onDuplicate
+    onDuplicate,
+    selectedAnnotationIds,
+    onCopyAnnotations,
+    onPasteAnnotations,
+    onCutAnnotations,
+    onDuplicateAnnotations,
+    onDeleteAnnotations,
+    onClearAnnotationSelection,
+    hasAnnotationClipboard
   } = options;
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -265,16 +374,21 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     // Undo/Redo must be checked before other shortcuts
     if (handleUndo(event, mode, canUndo, onUndo)) return;
     if (handleRedo(event, mode, canRedo, onRedo)) return;
-    // Copy/Paste/Cut/Duplicate
-    if (handleCopy(event, cyInstance, onCopy)) return;
-    if (handlePaste(event, mode, onPaste)) return;
-    if (handleCut(event, mode, cyInstance, onCut)) return;
-    if (handleDuplicate(event, mode, cyInstance, onDuplicate)) return;
+    // Copy/Paste/Cut/Duplicate (with annotation support)
+    if (handleCopy(event, cyInstance, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
+    if (handlePaste(event, mode, onPaste, onPasteAnnotations, hasAnnotationClipboard)) return;
+    if (handleCut(event, mode, cyInstance, onCut, selectedAnnotationIds, onCutAnnotations)) return;
+    if (handleDuplicate(event, mode, cyInstance, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
     // Other shortcuts
     if (handleSelectAll(event, cyInstance)) return;
-    if (handleDelete(event, mode, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge)) return;
-    handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll);
-  }, [mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll, onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate]);
+    if (handleDelete(event, mode, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, selectedAnnotationIds, onDeleteAnnotations)) return;
+    handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll, selectedAnnotationIds, onClearAnnotationSelection);
+  }, [
+    mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,
+    onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate,
+    selectedAnnotationIds, onCopyAnnotations, onPasteAnnotations, onCutAnnotations,
+    onDuplicateAnnotations, onDeleteAnnotations, onClearAnnotationSelection, hasAnnotationClipboard
+  ]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

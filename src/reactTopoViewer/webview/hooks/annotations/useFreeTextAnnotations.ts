@@ -24,7 +24,15 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
 
   // State management
   const state = useFreeTextState();
-  const { annotations, editingAnnotation, isAddTextMode, setEditingAnnotation, setIsAddTextMode, lastStyleRef } = state;
+  const {
+    annotations,
+    editingAnnotation,
+    isAddTextMode,
+    setEditingAnnotation,
+    setIsAddTextMode,
+    lastStyleRef,
+    selectedAnnotationIds
+  } = state;
 
   // CRUD actions
   const actions = useFreeTextActions({ state, mode, isLocked, onLockedAction });
@@ -84,9 +92,21 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
     updateSize: actions.updateSize,
     updateRotation: actions.updateRotation,
     loadAnnotations: actions.loadAnnotations,
-    getUndoRedoAction
+    getUndoRedoAction,
+    selectedAnnotationIds,
+    selectAnnotation: actions.selectAnnotation,
+    toggleAnnotationSelection: actions.toggleAnnotationSelection,
+    clearAnnotationSelection: actions.clearAnnotationSelection,
+    deleteSelectedAnnotations: actions.deleteSelectedAnnotations,
+    getSelectedAnnotations: actions.getSelectedAnnotations,
+    boxSelectAnnotations: actions.boxSelectAnnotations,
+    copySelectedAnnotations: actions.copySelectedAnnotations,
+    pasteAnnotations: actions.pasteAnnotations,
+    cutSelectedAnnotations: actions.cutSelectedAnnotations,
+    duplicateSelectedAnnotations: actions.duplicateSelectedAnnotations,
+    hasClipboardContent: actions.hasClipboardContent
   }), [
     annotations, editingAnnotation, isAddTextMode, actions,
-    handleCanvasClick, editAnnotation, getUndoRedoAction
+    handleCanvasClick, editAnnotation, getUndoRedoAction, selectedAnnotationIds
   ]);
 }

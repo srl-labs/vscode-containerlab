@@ -2,7 +2,7 @@
  * FreeTextLayer - HTML overlay layer for rendering free text annotations
  * Renders text annotations with markdown support on top of the Cytoscape canvas.
  */
-import React, { useRef, useCallback, useState, useMemo } from 'react';
+import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
@@ -26,6 +26,14 @@ interface FreeTextLayerProps {
   onRotationChange: (id: string, rotation: number) => void;
   onSizeChange: (id: string, width: number, height: number) => void;
   onCanvasClick: (position: { x: number; y: number }) => void;
+  /** IDs of currently selected annotations */
+  selectedAnnotationIds?: Set<string>;
+  /** Handler for selecting an annotation (single click) */
+  onAnnotationSelect?: (id: string) => void;
+  /** Handler for toggling annotation selection (Ctrl+click) */
+  onAnnotationToggleSelect?: (id: string) => void;
+  /** Handler for box selection of multiple annotations */
+  onAnnotationBoxSelect?: (ids: string[]) => void;
 }
 
 // ============================================================================
@@ -127,11 +135,14 @@ interface TextAnnotationItemProps {
   annotation: FreeTextAnnotation;
   cy: CyCore;
   isLocked: boolean;
+  isSelected: boolean;
   onDoubleClick: () => void;
   onDelete: () => void;
   onPositionChange: (position: { x: number; y: number }) => void;
   onRotationChange: (rotation: number) => void;
   onSizeChange: (width: number, height: number) => void;
+  onSelect: () => void;
+  onToggleSelect: () => void;
 }
 
 /** Get cursor style for annotation content */
@@ -285,8 +296,24 @@ function useAnnotationInteractions(
 }
 
 /** Hook for annotation click handlers */
-function useAnnotationClickHandlers(isLocked: boolean, onDoubleClick: () => void) {
+function useAnnotationClickHandlers(
+  isLocked: boolean,
+  onDoubleClick: () => void,
+  onSelect: () => void,
+  onToggleSelect: () => void
+) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Don't select on right-click
+    if (e.button === 2) return;
+    e.stopPropagation();
+    if (e.ctrlKey || e.metaKey) {
+      onToggleSelect();
+    } else {
+      onSelect();
+    }
+  }, [onSelect, onToggleSelect]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -302,7 +329,7 @@ function useAnnotationClickHandlers(isLocked: boolean, onDoubleClick: () => void
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
-  return { contextMenu, handleDoubleClick, handleContextMenu, closeContextMenu };
+  return { contextMenu, handleClick, handleDoubleClick, handleContextMenu, closeContextMenu };
 }
 
 /** Handles container component - positioned relative to annotation */
@@ -321,17 +348,17 @@ const AnnotationHandles: React.FC<{
 );
 
 const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
-  annotation, cy, isLocked, onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange
+  annotation, cy, isLocked, isSelected, onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange, onSelect, onToggleSelect
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const interactions = useAnnotationInteractions(cy, annotation, isLocked, onPositionChange, onRotationChange, onSizeChange, contentRef);
   const { isDragging, isRotating, isResizing, renderedPos, handleMouseDown, handleRotationMouseDown, handleResizeMouseDown } = interactions;
-  const { contextMenu, handleDoubleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(isLocked, onDoubleClick);
+  const { contextMenu, handleClick, handleDoubleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(isLocked, onDoubleClick, onSelect, onToggleSelect);
 
   const isInteracting = isDragging || isRotating || isResizing;
-  const showHandles = (isHovered || isInteracting) && !isLocked;
+  const showHandles = (isHovered || isInteracting || isSelected) && !isLocked;
   const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
 
   const wrapperStyle = computeWrapperStyle(renderedPos, annotation.rotation || 0, annotation.zIndex || 11);
@@ -349,10 +376,11 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
         <div
           ref={contentRef}
           style={contentStyle}
+          onClick={handleClick}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onContextMenu={handleContextMenu}
-          title={isLocked ? undefined : 'Drag to move, double-click to edit, right-click for menu'}
+          title={isLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
         >
           {/* Markdown content with scrolling when resized */}
           <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
@@ -374,72 +402,146 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
 };
 
 // ============================================================================
+// Layer Styles (extracted for complexity reduction)
+// ============================================================================
+
+/** Base layer style - pointer-events: none so clicks pass through to Cytoscape */
+const LAYER_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  pointerEvents: 'none',
+  zIndex: 10,
+  overflow: 'hidden'
+};
+
+/** Click capture overlay style - only active in add-text mode */
+const CLICK_CAPTURE_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  pointerEvents: 'auto',
+  cursor: 'text',
+  zIndex: 9
+};
+
+// ============================================================================
 // Main Layer Component
 // ============================================================================
 
-export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
-  cy, annotations, isLocked, isAddTextMode,
-  onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange, onSizeChange, onCanvasClick
-}) => {
-  const layerRef = useRef<HTMLDivElement>(null);
-
-  const handleLayerClick = useCallback((e: React.MouseEvent) => {
+/** Hook for layer click handler */
+function useLayerClickHandler(cy: CyCore | null, onCanvasClick: (pos: { x: number; y: number }) => void) {
+  return useCallback((e: React.MouseEvent) => {
     if (!cy) return;
     const container = cy.container();
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const renderedX = e.clientX - rect.left;
-    const renderedY = e.clientY - rect.top;
-    const modelPos = renderedToModel(cy, renderedX, renderedY);
+    const modelPos = renderedToModel(cy, e.clientX - rect.left, e.clientY - rect.top);
     onCanvasClick(modelPos);
     log.info(`[FreeTextLayer] Canvas clicked at model (${modelPos.x}, ${modelPos.y})`);
   }, [cy, onCanvasClick]);
+}
 
-  // Base layer style - always pointer-events: none so clicks pass through to Cytoscape
-  // zIndex 10 keeps it above canvas but below panels (zIndex 21+)
-  const layerStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    zIndex: 10,
-    overflow: 'hidden'
-  };
+/** Check if an annotation is within a box (in model coordinates) */
+function isAnnotationInBox(
+  annotation: FreeTextAnnotation,
+  box: { x1: number; y1: number; x2: number; y2: number }
+): boolean {
+  const { x, y } = annotation.position;
+  const minX = Math.min(box.x1, box.x2);
+  const maxX = Math.max(box.x1, box.x2);
+  const minY = Math.min(box.y1, box.y2);
+  const maxY = Math.max(box.y1, box.y2);
+  return x >= minX && x <= maxX && y >= minY && y <= maxY;
+}
 
-  // Click capture overlay - only active in add-text mode
-  const clickCaptureStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'auto',
-    cursor: 'text',
-    zIndex: 9
-  };
+/** Hook for box selection of annotations */
+function useAnnotationBoxSelection(
+  cy: CyCore | null,
+  annotations: FreeTextAnnotation[],
+  onBoxSelect?: (ids: string[]) => void
+) {
+  // Track box selection start position
+  const boxStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!cy || !onBoxSelect) return;
+
+    // Record starting position when box selection begins
+    const handleBoxStart = (event: { position: { x: number; y: number } }) => {
+      boxStartRef.current = { x: event.position.x, y: event.position.y };
+    };
+
+    // Calculate box and select annotations when box selection ends
+    const handleBoxEnd = (event: { position: { x: number; y: number } }) => {
+      if (!boxStartRef.current) return;
+
+      const box = {
+        x1: boxStartRef.current.x,
+        y1: boxStartRef.current.y,
+        x2: event.position.x,
+        y2: event.position.y
+      };
+
+      // Find annotations within the selection box
+      const selectedIds = annotations
+        .filter(a => isAnnotationInBox(a, box))
+        .map(a => a.id);
+
+      if (selectedIds.length > 0) {
+        log.info(`[FreeTextLayer] Box selected ${selectedIds.length} annotations`);
+        onBoxSelect(selectedIds);
+      }
+
+      boxStartRef.current = null;
+    };
+
+    cy.on('boxstart', handleBoxStart);
+    cy.on('boxend', handleBoxEnd);
+    return () => {
+      cy.off('boxstart', handleBoxStart);
+      cy.off('boxend', handleBoxEnd);
+    };
+  }, [cy, annotations, onBoxSelect]);
+}
+
+export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
+  cy, annotations, isLocked, isAddTextMode,
+  onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange, onSizeChange, onCanvasClick,
+  selectedAnnotationIds = new Set(),
+  onAnnotationSelect,
+  onAnnotationToggleSelect,
+  onAnnotationBoxSelect
+}) => {
+  const layerRef = useRef<HTMLDivElement>(null);
+  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick);
+
+  // Enable box selection of annotations when shift+dragging in Cytoscape
+  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect);
 
   if (!cy || (annotations.length === 0 && !isAddTextMode)) return null;
 
   return (
-    <div ref={layerRef} className="free-text-layer" style={layerStyle}>
-      {/* Click capture overlay - only visible in add-text mode */}
-      {isAddTextMode && (
-        <div style={clickCaptureStyle} onClick={handleLayerClick} />
-      )}
-      {/* Annotation items - always interactive */}
+    <div ref={layerRef} className="free-text-layer" style={LAYER_STYLE}>
+      {isAddTextMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
       {annotations.map(annotation => (
         <TextAnnotationItem
           key={annotation.id}
           annotation={annotation}
           cy={cy}
           isLocked={isLocked}
+          isSelected={selectedAnnotationIds.has(annotation.id)}
           onDoubleClick={() => onAnnotationDoubleClick(annotation.id)}
           onDelete={() => onAnnotationDelete(annotation.id)}
           onPositionChange={(pos) => onPositionChange(annotation.id, pos)}
           onRotationChange={(rotation) => onRotationChange(annotation.id, rotation)}
           onSizeChange={(width, height) => onSizeChange(annotation.id, width, height)}
+          onSelect={() => onAnnotationSelect?.(annotation.id)}
+          onToggleSelect={() => onAnnotationToggleSelect?.(annotation.id)}
         />
       ))}
     </div>

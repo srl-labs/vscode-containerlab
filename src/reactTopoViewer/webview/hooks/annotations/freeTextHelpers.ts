@@ -127,3 +127,38 @@ export function saveAnnotationToList(
   }
   return [...annotations, annotation];
 }
+
+// ============================================================================
+// Copy/Paste Operations
+// ============================================================================
+
+/** Offset for pasted annotations */
+const PASTE_OFFSET = 20;
+
+/**
+ * Creates a duplicate of an annotation with a new ID and offset position
+ */
+export function duplicateAnnotation(
+  annotation: FreeTextAnnotation,
+  offset: number = PASTE_OFFSET
+): FreeTextAnnotation {
+  return {
+    ...annotation,
+    id: generateAnnotationId(),
+    position: {
+      x: annotation.position.x + offset,
+      y: annotation.position.y + offset
+    }
+  };
+}
+
+/**
+ * Creates duplicates of multiple annotations with new IDs and offset positions
+ */
+export function duplicateAnnotations(
+  annotations: FreeTextAnnotation[],
+  pasteCount: number = 0
+): FreeTextAnnotation[] {
+  const offset = PASTE_OFFSET * (pasteCount + 1);
+  return annotations.map(a => duplicateAnnotation(a, offset));
+}

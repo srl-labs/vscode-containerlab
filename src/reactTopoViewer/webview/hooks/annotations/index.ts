@@ -6,3 +6,5 @@ export * from './freeTextTypes';
 export * from './freeTextHelpers';
 export * from './useFreeTextState';
 export * from './useAppFreeTextAnnotations';
+export * from './useAnnotationGroupMove';
+export * from './useAnnotationBackgroundClear';

@@ -38,6 +38,30 @@ export interface UseAppFreeTextAnnotationsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** IDs of currently selected annotations */
+  selectedAnnotationIds: Set<string>;
+  /** Select a single annotation (clears existing selection) */
+  selectAnnotation: (id: string) => void;
+  /** Toggle annotation selection (Ctrl+click behavior) */
+  toggleAnnotationSelection: (id: string) => void;
+  /** Clear all annotation selection */
+  clearAnnotationSelection: () => void;
+  /** Delete all selected annotations */
+  deleteSelectedAnnotations: () => void;
+  /** Get selected annotations */
+  getSelectedAnnotations: () => FreeTextAnnotation[];
+  /** Box select multiple annotations (adds to existing selection) */
+  boxSelectAnnotations: (ids: string[]) => void;
+  /** Copy selected annotations to clipboard */
+  copySelectedAnnotations: () => void;
+  /** Paste annotations from clipboard */
+  pasteAnnotations: () => void;
+  /** Cut selected annotations */
+  cutSelectedAnnotations: () => void;
+  /** Duplicate selected annotations */
+  duplicateSelectedAnnotations: () => void;
+  /** Check if clipboard has annotations */
+  hasClipboardContent: () => boolean;
 }
 
 /**
@@ -97,6 +121,18 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     deleteAnnotation: freeTextAnnotations.deleteAnnotation,
     updatePosition: freeTextAnnotations.updatePosition,
     updateSize: freeTextAnnotations.updateSize,
-    updateRotation: freeTextAnnotations.updateRotation
+    updateRotation: freeTextAnnotations.updateRotation,
+    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
+    selectAnnotation: freeTextAnnotations.selectAnnotation,
+    toggleAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,
+    clearAnnotationSelection: freeTextAnnotations.clearAnnotationSelection,
+    deleteSelectedAnnotations: freeTextAnnotations.deleteSelectedAnnotations,
+    getSelectedAnnotations: freeTextAnnotations.getSelectedAnnotations,
+    boxSelectAnnotations: freeTextAnnotations.boxSelectAnnotations,
+    copySelectedAnnotations: freeTextAnnotations.copySelectedAnnotations,
+    pasteAnnotations: freeTextAnnotations.pasteAnnotations,
+    cutSelectedAnnotations: freeTextAnnotations.cutSelectedAnnotations,
+    duplicateSelectedAnnotations: freeTextAnnotations.duplicateSelectedAnnotations,
+    hasClipboardContent: freeTextAnnotations.hasClipboardContent
   };
 }
