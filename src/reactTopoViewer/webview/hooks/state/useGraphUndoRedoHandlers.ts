@@ -244,15 +244,12 @@ function replayGraphChanges(changes: GraphChange[], ctx: { cy: CyCore | null; ad
   buckets.deleteNodes.forEach(change => processGraphChange(change, ctx));
 }
 
-function buildGraphHandlers(
-  cyInstance: CyCore | null,
-  addNode: (n: CyElement) => void,
+function createEdgeCreatedHandler(
   addEdge: (e: CyElement) => void,
-  menuHandlers: MenuHandlers,
   undoRedo: ReturnType<typeof useUndoRedo>,
   isApplyingUndoRedo: React.RefObject<boolean>
 ) {
-  const handleEdgeCreated = React.useCallback((_sourceId: string, _targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
+  return (_sourceId: string, _targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
     const edgeEl = {
       group: 'edges' as const,
       data: {
@@ -273,13 +270,15 @@ function buildGraphHandlers(
         after: [{ entity: 'edge', kind: 'add', after: cloneElement(edgeEl) }]
       });
     }
-  }, [addEdge, undoRedo, isApplyingUndoRedo]);
+  };
+}
 
-  const handleNodeCreatedCallback = React.useCallback((
-    nodeId: string,
-    nodeElement: CyElement,
-    position: { x: number; y: number }
-  ) => {
+function createNodeCreatedHandler(
+  addNode: (n: CyElement) => void,
+  undoRedo: ReturnType<typeof useUndoRedo>,
+  isApplyingUndoRedo: React.RefObject<boolean>
+) {
+  return (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => {
     addNode(nodeElement);
     sendCommandToExtension('save-node-positions', { positions: [{ id: nodeId, position }] });
     sendCommandToExtension('create-node', { nodeId, nodeData: nodeElement.data, position });
@@ -290,9 +289,16 @@ function buildGraphHandlers(
         after: [{ entity: 'node', kind: 'add', after: cloneElement({ ...nodeElement, position }) }]
       });
     }
-  }, [addNode, undoRedo, isApplyingUndoRedo]);
+  };
+}
 
-  const handleDeleteNodeWithUndo = React.useCallback((nodeId: string) => {
+function createDeleteNodeHandler(
+  cyInstance: CyCore | null,
+  menuHandlers: MenuHandlers,
+  undoRedo: ReturnType<typeof useUndoRedo>,
+  isApplyingUndoRedo: React.RefObject<boolean>
+) {
+  return (nodeId: string) => {
     const nodeEl = buildNodeElement(cyInstance, nodeId);
     const edgeEls = buildConnectedEdges(cyInstance, nodeId);
     menuHandlers.handleDeleteNode(nodeId);
@@ -306,9 +312,16 @@ function buildGraphHandlers(
         after: [{ entity: 'node', kind: 'delete', before: cloneElement(nodeEl) }]
       });
     }
-  }, [cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo]);
+  };
+}
 
-  const handleDeleteLinkWithUndo = React.useCallback((edgeId: string) => {
+function createDeleteLinkHandler(
+  cyInstance: CyCore | null,
+  menuHandlers: MenuHandlers,
+  undoRedo: ReturnType<typeof useUndoRedo>,
+  isApplyingUndoRedo: React.RefObject<boolean>
+) {
+  return (edgeId: string) => {
     const edgeEl = buildEdgeElement(cyInstance, edgeId);
     menuHandlers.handleDeleteLink(edgeId);
     if (!isApplyingUndoRedo.current && edgeEl) {
@@ -318,9 +331,7 @@ function buildGraphHandlers(
         after: [{ entity: 'edge', kind: 'delete', before: cloneElement(edgeEl) }]
       });
     }
-  }, [cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo]);
-
-  return { handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo };
+  };
 }
 
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
@@ -345,11 +356,28 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     applyGraphChanges
   });
 
-  const handlers = React.useMemo(() => {
-    return buildGraphHandlers(cyInstance, addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo);
-  }, [cyInstance, addNode, addEdge, menuHandlers, undoRedo]);
+  // Create handlers using useMemo with factory functions
+  const handleEdgeCreated = React.useMemo(
+    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo),
+    [addEdge, undoRedo]
+  );
 
-  return { undoRedo, ...handlers };
+  const handleNodeCreatedCallback = React.useMemo(
+    () => createNodeCreatedHandler(addNode, undoRedo, isApplyingUndoRedo),
+    [addNode, undoRedo]
+  );
+
+  const handleDeleteNodeWithUndo = React.useMemo(
+    () => createDeleteNodeHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
+    [cyInstance, menuHandlers, undoRedo]
+  );
+
+  const handleDeleteLinkWithUndo = React.useMemo(
+    () => createDeleteLinkHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
+    [cyInstance, menuHandlers, undoRedo]
+  );
+
+  return { undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo };
 }
 
 export function useGraphUndoRedoHandlers(args: UseGraphUndoRedoHandlersParams): GraphUndoRedoResult {

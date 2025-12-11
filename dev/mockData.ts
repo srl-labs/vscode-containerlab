@@ -15,7 +15,7 @@ export const sampleElements: CyElement[] = [
     group: 'nodes',
     data: {
       id: 'spine1',
-      label: 'spine1',
+      name: 'spine1',
       kind: 'nokia_srlinux',
       type: 'ixrd3',
       image: 'ghcr.io/nokia/srlinux:latest',
@@ -27,7 +27,7 @@ export const sampleElements: CyElement[] = [
     group: 'nodes',
     data: {
       id: 'spine2',
-      label: 'spine2',
+      name: 'spine2',
       kind: 'nokia_srlinux',
       type: 'ixrd3',
       image: 'ghcr.io/nokia/srlinux:latest',
@@ -40,7 +40,7 @@ export const sampleElements: CyElement[] = [
     group: 'nodes',
     data: {
       id: 'leaf1',
-      label: 'leaf1',
+      name: 'leaf1',
       kind: 'nokia_srlinux',
       type: 'ixrd2',
       image: 'ghcr.io/nokia/srlinux:latest',
@@ -52,7 +52,7 @@ export const sampleElements: CyElement[] = [
     group: 'nodes',
     data: {
       id: 'leaf2',
-      label: 'leaf2',
+      name: 'leaf2',
       kind: 'nokia_srlinux',
       type: 'ixrd2',
       image: 'ghcr.io/nokia/srlinux:latest',
@@ -65,7 +65,7 @@ export const sampleElements: CyElement[] = [
     group: 'nodes',
     data: {
       id: 'client1',
-      label: 'client1',
+      name: 'client1',
       kind: 'linux',
       image: 'ghcr.io/srl-labs/network-multitool:latest',
       topoViewerRole: 'client',
@@ -76,7 +76,7 @@ export const sampleElements: CyElement[] = [
     group: 'nodes',
     data: {
       id: 'client2',
-      label: 'client2',
+      name: 'client2',
       kind: 'linux',
       image: 'ghcr.io/srl-labs/network-multitool:latest',
       topoViewerRole: 'client',
@@ -228,7 +228,7 @@ export function generateLargeTopology(nodeCount: number): CyElement[] {
       group: 'nodes',
       data: {
         id: `node${i}`,
-        label: `node${i}`,
+        name: `node${i}`,
         kind: i % 3 === 0 ? 'nokia_srlinux' : 'linux',
         topoViewerRole: i % 3 === 0 ? 'router' : 'client',
       },

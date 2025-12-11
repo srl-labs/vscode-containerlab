@@ -81,21 +81,18 @@ const shapeMenuItems: DropdownMenuItem[] = SHAPE_DEFINITIONS.map(def => ({
   icon: def.icon
 }));
 
-/** Hook for creating lock-aware click handlers */
-function useLockAwareHandlers(
+/** Hook for creating lock-aware click handler factory */
+function useLockAwareHandler(
   isLocked: boolean,
-  onLockedClick: (() => void) | undefined,
-  handlers: { [key: string]: (() => void) | undefined }
-) {
-  return Object.fromEntries(
-    Object.entries(handlers).map(([key, handler]) => [
-      key,
-      useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isLocked) { onLockedClick?.(); return; }
-        handler?.();
-      }, [isLocked, onLockedClick, handler])
-    ])
+  onLockedClick: (() => void) | undefined
+): (handler: (() => void) | undefined) => (e: React.MouseEvent) => void {
+  return useCallback(
+    (handler: (() => void) | undefined) => (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isLocked) { onLockedClick?.(); return; }
+      handler?.();
+    },
+    [isLocked, onLockedClick]
   );
 }
 
@@ -216,11 +213,7 @@ const PanelContent: React.FC<PanelContentProps> = ({
     if (isViewerMode) { onDestroy?.(); } else { onDeploy?.(); }
   }, [isViewerMode, onDeploy, onDestroy]);
 
-  const lockAware = useLockAwareHandlers(isLocked, onLockedClick, {
-    group: onAddGroup,
-    text: onAddText,
-    bulkLink: onAddBulkLink
-  });
+  const createLockAwareHandler = useLockAwareHandler(isLocked, onLockedClick);
 
   const nodeMenuItems = useMemo(() => buildNodeMenuItems(state.customNodes), [state.customNodes]);
   const handleNodeSelect = useCallback((id: string) => {
@@ -271,8 +264,8 @@ const PanelContent: React.FC<PanelContentProps> = ({
           onLockedClick={onLockedClick}
         />
       )}
-      <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={lockAware.group} disabled={isLocked} />
-      <PanelButton icon="fa-font" tooltip="Add Text" onClick={lockAware.text} disabled={isLocked} />
+      <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={createLockAwareHandler(onAddGroup)} disabled={isLocked} />
+      <PanelButton icon="fa-font" tooltip="Add Text" onClick={createLockAwareHandler(onAddText)} disabled={isLocked} />
       <PanelButtonWithDropdown
         icon="fa-shapes"
         tooltip="Add Shapes"
@@ -284,7 +277,7 @@ const PanelContent: React.FC<PanelContentProps> = ({
         onLockedClick={onLockedClick}
       />
       {!isViewerMode && (
-        <PanelButton icon="fa-link" tooltip="Bulk Link Devices" onClick={lockAware.bulkLink} disabled={isLocked} />
+        <PanelButton icon="fa-link" tooltip="Bulk Link Devices" onClick={createLockAwareHandler(onAddBulkLink)} disabled={isLocked} />
       )}
     </div>
   );
