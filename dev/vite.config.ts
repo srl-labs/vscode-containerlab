@@ -27,7 +27,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'cytoscape'],
+    include: ['react', 'react-dom', '@xyflow/react', 'd3-force'],
   },
   css: {
     postcss: path.resolve(__dirname, '../postcss.config.js'),

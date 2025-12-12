@@ -2,10 +2,10 @@
  * React TopoViewer Main Application Component
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import { ReactFlowProvider, type ReactFlowInstance } from '@xyflow/react';
 import { useTopoViewer, CustomNodeTemplate } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
-import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
+import { ReactFlowCanvas } from './components/react-flow-canvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel } from './components/panels/node-editor';
@@ -15,17 +15,12 @@ import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
 import { BulkLinkPanel } from './components/panels/bulk-link';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
-import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
+// Annotations are now rendered as React Flow nodes, these components may be removed later
+// import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
 import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
 import { GroupEditorPanel } from './components/panels/group-editor';
 import {
-  // Graph hooks
-  useContextMenu,
-  useNodeDragging,
-  useEdgeCreation,
-  useNodeCreation,
-  useCopyPaste,
   // State hooks
   useGraphUndoRedoHandlers,
   useCustomTemplateEditor,
@@ -35,27 +30,22 @@ import {
   useFreeShapeAnnotationApplier,
   useFreeShapeUndoRedoHandlers,
   useCombinedAnnotationShortcuts,
-  useAnnotationEffects,
   useAddShapesHandler,
   // Group hooks
   useAppGroups,
   useCombinedAnnotationApplier,
   useAppGroupUndoHandlers,
-  useGroupPositionHandler,
-  useGroupDragMoveHandler,
-  useGroupLayer,
-  useNodeReparent,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
   useCustomNodeCommands,
   useAppHandlers,
-  // App state hooks
-  useCytoscapeInstance,
-  useSelectionData,
-  useNavbarActions,
-  useContextMenuHandlers,
-  useLayoutControls,
+  // React Flow state hooks
+  useReactFlowInstance,
+  useRFSelectionData,
+  useRFNavbarActions,
+  useRFContextMenuHandlers,
+  useRFLayoutControls,
   useNavbarCommands,
   usePanelVisibility,
   useFloatingPanelCommands
@@ -224,13 +214,12 @@ interface NodeCreationState {
 type Position = { x: number; y: number };
 
 /**
- * Hook for node creation handlers
+ * Hook for node creation handlers (React Flow version)
  */
 function useNodeCreationHandlers(
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
   state: NodeCreationState,
-  cyInstance: CyCore | null,
-  createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
+  rfInstance: ReactFlowInstance | null,
   onNewCustomNode: () => void
 ) {
   // Handler for Add Node button from FloatingActionPanel
@@ -241,7 +230,7 @@ function useNodeCreationHandlers(
       return;
     }
 
-    if (!cyInstance) return;
+    if (!rfInstance) return;
 
     if (state.isLocked) {
       floatingPanelRef.current?.triggerShake();
@@ -255,14 +244,25 @@ function useNodeCreationHandlers(
       template = state.customNodes.find(n => n.name === state.defaultNode);
     }
 
-    const extent = cyInstance.extent();
+    // Get viewport center for node placement
+    const viewport = rfInstance.getViewport();
+    const { width, height } = rfInstance.getViewportDimensions?.() ?? { width: 800, height: 600 };
     const position: Position = {
-      x: (extent.x1 + extent.x2) / 2,
-      y: (extent.y1 + extent.y2) / 2
+      x: -viewport.x / viewport.zoom + width / (2 * viewport.zoom),
+      y: -viewport.y / viewport.zoom + height / (2 * viewport.zoom)
     };
 
-    createNodeAtPosition(position, template);
-  }, [cyInstance, state.isLocked, state.customNodes, state.defaultNode, createNodeAtPosition, floatingPanelRef, onNewCustomNode]);
+    // Send node creation command to extension for YAML file update
+    sendCommandToExtension('create-node', {
+      position,
+      template: template ? {
+        name: template.name,
+        kind: template.kind,
+        topoViewerRole: template.topoViewerRole,
+        interfacePattern: template.interfacePattern
+      } : undefined
+    });
+  }, [rfInstance, state.isLocked, state.customNodes, state.defaultNode, floatingPanelRef, onNewCustomNode]);
 
   return { handleAddNodeFromPanel };
 }
@@ -274,43 +274,43 @@ function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view')
   return !!selectedItem && mode === 'view';
 }
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
 
-  // Cytoscape instance management
-  const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
-  const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
+  // React Flow instance management
+  const { reactFlowRef, rfInstance } = useReactFlowInstance(state.elements);
+  const layoutControls = useRFLayoutControls(reactFlowRef, rfInstance);
 
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
   // Selection and editing data
-  const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge);
-  const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
-  const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge);
+  const { selectedNodeData, selectedLinkData } = useRFSelectionData(reactFlowRef, state.selectedNode, state.selectedEdge);
+  const { selectedNodeData: editingNodeRawData } = useRFSelectionData(reactFlowRef, state.editingNode, null);
+  const { selectedLinkData: editingLinkRawData } = useRFSelectionData(reactFlowRef, null, state.editingEdge);
   const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
   const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
 
   // Navbar actions
-  const { handleZoomToFit } = useNavbarActions(cytoscapeRef);
+  const { handleZoomToFit } = useRFNavbarActions(reactFlowRef);
   const navbarCommands = useNavbarCommands();
 
   // Context menu handlers
-  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
+  const menuHandlers = useRFContextMenuHandlers(reactFlowRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
-  // Free text annotations
+  // Free text annotations (passing null for cyInstance since React Flow handles this differently)
   const freeTextAnnotations = useAppFreeTextAnnotations({
-    cyInstance,
+    cyInstance: null,
     mode: state.mode,
     isLocked: state.isLocked,
     onLockedAction: () => floatingPanelRef.current?.triggerShake()
   });
 
-  // Free shape annotations
+  // Free shape annotations (passing null for cyInstance since React Flow handles this differently)
   const freeShapeAnnotations = useAppFreeShapeAnnotations({
-    cyInstance,
+    cyInstance: null,
     mode: state.mode,
     isLocked: state.isLocked,
     onLockedAction: () => floatingPanelRef.current?.triggerShake()
@@ -319,9 +319,9 @@ export const App: React.FC = () => {
   const { isApplyingAnnotationUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
     useFreeShapeAnnotationApplier(freeShapeAnnotations);
 
-  // Groups
+  // Groups (passing null for cyInstance since React Flow handles this differently)
   const { groups } = useAppGroups({
-    cyInstance,
+    cyInstance: null,
     mode: state.mode,
     isLocked: state.isLocked,
     onLockedAction: () => floatingPanelRef.current?.triggerShake()
@@ -335,13 +335,11 @@ export const App: React.FC = () => {
 
   const {
     undoRedo,
-    handleEdgeCreated,
-    handleNodeCreatedCallback,
     handleDeleteNodeWithUndo,
     handleDeleteLinkWithUndo,
     recordPropertyEdit
   } = useGraphUndoRedoHandlers({
-    cyInstance,
+    cyInstance: null, // React Flow handles this differently
     mode: state.mode,
     addNode,
     addEdge,
@@ -350,8 +348,8 @@ export const App: React.FC = () => {
   });
 
   // Group undo/redo handlers (must be after useGraphUndoRedoHandlers)
-  const { handleAddGroupWithUndo, deleteGroupWithUndo } = useAppGroupUndoHandlers({
-    cyInstance,
+  const { handleAddGroupWithUndo } = useAppGroupUndoHandlers({
+    cyInstance: null, // React Flow handles this differently
     groups,
     undoRedo
   });
@@ -369,96 +367,44 @@ export const App: React.FC = () => {
     });
   }, [undoRedo]);
 
-  // Set up copy/paste functionality
-  const copyPaste = useCopyPaste(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    recordGraphChanges
-  });
+  // Copy/paste functionality - temporarily disabled for React Flow migration
+  const copyPaste = {
+    handleCopy: () => {},
+    handlePaste: () => {},
+    handleCut: () => {},
+    handleDuplicate: () => {}
+  };
 
   // Custom template editor data and handlers
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
 
-  // Set up edge creation via edgehandles
-  const { startEdgeCreation } = useEdgeCreation(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onEdgeCreated: handleEdgeCreated
-  });
+  // Edge creation is now handled by React Flow's onConnect callback in ReactFlowCanvas
 
-  // Override the context menu handler to use the edgehandles start function
-  const handleCreateLinkFromNode = React.useCallback((nodeId: string) => {
-    startEdgeCreation(nodeId);
-    sendCommandToExtension('panel-start-link', { nodeId });
-  }, [startEdgeCreation]);
-
-  // Get node creation callbacks using the extracted hook
+  // Node creation state for the handler hook
   const nodeCreationState: NodeCreationState = {
     isLocked: state.isLocked,
     customNodes: state.customNodes,
     defaultNode: state.defaultNode
   };
 
-  const { createNodeAtPosition } = useNodeCreation(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    customNodes: state.customNodes,
-    defaultNode: state.defaultNode,
-    onNodeCreated: handleNodeCreatedCallback,
-    onLockedClick: () => floatingPanelRef.current?.triggerShake()
-  });
-
-  // Now use the extracted handler hook with the createNodeAtPosition function
+  // Use the node creation handler hook (React Flow version)
   const { handleAddNodeFromPanel } = useNodeCreationHandlers(
-    floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition, customNodeCommands.onNewCustomNode
+    floatingPanelRef, nodeCreationState, rfInstance, customNodeCommands.onNewCustomNode
   );
 
   // App-level handlers for drag, deselect, and lock state sync
-  const { handleLockedDrag, handleMoveComplete, handleDeselectAll } = useAppHandlers({
+  const { handleDeselectAll } = useAppHandlers({
     selectionCallbacks: { selectNode, selectEdge, editNode, editEdge },
     undoRedo,
     floatingPanelRef,
     isLocked: state.isLocked
   });
 
-  // Set up context menus
-  useContextMenu(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onEditNode: menuHandlers.handleEditNode,
-    onDeleteNode: handleDeleteNodeWithUndo,
-    onCreateLinkFromNode: handleCreateLinkFromNode,
-    onEditLink: menuHandlers.handleEditLink,
-    onDeleteLink: handleDeleteLinkWithUndo,
-    onShowNodeProperties: menuHandlers.handleShowNodeProperties,
-    onShowLinkProperties: menuHandlers.handleShowLinkProperties
-  });
-
-  // Set up node dragging based on lock state
-  useNodeDragging(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onLockedDrag: handleLockedDrag,
-    onMoveComplete: handleMoveComplete
-  });
-
-  // Set up drag-to-reparent for groups (overlay-based)
-  useNodeReparent(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked
-  }, {
-    groups: groups.groups,
-    addNodeToGroup: groups.addNodeToGroup,
-    removeNodeFromGroup: groups.removeNodeFromGroup
-  });
-
-  // Handlers for group dragging - position change and real-time node movement
-  const handleGroupPositionChange = useGroupPositionHandler({ cyInstance, groups });
-  const handleGroupDragMove = useGroupDragMoveHandler({ cyInstance, groups });
-
-  // Create group background + interaction layers using cytoscape-layers
-  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cyInstance);
+  // Context menus are now handled via React Flow's onNodeContextMenu/onEdgeContextMenu
+  // Node dragging is now handled by React Flow's built-in dragging
+  // Group reparenting is now handled via React Flow's parentNode property
+  // Group layers are now rendered as React Flow nodes, no separate layer needed
 
   // Shortcut display hook
   const shortcutDisplay = useShortcutDisplay();
@@ -467,17 +413,8 @@ export const App: React.FC = () => {
   const panelVisibility = usePanelVisibility();
   const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
 
-  // Combined annotation effects (group move, background clear for both text and shapes)
-  useAnnotationEffects({
-    cy: cyInstance,
-    isLocked: state.isLocked,
-    freeTextAnnotations: freeTextAnnotations.annotations,
-    freeTextSelectedIds: freeTextAnnotations.selectedAnnotationIds,
-    onFreeTextPositionChange: freeTextAnnotations.updatePosition,
-    onFreeTextClearSelection: freeTextAnnotations.clearAnnotationSelection,
-    freeShapeSelectedIds: freeShapeAnnotations.selectedAnnotationIds,
-    onFreeShapeClearSelection: freeShapeAnnotations.clearAnnotationSelection
-  });
+  // Annotation effects are now handled by React Flow's node system
+  // The useAnnotationEffects hook is no longer needed since annotations are React Flow nodes
 
   // Free shape undo handlers - extracted to useFreeShapeUndoRedoHandlers
   const freeShapeUndoHandlers = useFreeShapeUndoRedoHandlers(
@@ -504,7 +441,7 @@ export const App: React.FC = () => {
     mode: state.mode,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
-    cyInstance,
+    cyInstance: null, // React Flow handles this differently
     onDeleteNode: handleDeleteNodeWithUndo,
     onDeleteEdge: handleDeleteLinkWithUndo,
     onDeselectAll: handleDeselectAll,
@@ -556,52 +493,8 @@ export const App: React.FC = () => {
         onRedo={undoRedo.redo}
       />
       <main className="topoviewer-main">
-        <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
-        <GroupLayer
-          cy={cyInstance}
-          groups={groups.groups}
-          backgroundLayerNode={backgroundLayerNode}
-          interactionLayerNode={interactionLayerNode}
-          isLocked={state.isLocked}
-          onGroupEdit={groups.editGroup}
-          onGroupDelete={deleteGroupWithUndo}
-          onPositionChange={handleGroupPositionChange}
-          onDragMove={handleGroupDragMove}
-          onSizeChange={groups.updateGroupSize}
-        />
-	        <FreeTextLayer
-	          cy={cyInstance}
-	          annotations={freeTextAnnotations.annotations}
-	          isLocked={state.isLocked}
-	          isAddTextMode={freeTextAnnotations.isAddTextMode}
-          onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
-          onAnnotationDelete={freeTextAnnotations.deleteAnnotation}
-          onPositionChange={freeTextAnnotations.updatePosition}
-          onRotationChange={freeTextAnnotations.updateRotation}
-          onSizeChange={freeTextAnnotations.updateSize}
-          onCanvasClick={freeTextAnnotations.handleCanvasClick}
-          selectedAnnotationIds={freeTextAnnotations.selectedAnnotationIds}
-          onAnnotationSelect={freeTextAnnotations.selectAnnotation}
-	          onAnnotationToggleSelect={freeTextAnnotations.toggleAnnotationSelection}
-	          onAnnotationBoxSelect={freeTextAnnotations.boxSelectAnnotations}
-	        />
-        <FreeShapeLayer
-          cy={cyInstance}
-          annotations={freeShapeAnnotations.annotations}
-          isLocked={state.isLocked}
-          isAddShapeMode={freeShapeAnnotations.isAddShapeMode}
-          onAnnotationEdit={freeShapeAnnotations.editAnnotation}
-          onAnnotationDelete={freeShapeUndoHandlers.deleteAnnotationWithUndo}
-          onPositionChange={freeShapeUndoHandlers.updatePositionWithUndo}
-          onRotationChange={freeShapeUndoHandlers.updateRotationWithUndo}
-          onSizeChange={freeShapeUndoHandlers.updateSizeWithUndo}
-          onEndPositionChange={freeShapeUndoHandlers.updateEndPositionWithUndo}
-          onCanvasClick={freeShapeUndoHandlers.handleCanvasClickWithUndo}
-          selectedAnnotationIds={freeShapeAnnotations.selectedAnnotationIds}
-          onAnnotationSelect={freeShapeAnnotations.selectAnnotation}
-          onAnnotationToggleSelect={freeShapeAnnotations.toggleAnnotationSelection}
-          onAnnotationBoxSelect={freeShapeAnnotations.boxSelectAnnotations}
-        />
+        <ReactFlowCanvas ref={reactFlowRef} elements={state.elements} />
+        {/* Group, FreeText, and FreeShape layers are now rendered as React Flow nodes */}
 	        <NodeInfoPanel
 	          isVisible={shouldShowInfoPanel(state.selectedNode, state.mode)}
 	          nodeData={selectedNodeData}
@@ -638,7 +531,7 @@ export const App: React.FC = () => {
           isVisible={showBulkLinkPanel}
           mode={state.mode}
           isLocked={state.isLocked}
-          cy={cyInstance}
+          cy={null}
           onClose={() => setShowBulkLinkPanel(false)}
           recordGraphChanges={recordGraphChanges}
         />
@@ -693,5 +586,16 @@ export const App: React.FC = () => {
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
       </main>
     </div>
+  );
+};
+
+/**
+ * App component wrapped with ReactFlowProvider
+ */
+export const App: React.FC = () => {
+  return (
+    <ReactFlowProvider>
+      <AppContent />
+    </ReactFlowProvider>
   );
 };

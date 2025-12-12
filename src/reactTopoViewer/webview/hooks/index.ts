@@ -20,7 +20,7 @@ export * from './annotations';
 // Groups
 export * from './groups';
 
-// Root-level hooks
+// Root-level hooks (legacy Cytoscape)
 export {
   useCytoscapeInstance,
   useSelectionData,
@@ -30,3 +30,12 @@ export {
   DEFAULT_GRID_LINE_WIDTH
 } from './useAppState';
 export type { LayoutOption, NodeData, LinkData } from './useAppState';
+
+// React Flow hooks
+export {
+  useReactFlowInstance,
+  useRFSelectionData,
+  useRFNavbarActions,
+  useRFLayoutControls,
+  useRFContextMenuHandlers
+} from './useReactFlowState';

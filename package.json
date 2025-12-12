@@ -1437,6 +1437,7 @@
     "@types/chai": "^5.2.3",
     "@types/cytoscape-cxtmenu": "^3.4.5",
     "@types/cytoscape-edgehandles": "^4.0.5",
+    "@types/d3-force": "^3.0.10",
     "@types/dockerode": "^3.3.47",
     "@types/leaflet": "^1.9.21",
     "@types/markdown-it": "^14.1.2",
@@ -1496,6 +1497,8 @@
     "yaml": "^2.8.2"
   },
   "dependencies": {
-    "cytoscape-layers": "^3.1.0"
+    "@xyflow/react": "^12.10.0",
+    "cytoscape-layers": "^3.1.0",
+    "d3-force": "^3.0.0"
   }
 }
