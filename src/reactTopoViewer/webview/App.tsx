@@ -14,8 +14,9 @@ import { FloatingActionPanel, FloatingActionPanelHandle } from './components/pan
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
-import { FreeTextLayer } from './components/annotations';
+import { FreeTextLayer, FreeShapeLayer } from './components/annotations';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
+import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
 import {
   // Graph hooks
   useContextMenu,
@@ -28,8 +29,13 @@ import {
   useCustomTemplateEditor,
   // Annotation hooks
   useAppFreeTextAnnotations,
+  useAppFreeShapeAnnotations,
+  useFreeShapeAnnotationApplier,
+  useFreeShapeUndoRedoHandlers,
+  useCombinedAnnotationShortcuts,
   useAnnotationGroupMove,
   useAnnotationBackgroundClear,
+  useAddShapesHandler,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
@@ -277,6 +283,25 @@ export const App: React.FC = () => {
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
+  // Free text annotations
+  const freeTextAnnotations = useAppFreeTextAnnotations({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+  });
+
+  // Free shape annotations
+  const freeShapeAnnotations = useAppFreeShapeAnnotations({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+  });
+
+  const { isApplyingAnnotationUndoRedo, applyAnnotationChange } =
+    useFreeShapeAnnotationApplier(freeShapeAnnotations);
+
   const {
     undoRedo,
     handleEdgeCreated,
@@ -289,7 +314,8 @@ export const App: React.FC = () => {
     mode: state.mode,
     addNode,
     addEdge,
-    menuHandlers
+    menuHandlers,
+    applyAnnotationChange
   });
 
   // Editor handlers with undo/redo support
@@ -393,14 +419,6 @@ export const App: React.FC = () => {
   // Panel visibility management
   const panelVisibility = usePanelVisibility();
 
-  // Free text annotations - using consolidated hook
-  const freeTextAnnotations = useAppFreeTextAnnotations({
-    cyInstance,
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onLockedAction: () => floatingPanelRef.current?.triggerShake()
-  });
-
   // Enable synchronized movement of annotations with nodes during drag
   useAnnotationGroupMove({
     cy: cyInstance,
@@ -415,6 +433,33 @@ export const App: React.FC = () => {
     cy: cyInstance,
     selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
     onClearSelection: freeTextAnnotations.clearAnnotationSelection
+  });
+
+  // Clear free shape selection when clicking on canvas background
+  useAnnotationBackgroundClear({
+    cy: cyInstance,
+    selectedAnnotationIds: freeShapeAnnotations.selectedAnnotationIds,
+    onClearSelection: freeShapeAnnotations.clearAnnotationSelection
+  });
+
+  // Free shape undo handlers - extracted to useFreeShapeUndoRedoHandlers
+  const freeShapeUndoHandlers = useFreeShapeUndoRedoHandlers(
+    freeShapeAnnotations,
+    undoRedo,
+    isApplyingAnnotationUndoRedo
+  );
+
+  // Combined annotation selection + clipboard for keyboard shortcuts - extracted to useCombinedAnnotationShortcuts
+  const combinedAnnotations = useCombinedAnnotationShortcuts(
+    freeTextAnnotations,
+    freeShapeAnnotations,
+    freeShapeUndoHandlers
+  );
+
+  const handleAddShapes = useAddShapesHandler({
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake(),
+    enableAddShapeMode: freeShapeAnnotations.enableAddShapeMode
   });
 
   // Set up keyboard shortcuts (must be after freeTextAnnotations is defined)
@@ -434,14 +479,14 @@ export const App: React.FC = () => {
     onPaste: copyPaste.handlePaste,
     onCut: copyPaste.handleCut,
     onDuplicate: copyPaste.handleDuplicate,
-    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
-    onCopyAnnotations: freeTextAnnotations.copySelectedAnnotations,
-    onPasteAnnotations: freeTextAnnotations.pasteAnnotations,
-    onCutAnnotations: freeTextAnnotations.cutSelectedAnnotations,
-    onDuplicateAnnotations: freeTextAnnotations.duplicateSelectedAnnotations,
-    onDeleteAnnotations: freeTextAnnotations.deleteSelectedAnnotations,
-    onClearAnnotationSelection: freeTextAnnotations.clearAnnotationSelection,
-    hasAnnotationClipboard: freeTextAnnotations.hasClipboardContent
+    selectedAnnotationIds: combinedAnnotations.selectedAnnotationIds,
+    onCopyAnnotations: combinedAnnotations.copySelectedAnnotations,
+    onPasteAnnotations: combinedAnnotations.pasteAnnotations,
+    onCutAnnotations: combinedAnnotations.cutSelectedAnnotations,
+    onDuplicateAnnotations: combinedAnnotations.duplicateSelectedAnnotations,
+    onDeleteAnnotations: combinedAnnotations.deleteSelectedAnnotations,
+    onClearAnnotationSelection: combinedAnnotations.clearAnnotationSelection,
+    hasAnnotationClipboard: combinedAnnotations.hasAnnotationClipboard
   });
 
   React.useEffect(() => {
@@ -478,11 +523,11 @@ export const App: React.FC = () => {
       />
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
-        <FreeTextLayer
-          cy={cyInstance}
-          annotations={freeTextAnnotations.annotations}
-          isLocked={state.isLocked}
-          isAddTextMode={freeTextAnnotations.isAddTextMode}
+	        <FreeTextLayer
+	          cy={cyInstance}
+	          annotations={freeTextAnnotations.annotations}
+	          isLocked={state.isLocked}
+	          isAddTextMode={freeTextAnnotations.isAddTextMode}
           onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
           onAnnotationDelete={freeTextAnnotations.deleteAnnotation}
           onPositionChange={freeTextAnnotations.updatePosition}
@@ -491,14 +536,31 @@ export const App: React.FC = () => {
           onCanvasClick={freeTextAnnotations.handleCanvasClick}
           selectedAnnotationIds={freeTextAnnotations.selectedAnnotationIds}
           onAnnotationSelect={freeTextAnnotations.selectAnnotation}
-          onAnnotationToggleSelect={freeTextAnnotations.toggleAnnotationSelection}
-          onAnnotationBoxSelect={freeTextAnnotations.boxSelectAnnotations}
+	          onAnnotationToggleSelect={freeTextAnnotations.toggleAnnotationSelection}
+	          onAnnotationBoxSelect={freeTextAnnotations.boxSelectAnnotations}
+	        />
+        <FreeShapeLayer
+          cy={cyInstance}
+          annotations={freeShapeAnnotations.annotations}
+          isLocked={state.isLocked}
+          isAddShapeMode={freeShapeAnnotations.isAddShapeMode}
+          onAnnotationEdit={freeShapeAnnotations.editAnnotation}
+          onAnnotationDelete={freeShapeUndoHandlers.deleteAnnotationWithUndo}
+          onPositionChange={freeShapeUndoHandlers.updatePositionWithUndo}
+          onRotationChange={freeShapeUndoHandlers.updateRotationWithUndo}
+          onSizeChange={freeShapeUndoHandlers.updateSizeWithUndo}
+          onEndPositionChange={freeShapeUndoHandlers.updateEndPositionWithUndo}
+          onCanvasClick={freeShapeUndoHandlers.handleCanvasClickWithUndo}
+          selectedAnnotationIds={freeShapeAnnotations.selectedAnnotationIds}
+          onAnnotationSelect={freeShapeAnnotations.selectAnnotation}
+          onAnnotationToggleSelect={freeShapeAnnotations.toggleAnnotationSelection}
+          onAnnotationBoxSelect={freeShapeAnnotations.boxSelectAnnotations}
         />
-        <NodeInfoPanel
-          isVisible={!!state.selectedNode}
-          nodeData={selectedNodeData}
-          onClose={menuHandlers.handleCloseNodePanel}
-        />
+	        <NodeInfoPanel
+	          isVisible={!!state.selectedNode}
+	          nodeData={selectedNodeData}
+	          onClose={menuHandlers.handleCloseNodePanel}
+	        />
         <LinkInfoPanel
           isVisible={!!state.selectedEdge}
           linkData={selectedLinkData}
@@ -536,10 +598,10 @@ export const App: React.FC = () => {
           onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
           onAddNode={handleAddNodeFromPanel}
           onAddNetwork={floatingPanelCommands.onAddNetwork}
-          onAddGroup={floatingPanelCommands.onAddGroup}
-          onAddText={freeTextAnnotations.handleAddText}
-          onAddShapes={floatingPanelCommands.onAddShapes}
-          onAddBulkLink={floatingPanelCommands.onAddBulkLink}
+	          onAddGroup={floatingPanelCommands.onAddGroup}
+	          onAddText={freeTextAnnotations.handleAddText}
+	          onAddShapes={handleAddShapes}
+	          onAddBulkLink={floatingPanelCommands.onAddBulkLink}
           onEditCustomNode={customNodeCommands.onEditCustomNode}
           onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
           onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
@@ -558,6 +620,13 @@ export const App: React.FC = () => {
           onSave={freeTextAnnotations.saveAnnotation}
           onClose={freeTextAnnotations.closeEditor}
           onDelete={freeTextAnnotations.deleteAnnotation}
+        />
+        <FreeShapeEditorPanel
+          isVisible={!!freeShapeAnnotations.editingAnnotation}
+          annotation={freeShapeAnnotations.editingAnnotation}
+          onSave={freeShapeAnnotations.saveAnnotation}
+          onClose={freeShapeAnnotations.closeEditor}
+          onDelete={freeShapeAnnotations.deleteAnnotation}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
       </main>

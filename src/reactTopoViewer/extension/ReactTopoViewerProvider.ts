@@ -261,9 +261,10 @@ export class ReactTopoViewer {
         );
       }
 
-      // Load free text annotations
+      // Load annotations (free text + free shapes)
       const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
       const freeTextAnnotations = annotations.freeTextAnnotations || [];
+      const freeShapeAnnotations = annotations.freeShapeAnnotations || [];
 
       // Build and return bootstrap data for the webview
       return buildBootstrapData({
@@ -272,7 +273,8 @@ export class ReactTopoViewer {
         isViewMode: this.isViewMode,
         deploymentState: this.deploymentState,
         extensionUri: this.context.extensionUri,
-        freeTextAnnotations
+        freeTextAnnotations,
+        freeShapeAnnotations
       });
     } catch (err) {
       this.lastTopologyElements = [];

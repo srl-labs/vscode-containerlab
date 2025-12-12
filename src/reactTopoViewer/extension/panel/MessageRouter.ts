@@ -840,8 +840,16 @@ export class MessageRouter {
       await this.handleSaveFreeTextAnnotations(message);
       return true;
     }
+    if (command === 'save-free-shape-annotations') {
+      await this.handleSaveFreeShapeAnnotations(message);
+      return true;
+    }
     if (command === 'panel-add-text') {
       log.info('[ReactTopoViewer] Add text mode requested');
+      return true;
+    }
+    if (command === 'panel-add-shapes') {
+      log.info('[ReactTopoViewer] Add shapes mode requested');
       return true;
     }
     return false;
@@ -902,6 +910,30 @@ export class MessageRouter {
       log.info(`[ReactTopoViewer] Saved ${freeTextAnnotations.length} free text annotations`);
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to save free text annotations: ${err}`);
+    }
+  }
+
+  /**
+   * Save free shape annotations to annotations file
+   */
+  private async handleSaveFreeShapeAnnotations(message: WebviewMessage): Promise<void> {
+    if (!this.context.yamlFilePath) {
+      log.warn('[ReactTopoViewer] Cannot save free shape annotations: no YAML file path');
+      return;
+    }
+
+    try {
+      const payload = message as unknown as { annotations?: unknown[] };
+      const freeShapeAnnotations = payload.annotations || [];
+
+      await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {
+        annotations.freeShapeAnnotations = freeShapeAnnotations as typeof annotations.freeShapeAnnotations;
+        return annotations;
+      });
+
+      log.info(`[ReactTopoViewer] Saved ${freeShapeAnnotations.length} free shape annotations`);
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to save free shape annotations: ${err}`);
     }
   }
 
