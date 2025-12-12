@@ -188,23 +188,21 @@ function shouldSkipCloudNode(
 }
 
 /**
- * Resolves position, parent, and label from cloud node annotations.
+ * Resolves position and label from cloud node annotations.
  */
 function resolveCloudNodePlacement(
   nodeId: string,
   annotations: Record<string, unknown> | undefined
-): { position: { x: number; y: number }; parent?: string; label?: string } {
+): { position: { x: number; y: number }; label?: string } {
   let position = { x: 0, y: 0 };
-  let parent: string | undefined;
   let label: string | undefined;
-  const cloudAnns = (annotations as { cloudNodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; group?: string; level?: string; label?: string }> })?.cloudNodeAnnotations;
-  if (!cloudAnns) return { position, parent, label };
+  const cloudAnns = (annotations as { cloudNodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; label?: string }> })?.cloudNodeAnnotations;
+  if (!cloudAnns) return { position, label };
 
   const saved = cloudAnns.find((cn) => cn.id === nodeId);
   if (saved?.position) position = saved.position;
-  if (saved?.group && saved?.level) parent = `${saved.group}:${saved.level}`;
   if (saved?.label) label = saved.label;
-  return { position, parent, label };
+  return { position, label };
 }
 
 /**
@@ -214,7 +212,6 @@ function createCloudNodeElement(
   nodeId: string,
   nodeInfo: SpecialNodeInfo,
   position: { x: number; y: number },
-  parent: string | undefined,
   extraProps: Record<string, unknown>,
   savedLabel?: string
 ): CyElement {
@@ -225,7 +222,6 @@ function createCloudNodeElement(
       id: nodeId,
       weight: '30',
       name: displayLabel,
-      parent,
       topoViewerRole: 'cloud',
       lat: '',
       lng: '',
@@ -279,9 +275,9 @@ export function addCloudNodes(
   for (const [nodeId, nodeInfo] of specialNodes) {
     if (shouldSkipCloudNode(nodeId, nodeInfo, yamlNodeIds)) continue;
 
-    const { position, parent, label } = resolveCloudNodePlacement(nodeId, opts.annotations);
+    const { position, label } = resolveCloudNodePlacement(nodeId, opts.annotations);
     const extraProps = specialNodeProps.get(nodeId) || {};
-    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, parent, extraProps, label);
+    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, extraProps, label);
     elements.push(cloudNodeEl);
   }
 }

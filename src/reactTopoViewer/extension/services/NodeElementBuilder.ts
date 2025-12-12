@@ -56,27 +56,6 @@ export function computeFullPrefix(parsed: ClabTopology, clabName: string): strin
 }
 
 /**
- * Constructs a parent identifier for a node based on its group and label information.
- */
-export function buildParent(
-  nodeObj: ClabNode,
-  nodeAnnotation?: Record<string, unknown>
-): string {
-  const labels = nodeObj.labels as Record<string, unknown> | undefined;
-  const grp = (nodeAnnotation?.group as string) ||
-    labels?.['topoViewer-group'] as string ||
-    labels?.['graph-group'] as string || '';
-  const lvl = (nodeAnnotation?.level as string) ||
-    labels?.['topoViewer-groupLevel'] as string ||
-    labels?.['graph-level'] as string || '1';
-
-  if (grp && lvl) {
-    return `${grp}:${lvl}`;
-  }
-  return '';
-}
-
-/**
  * Extracts icon visual properties from node annotation.
  */
 export function extractIconVisuals(nodeAnn: Record<string, unknown> | undefined): Record<string, unknown> {
@@ -274,7 +253,6 @@ export function createNodeExtraData(params: {
 /** Result of building a node element */
 interface NodeElementResult {
   element: CyElement;
-  parentId: string | undefined;
   /** If set, this node's interfacePattern needs to be migrated to annotations */
   migrationPattern?: string;
 }
@@ -297,7 +275,6 @@ export function buildNodeElement(params: {
   const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
   const nodePropKeys = new Set(Object.keys(nodeObj || {}));
   const inheritedProps = Object.keys(mergedNode).filter(k => !nodePropKeys.has(k));
-  const parentId = buildParent(mergedNode, nodeAnn);
   const containerData = getContainerData(opts, fullPrefix, nodeName, clabName, mergedNode);
   const cleanedLabels = sanitizeLabels(mergedNode.labels as Record<string, unknown>);
   const pos = nodeAnn?.position as { x: number; y: number } | undefined;
@@ -330,7 +307,6 @@ export function buildNodeElement(params: {
       id: nodeName,
       weight: '30',
       name: nodeName,
-      parent: parentId || undefined,
       topoViewerRole,
       ...iconVisuals,
       lat,
@@ -347,7 +323,7 @@ export function buildNodeElement(params: {
     classes: '',
   };
 
-  return { element, parentId, migrationPattern };
+  return { element, migrationPattern };
 }
 
 /** Interface pattern migration entry */
@@ -365,18 +341,17 @@ export function addNodeElements(
   opts: NodeBuildOptions,
   fullPrefix: string,
   clabName: string,
-  parentMap: Map<string, string | undefined>,
   elements: CyElement[]
 ): InterfacePatternMigration[] {
   const migrations: InterfacePatternMigration[] = [];
   const topology = parsed.topology!;
   if (!topology.nodes) return migrations;
-  const nodeAnnotations = (opts.annotations as { nodeAnnotations?: Array<{ id: string; groupLabelPos?: string; position?: { x: number; y: number } }> })?.nodeAnnotations;
+  const nodeAnnotations = (opts.annotations as { nodeAnnotations?: Array<{ id: string; position?: { x: number; y: number } }> })?.nodeAnnotations;
   const interfacePatternMapping = buildInterfacePatternMapping();
   let nodeIndex = 0;
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
     const nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName) as Record<string, unknown> | undefined;
-    const { element, parentId, migrationPattern } = buildNodeElement({
+    const { element, migrationPattern } = buildNodeElement({
       parsed,
       nodeName,
       nodeObj,
@@ -387,9 +362,6 @@ export function addNodeElements(
       nodeIndex,
       interfacePatternMapping,
     });
-    if (parentId && !parentMap.has(parentId)) {
-      parentMap.set(parentId, nodeAnn?.groupLabelPos as string | undefined);
-    }
     elements.push(element);
     // Track migrations for nodes that need interfacePattern written to annotations
     if (migrationPattern) {
@@ -398,40 +370,4 @@ export function addNodeElements(
     nodeIndex++;
   }
   return migrations;
-}
-
-/**
- * Adds group nodes to the elements array.
- */
-export function addGroupNodes(parentMap: Map<string, string | undefined>, elements: CyElement[]): void {
-  for (const [parentId, groupLabelPos] of parentMap) {
-    const [groupName, groupLevel] = parentId.split(':');
-    const groupNodeEl: CyElement = {
-      group: 'nodes',
-      data: {
-        id: parentId,
-        name: groupName || 'UnnamedGroup',
-        topoViewerRole: 'group',
-        weight: '1000',
-        parent: '',
-        lat: '',
-        lng: '',
-        extraData: {
-          clabServerUsername: 'asad',
-          weight: '2',
-          name: '',
-          topoViewerGroup: groupName ?? '',
-          topoViewerGroupLevel: groupLevel ?? '',
-        },
-      },
-      removed: false,
-      selected: false,
-      selectable: true,
-      locked: false,
-      grabbed: false,
-      grabbable: true,
-      classes: groupLabelPos,
-    };
-    elements.push(groupNodeEl);
-  }
 }

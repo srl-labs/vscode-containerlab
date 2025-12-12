@@ -106,18 +106,11 @@ function generateTemplateNodeIds(
 }
 
 function generateRegularNodeIds(
-  el: CyElementJson,
   oldName: string,
-  usedIds: Set<string>,
-  isGroup: boolean
+  usedIds: Set<string>
 ): { newId: string; nodeName: string } {
-  const newId = getUniqueId(oldName, usedIds, isGroup);
-  let nodeName: string;
-  if (isGroup) {
-    nodeName = (el.data.label as string) || oldName || newId.split(':')[0];
-  } else {
-    nodeName = newId;
-  }
+  const newId = getUniqueId(oldName, usedIds);
+  const nodeName = newId;
   return { newId, nodeName };
 }
 
@@ -131,8 +124,7 @@ function createNodeDataWithProvenance(
   el: CyElementJson,
   newId: string,
   nodeName: string,
-  oldId: string,
-  isGroup: boolean
+  oldId: string
 ): Record<string, unknown> {
   const newData = {
     ...el.data,
@@ -147,12 +139,6 @@ function createNodeDataWithProvenance(
     newData.extraData = { copyFrom: oldId };
   }
 
-  if (isGroup && newData.extraData) {
-    const [group, level] = newId.split(':');
-    (newData.extraData as Record<string, unknown>).topoViewerGroup = group;
-    (newData.extraData as Record<string, unknown>).topoViewerGroupLevel = level;
-  }
-
   return newData;
 }
 
@@ -165,14 +151,13 @@ function processNodeForPaste(
   const oldId = el.data.id as string;
   const oldName = (el.data.name as string) || oldId;
   const isTemplateNode = oldId.startsWith('nodeId-');
-  const isGroup = el.data.topoViewerRole === 'group';
 
   const { newId, nodeName: rawNodeName } = isTemplateNode
     ? generateTemplateNodeIds(oldName, usedIds, usedNames)
-    : generateRegularNodeIds(el, oldName, usedIds, isGroup);
+    : generateRegularNodeIds(oldName, usedIds);
 
   const nodeName = applySpecialNameOverrides(newId, rawNodeName);
-  const newData = createNodeDataWithProvenance(el, newId, nodeName, oldId, isGroup);
+  const newData = createNodeDataWithProvenance(el, newId, nodeName, oldId);
 
   idMap.set(oldId, newId);
   usedIds.add(newId);

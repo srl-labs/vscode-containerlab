@@ -55,13 +55,6 @@ export function toPosition(ann: Record<string, unknown> | undefined): { x: numbe
 }
 
 /**
- * Converts annotation to a parent string.
- */
-export function toParent(ann: Record<string, unknown> | undefined): string | undefined {
-  return (ann?.group && ann?.level) ? `${ann.group}:${ann.level}` : undefined;
-}
-
-/**
  * Collects alias entries from node annotations.
  */
 export function collectAliasEntriesNew(annotations: Record<string, unknown> | undefined): AliasEntry[] {
@@ -111,9 +104,9 @@ export function buildAliasMap(list: AliasEntry[]): Map<string, string> {
 export function deriveAliasPlacement(
   aliasAnn: Record<string, unknown> | undefined,
   baseAnn: Record<string, unknown> | undefined
-): { position: { x: number; y: number }; parent?: string } {
-  if (aliasAnn) return { position: toPosition(aliasAnn), parent: toParent(aliasAnn) };
-  if (baseAnn) return { position: toPosition(baseAnn), parent: toParent(baseAnn) };
+): { position: { x: number; y: number } } {
+  if (aliasAnn) return { position: toPosition(aliasAnn) };
+  if (baseAnn) return { position: toPosition(baseAnn) };
   return { position: { x: 0, y: 0 } };
 }
 
@@ -123,7 +116,6 @@ export function deriveAliasPlacement(
 export function buildBridgeAliasElement(
   aliasId: string,
   kind: string,
-  parent: string | undefined,
   position: { x: number; y: number },
   yamlRefId: string,
   displayName: string,
@@ -134,7 +126,6 @@ export function buildBridgeAliasElement(
       id: aliasId,
       weight: '30',
       name: displayName,
-      parent,
       topoViewerRole: 'bridge',
       lat: '',
       lng: '',
@@ -188,14 +179,13 @@ export function createAliasElement(
   if (!refNode || !isBridgeKind(refNode?.kind)) return null;
   const aliasAnn = nodeAnnById.get(aliasId);
   const baseAnn = nodeAnnById.get(yamlRefId);
-  const { position, parent } = deriveAliasPlacement(aliasAnn, baseAnn);
+  const { position } = deriveAliasPlacement(aliasAnn, baseAnn);
   const aliasDisplayName = (aliasAnn && typeof aliasAnn.label === 'string' && (aliasAnn.label as string).trim())
     ? (aliasAnn.label as string).trim()
     : aliasId;
   return buildBridgeAliasElement(
     aliasId,
     (refNode.kind || NODE_KIND_BRIDGE) as string,
-    parent,
     position,
     yamlRefId,
     aliasDisplayName,

@@ -12,7 +12,6 @@ import {
   isPresetLayout,
   computeFullPrefix,
   addNodeElements,
-  addGroupNodes,
   InterfacePatternMigration,
 } from './NodeElementBuilder';
 import { migrateInterfacePatterns } from '../persistence/NodePersistence';
@@ -236,13 +235,9 @@ export class TopoViewerAdaptorClab {
 
     const clabName = parsed.name ?? '';
     const fullPrefix = computeFullPrefix(parsed, clabName);
-    const parentMap = new Map<string, string | undefined>();
 
     // Add node elements and collect migrations
-    const migrations = addNodeElements(parsed, opts, fullPrefix, clabName, parentMap, elements);
-
-    // Add group nodes
-    addGroupNodes(parentMap, elements);
+    const migrations = addNodeElements(parsed, opts, fullPrefix, clabName, elements);
 
     // Collect and add special nodes (host, mgmt-net, macvlan, etc.)
     const ctx: DummyContext = { dummyCounter: 0, dummyLinkMap: new Map() };

@@ -266,15 +266,8 @@ function handleCreateGroup(
   if (!cyInstance) return false;
   const selectedNodes = cyInstance.nodes(':selected').filter(n => {
     const role = n.data('topoViewerRole');
-    // Exclude groups, annotations, and nodes already in a group
-    if (role === 'group' || role === 'freeText' || role === 'freeShape') {
-      return false;
-    }
-    // Don't allow nodes already in a group
-    if (n.parent().length > 0) {
-      return false;
-    }
-    return true;
+    // Exclude annotations
+    return role !== 'freeText' && role !== 'freeShape';
   });
 
   if (selectedNodes.length === 0) {

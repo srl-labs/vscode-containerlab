@@ -65,17 +65,7 @@ export function generateSpecialNodeId(baseName: string, usedIds: Set<string>): s
  * If baseName has trailing number (e.g., "srl2"), start from that number
  * If baseName has no number (e.g., "srl"), start from 1 (srl1, srl2, etc.)
  */
-export function generateRegularNodeId(baseName: string, usedIds: Set<string>, isGroup: boolean): string {
-  if (isGroup) {
-    let num = 1;
-    let id = `${baseName}:${num}`;
-    while (usedIds.has(id)) {
-      num++;
-      id = `${baseName}:${num}`;
-    }
-    return id;
-  }
-
+export function generateRegularNodeId(baseName: string, usedIds: Set<string>): string {
   // Find trailing digits in baseName
   let i = baseName.length - 1;
   while (i >= 0 && baseName[i] >= '0' && baseName[i] <= '9') i--;
@@ -95,7 +85,7 @@ export function generateRegularNodeId(baseName: string, usedIds: Set<string>, is
  * Get a unique ID based on baseName type
  * Handles special endpoints (dummy, host:eth, macvlan:eth, etc.) and regular nodes
  */
-export function getUniqueId(baseName: string, usedIds: Set<string>, isGroup = false): string {
+export function getUniqueId(baseName: string, usedIds: Set<string>): string {
   if (isSpecialEndpoint(baseName)) {
     if (baseName.startsWith('dummy')) {
       return generateDummyId(baseName, usedIds);
@@ -105,5 +95,5 @@ export function getUniqueId(baseName: string, usedIds: Set<string>, isGroup = fa
     }
     return generateSpecialNodeId(baseName, usedIds);
   }
-  return generateRegularNodeId(baseName, usedIds, isGroup);
+  return generateRegularNodeId(baseName, usedIds);
 }

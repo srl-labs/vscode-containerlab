@@ -227,7 +227,7 @@ function getEdgehandlesOptions(cy: CyCore, interfacePatternMapping: Record<strin
     snapFrequency: 150,
     noEdgeEventsInDraw: false,
     disableBrowserGestures: false,
-    handleNodes: 'node[topoViewerRole != "freeText"][topoViewerRole != "group"]',
+    handleNodes: 'node[topoViewerRole != "freeText"]',
     canConnect,
     edgeParams: (sourceNode: NodeSingular, targetNode: NodeSingular) =>
       createEdgeParams(cy, sourceNode, targetNode, interfacePatternMapping)

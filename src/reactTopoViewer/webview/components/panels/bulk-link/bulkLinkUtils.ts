@@ -171,7 +171,7 @@ export function computeCandidates(
   sourceFilterText: string,
   targetFilterText: string
 ): LinkCandidate[] {
-  const nodes = cy.nodes('node[topoViewerRole != "freeText"][topoViewerRole != "group"]');
+  const nodes = cy.nodes('node[topoViewerRole != "freeText"]');
   const candidates: LinkCandidate[] = [];
 
   const sourceRegex = FilterUtils.tryCreateRegExp(sourceFilterText);
