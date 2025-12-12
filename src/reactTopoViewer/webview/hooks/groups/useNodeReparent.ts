@@ -5,7 +5,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import type { Core, NodeSingular, EventObject } from 'cytoscape';
 import { log } from '../../utils/logger';
-import { isGroupNode, updateGroupEmptyStatus, parseGroupId } from './groupHelpers';
+import { isGroupNode, updateGroupEmptyStatus, parseGroupId, CMD_SAVE_NODE_GROUP_MEMBERSHIP } from './groupHelpers';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 export interface UseNodeReparentOptions {
@@ -19,13 +19,13 @@ export interface UseNodeReparentOptions {
 function saveNodeGroupMembership(nodeId: string, groupId: string | null): void {
   if (groupId) {
     const { name, level } = parseGroupId(groupId);
-    sendCommandToExtension('save-node-group-membership', {
+    sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
       nodeId,
       group: name,
       level
     });
   } else {
-    sendCommandToExtension('save-node-group-membership', {
+    sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
       nodeId,
       group: null,
       level: null

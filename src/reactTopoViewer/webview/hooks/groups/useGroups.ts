@@ -17,7 +17,8 @@ import {
   updateGroupEmptyStatus,
   applyGroupStyleToNode,
   updateStyleInList,
-  removeStyleFromList
+  removeStyleFromList,
+  CMD_SAVE_NODE_GROUP_MEMBERSHIP
 } from './groupHelpers';
 import type {
   UseGroupsOptions,
@@ -81,7 +82,7 @@ function addNodesToGroup(
       node.move({ parent: groupId });
       node.data('parent', groupId);
       // Save node's group membership
-      sendCommandToExtension('save-node-group-membership', {
+      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
         nodeId,
         group: name,
         level
@@ -143,7 +144,7 @@ function recreateGroupWithNewId(
       child.move({ parent: newGroupId });
       child.data('parent', newGroupId);
       // Save updated group membership
-      sendCommandToExtension('save-node-group-membership', {
+      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
         nodeId: childId,
         group: name,
         level
@@ -388,14 +389,23 @@ function useReleaseNodeFromGroup(
       const parent = node.parent().first() as NodeSingular;
       if (parent.length === 0) return;
 
+      const parentId = parent.id();
       node.move({ parent: null });
+      node.data('parent', '');
       updateGroupEmptyStatus(parent);
 
+      // Save the node's group membership (removed from group)
+      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
+        nodeId,
+        group: null,
+        level: null
+      });
+
       if (parent.children().length === 0) {
-        deleteGroup(parent.id());
+        deleteGroup(parentId);
       }
 
-      log.info(`[Groups] Released node ${nodeId} from group ${parent.id()}`);
+      log.info(`[Groups] Released node ${nodeId} from group ${parentId}`);
     },
     [cy, mode, isLocked, onLockedAction, deleteGroup]
   );

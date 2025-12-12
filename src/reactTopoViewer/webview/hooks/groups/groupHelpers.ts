@@ -9,6 +9,9 @@ import { DEFAULT_GROUP_STYLE, GROUP_LABEL_POSITIONS, GroupLabelPosition } from '
 const GROUP_SAVE_DEBOUNCE_MS = 300;
 export { GROUP_SAVE_DEBOUNCE_MS };
 
+/** Command name for saving node group membership */
+export const CMD_SAVE_NODE_GROUP_MEMBERSHIP = 'save-node-group-membership';
+
 /**
  * Generates a unique group ID.
  */

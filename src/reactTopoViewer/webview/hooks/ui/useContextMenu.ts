@@ -296,12 +296,13 @@ type CyWithCxtmenu = Core & { cxtmenu: (cfg: unknown) => CxtmenuInstance };
 export const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
 
 /**
- * Register node context menu
+ * Register node context menu (for nodes NOT in a group)
  */
 function registerNodeMenu(cy: CyWithCxtmenu, items: MenuItem[]): CxtmenuInstance | null {
   if (items.length === 0) return null;
 
-  const nodeSelector = 'node[topoViewerRole != "group"][topoViewerRole != "freeText"][topoViewerRole != "freeShape"]';
+  // Use :orphan to only match nodes that don't have a parent (not in a group)
+  const nodeSelector = 'node:orphan[topoViewerRole != "group"][topoViewerRole != "freeText"][topoViewerRole != "freeShape"]';
 
   try {
     const menu = cy.cxtmenu({
