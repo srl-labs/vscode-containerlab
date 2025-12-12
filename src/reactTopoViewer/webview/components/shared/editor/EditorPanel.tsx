@@ -14,6 +14,7 @@ interface EditorPanelProps {
   onSave: () => void;
   children: ReactNode;
   width?: number;
+  height?: number;
   initialPosition?: { x: number; y: number };
   tabs?: TabDefinition[];
   activeTab?: string;
@@ -21,6 +22,12 @@ interface EditorPanelProps {
   storageKey?: string;
   /** When true, highlights the Apply button to indicate unsaved changes */
   hasChanges?: boolean;
+  /** Enable diagonal resizing (default: true) */
+  resizable?: boolean;
+  /** Minimum width when resizing */
+  minWidth?: number;
+  /** Minimum height when resizing */
+  minHeight?: number;
 }
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
@@ -31,18 +38,23 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   onSave,
   children,
   width = 400,
+  height,
   initialPosition = { x: 20, y: 80 },
   tabs,
   activeTab,
   onTabChange,
   storageKey,
-  hasChanges = false
+  hasChanges = false,
+  resizable = true,
+  minWidth,
+  minHeight
 }) => (
   <BasePanel
     title={title}
     isVisible={isVisible}
     onClose={onClose}
     width={width}
+    height={height}
     initialPosition={initialPosition}
     storageKey={storageKey}
     onSecondaryClick={onApply}
@@ -50,6 +62,9 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     secondaryLabel="Apply"
     primaryLabel="OK"
     hasChanges={hasChanges}
+    resizable={resizable}
+    minWidth={minWidth}
+    minHeight={minHeight}
   >
     {tabs && activeTab && onTabChange && (
       <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />

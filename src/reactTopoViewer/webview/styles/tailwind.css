@@ -393,6 +393,45 @@
     background-color: var(--vscode-tab-activeBackground);
   }
 
+  /* Panel resize handle (diagonal) */
+  .panel-resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    z-index: 10;
+    background: transparent;
+  }
+
+  .panel-resize-handle::before {
+    content: '';
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--vscode-panel-border);
+    border-bottom: 2px solid var(--vscode-panel-border);
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+  }
+
+  .panel-resize-handle:hover::before {
+    opacity: 1;
+    border-color: var(--accent);
+  }
+
+  .panel-resizing {
+    user-select: none;
+  }
+
+  .panel-resizing .panel-resize-handle::before {
+    opacity: 1;
+    border-color: var(--accent);
+  }
+
   /* Button styles */
   .btn {
     display: inline-flex;

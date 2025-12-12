@@ -1,7 +1,8 @@
 /**
  * AboutPanel - Displays information about TopoViewer
  */
-import React, { useEffect } from 'react';
+import React from 'react';
+import { BasePanel } from '../shared/editor/BasePanel';
 
 interface AboutPanelProps {
   isVisible: boolean;
@@ -232,35 +233,19 @@ const AnimatedContainerlabLogo: React.FC = () => (
 );
 
 export const AboutPanel: React.FC<AboutPanelProps> = ({ isVisible, onClose }) => {
-  useEffect(() => {
-    if (!isVisible) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVisible, onClose]);
-
-  if (!isVisible) return null;
-
   return (
-    <aside
-      className="about-panel panel fixed bottom-10 right-10 w-[340px] max-h-[85vh] overflow-hidden z-21"
-      role="complementary"
-      aria-labelledby="about-heading"
+    <BasePanel
+      title="About TopoViewer"
+      isVisible={isVisible}
+      onClose={onClose}
+      initialPosition={{ x: window.innerWidth - 380, y: window.innerHeight - 500 }}
+      width={340}
+      storageKey="about"
+      zIndex={21}
+      footer={false}
+      minWidth={300}
+      minHeight={250}
     >
-      <header className="panel-heading panel-title-bar flex items-center justify-between" id="about-heading">
-        <span className="panel-title">About TopoViewer</span>
-        <button
-          className="panel-close-btn"
-          onClick={onClose}
-          aria-label="Close"
-          title="Close"
-        >
-          <i className="fas fa-times" aria-hidden="true"></i>
-        </button>
-      </header>
-
       <div className="about-content">
         {/* Hero Section */}
         <div className="about-hero">
@@ -358,6 +343,6 @@ export const AboutPanel: React.FC<AboutPanelProps> = ({ isVisible, onClose }) =>
           <span>for the network community</span>
         </div>
       </div>
-    </aside>
+    </BasePanel>
   );
 };

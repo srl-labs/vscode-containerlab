@@ -13,8 +13,15 @@ interface FloatingPanelProps {
   onClose: () => void;
   initialPosition?: { x: number; y: number };
   width?: number;
+  height?: number;
   storageKey?: string;
   zIndex?: number;
+  /** Enable diagonal resizing (default: true) */
+  resizable?: boolean;
+  /** Minimum width when resizing */
+  minWidth?: number;
+  /** Minimum height when resizing */
+  minHeight?: number;
 }
 
 export const FloatingPanel: React.FC<FloatingPanelProps> = ({
@@ -24,8 +31,12 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
   onClose,
   initialPosition = { x: 20, y: 80 },
   width = 320,
+  height,
   storageKey,
-  zIndex = 9999
+  zIndex = 9999,
+  resizable = true,
+  minWidth,
+  minHeight
 }) => {
   return (
     <BasePanel
@@ -34,9 +45,13 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
       onClose={onClose}
       initialPosition={initialPosition}
       width={width}
+      height={height}
       storageKey={storageKey}
       zIndex={zIndex}
       footer={false}
+      resizable={resizable}
+      minWidth={minWidth}
+      minHeight={minHeight}
     >
       {children}
     </BasePanel>

@@ -2,7 +2,8 @@
  * ShortcutsPanel - Displays keyboard shortcuts and interactions
  * Migrated from legacy TopoViewer shortcuts-modal.html
  */
-import React, { useEffect } from 'react';
+import React from 'react';
+import { BasePanel } from '../shared/editor/BasePanel';
 
 interface ShortcutsPanelProps {
   isVisible: boolean;
@@ -50,42 +51,20 @@ const ShortcutSection: React.FC<ShortcutSectionProps> = ({ title, icon, colorCla
 );
 
 export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClose }) => {
-  // Handle Escape key to close panel
-  useEffect(() => {
-    if (!isVisible) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVisible, onClose]);
-
-  if (!isVisible) return null;
-
   return (
-    <aside
-      className="shortcuts-panel panel fixed top-[4.5rem] right-[1rem] w-[320px] z-[30] max-h-[calc(100vh-5rem)] flex flex-col"
-      role="complementary"
-      aria-labelledby="shortcuts-heading"
+    <BasePanel
+      title="Shortcuts & Interactions"
+      isVisible={isVisible}
+      onClose={onClose}
+      initialPosition={{ x: window.innerWidth - 340, y: 72 }}
+      width={320}
+      storageKey="shortcuts"
+      zIndex={30}
+      footer={false}
+      minWidth={280}
+      minHeight={200}
     >
-      <header className="panel-heading flex-shrink-0 flex items-center justify-between" id="shortcuts-heading">
-        <div className="flex items-center gap-2">
-          <i className="fas fa-keyboard" aria-hidden="true"></i>
-          <span>Shortcuts &amp; Interactions</span>
-        </div>
-        <button
-          className="panel-close-btn"
-          onClick={onClose}
-          aria-label="Close"
-          title="Close"
-        >
-          <i className="fas fa-times" aria-hidden="true"></i>
-        </button>
-      </header>
-
-      <div className="p-4 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 8rem)' }}>
+      <div className="shortcuts-panel-content">
         {/* Viewer Mode */}
         <ShortcutSection title="Viewer Mode" icon="fa-eye" colorClass="text-green-500">
           <ShortcutRow label="Select node/link" shortcut="Left Click" />
@@ -131,6 +110,6 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
           </ul>
         </ShortcutSection>
       </div>
-    </aside>
+    </BasePanel>
   );
 };
