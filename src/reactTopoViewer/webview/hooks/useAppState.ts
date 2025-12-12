@@ -174,7 +174,12 @@ function createGridCanvas(container: HTMLElement): HTMLCanvasElement | null {
   canvas.style.height = '100%';
   canvas.style.pointerEvents = 'none';
   canvas.style.zIndex = '0';
-  container.appendChild(canvas);
+  // Insert as first child so it's below cytoscape-layers in DOM order
+  if (container.firstChild) {
+    container.insertBefore(canvas, container.firstChild);
+  } else {
+    container.appendChild(canvas);
+  }
   return canvas;
 }
 

@@ -102,15 +102,30 @@ function buildWrapperStyle(
   };
 }
 
+/**
+ * Convert hex color to rgba with alpha.
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function buildContentStyle(
   group: GroupStyleAnnotation
 ): React.CSSProperties {
+  const bgColor = group.backgroundColor ?? '#d9d9d9';
+  const bgOpacity = (group.backgroundOpacity ?? 20) / 100;
+  // Use rgba for background to properly cover grid, keep border fully opaque
+  const bgColorWithAlpha = hexToRgba(bgColor, bgOpacity);
+
   return {
     position: 'relative',
     width: '100%',
     height: '100%',
-    backgroundColor: group.backgroundColor ?? '#d9d9d9',
-    opacity: (group.backgroundOpacity ?? 20) / 100,
+    backgroundColor: bgColorWithAlpha,
     borderColor: group.borderColor ?? '#dddddd',
     borderWidth: `${group.borderWidth ?? 0.5}px`,
     borderStyle: group.borderStyle ?? 'solid',
