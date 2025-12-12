@@ -13,6 +13,18 @@ import {
 } from 'd3-force';
 
 /**
+ * Node types that participate in layout algorithms
+ */
+const LAYOUTABLE_NODE_TYPES = ['topology-node', 'cloud-node'];
+
+/**
+ * Check if a node should be included in layout
+ */
+function isLayoutableNode(node: Node): boolean {
+  return LAYOUTABLE_NODE_TYPES.includes(node.type || '');
+}
+
+/**
  * Available layout types
  */
 export type LayoutName = 'preset' | 'force' | 'grid' | 'circle' | 'cola';
@@ -71,9 +83,7 @@ export function applyForceLayout(
   if (nodes.length === 0) return nodes;
 
   // Filter out annotation nodes (groups, free text, free shapes)
-  const layoutNodes = nodes.filter(node =>
-    node.type === 'topology-node' || node.type === 'cloud-node'
-  );
+  const layoutNodes = nodes.filter(isLayoutableNode);
 
   if (layoutNodes.length === 0) return nodes;
 
@@ -160,9 +170,7 @@ export function applyGridLayout(
   if (nodes.length === 0) return nodes;
 
   // Filter out annotation nodes
-  const layoutNodes = nodes.filter(node =>
-    node.type === 'topology-node' || node.type === 'cloud-node'
-  );
+  const layoutNodes = nodes.filter(isLayoutableNode);
 
   if (layoutNodes.length === 0) return nodes;
 
@@ -208,9 +216,7 @@ export function applyCircleLayout(
   if (nodes.length === 0) return nodes;
 
   // Filter out annotation nodes
-  const layoutNodes = nodes.filter(node =>
-    node.type === 'topology-node' || node.type === 'cloud-node'
-  );
+  const layoutNodes = nodes.filter(isLayoutableNode);
 
   if (layoutNodes.length === 0) return nodes;
 

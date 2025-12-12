@@ -153,7 +153,7 @@ function getLabelPosition(
 /**
  * Label component for endpoint text
  */
-function EndpointLabel({ text, x, y }: { text: string; x: number; y: number }) {
+function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: number }>) {
   const style: React.CSSProperties = {
     position: 'absolute',
     transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,

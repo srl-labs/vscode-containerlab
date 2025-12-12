@@ -1,12 +1,13 @@
 /**
  * ReactFlowCanvas - Main React Flow canvas component for topology visualization
- * Replaces CytoscapeCanvas with @xyflow/react
+ * Full-featured canvas with grid snapping, node creation, edge creation, context menus
  */
 import React, {
   useRef,
   useEffect,
   useImperativeHandle,
   forwardRef,
+  useCallback,
   useMemo,
   useState
 } from 'react';
@@ -20,7 +21,7 @@ import {
   type Node,
   BackgroundVariant,
   SelectionMode,
-  ConnectionLineType
+  ConnectionMode
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -31,8 +32,11 @@ import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { applyLayout, hasPresetPositions, type LayoutName } from './layout';
 import { useTopoViewer } from '../../context/TopoViewerContext';
-import { useCanvasHandlers } from './useCanvasHandlers';
+import { useCanvasHandlers, GRID_SIZE } from './useCanvasHandlers';
+import { ContextMenu, type ContextMenuItem } from '../context-menu/ContextMenu';
+import { sendCommandToExtension } from '../../utils/extensionMessaging';
 import { log } from '../../utils/logger';
+import { buildNodeContextMenu, buildEdgeContextMenu, buildPaneContextMenu } from './contextMenuBuilders';
 
 /**
  * CSS styles for the canvas
@@ -73,16 +77,20 @@ const proOptions = { hideAttribution: true };
 // Default viewport
 const defaultViewport = { x: 0, y: 0, zoom: 1 };
 
+// Fit view options
+const fitViewOptions = { padding: 0.2 };
+
 /**
  * ReactFlowCanvas component
  */
 const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
-  ({ elements }, ref) => {
+  ({ elements, onNodeDelete, onEdgeDelete }, ref) => {
     const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [isInitialized, setIsInitialized] = useState(false);
     const prevElementsRef = useRef<CyElement[]>([]);
+    const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
 
     // Use extracted event handlers
     const handlers = useCanvasHandlers({
@@ -91,7 +99,11 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
       editNode,
       editEdge,
       mode: state.mode,
-      onNodesChangeBase: onNodesChange
+      isLocked: state.isLocked,
+      onNodesChangeBase: onNodesChange,
+      onEdgesChangeBase: onEdgesChange,
+      setEdges,
+      onLockedAction: () => floatingPanelRef.current?.triggerShake()
     });
 
     // Convert elements when they change
@@ -134,6 +146,104 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
       getReactFlowInstance: () => handlers.reactFlowInstance.current
     }), [nodes, edges, setNodes, handlers.reactFlowInstance]);
 
+    // Delete node handler
+    const handleDeleteNode = useCallback((nodeId: string) => {
+      log.info(`[ReactFlowCanvas] Deleting node: ${nodeId}`);
+
+      // Remove from local state
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+
+      // Notify extension
+      sendCommandToExtension('panel-delete-node', { nodeId });
+      onNodeDelete?.(nodeId);
+
+      selectNode(null);
+      handlers.closeContextMenu();
+    }, [setNodes, setEdges, selectNode, onNodeDelete, handlers]);
+
+    // Delete edge handler
+    const handleDeleteEdge = useCallback((edgeId: string) => {
+      log.info(`[ReactFlowCanvas] Deleting edge: ${edgeId}`);
+
+      const edge = edges.find((e) => e.id === edgeId);
+
+      // Remove from local state
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+
+      // Notify extension
+      if (edge) {
+        const edgeData = edge.data as Record<string, unknown> | undefined;
+        sendCommandToExtension('panel-delete-link', {
+          edgeId,
+          linkData: {
+            source: edge.source,
+            target: edge.target,
+            sourceEndpoint: edgeData?.sourceEndpoint || '',
+            targetEndpoint: edgeData?.targetEndpoint || ''
+          }
+        });
+      }
+      onEdgeDelete?.(edgeId);
+
+      selectEdge(null);
+      handlers.closeContextMenu();
+    }, [edges, setEdges, selectEdge, onEdgeDelete, handlers]);
+
+    // Build context menu items based on menu type
+    const contextMenuItems = useMemo((): ContextMenuItem[] => {
+      const { type, targetId } = handlers.contextMenu;
+      const isEditMode = state.mode === 'edit';
+      const isLocked = state.isLocked;
+      const closeContextMenu = handlers.closeContextMenu;
+
+      if (type === 'node' && targetId) {
+        return buildNodeContextMenu({
+          targetId, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode
+        });
+      }
+
+      if (type === 'edge' && targetId) {
+        return buildEdgeContextMenu({
+          targetId, isEditMode, isLocked, closeContextMenu, editEdge, handleDeleteEdge
+        });
+      }
+
+      if (type === 'pane') {
+        return buildPaneContextMenu({
+          isEditMode, isLocked, closeContextMenu,
+          reactFlowInstance: handlers.reactFlowInstance,
+          nodes, edges, setNodes
+        });
+      }
+
+      return [];
+    }, [handlers, state.mode, state.isLocked, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes]);
+
+    // Keyboard handlers for delete
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          if (state.mode !== 'edit' || state.isLocked) return;
+
+          // Don't delete if we're in an input field
+          if ((event.target as HTMLElement).tagName === 'INPUT' ||
+              (event.target as HTMLElement).tagName === 'TEXTAREA') {
+            return;
+          }
+
+          if (state.selectedNode) {
+            handleDeleteNode(state.selectedNode);
+          } else if (state.selectedEdge) {
+            handleDeleteEdge(state.selectedEdge);
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [state.mode, state.isLocked, state.selectedNode, state.selectedEdge, handleDeleteNode, handleDeleteEdge]);
+
     return (
       <div style={canvasStyle} className="react-flow-canvas">
         <ReactFlow
@@ -146,29 +256,37 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
           onInit={handlers.onInit}
           onNodeClick={handlers.onNodeClick}
           onNodeDoubleClick={handlers.onNodeDoubleClick}
+          onNodeDragStop={handlers.onNodeDragStop}
+          onNodeContextMenu={handlers.onNodeContextMenu}
           onEdgeClick={handlers.onEdgeClick}
           onEdgeDoubleClick={handlers.onEdgeDoubleClick}
+          onEdgeContextMenu={handlers.onEdgeContextMenu}
           onPaneClick={handlers.onPaneClick}
+          onPaneContextMenu={handlers.onPaneContextMenu}
           onConnect={handlers.onConnect}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
+          fitViewOptions={fitViewOptions}
           defaultViewport={defaultViewport}
           minZoom={0.1}
           maxZoom={4}
-          snapToGrid={false}
+          snapToGrid
+          snapGrid={[GRID_SIZE, GRID_SIZE]}
           selectionMode={SelectionMode.Partial}
           selectNodesOnDrag={false}
           panOnDrag
           selectionOnDrag={false}
           selectionKeyCode="Shift"
-          connectionLineType={ConnectionLineType.Bezier}
+          connectionMode={ConnectionMode.Loose}
           proOptions={proOptions}
           deleteKeyCode={null}
           multiSelectionKeyCode="Shift"
+          nodesDraggable={state.mode === 'edit' && !state.isLocked}
+          nodesConnectable={state.mode === 'edit' && !state.isLocked}
+          elementsSelectable
         >
           <Background
             variant={BackgroundVariant.Dots}
-            gap={20}
+            gap={GRID_SIZE}
             size={1}
             color="#555"
           />
@@ -186,6 +304,14 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
             position="bottom-left"
           />
         </ReactFlow>
+
+        {/* Context Menu */}
+        <ContextMenu
+          isVisible={handlers.contextMenu.type !== null}
+          position={handlers.contextMenu.position}
+          items={contextMenuItems}
+          onClose={handlers.closeContextMenu}
+        />
       </div>
     );
   }

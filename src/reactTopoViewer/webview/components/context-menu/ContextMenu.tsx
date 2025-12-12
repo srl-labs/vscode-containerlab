@@ -2,7 +2,7 @@
  * Context Menu Component
  * Displays a dropdown context menu at a specified position
  */
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 
 export interface ContextMenuItem {
   id: string;
@@ -19,6 +19,48 @@ interface ContextMenuProps {
   items: ContextMenuItem[];
   onClose: () => void;
 }
+
+// Context menu container styles
+const menuStyles: React.CSSProperties = {
+  minWidth: '160px',
+  padding: '4px 0',
+  backgroundColor: 'var(--vscode-menu-background, #252526)',
+  border: '1px solid var(--vscode-menu-border, #454545)',
+  borderRadius: '4px',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+  overflow: 'hidden'
+};
+
+// Menu item button styles
+const menuItemStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  width: '100%',
+  padding: '6px 16px',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--vscode-menu-foreground, #cccccc)',
+  fontSize: '13px',
+  textAlign: 'left',
+  cursor: 'pointer',
+  gap: '8px'
+};
+
+const menuItemHoverStyles: React.CSSProperties = {
+  backgroundColor: 'var(--vscode-menu-selectionBackground, #094771)'
+};
+
+const menuItemDisabledStyles: React.CSSProperties = {
+  opacity: 0.5,
+  cursor: 'default'
+};
+
+// Divider styles
+const dividerStyles: React.CSSProperties = {
+  height: '1px',
+  margin: '4px 8px',
+  backgroundColor: 'var(--vscode-menu-separatorBackground, #454545)'
+};
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isVisible,
@@ -58,8 +100,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   return (
     <div
       ref={menuRef}
-      className="context-menu"
       style={{
+        ...menuStyles,
         position: 'fixed',
         left: position.x,
         top: position.y,
@@ -68,7 +110,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     >
       {items.map((item) => {
         if (item.divider) {
-          return <div key={item.id} className="context-menu-divider" />;
+          return <div key={item.id} style={dividerStyles} />;
         }
         return (
           <MenuItemButton
@@ -91,6 +133,8 @@ interface MenuItemComponentProps {
 }
 
 const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   const handleClick = useCallback(() => {
     if (!item.disabled && item.onClick) {
       item.onClick();
@@ -98,11 +142,19 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
     }
   }, [item, onClose]);
 
+  const style: React.CSSProperties = {
+    ...menuItemStyles,
+    ...(isHovered && !item.disabled ? menuItemHoverStyles : {}),
+    ...(item.disabled ? menuItemDisabledStyles : {})
+  };
+
   return (
     <button
-      className={`context-menu-item ${item.disabled ? 'disabled' : ''}`}
+      style={style}
       onClick={handleClick}
       disabled={item.disabled}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {item.icon && <i className={item.icon} />}
       <span>{item.label}</span>

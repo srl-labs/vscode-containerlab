@@ -145,6 +145,8 @@ export interface ReactFlowCanvasProps {
   onEdgeSelect?: (edgeId: string | null) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
   onEdgeDoubleClick?: (edgeId: string) => void;
+  onNodeDelete?: (nodeId: string) => void;
+  onEdgeDelete?: (edgeId: string) => void;
   onPaneClick?: () => void;
 }
 

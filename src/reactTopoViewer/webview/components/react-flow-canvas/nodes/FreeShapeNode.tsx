@@ -7,6 +7,60 @@ import type { FreeShapeNodeData } from '../types';
 import { SELECTION_COLOR } from '../types';
 
 /**
+ * Props for rectangle shape component
+ */
+interface RectangleShapeProps {
+  readonly width: number;
+  readonly height: number;
+  readonly fillColor: string;
+  readonly fillOpacity: number;
+  readonly borderWidth: number;
+  readonly borderStyle: string;
+  readonly borderColor: string;
+  readonly cornerRadius: number;
+  readonly selected: boolean;
+}
+
+/**
+ * Props for circle shape component
+ */
+interface CircleShapeProps {
+  readonly width: number;
+  readonly height: number;
+  readonly fillColor: string;
+  readonly fillOpacity: number;
+  readonly borderWidth: number;
+  readonly borderStyle: string;
+  readonly borderColor: string;
+  readonly selected: boolean;
+}
+
+/**
+ * Props for arrow marker component
+ */
+interface ArrowMarkerProps {
+  readonly id: string;
+  readonly size: number;
+  readonly reversed: boolean;
+  readonly color: string;
+}
+
+/**
+ * Props for line shape component
+ */
+interface LineShapeProps {
+  readonly width: number;
+  readonly endPosition?: { x: number; y: number };
+  readonly borderColor: string;
+  readonly borderWidth: number;
+  readonly borderStyle: string;
+  readonly lineStartArrow: boolean;
+  readonly lineEndArrow: boolean;
+  readonly lineArrowSize: number;
+  readonly selected: boolean;
+}
+
+/**
  * Convert border style to SVG dash array
  */
 function getStrokeDasharray(borderStyle: string): string | undefined {
@@ -50,17 +104,7 @@ function RectangleShape({
   borderColor,
   cornerRadius,
   selected
-}: {
-  width: number;
-  height: number;
-  fillColor: string;
-  fillOpacity: number;
-  borderWidth: number;
-  borderStyle: string;
-  borderColor: string;
-  cornerRadius: number;
-  selected: boolean;
-}) {
+}: RectangleShapeProps) {
   const style: React.CSSProperties = {
     width,
     height,
@@ -85,16 +129,7 @@ function CircleShape({
   borderStyle,
   borderColor,
   selected
-}: {
-  width: number;
-  height: number;
-  fillColor: string;
-  fillOpacity: number;
-  borderWidth: number;
-  borderStyle: string;
-  borderColor: string;
-  selected: boolean;
-}) {
+}: CircleShapeProps) {
   const size = Math.min(width, height);
   const style: React.CSSProperties = {
     width: size,
@@ -116,12 +151,7 @@ function ArrowMarker({
   size,
   reversed,
   color
-}: {
-  id: string;
-  size: number;
-  reversed: boolean;
-  color: string;
-}) {
+}: ArrowMarkerProps) {
   const points = reversed
     ? `${size},0 ${size},${size} 0,${size / 2}`
     : `0,0 ${size},${size / 2} 0,${size}`;
@@ -153,17 +183,7 @@ function LineShape({
   lineEndArrow,
   lineArrowSize,
   selected
-}: {
-  width: number;
-  endPosition?: { x: number; y: number };
-  borderColor: string;
-  borderWidth: number;
-  borderStyle: string;
-  lineStartArrow: boolean;
-  lineEndArrow: boolean;
-  lineArrowSize: number;
-  selected: boolean;
-}) {
+}: LineShapeProps) {
   const x2 = endPosition?.x ?? width;
   const y2 = endPosition?.y ?? 0;
   const length = Math.sqrt(x2 * x2 + y2 * y2);
