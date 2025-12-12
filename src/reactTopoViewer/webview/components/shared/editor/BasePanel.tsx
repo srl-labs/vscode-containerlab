@@ -228,7 +228,7 @@ export const BasePanel: React.FC<BasePanelProps> = ({
           left: position.x,
           top: position.y,
           width,
-          maxHeight: 'calc(100vh - 100px)',
+          maxHeight: `calc(100vh - ${position.y}px - 20px)`,
           zIndex
         }}
       >
@@ -250,7 +250,7 @@ export const BasePanel: React.FC<BasePanelProps> = ({
         </div>
 
         {/* Content */}
-        <div className="panel-block p-2 overflow-y-auto flex-1">
+        <div className="panel-block p-2 overflow-y-auto flex-1 min-h-0">
           {children}
         </div>
 

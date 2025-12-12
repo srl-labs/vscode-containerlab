@@ -13,6 +13,7 @@ import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
+import { BulkLinkPanel } from './components/panels/bulk-link';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer } from './components/annotations';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
@@ -33,13 +34,13 @@ import {
   useFreeShapeAnnotationApplier,
   useFreeShapeUndoRedoHandlers,
   useCombinedAnnotationShortcuts,
-  useAnnotationGroupMove,
-  useAnnotationBackgroundClear,
+  useAnnotationEffects,
   useAddShapesHandler,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
   useCustomNodeCommands,
+  useAppHandlers,
   // App state hooks
   useCytoscapeInstance,
   useSelectionData,
@@ -50,7 +51,7 @@ import {
   usePanelVisibility,
   useFloatingPanelCommands
 } from './hooks';
-import type { NodePositionEntry, GraphChangeEntry } from './hooks';
+import type { GraphChangeEntry } from './hooks';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 import type { NodeEditorData } from './components/panels/node-editor/types';
@@ -376,6 +377,14 @@ export const App: React.FC = () => {
     floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition, customNodeCommands.onNewCustomNode
   );
 
+  // App-level handlers for drag, deselect, and lock state sync
+  const { handleLockedDrag, handleMoveComplete, handleDeselectAll } = useAppHandlers({
+    selectionCallbacks: { selectNode, selectEdge, editNode, editEdge },
+    undoRedo,
+    floatingPanelRef,
+    isLocked: state.isLocked
+  });
+
   // Set up context menus
   useContextMenu(cyInstance, {
     mode: state.mode,
@@ -389,14 +398,6 @@ export const App: React.FC = () => {
     onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
 
-  // Callback for when user tries to drag a locked node
-  const handleLockedDrag = React.useCallback(() => floatingPanelRef.current?.triggerShake(), []);
-
-  // Callback for when a node move is complete (for undo/redo)
-  const handleMoveComplete = React.useCallback((nodeIds: string[], beforePositions: NodePositionEntry[]) => {
-    undoRedo.recordMove(nodeIds, beforePositions);
-  }, [undoRedo]);
-
   // Set up node dragging based on lock state
   useNodeDragging(cyInstance, {
     mode: state.mode,
@@ -405,41 +406,23 @@ export const App: React.FC = () => {
     onMoveComplete: handleMoveComplete
   });
 
-  // Handle deselect all callback
-  const handleDeselectAll = React.useCallback(() => {
-    selectNode(null);
-    selectEdge(null);
-    editNode(null);
-    editEdge(null);
-  }, [selectNode, selectEdge, editNode, editEdge]);
-
   // Shortcut display hook
   const shortcutDisplay = useShortcutDisplay();
 
   // Panel visibility management
   const panelVisibility = usePanelVisibility();
+  const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
 
-  // Enable synchronized movement of annotations with nodes during drag
-  useAnnotationGroupMove({
+  // Combined annotation effects (group move, background clear for both text and shapes)
+  useAnnotationEffects({
     cy: cyInstance,
-    annotations: freeTextAnnotations.annotations,
-    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
-    onPositionChange: freeTextAnnotations.updatePosition,
-    isLocked: state.isLocked
-  });
-
-  // Clear annotation selection when clicking on canvas background
-  useAnnotationBackgroundClear({
-    cy: cyInstance,
-    selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
-    onClearSelection: freeTextAnnotations.clearAnnotationSelection
-  });
-
-  // Clear free shape selection when clicking on canvas background
-  useAnnotationBackgroundClear({
-    cy: cyInstance,
-    selectedAnnotationIds: freeShapeAnnotations.selectedAnnotationIds,
-    onClearSelection: freeShapeAnnotations.clearAnnotationSelection
+    isLocked: state.isLocked,
+    freeTextAnnotations: freeTextAnnotations.annotations,
+    freeTextSelectedIds: freeTextAnnotations.selectedAnnotationIds,
+    onFreeTextPositionChange: freeTextAnnotations.updatePosition,
+    onFreeTextClearSelection: freeTextAnnotations.clearAnnotationSelection,
+    freeShapeSelectedIds: freeShapeAnnotations.selectedAnnotationIds,
+    onFreeShapeClearSelection: freeShapeAnnotations.clearAnnotationSelection
   });
 
   // Free shape undo handlers - extracted to useFreeShapeUndoRedoHandlers
@@ -488,10 +471,6 @@ export const App: React.FC = () => {
     onClearAnnotationSelection: combinedAnnotations.clearAnnotationSelection,
     hasAnnotationClipboard: combinedAnnotations.hasAnnotationClipboard
   });
-
-  React.useEffect(() => {
-    sendCommandToExtension('toggle-lock-state', { isLocked: state.isLocked });
-  }, [state.isLocked]);
 
   if (initLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -588,6 +567,14 @@ export const App: React.FC = () => {
           onSave={linkEditorHandlers.handleSave}
           onApply={linkEditorHandlers.handleApply}
         />
+        <BulkLinkPanel
+          isVisible={showBulkLinkPanel}
+          mode={state.mode}
+          isLocked={state.isLocked}
+          cy={cyInstance}
+          onClose={() => setShowBulkLinkPanel(false)}
+          recordGraphChanges={recordGraphChanges}
+        />
         <FloatingActionPanel
           ref={floatingPanelRef}
           onDeploy={floatingPanelCommands.onDeploy}
@@ -601,7 +588,7 @@ export const App: React.FC = () => {
 	          onAddGroup={floatingPanelCommands.onAddGroup}
 	          onAddText={freeTextAnnotations.handleAddText}
 	          onAddShapes={handleAddShapes}
-	          onAddBulkLink={floatingPanelCommands.onAddBulkLink}
+	          onAddBulkLink={() => setShowBulkLinkPanel(true)}
           onEditCustomNode={customNodeCommands.onEditCustomNode}
           onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
           onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}

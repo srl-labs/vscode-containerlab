@@ -28,3 +28,5 @@ export type {
   EditorPanelCommands,
   FloatingPanelCommands
 } from './usePanelCommands';
+
+export { useAppHandlers } from './useAppHandlers';
