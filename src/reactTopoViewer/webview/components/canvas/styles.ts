@@ -120,6 +120,49 @@ export const cytoscapeStylesBase: cytoscape.StylesheetCSS[] = [
       'background-opacity': 0.2
     }
   },
+  // Group label position styles
+  {
+    selector: 'node:parent.top-left',
+    style: {
+      'text-valign': 'top',
+      'text-halign': 'left'
+    }
+  },
+  {
+    selector: 'node:parent.top-center',
+    style: {
+      'text-valign': 'top',
+      'text-halign': 'center'
+    }
+  },
+  {
+    selector: 'node:parent.top-right',
+    style: {
+      'text-valign': 'top',
+      'text-halign': 'right'
+    }
+  },
+  {
+    selector: 'node:parent.bottom-left',
+    style: {
+      'text-valign': 'bottom',
+      'text-halign': 'left'
+    }
+  },
+  {
+    selector: 'node:parent.bottom-center',
+    style: {
+      'text-valign': 'bottom',
+      'text-halign': 'center'
+    }
+  },
+  {
+    selector: 'node:parent.bottom-right',
+    style: {
+      'text-valign': 'bottom',
+      'text-halign': 'right'
+    }
+  },
   {
     selector: 'edge',
     style: {

@@ -45,6 +45,8 @@ interface KeyboardShortcutsOptions {
   onClearAnnotationSelection?: () => void;
   /** Check if annotation clipboard has content */
   hasAnnotationClipboard?: () => boolean;
+  /** Create group from selected nodes (Ctrl+G) */
+  onCreateGroup?: () => void;
 }
 
 /**
@@ -247,6 +249,46 @@ function handleDuplicate(
 }
 
 /**
+ * Handle Ctrl+G: Create group from selected nodes
+ */
+function handleCreateGroup(
+  event: KeyboardEvent,
+  mode: 'edit' | 'view',
+  cyInstance: Core | null,
+  onCreateGroup?: () => void
+): boolean {
+  if (mode !== 'edit') return false;
+  if (!(event.ctrlKey || event.metaKey)) return false;
+  if (event.key !== 'g') return false;
+  if (!onCreateGroup) return false;
+
+  // Only create group if groupable nodes are selected
+  if (!cyInstance) return false;
+  const selectedNodes = cyInstance.nodes(':selected').filter(n => {
+    const role = n.data('topoViewerRole');
+    // Exclude groups, annotations, and nodes already in a group
+    if (role === 'group' || role === 'freeText' || role === 'freeShape') {
+      return false;
+    }
+    // Don't allow nodes already in a group
+    if (n.parent().length > 0) {
+      return false;
+    }
+    return true;
+  });
+
+  if (selectedNodes.length === 0) {
+    log.info('[Keyboard] No nodes selected for grouping');
+    return false;
+  }
+
+  log.info(`[Keyboard] Creating group from ${selectedNodes.length} selected nodes`);
+  onCreateGroup();
+  event.preventDefault();
+  return true;
+}
+
+/**
  * Handle Ctrl+A: Select all nodes
  */
 function handleSelectAll(event: KeyboardEvent, cyInstance: Core | null): boolean {
@@ -365,7 +407,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     onDuplicateAnnotations,
     onDeleteAnnotations,
     onClearAnnotationSelection,
-    hasAnnotationClipboard
+    hasAnnotationClipboard,
+    onCreateGroup
   } = options;
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -379,6 +422,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     if (handlePaste(event, mode, onPaste, onPasteAnnotations, hasAnnotationClipboard)) return;
     if (handleCut(event, mode, cyInstance, onCut, selectedAnnotationIds, onCutAnnotations)) return;
     if (handleDuplicate(event, mode, cyInstance, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
+    // Group shortcut (Ctrl+G)
+    if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
     // Other shortcuts
     if (handleSelectAll(event, cyInstance)) return;
     if (handleDelete(event, mode, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, selectedAnnotationIds, onDeleteAnnotations)) return;
@@ -387,7 +432,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,
     onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate,
     selectedAnnotationIds, onCopyAnnotations, onPasteAnnotations, onCutAnnotations,
-    onDuplicateAnnotations, onDeleteAnnotations, onClearAnnotationSelection, hasAnnotationClipboard
+    onDuplicateAnnotations, onDeleteAnnotations, onClearAnnotationSelection, hasAnnotationClipboard,
+    onCreateGroup
   ]);
 
   useEffect(() => {

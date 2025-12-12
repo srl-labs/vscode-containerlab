@@ -82,6 +82,26 @@ function isDraggableNode(node: NodeSingular): boolean {
   return role !== 'group' && role !== 'freeText' && role !== 'freeShape';
 }
 
+/**
+ * Check if a node is a group node
+ */
+function isGroupNode(node: NodeSingular): boolean {
+  return node.data('topoViewerRole') === 'group';
+}
+
+/**
+ * Get all children positions for a group node
+ */
+function getGroupChildrenPositions(group: NodeSingular): NodePositionEntry[] {
+  const positions: NodePositionEntry[] = [];
+  group.children().forEach(child => {
+    if (isDraggableNode(child as NodeSingular)) {
+      positions.push(getNodePosition(child as NodeSingular));
+    }
+  });
+  return positions;
+}
+
 /** Hook to apply lock state to nodes */
 function useLockState(cy: Core | null, isLocked: boolean): void {
   useEffect(() => {
@@ -142,6 +162,17 @@ function createDragStartHandler(
 ): (event: EventObject) => void {
   return (event: EventObject) => {
     const node = event.target as NodeSingular;
+
+    // For group nodes, track children positions (children move with the group)
+    if (isGroupNode(node)) {
+      const childPositions = getGroupChildrenPositions(node);
+      childPositions.forEach(pos => {
+        dragStartPositions.current.set(pos.id, pos);
+      });
+      log.info(`[NodeDragging] Group ${node.id()} drag started, tracking ${childPositions.length} children`);
+      return;
+    }
+
     if (!isDraggableNode(node)) return;
 
     const position = getNodePosition(node);
@@ -158,6 +189,43 @@ function createDragFreeHandler(
 ): (event: EventObject) => void {
   return (event: EventObject) => {
     const node = event.target as NodeSingular;
+
+    // For group nodes, save all children positions (they moved with the group)
+    if (isGroupNode(node)) {
+      const childPositions = getGroupChildrenPositions(node);
+      let anyChanged = false;
+
+      childPositions.forEach(afterPos => {
+        const beforePos = refs.dragStartPositions.current.get(afterPos.id);
+        if (beforePos) {
+          const posChanged =
+            beforePos.position.x !== afterPos.position.x ||
+            beforePos.position.y !== afterPos.position.y;
+
+          if (posChanged) {
+            refs.pendingDrags.current.push({
+              nodeId: afterPos.id,
+              before: beforePos,
+              after: afterPos
+            });
+            anyChanged = true;
+          }
+          refs.dragStartPositions.current.delete(afterPos.id);
+        }
+      });
+
+      if (anyChanged) {
+        log.info(`[NodeDragging] Group ${node.id()} drag completed, ${childPositions.length} children positions updated`);
+        if (refs.batchTimer.current) {
+          clearTimeout(refs.batchTimer.current);
+        }
+        refs.batchTimer.current = setTimeout(flushPendingDrags, DRAG_BATCH_TIMEOUT_MS);
+      }
+
+      onPositionChange?.();
+      return;
+    }
+
     if (!isDraggableNode(node)) return;
 
     const nodeId = node.id();

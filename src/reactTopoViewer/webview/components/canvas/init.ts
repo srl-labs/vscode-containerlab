@@ -27,14 +27,22 @@ export function ensureGridGuideRegistered(): void {
 
 /**
  * Check if elements have preset positions (from annotations file)
- * Returns true if all nodes have non-zero positions
+ * Returns true if all regular nodes have non-zero positions
+ * Group nodes are excluded since their positions are computed from children
  */
 export function hasPresetPositions(elements: CyElement[]): boolean {
-  const nodes = elements.filter(el => el.group === 'nodes');
-  if (nodes.length === 0) return false;
+  // Filter to only regular nodes - exclude groups (their positions are computed from children)
+  const regularNodes = elements.filter(el => {
+    if (el.group !== 'nodes') return false;
+    const role = el.data?.topoViewerRole;
+    // Exclude group nodes, free text, and free shape annotations
+    return role !== 'group' && role !== 'freeText' && role !== 'freeShape';
+  });
 
-  // Check if all nodes have valid positions
-  return nodes.every(node => {
+  if (regularNodes.length === 0) return false;
+
+  // Check if all regular nodes have valid positions
+  return regularNodes.every(node => {
     const pos = node.position;
     return pos && (pos.x !== 0 || pos.y !== 0);
   });

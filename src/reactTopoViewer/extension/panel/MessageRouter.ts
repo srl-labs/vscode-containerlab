@@ -844,6 +844,14 @@ export class MessageRouter {
       await this.handleSaveFreeShapeAnnotations(message);
       return true;
     }
+    if (command === 'save-group-style-annotations') {
+      await this.handleSaveGroupStyleAnnotations(message);
+      return true;
+    }
+    if (command === 'save-node-group-membership') {
+      await this.handleSaveNodeGroupMembership(message);
+      return true;
+    }
     if (command === 'panel-add-text') {
       log.info('[ReactTopoViewer] Add text mode requested');
       return true;
@@ -934,6 +942,85 @@ export class MessageRouter {
       log.info(`[ReactTopoViewer] Saved ${freeShapeAnnotations.length} free shape annotations`);
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to save free shape annotations: ${err}`);
+    }
+  }
+
+  /**
+   * Save group style annotations to annotations file
+   */
+  private async handleSaveGroupStyleAnnotations(message: WebviewMessage): Promise<void> {
+    if (!this.context.yamlFilePath) {
+      log.warn('[ReactTopoViewer] Cannot save group style annotations: no YAML file path');
+      return;
+    }
+
+    try {
+      const payload = message as unknown as { annotations?: unknown[] };
+      const groupStyleAnnotations = payload.annotations || [];
+
+      await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {
+        annotations.groupStyleAnnotations = groupStyleAnnotations as typeof annotations.groupStyleAnnotations;
+        return annotations;
+      });
+
+      log.info(`[ReactTopoViewer] Saved ${groupStyleAnnotations.length} group style annotations`);
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to save group style annotations: ${err}`);
+    }
+  }
+
+  /**
+   * Save node's group membership to annotations file
+   */
+  private async handleSaveNodeGroupMembership(message: WebviewMessage): Promise<void> {
+    if (!this.context.yamlFilePath) {
+      log.warn('[ReactTopoViewer] Cannot save node group membership: no YAML file path');
+      return;
+    }
+
+    try {
+      const payload = message as unknown as {
+        nodeId?: string;
+        group?: string | null;
+        level?: string | null;
+      };
+
+      if (!payload.nodeId) {
+        log.warn('[ReactTopoViewer] Cannot save node group membership: no node ID');
+        return;
+      }
+
+      await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {
+        if (!annotations.nodeAnnotations) {
+          annotations.nodeAnnotations = [];
+        }
+
+        const existing = annotations.nodeAnnotations.find(n => n.id === payload.nodeId);
+        if (existing) {
+          // Update existing annotation
+          if (payload.group) {
+            existing.group = payload.group;
+            existing.level = payload.level || '1';
+          } else {
+            // Remove group membership
+            delete existing.group;
+            delete existing.level;
+          }
+        } else if (payload.group) {
+          // Create new annotation with group membership
+          annotations.nodeAnnotations.push({
+            id: payload.nodeId!,
+            group: payload.group,
+            level: payload.level || '1'
+          });
+        }
+
+        return annotations;
+      });
+
+      log.info(`[ReactTopoViewer] Saved group membership for node ${payload.nodeId}: ${payload.group || 'none'}`);
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to save node group membership: ${err}`);
     }
   }
 

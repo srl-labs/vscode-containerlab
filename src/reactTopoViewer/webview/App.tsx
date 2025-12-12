@@ -18,6 +18,7 @@ import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer } from './components/annotations';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
 import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
+import { GroupEditorPanel } from './components/panels/group-editor';
 import {
   // Graph hooks
   useContextMenu,
@@ -36,6 +37,11 @@ import {
   useCombinedAnnotationShortcuts,
   useAnnotationEffects,
   useAddShapesHandler,
+  // Group hooks
+  useAppGroups,
+  useCombinedAnnotationApplier,
+  useAppGroupUndoHandlers,
+  useNodeReparent,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
@@ -300,8 +306,22 @@ export const App: React.FC = () => {
     onLockedAction: () => floatingPanelRef.current?.triggerShake()
   });
 
-  const { isApplyingAnnotationUndoRedo, applyAnnotationChange } =
+  const { isApplyingAnnotationUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
     useFreeShapeAnnotationApplier(freeShapeAnnotations);
+
+  // Groups
+  const { groups } = useAppGroups({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+  });
+
+  // Combined annotation change handler for undo/redo (freeShape + group)
+  const { applyAnnotationChange } = useCombinedAnnotationApplier({
+    groups,
+    applyFreeShapeChange
+  });
 
   const {
     undoRedo,
@@ -317,6 +337,13 @@ export const App: React.FC = () => {
     addEdge,
     menuHandlers,
     applyAnnotationChange
+  });
+
+  // Group undo/redo handlers (must be after useGraphUndoRedoHandlers)
+  const { handleAddGroupWithUndo, deleteGroupWithUndo } = useAppGroupUndoHandlers({
+    cyInstance,
+    groups,
+    undoRedo
   });
 
   // Editor handlers with undo/redo support
@@ -395,7 +422,10 @@ export const App: React.FC = () => {
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
-    onShowLinkProperties: menuHandlers.handleShowLinkProperties
+    onShowLinkProperties: menuHandlers.handleShowLinkProperties,
+    onEditGroup: groups.editGroup,
+    onDeleteGroup: deleteGroupWithUndo,
+    onReleaseFromGroup: groups.releaseNodeFromGroup
   });
 
   // Set up node dragging based on lock state
@@ -405,6 +435,12 @@ export const App: React.FC = () => {
     onLockedDrag: handleLockedDrag,
     onMoveComplete: handleMoveComplete
   });
+
+  // Set up drag-to-reparent for groups
+  useNodeReparent(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked
+  }, deleteGroupWithUndo);
 
   // Shortcut display hook
   const shortcutDisplay = useShortcutDisplay();
@@ -469,7 +505,8 @@ export const App: React.FC = () => {
     onDuplicateAnnotations: combinedAnnotations.duplicateSelectedAnnotations,
     onDeleteAnnotations: combinedAnnotations.deleteSelectedAnnotations,
     onClearAnnotationSelection: combinedAnnotations.clearAnnotationSelection,
-    hasAnnotationClipboard: combinedAnnotations.hasAnnotationClipboard
+    hasAnnotationClipboard: combinedAnnotations.hasAnnotationClipboard,
+    onCreateGroup: handleAddGroupWithUndo
   });
 
   if (initLoading) return <LoadingState />;
@@ -585,10 +622,10 @@ export const App: React.FC = () => {
           onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
           onAddNode={handleAddNodeFromPanel}
           onAddNetwork={floatingPanelCommands.onAddNetwork}
-	          onAddGroup={floatingPanelCommands.onAddGroup}
-	          onAddText={freeTextAnnotations.handleAddText}
-	          onAddShapes={handleAddShapes}
-	          onAddBulkLink={() => setShowBulkLinkPanel(true)}
+          onAddGroup={handleAddGroupWithUndo}
+          onAddText={freeTextAnnotations.handleAddText}
+          onAddShapes={handleAddShapes}
+          onAddBulkLink={() => setShowBulkLinkPanel(true)}
           onEditCustomNode={customNodeCommands.onEditCustomNode}
           onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
           onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
@@ -614,6 +651,14 @@ export const App: React.FC = () => {
           onSave={freeShapeAnnotations.saveAnnotation}
           onClose={freeShapeAnnotations.closeEditor}
           onDelete={freeShapeAnnotations.deleteAnnotation}
+        />
+        <GroupEditorPanel
+          isVisible={!!groups.editingGroup}
+          groupData={groups.editingGroup}
+          onSave={groups.saveGroup}
+          onClose={groups.closeEditor}
+          onDelete={groups.deleteGroup}
+          onStyleChange={groups.updateGroupStyle}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
       </main>

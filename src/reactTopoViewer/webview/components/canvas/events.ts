@@ -32,6 +32,30 @@ export function isRightClick(evt: EventObject): boolean {
 }
 
 /**
+ * Roles that should not trigger node selection (groups, annotations)
+ */
+const NON_SELECTABLE_ROLES = new Set(['group', 'freeText', 'freeShape']);
+
+/**
+ * Check if selection should be skipped for this event
+ */
+function shouldSkipSelection(cy: Core, evt: EventObject): boolean {
+  if (isCreatingEdge(cy) || isContextMenuActive(cy)) return true;
+  if (isRightClick(evt)) return true;
+  const originalEvent = evt.originalEvent as MouseEvent;
+  if (originalEvent?.shiftKey) return true;
+  return false;
+}
+
+/**
+ * Check if node role allows selection
+ */
+function isSelectableNode(evt: EventObject): boolean {
+  const role = evt.target.data('topoViewerRole');
+  return !NON_SELECTABLE_ROLES.has(role);
+}
+
+/**
  * Setup Cytoscape event handlers for node/edge selection
  */
 export function setupEventHandlers(
@@ -40,37 +64,13 @@ export function setupEventHandlers(
   selectEdge: (edgeId: string | null) => void
 ): void {
   cy.on('tap', 'node', (evt) => {
-    // Skip selection during edge creation or context menu interaction
-    if (isCreatingEdge(cy) || isContextMenuActive(cy)) {
-      return;
-    }
-    // Skip selection on right-click (context menu)
-    if (isRightClick(evt)) {
-      return;
-    }
-    const originalEvent = evt.originalEvent as MouseEvent;
-    // If shift is held, let Cytoscape handle multi-selection
-    // Don't update React single-selection state
-    if (originalEvent?.shiftKey) {
-      return;
-    }
+    if (shouldSkipSelection(cy, evt)) return;
+    if (!isSelectableNode(evt)) return;
     selectNode(evt.target.id());
   });
 
   cy.on('tap', 'edge', (evt) => {
-    // Skip selection during edge creation or context menu interaction
-    if (isCreatingEdge(cy) || isContextMenuActive(cy)) {
-      return;
-    }
-    // Skip selection on right-click (context menu)
-    if (isRightClick(evt)) {
-      return;
-    }
-    const originalEvent = evt.originalEvent as MouseEvent;
-    // If shift is held, let Cytoscape handle multi-selection
-    if (originalEvent?.shiftKey) {
-      return;
-    }
+    if (shouldSkipSelection(cy, evt)) return;
     selectEdge(evt.target.id());
   });
 

@@ -17,6 +17,9 @@ export * from './data';
 // Annotations
 export * from './annotations';
 
+// Groups
+export * from './groups';
+
 // Root-level hooks
 export {
   useCytoscapeInstance,

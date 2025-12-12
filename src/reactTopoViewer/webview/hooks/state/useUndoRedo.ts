@@ -67,12 +67,12 @@ export interface UndoRedoActionPropertyEdit {
 }
 
 /**
- * Represents an annotation action (for free text/shapes)
+ * Represents an annotation action (for free text/shapes/groups)
  */
 export interface UndoRedoActionAnnotation {
   type: 'annotation';
   /** Annotation type being modified */
-  annotationType: 'freeText' | 'freeShape';
+  annotationType: 'freeText' | 'freeShape' | 'group';
   /** Annotation state before the change (null = didn't exist) */
   before: Record<string, unknown> | null;
   /** Annotation state after the change (null = deleted) */
