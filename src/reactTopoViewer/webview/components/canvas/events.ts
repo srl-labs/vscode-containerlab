@@ -55,10 +55,17 @@ function isSelectableNode(evt: EventObject): boolean {
   return !NON_SELECTABLE_ROLES.has(role);
 }
 
+/** Event handler options for double-tap editing */
+export interface EditEventOptions {
+  editNode?: (nodeId: string | null) => void;
+  editEdge?: (edgeId: string | null) => void;
+  getMode?: () => 'edit' | 'view';
+}
+
 /**
- * Setup Cytoscape event handlers for node/edge selection
+ * Setup tap handlers for node/edge selection
  */
-export function setupEventHandlers(
+function setupTapHandlers(
   cy: Core,
   selectNode: (nodeId: string | null) => void,
   selectEdge: (edgeId: string | null) => void
@@ -80,6 +87,49 @@ export function setupEventHandlers(
       selectEdge(null);
     }
   });
+}
+
+/**
+ * Setup double-tap handlers for editing (only in edit mode)
+ */
+function setupDoubleTapHandlers(cy: Core, options: EditEventOptions): void {
+  if (options.editNode) {
+    const editNode = options.editNode;
+    cy.on('dbltap', 'node', (evt) => {
+      if (shouldSkipSelection(cy, evt)) return;
+      if (!isSelectableNode(evt)) return;
+      const mode = options.getMode?.() ?? 'view';
+      if (mode === 'edit') {
+        editNode(evt.target.id());
+      }
+    });
+  }
+
+  if (options.editEdge) {
+    const editEdge = options.editEdge;
+    cy.on('dbltap', 'edge', (evt) => {
+      if (shouldSkipSelection(cy, evt)) return;
+      const mode = options.getMode?.() ?? 'view';
+      if (mode === 'edit') {
+        editEdge(evt.target.id());
+      }
+    });
+  }
+}
+
+/**
+ * Setup Cytoscape event handlers for node/edge selection and double-click editing
+ */
+export function setupEventHandlers(
+  cy: Core,
+  selectNode: (nodeId: string | null) => void,
+  selectEdge: (edgeId: string | null) => void,
+  options?: EditEventOptions
+): void {
+  setupTapHandlers(cy, selectNode, selectEdge);
+  if (options) {
+    setupDoubleTapHandlers(cy, options);
+  }
 }
 
 /**

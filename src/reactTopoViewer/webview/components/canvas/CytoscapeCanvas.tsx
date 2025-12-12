@@ -68,11 +68,18 @@ function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements: CyElem
 
 type SelectCallback = (id: string | null) => void;
 
+interface CytoscapeInitOptions {
+  editNode?: SelectCallback;
+  editEdge?: SelectCallback;
+  getMode?: () => 'edit' | 'view';
+}
+
 function useCytoscapeInitializer(
   containerRef: React.RefObject<HTMLDivElement | null>,
   cyRef: React.RefObject<Core | null>,
   selectNode: SelectCallback,
-  selectEdge: SelectCallback
+  selectEdge: SelectCallback,
+  options?: CytoscapeInitOptions
 ) {
   return useCallback((initialElements: CyElement[]) => {
     const container = containerRef.current;
@@ -97,7 +104,11 @@ function useCytoscapeInitializer(
     cy.userZoomingEnabled(false);
     const detachWheel = attachCustomWheelZoom(cyRef, container);
 
-    setupEventHandlers(cy, selectNode, selectEdge);
+    setupEventHandlers(cy, selectNode, selectEdge, {
+      editNode: options?.editNode,
+      editEdge: options?.editEdge,
+      getMode: options?.getMode
+    });
 
     cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
 
@@ -106,7 +117,7 @@ function useCytoscapeInitializer(
       cy.destroy();
       cyRef.current = null;
     };
-  }, [selectNode, selectEdge, containerRef, cyRef]);
+  }, [selectNode, selectEdge, containerRef, cyRef, options?.editNode, options?.editEdge, options?.getMode]);
 }
 
 function setupDelayedInit(
@@ -171,8 +182,13 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     const containerRef = useRef<HTMLDivElement>(null);
     const cyRef = useRef<Core | null>(null);
     const cleanupRef = useRef<(() => void) | null>(null);
-    const { selectNode, selectEdge } = useTopoViewer();
+    const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
     const initialElementsRef = useRef<CyElement[] | null>(null);
+
+    // Store mode in ref to avoid stale closures in event handlers
+    const modeRef = useRef(state.mode);
+    modeRef.current = state.mode;
+    const getMode = useCallback(() => modeRef.current, []);
 
     if (initialElementsRef.current === null) {
       initialElementsRef.current = elements;
@@ -185,7 +201,8 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       containerRef,
       cyRef,
       selectNode,
-      selectEdge
+      selectEdge,
+      { editNode, editEdge, getMode }
     );
 
     useDelayedCytoscapeInit(

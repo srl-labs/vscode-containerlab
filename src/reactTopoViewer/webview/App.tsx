@@ -267,6 +267,13 @@ function useNodeCreationHandlers(
   return { handleAddNodeFromPanel };
 }
 
+/**
+ * Determines if an info panel should be visible (only in view mode)
+ */
+function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view'): boolean {
+  return !!selectedItem && mode === 'view';
+}
+
 export const App: React.FC = () => {
   const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
 
@@ -596,12 +603,12 @@ export const App: React.FC = () => {
           onAnnotationBoxSelect={freeShapeAnnotations.boxSelectAnnotations}
         />
 	        <NodeInfoPanel
-	          isVisible={!!state.selectedNode}
+	          isVisible={shouldShowInfoPanel(state.selectedNode, state.mode)}
 	          nodeData={selectedNodeData}
 	          onClose={menuHandlers.handleCloseNodePanel}
 	        />
         <LinkInfoPanel
-          isVisible={!!state.selectedEdge}
+          isVisible={shouldShowInfoPanel(state.selectedEdge, state.mode)}
           linkData={selectedLinkData}
           onClose={menuHandlers.handleCloseLinkPanel}
         />
