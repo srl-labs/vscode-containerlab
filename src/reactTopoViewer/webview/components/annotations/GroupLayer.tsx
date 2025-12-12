@@ -128,7 +128,7 @@ function buildLabelStyle(
     position: 'absolute',
     ...getLabelPositionStyles(labelPosition),
     color: labelColor ?? '#ebecf0',
-    fontSize: '12px',
+    fontSize: '9px',
     fontWeight: 500,
     textShadow: '0 1px 2px rgba(0,0,0,0.5)',
     whiteSpace: 'nowrap',
@@ -144,9 +144,13 @@ function buildLabelStyle(
 const ResizeHandle: React.FC<{
   position: ResizeCorner;
   onMouseDown: (e: React.MouseEvent) => void;
-}> = ({ position, onMouseDown }) => (
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}> = ({ position, onMouseDown, onMouseEnter, onMouseLeave }) => (
   <div
     onMouseDown={onMouseDown}
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
     style={{
       position: 'absolute',
       width: `${HANDLE_SIZE}px`,
@@ -164,7 +168,9 @@ const ResizeHandle: React.FC<{
 
 const GroupHandles: React.FC<{
   onResize: (e: React.MouseEvent, corner: ResizeCorner) => void;
-}> = ({ onResize }) => (
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}> = ({ onResize, onMouseEnter, onMouseLeave }) => (
   <>
     <div style={{
       position: 'absolute',
@@ -173,10 +179,10 @@ const GroupHandles: React.FC<{
       borderRadius: '4px',
       pointerEvents: 'none'
     }} />
-    <ResizeHandle position="nw" onMouseDown={(e) => onResize(e, 'nw')} />
-    <ResizeHandle position="ne" onMouseDown={(e) => onResize(e, 'ne')} />
-    <ResizeHandle position="sw" onMouseDown={(e) => onResize(e, 'sw')} />
-    <ResizeHandle position="se" onMouseDown={(e) => onResize(e, 'se')} />
+    <ResizeHandle position="nw" onMouseDown={(e) => onResize(e, 'nw')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle position="ne" onMouseDown={(e) => onResize(e, 'ne')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle position="sw" onMouseDown={(e) => onResize(e, 'sw')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle position="se" onMouseDown={(e) => onResize(e, 'se')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
   </>
 );
 
@@ -259,6 +265,29 @@ const GroupContextMenu: React.FC<{
     </div>
   );
 };
+
+// ============================================================================
+// Hover Hook (with delayed off for reaching resize handles)
+// ============================================================================
+
+function useDelayedHover(delay: number = 150) {
+  const [isHovered, setIsHovered] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onEnter = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsHovered(true);
+  }, []);
+
+  const onLeave = useCallback(() => {
+    timeoutRef.current = setTimeout(() => setIsHovered(false), delay);
+  }, [delay]);
+
+  return { isHovered, onEnter, onLeave };
+}
 
 // ============================================================================
 // Drag/Resize Hooks
@@ -521,7 +550,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onShowContextMenu
   } = props;
 
-  const [isHovered, setIsHovered] = useState(false);
+  const { isHovered, onEnter: handleMouseEnter, onLeave: handleMouseLeave } = useDelayedHover();
 
   const { isDragging, dragPos, handleMouseDown } = useGroupDragInteraction({
     cy,
@@ -555,6 +584,9 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
   const showHandles = !isLocked && (isHovered || isDragging || isResizing || isSelected);
   const cursor = getCursor(isLocked, isDragging);
 
+  // Border width for draggable frame
+  const borderDragWidth = 12;
+
   return (
     <div
       style={{
@@ -562,42 +594,105 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
         pointerEvents: 'none'
       }}
     >
-      {showHandles && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'auto',
-            background: 'transparent',
-            cursor
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseLeave={() => setIsHovered(false)}
-          onClick={handleClick}
-          onContextMenu={handleContextMenu}
-          onDoubleClick={handleDoubleClick}
-          title={isLocked ? group.name : 'Drag to move group, right-click for menu'}
-        />
-      )}
+      {/* Draggable border frame - top */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: borderDragWidth,
+          pointerEvents: isLocked ? 'none' : 'auto',
+          cursor
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
+      />
+      {/* Draggable border frame - bottom */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: borderDragWidth,
+          pointerEvents: isLocked ? 'none' : 'auto',
+          cursor
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
+      />
+      {/* Draggable border frame - left */}
+      <div
+        style={{
+          position: 'absolute',
+          top: borderDragWidth,
+          bottom: borderDragWidth,
+          left: 0,
+          width: borderDragWidth,
+          pointerEvents: isLocked ? 'none' : 'auto',
+          cursor
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
+      />
+      {/* Draggable border frame - right */}
+      <div
+        style={{
+          position: 'absolute',
+          top: borderDragWidth,
+          bottom: borderDragWidth,
+          right: 0,
+          width: borderDragWidth,
+          pointerEvents: isLocked ? 'none' : 'auto',
+          cursor
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
+      />
+      {/* Label is outside the border */}
       <div
         style={{
           ...buildLabelStyle(group.labelPosition, group.labelColor),
           pointerEvents: isLocked ? 'none' : 'auto',
-          padding: '4px 12px',
-          borderRadius: '4px',
-          backgroundColor: 'rgba(0,0,0,0.3)',
+          padding: '2px 6px',
+          borderRadius: '2px',
+          backgroundColor: 'rgba(0,0,0,0.4)',
           cursor
         }}
-        onMouseEnter={() => setIsHovered(true)}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
         title={isLocked ? group.name : 'Drag to move group, right-click for menu'}
       >
         {group.name}
       </div>
-      {showHandles && <GroupHandles onResize={handleResizeMouseDown} />}
+      {showHandles && (
+        <GroupHandles
+          onResize={handleResizeMouseDown}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        />
+      )}
     </div>
   );
 };

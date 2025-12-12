@@ -210,6 +210,7 @@ export function isGroupInSelectionBox(
 
 /**
  * Get label position styles based on labelPosition setting.
+ * Labels are positioned OUTSIDE the group border.
  */
 export function getLabelPositionStyles(labelPosition: string = 'top-center'): {
   top?: string;
@@ -220,21 +221,24 @@ export function getLabelPositionStyles(labelPosition: string = 'top-center'): {
   transform: string;
 } {
   const baseTransform = 'translateX(-50%)';
+  // Position labels outside the border (negative offset moves them out)
+  const topOffset = '-18px';
+  const bottomOffset = '-18px';
 
   switch (labelPosition) {
     case 'top-left':
-      return { top: '4px', left: '8px', textAlign: 'left', transform: 'none' };
+      return { top: topOffset, left: '0', textAlign: 'left', transform: 'none' };
     case 'top-center':
-      return { top: '4px', left: '50%', textAlign: 'center', transform: baseTransform };
+      return { top: topOffset, left: '50%', textAlign: 'center', transform: baseTransform };
     case 'top-right':
-      return { top: '4px', right: '8px', textAlign: 'right', transform: 'none' };
+      return { top: topOffset, right: '0', textAlign: 'right', transform: 'none' };
     case 'bottom-left':
-      return { bottom: '4px', left: '8px', textAlign: 'left', transform: 'none' };
+      return { bottom: bottomOffset, left: '0', textAlign: 'left', transform: 'none' };
     case 'bottom-center':
-      return { bottom: '4px', left: '50%', textAlign: 'center', transform: baseTransform };
+      return { bottom: bottomOffset, left: '50%', textAlign: 'center', transform: baseTransform };
     case 'bottom-right':
-      return { bottom: '4px', right: '8px', textAlign: 'right', transform: 'none' };
+      return { bottom: bottomOffset, right: '0', textAlign: 'right', transform: 'none' };
     default:
-      return { top: '4px', left: '50%', textAlign: 'center', transform: baseTransform };
+      return { top: topOffset, left: '50%', textAlign: 'center', transform: baseTransform };
   }
 }
