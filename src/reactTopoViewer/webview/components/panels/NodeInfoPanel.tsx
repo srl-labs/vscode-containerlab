@@ -4,19 +4,7 @@
  */
 import React from 'react';
 import { FloatingPanel, PropertyRow } from './FloatingPanel';
-
-interface NodeData {
-  id: string;
-  label?: string;
-  name?: string;
-  kind?: string;
-  state?: string;
-  image?: string;
-  mgmtIpv4?: string;
-  mgmtIpv6?: string;
-  fqdn?: string;
-  [key: string]: unknown;
-}
+import type { NodeData } from '../../hooks';
 
 interface NodeInfoPanelProps {
   isVisible: boolean;

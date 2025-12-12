@@ -639,6 +639,11 @@
     color: var(--text-secondary);
   }
 
+  .text-2xs {
+    font-size: var(--font-size-xxs);
+    line-height: 1rem;
+  }
+
   .border-default {
     border-color: var(--border);
   }
@@ -671,6 +676,7 @@
   }
 }
 
+@layer components {
 /* Floating Action Panel */
 .floating-action-panel {
   position: fixed;
@@ -1515,4 +1521,5 @@
 
 .free-text-markdown .hljs-formula {
   background: #1e2227;
+}
 }

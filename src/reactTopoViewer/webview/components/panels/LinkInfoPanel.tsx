@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { FloatingPanel, PropertyRow } from './FloatingPanel';
+import type { LinkData } from '../../hooks';
 
 interface EndpointData {
   node?: string;
@@ -13,20 +14,14 @@ interface EndpointData {
   type?: string;
 }
 
-interface LinkData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
+type LinkInfoData = LinkData & {
   endpointA?: EndpointData;
   endpointB?: EndpointData;
-  [key: string]: unknown;
-}
+};
 
 interface LinkInfoPanelProps {
   isVisible: boolean;
-  linkData: LinkData | null;
+  linkData: LinkInfoData | null;
   onClose: () => void;
 }
 
@@ -48,7 +43,7 @@ function createDefaultEndpoint(node: string, iface: string | undefined): Endpoin
 /**
  * Get endpoint data from link data
  */
-function getEndpoints(linkData: LinkData): { a: EndpointData; b: EndpointData } {
+function getEndpoints(linkData: LinkInfoData): { a: EndpointData; b: EndpointData } {
   const a = linkData.endpointA || createDefaultEndpoint(linkData.source, linkData.sourceEndpoint);
   const b = linkData.endpointB || createDefaultEndpoint(linkData.target, linkData.targetEndpoint);
   return { a, b };

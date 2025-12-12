@@ -39,12 +39,16 @@ import {
   useSelectionData,
   useNavbarActions,
   useContextMenuHandlers,
-  useLayoutControls
+  useLayoutControls,
+  useNavbarCommands,
+  usePanelVisibility,
+  useFloatingPanelCommands
 } from './hooks';
 import type { NodePositionEntry, GraphChangeEntry } from './hooks';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 import type { NodeEditorData } from './components/panels/node-editor/types';
+import { convertToLinkEditorData } from './utils/linkEditorConversions';
 
 /**
  * Loading state component
@@ -69,97 +73,6 @@ function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Eleme
       <p className="text-secondary">{message}</p>
     </div>
   );
-}
-
-function useNavbarCommandCallbacks() {
-  const onLabSettings = React.useCallback(() => sendCommandToExtension('nav-open-lab-settings'), []);
-  const onToggleSplit = React.useCallback(() => sendCommandToExtension('topo-toggle-split-view'), []);
-  const onFindNode = React.useCallback(() => sendCommandToExtension('nav-find-node'), []);
-  const onCaptureSvg = React.useCallback(() => sendCommandToExtension('nav-capture-svg'), []);
-  const onLayoutToggle = React.useCallback(() => {
-    sendCommandToExtension('nav-layout-toggle');
-  }, []);
-
-  return {
-    onLabSettings,
-    onToggleSplit,
-    onFindNode,
-    onCaptureSvg,
-    onLayoutToggle
-  };
-}
-
-/**
- * Hook for managing shortcuts and about panel visibility
- */
-function usePanelVisibility() {
-  const [showShortcutsPanel, setShowShortcutsPanel] = React.useState(false);
-  const [showAboutPanel, setShowAboutPanel] = React.useState(false);
-
-  const handleShowShortcuts = React.useCallback(() => {
-    setShowAboutPanel(false);
-    setShowShortcutsPanel(prev => !prev);
-  }, []);
-
-  const handleShowAbout = React.useCallback(() => {
-    setShowShortcutsPanel(false);
-    setShowAboutPanel(prev => !prev);
-  }, []);
-
-  const handleCloseShortcuts = React.useCallback(() => setShowShortcutsPanel(false), []);
-  const handleCloseAbout = React.useCallback(() => setShowAboutPanel(false), []);
-
-  return {
-    showShortcutsPanel,
-    showAboutPanel,
-    handleShowShortcuts,
-    handleShowAbout,
-    handleCloseShortcuts,
-    handleCloseAbout
-  };
-}
-
-/** Command constants to avoid duplicate strings */
-const CMD_PANEL_ADD_NODE = 'panel-add-node';
-
-/** Hook for deployment-related callbacks */
-function useDeploymentCommands() {
-  return {
-    onDeploy: React.useCallback(() => sendCommandToExtension('deployLab'), []),
-    onDeployCleanup: React.useCallback(() => sendCommandToExtension('deployLabCleanup'), []),
-    onDestroy: React.useCallback(() => sendCommandToExtension('destroyLab'), []),
-    onDestroyCleanup: React.useCallback(() => sendCommandToExtension('destroyLabCleanup'), []),
-    onRedeploy: React.useCallback(() => sendCommandToExtension('redeployLab'), []),
-    onRedeployCleanup: React.useCallback(() => sendCommandToExtension('redeployLabCleanup'), [])
-  };
-}
-
-/** Hook for editor panel callbacks */
-function useEditorPanelCommands() {
-  return {
-    onAddNode: React.useCallback((kind?: string) => {
-      sendCommandToExtension(CMD_PANEL_ADD_NODE, { kind });
-    }, []),
-    onAddNetwork: React.useCallback((networkType?: string) => {
-      sendCommandToExtension('panel-add-network', { networkType: networkType || 'host' });
-    }, []),
-    onAddGroup: React.useCallback(() => sendCommandToExtension('panel-add-group'), []),
-    onAddText: React.useCallback(() => sendCommandToExtension('panel-add-text'), []),
-    onAddShapes: React.useCallback((shapeType?: string) => {
-      sendCommandToExtension('panel-add-shapes', { shapeType: shapeType || 'rectangle' });
-    }, []),
-    onAddBulkLink: React.useCallback(() => sendCommandToExtension('panel-add-bulk-link'), [])
-  };
-}
-
-function useFloatingPanelCommands() {
-  const deploymentCommands = useDeploymentCommands();
-  const editorCommands = useEditorPanelCommands();
-
-  return {
-    ...deploymentCommands,
-    ...editorCommands
-  };
 }
 
 /**
@@ -221,36 +134,6 @@ function useNodeEditorHandlers(
   }, [recordPropertyEdit]);
 
   return { handleClose, handleSave, handleApply };
-}
-
-/**
- * Converts raw link data to editor format
- */
-function convertToLinkEditorData(rawData: Record<string, unknown> | null): LinkEditorData | null {
-  if (!rawData) return null;
-  const source = rawData.source as string || '';
-  const target = rawData.target as string || '';
-  const sourceEndpoint = rawData.sourceEndpoint as string || '';
-  const targetEndpoint = rawData.targetEndpoint as string || '';
-
-  return {
-    id: rawData.id as string || '',
-    source,
-    target,
-    sourceEndpoint,
-    targetEndpoint,
-    type: rawData.linkType as string || 'veth',
-    sourceMac: (rawData.endpointA as Record<string, unknown>)?.mac as string || '',
-    targetMac: (rawData.endpointB as Record<string, unknown>)?.mac as string || '',
-    mtu: rawData.mtu as number | undefined,
-    vars: (rawData.vars as Record<string, string>) || {},
-    labels: (rawData.labels as Record<string, string>) || {},
-    // Store original values for finding the link when endpoints change
-    originalSource: source,
-    originalTarget: target,
-    originalSourceEndpoint: sourceEndpoint,
-    originalTargetEndpoint: targetEndpoint
-  };
 }
 
 /**
@@ -387,7 +270,7 @@ export const App: React.FC = () => {
 
   // Navbar actions
   const { handleZoomToFit } = useNavbarActions(cytoscapeRef);
-  const navbarCommands = useNavbarCommandCallbacks();
+  const navbarCommands = useNavbarCommands();
 
   // Context menu handlers
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });

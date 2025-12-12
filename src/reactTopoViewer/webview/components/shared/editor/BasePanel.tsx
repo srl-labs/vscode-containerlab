@@ -22,12 +22,14 @@ interface BasePanelProps {
   onClose: () => void;
   children: ReactNode;
   // Footer buttons
-  onPrimaryClick: () => void;
-  onSecondaryClick: () => void;
+  onPrimaryClick?: () => void;
+  onSecondaryClick?: () => void;
   primaryLabel?: string;
   secondaryLabel?: string;
   // Change tracking - highlights secondary (Apply) button when true
   hasChanges?: boolean;
+  /** When false, hides the footer entirely */
+  footer?: boolean;
   // Panel options
   width?: number;
   initialPosition?: { x: number; y: number };
@@ -147,16 +149,55 @@ function useDraggable(
   return { position, isDragging, handleMouseDown };
 }
 
+interface PanelFooterProps {
+  hasChanges: boolean;
+  onPrimaryClick: () => void;
+  onSecondaryClick: () => void;
+  primaryLabel: string;
+  secondaryLabel: string;
+}
+
+const PanelFooter: React.FC<PanelFooterProps> = ({
+  hasChanges,
+  onPrimaryClick,
+  onSecondaryClick,
+  primaryLabel,
+  secondaryLabel
+}) => (
+  <div
+    className="panel-footer flex justify-end gap-2 p-2 border-t flex-shrink-0"
+    style={{ borderColor: 'var(--vscode-panel-border)' }}
+  >
+    <button
+      type="button"
+      className={`btn btn-small ${hasChanges ? 'btn-has-changes' : 'btn-secondary'}`}
+      onClick={onSecondaryClick}
+      title="Apply changes without closing"
+    >
+      {secondaryLabel}
+    </button>
+    <button
+      type="button"
+      className="btn btn-primary btn-small"
+      onClick={onPrimaryClick}
+      title="Apply changes and close"
+    >
+      {primaryLabel}
+    </button>
+  </div>
+);
+
 export const BasePanel: React.FC<BasePanelProps> = ({
   title,
   isVisible,
   onClose,
   children,
-  onPrimaryClick,
-  onSecondaryClick,
+  onPrimaryClick = () => {},
+  onSecondaryClick = () => {},
   primaryLabel = 'OK',
   secondaryLabel = 'Apply',
   hasChanges = false,
+  footer = true,
   width = DEFAULT_WIDTH,
   initialPosition = DEFAULT_POSITION,
   storageKey,
@@ -214,27 +255,15 @@ export const BasePanel: React.FC<BasePanelProps> = ({
         </div>
 
         {/* Footer */}
-        <div
-          className="panel-footer flex justify-end gap-2 p-2 border-t flex-shrink-0"
-          style={{ borderColor: 'var(--vscode-panel-border)' }}
-        >
-          <button
-            type="button"
-            className={`btn btn-small ${hasChanges ? 'btn-has-changes' : 'btn-secondary'}`}
-            onClick={onSecondaryClick}
-            title="Apply changes without closing"
-          >
-            {secondaryLabel}
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-small"
-            onClick={onPrimaryClick}
-            title="Apply changes and close"
-          >
-            {primaryLabel}
-          </button>
-        </div>
+        {footer && (
+          <PanelFooter
+            hasChanges={hasChanges}
+            onPrimaryClick={onPrimaryClick}
+            onSecondaryClick={onSecondaryClick}
+            primaryLabel={primaryLabel}
+            secondaryLabel={secondaryLabel}
+          />
+        )}
       </div>
     </>
   );
