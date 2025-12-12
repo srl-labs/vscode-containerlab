@@ -1,35 +1,39 @@
 /**
- * Helper functions for group management.
+ * Helper functions for overlay-based group management.
+ * Groups are rendered as HTML/SVG overlays, not Cytoscape nodes.
  */
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { DEFAULT_GROUP_STYLE, GROUP_LABEL_POSITIONS, GroupLabelPosition } from './groupTypes';
-
-/** Debounce time for saving to extension (internal, not exported to avoid conflicts) */
-const GROUP_SAVE_DEBOUNCE_MS = 300;
-export { GROUP_SAVE_DEBOUNCE_MS };
+import {
+  DEFAULT_GROUP_STYLE,
+  DEFAULT_GROUP_WIDTH,
+  DEFAULT_GROUP_HEIGHT
+} from './groupTypes';
 
 /** Command name for saving node group membership */
 export const CMD_SAVE_NODE_GROUP_MEMBERSHIP = 'save-node-group-membership';
+export const CMD_SAVE_GROUP_ANNOTATIONS = 'save-group-annotations';
+
+/** Debounce time for saving to extension */
+export const GROUP_SAVE_DEBOUNCE_MS = 300;
 
 /**
- * Generates a unique group ID.
+ * Generate a unique group ID.
  */
-export function generateGroupId(cy: CyCore): string {
+export function generateGroupId(existingGroups: GroupStyleAnnotation[]): string {
   let counter = 1;
-  const baseCount = cy.nodes().length;
-  let newId = `groupName${baseCount + counter}:1`;
+  let newId = `group${counter}:1`;
 
-  while (cy.getElementById(newId).length > 0) {
+  const existingIds = new Set(existingGroups.map(g => g.id));
+  while (existingIds.has(newId)) {
     counter++;
-    newId = `groupName${baseCount + counter}:1`;
+    newId = `group${counter}:1`;
   }
 
   return newId;
 }
 
 /**
- * Parses a group ID into name and level.
+ * Parse a group ID into name and level.
  */
 export function parseGroupId(groupId: string): { name: string; level: string } {
   const [name, level] = groupId.split(':');
@@ -37,153 +41,75 @@ export function parseGroupId(groupId: string): { name: string; level: string } {
 }
 
 /**
- * Builds a group ID from name and level.
+ * Build a group ID from name and level.
  */
 export function buildGroupId(name: string, level: string): string {
   return `${name}:${level}`;
 }
 
+/** Keys to exclude when copying last style (geometry and identity) */
+const EXCLUDED_STYLE_KEYS = new Set(['width', 'height', 'position', 'id', 'name', 'level']);
+
 /**
- * Creates a default group style for a new group.
+ * Create a new group with default values.
+ * Note: width, height, position are NOT taken from lastStyle - only visual styles.
  */
-export function createDefaultGroupStyle(
-  groupId: string,
+export function createDefaultGroup(
+  id: string,
+  position: { x: number; y: number },
   lastStyle?: Partial<GroupStyleAnnotation>
 ): GroupStyleAnnotation {
+  const { name, level } = parseGroupId(id);
+  // Only copy visual style properties, not geometry
+  const visualStyles: Partial<GroupStyleAnnotation> = {};
+  if (lastStyle) {
+    for (const [key, value] of Object.entries(lastStyle)) {
+      if (!EXCLUDED_STYLE_KEYS.has(key)) {
+        (visualStyles as Record<string, unknown>)[key] = value;
+      }
+    }
+  }
   return {
+    id,
+    name,
+    level,
+    position,
+    width: DEFAULT_GROUP_WIDTH,
+    height: DEFAULT_GROUP_HEIGHT,
     ...DEFAULT_GROUP_STYLE,
-    ...lastStyle,
-    id: groupId
+    ...visualStyles
   };
 }
 
 /**
- * Checks if a node is a group node.
+ * Check if a point is inside a group's bounding box.
  */
-export function isGroupNode(node: NodeSingular): boolean {
-  return node.data('topoViewerRole') === 'group';
-}
-
-/**
- * Checks if a node can be added to a group.
- * Returns false for groups, annotations, and nodes already in a group.
- */
-export function canBeGrouped(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole');
-  if (role === 'group' || role === 'freeText' || role === 'freeShape') {
-    return false;
-  }
-  // Don't allow nodes already in a group to be added to another group
-  const parent = node.parent();
-  if (parent.length > 0) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Gets groupable nodes from selection.
- */
-export function getGroupableNodes(cy: CyCore): NodeSingular[] {
-  return cy.nodes(':selected').filter(node => canBeGrouped(node)).toArray() as NodeSingular[];
-}
-
-/**
- * Updates the label position class on a group node.
- */
-export function updateLabelPositionClass(
-  node: NodeSingular,
-  labelPosition: string
-): void {
-  // Remove all label position classes
-  GROUP_LABEL_POSITIONS.forEach(pos => node.removeClass(pos));
-
-  // Add the new label position class
-  if (GROUP_LABEL_POSITIONS.includes(labelPosition as GroupLabelPosition)) {
-    node.addClass(labelPosition);
-    node.data('groupLabelPos', labelPosition);
-  }
-}
-
-/**
- * Updates the empty status class on a group node.
- */
-export function updateGroupEmptyStatus(group: NodeSingular): void {
-  if (!group || group.removed() || !isGroupNode(group)) {
-    return;
-  }
-
-  if (group.children().length === 0) {
-    group.addClass('empty-group');
-  } else {
-    group.removeClass('empty-group');
-  }
-}
-
-/**
- * Applies a group style to a Cytoscape node.
- */
-export function applyGroupStyleToNode(
-  node: NodeSingular,
-  style: GroupStyleAnnotation
-): void {
-  const css: Record<string, string | number> = {};
-
-  if (style.backgroundColor) {
-    css['background-color'] = style.backgroundColor;
-  }
-  if (style.backgroundOpacity !== undefined) {
-    css['background-opacity'] = style.backgroundOpacity / 100;
-  }
-  if (style.borderColor) {
-    css['border-color'] = style.borderColor;
-  }
-  if (style.borderWidth !== undefined) {
-    css['border-width'] = `${style.borderWidth}px`;
-  }
-  if (style.borderStyle) {
-    css['border-style'] = style.borderStyle;
-  }
-  if (style.borderRadius !== undefined) {
-    css['corner-radius'] = style.borderRadius;
-  }
-  if (style.color) {
-    css.color = style.color;
-  }
-
-  node.style(css);
-
-  if (style.labelPosition) {
-    updateLabelPositionClass(node, style.labelPosition);
-  }
-}
-
-/**
- * Checks if a position is inside a group's bounding box.
- */
-export function isPositionInsideGroup(
-  position: { x: number; y: number },
-  group: NodeSingular
+export function isPointInsideGroup(
+  point: { x: number; y: number },
+  group: GroupStyleAnnotation
 ): boolean {
-  const box = group.boundingBox();
+  const halfWidth = group.width / 2;
+  const halfHeight = group.height / 2;
   return (
-    position.x >= box.x1 &&
-    position.x <= box.x2 &&
-    position.y >= box.y1 &&
-    position.y <= box.y2
+    point.x >= group.position.x - halfWidth &&
+    point.x <= group.position.x + halfWidth &&
+    point.y >= group.position.y - halfHeight &&
+    point.y <= group.position.y + halfHeight
   );
 }
 
 /**
- * Finds the group that contains a given position.
+ * Find the group that contains a given position.
+ * Returns the topmost group (highest zIndex) if multiple overlap.
  */
 export function findGroupAtPosition(
-  cy: CyCore,
+  groups: GroupStyleAnnotation[],
   position: { x: number; y: number }
-): NodeSingular | null {
-  const groups = cy.nodes('[topoViewerRole="group"]');
-  for (const group of groups.toArray() as NodeSingular[]) {
-    if (isPositionInsideGroup(position, group)) {
+): GroupStyleAnnotation | null {
+  // Sort by zIndex descending to get topmost first
+  const sorted = [...groups].sort((a, b) => (b.zIndex ?? 5) - (a.zIndex ?? 5));
+  for (const group of sorted) {
+    if (isPointInsideGroup(position, group)) {
       return group;
     }
   }
@@ -191,26 +117,124 @@ export function findGroupAtPosition(
 }
 
 /**
- * Updates a style in the styles array.
+ * Get the bounding box of a group.
  */
-export function updateStyleInList(
-  styles: GroupStyleAnnotation[],
-  groupId: string,
-  updates: Partial<GroupStyleAnnotation>
-): GroupStyleAnnotation[] {
-  const existing = styles.find(s => s.id === groupId);
-  if (existing) {
-    return styles.map(s => (s.id === groupId ? { ...s, ...updates } : s));
-  }
-  return [...styles, { ...DEFAULT_GROUP_STYLE, id: groupId, ...updates }];
+export function getGroupBoundingBox(group: GroupStyleAnnotation): {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+} {
+  const halfWidth = group.width / 2;
+  const halfHeight = group.height / 2;
+  return {
+    x1: group.position.x - halfWidth,
+    y1: group.position.y - halfHeight,
+    x2: group.position.x + halfWidth,
+    y2: group.position.y + halfHeight
+  };
 }
 
 /**
- * Removes a style from the styles array.
+ * Calculate bounding box that encompasses all given positions with padding.
  */
-export function removeStyleFromList(
-  styles: GroupStyleAnnotation[],
+export function calculateBoundingBox(
+  positions: { x: number; y: number }[],
+  padding: number = 30
+): { position: { x: number; y: number }; width: number; height: number } {
+  if (positions.length === 0) {
+    return { position: { x: 0, y: 0 }, width: DEFAULT_GROUP_WIDTH, height: DEFAULT_GROUP_HEIGHT };
+  }
+
+  const xs = positions.map(p => p.x);
+  const ys = positions.map(p => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const width = Math.max(maxX - minX + padding * 2, DEFAULT_GROUP_WIDTH);
+  const height = Math.max(maxY - minY + padding * 2, DEFAULT_GROUP_HEIGHT);
+
+  return {
+    position: {
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2
+    },
+    width,
+    height
+  };
+}
+
+/**
+ * Update a group in the list.
+ */
+export function updateGroupInList(
+  groups: GroupStyleAnnotation[],
+  groupId: string,
+  updates: Partial<GroupStyleAnnotation>
+): GroupStyleAnnotation[] {
+  return groups.map(g => (g.id === groupId ? { ...g, ...updates } : g));
+}
+
+/**
+ * Remove a group from the list.
+ */
+export function removeGroupFromList(
+  groups: GroupStyleAnnotation[],
   groupId: string
 ): GroupStyleAnnotation[] {
-  return styles.filter(s => s.id !== groupId);
+  return groups.filter(g => g.id !== groupId);
+}
+
+/**
+ * Check if a bounding box intersects with selection box.
+ */
+export function isGroupInSelectionBox(
+  group: GroupStyleAnnotation,
+  box: { x1: number; y1: number; x2: number; y2: number }
+): boolean {
+  const minX = Math.min(box.x1, box.x2);
+  const maxX = Math.max(box.x1, box.x2);
+  const minY = Math.min(box.y1, box.y2);
+  const maxY = Math.max(box.y1, box.y2);
+
+  // Check if group center is in box
+  return (
+    group.position.x >= minX &&
+    group.position.x <= maxX &&
+    group.position.y >= minY &&
+    group.position.y <= maxY
+  );
+}
+
+/**
+ * Get label position styles based on labelPosition setting.
+ */
+export function getLabelPositionStyles(labelPosition: string = 'top-center'): {
+  top?: string;
+  bottom?: string;
+  left?: string;
+  right?: string;
+  textAlign: 'left' | 'center' | 'right';
+  transform: string;
+} {
+  const baseTransform = 'translateX(-50%)';
+
+  switch (labelPosition) {
+    case 'top-left':
+      return { top: '4px', left: '8px', textAlign: 'left', transform: 'none' };
+    case 'top-center':
+      return { top: '4px', left: '50%', textAlign: 'center', transform: baseTransform };
+    case 'top-right':
+      return { top: '4px', right: '8px', textAlign: 'right', transform: 'none' };
+    case 'bottom-left':
+      return { bottom: '4px', left: '8px', textAlign: 'left', transform: 'none' };
+    case 'bottom-center':
+      return { bottom: '4px', left: '50%', textAlign: 'center', transform: baseTransform };
+    case 'bottom-right':
+      return { bottom: '4px', right: '8px', textAlign: 'right', transform: 'none' };
+    default:
+      return { top: '4px', left: '50%', textAlign: 'center', transform: baseTransform };
+  }
 }

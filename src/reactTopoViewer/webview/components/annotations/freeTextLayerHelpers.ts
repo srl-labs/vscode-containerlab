@@ -9,10 +9,10 @@ import { FreeTextAnnotation } from '../../../shared/types/topology';
 // Coordinate Conversion
 // ============================================================================
 
-export function modelToRendered(cy: CyCore, modelX: number, modelY: number): { x: number; y: number } {
+export function modelToRendered(cy: CyCore, modelX: number, modelY: number): { x: number; y: number; zoom: number } {
   const pan = cy.pan();
   const zoom = cy.zoom();
-  return { x: modelX * zoom + pan.x, y: modelY * zoom + pan.y };
+  return { x: modelX * zoom + pan.x, y: modelY * zoom + pan.y, zoom };
 }
 
 export function renderedToModel(cy: CyCore, renderedX: number, renderedY: number): { x: number; y: number } {

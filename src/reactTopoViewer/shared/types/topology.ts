@@ -136,18 +136,27 @@ export interface FreeShapeAnnotation {
 }
 
 /**
- * Group style annotation for Cytoscape group nodes.
+ * Group annotation for overlay groups (rendered as HTML/SVG, not Cytoscape nodes).
+ * Members are tracked via NodeAnnotation.group/level fields.
  */
 export interface GroupStyleAnnotation {
   id: string;
+  name: string;
+  level: string;
+  // Geometry
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  // Style
   backgroundColor?: string;
   backgroundOpacity?: number;
   borderColor?: string;
   borderWidth?: number;
   borderStyle?: 'solid' | 'dotted' | 'dashed' | 'double';
   borderRadius?: number;
-  color?: string;
+  labelColor?: string;
   labelPosition?: string;
+  zIndex?: number;
 }
 
 /**

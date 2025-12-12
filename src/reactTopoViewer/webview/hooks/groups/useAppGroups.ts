@@ -2,11 +2,10 @@
  * App-level hook for group management.
  * Provides handlers for group operations with UI integration.
  */
-import React, { useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { useGroups, UseGroupsHookOptions } from './useGroups';
-import { canBeGrouped } from './groupHelpers';
 
 interface InitialData {
   groupStyleAnnotations?: unknown[];
@@ -26,6 +25,15 @@ interface UseAppGroupsOptions {
   onLockedAction?: () => void;
 }
 
+/**
+ * Check if a node can be added to a group.
+ * Returns false for annotations.
+ */
+function canBeGrouped(node: NodeSingular): boolean {
+  const role = node.data('topoViewerRole');
+  return role !== 'freeText' && role !== 'freeShape';
+}
+
 export function useAppGroups(options: UseAppGroupsOptions) {
   const { cyInstance, mode, isLocked, onLockedAction } = options;
 
@@ -36,25 +44,25 @@ export function useAppGroups(options: UseAppGroupsOptions) {
     onLockedAction
   };
 
-  const groups = useGroups(hookOptions);
-  const { loadGroupStyles } = groups;
+  const groupsHook = useGroups(hookOptions);
+  const { loadGroups } = groupsHook;
 
-  // Load group styles from initial data and extension messages
+  // Load groups from initial data and extension messages
   useEffect(() => {
     const initialData = (window as unknown as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
     if (initialData?.groupStyleAnnotations?.length) {
-      loadGroupStyles(initialData.groupStyleAnnotations as GroupStyleAnnotation[]);
+      loadGroups(initialData.groupStyleAnnotations as GroupStyleAnnotation[]);
     }
 
     const handleMessage = (event: MessageEvent<TopologyDataMessage>) => {
       const message = event.data;
       if (message?.type === 'topology-data' && message.data?.groupStyleAnnotations) {
-        loadGroupStyles(message.data.groupStyleAnnotations);
+        loadGroups(message.data.groupStyleAnnotations);
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [loadGroupStyles]);
+  }, [loadGroups]);
 
   // Handler for Add Group button - creates group with selected nodes and opens editor
   const handleAddGroup = useCallback(() => {
@@ -64,14 +72,14 @@ export function useAppGroups(options: UseAppGroupsOptions) {
       .filter(n => canBeGrouped(n as NodeSingular))
       .map(n => n.id());
 
-    const groupId = groups.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
+    const groupId = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
     if (groupId) {
-      groups.editGroup(groupId);
+      groupsHook.editGroup(groupId);
     }
-  }, [cyInstance, groups]);
+  }, [cyInstance, groupsHook]);
 
   return {
-    groups,
+    groups: groupsHook,
     handleAddGroup
   };
 }

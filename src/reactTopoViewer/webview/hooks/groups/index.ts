@@ -12,3 +12,4 @@ export * from './useGroupAnnotationApplier';
 export * from './useAppGroupHandlers';
 export * from './useCombinedAnnotationApplier';
 export * from './useNodeReparent';
+export * from './useGroupLayer';

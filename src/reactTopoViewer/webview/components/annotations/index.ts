@@ -3,3 +3,4 @@
  */
 export * from './FreeTextLayer';
 export * from './FreeShapeLayer';
+export * from './GroupLayer';

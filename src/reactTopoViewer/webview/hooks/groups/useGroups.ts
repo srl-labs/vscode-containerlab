@@ -1,7 +1,8 @@
 /**
- * Main hook for group management in React TopoViewer.
+ * Main hook for overlay-based group management in React TopoViewer.
+ * Groups are rendered as HTML overlays, not Cytoscape nodes.
  */
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
@@ -11,159 +12,64 @@ import {
   generateGroupId,
   parseGroupId,
   buildGroupId,
-  createDefaultGroupStyle,
-  isGroupNode,
-  canBeGrouped,
-  updateGroupEmptyStatus,
-  applyGroupStyleToNode,
-  updateStyleInList,
-  removeStyleFromList,
+  createDefaultGroup,
+  findGroupAtPosition as findGroupAtPositionHelper,
+  updateGroupInList,
+  removeGroupFromList,
+  calculateBoundingBox,
   CMD_SAVE_NODE_GROUP_MEMBERSHIP
 } from './groupHelpers';
-import type {
-  UseGroupsOptions,
-  UseGroupsReturn,
-  GroupEditorData,
-  GroupUndoAction
+import {
+  DEFAULT_GROUP_WIDTH,
+  DEFAULT_GROUP_HEIGHT,
+  type UseGroupsOptions,
+  type UseGroupsReturn,
+  type GroupEditorData,
+  type GroupUndoAction
 } from './groupTypes';
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
   cy: CyCore | null;
 }
 
-/** Creates a new group node in Cytoscape. */
-function createGroupNode(
-  cy: CyCore,
-  groupId: string,
-  name: string,
-  level: string
-): NodeSingular {
+/**
+ * Get node positions from Cytoscape for selected nodes.
+ */
+function getNodePositions(cy: CyCore, nodeIds: string[]): { x: number; y: number }[] {
+  return nodeIds
+    .map(id => {
+      const node = cy.getElementById(id) as NodeSingular;
+      if (node.length > 0) {
+        return node.position();
+      }
+      return null;
+    })
+    .filter((pos): pos is { x: number; y: number } => pos !== null);
+}
+
+/**
+ * Get the center of the viewport.
+ */
+function getViewportCenter(cy: CyCore): { x: number; y: number } {
   const extent = cy.extent();
-  const position = {
+  return {
     x: (extent.x1 + extent.x2) / 2,
-    y: extent.y1 + 40
+    y: (extent.y1 + extent.y2) / 2
   };
-
-  cy.add({
-    group: 'nodes',
-    data: {
-      id: groupId,
-      name,
-      weight: '1000',
-      topoViewerRole: 'group',
-      parent: '',
-      lat: '',
-      lng: '',
-      extraData: {
-        clabServerUsername: 'asad',
-        weight: '2',
-        name: '',
-        topoViewerGroup: name,
-        topoViewerGroupLevel: level
-      }
-    },
-    position,
-    classes: 'empty-group'
-  });
-
-  return cy.getElementById(groupId) as NodeSingular;
 }
 
-/** Adds nodes to a group and saves their membership. */
-function addNodesToGroup(
-  cy: CyCore,
-  groupId: string,
-  nodeIds: string[]
-): void {
-  const { name, level } = parseGroupId(groupId);
-  nodeIds.forEach(nodeId => {
-    const node = cy.getElementById(nodeId) as NodeSingular;
-    if (node.length > 0 && canBeGrouped(node)) {
-      node.move({ parent: groupId });
-      node.data('parent', groupId);
-      // Save node's group membership
-      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
-        nodeId,
-        group: name,
-        level
-      });
-    }
-  });
-}
-
-/** Recreates a group with a new ID. */
-function recreateGroupWithNewId(
-  cy: CyCore,
-  oldGroup: NodeSingular,
-  newGroupId: string,
-  name: string,
-  level: string
-): NodeSingular {
-  const position = oldGroup.position();
-  const classes = oldGroup.classes();
-
-  // Store child IDs and orphan them BEFORE removing the group
-  // This ensures children stay in the graph when the parent is removed
-  const childIds: string[] = [];
-  oldGroup.children().forEach(child => {
-    childIds.push(child.id());
-    child.move({ parent: null });
-    child.data('parent', '');
-  });
-
-  oldGroup.remove();
-
-  cy.add({
-    group: 'nodes',
-    data: {
-      id: newGroupId,
-      name,
-      weight: '1000',
-      topoViewerRole: 'group',
-      parent: '',
-      lat: '',
-      lng: '',
-      extraData: {
-        clabServerUsername: 'asad',
-        weight: '2',
-        name: '',
-        topoViewerGroup: name,
-        topoViewerGroupLevel: level
-      }
-    },
-    position,
-    classes
-  });
-
-  const newGroup = cy.getElementById(newGroupId) as NodeSingular;
-
-  // Re-parent children to the new group using stored IDs and update their annotations
-  childIds.forEach(childId => {
-    const child = cy.getElementById(childId) as NodeSingular;
-    if (child.length > 0) {
-      child.move({ parent: newGroupId });
-      child.data('parent', newGroupId);
-      // Save updated group membership
-      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
-        nodeId: childId,
-        group: name,
-        level
-      });
-    }
-  });
-
-  return newGroup;
-}
-
-/** Hook for create group action. */
+/**
+ * Hook for creating a new group.
+ */
 function useCreateGroup(
   cy: CyCore | null,
   mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
-  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>,
-  setGroupStyles: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
-  saveGroupStylesToExtension: (styles: GroupStyleAnnotation[]) => void
+  groups: GroupStyleAnnotation[],
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void,
+  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
 ) {
   return useCallback(
     (selectedNodeIds?: string[]): string | null => {
@@ -172,61 +78,74 @@ function useCreateGroup(
         return null;
       }
 
-      const groupId = generateGroupId(cy);
-      const { name, level } = parseGroupId(groupId);
-      const newGroup = createGroupNode(cy, groupId, name, level);
+      const groupId = generateGroupId(groups);
+      let position: { x: number; y: number };
+      let width: number;
+      let height: number;
 
       if (selectedNodeIds && selectedNodeIds.length > 0) {
-        addNodesToGroup(cy, groupId, selectedNodeIds);
-        updateGroupEmptyStatus(newGroup);
+        // Calculate bounding box around selected nodes
+        const positions = getNodePositions(cy, selectedNodeIds);
+        const bounds = calculateBoundingBox(positions);
+        position = bounds.position;
+        width = bounds.width;
+        height = bounds.height;
+
+        // Save node membership
+        const { name, level } = parseGroupId(groupId);
+        selectedNodeIds.forEach(nodeId => {
+          sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
+            nodeId,
+            group: name,
+            level
+          });
+        });
+      } else {
+        // Create empty group at viewport center
+        position = getViewportCenter(cy);
+        width = DEFAULT_GROUP_WIDTH;
+        height = DEFAULT_GROUP_HEIGHT;
       }
 
-      const style = createDefaultGroupStyle(groupId, lastStyleRef.current);
-      applyGroupStyleToNode(newGroup, style);
+      const newGroup = createDefaultGroup(groupId, position, lastStyleRef.current);
+      newGroup.width = width;
+      newGroup.height = height;
 
-      setGroupStyles(prev => {
-        const updated = [...prev, style];
-        saveGroupStylesToExtension(updated);
+      setGroups(prev => {
+        const updated = [...prev, newGroup];
+        saveGroupsToExtension(updated);
         return updated;
       });
 
-      log.info(`[Groups] Created group: ${groupId}`);
+      log.info(`[Groups] Created overlay group: ${groupId}`);
       return groupId;
     },
-    [cy, mode, isLocked, onLockedAction, lastStyleRef, setGroupStyles, saveGroupStylesToExtension]
+    [cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
   );
 }
 
-/** Hook for delete group action. */
+/**
+ * Hook for deleting a group.
+ */
 function useDeleteGroup(
-  cy: CyCore | null,
   mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   editingGroup: GroupEditorData | null,
-  setGroupStyles: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>,
-  saveGroupStylesToExtension: (styles: GroupStyleAnnotation[]) => void
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
 ) {
   return useCallback(
     (groupId: string): void => {
-      if (mode === 'view' || isLocked || !cy) {
+      if (mode === 'view' || isLocked) {
         if (isLocked) onLockedAction?.();
         return;
       }
 
-      const group = cy.getElementById(groupId) as NodeSingular;
-      if (group.length === 0 || !isGroupNode(group)) {
-        log.warn(`[Groups] Group not found: ${groupId}`);
-        return;
-      }
-
-      group.children().forEach(child => child.move({ parent: null }));
-      group.remove();
-
-      setGroupStyles(prev => {
-        const updated = removeStyleFromList(prev, groupId);
-        saveGroupStylesToExtension(updated);
+      setGroups(prev => {
+        const updated = removeGroupFromList(prev, groupId);
+        saveGroupsToExtension(updated);
         return updated;
       });
 
@@ -234,64 +153,63 @@ function useDeleteGroup(
         setEditingGroup(null);
       }
 
-      log.info(`[Groups] Deleted group: ${groupId}`);
+      log.info(`[Groups] Deleted overlay group: ${groupId}`);
     },
-    [cy, mode, isLocked, onLockedAction, editingGroup, setGroupStyles, setEditingGroup, saveGroupStylesToExtension]
+    [mode, isLocked, onLockedAction, editingGroup, setGroups, setEditingGroup, saveGroupsToExtension]
   );
 }
 
-/** Hook for edit group action. */
+/**
+ * Hook for editing a group.
+ */
 function useEditGroup(
-  cy: CyCore | null,
   mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
-  groupStyles: GroupStyleAnnotation[],
+  groups: GroupStyleAnnotation[],
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>
 ) {
   return useCallback(
     (groupId: string): void => {
-      if (mode === 'view' || isLocked || !cy) {
+      if (mode === 'view' || isLocked) {
         if (isLocked) onLockedAction?.();
         return;
       }
 
-      const group = cy.getElementById(groupId) as NodeSingular;
-      if (group.length === 0 || !isGroupNode(group)) {
+      const group = groups.find(g => g.id === groupId);
+      if (!group) {
         log.warn(`[Groups] Group not found: ${groupId}`);
         return;
       }
 
-      const { name, level } = parseGroupId(groupId);
-      const existingStyle = groupStyles.find(s => s.id === groupId);
-
       setEditingGroup({
         id: groupId,
-        name,
-        level,
-        style: existingStyle || createDefaultGroupStyle(groupId)
+        name: group.name,
+        level: group.level,
+        style: group
       });
 
       log.info(`[Groups] Editing group: ${groupId}`);
     },
-    [cy, mode, isLocked, onLockedAction, groupStyles, setEditingGroup]
+    [mode, isLocked, onLockedAction, groups, setEditingGroup]
   );
 }
 
-/** Hook for save group action. */
+/**
+ * Hook for saving group edits.
+ */
 function useSaveGroup(
-  cy: CyCore | null,
   mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
-  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>,
-  setGroupStyles: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>,
-  saveGroupStylesToExtension: (styles: GroupStyleAnnotation[]) => void
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void,
+  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
 ) {
   return useCallback(
     (data: GroupEditorData): void => {
-      if (mode === 'view' || isLocked || !cy) {
+      if (mode === 'view' || isLocked) {
         if (isLocked) onLockedAction?.();
         return;
       }
@@ -300,139 +218,207 @@ function useSaveGroup(
       const newGroupId = buildGroupId(data.name, data.level);
       lastStyleRef.current = { ...data.style };
 
-      const oldGroup = cy.getElementById(oldGroupId) as NodeSingular;
-      if (oldGroup.length === 0) {
-        log.warn(`[Groups] Group not found: ${oldGroupId}`);
-        return;
-      }
+      setGroups(prev => {
+        const oldGroup = prev.find(g => g.id === oldGroupId);
+        if (!oldGroup) {
+          log.warn(`[Groups] Group not found: ${oldGroupId}`);
+          return prev;
+        }
 
-      if (oldGroupId !== newGroupId) {
-        const newGroup = recreateGroupWithNewId(cy, oldGroup, newGroupId, data.name, data.level);
-        applyGroupStyleToNode(newGroup, { ...data.style, id: newGroupId });
-        updateGroupEmptyStatus(newGroup);
+        let updated: GroupStyleAnnotation[];
+        if (oldGroupId !== newGroupId) {
+          // Rename: remove old, add new with updated ID
+          updated = removeGroupFromList(prev, oldGroupId);
+          updated = [...updated, {
+            ...data.style,
+            id: newGroupId,
+            name: data.name,
+            level: data.level,
+            position: oldGroup.position,
+            width: oldGroup.width,
+            height: oldGroup.height
+          }];
+          log.info(`[Groups] Renamed group: ${oldGroupId} -> ${newGroupId}`);
+        } else {
+          // Just update style
+          updated = updateGroupInList(prev, oldGroupId, {
+            ...data.style,
+            name: data.name,
+            level: data.level
+          });
+          log.info(`[Groups] Updated group style: ${oldGroupId}`);
+        }
 
-        setGroupStyles(prev => {
-          const updated = removeStyleFromList(prev, oldGroupId);
-          const withNew = [...updated, { ...data.style, id: newGroupId }];
-          saveGroupStylesToExtension(withNew);
-          return withNew;
-        });
-
-        log.info(`[Groups] Renamed group: ${oldGroupId} -> ${newGroupId}`);
-      } else {
-        applyGroupStyleToNode(oldGroup, data.style);
-
-        setGroupStyles(prev => {
-          const updated = updateStyleInList(prev, oldGroupId, data.style);
-          saveGroupStylesToExtension(updated);
-          return updated;
-        });
-
-        log.info(`[Groups] Updated group style: ${oldGroupId}`);
-      }
+        saveGroupsToExtension(updated);
+        return updated;
+      });
 
       setEditingGroup(null);
     },
-    [cy, mode, isLocked, onLockedAction, lastStyleRef, setGroupStyles, setEditingGroup, saveGroupStylesToExtension]
+    [mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef]
   );
 }
 
-/** Hook for update group style action. */
-function useUpdateGroupStyle(
-  cy: CyCore | null,
+/**
+ * Hook for updating group properties.
+ */
+function useUpdateGroup(
   mode: 'edit' | 'view',
   isLocked: boolean,
-  groupStyles: GroupStyleAnnotation[],
-  setGroupStyles: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
-  saveGroupStylesToExtension: (styles: GroupStyleAnnotation[]) => void
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
 ) {
   return useCallback(
-    (groupId: string, style: Partial<GroupStyleAnnotation>): void => {
-      if (mode === 'view' || isLocked || !cy) {
-        return;
-      }
+    (groupId: string, updates: Partial<GroupStyleAnnotation>): void => {
+      if (mode === 'view' || isLocked) return;
 
-      const group = cy.getElementById(groupId) as NodeSingular;
-      if (group.length > 0 && isGroupNode(group)) {
-        const currentStyle = groupStyles.find(s => s.id === groupId) || createDefaultGroupStyle(groupId);
-        applyGroupStyleToNode(group, { ...currentStyle, ...style });
-      }
-
-      setGroupStyles(prev => {
-        const updated = updateStyleInList(prev, groupId, style);
-        saveGroupStylesToExtension(updated);
+      setGroups(prev => {
+        const updated = updateGroupInList(prev, groupId, updates);
+        saveGroupsToExtension(updated);
         return updated;
       });
     },
-    [cy, mode, isLocked, groupStyles, setGroupStyles, saveGroupStylesToExtension]
+    [mode, isLocked, setGroups, saveGroupsToExtension]
   );
 }
 
-/** Hook for release node from group action. */
-function useReleaseNodeFromGroup(
-  cy: CyCore | null,
+/**
+ * Hook for updating group position.
+ */
+function useUpdateGroupPosition(
   mode: 'edit' | 'view',
   isLocked: boolean,
-  onLockedAction: (() => void) | undefined,
-  deleteGroup: (groupId: string) => void
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
 ) {
   return useCallback(
+    (groupId: string, position: { x: number; y: number }): void => {
+      if (mode === 'view' || isLocked) return;
+
+      setGroups(prev => {
+        const updated = updateGroupInList(prev, groupId, { position });
+        saveGroupsToExtension(updated);
+        return updated;
+      });
+    },
+    [mode, isLocked, setGroups, saveGroupsToExtension]
+  );
+}
+
+/**
+ * Hook for updating group size.
+ */
+function useUpdateGroupSize(
+  mode: 'edit' | 'view',
+  isLocked: boolean,
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
+) {
+  return useCallback(
+    (groupId: string, width: number, height: number): void => {
+      if (mode === 'view' || isLocked) return;
+
+      setGroups(prev => {
+        const updated = updateGroupInList(prev, groupId, { width, height });
+        saveGroupsToExtension(updated);
+        return updated;
+      });
+    },
+    [mode, isLocked, setGroups, saveGroupsToExtension]
+  );
+}
+
+/**
+ * Hook for managing node group membership.
+ */
+function useNodeGroupMembership(
+  mode: 'edit' | 'view',
+  isLocked: boolean,
+  groups: GroupStyleAnnotation[]
+) {
+  const findGroupAtPosition = useCallback(
+    (position: { x: number; y: number }): GroupStyleAnnotation | null => {
+      return findGroupAtPositionHelper(groups, position);
+    },
+    [groups]
+  );
+
+  // Track node memberships (node ID -> group ID)
+  const membershipRef = useRef<Map<string, string>>(new Map());
+
+  const getGroupMembers = useCallback(
+    (groupId: string): string[] => {
+      const members: string[] = [];
+      membershipRef.current.forEach((gId, nodeId) => {
+        if (gId === groupId) members.push(nodeId);
+      });
+      return members;
+    },
+    []
+  );
+
+  const addNodeToGroup = useCallback(
+    (nodeId: string, groupId: string): void => {
+      if (mode === 'view' || isLocked) return;
+
+      const group = groups.find(g => g.id === groupId);
+      if (!group) return;
+
+      membershipRef.current.set(nodeId, groupId);
+      const { name, level } = parseGroupId(groupId);
+      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
+        nodeId,
+        group: name,
+        level
+      });
+      log.info(`[Groups] Added node ${nodeId} to group ${groupId}`);
+    },
+    [mode, isLocked, groups]
+  );
+
+  const removeNodeFromGroup = useCallback(
     (nodeId: string): void => {
-      if (mode === 'view' || isLocked || !cy) {
-        if (isLocked) onLockedAction?.();
-        return;
-      }
+      if (mode === 'view' || isLocked) return;
 
-      const node = cy.getElementById(nodeId) as NodeSingular;
-      if (node.length === 0) return;
-
-      const parent = node.parent().first() as NodeSingular;
-      if (parent.length === 0) return;
-
-      const parentId = parent.id();
-      node.move({ parent: null });
-      node.data('parent', '');
-      updateGroupEmptyStatus(parent);
-
-      // Save the node's group membership (removed from group)
+      membershipRef.current.delete(nodeId);
       sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
         nodeId,
         group: null,
         level: null
       });
-
-      if (parent.children().length === 0) {
-        deleteGroup(parentId);
-      }
-
-      log.info(`[Groups] Released node ${nodeId} from group ${parentId}`);
+      log.info(`[Groups] Removed node ${nodeId} from group`);
     },
-    [cy, mode, isLocked, onLockedAction, deleteGroup]
+    [mode, isLocked]
   );
+
+  return { findGroupAtPosition, getGroupMembers, addNodeToGroup, removeNodeFromGroup };
 }
 
+/**
+ * Main hook for overlay-based group management.
+ */
 export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const { cy, mode, isLocked, onLockedAction } = options;
 
   const state = useGroupState();
   const {
-    groupStyles,
-    setGroupStyles,
+    groups,
+    setGroups,
     editingGroup,
     setEditingGroup,
-    saveGroupStylesToExtension,
+    saveGroupsToExtension,
     lastStyleRef
   } = state;
 
   const createGroup = useCreateGroup(
-    cy, mode, isLocked, onLockedAction, lastStyleRef, setGroupStyles, saveGroupStylesToExtension
+    cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef
   );
 
   const deleteGroup = useDeleteGroup(
-    cy, mode, isLocked, onLockedAction, editingGroup, setGroupStyles, setEditingGroup, saveGroupStylesToExtension
+    mode, isLocked, onLockedAction, editingGroup, setGroups, setEditingGroup, saveGroupsToExtension
   );
 
-  const editGroup = useEditGroup(cy, mode, isLocked, onLockedAction, groupStyles, setEditingGroup);
+  const editGroup = useEditGroup(mode, isLocked, onLockedAction, groups, setEditingGroup);
 
   const closeEditor = useCallback((): void => {
     setEditingGroup(null);
@@ -440,27 +426,19 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   }, [setEditingGroup]);
 
   const saveGroup = useSaveGroup(
-    cy, mode, isLocked, onLockedAction, lastStyleRef, setGroupStyles, setEditingGroup, saveGroupStylesToExtension
+    mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef
   );
 
-  const updateGroupStyle = useUpdateGroupStyle(
-    cy, mode, isLocked, groupStyles, setGroupStyles, saveGroupStylesToExtension
-  );
+  const updateGroup = useUpdateGroup(mode, isLocked, setGroups, saveGroupsToExtension);
+  const updateGroupPosition = useUpdateGroupPosition(mode, isLocked, setGroups, saveGroupsToExtension);
+  const updateGroupSize = useUpdateGroupSize(mode, isLocked, setGroups, saveGroupsToExtension);
 
-  const loadGroupStyles = useCallback(
-    (styles: GroupStyleAnnotation[]): void => {
-      setGroupStyles(styles);
-      if (cy) {
-        styles.forEach(style => {
-          const group = cy.getElementById(style.id) as NodeSingular;
-          if (group.length > 0 && isGroupNode(group)) {
-            applyGroupStyleToNode(group, style);
-          }
-        });
-      }
-      log.info(`[Groups] Loaded ${styles.length} group styles`);
+  const loadGroups = useCallback(
+    (loadedGroups: GroupStyleAnnotation[]): void => {
+      setGroups(loadedGroups);
+      log.info(`[Groups] Loaded ${loadedGroups.length} overlay groups`);
     },
-    [cy, setGroupStyles]
+    [setGroups]
   );
 
   const getUndoRedoAction = useCallback(
@@ -473,25 +451,31 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     []
   );
 
-  const releaseNodeFromGroup = useReleaseNodeFromGroup(cy, mode, isLocked, onLockedAction, deleteGroup);
+  const membership = useNodeGroupMembership(mode, isLocked, groups);
 
   return useMemo(
     () => ({
-      groupStyles,
+      groups,
       editingGroup,
       createGroup,
       deleteGroup,
       editGroup,
       closeEditor,
       saveGroup,
-      updateGroupStyle,
-      loadGroupStyles,
+      updateGroup,
+      updateGroupPosition,
+      updateGroupSize,
+      loadGroups,
       getUndoRedoAction,
-      releaseNodeFromGroup
+      findGroupAtPosition: membership.findGroupAtPosition,
+      getGroupMembers: membership.getGroupMembers,
+      addNodeToGroup: membership.addNodeToGroup,
+      removeNodeFromGroup: membership.removeNodeFromGroup
     }),
     [
-      groupStyles, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,
-      saveGroup, updateGroupStyle, loadGroupStyles, getUndoRedoAction, releaseNodeFromGroup
+      groups, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,
+      saveGroup, updateGroup, updateGroupPosition, updateGroupSize, loadGroups,
+      getUndoRedoAction, membership
     ]
   );
 }

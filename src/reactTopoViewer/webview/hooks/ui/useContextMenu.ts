@@ -43,10 +43,6 @@ export interface ContextMenuOptions {
   onDeleteLink?: (edgeId: string) => void;
   onShowNodeProperties?: (nodeId: string) => void;
   onShowLinkProperties?: (edgeId: string) => void;
-  // Group options
-  onEditGroup?: (groupId: string) => void;
-  onDeleteGroup?: (groupId: string) => void;
-  onReleaseFromGroup?: (nodeId: string) => void;
 }
 
 /** Common menu item labels */
@@ -57,8 +53,7 @@ const MENU_LABELS = {
   SSH: 'SSH',
   SHELL: 'Shell',
   LOGS: 'Logs',
-  INFO: 'Info',
-  UNGROUP: 'Ungroup'
+  INFO: 'Info'
 } as const;
 
 /** Common menu icons */
@@ -70,7 +65,6 @@ const MENU_ICONS = {
   SHELL: 'fa-cube',
   LOGS: 'fa-file-alt',
   INFO: 'fa-info-circle',
-  UNGROUP: 'fa-object-ungroup',
   EDIT_ALT: 'fa-pen'
 } as const;
 
@@ -242,50 +236,6 @@ function buildEdgeViewMenuItems(options: ContextMenuOptions): MenuItem[] {
   ];
 }
 
-/**
- * Build group context menu items for edit mode
- */
-function buildGroupEditMenuItems(options: ContextMenuOptions): MenuItem[] {
-  if (options.isLocked) return [];
-
-  return [
-    {
-      content: faIcon(MENU_ICONS.EDIT, MENU_LABELS.EDIT),
-      select: (ele) => {
-        const groupId = ele.id();
-        log.info(`[ContextMenu] Edit group: ${groupId}`);
-        options.onEditGroup?.(groupId);
-      }
-    },
-    {
-      content: faIcon(MENU_ICONS.DELETE, MENU_LABELS.DELETE),
-      select: (ele) => {
-        const groupId = ele.id();
-        log.info(`[ContextMenu] Delete group: ${groupId}`);
-        options.onDeleteGroup?.(groupId);
-      }
-    }
-  ];
-}
-
-/**
- * Build "release from group" menu items for nodes in groups
- */
-function buildReleaseFromGroupMenuItems(options: ContextMenuOptions): MenuItem[] {
-  if (options.isLocked) return [];
-
-  return [
-    {
-      content: faIcon(MENU_ICONS.UNGROUP, MENU_LABELS.UNGROUP),
-      select: (ele) => {
-        const nodeId = ele.id();
-        log.info(`[ContextMenu] Release from group: ${nodeId}`);
-        options.onReleaseFromGroup?.(nodeId);
-      }
-    }
-  ];
-}
-
 /** Cxtmenu instance type */
 type CxtmenuInstance = { destroy: () => void };
 
@@ -296,13 +246,13 @@ type CyWithCxtmenu = Core & { cxtmenu: (cfg: unknown) => CxtmenuInstance };
 export const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
 
 /**
- * Register node context menu (for nodes NOT in a group)
+ * Register node context menu
  */
 function registerNodeMenu(cy: CyWithCxtmenu, items: MenuItem[]): CxtmenuInstance | null {
   if (items.length === 0) return null;
 
-  // Use :orphan to only match nodes that don't have a parent (not in a group)
-  const nodeSelector = 'node:orphan[topoViewerRole != "group"][topoViewerRole != "freeText"][topoViewerRole != "freeShape"]';
+  // Select nodes that are not annotations (freeText/freeShape)
+  const nodeSelector = 'node[topoViewerRole != "freeText"][topoViewerRole != "freeShape"]';
 
   try {
     const menu = cy.cxtmenu({
@@ -340,60 +290,10 @@ function registerEdgeMenu(cy: CyWithCxtmenu, items: MenuItem[]): CxtmenuInstance
   }
 }
 
-/**
- * Register group context menu
- */
-function registerGroupMenu(cy: CyWithCxtmenu, items: MenuItem[]): CxtmenuInstance | null {
-  if (items.length === 0) return null;
-
-  const groupSelector = 'node[topoViewerRole = "group"]';
-
-  try {
-    const menu = cy.cxtmenu({
-      selector: groupSelector,
-      commands: items,
-      menuRadius: () => 80,
-      ...MENU_STYLE
-    });
-    log.info('[ContextMenu] Group menu registered');
-    return menu;
-  } catch (err) {
-    log.error(`[ContextMenu] Failed to create group menu: ${err}`);
-    return null;
-  }
-}
-
-/**
- * Register node-in-group context menu (for releasing from group)
- */
-function registerNodeInGroupMenu(cy: CyWithCxtmenu, editItems: MenuItem[], releaseItems: MenuItem[]): CxtmenuInstance | null {
-  const combinedItems = [...editItems, ...releaseItems];
-  if (combinedItems.length === 0) return null;
-
-  // Selector for nodes that have a parent (are in a group) but are not groups/annotations themselves
-  const nodeInGroupSelector = 'node:child[topoViewerRole != "group"][topoViewerRole != "freeText"][topoViewerRole != "freeShape"]';
-
-  try {
-    const menu = cy.cxtmenu({
-      selector: nodeInGroupSelector,
-      commands: combinedItems,
-      menuRadius: (ele: cytoscape.NodeSingular) => Math.max(80, Math.min(120, ele.width() * 3)),
-      ...MENU_STYLE
-    });
-    log.info('[ContextMenu] Node-in-group menu registered');
-    return menu;
-  } catch (err) {
-    log.error(`[ContextMenu] Failed to create node-in-group menu: ${err}`);
-    return null;
-  }
-}
-
 /** Menu item getters */
 interface MenuItemGetters {
   getNodeMenuItems: () => MenuItem[];
   getEdgeMenuItems: () => MenuItem[];
-  getGroupMenuItems: () => MenuItem[];
-  getReleaseFromGroupItems: () => MenuItem[];
 }
 
 /** Setup menus on Cytoscape instance */
@@ -405,16 +305,6 @@ function setupMenus(cy: Core, menus: CxtmenuInstance[], getters: MenuItemGetters
 
   const edgeMenu = registerEdgeMenu(cyExt, getters.getEdgeMenuItems());
   if (edgeMenu) menus.push(edgeMenu);
-
-  const groupMenu = registerGroupMenu(cyExt, getters.getGroupMenuItems());
-  if (groupMenu) menus.push(groupMenu);
-
-  const nodeInGroupMenu = registerNodeInGroupMenu(
-    cyExt,
-    getters.getNodeMenuItems(),
-    getters.getReleaseFromGroupItems()
-  );
-  if (nodeInGroupMenu) menus.push(nodeInGroupMenu);
 }
 
 /** Cleanup menus */
@@ -443,14 +333,6 @@ export function useContextMenu(cy: Core | null, options: ContextMenuOptions): vo
     return mode === 'edit' ? buildEdgeEditMenuItems(options) : buildEdgeViewMenuItems(options);
   }, [mode, isLocked, options]);
 
-  const getGroupMenuItems = useCallback(() => {
-    return mode === 'edit' ? buildGroupEditMenuItems(options) : [];
-  }, [mode, isLocked, options]);
-
-  const getReleaseFromGroupItems = useCallback(() => {
-    return mode === 'edit' ? buildReleaseFromGroupMenuItems(options) : [];
-  }, [mode, isLocked, options]);
-
   useEffect(() => {
     if (!cy) return;
 
@@ -459,9 +341,7 @@ export function useContextMenu(cy: Core | null, options: ContextMenuOptions): vo
     const menus: CxtmenuInstance[] = [];
     const getters: MenuItemGetters = {
       getNodeMenuItems,
-      getEdgeMenuItems,
-      getGroupMenuItems,
-      getReleaseFromGroupItems
+      getEdgeMenuItems
     };
 
     // Set up context menu state tracking
@@ -481,5 +361,5 @@ export function useContextMenu(cy: Core | null, options: ContextMenuOptions): vo
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
       cleanupMenus(menus);
     };
-  }, [cy, mode, isLocked, getNodeMenuItems, getEdgeMenuItems, getGroupMenuItems, getReleaseFromGroupItems]);
+  }, [cy, mode, isLocked, getNodeMenuItems, getEdgeMenuItems]);
 }

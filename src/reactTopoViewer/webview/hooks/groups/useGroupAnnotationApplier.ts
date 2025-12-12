@@ -15,7 +15,7 @@ export interface UseGroupAnnotationApplierReturn {
 function applyGroupAnnotationChangeInternal(
   action: UndoRedoActionAnnotation,
   isUndo: boolean,
-  groups: Pick<UseGroupsReturn, 'loadGroupStyles' | 'groupStyles' | 'deleteGroup'>,
+  groupsApi: Pick<UseGroupsReturn, 'loadGroups' | 'groups' | 'deleteGroup'>,
   isApplyingRef: React.RefObject<boolean>
 ): void {
   if (action.annotationType !== 'group') return;
@@ -25,18 +25,18 @@ function applyGroupAnnotationChangeInternal(
   isApplyingRef.current = true;
   try {
     if (target && !opposite) {
-      // Restoring a deleted group - add style back
-      const existing = groups.groupStyles.find(s => s.id === target.id);
+      // Restoring a deleted group - add back
+      const existing = groupsApi.groups.find(g => g.id === target.id);
       if (!existing) {
-        groups.loadGroupStyles([...groups.groupStyles, target]);
+        groupsApi.loadGroups([...groupsApi.groups, target]);
       }
     } else if (!target && opposite) {
       // Deleting a group
-      groups.deleteGroup(opposite.id);
+      groupsApi.deleteGroup(opposite.id);
     } else if (target && opposite) {
-      // Updating group style
-      const newStyles = groups.groupStyles.map(s => (s.id === target.id ? target : s));
-      groups.loadGroupStyles(newStyles);
+      // Updating group
+      const newGroups = groupsApi.groups.map(g => (g.id === target.id ? target : g));
+      groupsApi.loadGroups(newGroups);
     }
   } finally {
     isApplyingRef.current = false;
@@ -44,15 +44,15 @@ function applyGroupAnnotationChangeInternal(
 }
 
 export function useGroupAnnotationApplier(
-  groups: UseGroupsReturn
+  groupsApi: UseGroupsReturn
 ): UseGroupAnnotationApplierReturn {
   const isApplyingGroupUndoRedo = React.useRef(false);
 
   const applyGroupAnnotationChange = React.useCallback(
     (action: UndoRedoActionAnnotation, isUndo: boolean): void => {
-      applyGroupAnnotationChangeInternal(action, isUndo, groups, isApplyingGroupUndoRedo);
+      applyGroupAnnotationChangeInternal(action, isUndo, groupsApi, isApplyingGroupUndoRedo);
     },
-    [groups]
+    [groupsApi]
   );
 
   return {

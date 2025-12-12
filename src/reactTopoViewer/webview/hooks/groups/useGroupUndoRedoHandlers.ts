@@ -18,26 +18,26 @@ export interface UseGroupUndoRedoHandlersReturn {
   isApplyingGroupUndoRedo: React.RefObject<boolean>;
 }
 
-function cloneGroupStyle(style: GroupStyleAnnotation | undefined): GroupStyleAnnotation | null {
-  if (!style) return null;
-  return { ...style };
+function cloneGroup(group: GroupStyleAnnotation | undefined): GroupStyleAnnotation | null {
+  if (!group) return null;
+  return { ...group };
 }
 
 function pushUndo(
   undoRedo: UndoRedoApi,
-  groups: Pick<UseGroupsReturn, 'getUndoRedoAction'>,
+  groupsApi: Pick<UseGroupsReturn, 'getUndoRedoAction'>,
   isApplyingRef: React.RefObject<boolean>,
   before: GroupStyleAnnotation | null,
   after: GroupStyleAnnotation | null
 ): void {
   if (isApplyingRef.current) return;
-  undoRedo.pushAction(groups.getUndoRedoAction(before, after));
+  undoRedo.pushAction(groupsApi.getUndoRedoAction(before, after));
 }
 
 function applyGroupAnnotationChangeInternal(
   action: UndoRedoActionAnnotation,
   isUndo: boolean,
-  groups: Pick<UseGroupsReturn, 'createGroup' | 'deleteGroup' | 'loadGroupStyles' | 'groupStyles'>,
+  groupsApi: Pick<UseGroupsReturn, 'createGroup' | 'deleteGroup' | 'loadGroups' | 'groups'>,
   isApplyingRef: React.RefObject<boolean>
 ): void {
   if (action.annotationType !== 'group') return;
@@ -47,15 +47,15 @@ function applyGroupAnnotationChangeInternal(
   isApplyingRef.current = true;
   try {
     if (target && !opposite) {
-      // Restoring a deleted group - just add style back (group node should be recreated)
-      groups.loadGroupStyles([...groups.groupStyles, target]);
+      // Restoring a deleted group - add back
+      groupsApi.loadGroups([...groupsApi.groups, target]);
     } else if (!target && opposite) {
       // Deleting a group
-      groups.deleteGroup(opposite.id);
+      groupsApi.deleteGroup(opposite.id);
     } else if (target && opposite) {
-      // Updating group style
-      const newStyles = groups.groupStyles.map(s => (s.id === target.id ? target : s));
-      groups.loadGroupStyles(newStyles);
+      // Updating group
+      const newGroups = groupsApi.groups.map(g => (g.id === target.id ? target : g));
+      groupsApi.loadGroups(newGroups);
     }
   } finally {
     isApplyingRef.current = false;
@@ -63,41 +63,41 @@ function applyGroupAnnotationChangeInternal(
 }
 
 export function useGroupUndoRedoHandlers(
-  groups: UseGroupsReturn,
+  groupsApi: UseGroupsReturn,
   undoRedo: UndoRedoApi
 ): UseGroupUndoRedoHandlersReturn {
   const isApplyingGroupUndoRedo = React.useRef(false);
 
   const createGroupWithUndo = React.useCallback(
     (selectedNodeIds?: string[]): string | null => {
-      const groupId = groups.createGroup(selectedNodeIds);
+      const groupId = groupsApi.createGroup(selectedNodeIds);
       if (groupId) {
-        const newStyle = groups.groupStyles.find(s => s.id === groupId);
-        if (newStyle) {
-          pushUndo(undoRedo, groups, isApplyingGroupUndoRedo, null, cloneGroupStyle(newStyle));
+        const newGroup = groupsApi.groups.find(g => g.id === groupId);
+        if (newGroup) {
+          pushUndo(undoRedo, groupsApi, isApplyingGroupUndoRedo, null, cloneGroup(newGroup));
         }
       }
       return groupId;
     },
-    [groups, undoRedo]
+    [groupsApi, undoRedo]
   );
 
   const deleteGroupWithUndo = React.useCallback(
     (groupId: string): void => {
-      const beforeStyle = cloneGroupStyle(groups.groupStyles.find(s => s.id === groupId) || undefined);
-      if (beforeStyle) {
-        pushUndo(undoRedo, groups, isApplyingGroupUndoRedo, beforeStyle, null);
+      const beforeGroup = cloneGroup(groupsApi.groups.find(g => g.id === groupId) || undefined);
+      if (beforeGroup) {
+        pushUndo(undoRedo, groupsApi, isApplyingGroupUndoRedo, beforeGroup, null);
       }
-      groups.deleteGroup(groupId);
+      groupsApi.deleteGroup(groupId);
     },
-    [groups, undoRedo]
+    [groupsApi, undoRedo]
   );
 
   const applyGroupAnnotationChange = React.useCallback(
     (action: UndoRedoActionAnnotation, isUndo: boolean): void => {
-      applyGroupAnnotationChangeInternal(action, isUndo, groups, isApplyingGroupUndoRedo);
+      applyGroupAnnotationChangeInternal(action, isUndo, groupsApi, isApplyingGroupUndoRedo);
     },
-    [groups]
+    [groupsApi]
   );
 
   return {

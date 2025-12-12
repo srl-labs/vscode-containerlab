@@ -1,5 +1,5 @@
 /**
- * State management hook for groups.
+ * State management hook for overlay groups.
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
@@ -9,22 +9,22 @@ import { GROUP_SAVE_DEBOUNCE_MS } from './groupHelpers';
 import type { UseGroupStateReturn, GroupEditorData } from './groupTypes';
 
 export function useGroupState(): UseGroupStateReturn {
-  const [groupStyles, setGroupStyles] = useState<GroupStyleAnnotation[]>([]);
+  const [groups, setGroups] = useState<GroupStyleAnnotation[]>([]);
   const [editingGroup, setEditingGroup] = useState<GroupEditorData | null>(null);
 
   const lastStyleRef = useRef<Partial<GroupStyleAnnotation>>({});
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveGroupStylesToExtension = useCallback(
-    (updatedStyles: GroupStyleAnnotation[]) => {
+  const saveGroupsToExtension = useCallback(
+    (updatedGroups: GroupStyleAnnotation[]) => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       saveTimeoutRef.current = setTimeout(() => {
         sendCommandToExtension('save-group-style-annotations', {
-          annotations: updatedStyles
+          annotations: updatedGroups
         });
-        log.info(`[Groups] Saved ${updatedStyles.length} group styles`);
+        log.info(`[Groups] Saved ${updatedGroups.length} overlay groups`);
       }, GROUP_SAVE_DEBOUNCE_MS);
     },
     []
@@ -40,11 +40,11 @@ export function useGroupState(): UseGroupStateReturn {
   }, []);
 
   return {
-    groupStyles,
-    setGroupStyles,
+    groups,
+    setGroups,
     editingGroup,
     setEditingGroup,
-    saveGroupStylesToExtension,
+    saveGroupsToExtension,
     lastStyleRef
   };
 }

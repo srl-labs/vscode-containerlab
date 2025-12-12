@@ -15,7 +15,7 @@ import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
 import { BulkLinkPanel } from './components/panels/bulk-link';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
-import { FreeTextLayer, FreeShapeLayer } from './components/annotations';
+import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
 import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
 import { GroupEditorPanel } from './components/panels/group-editor';
@@ -41,6 +41,9 @@ import {
   useAppGroups,
   useCombinedAnnotationApplier,
   useAppGroupUndoHandlers,
+  useGroupPositionHandler,
+  useGroupDragMoveHandler,
+  useGroupLayer,
   useNodeReparent,
   // UI hooks
   useKeyboardShortcuts,
@@ -422,10 +425,7 @@ export const App: React.FC = () => {
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
-    onShowLinkProperties: menuHandlers.handleShowLinkProperties,
-    onEditGroup: groups.editGroup,
-    onDeleteGroup: deleteGroupWithUndo,
-    onReleaseFromGroup: groups.releaseNodeFromGroup
+    onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
 
   // Set up node dragging based on lock state
@@ -436,11 +436,22 @@ export const App: React.FC = () => {
     onMoveComplete: handleMoveComplete
   });
 
-  // Set up drag-to-reparent for groups
+  // Set up drag-to-reparent for groups (overlay-based)
   useNodeReparent(cyInstance, {
     mode: state.mode,
     isLocked: state.isLocked
-  }, deleteGroupWithUndo);
+  }, {
+    groups: groups.groups,
+    addNodeToGroup: groups.addNodeToGroup,
+    removeNodeFromGroup: groups.removeNodeFromGroup
+  });
+
+  // Handlers for group dragging - position change and real-time node movement
+  const handleGroupPositionChange = useGroupPositionHandler({ cyInstance, groups });
+  const handleGroupDragMove = useGroupDragMoveHandler({ cyInstance, groups });
+
+  // Create group background + interaction layers using cytoscape-layers
+  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cyInstance);
 
   // Shortcut display hook
   const shortcutDisplay = useShortcutDisplay();
@@ -539,6 +550,18 @@ export const App: React.FC = () => {
       />
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
+        <GroupLayer
+          cy={cyInstance}
+          groups={groups.groups}
+          backgroundLayerNode={backgroundLayerNode}
+          interactionLayerNode={interactionLayerNode}
+          isLocked={state.isLocked}
+          onGroupEdit={groups.editGroup}
+          onGroupDelete={deleteGroupWithUndo}
+          onPositionChange={handleGroupPositionChange}
+          onDragMove={handleGroupDragMove}
+          onSizeChange={groups.updateGroupSize}
+        />
 	        <FreeTextLayer
 	          cy={cyInstance}
 	          annotations={freeTextAnnotations.annotations}
@@ -658,7 +681,7 @@ export const App: React.FC = () => {
           onSave={groups.saveGroup}
           onClose={groups.closeEditor}
           onDelete={groups.deleteGroup}
-          onStyleChange={groups.updateGroupStyle}
+          onStyleChange={groups.updateGroup}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
       </main>
