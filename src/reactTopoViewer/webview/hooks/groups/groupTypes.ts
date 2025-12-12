@@ -110,4 +110,5 @@ export interface UseGroupsReturn {
   getGroupMembers: (groupId: string) => string[];
   addNodeToGroup: (nodeId: string, groupId: string) => void;
   removeNodeFromGroup: (nodeId: string) => void;
+  initializeMembership: (memberships: Array<{ nodeId: string; groupId: string }>) => void;
 }

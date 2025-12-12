@@ -346,6 +346,18 @@ function useNodeGroupMembership(
   // Track node memberships (node ID -> group ID)
   const membershipRef = useRef<Map<string, string>>(new Map());
 
+  // Initialize membership from loaded node annotations
+  const initializeMembership = useCallback(
+    (memberships: Array<{ nodeId: string; groupId: string }>): void => {
+      membershipRef.current.clear();
+      for (const { nodeId, groupId } of memberships) {
+        membershipRef.current.set(nodeId, groupId);
+      }
+      log.info(`[Groups] Initialized ${memberships.length} node memberships from annotations`);
+    },
+    []
+  );
+
   const getGroupMembers = useCallback(
     (groupId: string): string[] => {
       const members: string[] = [];
@@ -391,7 +403,7 @@ function useNodeGroupMembership(
     [mode, isLocked]
   );
 
-  return { findGroupAtPosition, getGroupMembers, addNodeToGroup, removeNodeFromGroup };
+  return { findGroupAtPosition, getGroupMembers, addNodeToGroup, removeNodeFromGroup, initializeMembership };
 }
 
 /**
@@ -470,7 +482,8 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       findGroupAtPosition: membership.findGroupAtPosition,
       getGroupMembers: membership.getGroupMembers,
       addNodeToGroup: membership.addNodeToGroup,
-      removeNodeFromGroup: membership.removeNodeFromGroup
+      removeNodeFromGroup: membership.removeNodeFromGroup,
+      initializeMembership: membership.initializeMembership
     }),
     [
       groups, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,

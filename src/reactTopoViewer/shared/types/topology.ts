@@ -188,6 +188,7 @@ export interface NodeAnnotation {
   groupLabelPos?: string;
   group?: string;
   level?: string;
+  interfacePattern?: string;
 }
 
 /**

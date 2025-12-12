@@ -37,9 +37,8 @@ function findGroupForNode(node: NodeSingular, groups: GroupStyleAnnotation[]): G
 }
 
 function saveNodeMembership(nodeId: string, groupId: string | null): void {
-  const data = groupId
-    ? { nodeId, ...parseGroupId(groupId) }
-    : { nodeId, group: null, level: null };
+  const { name, level } = groupId ? parseGroupId(groupId) : { name: null, level: null };
+  const data = { nodeId, group: name, level };
   sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, data);
 }
 
