@@ -28,6 +28,8 @@ interface DevState {
     nodeAnnotations: unknown[];
   };
   clipboard: unknown | null;
+  graphBatchDepth: number;
+  pendingTopologyBroadcast: boolean;
 }
 
 const devState: DevState = {
@@ -37,7 +39,9 @@ const devState: DevState = {
     freeTextAnnotations: [],
     nodeAnnotations: []
   },
-  clipboard: null
+  clipboard: null,
+  graphBatchDepth: 0,
+  pendingTopologyBroadcast: false
 };
 
 // ============================================================================
@@ -80,6 +84,21 @@ function handleMockExtensionResponse(message: MockMessage) {
   // Messages can use either 'type' or 'command' field
   const messageType = (message.command || message.type) as string;
 
+  const maybeBroadcastTopologyData = () => {
+    if (devState.graphBatchDepth > 0) {
+      devState.pendingTopologyBroadcast = true;
+      return;
+    }
+    // React TopoViewer updates the graph based on incoming 'topology-data' messages.
+    // Some features (e.g. bulk link creation) only persist via postMessage and rely
+    // on an extension refresh; in dev mode we simulate that refresh here.
+    window.postMessage({
+      type: 'topology-data',
+      data: { elements: [...devState.currentElements] }
+    }, '*');
+    devState.pendingTopologyBroadcast = false;
+  };
+
   // Add artificial delays to simulate real extension behavior
   switch (messageType) {
     case 'deployLab':
@@ -101,6 +120,18 @@ function handleMockExtensionResponse(message: MockMessage) {
         }, '*');
       }, 500);
       break;
+
+    case 'begin-graph-batch':
+      devState.graphBatchDepth += 1;
+      break;
+
+    case 'end-graph-batch': {
+      devState.graphBatchDepth = Math.max(0, devState.graphBatchDepth - 1);
+      if (devState.graphBatchDepth === 0 && devState.pendingTopologyBroadcast) {
+        maybeBroadcastTopologyData();
+      }
+      break;
+    }
 
     case 'save-node-editor':
     case 'apply-node-editor':
@@ -141,18 +172,27 @@ function handleMockExtensionResponse(message: MockMessage) {
       console.log('%c[Mock Extension]', 'color: #FF9800;', 'Creating node:', message);
       const { nodeId, nodeData, position } = message as { nodeId: string; nodeData: Record<string, unknown>; position: { x: number; y: number } };
       if (nodeId && nodeData) {
+        const exists = devState.currentElements.some(el => el.group === 'nodes' && el.data.id === nodeId);
+        if (exists) break;
         // Add new node to elements
-        devState.currentElements.push({
-          group: 'nodes',
-          data: { id: nodeId, ...nodeData },
-          position: position || { x: 100, y: 100 }
-        });
+        const nodePosition = position || { x: 100, y: 100 };
+        devState.currentElements = [
+          ...devState.currentElements,
+          {
+            group: 'nodes',
+            data: { id: nodeId, ...nodeData },
+            position: nodePosition
+          }
+        ];
         // Add to node annotations
         (devState.currentAnnotations.nodeAnnotations as Array<{ id: string; position: { x: number; y: number } }>).push({
           id: nodeId,
-          position: position || { x: 100, y: 100 }
+          position: nodePosition
         });
         updateSplitViewContent();
+        if (devState.graphBatchDepth > 0) {
+          devState.pendingTopologyBroadcast = true;
+        }
       }
       break;
     }
@@ -161,17 +201,27 @@ function handleMockExtensionResponse(message: MockMessage) {
       console.log('%c[Mock Extension]', 'color: #FF9800;', 'Creating link:', message);
       const { linkData } = message as { linkData: { id: string; source: string; target: string; sourceEndpoint?: string; targetEndpoint?: string } };
       if (linkData) {
-        devState.currentElements.push({
-          group: 'edges',
-          data: {
-            id: linkData.id,
-            source: linkData.source,
-            target: linkData.target,
-            sourceEndpoint: linkData.sourceEndpoint || 'eth1',
-            targetEndpoint: linkData.targetEndpoint || 'eth1'
-          }
-        });
+        const edgeId = linkData.id;
+        const exists = devState.currentElements.some(el => el.group === 'edges' && el.data.id === edgeId);
+        if (!exists) {
+          devState.currentElements = [
+            ...devState.currentElements,
+            {
+              group: 'edges',
+              data: {
+                id: edgeId,
+                source: linkData.source,
+                target: linkData.target,
+                sourceEndpoint: linkData.sourceEndpoint || 'eth1',
+                targetEndpoint: linkData.targetEndpoint || 'eth1'
+              }
+            }
+          ];
+        }
         updateSplitViewContent();
+        if (devState.graphBatchDepth > 0) {
+          devState.pendingTopologyBroadcast = true;
+        }
       }
       break;
     }
@@ -190,6 +240,9 @@ function handleMockExtensionResponse(message: MockMessage) {
         devState.currentAnnotations.nodeAnnotations = (devState.currentAnnotations.nodeAnnotations as Array<{ id: string }>)
           .filter(a => a.id !== nodeId);
         updateSplitViewContent();
+        if (devState.graphBatchDepth > 0) {
+          devState.pendingTopologyBroadcast = true;
+        }
       }
       break;
     }
@@ -202,6 +255,9 @@ function handleMockExtensionResponse(message: MockMessage) {
           !(el.group === 'edges' && el.data.id === edgeId)
         );
         updateSplitViewContent();
+        if (devState.graphBatchDepth > 0) {
+          devState.pendingTopologyBroadcast = true;
+        }
       }
       break;
     }
