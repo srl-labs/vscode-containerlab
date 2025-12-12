@@ -46,6 +46,19 @@ const CENTER_TRANSLATE = 'translate(-50%, -50%)';
 
 const RotationHandle: React.FC<{ onMouseDown: (e: React.MouseEvent) => void }> = ({ onMouseDown }) => (
   <>
+    {/* Wider invisible hit area for easier access to rotation handle */}
+    <div
+      style={{
+        position: 'absolute',
+        top: `-${ROTATION_HANDLE_OFFSET}px`,
+        left: '50%',
+        width: '16px',
+        height: `${ROTATION_HANDLE_OFFSET + 4}px`,
+        transform: 'translateX(-50%)',
+        pointerEvents: 'auto'
+      }}
+    />
+    {/* Visual connecting line */}
     <div
       style={{
         position: 'absolute',
@@ -463,17 +476,15 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
 
   return (
     <>
-      <div
-        style={wrapperStyle}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <div style={wrapperStyle}>
         <div
           ref={contentRef}
           style={contentStyle}
           onClick={handleClick}
           onMouseDown={handleMouseDown}
           onContextMenu={handleContextMenu}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           title={isLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
         >
           {svg}

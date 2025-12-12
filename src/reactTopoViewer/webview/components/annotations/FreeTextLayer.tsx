@@ -49,6 +49,18 @@ interface RotationHandleProps {
 
 const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown }) => (
   <>
+    {/* Wider invisible hit area for easier access to rotation handle */}
+    <div
+      style={{
+        position: 'absolute',
+        top: `-${ROTATION_HANDLE_OFFSET}px`,
+        left: '50%',
+        width: '16px',
+        height: `${ROTATION_HANDLE_OFFSET + 4}px`,
+        transform: 'translateX(-50%)',
+        pointerEvents: 'auto'
+      }}
+    />
     {/* Line connecting to rotation handle */}
     <div
       style={{
@@ -368,11 +380,7 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
 
   return (
     <>
-      <div
-        style={wrapperStyle}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <div style={wrapperStyle}>
         <div
           ref={contentRef}
           style={contentStyle}
@@ -380,6 +388,8 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onContextMenu={handleContextMenu}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           title={isLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
         >
           {/* Markdown content with scrolling when resized */}
