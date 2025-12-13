@@ -363,7 +363,7 @@ const TopologyEdgeComponent: React.FC<EdgeProps<TopologyEdgeData>> = ({ id, sour
   return (
     <>
       <path id={`${id}-interaction`} d={geometry.path} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: 'pointer' }} />
-      <path id={id} d={geometry.path} fill="none" stroke={stroke.color} style={{ cursor: 'pointer', opacity: stroke.opacity, strokeWidth: stroke.width }} className="react-flow__edge-path" />
+      <path id={id} d={geometry.path} fill="none" style={{ cursor: 'pointer', opacity: stroke.opacity, strokeWidth: stroke.width, stroke: stroke.color }} className="react-flow__edge-path" />
       <EdgeLabelRenderer>
         {data?.sourceEndpoint && <EndpointLabel text={data.sourceEndpoint} x={geometry.sourceLabelPos.x} y={geometry.sourceLabelPos.y} />}
         {data?.targetEndpoint && <EndpointLabel text={data.targetEndpoint} x={geometry.targetLabelPos.x} y={geometry.targetLabelPos.y} />}
