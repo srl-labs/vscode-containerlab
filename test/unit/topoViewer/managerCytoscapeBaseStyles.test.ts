@@ -1,7 +1,7 @@
 /* eslint-env mocha */
 /* global describe, it, before, beforeEach, after, global */
 import { expect } from 'chai';
-import { getCytoscapeStyles, extractNodeIcons } from '../../../src/topoViewer/webview-ui/managerCytoscapeBaseStyles';
+import { getCytoscapeStyles, extractNodeIcons } from '../../../src/topoViewer/webview/features/canvas/BaseStyles';
 
 describe('managerCytoscapeBaseStyles', () => {
   let originalWindow: any;

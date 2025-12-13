@@ -16,8 +16,8 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { TopoViewerAdaptorClab } from '../../../src/topoViewer/core/topoViewerAdaptorClab';
-import * as treeUtils from '../../../src/topoViewer/utilities/treeUtils';
+import { TopoViewerAdaptorClab } from '../../../src/topoViewer/extension/services/TopologyAdapter';
+import * as treeUtils from '../../../src/topoViewer/extension/services/TreeUtils';
 
 describe('buildCytoscapeElements delegation', () => {
   after(() => {
@@ -66,8 +66,9 @@ describe('buildCytoscapeElements delegation', () => {
     const elements = await adaptor.clabYamlToCytoscapeElementsEditor(yaml);
     const dummyNodes = elements.filter((e: any) => e.group === 'nodes' && e.data.id.startsWith('dummy'));
     expect(dummyNodes).to.have.length(2);
-    expect(dummyNodes[0].data.name).to.equal('dummy');
-    expect(dummyNodes[1].data.name).to.equal('dummy');
+    const names = dummyNodes.map((node: any) => node.data.name);
+    expect(names.every((name: string) => name.startsWith('dummy'))).to.be.true;
+    expect(new Set(names).size).to.equal(names.length);
     expect(dummyNodes[0].data.id).to.not.equal(dummyNodes[1].data.id);
   });
 });

@@ -1,0 +1,458 @@
+// UiHandlers.ts - UI event handlers for TopoViewer TypeScript version
+// Contains functions referenced by onclick handlers in the HTML template
+
+// Import logger for webview
+import { log } from '../platform/logging/logger';
+import { VscodeMessageSender } from '../platform/messaging/VscodeMessaging';
+import { exportViewportAsSvg } from './Utils';
+import topoViewerState from '../app/state';
+import { zoomToFitManager } from '../core/managerRegistry';
+import { FilterUtils } from '../../../helpers/filterUtils';
+import { normalizeLinkLabelMode, linkLabelModeLabel, type LinkLabelMode } from '../types/linkLabelMode';
+
+// Common class and display constants
+// const CLASS_PANEL_OVERLAY = 'panel-overlay' as const;
+const CLASS_VIEWPORT_DRAWER = 'viewport-drawer' as const;
+const DISPLAY_BLOCK = 'block' as const;
+const DISPLAY_NONE = 'none' as const;
+const ERR_NO_CY = 'Cytoscape instance not available' as const;
+const LINK_LABEL_MENU_ID = 'viewport-link-label-menu' as const;
+const LINK_LABEL_TRIGGER_ID = 'viewport-link-label-button' as const;
+const CAPTURE_PANEL_ID = 'viewport-drawer-capture-sceenshoot' as const;
+
+// Global message sender instance
+let messageSender: VscodeMessageSender | null = null;
+let linkLabelMenuListenersInitialized = false;
+
+function getLinkLabelMenu(): HTMLElement | null {
+  return document.getElementById(LINK_LABEL_MENU_ID);
+}
+
+function getLinkLabelTrigger(): HTMLButtonElement | null {
+  return document.getElementById(LINK_LABEL_TRIGGER_ID) as HTMLButtonElement | null;
+}
+
+function updateLinkLabelMenuSelection(mode: LinkLabelMode): void {
+  const menu = getLinkLabelMenu();
+  if (menu) {
+    const options = menu.querySelectorAll<HTMLButtonElement>('[data-mode]');
+    options.forEach(option => {
+      const optionMode = normalizeLinkLabelMode(option.dataset.mode ?? '');
+      const isSelected = optionMode === mode;
+      option.dataset.selected = isSelected ? 'true' : 'false';
+      option.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+    });
+  }
+
+  const trigger = getLinkLabelTrigger();
+  if (trigger) {
+    const label = linkLabelModeLabel(mode);
+    const description = `Link labels: ${label}`;
+    trigger.dataset.mode = mode;
+    trigger.setAttribute('aria-label', description);
+    trigger.setAttribute('title', description);
+  }
+}
+
+function setTriggerExpanded(expanded: boolean): void {
+  const trigger = getLinkLabelTrigger();
+  if (trigger) {
+    trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+}
+
+function openLinkLabelMenu(): void {
+  const menu = getLinkLabelMenu();
+  if (menu) {
+    menu.classList.remove('hidden');
+  }
+  setTriggerExpanded(true);
+}
+
+function closeLinkLabelMenu(): void {
+  const menu = getLinkLabelMenu();
+  if (menu) {
+    menu.classList.add('hidden');
+  }
+  setTriggerExpanded(false);
+}
+
+function ensureLinkLabelMenuListeners(): void {
+  if (linkLabelMenuListenersInitialized) {
+    return;
+  }
+  linkLabelMenuListenersInitialized = true;
+
+  document.addEventListener('click', event => {
+    const menu = getLinkLabelMenu();
+    if (!menu || menu.classList.contains('hidden')) {
+      return;
+    }
+    const trigger = getLinkLabelTrigger();
+    const target = event.target as Node | null;
+    if (trigger?.contains(target) || menu.contains(target)) {
+      return;
+    }
+    closeLinkLabelMenu();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeLinkLabelMenu();
+    }
+  });
+}
+
+// Initialize message sender on first use
+function getMessageSender(): VscodeMessageSender {
+  if (topoViewerState.editorEngine?.messageSender) {
+    return topoViewerState.editorEngine.messageSender;
+  }
+  if (!messageSender) {
+    try {
+      messageSender = new VscodeMessageSender(log);
+    } catch (error) {
+      log.error(`Failed to initialize VscodeMessageSender: ${error}`);
+      throw error;
+    }
+  }
+  return messageSender;
+}
+
+
+/**
+ * Toggle the About panel
+ */
+export async function showPanelAbout(): Promise<void> {
+  try {
+    const aboutPanel = document.getElementById("panel-topoviewer-about");
+    if (!aboutPanel) {
+      log.error('About panel element not found');
+      return;
+    }
+
+    // Check if panel is currently visible
+    if (aboutPanel.style.display === DISPLAY_BLOCK) {
+      // Hide the panel
+      aboutPanel.style.display = DISPLAY_NONE;
+    } else {
+      // Allow multiple panels to be open at once
+      // Remove all overlay panels first
+      // const panelOverlays = document.getElementsByClassName(CLASS_PANEL_OVERLAY);
+      // for (let i = 0; i < panelOverlays.length; i++) {
+      //   (panelOverlays[i] as HTMLElement).style.display = DISPLAY_NONE;
+      // }
+
+      // Hide shortcuts panel if open
+      const shortcutsPanel = document.getElementById('shortcuts-panel');
+      if (shortcutsPanel) {
+        shortcutsPanel.style.display = 'none';
+      }
+
+      // Get environment data if available
+      let environments: any = null;
+      try {
+        if (typeof (globalThis as any).getEnvironments === 'function') {
+          environments = await (globalThis as any).getEnvironments();
+        }
+      } catch (error) {
+        log.warn(`Could not load environment data for about panel: ${error}`);
+      }
+
+      if (environments) {
+        log.debug('Environment data loaded for about panel');
+        const topoViewerVersion = environments["topoviewer-version"];
+        log.info(`TopoViewer version: ${topoViewerVersion}`);
+      }
+
+      // Show the about panel
+      aboutPanel.style.display = DISPLAY_BLOCK;
+    }
+  } catch (error) {
+    log.error(`Error toggling about panel: ${error}`);
+  }
+}
+
+/**
+ * Zoom to fit all nodes in the viewport
+ */
+export function viewportButtonsZoomToFit(): void {
+  try {
+    if (!topoViewerState.cy) {
+      log.error(ERR_NO_CY);
+      return;
+    }
+
+    zoomToFitManager.viewportButtonsZoomToFit(topoViewerState.cy);
+  } catch (error) {
+    log.error(`Error in zoom to fit: ${error}`);
+  }
+}
+
+
+/**
+ * Show/hide topology overview panel
+ */
+export function viewportButtonsTopologyOverview(): void {
+  try {
+    const overviewDrawer = document.getElementById("viewport-drawer-topology-overview");
+    if (!overviewDrawer) {
+      log.warn('Topology overview drawer not found');
+      return;
+    }
+
+    // Toggle visibility
+    if (overviewDrawer.style.display === DISPLAY_BLOCK) {
+      overviewDrawer.style.display = DISPLAY_NONE;
+    } else {
+      // Hide all viewport drawers first
+      const viewportDrawer = document.getElementsByClassName(CLASS_VIEWPORT_DRAWER);
+      for (let i = 0; i < viewportDrawer.length; i++) {
+        (viewportDrawer[i] as HTMLElement).style.display = DISPLAY_NONE;
+      }
+      // Show the topology overview drawer
+      overviewDrawer.style.display = DISPLAY_BLOCK;
+    }
+  } catch (error) {
+    log.error(`Error in topology overview button: ${error}`);
+  }
+}
+
+/**
+ * Update the link label display mode across the viewer.
+ */
+export function viewportSetLinkLabelMode(rawMode: string | LinkLabelMode): void {
+  try {
+    const normalized = typeof rawMode === 'string' ? normalizeLinkLabelMode(rawMode) : rawMode;
+    const manager = topoViewerState.editorEngine?.labelEndpointManager;
+    if (manager) {
+      manager.setMode(normalized);
+    } else {
+      topoViewerState.linkLabelMode = normalized;
+      updateLinkLabelMenuSelection(normalized);
+    }
+  } catch (error) {
+    log.error(`Error updating link label mode: ${error}`);
+  }
+}
+
+export function viewportToggleLinkLabelMenu(event?: MouseEvent): void {
+  try {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const menu = getLinkLabelMenu();
+    if (!menu) {
+      log.warn('Link label menu element not found');
+      return;
+    }
+
+    ensureLinkLabelMenuListeners();
+    if (menu.classList.contains('hidden')) {
+      updateLinkLabelMenuSelection(topoViewerState.linkLabelMode);
+      openLinkLabelMenu();
+    } else {
+      closeLinkLabelMenu();
+    }
+  } catch (error) {
+    log.error(`Error toggling link label menu: ${error}`);
+  }
+}
+
+export function viewportSelectLinkLabelMode(mode: string): void {
+  viewportSetLinkLabelMode(mode);
+  closeLinkLabelMenu();
+}
+
+export function viewportCloseLinkLabelMenu(): void {
+  closeLinkLabelMenu();
+}
+
+/**
+ * Toggle dummy links visibility in the topology viewer.
+ */
+export function viewportToggleDummyLinks(event?: MouseEvent): void {
+  try {
+    event?.preventDefault();
+    const manager = topoViewerState.editorEngine?.dummyLinksManager;
+    if (manager) {
+      manager.toggle();
+    } else {
+      // Fallback: toggle state directly and apply via singleton
+      const { dummyLinksManager } = require('../core/managerRegistry');
+      dummyLinksManager.toggle();
+    }
+  } catch (error) {
+    log.error(`Error toggling dummy links: ${error}`);
+  }
+}
+
+/**
+ * Search for nodes in the topology
+ */
+function getTopologySearchInput(): HTMLInputElement | null {
+  let searchInput = document.getElementById(
+    'viewport-drawer-topology-overview-content-edit'
+  ) as HTMLInputElement | null;
+  if (!searchInput) {
+    const container = document.getElementById(
+      'viewport-drawer-topology-overview-content'
+    );
+    if (container) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'relative';
+
+      searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.id = 'viewport-drawer-topology-overview-content-edit';
+      searchInput.placeholder = 'Search for nodes ...';
+      searchInput.className = 'input-field pl-8 pr-3 text-sm';
+
+      const icon = document.createElement('span');
+      icon.className = 'absolute left-2 top-1/2 transform -translate-y-1/2';
+      icon.innerHTML = '<i class="fas fa-search" aria-hidden="true"></i>';
+
+      wrapper.appendChild(searchInput);
+      wrapper.appendChild(icon);
+
+      container.prepend(wrapper);
+    }
+  }
+  return searchInput;
+}
+
+export function viewportNodeFindEvent(): void {
+  try {
+    const searchInput = getTopologySearchInput();
+    if (!searchInput) {
+      log.error('Search input element not found');
+      return;
+    }
+
+    const searchTerm = searchInput.value.trim();
+    if (!searchTerm) {
+      log.warn('No search term entered');
+      return;
+    }
+
+    if (!topoViewerState.cy) {
+      log.error(ERR_NO_CY);
+      return;
+    }
+    const cy = topoViewerState.cy;
+
+    const filter = FilterUtils.createFilter(searchTerm);
+
+    // Search for nodes by name or longname
+    const matchingNodes = cy.nodes().filter((node: any) => {
+      const data = node.data();
+      const shortName = data.name || '';
+      const longName = data.extraData?.longname || '';
+      const combined = `${shortName} ${longName}`;
+      return filter(combined);
+    });
+
+    if (matchingNodes.length > 0) {
+      // Select matching nodes
+      cy.elements().unselect();
+      matchingNodes.select();
+
+      // Fit to show selected nodes (or entire map if Geo layout active)
+      const layoutManager = window.layoutManager;
+      if (layoutManager?.isGeoMapInitialized && layoutManager.cytoscapeLeafletLeaf) {
+        layoutManager.cytoscapeLeafletLeaf.fit();
+      } else {
+        cy.fit(matchingNodes, 50);
+      }
+
+      log.info(`Found ${matchingNodes.length} nodes matching: ${searchTerm}`);
+    } else {
+      log.warn(`No nodes found matching: ${searchTerm}`);
+    }
+  } catch (error) {
+    log.error(`Error in node search: ${error}`);
+  }
+}
+
+/**
+ * Handle capture/screenshot functionality
+ */
+export async function viewportDrawerCaptureFunc(event: Event): Promise<void> {
+  event.preventDefault();
+  try {
+    if (!topoViewerState.cy) {
+      log.error(ERR_NO_CY);
+      return;
+    }
+
+    const borderZoomInput = document.getElementById('export-border-zoom') as HTMLInputElement | null;
+    const borderPaddingInput = document.getElementById('export-border-padding') as HTMLInputElement | null;
+
+    const borderZoom = borderZoomInput ? parseFloat(borderZoomInput.value) : 100;
+    const borderPadding = borderPaddingInput ? parseFloat(borderPaddingInput.value) : 0;
+
+    await exportViewportAsSvg(topoViewerState.cy, {
+      borderZoom,
+      borderPadding
+    });
+
+    const panel = document.getElementById(CAPTURE_PANEL_ID);
+    if (panel) {
+      panel.style.display = 'none';
+    }
+  } catch (error) {
+    log.error(`Error capturing topology: ${error}`);
+  }
+}
+
+/**
+ * Capture viewport as SVG - called by the navbar button
+ */
+export function viewportButtonsCaptureViewportAsSvg(): void {
+  const panel = document.getElementById(CAPTURE_PANEL_ID);
+  if (!panel) return;
+
+  const isVisible = panel.style.display === 'block';
+  const drawers = document.getElementsByClassName('viewport-drawer');
+  for (let i = 0; i < drawers.length; i++) {
+    (drawers[i] as HTMLElement).style.display = 'none';
+  }
+
+  panel.style.display = isVisible ? 'none' : 'block';
+}
+
+/**
+ * Toggle split view with YAML editor
+ */
+export async function viewportButtonsToggleSplit(event?: Event): Promise<void> {
+  if (event) {
+    event.preventDefault();
+  }
+
+  try {
+    const sender = getMessageSender();
+    await sender.sendMessageToVscodeEndpointPost('topo-toggle-split-view', {});
+    log.info('Split view toggle requested');
+  } catch (error) {
+    log.error(`Failed to toggle split view: ${error}`);
+  }
+}
+
+/**
+ * Initialize global handlers - make functions available globally for onclick handlers
+ */
+export function initializeGlobalHandlers(): void {
+  // Make functions available globally for HTML onclick handlers
+  (globalThis as any).showPanelAbout = showPanelAbout;
+  // Note: Most viewport button handlers are now managed by TopologyWebviewController
+  // Only set view-specific handlers here that are not provided by the controller
+  (globalThis as any).viewportNodeFindEvent = viewportNodeFindEvent;
+  (globalThis as any).viewportDrawerCaptureFunc = viewportDrawerCaptureFunc;
+  (globalThis as any).viewportButtonsToggleSplit = viewportButtonsToggleSplit;
+  (globalThis as any).viewportSetLinkLabelMode = viewportSetLinkLabelMode;
+  (globalThis as any).viewportToggleLinkLabelMenu = viewportToggleLinkLabelMenu;
+  (globalThis as any).viewportSelectLinkLabelMode = viewportSelectLinkLabelMode;
+  (globalThis as any).viewportCloseLinkLabelMenu = viewportCloseLinkLabelMenu;
+  (globalThis as any).viewportToggleDummyLinks = viewportToggleDummyLinks;
+
+  log.info('Global UI handlers initialized');
+}

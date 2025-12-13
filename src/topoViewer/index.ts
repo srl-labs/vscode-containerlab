@@ -1,1 +1,1 @@
-export { TopoViewerEditor as TopoViewer } from './providers/topoViewerEditorWebUiFacade';
+export { TopoViewerEditor as TopoViewer } from './extension/services/EditorProvider';

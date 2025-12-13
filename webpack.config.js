@@ -7,7 +7,7 @@ const editorConfig = {
   cache: {
     type: 'filesystem'
   },
-  entry: './src/topoViewer/webview-ui/index.ts',
+  entry: './src/topoViewer/webview/app/entry.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'topologyEditorWebviewController.js',

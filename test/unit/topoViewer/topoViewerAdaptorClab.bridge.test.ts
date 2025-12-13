@@ -1,7 +1,7 @@
 /* eslint-env mocha */
 /* global describe, it */
 import { expect } from 'chai';
-import { TopoViewerAdaptorClab } from '../../../src/topoViewer/core/topoViewerAdaptorClab';
+import { TopoViewerAdaptorClab } from '../../../src/topoViewer/extension/services/TopologyAdapter';
 
 describe('TopoViewerAdaptorClab bridge nodes', () => {
   it('assigns bridge topoViewerRole for bridge kinds', async () => {
@@ -22,4 +22,3 @@ topology:
     expect(ovs?.data?.topoViewerRole).to.equal('bridge');
   });
 });
-

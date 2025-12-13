@@ -1,5 +1,5 @@
-import * as vscode from "vscode";
-import * as utils from "../utils/utils";
+import * as vscode from 'vscode';
+import * as utils from '../utils/index';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
 
 const ERR_NO_LAB_NODE = 'No lab node selected.';
@@ -38,7 +38,6 @@ export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
     return;
   }
 
-
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied IPv4 address to clipboard succesfully.`);
   });
@@ -58,7 +57,6 @@ export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
     return;
   }
 
-
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied IPv6 address to clipboard succesfully.`);
   });
@@ -76,7 +74,6 @@ export function copyContainerName(node: ClabContainerTreeNode) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch container hostname.`);
     return;
   }
-
 
   vscode.env.clipboard.writeText(containerName).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied hostname to clipboard succesfully.`);
@@ -97,7 +94,6 @@ export function copyContainerID(node: ClabContainerTreeNode) {
     return;
   }
 
-
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied ID to clipboard succesfully.`);
   });
@@ -116,7 +112,6 @@ export function copyContainerKind(node: ClabContainerTreeNode) {
     vscode.window.showErrorMessage(`${containerName}: Could not fetch kind.`);
     return;
   }
-
 
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied kind to clipboard succesfully.`);
@@ -137,7 +132,6 @@ export function copyContainerImage(node: ClabContainerTreeNode) {
     return;
   }
 
-
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${containerName}: Copied image to clipboard succesfully.`);
   });
@@ -157,10 +151,7 @@ export function copyMACAddress(node: ClabInterfaceTreeNode) {
     return;
   }
 
-
   vscode.env.clipboard.writeText(data).then(() => {
     vscode.window.showInformationMessage(`${intfName}: Copied MAC address to clipboard succesfully.`);
   });
-
-
 }

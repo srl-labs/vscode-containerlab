@@ -2,8 +2,8 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import cytoscape from 'cytoscape';
-import { ManagerGroupManagement } from '../../../src/topoViewer/webview-ui/managerGroupManagement';
-import { ManagerGroupStyle } from '../../../src/topoViewer/webview-ui/managerGroupStyle';
+import { GroupManager } from '../../../src/topoViewer/webview/features/groups/GroupManager';
+import { GroupStyleManager } from '../../../src/topoViewer/webview/features/groups/GroupStyleManager';
 
 // ensure window is available for global assignments
 (globalThis as any).window = globalThis;
@@ -17,8 +17,8 @@ describe('group manager global bindings', () => {
     ] });
 
     const messageSender = { sendMessageToVscodeEndpointPost: async () => ({}) } as any;
-    const gsm = new ManagerGroupStyle(cy, messageSender);
-    const mgr = new ManagerGroupManagement(cy, gsm, 'edit');
+    const gsm = new GroupStyleManager(cy, messageSender);
+    const mgr = new GroupManager(cy, gsm, 'edit');
     (window as any).nodeParentPropertiesUpdate = mgr.nodeParentPropertiesUpdate.bind(mgr);
 
     const elements: Record<string, any> = {

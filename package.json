@@ -1401,10 +1401,10 @@
     "lint": "npm-run-all lint:ts lint:html",
     "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
     "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
-    "lint:html": "prettier --check \"src/topoViewer/templates/**/*.html\"",
+    "lint:html": "prettier --check \"src/topoViewer/webview/assets/templates/**/*.html\"",
     "lint:fix": "npm-run-all lint:ts:fix format:html",
     "format": "npm run format:html",
-    "format:html": "prettier --write \"src/topoViewer/templates/**/*.html\"",
+    "format:html": "prettier --write \"src/topoViewer/webview/assets/templates/**/*.html\"",
     "test": "npm run test:compile && mocha --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
     "test:compile": "tsc -p test/tsconfig.json"
   },

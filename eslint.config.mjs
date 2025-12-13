@@ -52,6 +52,9 @@ export default [
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs.recommendedTypeChecked.rules,
       ...sonarjs.configs.recommended.rules,
+      // Use TypeScript's noUnused* diagnostics instead of duplicating in ESLint
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
       // disallow any trailing whitespace
 
       'no-trailing-spaces': ['error', {
@@ -67,7 +70,13 @@ export default [
       'aggregate-complexity/aggregate-complexity': ['error', { max: 15 }]
 
     },
+  },
+
+  /* ---------- topoViewer: max-lines limit ---------- */
+  {
+    files: ['src/topoViewer/**/*.ts', 'src/topoViewer/**/*.tsx'],
+    rules: {
+      'max-lines': ['error', { max: 1000, skipBlankLines: true, skipComments: true }]
+    }
   }
-
-
 ];

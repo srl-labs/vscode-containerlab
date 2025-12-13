@@ -19,9 +19,9 @@ const originalResolve = (Module as any)._resolveFilename;
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { saveViewport } from '../../../src/topoViewer/utilities/saveViewport';
-import { annotationsManager } from '../../../src/topoViewer/utilities/annotationsManager';
-import { TopoViewerAdaptorClab } from '../../../src/topoViewer/core/topoViewerAdaptorClab';
+import { saveViewport } from '../../../src/topoViewer/extension/services/SaveViewport';
+import { annotationsManager } from '../../../src/topoViewer/extension/services/AnnotationsFile';
+import { TopoViewerAdaptorClab } from '../../../src/topoViewer/extension/services/TopologyAdapter';
 
 describe('saveViewport node type preservation', () => {
   after(() => {

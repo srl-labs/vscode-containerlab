@@ -197,7 +197,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     resolveTreeItem(
         item: vscode.TreeItem,
         element: RunningTreeNode,
-        // eslint-disable-next-line no-unused-vars
         _token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.TreeItem> {
         // Restore the tooltip from our stored property
