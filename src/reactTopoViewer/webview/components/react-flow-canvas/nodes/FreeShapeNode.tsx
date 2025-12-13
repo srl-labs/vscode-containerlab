@@ -1,92 +1,42 @@
 /**
  * FreeShapeNode - Custom React Flow node for free shape annotations
+ * Supports rectangle, circle, and line shapes with resize and rotation handles
  */
-import React, { memo, useMemo, useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 import { type NodeProps, NodeResizer, type ResizeParams } from '@xyflow/react';
 import type { FreeShapeNodeData } from '../types';
 import { SELECTION_COLOR } from '../types';
 import { useTopoViewer } from '../../../context/TopoViewerContext';
 import { useAnnotationHandlers } from '../../../context/AnnotationHandlersContext';
+import { RotationHandle, LineEndHandle } from './AnnotationHandles';
 
-/** Minimum dimensions for resize */
+// ============================================================================
+// Constants
+// ============================================================================
+
 const MIN_WIDTH = 20;
 const MIN_HEIGHT = 20;
+const DEFAULT_LINE_LENGTH = 150;
 
-/**
- * Props for rectangle shape component
- */
-interface RectangleShapeProps {
-  readonly width: number;
-  readonly height: number;
-  readonly fillColor: string;
-  readonly fillOpacity: number;
-  readonly borderWidth: number;
-  readonly borderStyle: string;
-  readonly borderColor: string;
-  readonly cornerRadius: number;
-  readonly selected: boolean;
-}
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-/**
- * Props for circle shape component
- */
-interface CircleShapeProps {
-  readonly width: number;
-  readonly height: number;
-  readonly fillColor: string;
-  readonly fillOpacity: number;
-  readonly borderWidth: number;
-  readonly borderStyle: string;
-  readonly borderColor: string;
-  readonly selected: boolean;
-}
-
-/**
- * Props for arrow marker component
- */
-interface ArrowMarkerProps {
-  readonly id: string;
-  readonly size: number;
-  readonly reversed: boolean;
-  readonly color: string;
-}
-
-/**
- * Props for line shape component
- */
-interface LineShapeProps {
-  readonly width: number;
-  readonly endPosition?: { x: number; y: number };
-  readonly borderColor: string;
-  readonly borderWidth: number;
-  readonly borderStyle: string;
-  readonly lineStartArrow: boolean;
-  readonly lineEndArrow: boolean;
-  readonly lineArrowSize: number;
-  readonly selected: boolean;
-}
-
-/**
- * Convert border style to SVG dash array
- */
+/** Convert border style to SVG dash array */
 function getStrokeDasharray(borderStyle: string): string | undefined {
   if (borderStyle === 'dashed') return '8,4';
   if (borderStyle === 'dotted') return '2,2';
   return undefined;
 }
 
-/**
- * Convert fill color with opacity
- */
+/** Convert fill color with opacity */
 function getBackgroundColor(fillColor: string, fillOpacity: number): string {
   if (fillColor.startsWith('rgba')) return fillColor;
   const opacityHex = Math.round(fillOpacity * 255).toString(16).padStart(2, '0');
   return `${fillColor}${opacityHex}`;
 }
 
-/**
- * Get border style for shapes
- */
+/** Get border style for shapes */
 function getShapeBorder(
   selected: boolean,
   borderWidth: number,
@@ -97,21 +47,22 @@ function getShapeBorder(
   return `${borderWidth}px ${borderStyle} ${borderColor}`;
 }
 
-/** Props for rectangle without dimensions (container handles size) */
-type RectangleShapeWithoutDimensionsProps = Readonly<Omit<RectangleShapeProps, 'width' | 'height'>>;
+// ============================================================================
+// Shape Components
+// ============================================================================
 
-/**
- * Rectangle shape component
- */
-function RectangleShape({
-  fillColor,
-  fillOpacity,
-  borderWidth,
-  borderStyle,
-  borderColor,
-  cornerRadius,
-  selected
-}: RectangleShapeWithoutDimensionsProps) {
+interface RectangleProps {
+  readonly fillColor: string;
+  readonly fillOpacity: number;
+  readonly borderWidth: number;
+  readonly borderStyle: string;
+  readonly borderColor: string;
+  readonly cornerRadius: number;
+  readonly selected: boolean;
+}
+
+function RectangleShape(props: RectangleProps): React.ReactElement {
+  const { fillColor, fillOpacity, borderWidth, borderStyle, borderColor, cornerRadius, selected } = props;
   const style: React.CSSProperties = {
     width: '100%',
     height: '100%',
@@ -124,20 +75,17 @@ function RectangleShape({
   return <div style={style} className="free-shape-rectangle" />;
 }
 
-/** Props for circle without dimensions (container handles size) */
-type CircleShapeWithoutDimensionsProps = Readonly<Omit<CircleShapeProps, 'width' | 'height'>>;
+interface CircleProps {
+  readonly fillColor: string;
+  readonly fillOpacity: number;
+  readonly borderWidth: number;
+  readonly borderStyle: string;
+  readonly borderColor: string;
+  readonly selected: boolean;
+}
 
-/**
- * Circle shape component
- */
-function CircleShape({
-  fillColor,
-  fillOpacity,
-  borderWidth,
-  borderStyle,
-  borderColor,
-  selected
-}: CircleShapeWithoutDimensionsProps) {
+function CircleShape(props: CircleProps): React.ReactElement {
+  const { fillColor, fillOpacity, borderWidth, borderStyle, borderColor, selected } = props;
   const style: React.CSSProperties = {
     width: '100%',
     height: '100%',
@@ -150,15 +98,18 @@ function CircleShape({
   return <div style={style} className="free-shape-circle" />;
 }
 
-/**
- * Arrow marker for line shapes
- */
-function ArrowMarker({
-  id,
-  size,
-  reversed,
-  color
-}: ArrowMarkerProps) {
+// ============================================================================
+// Arrow Marker Component
+// ============================================================================
+
+interface ArrowMarkerProps {
+  readonly id: string;
+  readonly size: number;
+  readonly reversed: boolean;
+  readonly color: string;
+}
+
+function ArrowMarker({ id, size, reversed, color }: ArrowMarkerProps): React.ReactElement {
   const points = reversed
     ? `${size},0 ${size},${size} 0,${size / 2}`
     : `0,0 ${size},${size / 2} 0,${size}`;
@@ -177,139 +128,274 @@ function ArrowMarker({
   );
 }
 
-/**
- * Line shape component
- */
-function LineShape({
-  width,
-  endPosition,
-  borderColor,
-  borderWidth,
-  borderStyle,
-  lineStartArrow,
-  lineEndArrow,
-  lineArrowSize,
-  selected
-}: LineShapeProps) {
-  const x2 = endPosition?.x ?? width;
-  const y2 = endPosition?.y ?? 0;
-  const length = Math.sqrt(x2 * x2 + y2 * y2);
-  const angle = Math.atan2(y2, x2) * (180 / Math.PI);
-  const padding = lineArrowSize + 5;
-  const svgWidth = length + padding * 2;
-  const svgHeight = padding * 2;
+// ============================================================================
+// Line Shape Component
+// ============================================================================
+
+interface LineShapeProps {
+  /** Line start position within node bounds */
+  readonly startX: number;
+  readonly startY: number;
+  /** Relative end position (end - start) */
+  readonly relativeEndX: number;
+  readonly relativeEndY: number;
+  readonly borderColor: string;
+  readonly borderWidth: number;
+  readonly borderStyle: string;
+  readonly lineStartArrow: boolean;
+  readonly lineEndArrow: boolean;
+  readonly lineArrowSize: number;
+  readonly selected: boolean;
+  readonly nodeId: string;
+}
+
+function LineShape(props: LineShapeProps): React.ReactElement {
+  const {
+    startX, startY, relativeEndX, relativeEndY,
+    borderColor, borderWidth, borderStyle,
+    lineStartArrow, lineEndArrow, lineArrowSize, selected, nodeId
+  } = props;
+
+  // Calculate line endpoints within SVG
+  const x1 = startX;
+  const y1 = startY;
+  const x2 = startX + relativeEndX;
+  const y2 = startY + relativeEndY;
+
+  // Unique marker IDs for this node
+  const startMarkerId = `arrow-start-${nodeId}`;
+  const endMarkerId = `arrow-end-${nodeId}`;
 
   return (
     <svg
-      width={svgWidth}
-      height={svgHeight}
+      width="100%"
+      height="100%"
       style={{
-        overflow: 'visible',
-        transform: `rotate(${angle}deg)`,
-        transformOrigin: 'left center'
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        overflow: 'visible'
       }}
       className="free-shape-line"
     >
       <defs>
-        {lineStartArrow && <ArrowMarker id="arrow-start" size={lineArrowSize} reversed color={borderColor} />}
-        {lineEndArrow && <ArrowMarker id="arrow-end" size={lineArrowSize} reversed={false} color={borderColor} />}
+        {lineStartArrow && <ArrowMarker id={startMarkerId} size={lineArrowSize} reversed color={borderColor} />}
+        {lineEndArrow && <ArrowMarker id={endMarkerId} size={lineArrowSize} reversed={false} color={borderColor} />}
       </defs>
       <line
-        x1={padding}
-        y1={svgHeight / 2}
-        x2={padding + length}
-        y2={svgHeight / 2}
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
         stroke={selected ? SELECTION_COLOR : borderColor}
         strokeWidth={selected ? borderWidth + 2 : borderWidth}
         strokeDasharray={getStrokeDasharray(borderStyle)}
-        markerStart={lineStartArrow ? 'url(#arrow-start)' : undefined}
-        markerEnd={lineEndArrow ? 'url(#arrow-end)' : undefined}
+        markerStart={lineStartArrow ? `url(#${startMarkerId})` : undefined}
+        markerEnd={lineEndArrow ? `url(#${endMarkerId})` : undefined}
+        style={{ pointerEvents: 'stroke', cursor: 'move' }}
       />
     </svg>
   );
 }
 
-/** Build container style for shape node */
-function buildShapeContainerStyle(
-  data: FreeShapeNodeData
-): React.CSSProperties {
-  const { shapeType, rotation = 0, width = 100, height = 100 } = data;
-  const isLine = shapeType === 'line';
+// ============================================================================
+// Container Style Builders
+// ============================================================================
+
+/** Build outer wrapper style for rectangle/circle (no rotation - for correct handle positioning) */
+function buildBoxWrapperStyle(): React.CSSProperties {
   return {
     position: 'relative',
-    transform: rotation && !isLine ? `rotate(${rotation}deg)` : undefined,
-    cursor: 'move',
-    width: !isLine ? width : undefined,
-    height: !isLine ? height : undefined,
-    minWidth: !isLine ? MIN_WIDTH : undefined,
-    minHeight: !isLine ? MIN_HEIGHT : undefined
+    width: '100%',
+    height: '100%',
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT
   };
 }
 
-/** Render the appropriate shape based on type */
-function renderShape(data: FreeShapeNodeData, isSelected: boolean): React.ReactElement | null {
-  const {
-    shapeType,
-    width = 100,
-    endPosition,
-    fillColor = 'rgba(100, 100, 100, 0.2)',
-    fillOpacity = 0.2,
-    borderColor = '#666',
-    borderWidth = 2,
-    borderStyle = 'solid',
-    lineStartArrow = false,
-    lineEndArrow = false,
-    lineArrowSize = 10,
-    cornerRadius = 0
-  } = data;
-
-  switch (shapeType) {
-    case 'rectangle':
-      return <RectangleShape fillColor={fillColor} fillOpacity={fillOpacity} borderWidth={borderWidth} borderStyle={borderStyle} borderColor={borderColor} cornerRadius={cornerRadius} selected={isSelected} />;
-    case 'circle':
-      return <CircleShape fillColor={fillColor} fillOpacity={fillOpacity} borderWidth={borderWidth} borderStyle={borderStyle} borderColor={borderColor} selected={isSelected} />;
-    case 'line':
-      return <LineShape width={width} endPosition={endPosition} borderColor={borderColor} borderWidth={borderWidth} borderStyle={borderStyle} lineStartArrow={lineStartArrow} lineEndArrow={lineEndArrow} lineArrowSize={lineArrowSize} selected={isSelected} />;
-    default:
-      return null;
-  }
+/** Build inner container style for rectangle/circle (with rotation) */
+function buildBoxRotatedContainerStyle(rotation: number): React.CSSProperties {
+  return {
+    width: '100%',
+    height: '100%',
+    transform: rotation ? `rotate(${rotation}deg)` : undefined,
+    cursor: 'move'
+  };
 }
 
-/**
- * FreeShapeNode component renders shape annotations (rectangle, circle, line)
- */
+/** Build container style for line - uses 100% to fill the bounding box */
+function buildLineContainerStyle(): React.CSSProperties {
+  return {
+    position: 'relative',
+    cursor: 'move',
+    width: '100%',
+    height: '100%'
+  };
+}
+
+// ============================================================================
+// Line Node Component
+// ============================================================================
+
+interface LineNodeProps {
+  readonly id: string;
+  readonly data: FreeShapeNodeData;
+  readonly isSelected: boolean;
+  readonly showHandles: boolean;
+  readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
+}
+
+/** Line padding constant (must match useAnnotationNodes.ts) */
+const LINE_PADDING = 20;
+
+/** Extract line positions from data with defaults */
+function getLinePositions(data: FreeShapeNodeData): {
+  relativeEnd: { x: number; y: number };
+  startPosition: { x: number; y: number };
+  endPosition: { x: number; y: number };
+  lineStartInNode: { x: number; y: number };
+} {
+  const relativeEnd = data.relativeEndPosition ?? { x: DEFAULT_LINE_LENGTH, y: 0 };
+  const startPosition = data.startPosition ?? { x: 0, y: 0 };
+  const endPosition = data.endPosition ?? {
+    x: startPosition.x + DEFAULT_LINE_LENGTH,
+    y: startPosition.y
+  };
+  // Line start within the node's bounding box (with padding)
+  const lineStartInNode = data.lineStartInNode ?? { x: LINE_PADDING, y: LINE_PADDING };
+  return { relativeEnd, startPosition, endPosition, lineStartInNode };
+}
+
+/** Extract line style props from data with defaults */
+function getLineStyleProps(data: FreeShapeNodeData): {
+  borderColor: string;
+  borderWidth: number;
+  borderStyle: string;
+  lineStartArrow: boolean;
+  lineEndArrow: boolean;
+  lineArrowSize: number;
+} {
+  return {
+    borderColor: data.borderColor ?? '#666',
+    borderWidth: data.borderWidth ?? 2,
+    borderStyle: data.borderStyle ?? 'solid',
+    lineStartArrow: data.lineStartArrow ?? false,
+    lineEndArrow: data.lineEndArrow ?? true,
+    lineArrowSize: data.lineArrowSize ?? 10
+  };
+}
+
+function LineNode({ id, data, isSelected, showHandles, annotationHandlers }: LineNodeProps): React.ReactElement {
+  const { relativeEnd, startPosition, endPosition, lineStartInNode } = getLinePositions(data);
+  const styleProps = getLineStyleProps(data);
+
+  return (
+    <div style={buildLineContainerStyle()} className="free-shape-node free-shape-line-node">
+      <LineShape
+        startX={lineStartInNode.x}
+        startY={lineStartInNode.y}
+        relativeEndX={relativeEnd.x}
+        relativeEndY={relativeEnd.y}
+        {...styleProps}
+        selected={isSelected}
+        nodeId={id}
+      />
+      {showHandles && annotationHandlers?.onUpdateFreeShapeEndPosition && (
+        <LineEndHandle
+          nodeId={id}
+          startPosition={startPosition}
+          endPosition={endPosition}
+          lineStartOffset={lineStartInNode}
+          onEndPositionChange={annotationHandlers.onUpdateFreeShapeEndPosition}
+        />
+      )}
+      {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
+        <RotationHandle
+          nodeId={id}
+          currentRotation={data.rotation ?? 0}
+          onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Box Node Component (Rectangle/Circle)
+// ============================================================================
+
+interface BoxNodeProps {
+  readonly id: string;
+  readonly data: FreeShapeNodeData;
+  readonly isSelected: boolean;
+  readonly showHandles: boolean;
+  readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
+  readonly onResizeEnd: (_event: unknown, params: ResizeParams) => void;
+}
+
+function BoxNode({ id, data, isSelected, showHandles, annotationHandlers, onResizeEnd }: BoxNodeProps): React.ReactElement {
+  const wrapperStyle = buildBoxWrapperStyle();
+  const rotatedContainerStyle = buildBoxRotatedContainerStyle(data.rotation ?? 0);
+
+  const shapeProps = {
+    fillColor: data.fillColor ?? 'rgba(100, 100, 100, 0.2)',
+    fillOpacity: data.fillOpacity ?? 0.2,
+    borderWidth: data.borderWidth ?? 2,
+    borderStyle: data.borderStyle ?? 'solid',
+    borderColor: data.borderColor ?? '#666',
+    selected: isSelected
+  };
+
+  return (
+    <div style={wrapperStyle} className="free-shape-node">
+      <NodeResizer
+        minWidth={MIN_WIDTH}
+        minHeight={MIN_HEIGHT}
+        isVisible={showHandles}
+        lineClassName="nodrag"
+        handleClassName="nodrag"
+        color={SELECTION_COLOR}
+        keepAspectRatio={data.shapeType === 'circle'}
+        onResizeEnd={onResizeEnd}
+      />
+      {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
+        <RotationHandle
+          nodeId={id}
+          currentRotation={data.rotation ?? 0}
+          onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
+        />
+      )}
+      <div style={rotatedContainerStyle}>
+        {data.shapeType === 'rectangle' ? (
+          <RectangleShape {...shapeProps} cornerRadius={data.cornerRadius ?? 0} />
+        ) : (
+          <CircleShape {...shapeProps} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
 const FreeShapeNodeComponent: React.FC<NodeProps<FreeShapeNodeData>> = ({ id, data, selected }) => {
   const { state } = useTopoViewer();
   const annotationHandlers = useAnnotationHandlers();
   const isEditMode = state.mode === 'edit' && !state.isLocked;
   const isSelected = selected ?? false;
-  const isLine = data.shapeType === 'line';
+  const showHandles = isSelected && isEditMode;
 
-  // Handle resize end - persist new size to annotation state
   const handleResizeEnd = useCallback((_event: unknown, params: ResizeParams) => {
     annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
   }, [id, annotationHandlers]);
 
-  const containerStyle = useMemo(() => buildShapeContainerStyle(data), [data]);
-  const showResizer = isSelected && isEditMode && !isLine;
+  if (data.shapeType === 'line') {
+    return <LineNode id={id} data={data} isSelected={isSelected} showHandles={showHandles} annotationHandlers={annotationHandlers} />;
+  }
 
-  return (
-    <div style={containerStyle} className="free-shape-node">
-      {showResizer && (
-        <NodeResizer
-          minWidth={MIN_WIDTH}
-          minHeight={MIN_HEIGHT}
-          isVisible={true}
-          lineClassName="nodrag"
-          handleClassName="nodrag"
-          color={SELECTION_COLOR}
-          keepAspectRatio={data.shapeType === 'circle'}
-          onResizeEnd={handleResizeEnd}
-        />
-      )}
-      {renderShape(data, isSelected)}
-    </div>
-  );
+  return <BoxNode id={id} data={data} isSelected={isSelected} showHandles={showHandles} annotationHandlers={annotationHandlers} onResizeEnd={handleResizeEnd} />;
 };
 
 export const FreeShapeNode = memo(FreeShapeNodeComponent);

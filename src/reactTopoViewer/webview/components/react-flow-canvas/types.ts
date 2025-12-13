@@ -78,7 +78,14 @@ export interface FreeShapeNodeData {
   shapeType: 'rectangle' | 'circle' | 'line';
   width?: number;
   height?: number;
+  /** Absolute end position for lines (for updating annotation state) */
   endPosition?: { x: number; y: number };
+  /** Relative end position for lines (end - start) */
+  relativeEndPosition?: { x: number; y: number };
+  /** Start position for lines (absolute, for handle updates) */
+  startPosition?: { x: number; y: number };
+  /** Line start position within the node's bounding box */
+  lineStartInNode?: { x: number; y: number };
   fillColor?: string;
   fillOpacity?: number;
   borderColor?: string;
@@ -169,6 +176,12 @@ export interface AnnotationHandlers {
   onUpdateFreeTextSize: (id: string, width: number, height: number) => void;
   /** Update free shape size after resize */
   onUpdateFreeShapeSize: (id: string, width: number, height: number) => void;
+  /** Update free text rotation after rotate */
+  onUpdateFreeTextRotation: (id: string, rotation: number) => void;
+  /** Update free shape rotation after rotate */
+  onUpdateFreeShapeRotation: (id: string, rotation: number) => void;
+  /** Update line end position after resize */
+  onUpdateFreeShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   /** Disable add text mode (e.g., on Escape) */
   disableAddTextMode: () => void;
   /** Disable add shape mode (e.g., on Escape) */

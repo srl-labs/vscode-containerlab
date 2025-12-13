@@ -9,26 +9,33 @@ import { SELECTION_COLOR } from '../types';
 import { useTopoViewer } from '../../../context/TopoViewerContext';
 import { useAnnotationHandlers } from '../../../context/AnnotationHandlersContext';
 import { renderMarkdown } from '../../../utils/markdownRenderer';
+import { RotationHandle } from './AnnotationHandles';
 
 /** Minimum dimensions for resize */
 const MIN_WIDTH = 40;
 const MIN_HEIGHT = 20;
 
-/** Build container style for free text node */
-function buildContainerStyle(
-  rotation: number,
+/** Build outer wrapper style (no rotation - for correct handle positioning) */
+function buildWrapperStyle(
   width: number | undefined,
   height: number | undefined
 ): React.CSSProperties {
   return {
-    display: 'inline-block',
-    transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    cursor: 'move',
     position: 'relative',
     width: width ? `${width}px` : 'auto',
     height: height ? `${height}px` : 'auto',
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT
+  };
+}
+
+/** Build inner container style (with rotation) */
+function buildRotatedContainerStyle(rotation: number): React.CSSProperties {
+  return {
+    width: '100%',
+    height: '100%',
+    transform: rotation ? `rotate(${rotation}deg)` : undefined,
+    cursor: 'move'
   };
 }
 
@@ -70,6 +77,14 @@ function buildTextStyle(
   };
 }
 
+/** Prevent wheel events from propagating (prevents zoom while scrolling content) */
+function handleWheelEvent(e: React.WheelEvent): void {
+  const target = e.currentTarget;
+  if (target.scrollHeight > target.clientHeight || target.scrollWidth > target.clientWidth) {
+    e.stopPropagation();
+  }
+}
+
 /**
  * FreeTextNode component renders free text annotations on the canvas
  * with markdown support
@@ -79,32 +94,42 @@ const FreeTextNodeComponent: React.FC<NodeProps<FreeTextNodeData>> = ({ id, data
   const annotationHandlers = useAnnotationHandlers();
   const isEditMode = state.mode === 'edit' && !state.isLocked;
 
-  // Handle resize end - persist new size to annotation state
   const handleResizeEnd = useCallback((_event: unknown, params: ResizeParams) => {
     annotationHandlers?.onUpdateFreeTextSize?.(id, params.width, params.height);
   }, [id, annotationHandlers]);
 
-  // Render markdown content
   const renderedHtml = useMemo(() => renderMarkdown(data.text || ''), [data.text]);
-  const containerStyle = useMemo(() => buildContainerStyle(data.rotation || 0, data.width, data.height), [data.rotation, data.width, data.height]);
+  const wrapperStyle = useMemo(() => buildWrapperStyle(data.width, data.height), [data.width, data.height]);
+  const rotatedContainerStyle = useMemo(() => buildRotatedContainerStyle(data.rotation || 0), [data.rotation]);
   const textStyle = useMemo(() => buildTextStyle(data, selected), [data, selected]);
+  const showHandles = selected && isEditMode;
 
   return (
-    <div style={containerStyle} className="free-text-node">
+    <div style={wrapperStyle} className="free-text-node">
       <NodeResizer
         minWidth={MIN_WIDTH}
         minHeight={MIN_HEIGHT}
-        isVisible={selected && isEditMode}
+        isVisible={showHandles}
         lineClassName="nodrag"
         handleClassName="nodrag"
         color={SELECTION_COLOR}
         onResizeEnd={handleResizeEnd}
       />
-      <div
-        style={textStyle}
-        className="free-text-content free-text-markdown"
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
+      {showHandles && annotationHandlers?.onUpdateFreeTextRotation && (
+        <RotationHandle
+          nodeId={id}
+          currentRotation={data.rotation || 0}
+          onRotationChange={annotationHandlers.onUpdateFreeTextRotation}
+        />
+      )}
+      <div style={rotatedContainerStyle}>
+        <div
+          style={textStyle}
+          className="free-text-content free-text-markdown nowheel"
+          dangerouslySetInnerHTML={{ __html: renderedHtml }}
+          onWheel={handleWheelEvent}
+        />
+      </div>
     </div>
   );
 };

@@ -11,6 +11,7 @@ interface FreeTextAnnotationsAPI {
   deleteAnnotation: (id: string) => void;
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
+  updateRotation: (id: string, rotation: number) => void;
   disableAddTextMode: () => void;
 }
 
@@ -22,6 +23,8 @@ interface FreeShapeAnnotationsAPI {
   deleteAnnotation: (id: string) => void;
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
+  updateRotation: (id: string, rotation: number) => void;
+  updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   disableAddShapeMode: () => void;
 }
 
@@ -64,6 +67,9 @@ export function useAnnotationCanvasProps(
     onUpdateFreeShapePosition: freeShapeAnnotations.updatePosition,
     onUpdateFreeTextSize: freeTextAnnotations.updateSize,
     onUpdateFreeShapeSize: freeShapeAnnotations.updateSize,
+    onUpdateFreeTextRotation: freeTextAnnotations.updateRotation,
+    onUpdateFreeShapeRotation: freeShapeAnnotations.updateRotation,
+    onUpdateFreeShapeEndPosition: freeShapeAnnotations.updateEndPosition,
     disableAddTextMode: freeTextAnnotations.disableAddTextMode,
     disableAddShapeMode: freeShapeAnnotations.disableAddShapeMode
   }), [freeTextAnnotations, freeShapeAnnotations]);
