@@ -17,7 +17,8 @@ import {
   BackgroundVariant,
   SelectionMode,
   ConnectionMode,
-  type ReactFlowInstance
+  type ReactFlowInstance,
+  type ConnectionLineComponentProps
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -25,6 +26,7 @@ import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from './types';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { useTopoViewer } from '../../context/TopoViewerContext';
+import { LinkCreationProvider } from '../../context/LinkCreationContext';
 import { ContextMenu, type ContextMenuItem } from '../context-menu/ContextMenu';
 import { buildNodeContextMenu, buildEdgeContextMenu, buildPaneContextMenu } from './contextMenuBuilders';
 import {
@@ -86,8 +88,16 @@ function useWrappedNodeClick(
   completeLinkCreation: (nodeId: string) => void,
   onNodeClick: ReturnType<typeof useCanvasHandlers>['onNodeClick']
 ) {
-  return useCallback((event: React.MouseEvent, node: { id: string }) => {
-    if (linkSourceNode && linkSourceNode !== node.id) {
+  return useCallback((event: React.MouseEvent, node: { id: string; type?: string }) => {
+    // When in link creation mode, complete the link
+    if (linkSourceNode) {
+      // Prevent loop links on cloud nodes
+      const isLoopLink = linkSourceNode === node.id;
+      const isCloudNode = node.type === 'cloud-node';
+      if (isLoopLink && isCloudNode) {
+        // Don't complete - cloud nodes don't support loop links
+        return;
+      }
       event.stopPropagation();
       completeLinkCreation(node.id);
       return;
@@ -105,6 +115,38 @@ const canvasStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0
+};
+
+/**
+ * Custom connection line component - matches the context menu link creation style
+ * Shows a dashed blue line with a circle at the cursor position
+ */
+const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
+  fromX,
+  fromY,
+  toX,
+  toY
+}) => {
+  return (
+    <g>
+      <line
+        x1={fromX}
+        y1={fromY}
+        x2={toX}
+        y2={toY}
+        stroke="#007acc"
+        strokeWidth={2}
+        strokeDasharray="5,5"
+      />
+      <circle
+        cx={toX}
+        cy={toY}
+        r={6}
+        fill="#007acc"
+        opacity={0.7}
+      />
+    </g>
+  );
 };
 
 // Pro options (disable attribution)
@@ -149,44 +191,47 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
 
     return (
       <div style={canvasStyle} className="react-flow-canvas">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={handlers.handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          onInit={handlers.onInit}
-          onNodeClick={wrappedOnNodeClick}
-          onNodeDoubleClick={handlers.onNodeDoubleClick}
-          onNodeDragStop={handlers.onNodeDragStop}
-          onNodeContextMenu={handlers.onNodeContextMenu}
-          onEdgeClick={handlers.onEdgeClick}
-          onEdgeDoubleClick={handlers.onEdgeDoubleClick}
-          onEdgeContextMenu={handlers.onEdgeContextMenu}
-          onPaneClick={handlers.onPaneClick}
-          onPaneContextMenu={handlers.onPaneContextMenu}
-          onConnect={handlers.onConnect}
-          fitView
-          fitViewOptions={fitViewOptions}
-          defaultViewport={defaultViewport}
-          minZoom={0.1}
-          maxZoom={Infinity}
-          selectionMode={SelectionMode.Partial}
-          selectNodesOnDrag={false}
-          panOnDrag
-          selectionOnDrag={false}
-          selectionKeyCode="Shift"
-          connectionMode={ConnectionMode.Loose}
-          proOptions={proOptions}
-          deleteKeyCode={null}
-          multiSelectionKeyCode="Shift"
-          nodesDraggable={state.mode === 'edit' && !state.isLocked}
-          nodesConnectable={state.mode === 'edit' && !state.isLocked}
-          elementsSelectable
-        >
-          <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
-        </ReactFlow>
+        <LinkCreationProvider linkSourceNode={linkSourceNode}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={handlers.handleNodesChange}
+            onEdgesChange={onEdgesChange}
+            onInit={handlers.onInit}
+            onNodeClick={wrappedOnNodeClick}
+            onNodeDoubleClick={handlers.onNodeDoubleClick}
+            onNodeDragStop={handlers.onNodeDragStop}
+            onNodeContextMenu={handlers.onNodeContextMenu}
+            onEdgeClick={handlers.onEdgeClick}
+            onEdgeDoubleClick={handlers.onEdgeDoubleClick}
+            onEdgeContextMenu={handlers.onEdgeContextMenu}
+            onPaneClick={handlers.onPaneClick}
+            onPaneContextMenu={handlers.onPaneContextMenu}
+            onConnect={handlers.onConnect}
+            connectionLineComponent={CustomConnectionLine}
+            fitView
+            fitViewOptions={fitViewOptions}
+            defaultViewport={defaultViewport}
+            minZoom={0.1}
+            maxZoom={Infinity}
+            selectionMode={SelectionMode.Partial}
+            selectNodesOnDrag={false}
+            panOnDrag
+            selectionOnDrag={false}
+            selectionKeyCode="Shift"
+            connectionMode={ConnectionMode.Loose}
+            proOptions={proOptions}
+            deleteKeyCode={null}
+            multiSelectionKeyCode="Shift"
+            nodesDraggable={state.mode === 'edit' && !state.isLocked}
+            nodesConnectable={state.mode === 'edit' && !state.isLocked}
+            elementsSelectable
+          >
+            <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
+          </ReactFlow>
+        </LinkCreationProvider>
 
         <ContextMenu
           isVisible={handlers.contextMenu.type !== null}

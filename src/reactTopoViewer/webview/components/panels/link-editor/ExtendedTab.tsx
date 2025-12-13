@@ -144,9 +144,7 @@ export function validateLinkEditorData(data: LinkEditorData): string[] {
   if (!data.targetEndpoint) {
     errors.push('Target interface is required');
   }
-  if (data.source && data.target && data.source === data.target) {
-    errors.push('Source and target nodes must be different');
-  }
+  // Loop links (source === target) are allowed
 
   return errors;
 }

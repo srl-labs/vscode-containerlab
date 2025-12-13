@@ -1,12 +1,13 @@
 /**
  * TopologyNode - Custom React Flow node for network devices (router, switch, etc.)
  */
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { TopologyNodeData } from '../types';
 import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from '../types';
 import { generateEncodedSVG, type NodeType } from '../../../utils/SvgGenerator';
 import { ROLE_SVG_MAP } from '../conversion';
+import { useLinkCreationContext } from '../../../context/LinkCreationContext';
 
 /**
  * Map role to SVG node type
@@ -20,8 +21,15 @@ function getRoleSvgType(role: string): NodeType {
 /**
  * TopologyNode component renders network device nodes with SVG icons
  */
-const TopologyNodeComponent: React.FC<NodeProps<TopologyNodeData>> = ({ data, selected }) => {
+const TopologyNodeComponent: React.FC<NodeProps<TopologyNodeData>> = ({ id, data, selected }) => {
   const { label, role, iconColor, iconCornerRadius } = data;
+  const { linkSourceNode } = useLinkCreationContext();
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Check if this node is a valid link target (in link creation mode)
+  // Source node can also be a target for loop/self-referencing links
+  const isLinkTarget = linkSourceNode !== null;
+  const showLinkTargetHighlight = isLinkTarget && isHovered;
 
   // Generate the SVG icon URL
   const svgUrl = useMemo(() => {
@@ -35,8 +43,31 @@ const TopologyNodeComponent: React.FC<NodeProps<TopologyNodeData>> = ({ data, se
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    position: 'relative'
+    position: 'relative',
+    cursor: isLinkTarget ? 'crosshair' : undefined
   };
+
+  // Determine border and shadow based on state
+  const getBorderAndShadow = () => {
+    if (showLinkTargetHighlight) {
+      return {
+        border: `3px solid ${SELECTION_COLOR}`,
+        boxShadow: `0 0 12px 4px ${SELECTION_COLOR}88`
+      };
+    }
+    if (selected) {
+      return {
+        border: `3px solid ${SELECTION_COLOR}`,
+        boxShadow: `0 0 0 3px ${SELECTION_COLOR}33`
+      };
+    }
+    return {
+      border: 'none',
+      boxShadow: 'none'
+    };
+  };
+
+  const { border, boxShadow } = getBorderAndShadow();
 
   // Icon styles
   const iconStyle: React.CSSProperties = {
@@ -47,8 +78,8 @@ const TopologyNodeComponent: React.FC<NodeProps<TopologyNodeData>> = ({ data, se
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 0,
-    border: selected ? `3px solid ${SELECTION_COLOR}` : 'none',
-    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : 'none',
+    border,
+    boxShadow,
     transition: 'border 0.15s ease, box-shadow 0.15s ease'
   };
 
@@ -69,77 +100,30 @@ const TopologyNodeComponent: React.FC<NodeProps<TopologyNodeData>> = ({ data, se
     whiteSpace: 'nowrap'
   };
 
-  // Handle styles (invisible by default, visible on hover)
-  const handleStyle: React.CSSProperties = {
-    width: 8,
-    height: 8,
-    backgroundColor: SELECTION_COLOR,
-    border: '2px solid white',
+  // Hidden handle style - needed for edge connections but not interactive
+  const hiddenHandleStyle: React.CSSProperties = {
     opacity: 0,
-    transition: 'opacity 0.2s ease'
+    pointerEvents: 'none',
+    width: 1,
+    height: 1
   };
 
   return (
-    <div style={containerStyle} className="topology-node">
-      {/* Source handles (all sides for flexibility) */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        style={{ ...handleStyle, top: -4 }}
-        className="topology-node-handle"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{ ...handleStyle, right: -4 }}
-        className="topology-node-handle"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ ...handleStyle, bottom: -4 }}
-        className="topology-node-handle"
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        style={{ ...handleStyle, left: -4 }}
-        className="topology-node-handle"
-      />
-
-      {/* Target handles (all sides for flexibility) */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        style={{ ...handleStyle, top: -4 }}
-        className="topology-node-handle"
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-target"
-        style={{ ...handleStyle, right: -4 }}
-        className="topology-node-handle"
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-target"
-        style={{ ...handleStyle, bottom: -4 }}
-        className="topology-node-handle"
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={{ ...handleStyle, left: -4 }}
-        className="topology-node-handle"
-      />
+    <div
+      style={containerStyle}
+      className="topology-node"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Hidden handles for edge connections - not interactive */}
+      <Handle type="source" position={Position.Top} id="top" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="source" position={Position.Right} id="right" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="source" position={Position.Left} id="left" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="target" position={Position.Top} id="top-target" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="target" position={Position.Right} id="right-target" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="target" position={Position.Bottom} id="bottom-target" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle type="target" position={Position.Left} id="left-target" style={hiddenHandleStyle} isConnectable={false} />
 
       {/* Node icon */}
       <div style={iconStyle} className="topology-node-icon" />

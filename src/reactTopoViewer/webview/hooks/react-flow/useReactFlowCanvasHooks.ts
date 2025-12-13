@@ -115,9 +115,10 @@ export function useLinkCreation(
   }, []);
 
   const completeLinkCreation = useCallback((targetNodeId: string) => {
-    if (!linkSourceNode || linkSourceNode === targetNodeId) return;
+    if (!linkSourceNode) return;
 
-    log.info(`[ReactFlowCanvas] Completing link: ${linkSourceNode} -> ${targetNodeId}`);
+    const isLoopLink = linkSourceNode === targetNodeId;
+    log.info(`[ReactFlowCanvas] Completing ${isLoopLink ? 'loop ' : ''}link: ${linkSourceNode} -> ${targetNodeId}`);
     const edgeId = `${linkSourceNode}-${targetNodeId}-${Date.now()}`;
 
     sendCommandToExtension('create-link', {

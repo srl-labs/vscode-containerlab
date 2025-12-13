@@ -32,6 +32,10 @@ const LABEL_OFFSET = 30; // Pixels from node edge
 // Bezier curve constants for parallel edges
 const CONTROL_POINT_STEP_SIZE = 40; // Spacing between parallel edges (more curvy for label space)
 
+// Loop edge constants
+const LOOP_EDGE_SIZE = 50; // Size of the loop curve
+const LOOP_EDGE_OFFSET = 10; // Offset between multiple loop edges
+
 // Node icon dimensions (edges connect to icon center, not the label)
 const NODE_ICON_SIZE = 40;
 
@@ -265,6 +269,78 @@ function calculateControlPoint(
 }
 
 /**
+ * Calculate loop edge geometry for self-referencing edges
+ * Creates a curved path that loops back to the same node
+ */
+interface LoopEdgeGeometry {
+  path: string;
+  sourceLabelPos: { x: number; y: number };
+  targetLabelPos: { x: number; y: number };
+}
+
+function calculateLoopEdgeGeometry(
+  nodeX: number,
+  nodeY: number,
+  nodeWidth: number,
+  nodeHeight: number,
+  loopIndex: number
+): LoopEdgeGeometry {
+  // Calculate node center
+  const centerX = nodeX + nodeWidth / 2;
+  const centerY = nodeY + nodeHeight / 2;
+
+  // Loop starts from top-right corner and returns to right side
+  // Size increases with each additional loop edge
+  const size = LOOP_EDGE_SIZE + loopIndex * LOOP_EDGE_OFFSET;
+
+  // Start point: right edge of node, slightly up
+  const startX = centerX + nodeWidth / 2;
+  const startY = centerY - nodeHeight / 4;
+
+  // End point: right edge of node, slightly down
+  const endX = centerX + nodeWidth / 2;
+  const endY = centerY + nodeHeight / 4;
+
+  // Control points for cubic bezier - creates a loop to the right
+  const cp1X = startX + size;
+  const cp1Y = startY - size * 0.5;
+  const cp2X = endX + size;
+  const cp2Y = endY + size * 0.5;
+
+  // Create cubic bezier path
+  const path = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
+
+  // Label positions - at the rightmost point of the loop
+  const labelX = centerX + nodeWidth / 2 + size * 0.8;
+  const labelY = centerY;
+
+  return {
+    path,
+    sourceLabelPos: { x: labelX, y: labelY - 10 },
+    targetLabelPos: { x: labelX, y: labelY + 10 }
+  };
+}
+
+/**
+ * Get loop edge info - finds all loop edges on the same node
+ * and returns the current edge's index
+ */
+function getLoopEdgeIndex(
+  edgeId: string,
+  nodeId: string,
+  allEdges: { id: string; source: string; target: string }[]
+): number {
+  // Find all loop edges on this node
+  const loopEdges = allEdges.filter(e => e.source === nodeId && e.target === nodeId);
+
+  // Sort by ID for consistent ordering
+  loopEdges.sort((a, b) => a.id.localeCompare(b.id));
+
+  const index = loopEdges.findIndex(e => e.id === edgeId);
+  return index === -1 ? 0 : index;
+}
+
+/**
  * Label component for endpoint text
  */
 function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: number }>) {
@@ -305,10 +381,28 @@ function useEdgeGeometry(edgeId: string, source: string, target: string) {
     if (!sourceNode || !targetNode) return null;
 
     const sourcePos = sourceNode.internals.positionAbsolute;
-    const targetPos = targetNode.internals.positionAbsolute;
-
-    // Calculate icon center position (icon is centered horizontally, at top of node)
     const sourceNodeWidth = sourceNode.measured?.width ?? NODE_ICON_SIZE;
+
+    // Handle loop edges (source === target)
+    if (source === target) {
+      const loopIndex = getLoopEdgeIndex(edgeId, source, allEdges);
+      const loopGeometry = calculateLoopEdgeGeometry(
+        sourcePos.x + (sourceNodeWidth - NODE_ICON_SIZE) / 2,
+        sourcePos.y,
+        NODE_ICON_SIZE,
+        NODE_ICON_SIZE,
+        loopIndex
+      );
+      return {
+        points: { sx: 0, sy: 0, tx: 0, ty: 0 }, // Not used for loop edges
+        path: loopGeometry.path,
+        controlPoint: null,
+        sourceLabelPos: loopGeometry.sourceLabelPos,
+        targetLabelPos: loopGeometry.targetLabelPos
+      };
+    }
+
+    const targetPos = targetNode.internals.positionAbsolute;
     const targetNodeWidth = targetNode.measured?.width ?? NODE_ICON_SIZE;
 
     // Edge connects to icon center, not full node center
