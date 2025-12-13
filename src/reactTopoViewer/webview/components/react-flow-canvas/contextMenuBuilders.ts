@@ -6,8 +6,13 @@ import type { Node, Edge, ReactFlowInstance } from '@xyflow/react';
 import type { ContextMenuItem } from '../context-menu/ContextMenu';
 import { applyLayout } from './layout';
 
+/** Annotation node type constants */
+const FREE_TEXT_NODE_TYPE = 'free-text-node';
+const FREE_SHAPE_NODE_TYPE = 'free-shape-node';
+
 interface MenuBuilderContext {
   targetId: string;
+  targetNodeType?: string;
   isEditMode: boolean;
   isLocked: boolean;
   closeContextMenu: () => void;
@@ -19,6 +24,14 @@ interface MenuBuilderContext {
   startLinkCreation?: (nodeId: string) => void;
   /** Cancel link creation mode */
   cancelLinkCreation?: () => void;
+  /** Edit free text annotation */
+  editFreeText?: (id: string) => void;
+  /** Edit free shape annotation */
+  editFreeShape?: (id: string) => void;
+  /** Delete free text annotation */
+  deleteFreeText?: (id: string) => void;
+  /** Delete free shape annotation */
+  deleteFreeShape?: (id: string) => void;
 }
 
 interface EdgeMenuBuilderContext {
@@ -41,13 +54,79 @@ interface PaneMenuBuilderContext {
 }
 
 /**
+ * Build context menu for free text annotations
+ */
+function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
+  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
+
+  return [
+    {
+      id: 'edit-text',
+      label: 'Edit Text',
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        editFreeText?.(targetId);
+        closeContextMenu();
+      }
+    },
+    { id: 'divider-1', label: '', divider: true },
+    {
+      id: 'delete-text',
+      label: 'Delete Text',
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        deleteFreeText?.(targetId);
+        closeContextMenu();
+      }
+    }
+  ];
+}
+
+/**
+ * Build context menu for free shape annotations
+ */
+function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
+  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
+
+  return [
+    {
+      id: 'edit-shape',
+      label: 'Edit Shape',
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        editFreeShape?.(targetId);
+        closeContextMenu();
+      }
+    },
+    { id: 'divider-1', label: '', divider: true },
+    {
+      id: 'delete-shape',
+      label: 'Delete Shape',
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        deleteFreeShape?.(targetId);
+        closeContextMenu();
+      }
+    }
+  ];
+}
+
+/**
  * Build node context menu items
  */
 export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
   const {
-    targetId, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode,
+    targetId, targetNodeType, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode,
     linkSourceNode, startLinkCreation, cancelLinkCreation
   } = ctx;
+
+  // Handle annotation nodes with specific menus
+  if (targetNodeType === FREE_TEXT_NODE_TYPE) {
+    return buildFreeTextContextMenu(ctx);
+  }
+  if (targetNodeType === FREE_SHAPE_NODE_TYPE) {
+    return buildFreeShapeContextMenu(ctx);
+  }
 
   const items: ContextMenuItem[] = [];
 

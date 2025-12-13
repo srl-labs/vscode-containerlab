@@ -46,7 +46,9 @@ import {
   useRFLayoutControls,
   useNavbarCommands,
   usePanelVisibility,
-  useFloatingPanelCommands
+  useFloatingPanelCommands,
+  useAnnotationNodes,
+  useAnnotationCanvasProps
 } from './hooks';
 import type { GraphChangeEntry } from './hooks';
 import { sendCommandToExtension } from './utils/extensionMessaging';
@@ -361,6 +363,18 @@ const AppContent: React.FC = () => {
   const { isApplyingAnnotationUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
     useFreeShapeAnnotationApplier(freeShapeAnnotations);
 
+  // Convert annotations to React Flow nodes
+  const { annotationNodes } = useAnnotationNodes({
+    freeTextAnnotations: freeTextAnnotations.annotations,
+    freeShapeAnnotations: freeShapeAnnotations.annotations
+  });
+
+  // Annotation mode and handlers for the canvas
+  const { annotationMode, annotationHandlers } = useAnnotationCanvasProps({
+    freeTextAnnotations,
+    freeShapeAnnotations
+  });
+
   // Groups (passing null for cyInstance since React Flow handles this differently)
   const { groups } = useAppGroups({
     cyInstance: null,
@@ -536,7 +550,13 @@ const AppContent: React.FC = () => {
         onRedo={undoRedo.redo}
       />
       <main className="topoviewer-main">
-        <ReactFlowCanvas ref={reactFlowRef} elements={state.elements} />
+        <ReactFlowCanvas
+          ref={reactFlowRef}
+          elements={state.elements}
+          annotationNodes={annotationNodes}
+          annotationMode={annotationMode}
+          annotationHandlers={annotationHandlers}
+        />
         {/* Group, FreeText, and FreeShape layers are now rendered as React Flow nodes */}
         <NodeEditorPanel
           isVisible={!!state.editingNode}

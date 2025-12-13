@@ -137,10 +137,55 @@ export interface ReactFlowCanvasRef {
 }
 
 /**
+ * Annotation add mode state passed from App
+ */
+export interface AnnotationModeState {
+  isAddTextMode: boolean;
+  isAddShapeMode: boolean;
+  pendingShapeType?: 'rectangle' | 'circle' | 'line';
+}
+
+/**
+ * Annotation handlers passed from App
+ */
+export interface AnnotationHandlers {
+  /** Handle pane click when in add text mode */
+  onAddTextClick: (position: { x: number; y: number }) => void;
+  /** Handle pane click when in add shape mode */
+  onAddShapeClick: (position: { x: number; y: number }) => void;
+  /** Edit a free text annotation */
+  onEditFreeText: (id: string) => void;
+  /** Edit a free shape annotation */
+  onEditFreeShape: (id: string) => void;
+  /** Delete a free text annotation */
+  onDeleteFreeText: (id: string) => void;
+  /** Delete a free shape annotation */
+  onDeleteFreeShape: (id: string) => void;
+  /** Update annotation position after drag */
+  onUpdateFreeTextPosition: (id: string, position: { x: number; y: number }) => void;
+  /** Update annotation position after drag */
+  onUpdateFreeShapePosition: (id: string, position: { x: number; y: number }) => void;
+  /** Update free text size after resize */
+  onUpdateFreeTextSize: (id: string, width: number, height: number) => void;
+  /** Update free shape size after resize */
+  onUpdateFreeShapeSize: (id: string, width: number, height: number) => void;
+  /** Disable add text mode (e.g., on Escape) */
+  disableAddTextMode: () => void;
+  /** Disable add shape mode (e.g., on Escape) */
+  disableAddShapeMode: () => void;
+}
+
+/**
  * Props for ReactFlowCanvas component
  */
 export interface ReactFlowCanvasProps {
   elements: import('../../../shared/types/topology').CyElement[];
+  /** Additional nodes to render (e.g., annotations) */
+  annotationNodes?: import('@xyflow/react').Node[];
+  /** Annotation add mode state */
+  annotationMode?: AnnotationModeState;
+  /** Annotation event handlers */
+  annotationHandlers?: AnnotationHandlers;
   onNodeSelect?: (nodeId: string | null) => void;
   onEdgeSelect?: (edgeId: string | null) => void;
   onNodeDoubleClick?: (nodeId: string) => void;

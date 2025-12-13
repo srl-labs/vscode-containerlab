@@ -39,6 +39,10 @@ export interface UseAppFreeTextAnnotationsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** Enable add text mode */
+  enableAddTextMode: () => void;
+  /** Disable add text mode */
+  disableAddTextMode: () => void;
   /** IDs of currently selected annotations */
   selectedAnnotationIds: Set<string>;
   /** Select a single annotation (clears existing selection) */
@@ -123,6 +127,8 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     updatePosition: freeTextAnnotations.updatePosition,
     updateSize: freeTextAnnotations.updateSize,
     updateRotation: freeTextAnnotations.updateRotation,
+    enableAddTextMode: freeTextAnnotations.enableAddTextMode,
+    disableAddTextMode: freeTextAnnotations.disableAddTextMode,
     selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
     selectAnnotation: freeTextAnnotations.selectAnnotation,
     toggleAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,

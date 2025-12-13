@@ -7,7 +7,8 @@ import React, {
   useImperativeHandle,
   forwardRef,
   useCallback,
-  useMemo
+  useMemo,
+  useEffect
 } from 'react';
 import {
   ReactFlow,
@@ -27,6 +28,7 @@ import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { LinkCreationProvider } from '../../context/LinkCreationContext';
+import { AnnotationHandlersProvider } from '../../context/AnnotationHandlersContext';
 import { ContextMenu, type ContextMenuItem } from '../context-menu/ContextMenu';
 import { buildNodeContextMenu, buildEdgeContextMenu, buildPaneContextMenu } from './contextMenuBuilders';
 import {
@@ -37,6 +39,7 @@ import {
   useKeyboardDeleteHandlers,
   useCanvasRefMethods,
   useCanvasHandlers,
+  useAnnotationCanvasHandlers,
   GRID_SIZE
 } from '../../hooks/react-flow';
 import type { Node, Edge } from '@xyflow/react';
@@ -54,7 +57,8 @@ function useContextMenuItems(
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
   linkSourceNode: string | null,
   startLinkCreation: (nodeId: string) => void,
-  cancelLinkCreation: () => void
+  cancelLinkCreation: () => void,
+  annotationHandlers?: import('./types').AnnotationHandlers
 ): ContextMenuItem[] {
   return useMemo(() => {
     const { type, targetId } = handlers.contextMenu;
@@ -62,9 +66,17 @@ function useContextMenuItems(
     const isLocked = state.isLocked;
 
     if (type === 'node' && targetId) {
+      // Find the node to get its type
+      const targetNode = nodes.find(n => n.id === targetId);
+      const targetNodeType = targetNode?.type;
+
       return buildNodeContextMenu({
-        targetId, isEditMode, isLocked, closeContextMenu: handlers.closeContextMenu, editNode, handleDeleteNode,
-        linkSourceNode, startLinkCreation, cancelLinkCreation
+        targetId, targetNodeType, isEditMode, isLocked, closeContextMenu: handlers.closeContextMenu, editNode, handleDeleteNode,
+        linkSourceNode, startLinkCreation, cancelLinkCreation,
+        editFreeText: annotationHandlers?.onEditFreeText,
+        editFreeShape: annotationHandlers?.onEditFreeShape,
+        deleteFreeText: annotationHandlers?.onDeleteFreeText,
+        deleteFreeShape: annotationHandlers?.onDeleteFreeShape
       });
     }
     if (type === 'edge' && targetId) {
@@ -79,7 +91,7 @@ function useContextMenuItems(
       });
     }
     return [];
-  }, [handlers, state.mode, state.isLocked, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation]);
+  }, [handlers, state.mode, state.isLocked, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation, annotationHandlers]);
 }
 
 /** Hook for wrapped node click handling */
@@ -161,8 +173,53 @@ const fitViewOptions = { padding: 0.2 };
 /**
  * ReactFlowCanvas component
  */
+/** Node type constants */
+const ANNOTATION_NODE_TYPES_SET = new Set(['free-text-node', 'free-shape-node']);
+
+/**
+ * Hook to sync annotation nodes into the React Flow nodes state.
+ * This ensures React Flow can update annotation node positions during drag.
+ * - Adds new annotation nodes to nodes state
+ * - Updates data for existing annotation nodes (preserving React Flow's position)
+ * - Removes annotation nodes that no longer exist in annotationNodes
+ */
+function useSyncAnnotationNodes(
+  annotationNodes: Node[] | undefined,
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>>
+) {
+  useEffect(() => {
+    if (!annotationNodes) return;
+
+    setNodes(currentNodes => {
+      // Build map for quick lookup of current annotation nodes
+      const currentAnnotationMap = new Map<string, Node>();
+
+      for (const node of currentNodes) {
+        if (ANNOTATION_NODE_TYPES_SET.has(node.type || '')) {
+          currentAnnotationMap.set(node.id, node);
+        }
+      }
+
+      // Filter out old annotation nodes, keep topology nodes
+      const topologyNodes = currentNodes.filter(n => !ANNOTATION_NODE_TYPES_SET.has(n.type || ''));
+
+      // Build new annotation nodes list, preserving React Flow's position for existing nodes
+      const newAnnotationNodes = annotationNodes.map(node => {
+        const existing = currentAnnotationMap.get(node.id);
+        if (existing) {
+          // Preserve React Flow's position (for smooth dragging), update other data
+          return { ...node, position: existing.position };
+        }
+        return node;
+      });
+
+      return [...topologyNodes, ...newAnnotationNodes];
+    });
+  }, [annotationNodes, setNodes]);
+}
+
 const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
-  ({ elements, onNodeDelete, onEdgeDelete }, ref) => {
+  ({ elements, annotationNodes, annotationMode, annotationHandlers, onNodeDelete, onEdgeDelete }, ref) => {
     const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -176,6 +233,7 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
     });
 
     useElementConversion(elements, setNodes, setEdges);
+    useSyncAnnotationNodes(annotationNodes, setNodes);
 
     const { linkSourceNode, mousePosition, startLinkCreation, completeLinkCreation, cancelLinkCreation } = useLinkCreation(setEdges);
     const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(edges, setNodes, setEdges, selectNode, selectEdge, handlers.closeContextMenu, onNodeDelete, onEdgeDelete);
@@ -187,12 +245,20 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
     useImperativeHandle(ref, () => refMethods, [refMethods]);
 
     const wrappedOnNodeClick = useWrappedNodeClick(linkSourceNode, completeLinkCreation, handlers.onNodeClick);
-    const contextMenuItems = useContextMenuItems(handlers, state, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation);
+    const contextMenuItems = useContextMenuItems(handlers, state, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation, annotationHandlers);
+
+    // Use annotation canvas handlers hook for annotation-related interactions
+    const { wrappedOnPaneClick, wrappedOnNodeDoubleClick, wrappedOnNodeDragStop, isInAddMode, addModeMessage } = useAnnotationCanvasHandlers({
+      mode: state.mode, isLocked: state.isLocked, annotationMode, annotationHandlers,
+      reactFlowInstanceRef: handlers.reactFlowInstance,
+      baseOnPaneClick: handlers.onPaneClick, baseOnNodeDoubleClick: handlers.onNodeDoubleClick, baseOnNodeDragStop: handlers.onNodeDragStop
+    });
 
     return (
       <div style={canvasStyle} className="react-flow-canvas">
-        <LinkCreationProvider linkSourceNode={linkSourceNode}>
-          <ReactFlow
+        <AnnotationHandlersProvider handlers={annotationHandlers}>
+          <LinkCreationProvider linkSourceNode={linkSourceNode}>
+            <ReactFlow
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
@@ -201,13 +267,13 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
             onEdgesChange={onEdgesChange}
             onInit={handlers.onInit}
             onNodeClick={wrappedOnNodeClick}
-            onNodeDoubleClick={handlers.onNodeDoubleClick}
-            onNodeDragStop={handlers.onNodeDragStop}
+            onNodeDoubleClick={wrappedOnNodeDoubleClick}
+            onNodeDragStop={wrappedOnNodeDragStop}
             onNodeContextMenu={handlers.onNodeContextMenu}
             onEdgeClick={handlers.onEdgeClick}
             onEdgeDoubleClick={handlers.onEdgeDoubleClick}
             onEdgeContextMenu={handlers.onEdgeContextMenu}
-            onPaneClick={handlers.onPaneClick}
+            onPaneClick={wrappedOnPaneClick}
             onPaneContextMenu={handlers.onPaneContextMenu}
             onConnect={handlers.onConnect}
             connectionLineComponent={CustomConnectionLine}
@@ -218,7 +284,7 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
             maxZoom={Infinity}
             selectionMode={SelectionMode.Partial}
             selectNodesOnDrag={false}
-            panOnDrag
+            panOnDrag={!isInAddMode}
             selectionOnDrag={false}
             selectionKeyCode="Shift"
             connectionMode={ConnectionMode.Loose}
@@ -228,10 +294,11 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
             nodesDraggable={state.mode === 'edit' && !state.isLocked}
             nodesConnectable={state.mode === 'edit' && !state.isLocked}
             elementsSelectable
-          >
-            <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
-          </ReactFlow>
-        </LinkCreationProvider>
+            >
+              <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
+            </ReactFlow>
+          </LinkCreationProvider>
+        </AnnotationHandlersProvider>
 
         <ContextMenu
           isVisible={handlers.contextMenu.type !== null}
@@ -251,9 +318,35 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
         {linkSourceNode && (
           <LinkCreationIndicator linkSourceNode={linkSourceNode} />
         )}
+
+        {isInAddMode && addModeMessage && (
+          <AnnotationModeIndicator message={addModeMessage} />
+        )}
       </div>
     );
   }
+);
+
+/** Annotation mode indicator component */
+const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
+  <div
+    style={{
+      position: 'absolute',
+      top: 10,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'var(--vscode-editor-background, #1e1e1e)',
+      border: '1px solid var(--vscode-charts-green, #4ec9b0)',
+      borderRadius: 4,
+      padding: '6px 12px',
+      fontSize: 12,
+      color: 'var(--vscode-editor-foreground, #cccccc)',
+      zIndex: 1000,
+      pointerEvents: 'none'
+    }}
+  >
+    {message}
+  </div>
 );
 
 /** Link creation indicator component */

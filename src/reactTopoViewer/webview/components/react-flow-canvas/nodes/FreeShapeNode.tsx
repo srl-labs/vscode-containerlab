@@ -1,10 +1,16 @@
 /**
  * FreeShapeNode - Custom React Flow node for free shape annotations
  */
-import React, { memo, useMemo } from 'react';
-import { type NodeProps } from '@xyflow/react';
+import React, { memo, useMemo, useCallback } from 'react';
+import { type NodeProps, NodeResizer, type ResizeParams } from '@xyflow/react';
 import type { FreeShapeNodeData } from '../types';
 import { SELECTION_COLOR } from '../types';
+import { useTopoViewer } from '../../../context/TopoViewerContext';
+import { useAnnotationHandlers } from '../../../context/AnnotationHandlersContext';
+
+/** Minimum dimensions for resize */
+const MIN_WIDTH = 20;
+const MIN_HEIGHT = 20;
 
 /**
  * Props for rectangle shape component
@@ -91,12 +97,13 @@ function getShapeBorder(
   return `${borderWidth}px ${borderStyle} ${borderColor}`;
 }
 
+/** Props for rectangle without dimensions (container handles size) */
+type RectangleShapeWithoutDimensionsProps = Readonly<Omit<RectangleShapeProps, 'width' | 'height'>>;
+
 /**
  * Rectangle shape component
  */
 function RectangleShape({
-  width,
-  height,
   fillColor,
   fillOpacity,
   borderWidth,
@@ -104,10 +111,10 @@ function RectangleShape({
   borderColor,
   cornerRadius,
   selected
-}: RectangleShapeProps) {
+}: RectangleShapeWithoutDimensionsProps) {
   const style: React.CSSProperties = {
-    width,
-    height,
+    width: '100%',
+    height: '100%',
     backgroundColor: getBackgroundColor(fillColor, fillOpacity),
     border: getShapeBorder(selected, borderWidth, borderStyle, borderColor),
     borderRadius: cornerRadius,
@@ -117,23 +124,23 @@ function RectangleShape({
   return <div style={style} className="free-shape-rectangle" />;
 }
 
+/** Props for circle without dimensions (container handles size) */
+type CircleShapeWithoutDimensionsProps = Readonly<Omit<CircleShapeProps, 'width' | 'height'>>;
+
 /**
  * Circle shape component
  */
 function CircleShape({
-  width,
-  height,
   fillColor,
   fillOpacity,
   borderWidth,
   borderStyle,
   borderColor,
   selected
-}: CircleShapeProps) {
-  const size = Math.min(width, height);
+}: CircleShapeWithoutDimensionsProps) {
   const style: React.CSSProperties = {
-    width: size,
-    height: size,
+    width: '100%',
+    height: '100%',
     backgroundColor: getBackgroundColor(fillColor, fillOpacity),
     border: getShapeBorder(selected, borderWidth, borderStyle, borderColor),
     borderRadius: '50%',
@@ -222,76 +229,85 @@ function LineShape({
   );
 }
 
-/**
- * FreeShapeNode component renders shape annotations (rectangle, circle, line)
- */
-// eslint-disable-next-line complexity
-const FreeShapeNodeComponent: React.FC<NodeProps<FreeShapeNodeData>> = ({ data, selected }) => {
+/** Build container style for shape node */
+function buildShapeContainerStyle(
+  data: FreeShapeNodeData
+): React.CSSProperties {
+  const { shapeType, rotation = 0, width = 100, height = 100 } = data;
+  const isLine = shapeType === 'line';
+  return {
+    position: 'relative',
+    transform: rotation && !isLine ? `rotate(${rotation}deg)` : undefined,
+    cursor: 'move',
+    width: !isLine ? width : undefined,
+    height: !isLine ? height : undefined,
+    minWidth: !isLine ? MIN_WIDTH : undefined,
+    minHeight: !isLine ? MIN_HEIGHT : undefined
+  };
+}
+
+/** Render the appropriate shape based on type */
+function renderShape(data: FreeShapeNodeData, isSelected: boolean): React.ReactElement | null {
   const {
     shapeType,
     width = 100,
-    height = 100,
     endPosition,
     fillColor = 'rgba(100, 100, 100, 0.2)',
     fillOpacity = 0.2,
     borderColor = '#666',
     borderWidth = 2,
     borderStyle = 'solid',
-    rotation = 0,
     lineStartArrow = false,
     lineEndArrow = false,
     lineArrowSize = 10,
     cornerRadius = 0
   } = data;
 
-  const containerStyle: React.CSSProperties = useMemo(() => ({
-    position: 'relative',
-    transform: rotation && shapeType !== 'line' ? `rotate(${rotation}deg)` : undefined,
-    cursor: 'move'
-  }), [rotation, shapeType]);
+  switch (shapeType) {
+    case 'rectangle':
+      return <RectangleShape fillColor={fillColor} fillOpacity={fillOpacity} borderWidth={borderWidth} borderStyle={borderStyle} borderColor={borderColor} cornerRadius={cornerRadius} selected={isSelected} />;
+    case 'circle':
+      return <CircleShape fillColor={fillColor} fillOpacity={fillOpacity} borderWidth={borderWidth} borderStyle={borderStyle} borderColor={borderColor} selected={isSelected} />;
+    case 'line':
+      return <LineShape width={width} endPosition={endPosition} borderColor={borderColor} borderWidth={borderWidth} borderStyle={borderStyle} lineStartArrow={lineStartArrow} lineEndArrow={lineEndArrow} lineArrowSize={lineArrowSize} selected={isSelected} />;
+    default:
+      return null;
+  }
+}
 
+/**
+ * FreeShapeNode component renders shape annotations (rectangle, circle, line)
+ */
+const FreeShapeNodeComponent: React.FC<NodeProps<FreeShapeNodeData>> = ({ id, data, selected }) => {
+  const { state } = useTopoViewer();
+  const annotationHandlers = useAnnotationHandlers();
+  const isEditMode = state.mode === 'edit' && !state.isLocked;
   const isSelected = selected ?? false;
+  const isLine = data.shapeType === 'line';
+
+  // Handle resize end - persist new size to annotation state
+  const handleResizeEnd = useCallback((_event: unknown, params: ResizeParams) => {
+    annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
+  }, [id, annotationHandlers]);
+
+  const containerStyle = useMemo(() => buildShapeContainerStyle(data), [data]);
+  const showResizer = isSelected && isEditMode && !isLine;
 
   return (
     <div style={containerStyle} className="free-shape-node">
-      {shapeType === 'rectangle' && (
-        <RectangleShape
-          width={width}
-          height={height}
-          fillColor={fillColor}
-          fillOpacity={fillOpacity}
-          borderWidth={borderWidth}
-          borderStyle={borderStyle}
-          borderColor={borderColor}
-          cornerRadius={cornerRadius}
-          selected={isSelected}
+      {showResizer && (
+        <NodeResizer
+          minWidth={MIN_WIDTH}
+          minHeight={MIN_HEIGHT}
+          isVisible={true}
+          lineClassName="nodrag"
+          handleClassName="nodrag"
+          color={SELECTION_COLOR}
+          keepAspectRatio={data.shapeType === 'circle'}
+          onResizeEnd={handleResizeEnd}
         />
       )}
-      {shapeType === 'circle' && (
-        <CircleShape
-          width={width}
-          height={height}
-          fillColor={fillColor}
-          fillOpacity={fillOpacity}
-          borderWidth={borderWidth}
-          borderStyle={borderStyle}
-          borderColor={borderColor}
-          selected={isSelected}
-        />
-      )}
-      {shapeType === 'line' && (
-        <LineShape
-          width={width}
-          endPosition={endPosition}
-          borderColor={borderColor}
-          borderWidth={borderWidth}
-          borderStyle={borderStyle}
-          lineStartArrow={lineStartArrow}
-          lineEndArrow={lineEndArrow}
-          lineArrowSize={lineArrowSize}
-          selected={isSelected}
-        />
-      )}
+      {renderShape(data, isSelected)}
     </div>
   );
 };
