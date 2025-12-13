@@ -281,24 +281,25 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   const onPaneClick = usePaneClickHandler(selectNode, selectEdge, closeContextMenu, reactFlowInstance, modeRef, isLockedRef, onLockedAction);
   const onConnect = useConnectionHandler(setEdges, modeRef, isLockedRef, onLockedAction);
 
-  // Node changes with snapping
+  // Node changes - no snapping during drag for smooth movement
   const handleNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
-    const snappedChanges = changes.map((change) => {
-      if (change.type === 'position' && change.position) {
-        return { ...change, position: snapToGrid(change.position) };
-      }
-      return change;
-    });
-    onNodesChangeBase(snappedChanges);
+    onNodesChangeBase(changes);
   }, [onNodesChangeBase]);
 
-  // Drag stop
+  // Drag stop - snap to grid on release
   const onNodeDragStop: NodeMouseHandler = useCallback((event, node) => {
     if (modeRef.current !== 'edit') return;
     const snappedPosition = snapToGrid(node.position);
-    log.info(`[ReactFlowCanvas] Node ${node.id} dragged to ${snappedPosition.x}, ${snappedPosition.y}`);
+    // Update node position in React Flow to snapped position
+    onNodesChangeBase([{
+      type: 'position',
+      id: node.id,
+      position: snappedPosition,
+      dragging: false
+    }]);
+    log.info(`[ReactFlowCanvas] Node ${node.id} snapped to ${snappedPosition.x}, ${snappedPosition.y}`);
     sendCommandToExtension('save-node-positions', { positions: [{ id: node.id, position: snappedPosition }] });
-  }, []);
+  }, [onNodesChangeBase]);
 
   // Context menus
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {

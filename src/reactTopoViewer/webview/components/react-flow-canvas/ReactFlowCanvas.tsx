@@ -172,8 +172,6 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
           defaultViewport={defaultViewport}
           minZoom={0.1}
           maxZoom={Infinity}
-          snapToGrid
-          snapGrid={[GRID_SIZE, GRID_SIZE]}
           selectionMode={SelectionMode.Partial}
           selectNodesOnDrag={false}
           panOnDrag
