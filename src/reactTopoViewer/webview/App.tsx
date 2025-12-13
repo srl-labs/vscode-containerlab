@@ -215,16 +215,8 @@ type Position = { x: number; y: number };
 /**
  * Generate a unique node name based on base name and existing nodes
  */
-function generateUniqueNodeName(
-  baseName: string,
-  existingNodes: Set<string>
-): string {
-  // If base name doesn't exist, use it directly
-  if (!existingNodes.has(baseName)) {
-    return baseName;
-  }
-
-  // Find the next available number suffix
+function generateUniqueNodeName(baseName: string, existingNodes: Set<string>): string {
+  if (!existingNodes.has(baseName)) return baseName;
   let counter = 1;
   let candidateName = `${baseName}${counter}`;
   while (existingNodes.has(candidateName)) {
@@ -232,6 +224,62 @@ function generateUniqueNodeName(
     candidateName = `${baseName}${counter}`;
   }
   return candidateName;
+}
+
+/** Extract existing node names from elements */
+function getExistingNodeNames(elements: NodeCreationState['elements']): Set<string> {
+  const existingNodes = new Set<string>();
+  for (const el of elements) {
+    if (el.group === 'nodes') {
+      const nodeId = (el.data as Record<string, unknown>)?.id;
+      if (typeof nodeId === 'string') existingNodes.add(nodeId);
+    }
+  }
+  return existingNodes;
+}
+
+/** Find template by name or get default */
+function findTemplate(
+  templateName: string | undefined,
+  customNodes: CustomNodeTemplate[],
+  defaultNode: string
+): CustomNodeTemplate | undefined {
+  if (templateName) return customNodes.find(n => n.name === templateName);
+  if (defaultNode) return customNodes.find(n => n.name === defaultNode);
+  return undefined;
+}
+
+/** Calculate viewport center position */
+function getViewportCenterPosition(rfInstance: ReactFlowInstance): Position {
+  const viewport = rfInstance.getViewport();
+  const { width, height } = (rfInstance as unknown as { getViewportDimensions?: () => { width: number; height: number } }).getViewportDimensions?.() ?? { width: 800, height: 600 };
+  return {
+    x: -viewport.x / viewport.zoom + width / (2 * viewport.zoom),
+    y: -viewport.y / viewport.zoom + height / (2 * viewport.zoom)
+  };
+}
+
+/** Build extra data from template */
+function buildExtraData(template: CustomNodeTemplate | undefined): Record<string, unknown> {
+  const extra: Record<string, unknown> = { kind: template?.kind || 'nokia_srlinux' };
+  if (template?.type) extra.type = template.type;
+  if (template?.image) extra.image = template.image;
+  if (template?.interfacePattern) extra.interfacePattern = template.interfacePattern;
+  return extra;
+}
+
+/** Build node data from template */
+function buildNodeDataFromTemplate(nodeName: string, template: CustomNodeTemplate | undefined): Record<string, unknown> {
+  const data: Record<string, unknown> = {
+    id: nodeName,
+    name: nodeName,
+    kind: template?.kind || 'nokia_srlinux',
+    extraData: buildExtraData(template)
+  };
+  if (template?.icon) data.topoViewerRole = template.icon;
+  if (template?.iconColor) data.iconColor = template.iconColor;
+  if (template?.iconCornerRadius !== undefined) data.iconCornerRadius = template.iconCornerRadius;
+  return data;
 }
 
 /**
@@ -243,96 +291,47 @@ function useNodeCreationHandlers(
   rfInstance: ReactFlowInstance | null,
   onNewCustomNode: () => void
 ) {
-  // Handler for Add Node button from FloatingActionPanel
   const handleAddNodeFromPanel = React.useCallback((templateName?: string) => {
-    // Handle "New Custom Node" action
     if (templateName === '__new__') {
       onNewCustomNode();
       return;
     }
-
     if (!rfInstance) return;
-
     if (state.isLocked) {
       floatingPanelRef.current?.triggerShake();
       return;
     }
 
-    let template: CustomNodeTemplate | undefined;
-    if (templateName) {
-      template = state.customNodes.find(n => n.name === templateName);
-    } else if (state.defaultNode) {
-      template = state.customNodes.find(n => n.name === state.defaultNode);
-    }
-
-    // Get existing node names to ensure uniqueness
-    const existingNodes = new Set<string>();
-    for (const el of state.elements) {
-      if (el.group === 'nodes') {
-        const nodeId = (el.data as Record<string, unknown>)?.id;
-        if (typeof nodeId === 'string') {
-          existingNodes.add(nodeId);
-        }
-      }
-    }
-
-    // Generate unique node name
+    const template = findTemplate(templateName, state.customNodes, state.defaultNode);
+    const existingNodes = getExistingNodeNames(state.elements);
     const baseName = template?.baseName || template?.kind || 'node';
     const nodeName = generateUniqueNodeName(baseName, existingNodes);
+    const position = getViewportCenterPosition(rfInstance);
+    const nodeData = buildNodeDataFromTemplate(nodeName, template);
 
-    // Get viewport center for node placement
-    const viewport = rfInstance.getViewport();
-    const { width, height } = (rfInstance as unknown as { getViewportDimensions?: () => { width: number; height: number } }).getViewportDimensions?.() ?? { width: 800, height: 600 };
-    const position: Position = {
-      x: -viewport.x / viewport.zoom + width / (2 * viewport.zoom),
-      y: -viewport.y / viewport.zoom + height / (2 * viewport.zoom)
-    };
-
-    // Build node data for the extension
-    // Icon properties go at top level (MessageRouter extracts them from there)
-    // Other properties go in extraData for YAML persistence
-    const nodeData: Record<string, unknown> = {
-      id: nodeName,
-      name: nodeName,
-      kind: template?.kind || 'nokia_srlinux',
-      // Icon properties at top level for MessageRouter extraction
-      ...(template?.icon && { topoViewerRole: template.icon }),
-      ...(template?.iconColor && { iconColor: template.iconColor }),
-      ...(template?.iconCornerRadius !== undefined && { iconCornerRadius: template.iconCornerRadius }),
-      extraData: {
-        kind: template?.kind || 'nokia_srlinux',
-        ...(template?.type && { type: template.type }),
-        ...(template?.image && { image: template.image }),
-        ...(template?.interfacePattern && { interfacePattern: template.interfacePattern })
-      }
-    };
-
-    // Send node creation command to extension for YAML file update
-    sendCommandToExtension('create-node', {
-      nodeId: nodeName,
-      nodeData,
-      position
-    });
+    sendCommandToExtension('create-node', { nodeId: nodeName, nodeData, position });
   }, [rfInstance, state.isLocked, state.customNodes, state.defaultNode, state.elements, floatingPanelRef, onNewCustomNode]);
 
   return { handleAddNodeFromPanel };
 }
 
+/** Hook to convert raw selection data to editor format */
+function useEditingData(reactFlowRef: React.RefObject<unknown>, editingNode: string | null, editingEdge: string | null) {
+  const { selectedNodeData: nodeRaw } = useRFSelectionData(reactFlowRef, editingNode, null);
+  const { selectedLinkData: linkRaw } = useRFSelectionData(reactFlowRef, null, editingEdge);
+  const nodeData = React.useMemo(() => convertToEditorData(nodeRaw), [nodeRaw]);
+  const linkData = React.useMemo(() => convertToLinkEditorData(linkRaw), [linkRaw]);
+  return { editingNodeData: nodeData, editingLinkData: linkData };
+}
+
 const AppContent: React.FC = () => {
   const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
 
-  // React Flow instance management
   const { reactFlowRef, rfInstance } = useReactFlowInstance(state.elements);
   const layoutControls = useRFLayoutControls(reactFlowRef, rfInstance);
-
-  // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
-  // Selection and editing data
-  const { selectedNodeData: editingNodeRawData } = useRFSelectionData(reactFlowRef, state.editingNode, null);
-  const { selectedLinkData: editingLinkRawData } = useRFSelectionData(reactFlowRef, null, state.editingEdge);
-  const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
-  const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
+  const { editingNodeData, editingLinkData } = useEditingData(reactFlowRef, state.editingNode, state.editingEdge);
 
   // Navbar actions
   const { handleZoomToFit } = useRFNavbarActions(reactFlowRef);

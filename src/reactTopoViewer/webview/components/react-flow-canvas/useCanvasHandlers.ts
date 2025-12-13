@@ -70,45 +70,18 @@ interface CanvasHandlers {
 const ANNOTATION_NODE_TYPES = ['group-node', 'free-text-node', 'free-shape-node'];
 const EDITABLE_NODE_TYPES = ['topology-node', 'cloud-node'];
 
-/**
- * Generate a unique node ID using timestamp and counter
- */
 let nodeIdCounter = 0;
 function generateNodeId(): string {
   nodeIdCounter += 1;
   return `node-${Date.now()}-${nodeIdCounter}`;
 }
 
-/**
- * Generate a unique edge ID
- */
 function generateEdgeId(source: string, target: string): string {
   return `${source}-${target}-${Date.now()}`;
 }
 
-/**
- * Hook for canvas event handlers
- */
-export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers {
-  const {
-    selectNode,
-    selectEdge,
-    editNode,
-    editEdge,
-    mode,
-    isLocked,
-    onNodesChangeBase,
-    setEdges,
-    onLockedAction
-  } = config;
-
-  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
-  const modeRef = useRef(mode);
-  const isLockedRef = useRef(isLocked);
-  modeRef.current = mode;
-  isLockedRef.current = isLocked;
-
-  // Context menu state
+/** Hook for context menu state management */
+function useContextMenuState() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     type: null,
     position: { x: 0, y: 0 },
@@ -119,14 +92,31 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     setContextMenu({ type: null, position: { x: 0, y: 0 }, targetId: null });
   }, []);
 
-  // Initialize React Flow instance
-  const onInit = useCallback((instance: ReactFlowInstance) => {
-    reactFlowInstance.current = instance;
-    log.info('[ReactFlowCanvas] React Flow initialized');
-    setTimeout(() => instance.fitView({ padding: 0.2 }), 100);
+  const openNodeMenu = useCallback((x: number, y: number, nodeId: string) => {
+    setContextMenu({ type: 'node', position: { x, y }, targetId: nodeId });
   }, []);
 
-  // Node click - select node
+  const openEdgeMenu = useCallback((x: number, y: number, edgeId: string) => {
+    setContextMenu({ type: 'edge', position: { x, y }, targetId: edgeId });
+  }, []);
+
+  const openPaneMenu = useCallback((x: number, y: number) => {
+    setContextMenu({ type: 'pane', position: { x, y }, targetId: null });
+  }, []);
+
+  return { contextMenu, closeContextMenu, openNodeMenu, openEdgeMenu, openPaneMenu };
+}
+
+/** Hook for node click handlers */
+function useNodeClickHandlers(
+  selectNode: (id: string | null) => void,
+  selectEdge: (id: string | null) => void,
+  editNode: (id: string | null) => void,
+  closeContextMenu: () => void,
+  modeRef: React.RefObject<'view' | 'edit'>,
+  isLockedRef: React.RefObject<boolean>,
+  onLockedAction?: () => void
+) {
   const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
     log.info(`[ReactFlowCanvas] Node clicked: ${node.id}`);
     closeContextMenu();
@@ -135,7 +125,6 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     selectEdge(null);
   }, [selectNode, selectEdge, closeContextMenu]);
 
-  // Node double click - edit node
   const onNodeDoubleClick: NodeMouseHandler = useCallback((event, node) => {
     log.info(`[ReactFlowCanvas] Node double clicked: ${node.id}`);
     if (modeRef.current === 'edit' && EDITABLE_NODE_TYPES.includes(node.type || '')) {
@@ -145,9 +134,21 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
       }
       editNode(node.id);
     }
-  }, [editNode, onLockedAction]);
+  }, [editNode, onLockedAction, modeRef, isLockedRef]);
 
-  // Edge click - select edge
+  return { onNodeClick, onNodeDoubleClick };
+}
+
+/** Hook for edge click handlers */
+function useEdgeClickHandlers(
+  selectNode: (id: string | null) => void,
+  selectEdge: (id: string | null) => void,
+  editEdge: (id: string | null) => void,
+  closeContextMenu: () => void,
+  modeRef: React.RefObject<'view' | 'edit'>,
+  isLockedRef: React.RefObject<boolean>,
+  onLockedAction?: () => void
+) {
   const onEdgeClick: EdgeMouseHandler = useCallback((event, edge) => {
     log.info(`[ReactFlowCanvas] Edge clicked: ${edge.id}`);
     closeContextMenu();
@@ -155,7 +156,6 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     selectNode(null);
   }, [selectNode, selectEdge, closeContextMenu]);
 
-  // Edge double click - edit edge
   const onEdgeDoubleClick: EdgeMouseHandler = useCallback((event, edge) => {
     log.info(`[ReactFlowCanvas] Edge double clicked: ${edge.id}`);
     if (modeRef.current === 'edit') {
@@ -165,69 +165,72 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
       }
       editEdge(edge.id);
     }
-  }, [editEdge, onLockedAction]);
+  }, [editEdge, onLockedAction, modeRef, isLockedRef]);
 
-  // Pane click - deselect or create node with Shift+click
-  const onPaneClick = useCallback((event: React.MouseEvent) => {
+  return { onEdgeClick, onEdgeDoubleClick };
+}
+
+/** Hook for pane click handler */
+function usePaneClickHandler(
+  selectNode: (id: string | null) => void,
+  selectEdge: (id: string | null) => void,
+  closeContextMenu: () => void,
+  reactFlowInstance: React.RefObject<ReactFlowInstance | null>,
+  modeRef: React.RefObject<'view' | 'edit'>,
+  isLockedRef: React.RefObject<boolean>,
+  onLockedAction?: () => void
+) {
+  return useCallback((event: React.MouseEvent) => {
     closeContextMenu();
 
-    // Shift+click to create new node (only in edit mode)
     if (event.shiftKey && modeRef.current === 'edit') {
       if (isLockedRef.current) {
         onLockedAction?.();
         return;
       }
-
       const rfInstance = reactFlowInstance.current;
       if (!rfInstance) return;
 
-      // Get click position in flow coordinates
       const bounds = (event.target as HTMLElement).getBoundingClientRect();
       const position = rfInstance.screenToFlowPosition({
         x: event.clientX - bounds.left,
         y: event.clientY - bounds.top
       });
-
-      // Snap to grid
       const snappedPosition = snapToGrid(position);
-
-      // Create new node
       const nodeId = generateNodeId();
       log.info(`[ReactFlowCanvas] Creating node at ${snappedPosition.x}, ${snappedPosition.y}`);
 
-      // Send to extension to create in YAML
       sendCommandToExtension('create-node', {
         nodeId,
         position: snappedPosition,
-        nodeData: {
-          name: nodeId,
-          topoViewerRole: 'default'
-        }
+        nodeData: { name: nodeId, topoViewerRole: 'default' }
       });
-
       return;
     }
 
-    // Normal click - deselect all
     selectNode(null);
     selectEdge(null);
-  }, [selectNode, selectEdge, closeContextMenu, onLockedAction]);
+  }, [selectNode, selectEdge, closeContextMenu, onLockedAction, reactFlowInstance, modeRef, isLockedRef]);
+}
 
-  // Connect nodes - create edge
-  const onConnect: OnConnect = useCallback((connection: Connection) => {
+/** Hook for connection handler */
+function useConnectionHandler(
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
+  modeRef: React.RefObject<'view' | 'edit'>,
+  isLockedRef: React.RefObject<boolean>,
+  onLockedAction?: () => void
+) {
+  return useCallback((connection: Connection) => {
     if (modeRef.current !== 'edit') return;
     if (isLockedRef.current) {
       onLockedAction?.();
       return;
     }
-
     if (!connection.source || !connection.target) return;
 
     log.info(`[ReactFlowCanvas] Creating edge: ${connection.source} -> ${connection.target}`);
-
     const edgeId = generateEdgeId(connection.source, connection.target);
 
-    // Send to extension to create in YAML
     sendCommandToExtension('create-link', {
       linkData: {
         id: edgeId,
@@ -238,97 +241,88 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
       }
     });
 
-    // Also add to local state for immediate feedback
     const newEdge: Edge = {
       id: edgeId,
       source: connection.source,
       target: connection.target,
       type: 'topology-edge',
-      data: {
-        sourceEndpoint: 'eth1',
-        targetEndpoint: 'eth1',
-        linkStatus: 'unknown'
-      }
+      data: { sourceEndpoint: 'eth1', targetEndpoint: 'eth1', linkStatus: 'unknown' }
     };
 
     setEdges((edges) => [...edges, newEdge]);
-  }, [setEdges, onLockedAction]);
+  }, [setEdges, onLockedAction, modeRef, isLockedRef]);
+}
 
-  // Handle nodes change with grid snapping on position change
+/**
+ * Hook for canvas event handlers
+ */
+export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers {
+  const { selectNode, selectEdge, editNode, editEdge, mode, isLocked, onNodesChangeBase, setEdges, onLockedAction } = config;
+
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  const modeRef = useRef(mode);
+  const isLockedRef = useRef(isLocked);
+  modeRef.current = mode;
+  isLockedRef.current = isLocked;
+
+  // Context menu
+  const { contextMenu, closeContextMenu, openNodeMenu, openEdgeMenu, openPaneMenu } = useContextMenuState();
+
+  // Initialize
+  const onInit = useCallback((instance: ReactFlowInstance) => {
+    reactFlowInstance.current = instance;
+    log.info('[ReactFlowCanvas] React Flow initialized');
+    setTimeout(() => instance.fitView({ padding: 0.2 }), 100);
+  }, []);
+
+  // Click handlers
+  const { onNodeClick, onNodeDoubleClick } = useNodeClickHandlers(selectNode, selectEdge, editNode, closeContextMenu, modeRef, isLockedRef, onLockedAction);
+  const { onEdgeClick, onEdgeDoubleClick } = useEdgeClickHandlers(selectNode, selectEdge, editEdge, closeContextMenu, modeRef, isLockedRef, onLockedAction);
+  const onPaneClick = usePaneClickHandler(selectNode, selectEdge, closeContextMenu, reactFlowInstance, modeRef, isLockedRef, onLockedAction);
+  const onConnect = useConnectionHandler(setEdges, modeRef, isLockedRef, onLockedAction);
+
+  // Node changes with snapping
   const handleNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
-    // Apply grid snapping to position changes
     const snappedChanges = changes.map((change) => {
       if (change.type === 'position' && change.position) {
-        return {
-          ...change,
-          position: snapToGrid(change.position)
-        };
+        return { ...change, position: snapToGrid(change.position) };
       }
       return change;
     });
-
     onNodesChangeBase(snappedChanges);
   }, [onNodesChangeBase]);
 
-  // Node drag stop - save position
+  // Drag stop
   const onNodeDragStop: NodeMouseHandler = useCallback((event, node) => {
     if (modeRef.current !== 'edit') return;
-
     const snappedPosition = snapToGrid(node.position);
     log.info(`[ReactFlowCanvas] Node ${node.id} dragged to ${snappedPosition.x}, ${snappedPosition.y}`);
-
-    // Save position to extension/YAML
-    sendCommandToExtension('save-node-positions', {
-      positions: [{
-        id: node.id,
-        position: snappedPosition
-      }]
-    });
+    sendCommandToExtension('save-node-positions', { positions: [{ id: node.id, position: snappedPosition }] });
   }, []);
 
-  // Node context menu
+  // Context menus
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
     event.stopPropagation();
-
     selectNode(node.id);
     selectEdge(null);
+    openNodeMenu(event.clientX, event.clientY, node.id);
+  }, [selectNode, selectEdge, openNodeMenu]);
 
-    setContextMenu({
-      type: 'node',
-      position: { x: event.clientX, y: event.clientY },
-      targetId: node.id
-    });
-  }, [selectNode, selectEdge]);
-
-  // Edge context menu
   const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.preventDefault();
     event.stopPropagation();
-
     selectEdge(edge.id);
     selectNode(null);
+    openEdgeMenu(event.clientX, event.clientY, edge.id);
+  }, [selectNode, selectEdge, openEdgeMenu]);
 
-    setContextMenu({
-      type: 'edge',
-      position: { x: event.clientX, y: event.clientY },
-      targetId: edge.id
-    });
-  }, [selectNode, selectEdge]);
-
-  // Pane context menu
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
-
     selectNode(null);
     selectEdge(null);
-
-    setContextMenu({
-      type: 'pane',
-      position: { x: event.clientX, y: event.clientY },
-      targetId: null
-    });
-  }, [selectNode, selectEdge]);
+    openPaneMenu(event.clientX, event.clientY);
+  }, [selectNode, selectEdge, openPaneMenu]);
 
   return {
     reactFlowInstance,

@@ -225,6 +225,7 @@ function LineShape({
 /**
  * FreeShapeNode component renders shape annotations (rectangle, circle, line)
  */
+// eslint-disable-next-line complexity
 const FreeShapeNodeComponent: React.FC<NodeProps<FreeShapeNodeData>> = ({ data, selected }) => {
   const {
     shapeType,

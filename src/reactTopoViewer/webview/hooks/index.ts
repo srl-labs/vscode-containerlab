@@ -31,6 +31,8 @@ export {
   useRFContextMenuHandlers
 } from './useReactFlowState';
 
+export * from './react-flow';
+
 // ============================================================================
 // Compatibility exports - [MIGRATION] Remove after full ReactFlow migration
 // ============================================================================

@@ -182,108 +182,56 @@ function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: nu
   );
 }
 
-/**
- * TopologyEdge - Floating edge that connects nodes like Cytoscape
- * Edges go from node border to node border (not fixed handles)
- */
-const TopologyEdgeComponent: React.FC<EdgeProps<TopologyEdgeData>> = ({
-  id,
-  source,
-  target,
-  data,
-  selected
-}) => {
-  // Get internal node data for position calculations
+/** Hook for calculating edge geometry */
+function useEdgeGeometry(source: string, target: string) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
 
-  // Calculate edge points
-  const edgePoints = useMemo(() => {
-    if (!sourceNode || !targetNode) {
-      return null;
-    }
+  return useMemo(() => {
+    if (!sourceNode || !targetNode) return null;
 
     const sourcePos = sourceNode.internals.positionAbsolute;
     const targetPos = targetNode.internals.positionAbsolute;
 
-    return getEdgePoints(
-      {
-        x: sourcePos.x,
-        y: sourcePos.y,
-        width: sourceNode.measured?.width ?? 40,
-        height: sourceNode.measured?.height ?? 40
-      },
-      {
-        x: targetPos.x,
-        y: targetPos.y,
-        width: targetNode.measured?.width ?? 40,
-        height: targetNode.measured?.height ?? 40
-      }
+    const points = getEdgePoints(
+      { x: sourcePos.x, y: sourcePos.y, width: sourceNode.measured?.width ?? 40, height: sourceNode.measured?.height ?? 40 },
+      { x: targetPos.x, y: targetPos.y, width: targetNode.measured?.width ?? 40, height: targetNode.measured?.height ?? 40 }
     );
+
+    return {
+      points,
+      path: `M ${points.sx} ${points.sy} L ${points.tx} ${points.ty}`,
+      sourceLabelPos: getLabelPosition(points.sx, points.sy, points.tx, points.ty, LABEL_OFFSET),
+      targetLabelPos: getLabelPosition(points.tx, points.ty, points.sx, points.sy, LABEL_OFFSET)
+    };
   }, [sourceNode, targetNode]);
+}
 
-  // Calculate label positions
-  const sourceLabelPos = useMemo(() => {
-    if (!edgePoints) return { x: 0, y: 0 };
-    return getLabelPosition(edgePoints.sx, edgePoints.sy, edgePoints.tx, edgePoints.ty, LABEL_OFFSET);
-  }, [edgePoints]);
+/** Get stroke styling based on selection and link status */
+function getStrokeStyle(linkStatus: string | undefined, selected: boolean) {
+  return {
+    color: getStrokeColor(linkStatus, selected),
+    width: selected ? EDGE_WIDTH_SELECTED : EDGE_WIDTH_NORMAL,
+    opacity: selected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL
+  };
+}
 
-  const targetLabelPos = useMemo(() => {
-    if (!edgePoints) return { x: 0, y: 0 };
-    return getLabelPosition(edgePoints.tx, edgePoints.ty, edgePoints.sx, edgePoints.sy, LABEL_OFFSET);
-  }, [edgePoints]);
+/**
+ * TopologyEdge - Floating edge that connects nodes like Cytoscape
+ */
+const TopologyEdgeComponent: React.FC<EdgeProps<TopologyEdgeData>> = ({ id, source, target, data, selected }) => {
+  const geometry = useEdgeGeometry(source, target);
+  if (!geometry) return null;
 
-  if (!edgePoints) {
-    return null;
-  }
-
-  // Get stroke styling
-  const isSelected = selected ?? false;
-  const strokeColor = getStrokeColor(data?.linkStatus, isSelected);
-  const strokeWidth = isSelected ? EDGE_WIDTH_SELECTED : EDGE_WIDTH_NORMAL;
-  const strokeOpacity = isSelected ? EDGE_OPACITY_SELECTED : EDGE_OPACITY_NORMAL;
-
-  // Create straight line path (like Cytoscape)
-  const edgePath = `M ${edgePoints.sx} ${edgePoints.sy} L ${edgePoints.tx} ${edgePoints.ty}`;
+  const stroke = getStrokeStyle(data?.linkStatus, selected ?? false);
 
   return (
     <>
-      {/* Invisible wider path for easier selection */}
-      <path
-        id={`${id}-interaction`}
-        d={edgePath}
-        fill="none"
-        stroke="transparent"
-        strokeWidth={20}
-        style={{ cursor: 'pointer' }}
-      />
-      {/* Visible edge line */}
-      <path
-        id={id}
-        d={edgePath}
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth={strokeWidth}
-        opacity={strokeOpacity}
-        style={{ cursor: 'pointer' }}
-        className="react-flow__edge-path"
-      />
-
+      <path id={`${id}-interaction`} d={geometry.path} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: 'pointer' }} />
+      <path id={id} d={geometry.path} fill="none" stroke={stroke.color} strokeWidth={stroke.width} opacity={stroke.opacity} style={{ cursor: 'pointer' }} className="react-flow__edge-path" />
       <EdgeLabelRenderer>
-        {data?.sourceEndpoint && (
-          <EndpointLabel
-            text={data.sourceEndpoint}
-            x={sourceLabelPos.x}
-            y={sourceLabelPos.y}
-          />
-        )}
-        {data?.targetEndpoint && (
-          <EndpointLabel
-            text={data.targetEndpoint}
-            x={targetLabelPos.x}
-            y={targetLabelPos.y}
-          />
-        )}
+        {data?.sourceEndpoint && <EndpointLabel text={data.sourceEndpoint} x={geometry.sourceLabelPos.x} y={geometry.sourceLabelPos.y} />}
+        {data?.targetEndpoint && <EndpointLabel text={data.targetEndpoint} x={geometry.targetLabelPos.x} y={geometry.targetLabelPos.y} />}
       </EdgeLabelRenderer>
     </>
   );

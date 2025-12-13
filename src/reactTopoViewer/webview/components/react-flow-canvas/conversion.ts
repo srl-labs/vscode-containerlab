@@ -200,6 +200,7 @@ function createFreeShapeNode(base: BaseNodeFields, data: Record<string, unknown>
   };
 }
 
+// eslint-disable-next-line complexity
 function createTopologyNode(base: BaseNodeFields, data: Record<string, unknown>): Node {
   const role = (data.topoViewerRole as string) || 'default';
   const extraData = data.extraData as Record<string, unknown> | undefined;
