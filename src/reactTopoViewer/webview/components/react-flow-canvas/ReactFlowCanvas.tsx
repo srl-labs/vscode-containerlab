@@ -25,7 +25,6 @@ import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from './types';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { useTopoViewer } from '../../context/TopoViewerContext';
-import { useCanvasHandlers, GRID_SIZE } from './useCanvasHandlers';
 import { ContextMenu, type ContextMenuItem } from '../context-menu/ContextMenu';
 import { buildNodeContextMenu, buildEdgeContextMenu, buildPaneContextMenu } from './contextMenuBuilders';
 import {
@@ -34,7 +33,9 @@ import {
   useLinkCreation,
   useSourceNodePosition,
   useKeyboardDeleteHandlers,
-  useCanvasRefMethods
+  useCanvasRefMethods,
+  useCanvasHandlers,
+  GRID_SIZE
 } from '../../hooks/react-flow';
 import type { Node, Edge } from '@xyflow/react';
 

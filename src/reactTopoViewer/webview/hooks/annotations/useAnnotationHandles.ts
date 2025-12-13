@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 // [MIGRATION] Replace with ReactFlow types from @xyflow/react
 type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
-import { RenderedPosition } from './freeTextLayerHelpers';
+import { RenderedPosition } from '../../components/annotations/freeTextLayerHelpers';
 
 // ============================================================================
 // Rotation Hook

@@ -1,5 +1,5 @@
 /**
- * Panel position and drag management hooks
+ * Panel position and drag management hooks for FloatingActionPanel
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
@@ -54,9 +54,10 @@ function clampPosition(
 }
 
 /**
- * Custom hook for panel position and dragging
+ * Custom hook for floating panel position and dragging
+ * Note: Renamed from usePanelDrag to useFloatingPanelDrag to avoid collision with shared/editor/usePanelDrag
  */
-export function usePanelDrag(isLocked: boolean) {
+export function useFloatingPanelDrag(isLocked: boolean) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position>(loadInitialPosition);
   const isDragging = useRef(false);

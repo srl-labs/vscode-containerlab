@@ -8,8 +8,7 @@ type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; contain
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { renderedToModel, computeAnnotationStyle } from './freeTextLayerHelpers';
-import { useAnnotationDrag } from './useAnnotationDrag';
-import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
+import { useAnnotationDrag, useRotationDrag, useResizeDrag } from '../../hooks/annotations';
 import { renderMarkdown } from '../../utils/markdownRenderer';
 
 // ============================================================================

@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 // [MIGRATION] Replace with ReactFlow types from @xyflow/react
 type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
-import { modelToRendered, RenderedPosition } from './freeTextLayerHelpers';
+import { modelToRendered, RenderedPosition } from '../../components/annotations/freeTextLayerHelpers';
 
 interface DragStart {
   mouseX: number;

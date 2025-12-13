@@ -2,8 +2,7 @@
  * BasePanel - Core draggable and resizable panel component
  */
 import React, { ReactNode } from 'react';
-import { usePanelDrag } from './usePanelDrag';
-import { usePanelResize } from './usePanelResize';
+import { usePanelDrag, usePanelResize } from '../../../hooks/ui';
 import { PanelHeader, PanelFooter, ResizeHandle, Backdrop } from './BasePanelComponents';
 
 const DEFAULT_POSITION = { x: 20, y: 80 };

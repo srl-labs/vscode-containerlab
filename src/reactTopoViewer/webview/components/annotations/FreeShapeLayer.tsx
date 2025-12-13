@@ -8,8 +8,7 @@ type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; contain
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { renderedToModel } from './freeTextLayerHelpers';
-import { useAnnotationDrag } from './useAnnotationDrag';
-import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
+import { useAnnotationDrag, useRotationDrag, useResizeDrag } from '../../hooks/annotations';
 import { buildShapeSvg } from './freeShapeLayerHelpers';
 import { getLineCenter, MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from '../../hooks/annotations/freeShapeHelpers';
 

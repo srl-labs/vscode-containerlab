@@ -5,12 +5,12 @@
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { useTopoViewer, CustomNodeTemplate } from '../../../context/TopoViewerContext';
 import {
-  usePanelDrag,
+  useFloatingPanelDrag,
   useDrawerSide,
   useShakeAnimation,
   savePanelState,
   buildLockButtonClass
-} from './usePanelPosition';
+} from '../../../hooks/ui';
 import { PanelButton, DeployButtonGroup } from './DeployControls';
 import { PanelButtonWithDropdown, DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
 
@@ -124,7 +124,7 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const { isShaking, trigger: triggerLockShake } = useShakeAnimation();
-    const { panelRef, position, handleMouseDown } = usePanelDrag(isLocked);
+    const { panelRef, position, handleMouseDown } = useFloatingPanelDrag(isLocked);
     const drawerSide = useDrawerSide(panelRef, position);
 
     useImperativeHandle(ref, () => ({

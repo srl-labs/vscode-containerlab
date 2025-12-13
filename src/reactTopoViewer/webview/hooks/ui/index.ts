@@ -30,3 +30,18 @@ export type {
 } from './usePanelCommands';
 
 export { useAppHandlers } from './useAppHandlers';
+
+// Panel position hooks (moved from components/panels/floatingPanel/)
+export {
+  useFloatingPanelDrag,
+  useDrawerSide,
+  useShakeAnimation,
+  loadInitialPosition,
+  savePanelState,
+  buildLockButtonClass
+} from './usePanelPosition';
+export type { Position } from './usePanelPosition';
+
+// Panel drag/resize hooks (moved from components/shared/editor/)
+export { usePanelDrag } from './usePanelDrag';
+export { usePanelResize } from './usePanelResize';
