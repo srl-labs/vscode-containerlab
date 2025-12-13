@@ -54,7 +54,7 @@ const TopologyNodeComponent: React.FC<NodeProps<TopologyNodeData>> = ({ data, se
 
   // Label styles
   const labelStyle: React.CSSProperties = {
-    marginTop: 4,
+    marginTop: -2,
     fontSize: '0.7rem',
     fontWeight: 500,
     color: '#F5F5F5',

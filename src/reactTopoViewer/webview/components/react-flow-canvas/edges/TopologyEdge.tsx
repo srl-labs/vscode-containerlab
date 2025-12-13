@@ -176,11 +176,13 @@ function getLabelPosition(
 
 /**
  * Get parallel edge info - finds all edges between the same node pair
- * and returns the current edge's index and total count
+ * and returns the current edge's index, total count, and direction info
  */
 interface ParallelEdgeInfo {
   index: number;
   total: number;
+  /** True if the edge direction matches the canonical direction (alphabetically smaller node → larger node) */
+  isCanonicalDirection: boolean;
 }
 
 function getParallelEdgeInfo(
@@ -189,6 +191,10 @@ function getParallelEdgeInfo(
   target: string,
   allEdges: { id: string; source: string; target: string }[]
 ): ParallelEdgeInfo {
+  // Determine canonical direction: alphabetically smaller node ID is the "canonical source"
+  // This ensures consistent curvature regardless of how the edge was defined in the YAML
+  const isCanonicalDirection = source.localeCompare(target) <= 0;
+
   // Find all edges between the same node pair (in either direction)
   const parallelEdges = allEdges.filter(
     (e) =>
@@ -202,13 +208,17 @@ function getParallelEdgeInfo(
   const index = parallelEdges.findIndex((e) => e.id === edgeId);
   return {
     index: index === -1 ? 0 : index,
-    total: parallelEdges.length
+    total: parallelEdges.length,
+    isCanonicalDirection
   };
 }
 
 /**
  * Calculate the bezier control point for a curved edge
  * Returns null for single edges (straight line)
+ *
+ * @param isCanonicalDirection - true if the edge goes from the canonical source to target
+ *                               (used to ensure consistent curvature for parallel edges)
  */
 function calculateControlPoint(
   sx: number,
@@ -216,7 +226,8 @@ function calculateControlPoint(
   tx: number,
   ty: number,
   edgeIndex: number,
-  totalEdges: number
+  totalEdges: number,
+  isCanonicalDirection: boolean
 ): { x: number; y: number } | null {
   // Single edge - use straight line
   if (totalEdges <= 1) return null;
@@ -225,7 +236,7 @@ function calculateControlPoint(
   const midX = (sx + tx) / 2;
   const midY = (sy + ty) / 2;
 
-  // Calculate perpendicular direction
+  // Calculate perpendicular direction from source to target
   const dx = tx - sx;
   const dy = ty - sy;
   const length = Math.sqrt(dx * dx + dy * dy);
@@ -239,7 +250,13 @@ function calculateControlPoint(
   // Calculate offset: distribute edges evenly around the center
   // For 2 edges: offsets are -0.5 and +0.5 times step size
   // For 3 edges: offsets are -1, 0, +1 times step size
-  const offset = (edgeIndex - (totalEdges - 1) / 2) * CONTROL_POINT_STEP_SIZE;
+  let offset = (edgeIndex - (totalEdges - 1) / 2) * CONTROL_POINT_STEP_SIZE;
+
+  // If this edge is NOT in the canonical direction, flip the offset
+  // This ensures parallel edges in opposite directions curve to opposite sides
+  if (!isCanonicalDirection) {
+    offset = -offset;
+  }
 
   return {
     x: midX + normalX * offset,
@@ -321,7 +338,8 @@ function useEdgeGeometry(edgeId: string, source: string, target: string) {
       points.tx,
       points.ty,
       parallelInfo.index,
-      parallelInfo.total
+      parallelInfo.total,
+      parallelInfo.isCanonicalDirection
     );
 
     // Generate path: straight line for single edges, quadratic bezier for parallel edges
