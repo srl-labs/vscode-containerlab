@@ -6,8 +6,6 @@ import { ReactFlowProvider, type ReactFlowInstance } from '@xyflow/react';
 import { useTopoViewer, CustomNodeTemplate } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
 import { ReactFlowCanvas } from './components/react-flow-canvas';
-import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
-import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel } from './components/panels/node-editor';
 import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
@@ -208,10 +206,33 @@ interface NodeCreationState {
   isLocked: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
+  elements: import('../../shared/types/messages').CyElement[];
 }
 
 /** Position type */
 type Position = { x: number; y: number };
+
+/**
+ * Generate a unique node name based on base name and existing nodes
+ */
+function generateUniqueNodeName(
+  baseName: string,
+  existingNodes: Set<string>
+): string {
+  // If base name doesn't exist, use it directly
+  if (!existingNodes.has(baseName)) {
+    return baseName;
+  }
+
+  // Find the next available number suffix
+  let counter = 1;
+  let candidateName = `${baseName}${counter}`;
+  while (existingNodes.has(candidateName)) {
+    counter++;
+    candidateName = `${baseName}${counter}`;
+  }
+  return candidateName;
+}
 
 /**
  * Hook for node creation handlers (React Flow version)
@@ -244,34 +265,57 @@ function useNodeCreationHandlers(
       template = state.customNodes.find(n => n.name === state.defaultNode);
     }
 
+    // Get existing node names to ensure uniqueness
+    const existingNodes = new Set<string>();
+    for (const el of state.elements) {
+      if (el.group === 'nodes') {
+        const nodeId = (el.data as Record<string, unknown>)?.id;
+        if (typeof nodeId === 'string') {
+          existingNodes.add(nodeId);
+        }
+      }
+    }
+
+    // Generate unique node name
+    const baseName = template?.baseName || template?.kind || 'node';
+    const nodeName = generateUniqueNodeName(baseName, existingNodes);
+
     // Get viewport center for node placement
     const viewport = rfInstance.getViewport();
-    const { width, height } = rfInstance.getViewportDimensions?.() ?? { width: 800, height: 600 };
+    const { width, height } = (rfInstance as unknown as { getViewportDimensions?: () => { width: number; height: number } }).getViewportDimensions?.() ?? { width: 800, height: 600 };
     const position: Position = {
       x: -viewport.x / viewport.zoom + width / (2 * viewport.zoom),
       y: -viewport.y / viewport.zoom + height / (2 * viewport.zoom)
     };
 
+    // Build node data for the extension
+    // Icon properties go at top level (MessageRouter extracts them from there)
+    // Other properties go in extraData for YAML persistence
+    const nodeData: Record<string, unknown> = {
+      id: nodeName,
+      name: nodeName,
+      kind: template?.kind || 'nokia_srlinux',
+      // Icon properties at top level for MessageRouter extraction
+      ...(template?.icon && { topoViewerRole: template.icon }),
+      ...(template?.iconColor && { iconColor: template.iconColor }),
+      ...(template?.iconCornerRadius !== undefined && { iconCornerRadius: template.iconCornerRadius }),
+      extraData: {
+        kind: template?.kind || 'nokia_srlinux',
+        ...(template?.type && { type: template.type }),
+        ...(template?.image && { image: template.image }),
+        ...(template?.interfacePattern && { interfacePattern: template.interfacePattern })
+      }
+    };
+
     // Send node creation command to extension for YAML file update
     sendCommandToExtension('create-node', {
-      position,
-      template: template ? {
-        name: template.name,
-        kind: template.kind,
-        topoViewerRole: template.topoViewerRole,
-        interfacePattern: template.interfacePattern
-      } : undefined
+      nodeId: nodeName,
+      nodeData,
+      position
     });
-  }, [rfInstance, state.isLocked, state.customNodes, state.defaultNode, floatingPanelRef, onNewCustomNode]);
+  }, [rfInstance, state.isLocked, state.customNodes, state.defaultNode, state.elements, floatingPanelRef, onNewCustomNode]);
 
   return { handleAddNodeFromPanel };
-}
-
-/**
- * Determines if an info panel should be visible (only in view mode)
- */
-function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view'): boolean {
-  return !!selectedItem && mode === 'view';
 }
 
 const AppContent: React.FC = () => {
@@ -285,7 +329,6 @@ const AppContent: React.FC = () => {
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
 
   // Selection and editing data
-  const { selectedNodeData, selectedLinkData } = useRFSelectionData(reactFlowRef, state.selectedNode, state.selectedEdge);
   const { selectedNodeData: editingNodeRawData } = useRFSelectionData(reactFlowRef, state.editingNode, null);
   const { selectedLinkData: editingLinkRawData } = useRFSelectionData(reactFlowRef, null, state.editingEdge);
   const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
@@ -385,7 +428,8 @@ const AppContent: React.FC = () => {
   const nodeCreationState: NodeCreationState = {
     isLocked: state.isLocked,
     customNodes: state.customNodes,
-    defaultNode: state.defaultNode
+    defaultNode: state.defaultNode,
+    elements: state.elements
   };
 
   // Use the node creation handler hook (React Flow version)
@@ -495,16 +539,6 @@ const AppContent: React.FC = () => {
       <main className="topoviewer-main">
         <ReactFlowCanvas ref={reactFlowRef} elements={state.elements} />
         {/* Group, FreeText, and FreeShape layers are now rendered as React Flow nodes */}
-	        <NodeInfoPanel
-	          isVisible={shouldShowInfoPanel(state.selectedNode, state.mode)}
-	          nodeData={selectedNodeData}
-	          onClose={menuHandlers.handleCloseNodePanel}
-	        />
-        <LinkInfoPanel
-          isVisible={shouldShowInfoPanel(state.selectedEdge, state.mode)}
-          linkData={selectedLinkData}
-          onClose={menuHandlers.handleCloseLinkPanel}
-        />
         <NodeEditorPanel
           isVisible={!!state.editingNode}
           nodeData={editingNodeData}

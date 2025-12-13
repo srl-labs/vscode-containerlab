@@ -14,11 +14,8 @@ import React, {
 import {
   ReactFlow,
   Background,
-  Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
-  type Node,
   BackgroundVariant,
   SelectionMode,
   ConnectionMode
@@ -51,25 +48,6 @@ const canvasStyle: React.CSSProperties = {
   bottom: 0
 };
 
-/**
- * MiniMap node color function
- */
-function getMiniMapNodeColor(node: Node): string {
-  switch (node.type) {
-    case 'topology-node':
-      return '#005aff';
-    case 'cloud-node':
-      return '#6B7280';
-    case 'group-node':
-      return 'rgba(200, 200, 200, 0.5)';
-    case 'free-text-node':
-      return '#F59E0B';
-    case 'free-shape-node':
-      return '#10B981';
-    default:
-      return '#888';
-  }
-}
 
 // Pro options (disable attribution)
 const proOptions = { hideAttribution: true };
@@ -91,6 +69,10 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
     const [isInitialized, setIsInitialized] = useState(false);
     const prevElementsRef = useRef<CyElement[]>([]);
     const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
+
+    // Link creation mode state
+    const [linkSourceNode, setLinkSourceNode] = useState<string | null>(null);
+    const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
     // Use extracted event handlers
     const handlers = useCanvasHandlers({
@@ -190,6 +172,109 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
       handlers.closeContextMenu();
     }, [edges, setEdges, selectEdge, onEdgeDelete, handlers]);
 
+    // Link creation handlers
+    const startLinkCreation = useCallback((nodeId: string) => {
+      log.info(`[ReactFlowCanvas] Starting link creation from: ${nodeId}`);
+      setLinkSourceNode(nodeId);
+    }, []);
+
+    const completeLinkCreation = useCallback((targetNodeId: string) => {
+      if (!linkSourceNode || linkSourceNode === targetNodeId) return;
+
+      log.info(`[ReactFlowCanvas] Completing link: ${linkSourceNode} -> ${targetNodeId}`);
+
+      const edgeId = `${linkSourceNode}-${targetNodeId}-${Date.now()}`;
+
+      // Send to extension to create in YAML
+      sendCommandToExtension('create-link', {
+        linkData: {
+          id: edgeId,
+          source: linkSourceNode,
+          target: targetNodeId,
+          sourceEndpoint: 'eth1',
+          targetEndpoint: 'eth1'
+        }
+      });
+
+      // Add to local state for immediate feedback
+      const newEdge = {
+        id: edgeId,
+        source: linkSourceNode,
+        target: targetNodeId,
+        type: 'topology-edge',
+        data: {
+          sourceEndpoint: 'eth1',
+          targetEndpoint: 'eth1',
+          linkStatus: 'unknown'
+        }
+      };
+
+      setEdges((eds) => [...eds, newEdge]);
+      setLinkSourceNode(null);
+      setMousePosition(null);
+    }, [linkSourceNode, setEdges]);
+
+    const cancelLinkCreation = useCallback(() => {
+      log.info('[ReactFlowCanvas] Cancelling link creation');
+      setLinkSourceNode(null);
+      setMousePosition(null);
+    }, []);
+
+    // Track mouse movement when in link creation mode
+    useEffect(() => {
+      if (!linkSourceNode) return;
+
+      const handleMouseMove = (e: MouseEvent) => {
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          cancelLinkCreation();
+        }
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [linkSourceNode, cancelLinkCreation]);
+
+    // Get source node position for drawing the connection line
+    const sourceNodePosition = useMemo(() => {
+      if (!linkSourceNode) return null;
+      const node = nodes.find(n => n.id === linkSourceNode);
+      if (!node) return null;
+      // Get the center of the node (approximate)
+      const nodeWidth = 60; // Default node width
+      const nodeHeight = 60; // Default node height
+      return {
+        x: node.position.x + nodeWidth / 2,
+        y: node.position.y + nodeHeight / 2
+      };
+    }, [linkSourceNode, nodes]);
+
+    // Handle node click to complete link when in link creation mode
+    const handleNodeClickForLink = useCallback((event: React.MouseEvent, nodeId: string) => {
+      if (linkSourceNode && linkSourceNode !== nodeId) {
+        event.stopPropagation();
+        completeLinkCreation(nodeId);
+      }
+    }, [linkSourceNode, completeLinkCreation]);
+
+    // Wrapped node click handler that checks for link creation mode first
+    const wrappedOnNodeClick = useCallback((event: React.MouseEvent, node: { id: string }) => {
+      if (linkSourceNode) {
+        handleNodeClickForLink(event, node.id);
+        return;
+      }
+      // Fall through to default handler
+      handlers.onNodeClick(event, node as Parameters<typeof handlers.onNodeClick>[1]);
+    }, [linkSourceNode, handleNodeClickForLink, handlers]);
+
     // Build context menu items based on menu type
     const contextMenuItems = useMemo((): ContextMenuItem[] => {
       const { type, targetId } = handlers.contextMenu;
@@ -199,7 +284,8 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
 
       if (type === 'node' && targetId) {
         return buildNodeContextMenu({
-          targetId, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode
+          targetId, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode,
+          linkSourceNode, startLinkCreation, cancelLinkCreation
         });
       }
 
@@ -218,7 +304,7 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
       }
 
       return [];
-    }, [handlers, state.mode, state.isLocked, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes]);
+    }, [handlers, state.mode, state.isLocked, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodes, edges, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation]);
 
     // Keyboard handlers for delete
     useEffect(() => {
@@ -254,7 +340,7 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
           onNodesChange={handlers.handleNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={handlers.onInit}
-          onNodeClick={handlers.onNodeClick}
+          onNodeClick={wrappedOnNodeClick}
           onNodeDoubleClick={handlers.onNodeDoubleClick}
           onNodeDragStop={handlers.onNodeDragStop}
           onNodeContextMenu={handlers.onNodeContextMenu}
@@ -290,19 +376,6 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
             size={1}
             color="#555"
           />
-          <Controls
-            showZoom
-            showFitView
-            showInteractive={false}
-            position="bottom-right"
-          />
-          <MiniMap
-            nodeColor={getMiniMapNodeColor}
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-            position="bottom-left"
-          />
         </ReactFlow>
 
         {/* Context Menu */}
@@ -312,10 +385,101 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
           items={contextMenuItems}
           onClose={handlers.closeContextMenu}
         />
+
+        {/* Link Creation Visual Line */}
+        {linkSourceNode && mousePosition && sourceNodePosition && handlers.reactFlowInstance.current && (
+          <LinkCreationLine
+            sourcePosition={sourceNodePosition}
+            mousePosition={mousePosition}
+            reactFlowInstance={handlers.reactFlowInstance.current}
+          />
+        )}
+
+        {/* Link Creation Mode Indicator */}
+        {linkSourceNode && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'var(--vscode-editor-background, #1e1e1e)',
+              border: '1px solid var(--vscode-focusBorder, #007acc)',
+              borderRadius: 4,
+              padding: '6px 12px',
+              fontSize: 12,
+              color: 'var(--vscode-editor-foreground, #cccccc)',
+              zIndex: 1000,
+              pointerEvents: 'none'
+            }}
+          >
+            Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to cancel
+          </div>
+        )}
       </div>
     );
   }
 );
+
+/**
+ * Visual line component for link creation mode
+ */
+interface LinkCreationLineProps {
+  sourcePosition: { x: number; y: number };
+  mousePosition: { x: number; y: number };
+  reactFlowInstance: ReactFlowInstance;
+}
+
+const LinkCreationLine: React.FC<LinkCreationLineProps> = ({
+  sourcePosition,
+  mousePosition,
+  reactFlowInstance
+}) => {
+  // Convert source position (flow coordinates) to screen coordinates
+  const viewport = reactFlowInstance.getViewport();
+  const screenSourceX = sourcePosition.x * viewport.zoom + viewport.x;
+  const screenSourceY = sourcePosition.y * viewport.zoom + viewport.y;
+
+  // Get the canvas container bounds
+  const container = document.querySelector('.react-flow-canvas');
+  if (!container) return null;
+  const bounds = container.getBoundingClientRect();
+
+  // Calculate relative mouse position within the canvas
+  const relativeMouseX = mousePosition.x - bounds.left;
+  const relativeMouseY = mousePosition.y - bounds.top;
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 999
+      }}
+    >
+      <line
+        x1={screenSourceX}
+        y1={screenSourceY}
+        x2={relativeMouseX}
+        y2={relativeMouseY}
+        stroke="#007acc"
+        strokeWidth={2}
+        strokeDasharray="5,5"
+      />
+      <circle
+        cx={relativeMouseX}
+        cy={relativeMouseY}
+        r={6}
+        fill="#007acc"
+        opacity={0.7}
+      />
+    </svg>
+  );
+};
 
 ReactFlowCanvasComponent.displayName = 'ReactFlowCanvas';
 

@@ -190,9 +190,8 @@ function handleMockExtensionResponse(message: MockMessage) {
           position: nodePosition
         });
         updateSplitViewContent();
-        if (devState.graphBatchDepth > 0) {
-          devState.pendingTopologyBroadcast = true;
-        }
+        // Broadcast topology update (simulates file watcher behavior)
+        maybeBroadcastTopologyData();
       }
       break;
     }
@@ -219,9 +218,8 @@ function handleMockExtensionResponse(message: MockMessage) {
           ];
         }
         updateSplitViewContent();
-        if (devState.graphBatchDepth > 0) {
-          devState.pendingTopologyBroadcast = true;
-        }
+        // Broadcast topology update (simulates file watcher behavior)
+        maybeBroadcastTopologyData();
       }
       break;
     }
@@ -240,9 +238,8 @@ function handleMockExtensionResponse(message: MockMessage) {
         devState.currentAnnotations.nodeAnnotations = (devState.currentAnnotations.nodeAnnotations as Array<{ id: string }>)
           .filter(a => a.id !== nodeId);
         updateSplitViewContent();
-        if (devState.graphBatchDepth > 0) {
-          devState.pendingTopologyBroadcast = true;
-        }
+        // Broadcast topology update (simulates file watcher behavior)
+        maybeBroadcastTopologyData();
       }
       break;
     }
@@ -255,9 +252,8 @@ function handleMockExtensionResponse(message: MockMessage) {
           !(el.group === 'edges' && el.data.id === edgeId)
         );
         updateSplitViewContent();
-        if (devState.graphBatchDepth > 0) {
-          devState.pendingTopologyBroadcast = true;
-        }
+        // Broadcast topology update (simulates file watcher behavior)
+        maybeBroadcastTopologyData();
       }
       break;
     }

@@ -249,6 +249,11 @@ const PanelContent: React.FC<PanelContentProps> = ({
       onAddNode?.(id);
     }
   }, [onAddNode]);
+
+  // Direct click on Add Node button adds default node (no template specified)
+  const handleAddNodeDirect = useCallback(() => {
+    onAddNode?.();
+  }, [onAddNode]);
   const handleNetworkSelect = useCallback((t: string) => onAddNetwork?.(t), [onAddNetwork]);
   const handleShapeSelect = useCallback((t: string) => onAddShapes?.(t), [onAddShapes]);
 
@@ -269,12 +274,13 @@ const PanelContent: React.FC<PanelContentProps> = ({
       {!isViewerMode && (
         <PanelButtonWithDropdown
           icon="fa-plus"
-          tooltip="Add Node"
+          tooltip="Add Node (click for default, hover for templates)"
           disabled={isLocked}
           drawerSide={drawerSide}
           items={nodeMenuItems}
           filterPlaceholder="Filter templates..."
           onSelect={handleNodeSelect}
+          onDirectClick={handleAddNodeDirect}
           onLockedClick={onLockedClick}
           customNodeActions={customNodeActions}
         />

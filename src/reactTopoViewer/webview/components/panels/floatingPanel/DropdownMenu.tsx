@@ -243,6 +243,8 @@ interface PanelButtonWithDropdownProps {
   items: DropdownMenuItem[];
   filterPlaceholder?: string;
   onSelect: (itemId: string) => void;
+  /** Called when button is clicked directly (not dropdown item) - adds default */
+  onDirectClick?: () => void;
   onLockedClick?: () => void;
   /** Optional actions for custom node items */
   customNodeActions?: CustomNodeActions;
@@ -256,6 +258,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   items,
   filterPlaceholder = 'Filter...',
   onSelect,
+  onDirectClick,
   onLockedClick,
   customNodeActions
 }) => {
@@ -286,8 +289,14 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   const handleButtonClick = useCallback(() => {
     if (disabled && onLockedClick) {
       onLockedClick();
+      return;
     }
-  }, [disabled, onLockedClick]);
+    // Direct click adds default (if handler provided)
+    if (onDirectClick) {
+      onDirectClick();
+      resetState();
+    }
+  }, [disabled, onLockedClick, onDirectClick, resetState]);
 
   useFocusOnOpen(isOpen, filterInputRef);
 

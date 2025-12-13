@@ -4,7 +4,6 @@
 import type React from 'react';
 import type { Node, Edge, ReactFlowInstance } from '@xyflow/react';
 import type { ContextMenuItem } from '../context-menu/ContextMenu';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
 import { applyLayout } from './layout';
 
 interface MenuBuilderContext {
@@ -14,6 +13,12 @@ interface MenuBuilderContext {
   closeContextMenu: () => void;
   editNode: (id: string) => void;
   handleDeleteNode: (id: string) => void;
+  /** Node ID that link creation started from (if in link creation mode) */
+  linkSourceNode?: string | null;
+  /** Start link creation from this node */
+  startLinkCreation?: (nodeId: string) => void;
+  /** Cancel link creation mode */
+  cancelLinkCreation?: () => void;
 }
 
 interface EdgeMenuBuilderContext {
@@ -39,33 +44,58 @@ interface PaneMenuBuilderContext {
  * Build node context menu items
  */
 export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode } = ctx;
-  return [
-    {
-      id: 'edit-node',
-      label: 'Edit Node',
-      disabled: !isEditMode || isLocked,
+  const {
+    targetId, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode,
+    linkSourceNode, startLinkCreation, cancelLinkCreation
+  } = ctx;
+
+  const items: ContextMenuItem[] = [];
+
+  // If in link creation mode, show cancel option
+  if (linkSourceNode) {
+    items.push({
+      id: 'cancel-link',
+      label: 'Cancel Link Creation',
       onClick: () => {
-        editNode(targetId);
+        cancelLinkCreation?.();
         closeContextMenu();
       }
-    },
-    {
-      id: 'show-properties',
-      label: 'Properties',
-      onClick: () => {
-        sendCommandToExtension('panel-node-info', { nodeId: targetId });
-        closeContextMenu();
-      }
-    },
-    { id: 'divider-1', label: '', divider: true },
-    {
-      id: 'delete-node',
-      label: 'Delete Node',
-      disabled: !isEditMode || isLocked,
-      onClick: () => handleDeleteNode(targetId)
+    });
+    items.push({ id: 'divider-link', label: '', divider: true });
+  }
+
+  items.push({
+    id: 'edit-node',
+    label: 'Edit Node',
+    disabled: !isEditMode || isLocked,
+    onClick: () => {
+      editNode(targetId);
+      closeContextMenu();
     }
-  ];
+  });
+
+  // Show "Create Link" if not already in link creation mode
+  if (!linkSourceNode) {
+    items.push({
+      id: 'create-link',
+      label: 'Create Link',
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        startLinkCreation?.(targetId);
+        closeContextMenu();
+      }
+    });
+  }
+
+  items.push({ id: 'divider-1', label: '', divider: true });
+  items.push({
+    id: 'delete-node',
+    label: 'Delete Node',
+    disabled: !isEditMode || isLocked,
+    onClick: () => handleDeleteNode(targetId)
+  });
+
+  return items;
 }
 
 /**
@@ -80,14 +110,6 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editEdge(targetId);
-        closeContextMenu();
-      }
-    },
-    {
-      id: 'show-properties',
-      label: 'Properties',
-      onClick: () => {
-        sendCommandToExtension('panel-link-info', { edgeId: targetId });
         closeContextMenu();
       }
     },
