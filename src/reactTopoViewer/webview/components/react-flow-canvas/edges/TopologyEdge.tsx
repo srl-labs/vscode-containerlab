@@ -22,15 +22,15 @@ const EDGE_OPACITY_NORMAL = 0.5;
 const EDGE_OPACITY_SELECTED = 1;
 
 // Label style constants matching Cytoscape
-const LABEL_FONT_SIZE = '0.38em';
-const LABEL_BG_COLOR = '#CACBCC';
-const LABEL_TEXT_COLOR = '#000000';
-const LABEL_OUTLINE_COLOR = '#FFFFFF';
+const LABEL_FONT_SIZE = '10px';
+const LABEL_BG_COLOR = 'rgba(202, 203, 204, 0.5)';
+const LABEL_TEXT_COLOR = 'rgba(0, 0, 0, 0.7)';
+const LABEL_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.7)';
 const LABEL_PADDING = '0px 2px';
-const LABEL_OFFSET = 20; // Pixels from node edge
+const LABEL_OFFSET = 30; // Pixels from node edge
 
 // Bezier curve constants for parallel edges
-const CONTROL_POINT_STEP_SIZE = 30; // Spacing between parallel edges (more curvy for label space)
+const CONTROL_POINT_STEP_SIZE = 40; // Spacing between parallel edges (more curvy for label space)
 
 // Node icon dimensions (edges connect to icon center, not the label)
 const NODE_ICON_SIZE = 40;
@@ -255,22 +255,20 @@ function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: nu
     position: 'absolute',
     transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
     fontSize: LABEL_FONT_SIZE,
-    fontFamily: 'inherit',
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
     color: LABEL_TEXT_COLOR,
     backgroundColor: LABEL_BG_COLOR,
     padding: LABEL_PADDING,
-    borderRadius: 2,
+    borderRadius: 4,
     pointerEvents: 'none',
     whiteSpace: 'nowrap',
     textShadow: `
-      -0.3px -0.3px 0 ${LABEL_OUTLINE_COLOR},
-       0.3px -0.3px 0 ${LABEL_OUTLINE_COLOR},
-      -0.3px  0.3px 0 ${LABEL_OUTLINE_COLOR},
-       0.3px  0.3px 0 ${LABEL_OUTLINE_COLOR}
+      0 0 2px ${LABEL_OUTLINE_COLOR},
+      0 0 2px ${LABEL_OUTLINE_COLOR},
+      0 0 3px ${LABEL_OUTLINE_COLOR}
     `,
     lineHeight: 1.2,
-    zIndex: 1,
-    opacity: EDGE_OPACITY_NORMAL
+    zIndex: 1
   };
 
   return (
