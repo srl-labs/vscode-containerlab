@@ -6,6 +6,7 @@ import React, { memo, useMemo } from 'react';
 import {
   EdgeLabelRenderer,
   useInternalNode,
+  useEdges,
   type EdgeProps
 } from '@xyflow/react';
 import type { TopologyEdgeData } from '../types';
@@ -15,18 +16,24 @@ import { SELECTION_COLOR } from '../types';
 const EDGE_COLOR_DEFAULT = '#969799';
 const EDGE_COLOR_UP = '#00df2b';
 const EDGE_COLOR_DOWN = '#df2b00';
-const EDGE_WIDTH_NORMAL = 1.5;
+const EDGE_WIDTH_NORMAL = 2.5;
 const EDGE_WIDTH_SELECTED = 4;
-const EDGE_OPACITY_NORMAL = 0.7;
+const EDGE_OPACITY_NORMAL = 0.5;
 const EDGE_OPACITY_SELECTED = 1;
 
 // Label style constants matching Cytoscape
-const LABEL_FONT_SIZE = '0.42em';
+const LABEL_FONT_SIZE = '0.38em';
 const LABEL_BG_COLOR = '#CACBCC';
 const LABEL_TEXT_COLOR = '#000000';
 const LABEL_OUTLINE_COLOR = '#FFFFFF';
-const LABEL_PADDING = '1px 3px';
+const LABEL_PADDING = '0px 2px';
 const LABEL_OFFSET = 20; // Pixels from node edge
+
+// Bezier curve constants for parallel edges
+const CONTROL_POINT_STEP_SIZE = 30; // Spacing between parallel edges (more curvy for label space)
+
+// Node icon dimensions (edges connect to icon center, not the label)
+const NODE_ICON_SIZE = 40;
 
 /**
  * Get stroke color based on link status
@@ -128,14 +135,16 @@ function getEdgePoints(
 }
 
 /**
- * Calculate label position along the edge
+ * Calculate label position along the edge (supports curved paths)
+ * For curved edges, labels are placed further along the curve where they've separated
  */
 function getLabelPosition(
   startX: number,
   startY: number,
   endX: number,
   endY: number,
-  offset: number
+  offset: number,
+  controlPoint?: { x: number; y: number }
 ): { x: number; y: number } {
   const dx = endX - startX;
   const dy = endY - startY;
@@ -143,10 +152,98 @@ function getLabelPosition(
 
   if (length === 0) return { x: startX, y: startY };
 
-  const ratio = Math.min(offset / length, 0.4); // Cap at 40% of edge length
+  // For curved edges, use a larger t-value so labels are placed where curves have separated
+  // This prevents overlapping labels on parallel horizontal edges
+  const baseRatio = Math.min(offset / length, 0.4);
+  const ratio = controlPoint ? Math.max(baseRatio, 0.15) : baseRatio;
+
+  // For curved edges, calculate position along the quadratic bezier curve
+  if (controlPoint) {
+    const t = ratio;
+    // Quadratic bezier: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+    const oneMinusT = 1 - t;
+    return {
+      x: oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * controlPoint.x + t * t * endX,
+      y: oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * controlPoint.y + t * t * endY
+    };
+  }
+
   return {
     x: startX + dx * ratio,
     y: startY + dy * ratio
+  };
+}
+
+/**
+ * Get parallel edge info - finds all edges between the same node pair
+ * and returns the current edge's index and total count
+ */
+interface ParallelEdgeInfo {
+  index: number;
+  total: number;
+}
+
+function getParallelEdgeInfo(
+  edgeId: string,
+  source: string,
+  target: string,
+  allEdges: { id: string; source: string; target: string }[]
+): ParallelEdgeInfo {
+  // Find all edges between the same node pair (in either direction)
+  const parallelEdges = allEdges.filter(
+    (e) =>
+      (e.source === source && e.target === target) ||
+      (e.source === target && e.target === source)
+  );
+
+  // Sort by ID for consistent ordering
+  parallelEdges.sort((a, b) => a.id.localeCompare(b.id));
+
+  const index = parallelEdges.findIndex((e) => e.id === edgeId);
+  return {
+    index: index === -1 ? 0 : index,
+    total: parallelEdges.length
+  };
+}
+
+/**
+ * Calculate the bezier control point for a curved edge
+ * Returns null for single edges (straight line)
+ */
+function calculateControlPoint(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  edgeIndex: number,
+  totalEdges: number
+): { x: number; y: number } | null {
+  // Single edge - use straight line
+  if (totalEdges <= 1) return null;
+
+  // Calculate midpoint
+  const midX = (sx + tx) / 2;
+  const midY = (sy + ty) / 2;
+
+  // Calculate perpendicular direction
+  const dx = tx - sx;
+  const dy = ty - sy;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  if (length === 0) return null;
+
+  // Perpendicular unit vector (rotated 90 degrees)
+  const normalX = -dy / length;
+  const normalY = dx / length;
+
+  // Calculate offset: distribute edges evenly around the center
+  // For 2 edges: offsets are -0.5 and +0.5 times step size
+  // For 3 edges: offsets are -1, 0, +1 times step size
+  const offset = (edgeIndex - (totalEdges - 1) / 2) * CONTROL_POINT_STEP_SIZE;
+
+  return {
+    x: midX + normalX * offset,
+    y: midY + normalY * offset
   };
 }
 
@@ -172,7 +269,8 @@ function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: nu
        0.3px  0.3px 0 ${LABEL_OUTLINE_COLOR}
     `,
     lineHeight: 1.2,
-    zIndex: 1
+    zIndex: 1,
+    opacity: EDGE_OPACITY_NORMAL
   };
 
   return (
@@ -182,10 +280,11 @@ function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: nu
   );
 }
 
-/** Hook for calculating edge geometry */
-function useEdgeGeometry(source: string, target: string) {
+/** Hook for calculating edge geometry with bezier curves for parallel edges */
+function useEdgeGeometry(edgeId: string, source: string, target: string) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
+  const allEdges = useEdges();
 
   return useMemo(() => {
     if (!sourceNode || !targetNode) return null;
@@ -193,18 +292,53 @@ function useEdgeGeometry(source: string, target: string) {
     const sourcePos = sourceNode.internals.positionAbsolute;
     const targetPos = targetNode.internals.positionAbsolute;
 
+    // Calculate icon center position (icon is centered horizontally, at top of node)
+    const sourceNodeWidth = sourceNode.measured?.width ?? NODE_ICON_SIZE;
+    const targetNodeWidth = targetNode.measured?.width ?? NODE_ICON_SIZE;
+
+    // Edge connects to icon center, not full node center
+    // Icon is horizontally centered in node, and is NODE_ICON_SIZE x NODE_ICON_SIZE at the top
     const points = getEdgePoints(
-      { x: sourcePos.x, y: sourcePos.y, width: sourceNode.measured?.width ?? 40, height: sourceNode.measured?.height ?? 40 },
-      { x: targetPos.x, y: targetPos.y, width: targetNode.measured?.width ?? 40, height: targetNode.measured?.height ?? 40 }
+      {
+        x: sourcePos.x + (sourceNodeWidth - NODE_ICON_SIZE) / 2,
+        y: sourcePos.y,
+        width: NODE_ICON_SIZE,
+        height: NODE_ICON_SIZE
+      },
+      {
+        x: targetPos.x + (targetNodeWidth - NODE_ICON_SIZE) / 2,
+        y: targetPos.y,
+        width: NODE_ICON_SIZE,
+        height: NODE_ICON_SIZE
+      }
     );
+
+    // Get parallel edge info for this edge
+    const parallelInfo = getParallelEdgeInfo(edgeId, source, target, allEdges);
+
+    // Calculate control point for bezier curve (null for single edges)
+    const controlPoint = calculateControlPoint(
+      points.sx,
+      points.sy,
+      points.tx,
+      points.ty,
+      parallelInfo.index,
+      parallelInfo.total
+    );
+
+    // Generate path: straight line for single edges, quadratic bezier for parallel edges
+    const path = controlPoint
+      ? `M ${points.sx} ${points.sy} Q ${controlPoint.x} ${controlPoint.y} ${points.tx} ${points.ty}`
+      : `M ${points.sx} ${points.sy} L ${points.tx} ${points.ty}`;
 
     return {
       points,
-      path: `M ${points.sx} ${points.sy} L ${points.tx} ${points.ty}`,
-      sourceLabelPos: getLabelPosition(points.sx, points.sy, points.tx, points.ty, LABEL_OFFSET),
-      targetLabelPos: getLabelPosition(points.tx, points.ty, points.sx, points.sy, LABEL_OFFSET)
+      path,
+      controlPoint,
+      sourceLabelPos: getLabelPosition(points.sx, points.sy, points.tx, points.ty, LABEL_OFFSET, controlPoint ?? undefined),
+      targetLabelPos: getLabelPosition(points.tx, points.ty, points.sx, points.sy, LABEL_OFFSET, controlPoint ?? undefined)
     };
-  }, [sourceNode, targetNode]);
+  }, [sourceNode, targetNode, allEdges, edgeId, source, target]);
 }
 
 /** Get stroke styling based on selection and link status */
@@ -218,9 +352,10 @@ function getStrokeStyle(linkStatus: string | undefined, selected: boolean) {
 
 /**
  * TopologyEdge - Floating edge that connects nodes like Cytoscape
+ * Supports bezier curves for parallel edges between the same node pair
  */
 const TopologyEdgeComponent: React.FC<EdgeProps<TopologyEdgeData>> = ({ id, source, target, data, selected }) => {
-  const geometry = useEdgeGeometry(source, target);
+  const geometry = useEdgeGeometry(id, source, target);
   if (!geometry) return null;
 
   const stroke = getStrokeStyle(data?.linkStatus, selected ?? false);
@@ -228,7 +363,7 @@ const TopologyEdgeComponent: React.FC<EdgeProps<TopologyEdgeData>> = ({ id, sour
   return (
     <>
       <path id={`${id}-interaction`} d={geometry.path} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: 'pointer' }} />
-      <path id={id} d={geometry.path} fill="none" stroke={stroke.color} strokeWidth={stroke.width} opacity={stroke.opacity} style={{ cursor: 'pointer' }} className="react-flow__edge-path" />
+      <path id={id} d={geometry.path} fill="none" stroke={stroke.color} style={{ cursor: 'pointer', opacity: stroke.opacity, strokeWidth: stroke.width }} className="react-flow__edge-path" />
       <EdgeLabelRenderer>
         {data?.sourceEndpoint && <EndpointLabel text={data.sourceEndpoint} x={geometry.sourceLabelPos.x} y={geometry.sourceLabelPos.y} />}
         {data?.targetEndpoint && <EndpointLabel text={data.targetEndpoint} x={geometry.targetLabelPos.x} y={geometry.targetLabelPos.y} />}
