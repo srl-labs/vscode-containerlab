@@ -1,5 +1,7 @@
 /**
  * React TopoViewer hooks
+ *
+ * [MIGRATION] Migrating from Cytoscape to @xyflow/react
  */
 
 // Graph manipulation
@@ -20,17 +22,6 @@ export * from './annotations';
 // Groups
 export * from './groups';
 
-// Root-level hooks (legacy Cytoscape)
-export {
-  useCytoscapeInstance,
-  useSelectionData,
-  useNavbarActions,
-  useLayoutControls,
-  useContextMenuHandlers,
-  DEFAULT_GRID_LINE_WIDTH
-} from './useAppState';
-export type { LayoutOption, NodeData, LinkData } from './useAppState';
-
 // React Flow hooks
 export {
   useReactFlowInstance,
@@ -39,3 +30,61 @@ export {
   useRFLayoutControls,
   useRFContextMenuHandlers
 } from './useReactFlowState';
+
+// ============================================================================
+// Compatibility exports - [MIGRATION] Remove after full ReactFlow migration
+// ============================================================================
+
+export type LayoutOption = 'preset' | 'cola' | 'radial' | 'hierarchical' | 'cose' | 'geo';
+export const DEFAULT_GRID_LINE_WIDTH = 0.5;
+
+export interface NodeData {
+  id: string;
+  label?: string;
+  name?: string;
+  kind?: string;
+  state?: string;
+  image?: string;
+  mgmtIpv4?: string;
+  mgmtIpv6?: string;
+  fqdn?: string;
+  [key: string]: unknown;
+}
+
+export interface LinkData {
+  id: string;
+  source: string;
+  target: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Stub hook for graph undo/redo handlers
+ * [MIGRATION] Implement for ReactFlow
+ */
+export function useGraphUndoRedoHandlers(_options?: unknown) {
+  // Stub undo/redo object with all expected properties
+  const undoRedo = {
+    undo: () => {},
+    redo: () => {},
+    canUndo: false,
+    canRedo: false,
+    pushAction: (_action: unknown) => {},
+    recordMove: (_nodeIds: string[], _beforePositions: unknown[]) => {},
+    clearHistory: () => {},
+    capturePositions: (_nodeIds: string[]) => [] as unknown[],
+    undoCount: 0,
+    redoCount: 0
+  };
+
+  return {
+    undoRedo,
+    handleDeleteNodeWithUndo: (_nodeId: string) => {},
+    handleDeleteLinkWithUndo: (_edgeId: string) => {},
+    recordPropertyEdit: (_entityType: string, _entityId: string, _before: unknown, _after: unknown) => {},
+    applyGraphChanges: (_changes: unknown[]) => {},
+    applyPropertyEdit: (_action: unknown, _isUndo: boolean) => {}
+  };
+}

@@ -1,9 +1,10 @@
 /**
  * Main hook for overlay-based group management in React TopoViewer.
- * Groups are rendered as HTML overlays, not Cytoscape nodes.
+ * Groups are rendered as HTML overlays, not as graph nodes.
+ *
+ * [MIGRATION] Migrate to @xyflow/react - replace node position/viewport APIs
  */
 import React, { useCallback, useMemo, useRef } from 'react';
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
@@ -28,19 +29,25 @@ import {
   type GroupUndoAction
 } from './groupTypes';
 
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+// import { ReactFlowInstance, Node } from '@xyflow/react';
+interface ReactFlowNode { id: string; position: { x: number; y: number }; data: Record<string, unknown> }
+
 export interface UseGroupsHookOptions extends UseGroupsOptions {
-  cy: CyCore | null;
+  /** [MIGRATION] Replace with ReactFlowInstance from @xyflow/react */
+  cyInstance?: unknown;
 }
 
 /**
- * Get node positions from Cytoscape for selected nodes.
+ * Get node positions from ReactFlow for selected nodes.
+ * [MIGRATION] Update to use ReactFlow's getNodes() API
  */
-function getNodePositions(cy: CyCore, nodeIds: string[]): { x: number; y: number }[] {
+function getNodePositions(nodes: ReactFlowNode[], nodeIds: string[]): { x: number; y: number }[] {
   return nodeIds
     .map(id => {
-      const node = cy.getElementById(id) as NodeSingular;
-      if (node.length > 0) {
-        return node.position();
+      const node = nodes.find(n => n.id === id);
+      if (node) {
+        return node.position;
       }
       return null;
     })
@@ -49,20 +56,26 @@ function getNodePositions(cy: CyCore, nodeIds: string[]): { x: number; y: number
 
 /**
  * Get the center of the viewport.
+ * [MIGRATION] Use ReactFlow's getViewport() and screenToFlowPosition()
  */
-function getViewportCenter(cy: CyCore): { x: number; y: number } {
-  const extent = cy.extent();
+function getViewportCenter(viewport: { x: number; y: number; zoom: number }, containerSize: { width: number; height: number }): { x: number; y: number } {
+  // ReactFlow viewport: x, y are pan offsets, zoom is scale
+  // Center in flow coordinates = (-x + width/2) / zoom, (-y + height/2) / zoom
   return {
-    x: (extent.x1 + extent.x2) / 2,
-    y: (extent.y1 + extent.y2) / 2
+    x: (-viewport.x + containerSize.width / 2) / viewport.zoom,
+    y: (-viewport.y + containerSize.height / 2) / viewport.zoom
   };
 }
 
 /**
  * Hook for creating a new group.
+ * [MIGRATION] Update to use ReactFlow's getNodes() and getViewport()
  */
 function useCreateGroup(
-  cy: CyCore | null,
+  cyInstance: unknown,
+  nodes: ReactFlowNode[],
+  viewport: { x: number; y: number; zoom: number },
+  containerSize: { width: number; height: number },
   mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
@@ -73,7 +86,7 @@ function useCreateGroup(
 ) {
   return useCallback(
     (selectedNodeIds?: string[]): string | null => {
-      if (mode === 'view' || isLocked || !cy) {
+      if (mode === 'view' || isLocked || !cyInstance) {
         if (isLocked) onLockedAction?.();
         return null;
       }
@@ -85,7 +98,7 @@ function useCreateGroup(
 
       if (selectedNodeIds && selectedNodeIds.length > 0) {
         // Calculate bounding box around selected nodes
-        const positions = getNodePositions(cy, selectedNodeIds);
+        const positions = getNodePositions(nodes, selectedNodeIds);
         const bounds = calculateBoundingBox(positions);
         position = bounds.position;
         width = bounds.width;
@@ -102,7 +115,7 @@ function useCreateGroup(
         });
       } else {
         // Create empty group at viewport center
-        position = getViewportCenter(cy);
+        position = getViewportCenter(viewport, containerSize);
         width = DEFAULT_GROUP_WIDTH;
         height = DEFAULT_GROUP_HEIGHT;
       }
@@ -120,7 +133,7 @@ function useCreateGroup(
       log.info(`[Groups] Created overlay group: ${groupId}`);
       return groupId;
     },
-    [cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
+    [cyInstance, nodes, viewport, containerSize, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
   );
 }
 
@@ -408,9 +421,14 @@ function useNodeGroupMembership(
 
 /**
  * Main hook for overlay-based group management.
+ * [MIGRATION] Caller needs to provide nodes, viewport, containerSize from ReactFlow
  */
-export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
-  const { cy, mode, isLocked, onLockedAction } = options;
+export function useGroups(options: UseGroupsHookOptions & {
+  nodes?: ReactFlowNode[];
+  viewport?: { x: number; y: number; zoom: number };
+  containerSize?: { width: number; height: number };
+}): UseGroupsReturn {
+  const { cyInstance, mode, isLocked, onLockedAction, nodes = [], viewport = { x: 0, y: 0, zoom: 1 }, containerSize = { width: 800, height: 600 } } = options;
 
   const state = useGroupState();
   const {
@@ -423,7 +441,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   } = state;
 
   const createGroup = useCreateGroup(
-    cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef
+    cyInstance, nodes, viewport, containerSize, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef
   );
 
   const deleteGroup = useDeleteGroup(

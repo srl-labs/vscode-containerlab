@@ -1,15 +1,21 @@
 /**
  * useKeyboardShortcuts - Hook for keyboard shortcuts
+ *
+ * [MIGRATION] Migrate to @xyflow/react - replace selection checking
  */
 import { useEffect, useCallback } from 'react';
-import type { Core } from 'cytoscape';
 import { log } from '../../utils/logger';
+
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
 
 interface KeyboardShortcutsOptions {
   mode: 'edit' | 'view';
   selectedNode: string | null;
   selectedEdge: string | null;
-  cyInstance: Core | null;
+  /** [MIGRATION] Replace with ReactFlowInstance from @xyflow/react */
+  cyInstance?: unknown;
+  /** Whether any graph elements are selected */
+  hasSelectedElements?: boolean;
   onDeleteNode: (nodeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeselectAll: () => void;
@@ -104,10 +110,11 @@ function handleRedo(
 
 /**
  * Handle Ctrl+C: Copy (nodes/edges and/or annotations)
+ * [MIGRATION] Update to use ReactFlow selection state
  */
 function handleCopy(
   event: KeyboardEvent,
-  cyInstance: Core | null,
+  hasSelectedElements: boolean,
   onCopy?: () => void,
   selectedAnnotationIds?: Set<string>,
   onCopyAnnotations?: () => void
@@ -125,7 +132,7 @@ function handleCopy(
   }
 
   // Also copy graph elements if any are selected
-  if (onCopy && cyInstance && !cyInstance.$(':selected').empty()) {
+  if (onCopy && hasSelectedElements) {
     log.info('[Keyboard] Copy graph elements');
     onCopy();
     handled = true;
@@ -176,11 +183,12 @@ function handlePaste(
 
 /**
  * Handle Ctrl+X: Cut (nodes/edges and/or annotations)
+ * [MIGRATION] Update to use ReactFlow selection state
  */
 function handleCut(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
-  cyInstance: Core | null,
+  hasSelectedElements: boolean,
   onCut?: () => void,
   selectedAnnotationIds?: Set<string>,
   onCutAnnotations?: () => void
@@ -199,7 +207,7 @@ function handleCut(
   }
 
   // Also cut graph elements if any are selected
-  if (onCut && cyInstance && !cyInstance.$(':selected').empty()) {
+  if (onCut && hasSelectedElements) {
     log.info('[Keyboard] Cut graph elements');
     onCut();
     handled = true;
@@ -213,11 +221,12 @@ function handleCut(
 
 /**
  * Handle Ctrl+D: Duplicate (nodes/edges and/or annotations)
+ * [MIGRATION] Update to use ReactFlow selection state
  */
 function handleDuplicate(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
-  cyInstance: Core | null,
+  hasSelectedElements: boolean,
   onDuplicate?: () => void,
   selectedAnnotationIds?: Set<string>,
   onDuplicateAnnotations?: () => void
@@ -236,7 +245,7 @@ function handleDuplicate(
   }
 
   // Also duplicate graph elements if any are selected
-  if (onDuplicate && cyInstance && !cyInstance.$(':selected').empty()) {
+  if (onDuplicate && hasSelectedElements) {
     log.info('[Keyboard] Duplicate graph elements');
     onDuplicate();
     handled = true;
@@ -250,11 +259,12 @@ function handleDuplicate(
 
 /**
  * Handle Ctrl+G: Create group from selected nodes
+ * [MIGRATION] Update to use ReactFlow selection
  */
 function handleCreateGroup(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
-  cyInstance: Core | null,
+  hasGroupableNodesSelected: boolean,
   onCreateGroup?: () => void
 ): boolean {
   if (mode !== 'edit') return false;
@@ -263,19 +273,12 @@ function handleCreateGroup(
   if (!onCreateGroup) return false;
 
   // Only create group if groupable nodes are selected
-  if (!cyInstance) return false;
-  const selectedNodes = cyInstance.nodes(':selected').filter(n => {
-    const role = n.data('topoViewerRole');
-    // Exclude annotations
-    return role !== 'freeText' && role !== 'freeShape';
-  });
-
-  if (selectedNodes.length === 0) {
+  if (!hasGroupableNodesSelected) {
     log.info('[Keyboard] No nodes selected for grouping');
     return false;
   }
 
-  log.info(`[Keyboard] Creating group from ${selectedNodes.length} selected nodes`);
+  log.info('[Keyboard] Creating group from selected nodes');
   onCreateGroup();
   event.preventDefault();
   return true;
@@ -283,13 +286,14 @@ function handleCreateGroup(
 
 /**
  * Handle Ctrl+A: Select all nodes
+ * [MIGRATION] Use ReactFlow's selectAll or setNodes with selected: true
  */
-function handleSelectAll(event: KeyboardEvent, cyInstance: Core | null): boolean {
+function handleSelectAll(event: KeyboardEvent, onSelectAll?: () => void): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== 'a') return false;
-  if (!cyInstance) return false;
+  if (!onSelectAll) return false;
 
   log.info('[Keyboard] Selecting all nodes');
-  cyInstance.nodes().select();
+  onSelectAll();
   event.preventDefault();
   return true;
 }
@@ -341,10 +345,10 @@ function handleDelete(
 
 /**
  * Handle Escape: Deselect all / close panels
+ * [MIGRATION] Use ReactFlow's setNodes/setEdges with selected: false
  */
 function handleEscape(
   event: KeyboardEvent,
-  cyInstance: Core | null,
   selectedNode: string | null,
   selectedEdge: string | null,
   onDeselectAll: () => void,
@@ -361,9 +365,6 @@ function handleEscape(
     return true;
   }
 
-  if (cyInstance) {
-    cyInstance.elements().unselect();
-  }
   if (selectedNode || selectedEdge) {
     log.debug('[Keyboard] Deselecting all');
     onDeselectAll();
@@ -375,13 +376,19 @@ function handleEscape(
 
 /**
  * Hook for managing keyboard shortcuts
+ * [MIGRATION] Caller needs to provide selection state from ReactFlow
  */
-export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
+export function useKeyboardShortcuts(options: KeyboardShortcutsOptions & {
+  /** Select all callback */
+  onSelectAll?: () => void;
+  /** Whether there are groupable nodes selected */
+  hasGroupableNodesSelected?: boolean;
+}): void {
   const {
     mode,
     selectedNode,
     selectedEdge,
-    cyInstance,
+    hasSelectedElements = false,
     onDeleteNode,
     onDeleteEdge,
     onDeselectAll,
@@ -401,7 +408,9 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     onDeleteAnnotations,
     onClearAnnotationSelection,
     hasAnnotationClipboard,
-    onCreateGroup
+    onCreateGroup,
+    onSelectAll,
+    hasGroupableNodesSelected = false
   } = options;
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -411,22 +420,22 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     if (handleUndo(event, mode, canUndo, onUndo)) return;
     if (handleRedo(event, mode, canRedo, onRedo)) return;
     // Copy/Paste/Cut/Duplicate (with annotation support)
-    if (handleCopy(event, cyInstance, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
+    if (handleCopy(event, hasSelectedElements, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
     if (handlePaste(event, mode, onPaste, onPasteAnnotations, hasAnnotationClipboard)) return;
-    if (handleCut(event, mode, cyInstance, onCut, selectedAnnotationIds, onCutAnnotations)) return;
-    if (handleDuplicate(event, mode, cyInstance, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
+    if (handleCut(event, mode, hasSelectedElements, onCut, selectedAnnotationIds, onCutAnnotations)) return;
+    if (handleDuplicate(event, mode, hasSelectedElements, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
     // Group shortcut (Ctrl+G)
-    if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
+    if (handleCreateGroup(event, mode, hasGroupableNodesSelected, onCreateGroup)) return;
     // Other shortcuts
-    if (handleSelectAll(event, cyInstance)) return;
+    if (handleSelectAll(event, onSelectAll)) return;
     if (handleDelete(event, mode, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, selectedAnnotationIds, onDeleteAnnotations)) return;
-    handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll, selectedAnnotationIds, onClearAnnotationSelection);
+    handleEscape(event, selectedNode, selectedEdge, onDeselectAll, selectedAnnotationIds, onClearAnnotationSelection);
   }, [
-    mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,
+    mode, selectedNode, selectedEdge, hasSelectedElements, onDeleteNode, onDeleteEdge, onDeselectAll,
     onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate,
     selectedAnnotationIds, onCopyAnnotations, onPasteAnnotations, onCutAnnotations,
     onDuplicateAnnotations, onDeleteAnnotations, onClearAnnotationSelection, hasAnnotationClipboard,
-    onCreateGroup
+    onCreateGroup, onSelectAll, hasGroupableNodesSelected
   ]);
 
   useEffect(() => {

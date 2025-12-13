@@ -2,7 +2,8 @@
  * Hook for integrating free shape annotations into App.tsx
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 

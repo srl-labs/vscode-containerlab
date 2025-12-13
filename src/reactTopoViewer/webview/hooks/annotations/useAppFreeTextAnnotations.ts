@@ -3,7 +3,8 @@
  * Handles loading, state management, and callbacks for the App component
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { useFreeTextAnnotations } from './useFreeTextAnnotations';
 

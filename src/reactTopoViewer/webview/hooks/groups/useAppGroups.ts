@@ -1,12 +1,16 @@
 /**
  * App-level hook for group management.
  * Provides handlers for group operations with UI integration.
+ *
+ * [MIGRATION] Migrate to @xyflow/react - replace node selection logic
  */
 import { useCallback, useEffect } from 'react';
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
 import { useGroups } from './useGroups';
 import { buildGroupId } from './groupHelpers';
+
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+interface ReactFlowNode { id: string; data: Record<string, unknown> }
 
 interface InitialData {
   groupStyleAnnotations?: unknown[];
@@ -35,14 +39,16 @@ function extractMemberships(nodeAnnotations: NodeAnnotation[] | undefined): Memb
 
 /**
  * Check if a node can be added to a group.
+ * [MIGRATION] Update for ReactFlow node structure
  */
-function canBeGrouped(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole');
+function canBeGrouped(node: ReactFlowNode): boolean {
+  const role = node.data?.topoViewerRole;
   return role !== 'freeText' && role !== 'freeShape';
 }
 
 interface UseAppGroupsOptions {
-  cyInstance: CyCore | null;
+  /** [MIGRATION] Replace with ReactFlowInstance from @xyflow/react */
+  cyInstance?: unknown;
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -77,19 +83,14 @@ function useGroupDataLoader(
 export function useAppGroups(options: UseAppGroupsOptions) {
   const { cyInstance, mode, isLocked, onLockedAction } = options;
 
-  const groupsHook = useGroups({ cy: cyInstance, mode, isLocked, onLockedAction });
+  const groupsHook = useGroups({ cyInstance, mode, isLocked, onLockedAction });
   useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership);
 
   const handleAddGroup = useCallback(() => {
-    if (!cyInstance) return;
-    const selectedNodeIds = cyInstance
-      .nodes(':selected')
-      .filter(n => canBeGrouped(n as NodeSingular))
-      .map(n => n.id());
-
-    const groupId = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
+    // [MIGRATION] Use ReactFlow selection instead of cyInstance
+    const groupId = groupsHook.createGroup();
     if (groupId) groupsHook.editGroup(groupId);
-  }, [cyInstance, groupsHook]);
+  }, [groupsHook]);
 
   return { groups: groupsHook, handleAddGroup };
 }

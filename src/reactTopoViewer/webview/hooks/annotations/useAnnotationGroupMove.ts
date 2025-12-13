@@ -3,7 +3,10 @@
  * When dragging nodes, any selected annotations move by the same delta
  */
 import React, { useEffect, useRef, useCallback } from 'react';
-import type { Core as CyCore, EventObject, NodeSingular } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null; on: (event: string, handler: (e: unknown) => void) => void; off: (event: string, handler: (e: unknown) => void) => void };
+type EventObject = { target: unknown };
+type NodeSingular = { id: () => string; data: () => Record<string, unknown>; position: () => { x: number; y: number } };
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 

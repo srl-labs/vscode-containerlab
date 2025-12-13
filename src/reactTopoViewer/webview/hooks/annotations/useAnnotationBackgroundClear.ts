@@ -2,7 +2,9 @@
  * Hook to clear annotation selection when clicking on the canvas background
  */
 import { useEffect, useCallback } from 'react';
-import type { Core as CyCore, EventObject } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null; on: (event: string, handler: (e: unknown) => void) => void; off: (event: string, handler: (e: unknown) => void) => void };
+type EventObject = { target: unknown };
 import { log } from '../../utils/logger';
 
 interface UseAnnotationBackgroundClearOptions {

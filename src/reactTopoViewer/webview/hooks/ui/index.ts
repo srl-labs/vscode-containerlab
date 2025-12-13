@@ -1,9 +1,9 @@
 /**
  * UI interaction hooks
+ *
+ * [MIGRATION] Migrate to @xyflow/react - deleted Cytoscape-specific hooks:
+ * - useContextMenu (ReactFlow has its own context menu approach)
  */
-
-export { useContextMenu, CONTEXT_MENU_SCRATCH_KEY } from './useContextMenu';
-export type { ContextMenuOptions } from './useContextMenu';
 
 export { useKeyboardShortcuts } from './useKeyboardShortcuts';
 

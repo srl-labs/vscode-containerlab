@@ -1,11 +1,13 @@
 /**
  * Types for free text annotations
  */
-import type { Core as CyCore } from 'cytoscape';
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 
+// [MIGRATION] Replace with ReactFlowInstance from @xyflow/react
+
 export interface UseFreeTextAnnotationsOptions {
-  cy: CyCore | null;
+  /** [MIGRATION] Replace with ReactFlowInstance from @xyflow/react */
+  cyInstance?: unknown;
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;

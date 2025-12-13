@@ -1,11 +1,16 @@
 /**
  * Undo/Redo Hook for Node Position History
  * Manages undo/redo stack for node drag operations
+ *
+ * [MIGRATION] Migrate to @xyflow/react - replace position capture/apply
  */
 import React, { useReducer, useCallback, useMemo } from 'react';
-import { Core } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
+
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+// import { ReactFlowInstance, Node } from '@xyflow/react';
+type ReactFlowNode = { id: string; position: { x: number; y: number }; data: Record<string, unknown> };
 
 /**
  * VS Code API interface for posting messages
@@ -145,17 +150,23 @@ function undoRedoReducer(state: UndoRedoState, reducerAction: UndoRedoReducerAct
 }
 
 /**
- * Apply positions to Cytoscape nodes
+ * Apply positions to graph nodes
+ * [MIGRATION] Update to use ReactFlow's setNodes
  */
-function applyPositionsToGraph(cy: Core, positions: NodePositionEntry[]): void {
-  cy.batch(() => {
-    for (const entry of positions) {
-      const node = cy.getElementById(entry.id);
-      if (node.length > 0 && node.isNode()) {
-        node.position(entry.position);
+function applyPositionsToGraph(
+  setNodes: ((updater: (nodes: ReactFlowNode[]) => ReactFlowNode[]) => void) | null,
+  positions: NodePositionEntry[]
+): void {
+  if (!setNodes) return;
+  setNodes(nodes =>
+    nodes.map(node => {
+      const posEntry = positions.find(p => p.id === node.id);
+      if (posEntry) {
+        return { ...node, position: posEntry.position };
       }
-    }
-  });
+      return node;
+    })
+  );
 }
 
 /**
@@ -179,8 +190,10 @@ function sendPositionsToExtension(positions: NodePositionEntry[]): void {
  * Options for the useUndoRedo hook
  */
 export interface UseUndoRedoOptions {
-  /** Cytoscape instance */
-  cy: Core | null;
+  /** [MIGRATION] Replace with ReactFlow's nodes and setNodes from useReactFlow() */
+  nodes: ReactFlowNode[];
+  /** Setter for updating nodes - from useReactFlow().setNodes */
+  setNodes: ((updater: (nodes: ReactFlowNode[]) => ReactFlowNode[]) => void) | null;
   /** Whether undo/redo is enabled (typically only in edit mode) */
   enabled?: boolean;
   /** Apply graph changes for non-position actions (create/delete/update) */
@@ -224,20 +237,20 @@ export interface UseUndoRedoReturn {
 }
 
 /** Helper hook for capturing node positions */
-function useCapturePositions(cy: Core | null) {
+function useCapturePositions(nodes: ReactFlowNode[]) {
   return useCallback((nodeIds: string[]): NodePositionEntry[] => {
-    if (!cy) return [];
     return nodeIds
       .map(id => {
-        const node = cy.getElementById(id);
-        if (node.length > 0 && node.isNode()) {
-          const pos = node.position();
+        const node = nodes.find(n => n.id === id);
+        if (node) {
+          // ReactFlow nodes have position as a property, not a function
+          const pos = node.position;
           return { id, position: { x: Math.round(pos.x), y: Math.round(pos.y) } };
         }
         return { id, position: { x: 0, y: 0 } };
       })
       .filter(entry => entry.position.x !== 0 || entry.position.y !== 0);
-  }, [cy]);
+  }, [nodes]);
 }
 
 /** Helper hook for push action */
@@ -253,7 +266,7 @@ function usePushAction(enabled: boolean, dispatch: React.Dispatch<UndoRedoReduce
 /** Helper hook for undo operation */
 function useUndoAction(
   canUndo: boolean,
-  cy: Core | null,
+  setNodes: ((updater: (nodes: ReactFlowNode[]) => ReactFlowNode[]) => void) | null,
   past: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   applyGraphChanges?: (changes: GraphChange[]) => void,
@@ -261,11 +274,11 @@ function useUndoAction(
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void
 ) {
   return useCallback(() => {
-    if (!canUndo || !cy) return;
+    if (!canUndo) return;
     const lastAction = past[past.length - 1];
     if (lastAction.type === 'move') {
       log.info(`[UndoRedo] Undoing move for ${lastAction.before.length} node(s)`);
-      applyPositionsToGraph(cy, lastAction.before);
+      applyPositionsToGraph(setNodes, lastAction.before);
       sendPositionsToExtension(lastAction.before);
     } else if (lastAction.type === 'graph') {
       log.info(`[UndoRedo] Undoing graph action with ${lastAction.before.length} change(s)`);
@@ -278,13 +291,13 @@ function useUndoAction(
       applyAnnotationChange?.(lastAction, true);
     }
     dispatch({ type: 'UNDO' });
-  }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange]);
+  }, [canUndo, setNodes, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange]);
 }
 
 /** Helper hook for redo operation */
 function useRedoAction(
   canRedo: boolean,
-  cy: Core | null,
+  setNodes: ((updater: (nodes: ReactFlowNode[]) => ReactFlowNode[]) => void) | null,
   future: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   applyGraphChanges?: (changes: GraphChange[]) => void,
@@ -292,11 +305,11 @@ function useRedoAction(
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void
 ) {
   return useCallback(() => {
-    if (!canRedo || !cy) return;
+    if (!canRedo) return;
     const nextAction = future[0];
     if (nextAction.type === 'move') {
       log.info(`[UndoRedo] Redoing move for ${nextAction.after.length} node(s)`);
-      applyPositionsToGraph(cy, nextAction.after);
+      applyPositionsToGraph(setNodes, nextAction.after);
       sendPositionsToExtension(nextAction.after);
     } else if (nextAction.type === 'graph') {
       log.info(`[UndoRedo] Redoing graph action with ${nextAction.after.length} change(s)`);
@@ -309,25 +322,25 @@ function useRedoAction(
       applyAnnotationChange?.(nextAction, false);
     }
     dispatch({ type: 'REDO' });
-  }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange]);
+  }, [canRedo, setNodes, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange]);
 }
 
 /**
  * Hook for managing undo/redo functionality for node positions
  */
-export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange }: UseUndoRedoOptions): UseUndoRedoReturn {
+export function useUndoRedo({ nodes, setNodes, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange }: UseUndoRedoOptions): UseUndoRedoReturn {
   const [state, dispatch] = useReducer(undoRedoReducer, initialState);
 
   const canUndo = enabled && state.past.length > 0;
   const canRedo = enabled && state.future.length > 0;
 
-  const capturePositions = useCapturePositions(cy);
+  const capturePositions = useCapturePositions(nodes);
   const pushAction = usePushAction(enabled, dispatch);
-  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange);
-  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange);
+  const undo = useUndoAction(canUndo, setNodes, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange);
+  const redo = useRedoAction(canRedo, setNodes, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange);
 
   const recordMove = useCallback((nodeIds: string[], beforePositions: NodePositionEntry[]) => {
-    if (!enabled || !cy) return;
+    if (!enabled || !setNodes) return;
     const afterPositions = capturePositions(nodeIds);
     const hasChanged = beforePositions.some(before => {
       const after = afterPositions.find(a => a.id === before.id);
@@ -336,7 +349,7 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
     if (hasChanged) {
       pushAction({ type: 'move', before: beforePositions, after: afterPositions });
     }
-  }, [enabled, cy, capturePositions, pushAction]);
+  }, [enabled, setNodes, capturePositions, pushAction]);
 
   const clearHistory = useCallback(() => {
     dispatch({ type: 'CLEAR' });

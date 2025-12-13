@@ -2,7 +2,8 @@
  * BulkLinkPanel - Create multiple links based on name patterns
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { GraphChangeEntry } from '../../../hooks';
 import { useBulkLinkPanel } from './useBulkLinkPanel';

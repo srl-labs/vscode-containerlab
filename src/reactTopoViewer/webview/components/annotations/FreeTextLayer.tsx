@@ -3,7 +3,8 @@
  * Renders text annotations with markdown support on top of the Cytoscape canvas.
  */
 import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { renderedToModel, computeAnnotationStyle } from './freeTextLayerHelpers';

@@ -1,5 +1,8 @@
 /**
  * State management hooks
+ *
+ * [MIGRATION] Migrate to @xyflow/react - deleted Cytoscape-specific hooks:
+ * - useGraphUndoRedoHandlers
  */
 
 export { useUndoRedo } from './useUndoRedo';
@@ -13,8 +16,6 @@ export type {
   UseUndoRedoOptions,
   UseUndoRedoReturn
 } from './useUndoRedo';
-
-export { useGraphUndoRedoHandlers } from './useGraphUndoRedoHandlers';
 
 export { useCustomTemplateEditor } from './useCustomTemplateEditor';
 export type { CustomTemplateEditorHandlers, CustomTemplateEditorResult } from './useCustomTemplateEditor';

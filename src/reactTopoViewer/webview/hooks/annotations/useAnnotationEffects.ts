@@ -1,7 +1,8 @@
 /**
  * Combined hook for annotation effects (background clear, group move)
  */
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import type { FreeTextAnnotation } from './freeTextTypes';
 import { useAnnotationGroupMove } from './useAnnotationGroupMove';
 import { useAnnotationBackgroundClear } from './useAnnotationBackgroundClear';

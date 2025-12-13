@@ -1,11 +1,13 @@
 /**
  * Types for free shape annotations
  */
-import type { Core as CyCore } from 'cytoscape';
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 
+// [MIGRATION] Replace with ReactFlowInstance from @xyflow/react
+
 export interface UseFreeShapeAnnotationsOptions {
-  cy: CyCore | null;
+  /** [MIGRATION] Replace with ReactFlowInstance from @xyflow/react */
+  cyInstance?: unknown;
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;

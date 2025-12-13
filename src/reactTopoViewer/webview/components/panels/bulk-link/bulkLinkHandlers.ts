@@ -1,7 +1,8 @@
 /**
  * Handler functions for bulk link operations
  */
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import { sendCommandToExtension } from '../../../utils/extensionMessaging';
 import type { GraphChangeEntry } from '../../../hooks';
 import { computeCandidates, buildBulkEdges, buildUndoRedoEntries, type LinkCandidate } from './bulkLinkUtils';

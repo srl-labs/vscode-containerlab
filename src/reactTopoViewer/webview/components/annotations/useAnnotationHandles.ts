@@ -2,7 +2,8 @@
  * Hooks for annotation rotation and resize handles
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import { RenderedPosition } from './freeTextLayerHelpers';
 
 // ============================================================================

@@ -5,7 +5,8 @@
  */
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { getLabelPositionStyles } from '../../hooks/groups/groupHelpers';
 

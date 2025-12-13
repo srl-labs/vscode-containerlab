@@ -2,7 +2,8 @@
  * Hook for bulk link panel state and handlers
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
 import type { GraphChangeEntry } from '../../../hooks';
 import type { LinkCandidate } from './bulkLinkUtils';
 import { computeAndValidateCandidates, confirmAndCreateLinks } from './bulkLinkHandlers';

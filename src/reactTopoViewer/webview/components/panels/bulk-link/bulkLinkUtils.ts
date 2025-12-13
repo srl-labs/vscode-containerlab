@@ -1,7 +1,9 @@
 /**
  * Utility functions for bulk link creation
  */
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
+// [MIGRATION] Replace with ReactFlow types from @xyflow/react
+type CyCore = { zoom: () => number; pan: () => { x: number; y: number }; container: () => HTMLElement | null };
+type NodeSingular = { id: () => string; data: () => Record<string, unknown>; position: () => { x: number; y: number } };
 import { FilterUtils } from '../../../../../helpers/filterUtils';
 import { isSpecialEndpoint } from '../../../../shared/utilities/LinkTypes';
 import type { CyElement } from '../../../../shared/types/messages';
