@@ -12,6 +12,9 @@ import { annotationsManager } from '../services/AnnotationsManager';
 import { convertEditorDataToYaml } from '../../shared/utilities/nodeEditorConversions';
 import { CyElement } from '../../shared/types/topology';
 import { customNodeConfigManager } from '../../../topoViewer/extension/services/CustomNodeConfigManager';
+import { yamlSettingsManager } from '../../../topoViewer/extension/services/YamlSettingsManager';
+import * as YAML from 'yaml';
+import * as fsPromises from 'fs/promises';
 
 // Create output channel for React TopoViewer logs
 let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
@@ -562,19 +565,8 @@ export class MessageRouter {
     }
 
     const placeholderMessages: Record<string, string> = {
-      'nav-open-lab-settings': 'Lab settings UI is not available in the React TopoViewer yet.',
-      'nav-show-shortcuts': 'Keyboard shortcuts panel is not available in the React TopoViewer yet.',
-      'nav-show-about': 'About panel is not available in the React TopoViewer yet.',
-      'nav-find-node': 'Topology overview/search is coming soon in the React TopoViewer.',
-      'nav-topology-overview': 'Topology overview/search is coming soon in the React TopoViewer.',
-      'nav-capture-svg': 'SVG capture will be available in a future React TopoViewer update.',
       'nav-grid-settings': 'Grid settings are not implemented yet in the React TopoViewer.',
-      'nav-geo-controls': 'Geo controls are not implemented yet in the React TopoViewer.',
-      'panel-add-node': 'Node creation is not available in the React TopoViewer yet.',
-      'panel-add-network': 'Network creation is not available in the React TopoViewer yet.',
-      'panel-add-group': 'Group creation is not available in the React TopoViewer yet.',
-      'panel-add-shapes': 'Shape annotations are not available in the React TopoViewer yet.',
-      'panel-add-bulk-link': 'Bulk link creation is not available in the React TopoViewer yet.'
+      'nav-geo-controls': 'Geo controls are not implemented yet in the React TopoViewer.'
     };
 
     const placeholderMessage = placeholderMessages[command];
@@ -665,8 +657,44 @@ export class MessageRouter {
       case 'apply-link-editor':
         await this.handleSaveLinkEditor(message);
         return true;
+      case 'save-lab-settings':
+        await this.handleSaveLabSettings(message);
+        return true;
       default:
         return false;
+    }
+  }
+
+  /**
+   * Handle saving lab settings (name, prefix, mgmt) to the YAML file
+   */
+  private async handleSaveLabSettings(message: WebviewMessage): Promise<void> {
+    const ctx = this.context;
+    if (!ctx) {
+      log.error('[ReactTopoViewer] handleSaveLabSettings: No context available');
+      return;
+    }
+
+    try {
+      const msgData = message as Record<string, unknown>;
+      const settings = (msgData.settings as { name?: string; prefix?: string | null; mgmt?: Record<string, unknown> | null }) || {};
+
+      log.info(`[ReactTopoViewer] Saving lab settings: ${JSON.stringify(settings)}`);
+
+      const yamlContent = await fsPromises.readFile(ctx.yamlFilePath, 'utf8');
+      const doc = YAML.parseDocument(yamlContent);
+
+      const { hadPrefix, hadMgmt } = yamlSettingsManager.applyExistingSettings(doc, settings);
+      let updatedYaml = doc.toString();
+      updatedYaml = yamlSettingsManager.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
+
+      await fsPromises.writeFile(ctx.yamlFilePath, updatedYaml, 'utf8');
+      log.info('[ReactTopoViewer] Lab settings saved successfully');
+
+      void vscode.window.showInformationMessage('Lab settings saved successfully');
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Error saving lab settings: ${err}`);
+      void vscode.window.showErrorMessage(`Failed to save lab settings: ${err}`);
     }
   }
 

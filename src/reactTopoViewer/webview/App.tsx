@@ -14,6 +14,9 @@ import { FloatingActionPanel, FloatingActionPanelHandle } from './components/pan
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
 import { BulkLinkPanel } from './components/panels/bulk-link';
+import { FindNodePanel } from './components/panels/FindNodePanel';
+import { SvgExportPanel } from './components/panels/SvgExportPanel';
+import { LabSettingsPanel } from './components/panels/lab-settings';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
 import { ContextMenu } from './components/context-menu/ContextMenu';
@@ -589,10 +592,10 @@ export const App: React.FC = () => {
         geoMode={layoutControls.geoMode}
         onGeoModeChange={layoutControls.setGeoMode}
         isGeoLayout={layoutControls.isGeoLayout}
-        onLabSettings={navbarCommands.onLabSettings}
+        onLabSettings={panelVisibility.handleShowLabSettings}
         onToggleSplit={navbarCommands.onToggleSplit}
-        onFindNode={navbarCommands.onFindNode}
-        onCaptureViewport={navbarCommands.onCaptureSvg}
+        onFindNode={panelVisibility.handleShowFindNode}
+        onCaptureViewport={panelVisibility.handleShowSvgExport}
         onShowShortcuts={panelVisibility.handleShowShortcuts}
         onShowAbout={panelVisibility.handleShowAbout}
         shortcutDisplayEnabled={shortcutDisplay.isEnabled}
@@ -715,6 +718,22 @@ export const App: React.FC = () => {
         <AboutPanel
           isVisible={panelVisibility.showAboutPanel}
           onClose={panelVisibility.handleCloseAbout}
+        />
+        <FindNodePanel
+          isVisible={panelVisibility.showFindNodePanel}
+          onClose={panelVisibility.handleCloseFindNode}
+          cy={cyInstance}
+        />
+        <SvgExportPanel
+          isVisible={panelVisibility.showSvgExportPanel}
+          onClose={panelVisibility.handleCloseSvgExport}
+          cy={cyInstance}
+        />
+        <LabSettingsPanel
+          isVisible={panelVisibility.showLabSettingsPanel}
+          onClose={panelVisibility.handleCloseLabSettings}
+          mode={state.mode}
+          labSettings={{ name: state.labName }}
         />
         <FreeTextEditorPanel
           isVisible={!!freeTextAnnotations.editingAnnotation}

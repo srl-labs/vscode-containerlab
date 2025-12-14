@@ -3,7 +3,7 @@
  * Manages context menu state for nodes and edges using React-based menu
  */
 import { useEffect, useCallback, useState } from 'react';
-import { Core } from 'cytoscape';
+import type { Core, EventObject } from 'cytoscape';
 import { log } from '../../utils/logger';
 import { ContextMenuItem } from '../../components/context-menu/ContextMenu';
 
@@ -213,81 +213,64 @@ export interface UseContextMenuReturn {
   closeMenu: () => void;
 }
 
-/**
- * Hook to manage context menus for Cytoscape elements
- * Returns state and handlers for rendering a React-based context menu
- */
-export function useContextMenu(
-  cy: Core | null,
-  options: ContextMenuOptions
-): UseContextMenuReturn {
+/** Extract position from event */
+function getEventPosition(evt: EventObject): { x: number; y: number } {
+  return { x: evt.originalEvent?.clientX ?? 0, y: evt.originalEvent?.clientY ?? 0 };
+}
+
+/** Hook for managing menu state */
+function useMenuState(cy: Core | null) {
   const [menuState, setMenuState] = useState<ContextMenuState>(INITIAL_STATE);
   const [nodeData, setNodeData] = useState<Record<string, unknown>>({});
 
   const closeMenu = useCallback(() => {
     setMenuState(INITIAL_STATE);
-    // Clear scratch key when menu closes
-    if (cy) {
-      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
-    }
+    if (cy) cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
   }, [cy]);
 
-  // Set up event listeners for context menu triggers
+  const openNodeMenu = useCallback((nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
+    setNodeData(data);
+    setMenuState({ isVisible: true, position, elementId: nodeId, elementType: 'node' });
+  }, []);
+
+  const openEdgeMenu = useCallback((edgeId: string, position: { x: number; y: number }) => {
+    setMenuState({ isVisible: true, position, elementId: edgeId, elementType: 'edge' });
+  }, []);
+
+  return { menuState, nodeData, closeMenu, openNodeMenu, openEdgeMenu };
+}
+
+/** Hook for setting up context menu events */
+function useMenuEvents(
+  cy: Core | null,
+  options: ContextMenuOptions,
+  openNodeMenu: (nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => void,
+  openEdgeMenu: (edgeId: string, position: { x: number; y: number }) => void
+) {
   useEffect(() => {
     if (!cy) return;
 
     log.info(`[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`);
 
-    // Handle right-click on nodes (excluding annotations)
-    const handleNodeContextMenu = (evt: cytoscape.EventObject) => {
+    const handleNodeContextMenu = (evt: EventObject) => {
       const node = evt.target;
       const role = node.data('topoViewerRole');
-
-      // Skip annotation nodes (text and shapes)
-      if (role === 'freeText' || role === 'freeShape') {
-        return;
-      }
+      if (role === 'freeText' || role === 'freeShape') return;
 
       evt.originalEvent?.preventDefault();
-
-      const nodeId = node.id();
-      const data = node.data();
-
-      setNodeData(data);
-      setMenuState({
-        isVisible: true,
-        position: { x: evt.originalEvent?.clientX ?? 0, y: evt.originalEvent?.clientY ?? 0 },
-        elementId: nodeId,
-        elementType: 'node'
-      });
-
-      // Set scratch key to prevent selection while menu is open
+      openNodeMenu(node.id(), node.data(), getEventPosition(evt));
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
-
-      log.info(`[ContextMenu] Node context menu opened for: ${nodeId}`);
+      log.info(`[ContextMenu] Node context menu opened for: ${node.id()}`);
     };
 
-    // Handle right-click on edges
-    const handleEdgeContextMenu = (evt: cytoscape.EventObject) => {
+    const handleEdgeContextMenu = (evt: EventObject) => {
       evt.originalEvent?.preventDefault();
-
-      const edge = evt.target;
-      const edgeId = edge.id();
-
-      setMenuState({
-        isVisible: true,
-        position: { x: evt.originalEvent?.clientX ?? 0, y: evt.originalEvent?.clientY ?? 0 },
-        elementId: edgeId,
-        elementType: 'edge'
-      });
-
-      // Set scratch key to prevent selection while menu is open
+      const edgeId = evt.target.id();
+      openEdgeMenu(edgeId, getEventPosition(evt));
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
-
       log.info(`[ContextMenu] Edge context menu opened for: ${edgeId}`);
     };
 
-    // Register event handlers
     cy.on('cxttap', 'node', handleNodeContextMenu);
     cy.on('cxttap', 'edge', handleEdgeContextMenu);
 
@@ -297,32 +280,43 @@ export function useContextMenu(
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
       log.info('[ContextMenu] Context menu listeners cleaned up');
     };
-  }, [cy, options.mode, options.isLocked]);
+  }, [cy, options.mode, options.isLocked, openNodeMenu, openEdgeMenu]);
+}
 
-  // Build menu items based on current state
-  const menuItems = useCallback((): ContextMenuItem[] => {
-    if (!menuState.isVisible || !menuState.elementId) {
-      return [];
-    }
+/** Build menu items based on state */
+function buildMenuItems(
+  menuState: ContextMenuState,
+  nodeData: Record<string, unknown>,
+  options: ContextMenuOptions
+): ContextMenuItem[] {
+  if (!menuState.isVisible || !menuState.elementId) return [];
 
-    if (menuState.elementType === 'node') {
-      return options.mode === 'edit'
-        ? buildNodeEditMenuItems(menuState.elementId, options)
-        : buildNodeViewMenuItems(menuState.elementId, nodeData, options);
-    }
+  if (menuState.elementType === 'node') {
+    return options.mode === 'edit'
+      ? buildNodeEditMenuItems(menuState.elementId, options)
+      : buildNodeViewMenuItems(menuState.elementId, nodeData, options);
+  }
 
-    if (menuState.elementType === 'edge') {
-      return options.mode === 'edit'
-        ? buildEdgeEditMenuItems(menuState.elementId, options)
-        : buildEdgeViewMenuItems(menuState.elementId, options);
-    }
+  if (menuState.elementType === 'edge') {
+    return options.mode === 'edit'
+      ? buildEdgeEditMenuItems(menuState.elementId, options)
+      : buildEdgeViewMenuItems(menuState.elementId, options);
+  }
 
-    return [];
-  }, [menuState, nodeData, options])();
+  return [];
+}
 
-  return {
-    menuState,
-    menuItems,
-    closeMenu
-  };
+/**
+ * Hook to manage context menus for Cytoscape elements
+ * Returns state and handlers for rendering a React-based context menu
+ */
+export function useContextMenu(
+  cy: Core | null,
+  options: ContextMenuOptions
+): UseContextMenuReturn {
+  const { menuState, nodeData, closeMenu, openNodeMenu, openEdgeMenu } = useMenuState(cy);
+  useMenuEvents(cy, options, openNodeMenu, openEdgeMenu);
+  const menuItems = buildMenuItems(menuState, nodeData, options);
+
+  return { menuState, menuItems, closeMenu };
 }
