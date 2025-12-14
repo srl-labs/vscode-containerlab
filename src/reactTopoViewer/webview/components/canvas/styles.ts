@@ -178,6 +178,29 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       content: DATA_NAME,
       label: DATA_NAME
     }
+  },
+  // Link label highlight styles for 'on-select' mode
+  {
+    selector: 'node.link-label-highlight-node',
+    style: {
+      'border-width': '2px',
+      'border-color': SELECTION_COLOR,
+      'border-opacity': 1,
+      'overlay-color': SELECTION_COLOR,
+      'overlay-opacity': 0.15,
+      'overlay-padding': '2px'
+    }
+  },
+  {
+    selector: 'edge.link-label-highlight-edge',
+    style: {
+      'line-color': SELECTION_COLOR,
+      'target-arrow-color': SELECTION_COLOR,
+      'source-arrow-color': SELECTION_COLOR,
+      opacity: 1,
+      width: 2,
+      'z-index': 5
+    }
   }
 ];
 

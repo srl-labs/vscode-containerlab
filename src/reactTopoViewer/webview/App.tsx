@@ -62,7 +62,9 @@ import {
   useLayoutControls,
   useNavbarCommands,
   usePanelVisibility,
-  useFloatingPanelCommands
+  useFloatingPanelCommands,
+  // Canvas hooks
+  useLinkLabelVisibility
 } from './hooks';
 import type { GraphChangeEntry, PendingMembershipChange } from './hooks';
 import type { MembershipEntry } from './hooks/state';
@@ -309,6 +311,9 @@ export const App: React.FC = () => {
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
+
+  // Apply link label visibility based on mode
+  useLinkLabelVisibility(cyInstance, state.linkLabelMode);
 
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
