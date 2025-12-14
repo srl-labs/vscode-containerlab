@@ -313,7 +313,7 @@ export const App: React.FC = () => {
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
 
-  // Geo map integration - manages Leaflet overlay for geographic positioning
+  // Geo map integration - manages MapLibre overlay for geographic positioning
   useGeoMap({
     cyInstance,
     isGeoLayout: layoutControls.isGeoLayout,

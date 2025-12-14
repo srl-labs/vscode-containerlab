@@ -1,61 +1,100 @@
 /**
  * Geo Map Hook for React TopoViewer
- * Manages Leaflet map integration with Cytoscape for geographic positioning
+ * Manages MapLibre GL map integration with Cytoscape for geographic positioning
+ *
+ * This replaces the previous Leaflet-based implementation with MapLibre GL
+ * for smoother WebGL-powered animations that match Google Maps quality.
  */
 import { useEffect, useRef, useCallback } from 'react';
+import type { Core } from 'cytoscape';
 import {
-  GeoMapState,
-  UseGeoMapOptions,
-  UseGeoMapReturn,
-  initializeGeoMap,
-  cleanupGeoMapState,
-  handleZoomStart,
-  handleZoomScaleFinal,
-  handleGeoModeChange,
-  createInitialGeoMapState,
-  handleZoomProgress
-} from './geoMapUtils';
+  MapLibreState,
+  createInitialMapLibreState,
+  initializeMapLibre,
+  cleanupMapLibreState,
+  handleMapMove,
+  handleNodeDragFree,
+  handleGeoModeChange
+} from './maplibreUtils';
+
+export interface UseGeoMapOptions {
+  cyInstance: Core | null;
+  isGeoLayout: boolean;
+  geoMode: 'pan' | 'edit';
+}
+
+export interface UseGeoMapReturn {
+  isGeoMapActive: boolean;
+}
 
 /**
- * Hook for managing Leaflet geo map integration
+ * Hook for managing MapLibre GL geo map integration
  */
 export function useGeoMap({ cyInstance, isGeoLayout, geoMode }: UseGeoMapOptions): UseGeoMapReturn {
-  const stateRef = useRef<GeoMapState>(createInitialGeoMapState());
+  const stateRef = useRef<MapLibreState>(createInitialMapLibreState());
+  const isInitializingRef = useRef(false);
+  const moveRafRef = useRef<number | null>(null);
 
-  const handleZoom = useCallback(
-    (event: any) => {
-      handleZoomProgress(cyInstance as any, stateRef.current, event);
-    },
-    [cyInstance]
-  );
+  // Map move handler - updates positions and scale on pan/zoom
+  const handleMove = useCallback(() => {
+    if (!cyInstance) return;
+    if (moveRafRef.current !== null) return;
 
-  const handleZoomStartCb = useCallback(() => {
-    handleZoomStart(cyInstance as any, stateRef.current);
+    moveRafRef.current = window.requestAnimationFrame(() => {
+      moveRafRef.current = null;
+      handleMapMove(cyInstance, stateRef.current);
+    });
   }, [cyInstance]);
 
-  // On zoom end: stop animation loop and ensure final accuracy
-  const handleZoomEnd = useCallback(
+  // Node drag handler - updates geo coordinates after dragging
+  const handleDragFree = useCallback(
     (event: any) => {
-      handleZoomScaleFinal(cyInstance as any, stateRef.current, event);
+      if (event.target.isNode()) {
+        handleNodeDragFree(event.target, stateRef.current);
+      }
     },
-    [cyInstance]
+    []
   );
 
   // Geo map lifecycle
   useEffect(() => {
+    let didCancel = false;
+
     if (!cyInstance || !isGeoLayout) {
+      // Cleanup if geo layout is disabled
       if (stateRef.current.isInitialized) {
-        cleanupGeoMapState(cyInstance, stateRef.current, handleZoom, handleZoomEnd, handleZoomStartCb);
-        stateRef.current = createInitialGeoMapState();
+        if (moveRafRef.current !== null) {
+          window.cancelAnimationFrame(moveRafRef.current);
+          moveRafRef.current = null;
+        }
+        cleanupMapLibreState(cyInstance, stateRef.current, handleMove, handleDragFree);
+        stateRef.current = createInitialMapLibreState();
       }
+      isInitializingRef.current = false;
       return;
     }
-    if (!stateRef.current.isInitialized) {
-      initializeGeoMap(cyInstance, stateRef.current, handleZoom, handleZoomEnd, handleZoomStartCb);
-    }
-  }, [cyInstance, isGeoLayout, handleZoom, handleZoomEnd, handleZoomStartCb]);
 
-  // Pan/edit mode changes
+    // Initialize if geo layout is enabled and not already initialized
+    if (!stateRef.current.isInitialized && !isInitializingRef.current) {
+      isInitializingRef.current = true;
+      void (async () => {
+        try {
+          await initializeMapLibre(cyInstance, stateRef.current, handleMove, handleDragFree);
+          if (!didCancel) {
+            handleGeoModeChange(cyInstance, stateRef.current, geoMode);
+          }
+        } finally {
+          isInitializingRef.current = false;
+        }
+      })();
+    }
+
+    return () => {
+      didCancel = true;
+    };
+  }, [cyInstance, isGeoLayout, geoMode, handleMove, handleDragFree]);
+
+  // Handle pan/edit mode changes
   useEffect(() => {
     handleGeoModeChange(cyInstance, stateRef.current, geoMode);
   }, [cyInstance, geoMode]);

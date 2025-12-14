@@ -1475,6 +1475,7 @@
     "highlight.js": "^11.11.1",
     "jscpd": "^4.0.5",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^5.14.0",
     "markdown-it": "^14.1.0",
     "markdown-it-emoji": "^3.0.0",
     "mini-css-extract-plugin": "^2.9.4",

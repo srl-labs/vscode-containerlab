@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "@fortawesome/fontawesome-free/css/all.min.css";
-@import "leaflet/dist/leaflet.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 /* Tailwind v4 Configuration for React TopoViewer */
 @source "./../**/*.{ts,tsx}";
@@ -1617,7 +1617,7 @@
 
 /* ============================================================================
  * Geo Map Styles
- * Styles for Leaflet geo map integration
+ * Styles for MapLibre geo map integration
  * ============================================================================ */
 
 /* Geo map container */
@@ -1630,45 +1630,46 @@
   z-index: 0;
 }
 
-/* When leaflet-active class is present, hide grid and make cytoscape transparent */
-.cytoscape-container.leaflet-active {
+/* When maplibre-active class is present, hide grid and make cytoscape transparent */
+.cytoscape-container.maplibre-active {
   background: transparent !important;
 }
 
-.cytoscape-container.leaflet-active .react-topoviewer-grid-overlay {
+.cytoscape-container.maplibre-active .react-topoviewer-grid-overlay {
   display: none !important;
 }
 
-/* Leaflet container styles */
-.leaflet-container {
+/* MapLibre container styles */
+.maplibregl-map {
   background: #f8f8f8;
   font-family: inherit;
 }
 
-/* Ensure Leaflet controls are visible */
-.leaflet-control-zoom {
-  border: 1px solid var(--vscode-panel-border, #3c3c3c) !important;
-  background: var(--vscode-editor-background, #1e1e1e) !important;
+/* MapLibre controls */
+.maplibregl-ctrl-group {
+  border: 1px solid var(--vscode-panel-border, #3c3c3c);
+  background: var(--vscode-editor-background, #1e1e1e);
 }
 
-.leaflet-control-zoom a {
-  background: var(--vscode-button-secondaryBackground, #3c3c3c) !important;
-  color: var(--vscode-button-secondaryForeground, #cccccc) !important;
-  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c) !important;
+.maplibregl-ctrl-group button {
+  background: var(--vscode-button-secondaryBackground, #3c3c3c);
+  color: var(--vscode-button-secondaryForeground, #cccccc);
+  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
 }
 
-.leaflet-control-zoom a:hover {
-  background: var(--vscode-button-secondaryHoverBackground, #4c4c4c) !important;
+.maplibregl-ctrl-group button:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #4c4c4c);
 }
 
 /* Attribution styling */
-.leaflet-control-attribution {
-  background: var(--vscode-editor-background, rgba(30, 30, 30, 0.8)) !important;
-  color: var(--text-secondary, #9ca3af) !important;
-  font-size: 10px !important;
+.maplibregl-ctrl-attrib {
+  background: var(--vscode-editor-background, rgba(30, 30, 30, 0.8));
+  color: var(--text-secondary, #9ca3af);
+  font-size: 10px;
 }
 
-.leaflet-control-attribution a {
-  color: var(--vscode-textLink-foreground, #3794ff) !important;
+.maplibregl-ctrl-attrib a {
+  color: var(--vscode-textLink-foreground, #3794ff);
 }
+
 }
