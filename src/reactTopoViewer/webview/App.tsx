@@ -64,7 +64,8 @@ import {
   usePanelVisibility,
   useFloatingPanelCommands,
   // Canvas hooks
-  useLinkLabelVisibility
+  useLinkLabelVisibility,
+  useGeoMap
 } from './hooks';
 import type { GraphChangeEntry, PendingMembershipChange } from './hooks';
 import type { MembershipEntry } from './hooks/state';
@@ -311,6 +312,13 @@ export const App: React.FC = () => {
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
+
+  // Geo map integration - manages Leaflet overlay for geographic positioning
+  useGeoMap({
+    cyInstance,
+    isGeoLayout: layoutControls.isGeoLayout,
+    geoMode: layoutControls.geoMode
+  });
 
   // Apply link label visibility based on mode
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);

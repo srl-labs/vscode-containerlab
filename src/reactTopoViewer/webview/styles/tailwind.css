@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@fortawesome/fontawesome-free/css/all.min.css";
+@import "leaflet/dist/leaflet.css";
 
 /* Tailwind v4 Configuration for React TopoViewer */
 @source "./../**/*.{ts,tsx}";
@@ -1612,5 +1613,62 @@
   height: 1px;
   background-color: rgba(255, 255, 255, 0.1);
   margin: 4px 0;
+}
+
+/* ============================================================================
+ * Geo Map Styles
+ * Styles for Leaflet geo map integration
+ * ============================================================================ */
+
+/* Geo map container */
+#react-topoviewer-geo-map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+/* When leaflet-active class is present, hide grid and make cytoscape transparent */
+.cytoscape-container.leaflet-active {
+  background: transparent !important;
+}
+
+.cytoscape-container.leaflet-active .react-topoviewer-grid-overlay {
+  display: none !important;
+}
+
+/* Leaflet container styles */
+.leaflet-container {
+  background: #f8f8f8;
+  font-family: inherit;
+}
+
+/* Ensure Leaflet controls are visible */
+.leaflet-control-zoom {
+  border: 1px solid var(--vscode-panel-border, #3c3c3c) !important;
+  background: var(--vscode-editor-background, #1e1e1e) !important;
+}
+
+.leaflet-control-zoom a {
+  background: var(--vscode-button-secondaryBackground, #3c3c3c) !important;
+  color: var(--vscode-button-secondaryForeground, #cccccc) !important;
+  border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #4c4c4c) !important;
+}
+
+/* Attribution styling */
+.leaflet-control-attribution {
+  background: var(--vscode-editor-background, rgba(30, 30, 30, 0.8)) !important;
+  color: var(--text-secondary, #9ca3af) !important;
+  font-size: 10px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--vscode-textLink-foreground, #3794ff) !important;
 }
 }

@@ -7,3 +7,4 @@ export { useCytoscapeInitializer } from './useCytoscapeInitializer';
 export type { CytoscapeInitOptions } from './useCytoscapeInitializer';
 export { useDelayedCytoscapeInit } from './useCytoscapeInit';
 export { useLinkLabelVisibility } from './useLinkLabelVisibility';
+export { useGeoMap } from './useGeoMap';

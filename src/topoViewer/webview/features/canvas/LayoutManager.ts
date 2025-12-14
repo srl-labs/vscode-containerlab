@@ -490,10 +490,9 @@ export class LayoutManager {
     cy.nodes().forEach((node) => {
       const data = node.data();
       if (data.lat === undefined || data.lng === undefined || data.lat === '' || data.lng === '') {
-        const latlng = tempMap.containerPointToLatLng({
-          x: node.position().x,
-          y: node.position().y
-        });
+        const latlng = tempMap.containerPointToLatLng(
+          window.L.point(node.position().x, node.position().y)
+        );
         node.data('lat', latlng.lat.toString());
         node.data('lng', latlng.lng.toString());
       }
