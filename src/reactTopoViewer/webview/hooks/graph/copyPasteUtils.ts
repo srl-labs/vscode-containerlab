@@ -100,7 +100,7 @@ function generateTemplateNodeIds(
   usedIds: Set<string>,
   usedNames: Set<string>
 ): { newId: string; nodeName: string } {
-  const nodeName = getUniqueId(oldName, usedNames, false);
+  const nodeName = getUniqueId(oldName, usedNames);
   const newId = generateTemplateNodeId(usedIds);
   return { newId, nodeName };
 }
@@ -126,15 +126,16 @@ function createNodeDataWithProvenance(
   nodeName: string,
   oldId: string
 ): Record<string, unknown> {
-  const newData = {
+  const newData: Record<string, unknown> = {
     ...el.data,
     id: newId,
     name: nodeName,
     label: (el.data.label as string) || nodeName
   };
 
-  if (newData.extraData && typeof newData.extraData === 'object') {
-    newData.extraData = { ...(newData.extraData as Record<string, unknown>), copyFrom: oldId };
+  const existingExtraData = el.data.extraData;
+  if (existingExtraData && typeof existingExtraData === 'object') {
+    newData.extraData = { ...(existingExtraData as Record<string, unknown>), copyFrom: oldId };
   } else {
     newData.extraData = { copyFrom: oldId };
   }

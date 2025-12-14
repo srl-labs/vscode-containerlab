@@ -29,7 +29,9 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
     kind: '',
     image: '',
     interfaces: [],
-    labPath: { absolute: '', relative: '' }
+    labPath: { absolute: '', relative: '' },
+    IPv4Address: '',
+    IPv6Address: ''
   } as ClabContainerTreeNode;
 }
 

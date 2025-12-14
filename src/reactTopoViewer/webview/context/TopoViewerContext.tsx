@@ -28,6 +28,7 @@ export interface CustomNodeTemplate {
   baseName?: string;
   interfacePattern?: string;
   setDefault?: boolean;
+  [key: string]: unknown;
 }
 
 /**

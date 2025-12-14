@@ -30,6 +30,7 @@ interface NodeData {
   targetEndpoint: string;
   containerDockerExtraAttribute: { state: string; status: string };
   extraData: NodeExtraData;
+  [key: string]: unknown;
 }
 
 interface NodeExtraData {
@@ -77,7 +78,7 @@ function generateNodeName(cy: Core, defaultName: string, template?: CustomNodeTe
   }
 
   const usedNames = new Set<string>(cy.nodes().map(node => node.data('name')));
-  return getUniqueId(template.baseName, usedNames, false);
+  return getUniqueId(template.baseName, usedNames);
 }
 
 /**

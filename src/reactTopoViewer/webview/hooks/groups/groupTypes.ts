@@ -4,7 +4,6 @@
  */
 import React from 'react';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import type { UndoRedoActionAnnotation } from '../state/useUndoRedo';
 
 /**
  * Label position options for groups.
@@ -74,8 +73,12 @@ export interface UseGroupStateReturn {
 /**
  * Undo action type for groups.
  */
-export interface GroupUndoAction extends Omit<UndoRedoActionAnnotation, 'annotationType'> {
+export interface GroupUndoAction {
+  type: 'annotation';
   annotationType: 'group';
+  before: GroupStyleAnnotation | null;
+  after: GroupStyleAnnotation | null;
+  [key: string]: unknown;
 }
 
 /**

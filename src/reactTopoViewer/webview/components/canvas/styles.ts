@@ -46,7 +46,7 @@ const commonRoleStyle = {
 /**
  * Generate role-based styles with SVG icons
  */
-export function generateRoleStyles(): cytoscape.StylesheetCSS[] {
+export function generateRoleStyles(): cytoscape.StylesheetStyle[] {
   const defaultColor = '#005aff';
   return Object.entries(ROLE_SVG_MAP).map(([role, svgId]) => ({
     selector: `node[topoViewerRole="${role}"]`,
@@ -61,7 +61,7 @@ export function generateRoleStyles(): cytoscape.StylesheetCSS[] {
 /**
  * Basic Cytoscape styles for nodes and edges
  */
-export const cytoscapeStylesBase: cytoscape.StylesheetCSS[] = [
+export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
   {
     selector: 'node',
     style: {
@@ -82,7 +82,7 @@ export const cytoscapeStylesBase: cytoscape.StylesheetCSS[] = [
       'text-background-opacity': 0.7,
       'text-background-shape': 'roundrectangle',
       'text-background-padding': '1px',
-      'z-index': '2'
+      'z-index': 2
     }
   },
   {
@@ -106,7 +106,7 @@ export const cytoscapeStylesBase: cytoscape.StylesheetCSS[] = [
       'target-label': 'data(targetEndpoint)',
       'source-text-offset': 20,
       'target-text-offset': 20,
-      'arrow-scale': '0.5',
+      'arrow-scale': 0.5,
       color: '#000000',
       'text-outline-width': '0.3px',
       'text-outline-color': '#FFFFFF',
@@ -133,9 +133,9 @@ export const cytoscapeStylesBase: cytoscape.StylesheetCSS[] = [
       'overlay-color': SELECTION_COLOR,
       'overlay-opacity': 0.2,
       'overlay-padding': '6px',
-      width: '4px',
+      width: 4,
       opacity: 1,
-      'z-index': '10'
+      'z-index': 10
     }
   },
   {
@@ -184,7 +184,7 @@ export const cytoscapeStylesBase: cytoscape.StylesheetCSS[] = [
 /**
  * Complete Cytoscape stylesheet with role-based styles inserted
  */
-export const cytoscapeStyles: cytoscape.StylesheetCSS[] = [
+export const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
   ...cytoscapeStylesBase.slice(0, 4), // core + node styles
   ...generateRoleStyles(),
   ...cytoscapeStylesBase.slice(4) // edge styles and rest

@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import type { FloatingActionPanelHandle } from '../../components/panels/FloatingActionPanel';
-import type { NodePositionEntry } from '../state/useGraphUndoRedo';
+import type { NodePositionEntry } from '../state';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 interface SelectionCallbacks {

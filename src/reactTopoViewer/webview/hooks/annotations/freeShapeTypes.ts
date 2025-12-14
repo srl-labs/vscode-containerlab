@@ -54,4 +54,5 @@ export interface AnnotationUndoAction {
   annotationType: 'freeShape';
   before: FreeShapeAnnotation | null;
   after: FreeShapeAnnotation | null;
+  [key: string]: unknown;
 }

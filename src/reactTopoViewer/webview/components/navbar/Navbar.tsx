@@ -38,7 +38,7 @@ function useDropdown(): {
   isOpen: boolean;
   toggle: () => void;
   close: () => void;
-  ref: React.RefObject<HTMLDivElement>;
+  ref: React.RefObject<HTMLDivElement | null>;
 } {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

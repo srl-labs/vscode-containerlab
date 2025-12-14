@@ -49,10 +49,19 @@ export function hasPresetPositions(elements: CyElement[]): boolean {
 }
 
 /**
+ * Extended layout options including animation properties
+ */
+type ExtendedLayoutOptions = LayoutOptions & {
+  animate?: boolean;
+  animationDuration?: number;
+  [key: string]: unknown;
+};
+
+/**
  * Get layout options for a given layout name
  */
-export function getLayoutOptions(layoutName: string): LayoutOptions {
-  const layouts: Record<string, LayoutOptions> = {
+export function getLayoutOptions(layoutName: string): ExtendedLayoutOptions {
+  const layouts: Record<string, ExtendedLayoutOptions> = {
     cose: {
       name: 'cose',
       animate: true,

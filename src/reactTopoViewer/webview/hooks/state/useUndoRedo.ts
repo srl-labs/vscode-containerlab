@@ -41,6 +41,7 @@ export interface UndoRedoActionMove {
   before: NodePositionEntry[];
   /** Positions after the action (for redo) */
   after: NodePositionEntry[];
+  [key: string]: unknown;
 }
 
 export interface UndoRedoActionGraph {
@@ -49,6 +50,7 @@ export interface UndoRedoActionGraph {
   before: GraphChange[];
   /** Graph changes to apply on redo */
   after: GraphChange[];
+  [key: string]: unknown;
 }
 
 /**
@@ -64,6 +66,7 @@ export interface UndoRedoActionPropertyEdit {
   before: Record<string, unknown>;
   /** Editor data after the change */
   after: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 /**
@@ -77,6 +80,7 @@ export interface UndoRedoActionAnnotation {
   before: Record<string, unknown> | null;
   /** Annotation state after the change (null = deleted) */
   after: Record<string, unknown> | null;
+  [key: string]: unknown;
 }
 
 export type UndoRedoAction = UndoRedoActionMove | UndoRedoActionGraph | UndoRedoActionPropertyEdit | UndoRedoActionAnnotation;

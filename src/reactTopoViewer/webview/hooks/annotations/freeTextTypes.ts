@@ -4,6 +4,9 @@
 import type { Core as CyCore } from 'cytoscape';
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 
+// Re-export FreeTextAnnotation for consumers
+export type { FreeTextAnnotation };
+
 export interface UseFreeTextAnnotationsOptions {
   cy: CyCore | null;
   mode: 'edit' | 'view';
@@ -58,4 +61,5 @@ export interface AnnotationUndoAction {
   annotationType: 'freeText';
   before: FreeTextAnnotation | null;
   after: FreeTextAnnotation | null;
+  [key: string]: unknown;
 }

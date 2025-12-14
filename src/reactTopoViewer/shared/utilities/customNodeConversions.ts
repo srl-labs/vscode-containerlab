@@ -20,6 +20,7 @@ export interface SaveCustomNodeData {
   baseName?: string;
   interfacePattern?: string;
   setDefault?: boolean;
+  [key: string]: unknown;
 }
 
 /**

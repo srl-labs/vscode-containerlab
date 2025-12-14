@@ -110,6 +110,7 @@ export interface FreeTextAnnotation {
   height?: number;
   zIndex?: number;
   roundedBackground?: boolean;
+  [key: string]: unknown;
 }
 
 /**
@@ -133,6 +134,7 @@ export interface FreeShapeAnnotation {
   lineEndArrow?: boolean;
   lineArrowSize?: number;
   cornerRadius?: number;
+  [key: string]: unknown;
 }
 
 /**
@@ -148,6 +150,7 @@ export interface GroupStyleAnnotation {
   width: number;
   height: number;
   // Style
+  color?: string;
   backgroundColor?: string;
   backgroundOpacity?: number;
   borderColor?: string;
@@ -157,6 +160,7 @@ export interface GroupStyleAnnotation {
   labelColor?: string;
   labelPosition?: string;
   zIndex?: number;
+  [key: string]: unknown;
 }
 
 /**
@@ -213,6 +217,7 @@ export interface TopologyAnnotations {
   viewerSettings?: {
     gridLineWidth?: number;
   };
+  [key: string]: unknown;
 }
 
 // ============================================================================

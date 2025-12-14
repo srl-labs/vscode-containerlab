@@ -43,14 +43,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   }, [onClose]);
 
   useEffect(() => {
-    if (isVisible) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('keydown', handleKeyDown);
-      };
-    }
+    if (!isVisible) return;
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isVisible, handleClickOutside, handleKeyDown]);
 
   if (!isVisible || items.length === 0) return null;

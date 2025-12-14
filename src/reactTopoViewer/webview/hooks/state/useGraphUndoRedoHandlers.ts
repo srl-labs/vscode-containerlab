@@ -464,7 +464,7 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     undoRedo.pushAction({
       type: 'property-edit',
       ...action
-    });
+    } as UndoRedoActionPropertyEdit);
   }, [undoRedo]);
 
   return { undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit };

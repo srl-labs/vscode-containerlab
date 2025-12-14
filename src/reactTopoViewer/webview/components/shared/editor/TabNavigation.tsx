@@ -30,10 +30,9 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
   useEffect(() => {
     updateScrollButtons();
     const viewport = viewportRef.current;
-    if (viewport) {
-      viewport.addEventListener('scroll', updateScrollButtons);
-      return () => viewport.removeEventListener('scroll', updateScrollButtons);
-    }
+    if (!viewport) return;
+    viewport.addEventListener('scroll', updateScrollButtons);
+    return () => viewport.removeEventListener('scroll', updateScrollButtons);
   }, [updateScrollButtons]);
 
   const scroll = (direction: 'left' | 'right') => {

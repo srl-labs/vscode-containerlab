@@ -88,7 +88,7 @@ export function useGroupLayer(cy: CyCore | null): UseGroupLayerReturn {
       setBackgroundLayerNode(backgroundNode);
       setInteractionLayerNode(interactionNode);
     } catch (err) {
-      log.error('[GroupLayer] Failed to create layer:', err);
+      log.error(`[GroupLayer] Failed to create layer: ${err}`);
     }
 
     return () => {
