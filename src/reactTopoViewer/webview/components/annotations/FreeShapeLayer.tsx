@@ -177,21 +177,33 @@ function getCursorStyle(isLocked: boolean, isDragging: boolean): string {
   return isDragging ? 'grabbing' : 'grab';
 }
 
-function computeWrapperStyle(
-  renderedPos: { x: number; y: number; zoom: number },
-  rotation: number,
+/** Compute outer wrapper style for positioning (centering only) */
+function computeOuterWrapperStyle(
+  renderedPos: { x: number; y: number },
   zIndex: number
 ): React.CSSProperties {
   return {
     position: 'absolute',
     left: renderedPos.x,
     top: renderedPos.y,
-    transform: `${CENTER_TRANSLATE} rotate(${rotation}deg) scale(${renderedPos.zoom})`,
-    transformOrigin: 'center center',
+    // Only translate for centering - NOT affected by scale
+    transform: CENTER_TRANSLATE,
     zIndex,
-    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
-    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`,
     pointerEvents: 'auto'
+  };
+}
+
+/** Compute inner wrapper style for scale and rotation */
+function computeInnerWrapperStyle(
+  zoom: number,
+  rotation: number
+): React.CSSProperties {
+  return {
+    // Scale and rotate around center
+    transform: `rotate(${rotation}deg) scale(${zoom})`,
+    transformOrigin: 'center center',
+    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
+    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`
   };
 }
 
@@ -364,7 +376,8 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
     [annotation]
   );
 
-  const wrapperStyle = computeWrapperStyle(renderedPos, annotation.rotation ?? 0, annotation.zIndex ?? 10);
+  const outerWrapperStyle = computeOuterWrapperStyle(renderedPos, annotation.zIndex ?? 10);
+  const innerWrapperStyle = computeInnerWrapperStyle(renderedPos.zoom, annotation.rotation ?? 0);
 
   const contentStyle: React.CSSProperties = {
     position: 'relative',
@@ -376,26 +389,30 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
 
   return (
     <>
-      <div style={wrapperStyle}>
-        <div
-          ref={contentRef}
-          style={contentStyle}
-          onClick={handleClick}
-          onMouseDown={handleMouseDown}
-          onContextMenu={handleContextMenu}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          title={isLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
-        >
-          {svg}
-          <ShapeHandles
-            showHandles={showHandles}
-            isLine={isLine}
-            endHandlePos={endHandlePos}
-            onRotationMouseDown={handleRotationMouseDown}
-            onResizeMouseDown={handleResizeMouseDown}
-            onLineResizeMouseDown={handleLineResizeMouseDown}
-          />
+      {/* Outer wrapper: positions center at rendered coordinates */}
+      <div style={outerWrapperStyle}>
+        {/* Inner wrapper: applies scale and rotation around center */}
+        <div style={innerWrapperStyle}>
+          <div
+            ref={contentRef}
+            style={contentStyle}
+            onClick={handleClick}
+            onMouseDown={handleMouseDown}
+            onContextMenu={handleContextMenu}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            title={isLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
+          >
+            {svg}
+            <ShapeHandles
+              showHandles={showHandles}
+              isLine={isLine}
+              endHandlePos={endHandlePos}
+              onRotationMouseDown={handleRotationMouseDown}
+              onResizeMouseDown={handleResizeMouseDown}
+              onLineResizeMouseDown={handleLineResizeMouseDown}
+            />
+          </div>
         </div>
       </div>
       {contextMenu && (

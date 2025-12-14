@@ -45,6 +45,7 @@ interface FreeTextLayerProps {
 
 const HANDLE_SIZE = 6;
 const ROTATION_HANDLE_OFFSET = 18;
+const CENTER_TRANSLATE = 'translate(-50%, -50%)';
 
 interface RotationHandleProps {
   onMouseDown: (e: React.MouseEvent) => void;
@@ -89,7 +90,7 @@ const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown }) => (
         backgroundColor: '#64b4ff',
         border: '2px solid white',
         borderRadius: '50%',
-        transform: 'translate(-50%, -50%)',
+        transform: CENTER_TRANSLATE,
         cursor: 'grab',
         boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
       }}
@@ -106,7 +107,7 @@ interface ResizeHandleProps {
 }
 
 const CORNER_STYLES: Record<ResizeCorner, React.CSSProperties> = {
-  nw: { top: 0, left: 0, cursor: 'nw-resize', transform: 'translate(-50%, -50%)' },
+  nw: { top: 0, left: 0, cursor: 'nw-resize', transform: CENTER_TRANSLATE },
   ne: { top: 0, right: 0, cursor: 'ne-resize', transform: 'translate(50%, -50%)' },
   sw: { bottom: 0, left: 0, cursor: 'sw-resize', transform: 'translate(-50%, 50%)' },
   se: { bottom: 0, right: 0, cursor: 'se-resize', transform: 'translate(50%, 50%)' }
@@ -174,22 +175,33 @@ function getMarkdownContentStyle(annotation: FreeTextAnnotation): React.CSSPrope
   return { width: '100%', height: '100%', overflowX: 'hidden', overflowY: 'auto' };
 }
 
-/** Compute wrapper style for annotation positioning */
-function computeWrapperStyle(
-  renderedPos: { x: number; y: number; zoom: number },
-  rotation: number,
+/** Compute outer wrapper style for positioning (centering only) */
+function computeOuterWrapperStyle(
+  renderedPos: { x: number; y: number },
   zIndex: number
 ): React.CSSProperties {
   return {
     position: 'absolute',
     left: renderedPos.x,
     top: renderedPos.y,
-    transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${renderedPos.zoom})`,
-    transformOrigin: 'center center',
+    // Only translate for centering - NOT affected by scale
+    transform: CENTER_TRANSLATE,
     zIndex,
-    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
-    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`,
     pointerEvents: 'auto'
+  };
+}
+
+/** Compute inner wrapper style for scale and rotation */
+function computeInnerWrapperStyle(
+  zoom: number,
+  rotation: number
+): React.CSSProperties {
+  return {
+    // Scale and rotate around center
+    transform: `rotate(${rotation}deg) scale(${zoom})`,
+    transformOrigin: 'center center',
+    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
+    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`
   };
 }
 
@@ -317,29 +329,34 @@ const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
   const showHandles = (isHovered || isInteracting || isSelected) && !isLocked;
   const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
 
-  const wrapperStyle = computeWrapperStyle(renderedPos, annotation.rotation || 0, annotation.zIndex || 11);
+  const outerWrapperStyle = computeOuterWrapperStyle(renderedPos, annotation.zIndex || 11);
+  const innerWrapperStyle = computeInnerWrapperStyle(renderedPos.zoom, annotation.rotation || 0);
   const baseStyle = computeAnnotationStyle(annotation, renderedPos, isInteracting, isHovered, isLocked);
   const contentStyle = computeContentStyle(baseStyle, isLocked, isDragging);
   const markdownStyle = getMarkdownContentStyle(annotation);
 
   return (
     <>
-      <div style={wrapperStyle}>
-        <div
-          ref={contentRef}
-          style={contentStyle}
-          onClick={handleClick}
-          onMouseDown={handleMouseDown}
-          onDoubleClick={handleDoubleClick}
-          onContextMenu={handleContextMenu}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          title={isLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
-        >
-          {/* Markdown content with scrolling when resized */}
-          <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
-          {/* Handles inside content div for proper positioning */}
-          {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
+      {/* Outer wrapper: positions center at rendered coordinates */}
+      <div style={outerWrapperStyle}>
+        {/* Inner wrapper: applies scale and rotation around center */}
+        <div style={innerWrapperStyle}>
+          <div
+            ref={contentRef}
+            style={contentStyle}
+            onClick={handleClick}
+            onMouseDown={handleMouseDown}
+            onDoubleClick={handleDoubleClick}
+            onContextMenu={handleContextMenu}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            title={isLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
+          >
+            {/* Markdown content with scrolling when resized */}
+            <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            {/* Handles inside content div for proper positioning */}
+            {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
+          </div>
         </div>
       </div>
       {/* Context menu */}
