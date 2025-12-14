@@ -2,7 +2,7 @@
  * Shared annotation handles for rotation and line resize
  */
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
 import { SELECTION_COLOR } from '../types';
 
 // ============================================================================
@@ -40,6 +40,16 @@ function normalizeRotation(rotation: number): number {
   return ((rotation % 360) + 360) % 360;
 }
 
+function useSyncRotationInternals(nodeId: string, rotation: number): void {
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  useEffect(() => {
+    // Refresh node internals so the selection box and resize handles keep in
+    // sync with the rotated element, matching React Flow's rotatable example.
+    updateNodeInternals(nodeId);
+  }, [nodeId, rotation, updateNodeInternals]);
+}
+
 export const RotationHandle: React.FC<RotationHandleProps> = ({
   nodeId,
   currentRotation,
@@ -53,6 +63,8 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
     startRotation: number;
   } | null>(null);
   const handleRef = useRef<HTMLDivElement>(null);
+
+  useSyncRotationInternals(nodeId, currentRotation);
 
   useEffect(() => {
     if (!isRotating) return;
